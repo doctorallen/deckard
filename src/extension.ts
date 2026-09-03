@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { PreferencesStore } from './core/storage/preferences';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { createDailyNote } from './ui/commands/dailyNote';
+import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EditorTagDecorations } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { DashboardPanel } from './ui/webview/dashboard';
@@ -91,6 +92,11 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
       createDailyNote(),
+    ),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('deckard.extractHeading', () =>
+      extractHeadingCommand(indexer),
     ),
   );
   context.subscriptions.push(

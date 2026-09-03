@@ -6,6 +6,11 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { createDailyNote } from '../ui/commands/dailyNote';
+import {
+  extractHeadingNote,
+  findTaggedHeadingAtLine,
+  getExtractedNoteFileName,
+} from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
 import { toggleTask } from '../ui/commands/taskActions';
 
@@ -106,6 +111,112 @@ suite('Source commands', () => {
     ).toString('utf8');
 
     assert.strictEqual(secondContent, preservedContent);
+    await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('moves a tagged heading section and removes it from its source', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const notesUri = vscode.Uri.joinPath(temporaryRoot, 'notes');
+    const sourceUri = vscode.Uri.joinPath(notesUri, 'source.md');
+    const sourceContent = [
+      '# Case #case',
+      'Introduction.',
+      '',
+      '## Lead #clue',
+      'Lead details.',
+      '',
+      '### Detail #detail',
+      'Nested details.',
+      '',
+      '## Next',
+      'Next section.',
+    ].join('\n');
+    await vscode.workspace.fs.createDirectory(notesUri);
+    await vscode.workspace.fs.writeFile(
+      sourceUri,
+      Buffer.from(sourceContent, 'utf8'),
+    );
+
+    const parsed = parseMarkdown('notes/source.md', sourceContent);
+    const section = findTaggedHeadingAtLine(parsed.sections, 7);
+    assert.strictEqual(section?.heading, 'Detail #detail');
+
+    const extractedUri = await extractHeadingNote(
+      parsed.sections[1],
+      sourceUri,
+      notesUri,
+      'lead-note.md',
+    );
+    assert.ok(extractedUri);
+    const extractedContent = Buffer.from(
+      await vscode.workspace.fs.readFile(extractedUri!),
+    ).toString('utf8');
+    assert.strictEqual(
+      extractedContent,
+      [
+        '## Lead #clue',
+        'Lead details.',
+        '',
+        '### Detail #detail',
+        'Nested details.',
+        '',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(sourceUri)).toString(
+        'utf8',
+      ),
+      ['# Case #case', 'Introduction.', '', '## Next', 'Next section.'].join(
+        '\n',
+      ),
+    );
+
+    await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('rejects unsafe extraction names and preserves conflicts', async () => {
+    assert.strictEqual(
+      getExtractedNoteFileName('lead note.md'),
+      'lead note.md',
+    );
+    assert.strictEqual(getExtractedNoteFileName('../lead-note'), undefined);
+    assert.strictEqual(getExtractedNoteFileName('lead/note'), undefined);
+
+    const temporaryRoot = await createTemporaryRoot();
+    const notesUri = vscode.Uri.joinPath(temporaryRoot, 'notes');
+    const parsed = parseMarkdown('notes/source.md', '# Case #case\nDetails.');
+    const sourceUri = vscode.Uri.joinPath(notesUri, 'source.md');
+    const noteUri = vscode.Uri.joinPath(notesUri, 'existing.md');
+    await vscode.workspace.fs.createDirectory(notesUri);
+    await vscode.workspace.fs.writeFile(
+      sourceUri,
+      Buffer.from('# Case #case\nDetails.', 'utf8'),
+    );
+    await vscode.workspace.fs.writeFile(
+      noteUri,
+      Buffer.from('Keep this note.\n', 'utf8'),
+    );
+
+    assert.strictEqual(
+      await extractHeadingNote(
+        parsed.sections[0],
+        sourceUri,
+        notesUri,
+        'existing',
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(noteUri)).toString('utf8'),
+      'Keep this note.\n',
+    );
+    assert.strictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(sourceUri)).toString(
+        'utf8',
+      ),
+      '# Case #case\nDetails.',
+    );
+
     await deleteTemporaryRoot(temporaryRoot);
   });
 });

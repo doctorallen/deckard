@@ -28,6 +28,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 - **Deckard: Open Dashboard** opens workspace totals, tags, and tasks.
 - **Deckard: Reindex Workspace** performs a full scan of the configured notes folders.
 - **Deckard: Create Daily Note** creates or opens today's note.
+- **Deckard: Extract Tagged Heading** moves a tagged heading section into a newly named note.
 - **Deckard: Show Tag Overview** opens a tag overview, or shows a tag picker when no tag is supplied.
 
 ## Markdown format
@@ -89,6 +90,12 @@ Each overview collects the matching sections from your notes. You can:
 
 Opening a tag overview records tag access. Opening a section records section access, which powers the access sort. Tag links inside an overview open the next overview without leaving the workflow.
 
+## Extracting headings
+
+Run `Deckard: Extract Tagged Heading` with the cursor inside a tagged heading section. Deckard moves the complete section, including nested headings and the original heading tags, into a new Markdown note in the configured notes folder. The extracted heading and its content are removed from the source note. If the cursor is not inside a tagged section, Deckard offers a picker of tagged headings from the workspace.
+
+The note name is used as a single Markdown filename. Existing notes are never overwritten; choose a different name when a conflict is reported.
+
 ## Daily notes
 
 Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut in Related Notes. Deckard creates a note named with the local date, such as `2026-08-30.md`, in your configured notes folder and opens it. If today's note already exists, Deckard opens it without replacing its contents.
@@ -111,7 +118,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ## Source safety and persistence
 
-Markdown files remain the source of truth. Deckard only changes note content when you use a task checkbox to update its checklist marker. Before applying that edit, Deckard compares the complete source line and checkbox value with the indexed version. If the line changed, it warns and leaves the file untouched.
+Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox to update its checklist marker or explicitly extract a tagged heading into a new note. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
 
 Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 
