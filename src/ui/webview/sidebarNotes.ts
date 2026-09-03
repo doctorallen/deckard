@@ -31,6 +31,7 @@ export class SidebarNotesView
     private readonly preferences: PreferencesStore,
     private readonly tagOverview: ActiveTagOverview,
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
+    private readonly extensionVersion: string,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
@@ -56,7 +57,10 @@ export class SidebarNotesView
     this.disposeViewListeners();
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
-    webviewView.webview.html = getSidebarNotesHtml(webviewView.webview);
+    webviewView.webview.html = getSidebarNotesHtml(
+      webviewView.webview,
+      this.extensionVersion,
+    );
     this.viewDisposables = [
       webviewView.onDidDispose(() => {
         this.view = undefined;

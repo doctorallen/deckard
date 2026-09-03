@@ -6,8 +6,17 @@ import * as vscode from 'vscode';
  * Keeping the view state-driven lets the host choose between active-note and
  * active-tag contexts while this document remains a simple navigation surface.
  */
-export function getSidebarNotesHtml(webview: vscode.Webview): string {
+export function getSidebarNotesHtml(
+  webview: vscode.Webview,
+  extensionVersion: string,
+): string {
   const nonce = createNonce();
+  const escapedExtensionVersion = extensionVersion
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
   const csp = `default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
   return `<!DOCTYPE html>
@@ -35,10 +44,11 @@ export function getSidebarNotesHtml(webview: vscode.Webview): string {
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 220px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 12px; }
 main { padding: 12px; border-top: 2px solid var(--amber); }
-h2, .eyebrow, .source, .match-count { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+h2, .eyebrow, .source, .match-count, .version { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
 .eyebrow { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--amber); font-size: 10px; letter-spacing: .15em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.version { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .active-name { margin-top: 3px; }
@@ -108,7 +118,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
     const sectionLabel = state.tagOverview
       ? '<span class="section-label">Current notes</span>'
       : (state.state === 'ready' ? '<span class="section-label">Shared tags</span>' : '');
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD / RELATED NOTES</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD / RELATED NOTES</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
   }
 
   document.addEventListener('click', function (event) {
