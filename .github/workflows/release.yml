@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - name: Create GitHub release
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          target-branch: master
+          skip-github-pull-request: true
+
+  package:
+    needs: release
+    if: needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out released tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set released package version
+        run: npm version "${{ needs.release.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Run tests for released source
+        run: xvfb-run --auto-servernum npm test
+
+      - name: Build release VSIX
+        run: npm run package:vsix
+
+      - name: Attach VSIX to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.release.outputs.tag_name }}
+        run: |
+          vsix_path="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          test -n "$vsix_path"
+          gh release upload "$TAG_NAME" "$vsix_path" --clobber --repo "$GITHUB_REPOSITORY"

@@ -1,0 +1,120 @@
+{
+  "name": "deckard-notes",
+  "displayName": "Deckard",
+  "publisher": "esperinnovations",
+  "description": "Find your replicants, chase down loose ends, and keep your memories in order.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doctorallen/deckard.git"
+  },
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.134.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onWebviewPanel:deckard.dashboard",
+    "onWebviewPanel:deckard.tagOverview",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "deckard.showDashboard",
+        "title": "Deckard: Open Dashboard"
+      },
+      {
+        "command": "deckard.reindexWorkspace",
+        "title": "Deckard: Reindex Workspace"
+      },
+      {
+        "command": "deckard.createDailyNote",
+        "title": "Deckard: Create Daily Note"
+      },
+      {
+        "command": "deckard.showTagOverview",
+        "title": "Deckard: Show Tag Overview"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "deckard",
+          "title": "Deckard",
+          "icon": "resources/deckard.svg"
+        }
+      ]
+    },
+    "views": {
+      "deckard": [
+        {
+          "id": "deckard.relatedNotes",
+          "name": "Related Notes",
+          "icon": "resources/deckard.svg",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Deckard",
+      "properties": {
+        "deckard.notesFolder": {
+          "type": "string",
+          "default": "notes",
+          "description": "Workspace-relative folder containing Markdown notes."
+        },
+        "deckard.dailyNoteTemplate": {
+          "type": "string",
+          "default": "# {date}\n\n",
+          "description": "Template used when creating a daily note."
+        },
+        "deckard.parseInlineTags": {
+          "type": "boolean",
+          "default": true,
+          "description": "Index tags on non-heading Markdown lines as standalone entries."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0",
+    "sanitize-html": "^2.17.0"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:tsc watch:esbuild",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "package:vsix": "vsce package --no-dependencies --skip-license",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.2.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "@types/sanitize-html": "^2.16.1",
+    "@types/vscode": "^1.134.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  }
+}
