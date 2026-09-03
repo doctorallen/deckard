@@ -88,6 +88,12 @@ export class WorkspaceIndexer implements vscode.Disposable {
     return this.scanner.isNotesFile(uri);
   }
 
+  public getNotesFolderUri(
+    workspaceFolder: vscode.WorkspaceFolder,
+  ): vscode.Uri {
+    return this.scanner.getNotesFolderUri(workspaceFolder);
+  }
+
   /**
    * Performs a full replacement refresh while reporting progress in VS Code.
    */

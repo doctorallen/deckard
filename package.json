@@ -35,6 +35,10 @@
         "title": "Deckard: Create Daily Note"
       },
       {
+        "command": "deckard.extractHeading",
+        "title": "Deckard: Extract Tagged Heading"
+      },
+      {
         "command": "deckard.showTagOverview",
         "title": "Deckard: Show Tag Overview"
       }

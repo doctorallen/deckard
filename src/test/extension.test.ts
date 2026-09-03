@@ -18,6 +18,7 @@ suite('Extension Test Suite', () => {
         'deckard.showDashboard',
         'deckard.reindexWorkspace',
         'deckard.createDailyNote',
+        'deckard.extractHeading',
         'deckard.showTagOverview',
       ],
     );
@@ -60,6 +61,11 @@ suite('Extension Test Suite', () => {
     assert.ok(
       (await vscode.commands.getCommands(true)).includes(
         'deckard.reindexWorkspace',
+      ),
+    );
+    assert.ok(
+      (await vscode.commands.getCommands(true)).includes(
+        'deckard.extractHeading',
       ),
     );
   });
