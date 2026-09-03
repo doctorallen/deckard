@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
     preferences,
     tagPanels,
     (tagKey) => tagPanels.show(tagKey),
+    context.extension.packageJSON.version,
   );
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
