@@ -1,15 +1,13 @@
 name: Release
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - master
+  workflow_dispatch:
 
 permissions:
   contents: write
-  pull-requests: read
 
 concurrency:
   group: release-master
@@ -35,6 +33,10 @@ jobs:
           manifest-file: .release-please-manifest.json
           target-branch: master
           skip-github-pull-request: true
+
+      - name: Report no-release decision
+        if: steps.release.outputs.release_created != 'true'
+        run: echo "::notice title=No release created::No releasable Conventional Commit was found on master."
 
   package:
     needs: release
