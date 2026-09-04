@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: release-master
@@ -31,11 +32,10 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           target-branch: master
-          skip-github-pull-request: true
 
-      - name: Report no-release decision
+      - name: Report release status
         if: steps.release.outputs.release_created != 'true'
-        run: echo "::notice title=No release created::No releasable Conventional Commit was found on master."
+        run: echo "::notice title=No GitHub release created::release-please did not create a GitHub release in this run."
 
   package:
     needs: release
