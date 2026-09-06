@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - main
+      - master
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-main
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
