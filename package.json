@@ -166,6 +166,8 @@
     "package:vsix": "vsce package --no-dependencies --skip-license",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
+    "capture:dashboard": "node scripts/capture-dashboard-screenshot.mjs",
+    "capture:dashboard:promote": "DECKARD_SCREENSHOT_PROMOTE=1 node scripts/capture-dashboard-screenshot.mjs",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
