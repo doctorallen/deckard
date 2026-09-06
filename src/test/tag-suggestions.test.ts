@@ -22,7 +22,18 @@ suite('Tag suggestions', () => {
       startColumn: 7,
       endColumn: 15,
     });
-    assert.strictEqual(getTagCompletionContext('# Heading', 1), undefined);
+    assert.deepStrictEqual(getTagCompletionContext('# Heading', 1), {
+      marker: '#',
+      query: '',
+      startColumn: 0,
+      endColumn: 1,
+    });
+    assert.deepStrictEqual(getTagCompletionContext('Review ~mar', 11, '~'), {
+      marker: '~',
+      query: 'mar',
+      startColumn: 7,
+      endColumn: 11,
+    });
   });
 
   test('filters existing tags and includes entry counts', async () => {
@@ -30,9 +41,9 @@ suite('Tag suggestions', () => {
       ready: Promise.resolve(),
       getSnapshot: () =>
         createIndex([
-          createTag('project', 4),
-          createTag('process', 1),
-          createTag('other', 9),
+          createTag('@process', 1),
+          createTag('@project', 4),
+          createTag('#other', 9),
         ]),
     });
     const document = createDocument(
@@ -68,12 +79,16 @@ suite('Tag suggestions', () => {
     const provider = new TagCompletionProvider({
       ready: Promise.resolve(),
       getSnapshot: () =>
-        createIndex([createTag('3', 2), createTag('project', 4)]),
+        createIndex([createTag('#3', 2), createTag('#project', 4)]),
     });
 
     const hashDocument = createDocument(
       '/tmp/deckard/notes/case.md',
       'Review #',
+    );
+    const lineStartHashDocument = createDocument(
+      '/tmp/deckard/notes/case.md',
+      '#',
     );
     const fencedDocument = createDocument(
       '/tmp/deckard/notes/case.md',
@@ -96,6 +111,10 @@ suite('Tag suggestions', () => {
       fencedDocument,
       new vscode.Position(1, 4),
     );
+    const lineStartHashItems = await provider.provideCompletionItems(
+      lineStartHashDocument,
+      new vscode.Position(0, 1),
+    );
     const headingItems = await provider.provideCompletionItems(
       headingDocument,
       new vscode.Position(0, 11),
@@ -113,6 +132,10 @@ suite('Tag suggestions', () => {
       hashItems.map((item) => item.label),
       ['#project'],
     );
+    assert.deepStrictEqual(
+      lineStartHashItems.map((item) => item.label),
+      ['#project'],
+    );
     assert.deepStrictEqual(fencedItems, []);
     assert.deepStrictEqual(headingItems, []);
     assert.deepStrictEqual(
@@ -122,12 +145,61 @@ suite('Tag suggestions', () => {
     assert.deepStrictEqual(textItems, []);
     provider.dispose();
   });
+
+  test('finds namespaced hash entities by their short name', async () => {
+    const provider = new TagCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () =>
+        createIndex([
+          createTag('#project/atlas', 3),
+          createTag('#topic/atlas', 2),
+          createTag('@atlas-owner', 1),
+        ]),
+    });
+    const document = createDocument(
+      '/tmp/deckard/notes/case.md',
+      'Review #atl',
+    );
+
+    const items = await provider.provideCompletionItems(
+      document,
+      new vscode.Position(0, 11),
+    );
+
+    assert.deepStrictEqual(
+      items.map((item) => item.label),
+      ['#project/atlas', '#topic/atlas'],
+    );
+    provider.dispose();
+  });
+
+  test('does not suggest tags when autocomplete is disabled', async () => {
+    const provider = new TagCompletionProvider(
+      {
+        ready: Promise.resolve(),
+        getSnapshot: () => createIndex([createTag('@project', 4)]),
+      },
+      () => false,
+    );
+    const document = createDocument(
+      '/tmp/deckard/notes/case.md',
+      'Review @project',
+    );
+
+    const items = await provider.provideCompletionItems(
+      document,
+      new vscode.Position(0, 10),
+    );
+
+    assert.deepStrictEqual(items, []);
+    provider.dispose();
+  });
 });
 
 function createTag(key: string, count: number): TagInfo {
   return {
     key,
-    label: `#${key}`,
+    label: key,
     sectionIds: [],
     taskIds: [],
     count,
@@ -141,6 +213,7 @@ function createIndex(tags: TagInfo[]): WorkspaceIndex {
     sections: new Map(),
     tasks: new Map(),
     tags: new Map(tags.map((tag) => [tag.key, tag])),
+    entities: new Map(),
     updatedAt: Date.now(),
   };
 }

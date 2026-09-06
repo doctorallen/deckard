@@ -1,13 +1,21 @@
 import * as vscode from 'vscode';
 
 import { PreferencesStore } from './core/storage/preferences';
+import { SearchStore } from './core/storage/searchStore';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { createDailyNote } from './ui/commands/dailyNote';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
+import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
+import { linkCurrentHeading } from './ui/commands/linkEntity';
+import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
+import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { EditorTagDecorations } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
+import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
+import { HelpPanel } from './ui/webview/help';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
+import { StatsPanel } from './ui/webview/stats';
 import { TagOverviewPanels } from './ui/webview/tagOverview';
 
 let activeServices: ExtensionServices | undefined;
@@ -19,22 +27,20 @@ let activeServices: ExtensionServices | undefined;
  * decorations, and completion all observe the same index and preference store.
  */
 export function activate(context: vscode.ExtensionContext): void {
-  const indexer = new WorkspaceIndexer();
+  const indexer = new WorkspaceIndexer(
+    undefined,
+    new SearchStore(context.storageUri),
+  );
   const preferences = new PreferencesStore(context.globalState);
   const tagPanels = new TagOverviewPanels(
     indexer,
     preferences,
     context.extensionUri,
   );
-  const sidebarNotes = new SidebarNotesView(
-    indexer,
-    preferences,
-    tagPanels,
-    (tagKey) => tagPanels.show(tagKey),
-    context.extension.packageJSON.version,
-  );
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
+  const linkSuggestions = new WikiLinkCompletionProvider(indexer);
+  const entitySuggestions = new EntityHeadingSuggestions();
   const dashboard = new DashboardPanel(
     indexer,
     preferences,
@@ -43,6 +49,16 @@ export function activate(context: vscode.ExtensionContext): void {
       void tagPanels.show(tagKey);
     },
   );
+  const sidebarNotes = new SidebarNotesView(
+    indexer,
+    preferences,
+    tagPanels,
+    (tagKey) => tagPanels.show(tagKey),
+    () => dashboard.show(),
+    context.extension.packageJSON.version,
+  );
+  const stats = new StatsPanel(indexer, preferences, context.extensionUri);
+  const help = new HelpPanel(context.extensionUri);
   activeServices = {
     indexer,
     preferences,
@@ -50,7 +66,11 @@ export function activate(context: vscode.ExtensionContext): void {
     sidebarNotes,
     tagDecorations,
     tagSuggestions,
+    linkSuggestions,
+    entitySuggestions,
     dashboard,
+    stats,
+    help,
   };
 
   context.subscriptions.push(
@@ -60,7 +80,11 @@ export function activate(context: vscode.ExtensionContext): void {
     sidebarNotes,
     tagDecorations,
     tagSuggestions,
+    linkSuggestions,
+    entitySuggestions,
     dashboard,
+    stats,
+    help,
   );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -74,6 +98,12 @@ export function activate(context: vscode.ExtensionContext): void {
       deserializeWebviewPanel: (webviewPanel) =>
         dashboard.restore(webviewPanel),
     }),
+    vscode.window.registerWebviewPanelSerializer('deckard.stats', {
+      deserializeWebviewPanel: (webviewPanel) => stats.restore(webviewPanel),
+    }),
+    vscode.window.registerWebviewPanelSerializer('deckard.help', {
+      deserializeWebviewPanel: (webviewPanel) => help.restore(webviewPanel),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
       deserializeWebviewPanel: (webviewPanel, state) =>
         tagPanels.restore(webviewPanel, state),
@@ -83,6 +113,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('deckard.showDashboard', () =>
       dashboard.show(),
     ),
+    vscode.commands.registerCommand('deckard.showStats', () => stats.show()),
+    vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.reindexWorkspace', async () => {
@@ -105,6 +137,15 @@ export function activate(context: vscode.ExtensionContext): void {
       'deckard.showTagOverview',
       (tagKey?: unknown) => showTagOverview(tagPanels, indexer, tagKey),
     ),
+    vscode.commands.registerCommand('deckard.searchWorkspace', () =>
+      searchWorkspace(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.linkCurrentHeading', () =>
+      linkCurrentHeading(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.moveTagsToFrontmatter', () =>
+      moveInlineTagsToFrontmatter(),
+    ),
   );
 
   void indexer.start().then(async () => {
@@ -113,6 +154,7 @@ export function activate(context: vscode.ExtensionContext): void {
       index.tags.keys(),
       index.tasks.keys(),
       index.sections.keys(),
+      index.entities.keys(),
     );
   });
 }
@@ -128,7 +170,11 @@ export function deactivate(): void {
   activeServices?.sidebarNotes.dispose();
   activeServices?.tagDecorations.dispose();
   activeServices?.tagSuggestions.dispose();
+  activeServices?.linkSuggestions.dispose();
+  activeServices?.entitySuggestions.dispose();
   activeServices?.dashboard.dispose();
+  activeServices?.stats.dispose();
+  activeServices?.help.dispose();
   activeServices = undefined;
 }
 
@@ -142,7 +188,11 @@ interface ExtensionServices {
   sidebarNotes: SidebarNotesView;
   tagDecorations: EditorTagDecorations;
   tagSuggestions: TagCompletionProvider;
+  linkSuggestions: WikiLinkCompletionProvider;
+  entitySuggestions: EntityHeadingSuggestions;
   dashboard: DashboardPanel;
+  stats: StatsPanel;
+  help: HelpPanel;
 }
 
 /**

@@ -16,8 +16,8 @@ import { parseSidebarMessage } from './messages';
 /**
  * Provides active-note context or active-tag-overview context in the sidebar.
  *
- * It reparses the visible editor so unsaved changes are reflected immediately,
- * while the workspace index continues to supply related-note candidates.
+ * It presents saved-note relationships from the workspace index so sidebar
+ * context matches the persistent local search data.
  */
 export class SidebarNotesView
   implements vscode.WebviewViewProvider, vscode.Disposable
@@ -31,19 +31,18 @@ export class SidebarNotesView
     private readonly preferences: PreferencesStore,
     private readonly tagOverview: ActiveTagOverview,
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
+    private readonly onReveal: () => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
+    this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.refresh()),
     );
     this.disposables.push(
-      vscode.workspace.onDidChangeTextDocument((event) => {
-        if (
-          event.document === vscode.window.activeTextEditor?.document &&
-          isMarkdownDocument(event.document)
-        ) {
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('deckard.enableKeywordLinks')) {
           this.refresh();
         }
       }),
@@ -61,15 +60,28 @@ export class SidebarNotesView
       webviewView.webview,
       this.extensionVersion,
     );
+    let wasVisible = false;
+    const handleVisibilityChange = (): void => {
+      if (
+        webviewView.visible &&
+        !wasVisible &&
+        shouldOpenDashboardForSidebarReveal(vscode.window.activeTextEditor?.document)
+      ) {
+        void this.onReveal();
+      }
+      wasVisible = webviewView.visible;
+    };
     this.viewDisposables = [
       webviewView.onDidDispose(() => {
         this.view = undefined;
         this.disposeViewListeners();
       }),
+      webviewView.onDidChangeVisibility(handleVisibilityChange),
       webviewView.webview.onDidReceiveMessage((message) => {
         void this.handleMessage(message);
       }),
     ];
+    handleVisibilityChange();
     void this.indexer.ready.then(() => this.refresh());
   }
 
@@ -121,11 +133,18 @@ export class SidebarNotesView
     }
 
     const active = this.getActiveFile();
-    return createSidebarSnapshot(index, active?.filePath, active?.file);
+    return createSidebarSnapshot(
+      index,
+      active?.filePath,
+      active?.file,
+      this.areKeywordLinksEnabled(),
+      this.preferences.value.relatedNotesSortMode,
+      this.preferences.value.sectionAccessCounts,
+    );
   }
 
   /**
-   * Re-parses the active document so unsaved edits participate in tag matching.
+   * Reads the active note from the saved workspace index.
    */
   private getActiveFile(): ActiveFile | undefined {
     const document = vscode.window.activeTextEditor?.document;
@@ -134,11 +153,23 @@ export class SidebarNotesView
     }
 
     const filePath = this.indexer.getFilePath(document.uri);
-    const previous = this.indexer.getSnapshot().files.get(filePath);
+    const file = this.indexer.getSnapshot().files.get(filePath);
+    if (!file) {
+      return undefined;
+    }
     return {
       filePath,
-      file: this.indexer.parse(document.uri, document.getText(), previous),
+      file,
     };
+  }
+
+  /**
+   * Reads the active note's workspace setting for related-note ranking.
+   */
+  private areKeywordLinksEnabled(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard', vscode.window.activeTextEditor?.document.uri)
+      .get<boolean>('enableKeywordLinks', true);
   }
 
   /**
@@ -166,6 +197,14 @@ export class SidebarNotesView
       await vscode.commands.executeCommand('deckard.createDailyNote');
       return;
     }
+    if (message.type === 'openHelp') {
+      await vscode.commands.executeCommand('deckard.showHelp');
+      return;
+    }
+    if (message.type === 'setRelatedNotesSort') {
+      await this.preferences.setRelatedNotesSortMode(message.mode);
+      return;
+    }
     if (message.type === 'openTag') {
       if (index.tags.has(message.tagKey)) {
         await this.onOpenTag(message.tagKey);
@@ -181,6 +220,9 @@ export class SidebarNotesView
         candidate.sourceLine === message.line,
     );
     if (note) {
+      if (note.sectionId) {
+        await this.preferences.recordSectionAccess(note.sectionId);
+      }
       await openSourceAt(note.filePath, note.sourceLine);
     }
   }
@@ -207,4 +249,13 @@ interface ActiveFile {
  */
 function isMarkdownDocument(document: vscode.TextDocument): boolean {
   return isMarkdownFile(document.uri);
+}
+
+/**
+ * Avoids taking focus from a Markdown note when Related Notes is opened.
+ */
+export function shouldOpenDashboardForSidebarReveal(
+  document: Pick<vscode.TextDocument, 'uri'> | undefined,
+): boolean {
+  return !document || !isMarkdownFile(document.uri);
 }

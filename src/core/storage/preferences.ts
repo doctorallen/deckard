@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 
 import {
   PersistedPreferences,
+  TagOverviewLayout,
+  RelatedNotesSortMode,
   RenderMode,
   TagOverviewSortMode,
   TagSortMode,
@@ -12,13 +14,19 @@ const preferencesKey = 'deckard.preferences';
 const defaultPreferences: PersistedPreferences = {
   version: 1,
   favoriteTags: [],
+  favoriteEntities: [],
   tagSortMode: 'alphabetical',
+  entitySortMode: 'alphabetical',
   tagAccessOrder: [],
   tagAccessCounts: {},
+  entityAccessOrder: [],
+  entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
+  tagOverviewLayout: 'tabs',
+  relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
 };
 
@@ -62,6 +70,16 @@ export class PreferencesStore implements vscode.Disposable {
     await this.update({ favoriteTags: [...favorites] });
   }
 
+  public async toggleFavoriteEntity(entityKey: string): Promise<void> {
+    const favorites = new Set(this.preferences.favoriteEntities);
+    if (favorites.has(entityKey)) {
+      favorites.delete(entityKey);
+    } else {
+      favorites.add(entityKey);
+    }
+    await this.update({ favoriteEntities: [...favorites] });
+  }
+
   /**
    * Selects the tag ordering policy used by dashboard snapshots.
    */
@@ -69,11 +87,21 @@ export class PreferencesStore implements vscode.Disposable {
     await this.update({ tagSortMode });
   }
 
+  public async setEntitySortMode(entitySortMode: TagSortMode): Promise<void> {
+    await this.update({ entitySortMode });
+  }
+
   /**
    * Stores custom tag order as a de-duplicated sequence of canonical keys.
    */
   public async setTagAccessOrder(tagAccessOrder: string[]): Promise<void> {
     await this.update({ tagAccessOrder: [...new Set(tagAccessOrder)] });
+  }
+
+  public async setEntityAccessOrder(
+    entityAccessOrder: string[],
+  ): Promise<void> {
+    await this.update({ entityAccessOrder: [...new Set(entityAccessOrder)] });
   }
 
   /**
@@ -101,6 +129,14 @@ export class PreferencesStore implements vscode.Disposable {
       [tagKey]: (this.preferences.tagAccessCounts[tagKey] ?? 0) + 1,
     };
     await this.update({ tagAccessCounts });
+  }
+
+  public async recordEntityAccess(entityKey: string): Promise<void> {
+    const entityAccessCounts = {
+      ...this.preferences.entityAccessCounts,
+      [entityKey]: (this.preferences.entityAccessCounts[entityKey] ?? 0) + 1,
+    };
+    await this.update({ entityAccessCounts });
   }
 
   /**
@@ -134,6 +170,24 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Selects whether overview entries use tabs or a split layout.
+   */
+  public async setTagOverviewLayout(
+    tagOverviewLayout: TagOverviewLayout,
+  ): Promise<void> {
+    await this.update({ tagOverviewLayout });
+  }
+
+  /**
+   * Selects the ordering policy for entries in Related Notes.
+   */
+  public async setRelatedNotesSortMode(
+    relatedNotesSortMode: RelatedNotesSortMode,
+  ): Promise<void> {
+    await this.update({ relatedNotesSortMode });
+  }
+
+  /**
    * Increments section usage counts for the overview's access sort.
    */
   public async recordSectionAccess(sectionId: string): Promise<void> {
@@ -151,12 +205,14 @@ export class PreferencesStore implements vscode.Disposable {
     validTagKeys: Iterable<string>,
     validTaskIds: Iterable<string>,
     validSectionIds?: Iterable<string>,
+    validEntityKeys?: Iterable<string>,
   ): Promise<void> {
     const validTags = new Set(validTagKeys);
     const validTasks = new Set(validTaskIds);
     const validSections = validSectionIds
       ? new Set(validSectionIds)
       : undefined;
+    const validEntities = validEntityKeys ? new Set(validEntityKeys) : undefined;
     const sectionAccessCounts = validSectionIds
       ? Object.fromEntries(
           Object.entries(this.preferences.sectionAccessCounts).filter(
@@ -173,6 +229,9 @@ export class PreferencesStore implements vscode.Disposable {
       favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
         validTags.has(tagKey),
       ),
+      favoriteEntities: this.preferences.favoriteEntities.filter((entityKey) =>
+        validEntities?.has(entityKey) ?? true,
+      ),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -181,6 +240,14 @@ export class PreferencesStore implements vscode.Disposable {
         validTasks.has(taskId),
       ),
       sectionAccessCounts,
+      entityAccessOrder: this.preferences.entityAccessOrder.filter((entityKey) =>
+        validEntities?.has(entityKey) ?? true,
+      ),
+      entityAccessCounts: Object.fromEntries(
+        Object.entries(this.preferences.entityAccessCounts).filter(
+          ([entityKey]) => validEntities?.has(entityKey) ?? true,
+        ),
+      ),
     });
   }
 
@@ -211,21 +278,33 @@ function normalizePreferences(
   value: Partial<PersistedPreferences> | undefined,
 ): PersistedPreferences {
   const tagSortMode = value?.tagSortMode;
+  const entitySortMode = value?.entitySortMode;
   const taskSortMode = value?.taskSortMode;
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
+  const tagOverviewLayout = value?.tagOverviewLayout;
+  const relatedNotesSortMode = value?.relatedNotesSortMode;
 
   return {
     version: 1,
     favoriteTags: uniqueStrings(value?.favoriteTags),
+    favoriteEntities: uniqueStrings(value?.favoriteEntities),
     tagSortMode:
       tagSortMode === 'count' ||
       tagSortMode === 'access' ||
       tagSortMode === 'custom'
         ? tagSortMode
         : 'alphabetical',
+    entitySortMode:
+      entitySortMode === 'count' ||
+      entitySortMode === 'access' ||
+      entitySortMode === 'custom'
+        ? entitySortMode
+        : 'alphabetical',
     tagAccessOrder: uniqueStrings(value?.tagAccessOrder),
     tagAccessCounts: normalizeAccessCounts(value?.tagAccessCounts),
+    entityAccessOrder: uniqueStrings(value?.entityAccessOrder),
+    entityAccessCounts: normalizeAccessCounts(value?.entityAccessCounts),
     taskOrder: uniqueStrings(value?.taskOrder),
     taskSortMode:
       taskSortMode === 'created' || taskSortMode === 'updated'
@@ -238,6 +317,13 @@ function normalizePreferences(
       tagOverviewSortMode === 'access'
         ? tagOverviewSortMode
         : 'alphabetical',
+    tagOverviewLayout: tagOverviewLayout === 'split' ? 'split' : 'tabs',
+    relatedNotesSortMode:
+      relatedNotesSortMode === 'newest' ||
+      relatedNotesSortMode === 'oldest' ||
+      relatedNotesSortMode === 'access'
+        ? relatedNotesSortMode
+        : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
   };
 }
@@ -275,8 +361,11 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
   return {
     ...value,
     favoriteTags: [...value.favoriteTags],
+    favoriteEntities: [...value.favoriteEntities],
     tagAccessOrder: [...value.tagAccessOrder],
     tagAccessCounts: { ...value.tagAccessCounts },
+    entityAccessOrder: [...value.entityAccessOrder],
+    entityAccessCounts: { ...value.entityAccessCounts },
     taskOrder: [...value.taskOrder],
     sectionAccessCounts: { ...value.sectionAccessCounts },
   };

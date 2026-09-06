@@ -4,16 +4,20 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
   createSidebarSnapshot,
+  createDeckardStatsSnapshot,
   createDashboardSnapshot,
   createTagOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
+  sortEntities,
+  sortRelatedNotes,
   sortTasks,
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
 import {
   ParsedFile,
+  Entity,
   PersistedPreferences,
   Section,
   TagOverviewCard,
@@ -25,13 +29,19 @@ import {
 const defaultPreferences: PersistedPreferences = {
   version: 1,
   favoriteTags: [],
+  favoriteEntities: [],
   tagSortMode: 'alphabetical',
+  entitySortMode: 'alphabetical',
   tagAccessOrder: [],
   tagAccessCounts: {},
+  entityAccessOrder: [],
+  entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
+  tagOverviewLayout: 'tabs',
+  relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
 };
 
@@ -91,9 +101,80 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('sorts entities by count, access, and custom rank', () => {
+    const entities: Entity[] = [
+      createEntity('#project/atlas', 'Atlas', 2),
+      createEntity('@mara-vale', 'Mara Vale', 5),
+      createEntity('#topic/operations', 'Operations', 3),
+    ];
+
+    assert.deepStrictEqual(
+      sortEntities(entities, {
+        ...defaultPreferences,
+        entitySortMode: 'count',
+      }).map((entity) => entity.key),
+      ['@mara-vale', '#topic/operations', '#project/atlas'],
+    );
+    assert.deepStrictEqual(
+      sortEntities(entities, {
+        ...defaultPreferences,
+        favoriteEntities: ['#project/atlas'],
+        entitySortMode: 'count',
+      }).map((entity) => entity.key),
+      ['#project/atlas', '@mara-vale', '#topic/operations'],
+    );
+    assert.deepStrictEqual(
+      sortEntities(entities, {
+        ...defaultPreferences,
+        entitySortMode: 'access',
+        entityAccessCounts: { '#project/atlas': 4, '@mara-vale': 1 },
+      }).map((entity) => entity.key),
+      ['#project/atlas', '@mara-vale', '#topic/operations'],
+    );
+    assert.deepStrictEqual(
+      sortEntities(entities, {
+        ...defaultPreferences,
+        entitySortMode: 'custom',
+        entityAccessOrder: ['#topic/operations', '#project/atlas'],
+      }).map((entity) => entity.key),
+      ['#topic/operations', '#project/atlas', '@mara-vale'],
+    );
+  });
+
+  test('projects current index totals and valid view counts for stats', () => {
+    const first = createFile(
+      'notes/first.md',
+      '# Relay #project/relay\nSee [[Second]].\n- [ ] Call @mara-vale',
+    );
+    const second = createFile('notes/second.md', '# Second #project/relay');
+    const index = createFileIndex([first, second]);
+    const stats = createDeckardStatsSnapshot(index, {
+      ...defaultPreferences,
+      tagAccessCounts: { '#project/relay': 3, missing: 9 },
+      entityAccessCounts: { '#project/relay': 2 },
+      sectionAccessCounts: { [first.sections[0].id]: 4 },
+    });
+
+    assert.strictEqual(stats.fileCount, 2);
+    assert.strictEqual(stats.sectionCount, 2);
+    assert.strictEqual(stats.taskCount, 1);
+    assert.strictEqual(stats.activeTaskCount, 1);
+    assert.strictEqual(stats.entityCount, 2);
+    assert.strictEqual(stats.wikiLinkCount, 1);
+    assert.deepStrictEqual(stats.tagViews, [
+      {
+        label: '#project/relay',
+        detail: '2 indexed entries',
+        count: 3,
+      },
+    ]);
+    assert.strictEqual(stats.entityViews[0].label, 'relay');
+    assert.strictEqual(stats.sectionViews[0].label, 'Relay');
+  });
+
   test('filters tasks and preserves explicit task display order', () => {
     const tasks = [
-      createTask('first', false, 1, ['work']),
+      createTask('first', false, 1, ['#work']),
       createTask('second', true, 2),
       createTask('third', false, 3),
     ];
@@ -112,7 +193,7 @@ suite('Dashboard state', () => {
     );
     assert.strictEqual(matchesTaskFilter(tasks[1], 'completed'), true);
     assert.strictEqual(matchesTaskFilter(tasks[1], 'active'), false);
-    assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['work']), true);
+    assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['#work']), true);
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
@@ -182,6 +263,66 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.notes[0].totalTagCount, 3);
   });
 
+  test('can disable keyword-only related-note matches', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work\nSee [[Linked]].\nSignal integrity protocol.',
+    );
+    const keywordOnly = createFile(
+      'notes/keyword-only.md',
+      '# Keyword only #other\nSignal integrity protocol.',
+    );
+    const linked = createFile('notes/linked.md', '# Linked #other');
+    const index = createFileIndex([active, keywordOnly, linked]);
+
+    const snapshot = createSidebarSnapshot(
+      index,
+      active.filePath,
+      active,
+      false,
+    );
+
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.filePath),
+      ['notes/linked.md'],
+    );
+  });
+
+  test('sorts related notes by date, matching tags, and local access', () => {
+    const active = createFile('notes/current.md', '# Current #work #urgent');
+    const oldest = createFile('notes/oldest.md', '# Oldest #work');
+    const newest = createFile('notes/newest.md', '# Newest #work');
+    const mostTags = createFile('notes/most-tags.md', '# Most tags #work #urgent');
+    oldest.updatedAt = 100;
+    newest.updatedAt = 300;
+    mostTags.updatedAt = 200;
+    const index = createFileIndex([active, oldest, newest, mostTags]);
+    const notes = createSidebarSnapshot(
+      index,
+      active.filePath,
+      active,
+    ).notes;
+
+    assert.strictEqual(
+      sortRelatedNotes(notes, 'newest')[0].filePath,
+      'notes/newest.md',
+    );
+    assert.strictEqual(
+      sortRelatedNotes(notes, 'oldest')[0].filePath,
+      'notes/oldest.md',
+    );
+    assert.strictEqual(
+      sortRelatedNotes(notes, 'tags')[0].filePath,
+      'notes/most-tags.md',
+    );
+    assert.strictEqual(
+      sortRelatedNotes(notes, 'access', {
+        [oldest.sections[0].id]: 4,
+      })[0].filePath,
+      'notes/oldest.md',
+    );
+  });
+
   test('sorts the current note tags alphabetically', () => {
     const active = createFile(
       'notes/current.md',
@@ -194,7 +335,7 @@ suite('Dashboard state', () => {
 
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
-      ['alpha', 'middle', 'zeta'],
+      ['#alpha', '#middle', '#zeta'],
     );
   });
 
@@ -268,7 +409,7 @@ suite('Dashboard state', () => {
       sectionAccessCounts: { [parsed.sections[0].id]: 4 },
     };
 
-    const snapshot = createTagOverviewSnapshot(index, preferences, 'work');
+    const snapshot = createTagOverviewSnapshot(index, preferences, '#work');
 
     assert.ok(snapshot);
     assert.strictEqual(snapshot.sections[0].heading, 'Heading');
@@ -276,6 +417,57 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.sections[0].createdAt, 10);
     assert.strictEqual(snapshot.sections[0].updatedAt, 20);
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
+    assert.strictEqual(snapshot.layout, 'tabs');
+  });
+
+  test('filters generic-tag overview tasks by completion state', () => {
+    const parsed = parseMarkdown(
+      'notes/work.md',
+      '# Work #work\n\n- [ ] Active task\n- [x] Completed task',
+    );
+    const index = buildWorkspaceIndex(
+      new Map([[parsed.filePath, parsed]]),
+    );
+
+    const all = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#work',
+      'all',
+    );
+    const active = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#work',
+      'active',
+    );
+    const completed = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#work',
+      'completed',
+    );
+
+    assert.ok(all);
+    assert.ok(active);
+    assert.ok(completed);
+    assert.strictEqual(all.taskFilter, 'all');
+    assert.strictEqual(
+      createTagOverviewSnapshot(index, defaultPreferences, '#work')?.taskFilter,
+      'active',
+    );
+    assert.deepStrictEqual(
+      all.tasks.map((item) => item.task.title),
+      ['Active task', 'Completed task'],
+    );
+    assert.deepStrictEqual(
+      active.tasks.map((item) => item.task.title),
+      ['Active task'],
+    );
+    assert.deepStrictEqual(
+      completed.tasks.map((item) => item.task.title),
+      ['Completed task'],
+    );
   });
 
   test('includes inline-only notes in tag overview cards', () => {
@@ -285,14 +477,14 @@ suite('Dashboard state', () => {
     const snapshot = createTagOverviewSnapshot(
       index,
       defaultPreferences,
-      'work',
+      '#work',
     );
 
     assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'Inline note');
     assert.deepStrictEqual(snapshot.sections[0].tags, [
-      { key: 'work', label: '#work' },
+      { key: '#work', label: '#work' },
     ]);
     assert.strictEqual(snapshot.sections[0].startLine, 1);
   });
@@ -307,7 +499,7 @@ suite('Dashboard state', () => {
     const overview = createTagOverviewSnapshot(
       index,
       defaultPreferences,
-      'work',
+      '#work',
     );
 
     assert.ok(overview);
@@ -330,7 +522,7 @@ suite('Dashboard state', () => {
       overview.sections.map((section) => section.startLine),
     );
     assert.deepStrictEqual(sidebar.tagOverview, {
-      key: 'work',
+      key: '#work',
       label: '#work',
     });
   });
@@ -344,6 +536,19 @@ function createTag(key: string, count: number): TagInfo {
       { length: count },
       (_, index) => `${key}-section-${index}`,
     ),
+    taskIds: [],
+    count,
+    isFavorite: false,
+  };
+}
+
+function createEntity(key: string, name: string, count: number): Entity {
+  return {
+    key,
+    label: key,
+    kind: key.startsWith('@') ? 'person' : 'project',
+    name,
+    sectionIds: [],
     taskIds: [],
     count,
     isFavorite: false,
@@ -382,6 +587,7 @@ function createIndex(tasks: Task[]): WorkspaceIndex {
     sections: new Map<string, Section>(),
     tasks: taskMap,
     tags: new Map(),
+    entities: new Map(),
     updatedAt: Date.now(),
   };
 }

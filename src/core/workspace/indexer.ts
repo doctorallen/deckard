@@ -1,6 +1,17 @@
 import * as vscode from 'vscode';
 
-import { ParsedFile, Section, Task, TagInfo, WorkspaceIndex } from '../types';
+import {
+  Entity,
+  ParsedFile,
+  SearchResult,
+  Section,
+  TagInfo,
+  TagReference,
+  Task,
+  WorkspaceIndex,
+} from '../types';
+import { getEntityKind } from '../markdown/parser';
+import { SearchStore } from '../storage/searchStore';
 import { ScanProgress, WorkspaceScanner } from './scanner';
 
 /**
@@ -19,7 +30,10 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private readyPromise: Promise<void> = Promise.resolve();
   private disposed = false;
 
-  public constructor(private readonly scanner = new WorkspaceScanner()) {
+  public constructor(
+    private readonly scanner = new WorkspaceScanner(),
+    private readonly searchStore?: SearchStore,
+  ) {
     this.disposables.push(this.updateEmitter);
   }
 
@@ -61,6 +75,69 @@ export class WorkspaceIndexer implements vscode.Disposable {
    */
   public getSection(sectionId: string): Section | undefined {
     return this.getSnapshot().sections.get(sectionId);
+  }
+
+  /**
+   * Returns source-backed search results using the local full-text cache to
+   * narrow candidates and the live parser index for exact navigation targets.
+   */
+  public search(query: string): SearchResult[] {
+    const index = this.getSnapshot();
+    const matchingPaths = new Set(
+      this.searchStore?.search(query).map((result) => result.filePath) ?? [],
+    );
+    if (matchingPaths.size === 0) {
+      return [];
+    }
+
+    const terms = getMeaningfulTerms(query);
+    const taskQuery = /\b(task|tasks|todo|todos|owe|open|outstanding|completed)\b/i.test(
+      query,
+    );
+    const completedOnly = /\b(completed|done)\b/i.test(query);
+    const activeOnly = /\b(open|outstanding|owe)\b/i.test(query);
+    const since = /\blast week\b/i.test(query)
+      ? Date.now() - 7 * 24 * 60 * 60 * 1000
+      : undefined;
+    const results: SearchResult[] = [];
+
+    index.files.forEach((file, filePath) => {
+      if (!matchingPaths.has(filePath)) {
+        return;
+      }
+
+      if (!taskQuery) {
+        file.sections.forEach((section) => {
+          const result = createSectionSearchResult(section, index, terms);
+          if (result && (since === undefined || (result.updatedAt ?? 0) >= since)) {
+            results.push(result);
+          }
+        });
+      }
+
+      file.tasks.forEach((task) => {
+        if (
+          (completedOnly && !task.completed) ||
+          (activeOnly && task.completed)
+        ) {
+          return;
+        }
+        const result = createTaskSearchResult(task, index, terms);
+        if (result && (since === undefined || (result.updatedAt ?? 0) >= since)) {
+          results.push(result);
+        }
+      });
+    });
+
+    return results
+      .sort(
+        (left, right) =>
+          right.score - left.score ||
+          (right.updatedAt ?? 0) - (left.updatedAt ?? 0) ||
+          left.filePath.localeCompare(right.filePath) ||
+          left.line - right.line,
+      )
+      .slice(0, 50);
   }
 
   /**
@@ -126,6 +203,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
         this.files.clear();
         parsedFiles.forEach((file) => this.files.set(file.filePath, file));
+        this.searchStore?.replace(this.files.values());
         this.emitUpdate();
       },
     );
@@ -143,6 +221,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
       .splice(0)
       .forEach((disposable) => disposable.dispose());
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+    this.searchStore?.dispose();
   }
 
   /**
@@ -158,7 +237,18 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const inlineTagsChanged = event.affectsConfiguration(
           'deckard.parseInlineTags',
         );
-        if (notesFolderChanged || inlineTagsChanged) {
+        const entityNamespaceAliasesChanged = event.affectsConfiguration(
+          'deckard.entityNamespaceAliases',
+        );
+        const personMarkerChanged = event.affectsConfiguration(
+          'deckard.personMarker',
+        );
+        if (
+          notesFolderChanged ||
+          inlineTagsChanged ||
+          entityNamespaceAliasesChanged ||
+          personMarkerChanged
+        ) {
           if (notesFolderChanged) {
             this.replaceWatchers();
           }
@@ -173,9 +263,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      vscode.workspace.onDidChangeTextDocument((event) => {
-        if (this.scanner.isNotesFile(event.document.uri)) {
-          this.queueUpsert(event.document.uri, event.document.getText());
+      vscode.workspace.onDidSaveTextDocument((document) => {
+        if (this.scanner.isNotesFile(document.uri)) {
+          this.queueUpsert(document.uri);
         }
       }),
     );
@@ -249,6 +339,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
       const filePath = this.scanner.getFilePath(update.uri);
       if (update.deleted) {
         this.files.delete(filePath);
+        this.searchStore?.remove(filePath);
         continue;
       }
 
@@ -259,9 +350,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
             ? await this.scanner.read(update.uri)
             : this.scanner.parse(update.uri, update.content, previous);
         this.files.set(filePath, parsedFile);
+        this.searchStore?.upsert(parsedFile);
       } catch (error) {
         console.error(`Deckard could not update ${filePath}`, error);
       }
+
     }
 
     this.emitUpdate();
@@ -281,6 +374,114 @@ interface PendingUpdate {
   deleted: boolean;
 }
 
+function getMeaningfulTerms(query: string): string[] {
+  const stopWords = new Set([
+    'what',
+    'did',
+    'with',
+    'about',
+    'the',
+    'are',
+    'latest',
+    'and',
+    'for',
+    'have',
+    'learned',
+    'written',
+    'happened',
+    'last',
+    'week',
+    'before',
+    'this',
+    'meeting',
+  ]);
+  return [
+    ...new Set(
+      query
+        .toLowerCase()
+        .match(/[a-z0-9][a-z0-9_-]*/g)
+        ?.filter((term) => term.length > 1 && !stopWords.has(term)) ?? [],
+    ),
+  ];
+}
+
+function createSectionSearchResult(
+  section: Section,
+  index: WorkspaceIndex,
+  terms: string[],
+): SearchResult | undefined {
+  const text = `${section.heading}\n${section.rawContent}`.toLowerCase();
+  const matchedEntities = getMatchedEntities(section.tags, index, terms);
+  const matchedTerms = terms.filter((term) => text.includes(term));
+  if (matchedEntities.length === 0 && matchedTerms.length === 0) {
+    return undefined;
+  }
+
+  return {
+    type: 'section',
+    id: section.id,
+    filePath: section.filePath,
+    line: section.startLine,
+    title: section.heading,
+    excerpt: getExcerpt(section.rawContent, matchedTerms),
+    matchedEntities,
+    updatedAt: section.updatedAt,
+    score: matchedEntities.length * 10 + matchedTerms.length,
+  };
+}
+
+function createTaskSearchResult(
+  task: Task,
+  index: WorkspaceIndex,
+  terms: string[],
+): SearchResult | undefined {
+  const text = task.title.toLowerCase();
+  const matchedEntities = getMatchedEntities(task.tags, index, terms);
+  const matchedTerms = terms.filter((term) => text.includes(term));
+  if (matchedEntities.length === 0 && matchedTerms.length === 0) {
+    return undefined;
+  }
+
+  return {
+    type: 'task',
+    id: task.id,
+    filePath: task.filePath,
+    line: task.lineNumber,
+    title: task.title,
+    excerpt: task.title,
+    matchedEntities,
+    updatedAt: task.updatedAt,
+    score: matchedEntities.length * 10 + matchedTerms.length,
+  };
+}
+
+function getMatchedEntities(
+  tagKeys: string[],
+  index: WorkspaceIndex,
+  terms: string[],
+): TagReference[] {
+  return tagKeys.flatMap((key) => {
+    const entity = index.entities.get(key);
+    if (!entity) {
+      return [];
+    }
+    const names = entity.name.toLowerCase().split(/[\s/-]+/);
+    return names.some((name) => terms.includes(name))
+      ? [{ key: entity.key, label: entity.label }]
+      : [];
+  });
+}
+
+function getExcerpt(content: string, terms: string[]): string {
+  const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const matchingLine =
+    lines.find((line) => terms.some((term) => line.toLowerCase().includes(term))) ??
+    lines[1] ??
+    lines[0] ??
+    '';
+  return matchingLine.trim();
+}
+
 /**
  * Aggregates per-file parse results into stable section, task, and tag lookups.
  *
@@ -293,6 +494,7 @@ export function buildWorkspaceIndex(
   const sections = new Map<string, Section>();
   const tasks = new Map<string, Task>();
   const tags = new Map<string, TagInfo>();
+  const entities = new Map<string, Entity>();
 
   files.forEach((file) => {
     file.sections.forEach((section) => {
@@ -300,6 +502,14 @@ export function buildWorkspaceIndex(
       section.tags.forEach((tagKey) => {
         const tag = getOrCreateTag(tags, tagKey, section.tagLabels[tagKey]);
         tag.sectionIds.push(section.id);
+        addEntityReference(
+          entities,
+          tagKey,
+          section.tagLabels[tagKey] ?? tagKey,
+          'section',
+          section.id,
+          section.updatedAt,
+        );
       });
     });
     file.tasks.forEach((task) => {
@@ -307,6 +517,14 @@ export function buildWorkspaceIndex(
       task.tags.forEach((tagKey) => {
         const tag = getOrCreateTag(tags, tagKey, task.tagLabels[tagKey]);
         tag.taskIds.push(task.id);
+        addEntityReference(
+          entities,
+          tagKey,
+          task.tagLabels[tagKey] ?? tagKey,
+          'task',
+          task.id,
+          task.updatedAt,
+        );
       });
     });
   });
@@ -321,12 +539,21 @@ export function buildWorkspaceIndex(
     });
     tag.count = taggedSections.size + standaloneTasks.length;
   });
+  entities.forEach((entity) => {
+    const entitySections = new Set(entity.sectionIds);
+    const standaloneTasks = entity.taskIds.filter((taskId) => {
+      const task = tasks.get(taskId);
+      return !task?.sectionId || !entitySections.has(task.sectionId);
+    });
+    entity.count = entitySections.size + standaloneTasks.length;
+  });
 
   return {
     files,
     sections,
     tasks,
     tags,
+    entities,
     updatedAt: Date.now(),
   };
 }
@@ -337,7 +564,7 @@ export function buildWorkspaceIndex(
 function getOrCreateTag(
   tags: Map<string, TagInfo>,
   key: string,
-  label = `#${key}`,
+  label = key,
 ): TagInfo {
   const existing = tags.get(key);
   if (existing) {
@@ -354,4 +581,50 @@ function getOrCreateTag(
   };
   tags.set(key, tag);
   return tag;
+}
+
+/**
+ * Builds entity hubs directly from canonical tags without requiring a separate
+ * source of truth beyond the Markdown note that carries the tag.
+ */
+function addEntityReference(
+  entities: Map<string, Entity>,
+  key: string,
+  label: string,
+  referenceType: 'section' | 'task',
+  referenceId: string,
+  updatedAt: number | undefined,
+): void {
+  const kind = getEntityKind({ key, label });
+  if (!kind) {
+    return;
+  }
+
+  let entity = entities.get(key);
+  if (!entity) {
+    entity = {
+      key,
+      label,
+      kind,
+      name: getEntityName(label),
+      sectionIds: [],
+      taskIds: [],
+      count: 0,
+      isFavorite: false,
+      updatedAt,
+    };
+    entities.set(key, entity);
+  }
+
+  const references =
+    referenceType === 'section' ? entity.sectionIds : entity.taskIds;
+  references.push(referenceId);
+  if (updatedAt !== undefined && (entity.updatedAt ?? 0) < updatedAt) {
+    entity.updatedAt = updatedAt;
+  }
+}
+
+function getEntityName(label: string): string {
+  const name = label.slice(1).split('/').at(-1) ?? label;
+  return name.replaceAll('-', ' ');
 }

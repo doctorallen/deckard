@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 
-import { extractTagSpans } from '../../core/markdown/parser';
+import {
+  extractTagSpans,
+  getEntityNamespaceAliases,
+  getPersonMarker,
+} from '../../core/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
 /**
@@ -40,7 +44,11 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.parseInlineTags')) {
+        if (
+          event.affectsConfiguration('deckard.parseInlineTags') ||
+          event.affectsConfiguration('deckard.entityNamespaceAliases') ||
+          event.affectsConfiguration('deckard.personMarker')
+        ) {
           vscode.window.visibleTextEditors.forEach((editor) =>
             this.updateEditor(editor),
           );
@@ -88,6 +96,8 @@ export class EditorTagDecorations implements vscode.Disposable {
     return extractTagSpans(
       document.getText(),
       this.parseInlineTags(document),
+      this.entityNamespaceAliases(document),
+      this.personMarker(document),
     ).map((span) => {
       const range = new vscode.Range(
         span.lineNumber - 1,
@@ -116,6 +126,8 @@ export class EditorTagDecorations implements vscode.Disposable {
     const decorations = extractTagSpans(
       editor.document.getText(),
       this.parseInlineTags(editor.document),
+      this.entityNamespaceAliases(editor.document),
+      this.personMarker(editor.document),
     ).map((span) => ({
       range: new vscode.Range(
         span.lineNumber - 1,
@@ -135,6 +147,22 @@ export class EditorTagDecorations implements vscode.Disposable {
     return vscode.workspace
       .getConfiguration('deckard', document.uri)
       .get<boolean>('parseInlineTags', true);
+  }
+
+  private entityNamespaceAliases(document: vscode.TextDocument) {
+    return getEntityNamespaceAliases(
+      vscode.workspace
+        .getConfiguration('deckard', document.uri)
+        .get<unknown>('entityNamespaceAliases', {}),
+    );
+  }
+
+  private personMarker(document: vscode.TextDocument): string {
+    return getPersonMarker(
+      vscode.workspace
+        .getConfiguration('deckard', document.uri)
+        .get<unknown>('personMarker', '@'),
+    );
   }
 }
 
