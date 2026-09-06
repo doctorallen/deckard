@@ -87,6 +87,21 @@
     "configuration": {
       "title": "Deckard",
       "properties": {
+        "deckard.theme": {
+          "type": "string",
+          "enum": [
+            "replicant",
+            "oblivion",
+            "lcars"
+          ],
+          "enumDescriptions": [
+            "Deckard's original replicant terminal interface.",
+            "A dark technical operations interface inspired by the Oblivion reference screens.",
+            "A warm, high-contrast interface inspired by LCARS from Star Trek: The Next Generation."
+          ],
+          "default": "replicant",
+          "description": "Visual theme used by Deckard webviews."
+        },
         "deckard.notesFolder": {
           "type": "string",
           "default": "",

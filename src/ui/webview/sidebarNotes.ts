@@ -45,6 +45,10 @@ export class SidebarNotesView
         if (event.affectsConfiguration('deckard.enableKeywordLinks')) {
           this.refresh();
         }
+        if (event.affectsConfiguration('deckard.theme')) {
+          this.renderHtml();
+          this.refresh();
+        }
       }),
     );
   }
@@ -56,16 +60,15 @@ export class SidebarNotesView
     this.disposeViewListeners();
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
-    webviewView.webview.html = getSidebarNotesHtml(
-      webviewView.webview,
-      this.extensionVersion,
-    );
+    this.renderHtml();
     let wasVisible = false;
     const handleVisibilityChange = (): void => {
       if (
         webviewView.visible &&
         !wasVisible &&
-        shouldOpenDashboardForSidebarReveal(vscode.window.activeTextEditor?.document)
+        shouldOpenDashboardForSidebarReveal(
+          vscode.window.activeTextEditor?.document,
+        )
       ) {
         void this.onReveal();
       }
@@ -101,6 +104,15 @@ export class SidebarNotesView
     this.viewDisposables
       .splice(0)
       .forEach((disposable) => disposable.dispose());
+  }
+
+  private renderHtml(): void {
+    if (this.view) {
+      this.view.webview.html = getSidebarNotesHtml(
+        this.view.webview,
+        this.extensionVersion,
+      );
+    }
   }
 
   /**

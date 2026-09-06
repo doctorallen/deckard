@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { getDeckardTheme, getDeckardThemeCss } from './themes';
+
 /**
  * Builds the dashboard document and its self-contained interaction layer.
  *
@@ -148,6 +150,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
   .layout { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>

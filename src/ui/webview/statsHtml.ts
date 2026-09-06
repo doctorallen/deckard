@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { getDeckardTheme, getDeckardThemeCss } from './themes';
+
 /**
  * Builds the read-only Stats page from host-projected index and access data.
  */
@@ -40,6 +42,7 @@ h2 { margin: 0; font-size: 14px; }
 .count { color: var(--green); font-size: 16px; }
 .empty { padding: 16px 12px; color: var(--muted); }
 @media (max-width: 600px) { main { padding: 16px; } }
+${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
