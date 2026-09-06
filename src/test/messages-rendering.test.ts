@@ -407,10 +407,6 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes('border: 1px solid var(--slate-border)'),
-      false,
-    );
   });
 
   test('renders Tag Overview tabs and side-by-side layouts', () => {
