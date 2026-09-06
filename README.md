@@ -13,6 +13,14 @@ Deckard scans every `*.md` file in each workspace folder by default. Set a notes
 
 Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code. When installing from a checkout, build the package with `npm run package:vsix`.
 
+## Screenshots
+
+| Dashboard | Related Notes |
+|---|---|
+| <img src="docs/images/dashboard.png" alt="Deckard Dashboard showing workspace totals, tags, favorites, and active tasks." width="460"> | <img src="docs/images/related-notes.png" alt="Deckard Related Notes sidebar showing ranked note entries and matching tags." width="460"> |
+| **Tag Overview** | **Help** |
+| <img src="docs/images/tag-overview.png" alt="Deckard Tag Overview showing matching notes, active tasks, and display controls." width="460"> | <img src="docs/images/help.png" alt="Deckard Help webview with quick-start instructions and feature navigation." width="460"> |
+
 ## Get started
 
 1. Open a folder or workspace in VS Code.
