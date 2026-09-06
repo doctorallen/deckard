@@ -188,7 +188,13 @@ suite('Webview contracts', () => {
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
-    assert.deepStrictEqual(deckardThemes, ['replicant', 'oblivion', 'lcars']);
+    assert.deepStrictEqual(deckardThemes, [
+      'replicant',
+      'oblivion',
+      'lcars',
+      'tomcat',
+      'fellowship',
+    ]);
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
         '.entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
@@ -327,6 +333,56 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('tomcat').includes('--bg-dark: #010401'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('tomcat').includes('repeating-linear-gradient'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('tomcat').includes(
+        'box-shadow: inset 2px 0 0 var(--green)',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('tomcat').includes(
+        '.favorite-toggle { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('fellowship').includes('--bg-dark: #d6cda9'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('fellowship').includes(
+        "--font-display: Georgia, 'Times New Roman', serif",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('fellowship').includes(
+        'body { background-image: none; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('fellowship').includes('gradient'),
+      false,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('fellowship').includes('border-radius: 5px'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('tomcat').includes(
+        '.favorite-toggle.favorite { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
       ),
       true,
     );

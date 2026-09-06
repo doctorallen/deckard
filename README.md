@@ -29,9 +29,9 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `replicant`.
 
-| Replicant | Oblivion | LCARS |
-|---|---|---|
-| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="300"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="300"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="300"> |
+| Replicant | Oblivion | LCARS | Tomcat | Fellowship |
+|---|---|---|---|---|
+| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | Fellowship screenshot forthcoming. |
 
 ## Get started
 
