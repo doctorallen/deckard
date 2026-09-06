@@ -53,7 +53,7 @@ body {
   font-family: var(--font-display);
   font-size: 13px;
 }
-main { position: relative; max-width: 1180px; margin: 0 auto; padding: 24px; border: 1px solid var(--slate-border); border-top: 2px solid var(--amber-bright); }
+main { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px; border: 0; }
 header { display: flex; justify-content: space-between; gap: 20px; align-items: end; border-bottom: 1px dashed var(--slate-border); padding-bottom: 16px; }
 h1, h2, h3, .eyebrow, .metric-value, .tag-name, .task-meta, .telemetry-line, .section-readout { font-family: var(--font-mono); }
 h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; text-transform: uppercase; }

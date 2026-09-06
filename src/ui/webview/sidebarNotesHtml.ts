@@ -45,7 +45,7 @@ export function getSidebarNotesHtml(
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 220px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 12px; }
-main { padding: 12px; border-top: 2px solid var(--amber); }
+main { width: 100%; padding: 12px; border-top: 2px solid var(--amber); }
 h2, .eyebrow, .source, .match-count, .version { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }

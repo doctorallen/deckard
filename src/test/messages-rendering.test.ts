@@ -345,6 +345,10 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      getDeckardThemeCss('tomcat').includes('inset 0 0 0 1px'),
+      false,
+    );
+    assert.strictEqual(
       getDeckardThemeCss('tomcat').includes(
         'box-shadow: inset 2px 0 0 var(--green)',
       ),
@@ -381,10 +385,31 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      getDeckardThemeCss('fellowship').includes('inset 0 0 0 1px'),
+      false,
+    );
+    assert.strictEqual(
       getDeckardThemeCss('tomcat').includes(
         '.favorite-toggle.favorite { border-color: var(--favorite-red); background: transparent; color: var(--favorite-red); }',
       ),
       true,
+    );
+  });
+
+  test('renders the Dashboard with a centered maximum width and no outer frame', () => {
+    const html = getDashboardHtml({
+      cspSource: 'vscode-webview://deckard',
+    });
+
+    assert.strictEqual(
+      html.includes(
+        'main { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px; border: 0; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('border: 1px solid var(--slate-border)'),
+      false,
     );
   });
 

@@ -15,7 +15,7 @@ Deckard scans every `*.md` file in each workspace folder by default. Set a notes
 
 ## Install
 
-Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code. When installing from a checkout, build the package with `npm run package:vsix`.
+Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code.
 
 ## Screenshots
 
@@ -31,7 +31,7 @@ Set `deckard.theme` to choose the visual style used by Deckard webviews. The def
 
 | Replicant | Oblivion | LCARS | Tomcat | Fellowship |
 |---|---|---|---|---|
-| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | Fellowship screenshot forthcoming. |
+| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220">|
 
 ## Get started
 
@@ -207,12 +207,3 @@ Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.
 
 Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and it scans only Markdown files within the configured workspace scope.
-
-## Development
-
-```sh
-npm ci
-npm run compile
-npm test
-npm run package:vsix
-```

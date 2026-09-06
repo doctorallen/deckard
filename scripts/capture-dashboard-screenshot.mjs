@@ -16,9 +16,41 @@ const repositoryRoot = resolve(import.meta.dirname, '..');
 const requestedPort = process.env.DECKARD_CDP_PORT;
 let port;
 const theme = process.env.DECKARD_SCREENSHOT_THEME ?? 'replicant';
+const view = process.env.DECKARD_SCREENSHOT_VIEW ?? 'dashboard';
+const viewConfiguration = {
+  dashboard: {
+    command: 'deckard.showDashboard',
+    output: 'docs/images/dashboard.png',
+    title: 'Dashboard',
+  },
+  'related-notes': {
+    command: 'workbench.view.extension.deckard',
+    output: 'docs/images/related-notes.png',
+    title: 'Related Notes',
+  },
+  'tag-overview': {
+    command: 'deckard.showTagOverview',
+    output: 'docs/images/tag-overview.png',
+    title: 'Tag Overview',
+  },
+  help: {
+    command: 'deckard.showHelp',
+    output: 'docs/images/help.png',
+    title: 'Help',
+  },
+  stats: {
+    command: 'deckard.showStats',
+    output: 'docs/images/stats.png',
+    title: 'Stats',
+  },
+};
+const selectedView = viewConfiguration[view];
+if (!selectedView) {
+  throw new Error(`Unknown screenshot view: ${view}`);
+}
 const output = resolve(
   repositoryRoot,
-  process.env.DECKARD_SCREENSHOT_OUTPUT ?? 'docs/images/dashboard.png',
+  process.env.DECKARD_SCREENSHOT_OUTPUT ?? selectedView.output,
 );
 const promote = process.env.DECKARD_SCREENSHOT_PROMOTE === '1';
 const workspace = mkdtempSync(join(tmpdir(), 'deckard-screenshot-workspace-'));
@@ -165,29 +197,47 @@ function writeCompanionExtension() {
     `const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
-async function run(command) {
-  try {
-    await vscode.commands.executeCommand(command);
-  } catch {}
+  const view = ${JSON.stringify(view)};
+async function run(command, ...args) {
+  await vscode.commands.executeCommand(command, ...args);
 }
 async function activate() {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    const commands = await vscode.commands.getCommands(true);
-    if (commands.includes('deckard.showDashboard')) {
-      break;
+  try {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const commands = await vscode.commands.getCommands(true);
+      if (commands.includes('deckard.showDashboard')) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  await run('deckard.reindexWorkspace');
-  await run('deckard.showDashboard');
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  await run('workbench.action.closeOtherEditors');
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await run('deckard.reindexWorkspace');
+    await run('workbench.action.closeAllEditors');
     await run('workbench.action.closeSidebar');
     await run('workbench.action.closeAuxiliaryBar');
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (view === 'related-notes') {
+      const workspace = vscode.workspace.workspaceFolders?.[0];
+      if (!workspace) throw new Error('Screenshot workspace is unavailable');
+      await vscode.commands.executeCommand('vscode.open', vscode.Uri.joinPath(workspace.uri, 'Project Neon Relay.md'));
+      await run('workbench.view.extension.deckard');
+      await run('deckard.relatedNotes.focus');
+    } else if (view === 'tag-overview') {
+      await run('deckard.showTagOverview', 'project/neon-relay');
+    } else {
+      await run(${JSON.stringify(selectedView.command)});
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    if (view !== 'related-notes') {
+      await run('workbench.action.closeOtherEditors');
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await run('workbench.action.closeSidebar');
+        await run('workbench.action.closeAuxiliaryBar');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+    fs.writeFileSync(path.join(__dirname, 'ready'), 'ok');
+  } catch (error) {
+    fs.writeFileSync(path.join(__dirname, 'error'), error.stack || String(error));
   }
-  fs.writeFileSync(path.join(__dirname, 'ready'), 'ok');
 }
 module.exports = { activate };
 `,
@@ -195,12 +245,14 @@ module.exports = { activate };
 }
 
 function launchWorkbench() {
-  const build = spawnSync('npm', ['run', 'compile'], {
-    cwd: repositoryRoot,
-    stdio: 'inherit',
-  });
-  if (build.status !== 0) {
-    throw new Error('Extension build failed');
+  if (process.env.DECKARD_SCREENSHOT_SKIP_BUILD !== '1') {
+    const build = spawnSync(process.execPath, ['esbuild.js'], {
+      cwd: repositoryRoot,
+      stdio: 'inherit',
+    });
+    if (build.status !== 0) {
+      throw new Error('Extension build failed');
+    }
   }
   spawn(
     'code',
@@ -284,10 +336,17 @@ async function capture(client) {
           target.type === 'page' &&
           (target.url ?? '').endsWith('/workbench/workbench.html'),
       );
-      const webviewExists = targets.some((target) =>
-        target.url.includes('extensionId=esperinnovations.deckard-notes'),
+      const webviewExists = targets.some(
+        (target) =>
+          target.type === 'iframe' &&
+          target.url.includes('extensionId=esperinnovations.deckard-notes') &&
+          target.url.includes('vscode-webview://'),
       );
       const ready = existsSync(join(companion, 'ready'));
+      const errorPath = join(companion, 'error');
+      if (existsSync(errorPath)) {
+        throw new Error(readFileSync(errorPath, 'utf8'));
+      }
       if (workbench && webviewExists && ready) {
         const { sessionId } = await client.call('Target.attachToTarget', {
           targetId: workbench.targetId,
@@ -320,7 +379,7 @@ async function capture(client) {
           throw new Error('Candidate is not a 1920x1080 PNG');
         }
         console.log(
-          `Captured candidate ${candidate} from verified Deckard dashboard.`,
+          `Captured candidate ${candidate} from verified Deckard ${selectedView.title}.`,
         );
         if (promote) {
           mkdirSync(resolve(output, '..'), { recursive: true });
@@ -336,7 +395,7 @@ async function capture(client) {
       await delay(1000);
     }
     throw new Error(
-      'Deckard dashboard webview did not render within 60 seconds',
+      `Deckard ${selectedView.title} webview did not render within 90 seconds`,
     );
   } finally {
     client.close();
