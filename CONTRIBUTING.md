@@ -11,3 +11,15 @@ appropriate advanced category.
 Also update `README.md` when the feature needs installation, configuration, or
 reference documentation. Help and README must describe the same current
 behavior before a change is merged.
+
+## Release workflow
+
+Open pull requests from `dev` into `main`. When a same-repository pull request
+is opened or reopened, GitHub Actions increments the patch version in
+`package.json` and `package-lock.json`, then commits that update back to
+`dev`. If the pull request already changes the version, the workflow preserves
+that explicit version instead.
+
+After the pull request merges into `main`, the Release workflow tests the
+merged source, creates a `v<version>` tag and GitHub Release, and uploads the
+generated VSIX. A version that already has a tag is not released again.
