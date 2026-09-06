@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { getDeckardTheme, getDeckardThemeCss } from './themes';
+
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
  *
@@ -43,7 +45,7 @@ export function getSidebarNotesHtml(
 }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 220px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 12px; }
-main { padding: 12px; border-top: 2px solid var(--amber); }
+main { width: 100%; padding: 12px; border-top: 2px solid var(--amber); }
 h2, .eyebrow, .source, .match-count, .version { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
@@ -56,7 +58,9 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
-.related-notes-sort { width: 100%; min-height: 30px; margin-top: 10px; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); font: inherit; }
+.related-notes-sort-control { position: relative; display: block; margin-top: 10px; }
+.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
+.related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 .related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
 .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 button { border: 2px solid var(--line); background: var(--panel-deep); color: var(--cyan); padding: 4px 6px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
@@ -73,6 +77,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button { color: var(--text); }
 .empty { margin-top: 12px; border: 2px dashed var(--line); padding: 14px 10px; color: var(--muted); background: var(--panel-deep); line-height: 1.45; }
+${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
@@ -120,7 +125,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + escapeHtml(state.tagOverview.label) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">Current note</div><div class="active-name">' + escapeHtml(state.activeFileName) + '</div>' + activeTags + '</div>' : '');
     const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
-      ? '<select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Most tags</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>'
+      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Most tags</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
     const sectionLabel = state.tagOverview
       ? '<span class="section-label">Current notes</span>'

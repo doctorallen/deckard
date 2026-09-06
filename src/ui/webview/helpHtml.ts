@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { getDeckardTheme, getDeckardThemeCss } from './themes';
+
 /**
  * Builds a static, navigable Help page so guidance is available offline.
  */
@@ -59,6 +61,7 @@ ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } h1 { font-size: 24px; } }
+${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
@@ -152,6 +155,7 @@ topics: [signal-integrity]
     <section id="advanced">
       <h2>Settings</h2>
       <div class="cards">
+        <div class="card"><h3>Choose a theme</h3><p><code>deckard.theme</code> defaults to <code>replicant</code>. Choose <code>oblivion</code>, <code>lcars</code>, <code>tomcat</code>, or <code>fellowship</code> to restyle all Deckard views.</p></div>
         <div class="card"><h3>Control the note scope</h3><p><code>deckard.notesFolder</code> is optional. Leave it empty to index all workspace Markdown, or set a workspace-relative folder to limit the index.</p></div>
         <div class="card"><h3>Set the daily note template</h3><p><code>deckard.dailyNoteTemplate</code> supplies the text for new daily notes. It defaults to <code># {date}\\n\\n</code>; <code>{date}</code> becomes the local <code>YYYY-MM-DD</code> date.</p></div>
         <div class="card"><h3>Limit related-note matching</h3><p><code>deckard.enableKeywordLinks</code> includes significant shared keywords by default. Disable it to use shared tags and intentional Wiki links only.</p></div>

@@ -1,6 +1,7 @@
 .vscode/**
 .vscode-test/**
 .github/**
+development/**
 AGENTS.md
 .release-please-manifest.json
 release-please-config.json

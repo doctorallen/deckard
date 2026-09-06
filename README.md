@@ -1,3 +1,7 @@
+<p align="center">
+	<img src="resources/lockup.png" alt="Deckard" width="50%">
+</p>
+
 # Deckard
 
 Deckard is a local-first second brain for Markdown notes in your VS Code workspace. It connects people, projects, topics, organizations, meetings, links, and checklist tasks while keeping your notes readable and portable.
@@ -11,7 +15,7 @@ Deckard scans every `*.md` file in each workspace folder by default. Set a notes
 
 ## Install
 
-Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code. When installing from a checkout, build the package with `npm run package:vsix`.
+Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code.
 
 ## Screenshots
 
@@ -20,6 +24,14 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 | <img src="docs/images/dashboard.png" alt="Deckard Dashboard showing workspace totals, tags, favorites, and active tasks." width="460"> | <img src="docs/images/related-notes.png" alt="Deckard Related Notes sidebar showing ranked note entries and matching tags." width="460"> |
 | **Tag Overview** | **Help** |
 | <img src="docs/images/tag-overview.png" alt="Deckard Tag Overview showing matching notes, active tasks, and display controls." width="460"> | <img src="docs/images/help.png" alt="Deckard Help webview with quick-start instructions and feature navigation." width="460"> |
+
+## Themes
+
+Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `replicant`.
+
+| Replicant | Oblivion | LCARS | Tomcat | Fellowship |
+|---|---|---|---|---|
+| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220">|
 
 ## Get started
 
@@ -33,16 +45,18 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 
 ## Commands
 
-- **Deckard: Open Dashboard** opens workspace totals, tags, and tasks.
-- **Deckard: Show Stats** opens index totals and local view-count statistics.
-- **Deckard: Open Help** opens the quick-start and advanced feature guide.
-- **Deckard: Reindex Workspace** performs a full scan of the workspace Markdown scope.
-- **Deckard: Create Daily Note** creates or opens today's note.
-- **Deckard: Extract Tagged Heading** moves a tagged heading section into a newly named note.
-- **Deckard: Show Tag Overview** opens a tag overview, or shows a tag picker when no tag is supplied.
-- **Deckard: Search Workspace Knowledge** searches saved notes, entities, and tasks from the Command Palette.
-- **Deckard: Link Current Heading to Entity** adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading.
-- **Deckard: Move Inline Tags to Front Matter** moves explicit tags from the active note into merged note-level front matter.
+| Command | Description |
+| --- | --- |
+| **Deckard: Open Dashboard** | Opens workspace totals, tags, and tasks. |
+| **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
+| **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
+| **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
+| **Deckard: Create Daily Note** | Creates or opens today's note. |
+| **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note. |
+| **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
+| **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
+| **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
+| **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 
 ## Markdown format
 
@@ -153,6 +167,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ```json
 {
+	"deckard.theme": "replicant",
 	"deckard.notesFolder": "notes",
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
 	"deckard.parseInlineTags": true,
@@ -165,13 +180,16 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 }
 ```
 
-- `deckard.notesFolder` is an optional workspace-relative folder Deckard scans. It is empty by default, which indexes all workspace Markdown files.
-- `deckard.dailyNoteTemplate` is used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format.
-- `deckard.parseInlineTags` indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. It defaults to `true`. Heading tags and task-line tags remain available when it is `false`.
-- `deckard.enableTagAutocomplete` shows indexed tag and people suggestions after a marker. It defaults to `true`; disable it without changing tag indexing, highlighting, or navigation.
-- `deckard.enableKeywordLinks` includes significant shared keywords when Related Notes finds matches. It defaults to `true`; disable it to show relationships from shared tags and intentional Wiki links only.
-- `deckard.entityNamespaceAliases` maps custom `#namespace` aliases to canonical entity types. It defaults to `{ "org": "organization" }`; for example, `{ "proj": "project", "client": "organization" }` treats `#proj/atlas` and `#client/acme` as canonical project and organization tags.
-- `deckard.personMarker` selects the single punctuation character that identifies people. It defaults to `@`; set it to `~` to use `~mara-vale` for people and reserve `@inbox` for a lightweight tag.
+| Setting | Default | Description |
+| --- | --- | --- |
+| `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
+| `deckard.theme` | `replicant` | Selects the Replicant, Oblivion, or LCARS visual style for Deckard webviews. |
+| `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
+| `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Heading and task-line tags remain available when `false`. |
+| `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |
+| `deckard.enableKeywordLinks` | `true` | Includes significant shared keywords when Related Notes finds matches. Disable it to show shared tags and intentional Wiki links only. |
+| `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps custom `#namespace` aliases to canonical entity types. For example, `{ "proj": "project", "client": "organization" }` treats `#proj/atlas` and `#client/acme` as canonical project and organization tags. |
+| `deckard.personMarker` | `@` | Selects the single punctuation character that identifies people. Set it to `~` to use `~mara-vale` for people and reserve `@inbox` for a lightweight tag. |
 
 ## Source safety and persistence
 
@@ -189,12 +207,3 @@ Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.
 
 Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and it scans only Markdown files within the configured workspace scope.
-
-## Development
-
-```sh
-npm ci
-npm run compile
-npm test
-npm run package:vsix
-```

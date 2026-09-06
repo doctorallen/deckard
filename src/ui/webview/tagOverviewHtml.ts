@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { getDeckardTheme, getDeckardThemeCss } from './themes';
+
 /**
  * Builds the tag-overview webview and its source/rendered view controls.
  *
@@ -55,7 +57,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .toolbar-toggle-group .toolbar-toggle.active { position: relative; z-index: 1; }
 .overview-tabs { display: flex; gap: 6px; margin-top: 20px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
 .overview-tabs button { border-bottom-color: var(--line); }
-.overview-tabs button.active { border-bottom-color: var(--amber); }
 .overview-tab-panel { margin-top: 12px; }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
@@ -71,7 +72,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .task-filter-toggle button { display: inline-grid; width: 30px; place-items: center; padding: 5px; }
 .task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
-.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); text-align: left; }
+.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
 .cards { display: grid; gap: 12px; margin-top: 20px; }
 .card { border: 2px solid var(--line); background: var(--panel); padding: 14px; cursor: pointer; }
 .card:hover { border-color: var(--amber); }
@@ -97,6 +98,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .empty { border: 2px dashed var(--line); padding: 20px; color: var(--muted); background: var(--panel-deep); margin-top: 20px; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } .overview-split { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>

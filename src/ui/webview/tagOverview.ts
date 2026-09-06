@@ -31,6 +31,14 @@ export class TagOverviewPanels implements vscode.Disposable {
     this.disposables.push(this.changeEmitter);
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('deckard.theme')) {
+          this.panels.forEach((panel) => panel.renderHtml());
+          this.refresh();
+        }
+      }),
+    );
   }
 
   /**
@@ -275,7 +283,7 @@ class TagOverviewPanel implements vscode.Disposable {
       'deckard.svg',
     );
     panel.webview.options = { enableScripts: true };
-    panel.webview.html = getTagOverviewHtml(panel.webview);
+    this.renderHtml();
     this.disposables.push(
       panel.onDidDispose(() => {
         this.panel = undefined;
@@ -292,6 +300,12 @@ class TagOverviewPanel implements vscode.Disposable {
       }),
     );
     this.onViewStateChange(panel.active);
+  }
+
+  public renderHtml(): void {
+    if (this.panel) {
+      this.panel.webview.html = getTagOverviewHtml(this.panel.webview);
+    }
   }
 
   /**

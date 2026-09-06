@@ -20,6 +20,14 @@ export class StatsPanel implements vscode.Disposable {
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('deckard.theme')) {
+          this.renderHtml();
+          this.refresh();
+        }
+      }),
+    );
   }
 
   public async show(): Promise<void> {
@@ -71,7 +79,7 @@ export class StatsPanel implements vscode.Disposable {
       'deckard.svg',
     );
     panel.webview.options = { enableScripts: true };
-    panel.webview.html = getStatsHtml(panel.webview);
+    this.renderHtml();
     this.panelDisposables = [
       panel.onDidDispose(() => {
         this.panel = undefined;
@@ -84,6 +92,12 @@ export class StatsPanel implements vscode.Disposable {
     this.panelDisposables
       .splice(0)
       .forEach((disposable) => disposable.dispose());
+  }
+
+  private renderHtml(): void {
+    if (this.panel) {
+      this.panel.webview.html = getStatsHtml(this.panel.webview);
+    }
   }
 
   private refresh(): void {
