@@ -16,9 +16,12 @@ behavior before a change is merged.
 
 Open pull requests from `dev` into `main` or the current `master` branch.
 When a same-repository pull request is opened or reopened, GitHub Actions
-increments the patch version in `package.json` and `package-lock.json`, then
-commits that update back to `dev`. If the pull request already changes the
-version, the workflow preserves that explicit version instead.
+chooses the version increment from Conventional Commit messages, then commits
+the resulting `package.json` and `package-lock.json` update back to `dev`.
+Breaking changes (`feat!:`/`fix!:` or `BREAKING CHANGE:`) produce a major
+release, `feat:` produces a minor release, and `fix:` produces a patch
+release. Other commit types do not increment the version. If the pull request
+already changes the version, the workflow preserves that explicit version.
 
 After the pull request merges into either release branch, the Release workflow
 tests the merged source, creates a `v<version>` tag and GitHub Release, and
