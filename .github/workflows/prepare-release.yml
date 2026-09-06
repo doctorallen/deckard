@@ -36,22 +36,63 @@ jobs:
         with:
           node-version: 24.x
 
-      - name: Increment version when needed
+      - name: Determine release version
         id: version
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           base_version="$(git show "$BASE_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
           current_version="$(node -p "require('./package.json').version")"
-          if [ "$current_version" != "$base_version" ]; then
+          commit_messages="$(git log --format='%B' --no-merges "$BASE_SHA..HEAD")"
+          version_commits="$(git log --format='%s' --no-merges "$BASE_SHA..HEAD" -- package.json)"
+          explicit_version=false
+          if [ "$current_version" != "$base_version" ] && printf '%s\n' "$version_commits" | grep -Evq '^chore: prepare release v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            explicit_version=true
+          fi
+
+          if [ "$explicit_version" = true ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Version is already $current_version."
+            echo "Version is explicitly set to $current_version."
             exit 0
           fi
 
-          npm version patch --no-git-tag-version --ignore-scripts
+          if printf '%s\n' "$commit_messages" | grep -Eiq '^[a-z]+(\([^)]+\))?!:|BREAKING CHANGE:'; then
+            bump=major
+          elif printf '%s\n' "$commit_messages" | grep -Eiq '^feat(\([^)]+\))?:'; then
+            bump=minor
+          elif printf '%s\n' "$commit_messages" | grep -Eiq '^fix(\([^)]+\))?:'; then
+            bump=patch
+          else
+            bump=none
+          fi
+
+          if [ "$bump" = none ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No release-level Conventional Commit was found."
+            exit 0
+          fi
+
+          version="$(node - "$base_version" "$bump" <<'NODE'
+          const [version, bump] = process.argv.slice(2);
+          const match = /^(\d+)\.(\d+)\.(\d+)(?:-.+)?$/.exec(version);
+          if (!match) throw new Error(`Invalid semantic version: ${version}`);
+          const [major, minor, patch] = match.slice(1).map(Number);
+          const next = bump === 'major'
+            ? [major + 1, 0, 0]
+            : bump === 'minor'
+              ? [major, minor + 1, 0]
+              : [major, minor, patch + 1];
+          console.log(next.join('.'));
+          NODE
+          )"
+          if [ "$current_version" = "$version" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version is already $version."
+            exit 0
+          fi
+
+          npm version "$version" --no-git-tag-version --allow-same-version --ignore-scripts
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          version="$(node -p "require('./package.json').version")"
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
       - name: Commit version update
