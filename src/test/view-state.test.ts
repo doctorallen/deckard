@@ -292,16 +292,15 @@ suite('Dashboard state', () => {
     const active = createFile('notes/current.md', '# Current #work #urgent');
     const oldest = createFile('notes/oldest.md', '# Oldest #work');
     const newest = createFile('notes/newest.md', '# Newest #work');
-    const mostTags = createFile('notes/most-tags.md', '# Most tags #work #urgent');
+    const mostTags = createFile(
+      'notes/most-tags.md',
+      '# Most tags #work #urgent',
+    );
     oldest.updatedAt = 100;
     newest.updatedAt = 300;
     mostTags.updatedAt = 200;
     const index = createFileIndex([active, oldest, newest, mostTags]);
-    const notes = createSidebarSnapshot(
-      index,
-      active.filePath,
-      active,
-    ).notes;
+    const notes = createSidebarSnapshot(index, active.filePath, active).notes;
 
     assert.strictEqual(
       sortRelatedNotes(notes, 'newest')[0].filePath,
@@ -425,9 +424,7 @@ suite('Dashboard state', () => {
       'notes/work.md',
       '# Work #work\n\n- [ ] Active task\n- [x] Completed task',
     );
-    const index = buildWorkspaceIndex(
-      new Map([[parsed.filePath, parsed]]),
-    );
+    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
 
     const all = createTagOverviewSnapshot(
       index,

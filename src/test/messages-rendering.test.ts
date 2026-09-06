@@ -192,12 +192,13 @@ suite('Webview contracts', () => {
     });
 
     assert.strictEqual(
-      html.includes(
-        'grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);',
-      ),
+      html.includes('grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);'),
       true,
     );
-    assert.strictEqual(html.includes('<select data-action="set-layout"'), false);
+    assert.strictEqual(
+      html.includes('<select data-action="set-layout"'),
+      false,
+    );
     assert.strictEqual(
       html.includes('data-action="set-layout" data-layout="tabs"'),
       true,
@@ -257,7 +258,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
     assert.strictEqual(html.includes("'Completed tasks'"), true);
     assert.strictEqual(
-      html.includes('.task.completed .task-title { color: var(--muted); text-decoration: line-through; }'),
+      html.includes(
+        '.task.completed .task-title { color: var(--muted); text-decoration: line-through; }',
+      ),
       true,
     );
   });

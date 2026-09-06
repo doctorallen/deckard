@@ -134,9 +134,7 @@ suite('Workspace scanner and index', () => {
       'notes/atlas.md',
       '# Atlas #project/atlas\n\n- [ ] Publish the field brief',
     );
-    const index = buildWorkspaceIndex(
-      new Map([[note.filePath, note]]),
-    );
+    const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
 
     assert.strictEqual(index.entities.get('#project/atlas')?.count, 1);
   });

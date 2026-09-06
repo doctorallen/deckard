@@ -212,7 +212,9 @@ export class PreferencesStore implements vscode.Disposable {
     const validSections = validSectionIds
       ? new Set(validSectionIds)
       : undefined;
-    const validEntities = validEntityKeys ? new Set(validEntityKeys) : undefined;
+    const validEntities = validEntityKeys
+      ? new Set(validEntityKeys)
+      : undefined;
     const sectionAccessCounts = validSectionIds
       ? Object.fromEntries(
           Object.entries(this.preferences.sectionAccessCounts).filter(
@@ -229,8 +231,8 @@ export class PreferencesStore implements vscode.Disposable {
       favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
         validTags.has(tagKey),
       ),
-      favoriteEntities: this.preferences.favoriteEntities.filter((entityKey) =>
-        validEntities?.has(entityKey) ?? true,
+      favoriteEntities: this.preferences.favoriteEntities.filter(
+        (entityKey) => validEntities?.has(entityKey) ?? true,
       ),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
@@ -240,8 +242,8 @@ export class PreferencesStore implements vscode.Disposable {
         validTasks.has(taskId),
       ),
       sectionAccessCounts,
-      entityAccessOrder: this.preferences.entityAccessOrder.filter((entityKey) =>
-        validEntities?.has(entityKey) ?? true,
+      entityAccessOrder: this.preferences.entityAccessOrder.filter(
+        (entityKey) => validEntities?.has(entityKey) ?? true,
       ),
       entityAccessCounts: Object.fromEntries(
         Object.entries(this.preferences.entityAccessCounts).filter(

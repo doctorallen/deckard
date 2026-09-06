@@ -94,15 +94,12 @@ export function createDeckardStatsSnapshot(
       (count, file) => count + file.links.length,
       0,
     ),
-    tagViews: createAccessItems(
-      preferences.tagAccessCounts,
-      (tagKey) => {
-        const tag = index.tags.get(tagKey);
-        return tag
-          ? { label: tag.label, detail: `${tag.count} indexed entries` }
-          : undefined;
-      },
-    ),
+    tagViews: createAccessItems(preferences.tagAccessCounts, (tagKey) => {
+      const tag = index.tags.get(tagKey);
+      return tag
+        ? { label: tag.label, detail: `${tag.count} indexed entries` }
+        : undefined;
+    }),
     entityViews: createAccessItems(
       preferences.entityAccessCounts,
       (entityKey) => {
@@ -401,7 +398,12 @@ export function createSidebarSnapshot(
     activeTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
-    state: notes.length > 0 ? 'ready' : activeTags.length > 0 ? 'noMatches' : 'noTags',
+    state:
+      notes.length > 0
+        ? 'ready'
+        : activeTags.length > 0
+          ? 'noMatches'
+          : 'noTags',
   };
 }
 
@@ -463,7 +465,11 @@ export function rankRelatedNotes(
     const sharedKeywords = enableKeywordLinks
       ? getSharedKeywords(activeFile, file)
       : [];
-    if (matchedTags.length === 0 && !directLink && sharedKeywords.length === 0) {
+    if (
+      matchedTags.length === 0 &&
+      !directLink &&
+      sharedKeywords.length === 0
+    ) {
       return;
     }
 
@@ -523,7 +529,9 @@ export function rankRelatedNotes(
         overlap: unionSize > 0 ? reference.matchedTags.length / unionSize : 0,
         reasons: [
           ...(reference.matchedTags.length > 0
-            ? [`Shared: ${reference.matchedTags.map((tag) => tag.label).join(', ')}`]
+            ? [
+                `Shared: ${reference.matchedTags.map((tag) => tag.label).join(', ')}`,
+              ]
             : []),
           ...(directLink ? ['Linked note'] : []),
           ...(sharedKeywords.length > 0
@@ -534,9 +542,7 @@ export function rankRelatedNotes(
     );
   });
 
-  return notes.sort(
-    compareRelatedNotes,
-  );
+  return notes.sort(compareRelatedNotes);
 }
 
 /**
@@ -606,10 +612,7 @@ export function sortEntities(
   preferences: PersistedPreferences,
 ): Entity[] {
   const order = new Map(
-    preferences.entityAccessOrder.map((entityKey, index) => [
-      entityKey,
-      index,
-    ]),
+    preferences.entityAccessOrder.map((entityKey, index) => [entityKey, index]),
   );
 
   const sorted = [...entities].map((entity) => ({
@@ -673,7 +676,9 @@ function normalizeLink(value: string): string {
 function getSharedKeywords(left: ParsedFile, right: ParsedFile): string[] {
   const leftKeywords = getKeywords(left.content);
   const rightKeywords = new Set(getKeywords(right.content));
-  return leftKeywords.filter((keyword) => rightKeywords.has(keyword)).slice(0, 5);
+  return leftKeywords
+    .filter((keyword) => rightKeywords.has(keyword))
+    .slice(0, 5);
 }
 
 function getKeywords(content: string): string[] {
