@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -17,6 +17,8 @@
   "activationEvents": [
     "onWebviewPanel:deckard.dashboard",
     "onWebviewPanel:deckard.tagOverview",
+    "onWebviewPanel:deckard.stats",
+    "onWebviewPanel:deckard.help",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -25,6 +27,14 @@
       {
         "command": "deckard.showDashboard",
         "title": "Deckard: Open Dashboard"
+      },
+      {
+        "command": "deckard.showStats",
+        "title": "Deckard: Show Stats"
+      },
+      {
+        "command": "deckard.showHelp",
+        "title": "Deckard: Open Help"
       },
       {
         "command": "deckard.reindexWorkspace",
@@ -41,6 +51,18 @@
       {
         "command": "deckard.showTagOverview",
         "title": "Deckard: Show Tag Overview"
+      },
+      {
+        "command": "deckard.searchWorkspace",
+        "title": "Deckard: Search Workspace Knowledge"
+      },
+      {
+        "command": "deckard.linkCurrentHeading",
+        "title": "Deckard: Link Current Heading to Entity"
+      },
+      {
+        "command": "deckard.moveTagsToFrontmatter",
+        "title": "Deckard: Move Inline Tags to Front Matter"
       }
     ],
     "viewsContainers": {
@@ -67,8 +89,8 @@
       "properties": {
         "deckard.notesFolder": {
           "type": "string",
-          "default": "notes",
-          "description": "Workspace-relative folder containing Markdown notes."
+          "default": "",
+          "description": "Optional workspace-relative folder containing Markdown notes. Leave empty to index all Markdown files in the workspace."
         },
         "deckard.dailyNoteTemplate": {
           "type": "string",
@@ -79,6 +101,38 @@
           "type": "boolean",
           "default": true,
           "description": "Index tags on non-heading Markdown lines as standalone entries."
+        },
+        "deckard.enableTagAutocomplete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show indexed tag suggestions after a tag or people marker. Disable without affecting tag indexing, highlighting, or navigation."
+        },
+        "deckard.enableKeywordLinks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include significant shared keywords when finding related notes. Disable to use shared tags and intentional Wiki links only."
+        },
+        "deckard.entityNamespaceAliases": {
+          "type": "object",
+          "default": {
+            "org": "organization"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "project",
+              "topic",
+              "organization",
+              "meeting"
+            ]
+          },
+          "description": "Maps custom #namespace aliases to canonical entity types. For example, { \"proj\": \"project\", \"client\": \"organization\" } recognizes #proj/atlas and #client/acme."
+        },
+        "deckard.personMarker": {
+          "type": "string",
+          "default": "@",
+          "pattern": "^[!$%&*+,.?:;=@^|~]$",
+          "description": "Single-character marker for people. For example, set this to \"~\" to recognize ~mara-vale as a person."
         }
       }
     }

@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
  * active-tag contexts while this document remains a simple navigation surface.
  */
 export function getSidebarNotesHtml(
-  webview: vscode.Webview,
+  webview: Pick<vscode.Webview, 'cspSource'>,
   extensionVersion: string,
 ): string {
   const nonce = createNonce();
@@ -55,6 +55,9 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .sidebar-toolbar { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
+.icon-button svg.outline-icon { fill: none; stroke: currentColor; }
+.related-notes-sort { width: 100%; min-height: 30px; margin-top: 10px; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); font: inherit; }
+.related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
 .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 button { border: 2px solid var(--line); background: var(--panel-deep); color: var(--cyan); padding: 4px 6px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
@@ -108,23 +111,28 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
         const title = note.title || note.fileName || note.filePath;
         const fileName = note.fileName || note.filePath;
         const tags = renderTags(note.matchedTags, 'matched-tag');
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + escapeHtml(title) + '</h2><span class="match-count">' + note.matchCount + '/' + note.totalTagCount + '</span></div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+        const matchCount = note.matchCount ? '<span class="match-count">' + note.matchCount + '/' + note.totalTagCount + '</span>' : '';
+        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + escapeHtml(title) + '</h2>' + matchCount + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
     const context = state.tagOverview
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + escapeHtml(state.tagOverview.label) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">Current note</div><div class="active-name">' + escapeHtml(state.activeFileName) + '</div>' + activeTags + '</div>' : '');
+    const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
+      ? '<select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Most tags</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>'
+      : '';
     const sectionLabel = state.tagOverview
       ? '<span class="section-label">Current notes</span>'
-      : (state.state === 'ready' ? '<span class="section-label">Shared tags</span>' : '');
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD / RELATED NOTES</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
+      : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Shared tags</span>' : '');
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD / RELATED NOTES</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
   }
 
   document.addEventListener('click', function (event) {
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'open-tag') vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
+      if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });
       if (target.dataset.action === 'create-daily-note') vscode.postMessage({ type: 'createDailyNote' });
       return;
@@ -139,6 +147,12 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
     if (note) {
       event.preventDefault();
       vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
+    }
+  });
+  document.addEventListener('change', function (event) {
+    const target = event.target;
+    if (target.dataset.action === 'set-related-notes-sort') {
+      vscode.postMessage({ type: 'setRelatedNotesSort', mode: target.value });
     }
   });
   window.addEventListener('message', function (event) {

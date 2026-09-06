@@ -2,7 +2,12 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { MarkdownParseOptions, parseMarkdown } from '../markdown/parser';
+import {
+  getEntityNamespaceAliases,
+  getPersonMarker,
+  MarkdownParseOptions,
+  parseMarkdown,
+} from '../markdown/parser';
 import { ParsedFile } from '../types';
 
 export interface WorkspaceFileAccess {
@@ -141,7 +146,7 @@ export class WorkspaceScanner {
   }
 
   /**
-   * Resolves the configured notes folder without assuming it is non-empty.
+   * Resolves the optional configured notes folder without assuming it is non-empty.
    */
   public getNotesFolderUri(
     workspaceFolder: vscode.WorkspaceFolder,
@@ -160,7 +165,7 @@ export class WorkspaceScanner {
   public getNotesFolder(workspaceFolder?: vscode.WorkspaceFolder): string {
     const configuration = this.getConfiguration(workspaceFolder);
     const configuredFolder = configuration
-      .get<string>('notesFolder', 'notes')
+      .get<string>('notesFolder', '')
       .trim();
     return configuredFolder.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
   }
@@ -175,6 +180,18 @@ export class WorkspaceScanner {
       parseInlineTags: this.getConfiguration(workspaceFolder).get<boolean>(
         'parseInlineTags',
         true,
+      ),
+      entityNamespaceAliases: getEntityNamespaceAliases(
+        this.getConfiguration(workspaceFolder).get<unknown>(
+          'entityNamespaceAliases',
+          {},
+        ),
+      ),
+      personMarker: getPersonMarker(
+        this.getConfiguration(workspaceFolder).get<unknown>(
+          'personMarker',
+          '@',
+        ),
       ),
     };
   }

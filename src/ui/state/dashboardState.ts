@@ -1,10 +1,13 @@
 import {
   DashboardSnapshot,
   DashboardTask,
+  Entity,
   ParsedFile,
   PersistedPreferences,
+  RelatedNotesSortMode,
   RankedNote,
   Section,
+  StatsAccessItem,
   TagInfo,
   Task,
   TaskFilter,
@@ -15,6 +18,7 @@ import {
   TaskSortMode,
   SidebarNotesSnapshot,
   WorkspaceIndex,
+  DeckardStatsSnapshot,
 } from '../../core/types';
 
 import { stripTags } from '../../core/markdown/parser';
@@ -34,6 +38,7 @@ export function createDashboardSnapshot(
   selectedTag?: string,
 ): DashboardSnapshot {
   const tags = sortTags(index.tags.values(), preferences);
+  const entities = sortEntities(index.entities.values(), preferences);
   const availableTaskTags = sortTags(
     [...index.tags.values()].filter((tag) => tag.taskIds.length > 0),
     preferences,
@@ -53,6 +58,7 @@ export function createDashboardSnapshot(
   return {
     sections: [...index.sections.values()],
     tags,
+    entities,
     tasks,
     totalSectionCount: index.sections.size,
     totalTaskCount: index.tasks.size,
@@ -61,10 +67,87 @@ export function createDashboardSnapshot(
     taskFilter,
     taskSortMode: preferences.taskSortMode,
     tagSortMode: preferences.tagSortMode,
+    entitySortMode: preferences.entitySortMode,
     availableTaskTags,
     selectedTaskTags: normalizedTaskTags,
     selectedTag,
   };
+}
+
+/**
+ * Summarizes the current index and recorded local navigation for the Stats page.
+ */
+export function createDeckardStatsSnapshot(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+): DeckardStatsSnapshot {
+  return {
+    updatedAt: index.updatedAt,
+    fileCount: index.files.size,
+    sectionCount: index.sections.size,
+    taskCount: index.tasks.size,
+    activeTaskCount: [...index.tasks.values()].filter((task) => !task.completed)
+      .length,
+    tagCount: index.tags.size,
+    entityCount: index.entities.size,
+    wikiLinkCount: [...index.files.values()].reduce(
+      (count, file) => count + file.links.length,
+      0,
+    ),
+    tagViews: createAccessItems(preferences.tagAccessCounts, (tagKey) => {
+      const tag = index.tags.get(tagKey);
+      return tag
+        ? { label: tag.label, detail: `${tag.count} indexed entries` }
+        : undefined;
+    }),
+    entityViews: createAccessItems(
+      preferences.entityAccessCounts,
+      (entityKey) => {
+        const entity = index.entities.get(entityKey);
+        return entity
+          ? {
+              label: entity.name,
+              detail: `${entity.kind} / ${entity.count} indexed entries`,
+            }
+          : undefined;
+      },
+    ),
+    sectionViews: createAccessItems(
+      preferences.sectionAccessCounts,
+      (sectionId) => {
+        const section = index.sections.get(sectionId);
+        return section
+          ? {
+              label: stripTags(section.heading),
+              detail: `${getFileName(section.filePath) ?? section.filePath} / line ${section.startLine}`,
+            }
+          : undefined;
+      },
+    ),
+  };
+}
+
+/**
+ * Joins persisted counters to current index entries and returns the top ten.
+ */
+function createAccessItems(
+  counts: Record<string, number>,
+  getItem: (key: string) => Omit<StatsAccessItem, 'count'> | undefined,
+): StatsAccessItem[] {
+  return Object.entries(counts)
+    .map(([key, count]) => {
+      const item = getItem(key);
+      return item ? { ...item, count } : undefined;
+    })
+    .filter((item): item is StatsAccessItem => item !== undefined)
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        left.label.localeCompare(right.label, undefined, {
+          sensitivity: 'base',
+        }),
+    )
+    .slice(0, 10);
 }
 
 /**
@@ -203,6 +286,7 @@ export function createTagOverviewSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   tagKey: string,
+  taskFilter: TaskFilter = 'active',
 ): TagOverviewSnapshot | undefined {
   const tag = index.tags.get(tagKey);
   if (!tag) {
@@ -226,9 +310,17 @@ export function createTagOverviewSnapshot(
       taskIds: [...tag.taskIds],
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
+    entity: index.entities.get(tagKey),
     sections,
+    tasks: tag.taskIds
+      .map((taskId) => index.tasks.get(taskId))
+      .filter((task): task is Task => task !== undefined)
+      .filter((task) => matchesTaskFilter(task, taskFilter))
+      .map((task) => createDashboardTask(task, index.sections)),
+    taskFilter,
     renderMode: preferences.renderMode,
     sortMode: preferences.tagOverviewSortMode,
+    layout: preferences.tagOverviewLayout,
   };
 }
 
@@ -280,27 +372,38 @@ export function createSidebarSnapshot(
   index: WorkspaceIndex,
   activeFilePath: string | undefined,
   activeFile: ParsedFile | undefined,
+  enableKeywordLinks = true,
+  relatedNotesSortMode: RelatedNotesSortMode = 'tags',
+  sectionAccessCounts: Record<string, number> = {},
 ): SidebarNotesSnapshot {
   if (!activeFile) {
-    return { activeTags: [], notes: [], state: 'noMarkdown' };
-  }
-
-  const activeTags = sortTagReferences(collectFileTags(activeFile));
-  if (activeTags.length === 0) {
     return {
-      activeFileName: getFileName(activeFilePath),
-      activeTags,
+      activeTags: [],
       notes: [],
-      state: 'noTags',
+      relatedNotesSortMode,
+      state: 'noMarkdown',
     };
   }
 
-  const notes = rankRelatedNotes(index, activeFilePath, activeTags);
+  const activeTags = sortTagReferences(collectFileTags(activeFile));
+  const notes = rankRelatedNotes(
+    index,
+    activeFilePath,
+    activeFile,
+    activeTags,
+    enableKeywordLinks,
+  );
   return {
     activeFileName: getFileName(activeFilePath),
     activeTags,
-    notes,
-    state: notes.length > 0 ? 'ready' : 'noMatches',
+    notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
+    relatedNotesSortMode,
+    state:
+      notes.length > 0
+        ? 'ready'
+        : activeTags.length > 0
+          ? 'noMatches'
+          : 'noTags',
   };
 }
 
@@ -311,7 +414,7 @@ export function collectFileTags(file: ParsedFile): TagReference[] {
   const tags = new Map<string, TagReference>();
   const addTag = (key: string, label: string | undefined): void => {
     if (!tags.has(key)) {
-      tags.set(key, { key, label: label ?? `#${key}` });
+      tags.set(key, { key, label: label ?? key });
     }
   };
 
@@ -343,7 +446,9 @@ function sortTagReferences(tags: TagReference[]): TagReference[] {
 export function rankRelatedNotes(
   index: WorkspaceIndex,
   activeFilePath: string | undefined,
+  activeFile: ParsedFile,
   activeTags: TagReference[],
+  enableKeywordLinks = true,
 ): RankedNote[] {
   const activeKeys = new Set(activeTags.map((tag) => tag.key));
   const notes: RankedNote[] = [];
@@ -356,20 +461,40 @@ export function rankRelatedNotes(
     const candidateTags = collectFileTags(file);
     const candidateKeys = new Set(candidateTags.map((tag) => tag.key));
     const matchedTags = activeTags.filter((tag) => candidateKeys.has(tag.key));
-    if (matchedTags.length === 0) {
+    const directLink = filesAreLinked(activeFile, file);
+    const sharedKeywords = enableKeywordLinks
+      ? getSharedKeywords(activeFile, file)
+      : [];
+    if (
+      matchedTags.length === 0 &&
+      !directLink &&
+      sharedKeywords.length === 0
+    ) {
       return;
     }
 
     const unionSize = new Set([...activeKeys, ...candidateKeys]).size;
-    const matchingSections = file.sections.filter((section) =>
-      section.tags.some((tagKey) => activeKeys.has(tagKey)),
+    const matchingSections = file.sections.filter(
+      (section) =>
+        section.tags.some((tagKey) => activeKeys.has(tagKey)) ||
+        directLink ||
+        sharedKeywords.some((keyword) =>
+          section.rawContent.toLowerCase().includes(keyword),
+        ),
     );
     const matchingSectionIds = new Set(
       matchingSections.map((section) => section.id),
     );
-    const references = matchingSections.map((section) => ({
+    const references: Array<
+      Pick<
+        RankedNote,
+        'sectionId' | 'title' | 'sourceLine' | 'updatedAt' | 'matchedTags'
+      >
+    > = matchingSections.map((section) => ({
+      sectionId: section.id,
       title: stripTags(section.heading),
       sourceLine: section.startLine,
+      updatedAt: file.updatedAt ?? section.updatedAt,
       matchedTags: activeTags.filter((tag) => section.tags.includes(tag.key)),
     }));
     // A task under a matching section is already visible through that section;
@@ -382,34 +507,204 @@ export function rankRelatedNotes(
 
     matchingTasks.forEach((task) => {
       references.push({
+        sectionId: task.sectionId,
         title: stripTags(task.title),
         sourceLine: task.lineNumber,
+        updatedAt: file.updatedAt ?? task.updatedAt,
         matchedTags: activeTags.filter((tag) => task.tags.includes(tag.key)),
       });
     });
 
     notes.push(
       ...references.map((reference) => ({
+        sectionId: reference.sectionId,
         filePath,
         title: reference.title,
         fileName: getFileName(filePath) ?? filePath,
         sourceLine: reference.sourceLine,
+        updatedAt: reference.updatedAt,
         matchedTags: reference.matchedTags,
         matchCount: reference.matchedTags.length,
         totalTagCount: activeTags.length,
         overlap: unionSize > 0 ? reference.matchedTags.length / unionSize : 0,
+        reasons: [
+          ...(reference.matchedTags.length > 0
+            ? [
+                `Shared: ${reference.matchedTags.map((tag) => tag.label).join(', ')}`,
+              ]
+            : []),
+          ...(directLink ? ['Linked note'] : []),
+          ...(sharedKeywords.length > 0
+            ? [`Keywords: ${sharedKeywords.slice(0, 3).join(', ')}`]
+            : []),
+        ],
       })),
     );
   });
 
-  return notes.sort(
-    (left, right) =>
-      right.matchCount - left.matchCount ||
-      right.overlap - left.overlap ||
-      left.filePath.localeCompare(right.filePath) ||
-      left.sourceLine - right.sourceLine ||
-      left.title.localeCompare(right.title),
+  return notes.sort(compareRelatedNotes);
+}
+
+/**
+ * Applies the selected Related Notes ordering while preserving deterministic
+ * relevance and source-location fallbacks for tied values.
+ */
+export function sortRelatedNotes(
+  notes: RankedNote[],
+  sortMode: RelatedNotesSortMode,
+  sectionAccessCounts: Record<string, number> = {},
+): RankedNote[] {
+  return [...notes].sort((left, right) => {
+    if (sortMode === 'newest' || sortMode === 'oldest') {
+      const dateOrder = compareRelatedNoteDates(
+        left.updatedAt,
+        right.updatedAt,
+        sortMode,
+      );
+      if (dateOrder !== 0) {
+        return dateOrder;
+      }
+    }
+
+    if (sortMode === 'access') {
+      const leftAccess = left.sectionId
+        ? (sectionAccessCounts[left.sectionId] ?? 0)
+        : 0;
+      const rightAccess = right.sectionId
+        ? (sectionAccessCounts[right.sectionId] ?? 0)
+        : 0;
+      if (leftAccess !== rightAccess) {
+        return rightAccess - leftAccess;
+      }
+    }
+
+    return compareRelatedNotes(left, right);
+  });
+}
+
+function compareRelatedNoteDates(
+  left: number | undefined,
+  right: number | undefined,
+  sortMode: 'newest' | 'oldest',
+): number {
+  if (left === undefined || right === undefined) {
+    if (left === right) {
+      return 0;
+    }
+    return left === undefined ? 1 : -1;
+  }
+  return sortMode === 'newest' ? right - left : left - right;
+}
+
+function compareRelatedNotes(left: RankedNote, right: RankedNote): number {
+  return (
+    right.matchCount - left.matchCount ||
+    right.overlap - left.overlap ||
+    (right.reasons?.length ?? 0) - (left.reasons?.length ?? 0) ||
+    left.filePath.localeCompare(right.filePath) ||
+    left.sourceLine - right.sourceLine ||
+    left.title.localeCompare(right.title)
   );
+}
+
+export function sortEntities(
+  entities: Iterable<Entity>,
+  preferences: PersistedPreferences,
+): Entity[] {
+  const order = new Map(
+    preferences.entityAccessOrder.map((entityKey, index) => [entityKey, index]),
+  );
+
+  const sorted = [...entities].map((entity) => ({
+    ...entity,
+    sectionIds: [...entity.sectionIds],
+    taskIds: [...entity.taskIds],
+    isFavorite: preferences.favoriteEntities.includes(entity.key),
+  }));
+
+  sorted.sort((left, right) => {
+    if (left.isFavorite !== right.isFavorite) {
+      return left.isFavorite ? -1 : 1;
+    }
+    if (preferences.entitySortMode === 'count' && left.count !== right.count) {
+      return right.count - left.count;
+    }
+    if (preferences.entitySortMode === 'access') {
+      const leftAccess = preferences.entityAccessCounts[left.key] ?? 0;
+      const rightAccess = preferences.entityAccessCounts[right.key] ?? 0;
+      if (leftAccess !== rightAccess) {
+        return rightAccess - leftAccess;
+      }
+    }
+    if (preferences.entitySortMode === 'custom') {
+      const leftOrder = order.get(left.key) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = order.get(right.key) ?? Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+    }
+    return left.name.localeCompare(right.name, undefined, {
+      sensitivity: 'base',
+    });
+  });
+
+  return sorted;
+}
+
+function filesAreLinked(left: ParsedFile, right: ParsedFile): boolean {
+  const leftNames = getLinkNames(left.filePath);
+  const rightNames = getLinkNames(right.filePath);
+  return (
+    left.links.some((link) => rightNames.has(normalizeLink(link))) ||
+    right.links.some((link) => leftNames.has(normalizeLink(link)))
+  );
+}
+
+function getLinkNames(filePath: string): Set<string> {
+  const fileName = filePath.split('/').pop() ?? filePath;
+  return new Set([
+    normalizeLink(filePath),
+    normalizeLink(fileName),
+    normalizeLink(fileName.replace(/\.md$/i, '')),
+  ]);
+}
+
+function normalizeLink(value: string): string {
+  return value.trim().replace(/\.md$/i, '').toLocaleLowerCase();
+}
+
+function getSharedKeywords(left: ParsedFile, right: ParsedFile): string[] {
+  const leftKeywords = getKeywords(left.content);
+  const rightKeywords = new Set(getKeywords(right.content));
+  return leftKeywords
+    .filter((keyword) => rightKeywords.has(keyword))
+    .slice(0, 5);
+}
+
+function getKeywords(content: string): string[] {
+  const ignored = new Set([
+    'about',
+    'after',
+    'before',
+    'because',
+    'could',
+    'should',
+    'their',
+    'there',
+    'these',
+    'those',
+    'which',
+    'would',
+    'with',
+  ]);
+  return [
+    ...new Set(
+      content
+        .toLocaleLowerCase()
+        .match(/[a-z][a-z-]{4,}/g)
+        ?.filter((word) => !ignored.has(word)) ?? [],
+    ),
+  ];
 }
 
 /**

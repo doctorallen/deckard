@@ -13,13 +13,19 @@ import { createTagOverviewSnapshot } from '../ui/state/dashboardState';
 const defaultPreferences = {
   version: 1 as const,
   favoriteTags: [],
+  favoriteEntities: [],
   tagSortMode: 'alphabetical' as const,
+  entitySortMode: 'alphabetical' as const,
   tagAccessOrder: [],
   tagAccessCounts: {},
+  entityAccessOrder: [],
+  entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank' as const,
   renderMode: 'markdown' as const,
   tagOverviewSortMode: 'alphabetical' as const,
+  tagOverviewLayout: 'tabs' as const,
+  relatedNotesSortMode: 'tags' as const,
   sectionAccessCounts: {},
 };
 
@@ -80,7 +86,7 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(scanner.isNotesFile(textUri), false);
     assert.strictEqual(
       scanner.isNotesFile(vscode.Uri.joinPath(workspaceUri, 'README.md')),
-      false,
+      true,
     );
   });
 
@@ -115,10 +121,22 @@ suite('Workspace scanner and index', () => {
 
     assert.strictEqual(index.sections.size, 2);
     assert.strictEqual(index.tasks.size, 2);
-    assert.deepStrictEqual(index.tags.get('shared')?.sectionIds.length, 2);
-    assert.deepStrictEqual(index.tags.get('shared')?.taskIds.length, 2);
-    assert.strictEqual(index.tags.get('shared')?.count, 2);
-    assert.strictEqual(index.tags.get('done')?.count, 1);
+    assert.deepStrictEqual(index.tags.get('#shared')?.sectionIds.length, 2);
+    assert.deepStrictEqual(index.tags.get('#shared')?.taskIds.length, 2);
+    assert.strictEqual(index.tags.get('#shared')?.count, 2);
+    assert.strictEqual(index.tags.get('@done')?.count, 1);
+    assert.strictEqual(index.entities.get('@done')?.kind, 'person');
+    assert.strictEqual(index.entities.get('@done')?.count, 1);
+  });
+
+  test('counts inherited entity tasks once with their section', () => {
+    const note = parseMarkdown(
+      'notes/atlas.md',
+      '# Atlas #project/atlas\n\n- [ ] Publish the field brief',
+    );
+    const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+
+    assert.strictEqual(index.entities.get('#project/atlas')?.count, 1);
   });
 
   test('carries inline-only notes from scanner into tag overview', () => {
@@ -145,7 +163,7 @@ suite('Workspace scanner and index', () => {
     const snapshot = createTagOverviewSnapshot(
       index,
       defaultPreferences,
-      'work',
+      '#work',
     );
 
     assert.ok(snapshot);

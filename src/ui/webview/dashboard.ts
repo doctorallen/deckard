@@ -178,8 +178,16 @@ export class DashboardPanel implements vscode.Disposable {
           await this.preferences.toggleFavorite(message.tagKey);
         }
         return;
+      case 'toggleFavoriteEntity':
+        if (index.entities.has(message.entityKey)) {
+          await this.preferences.toggleFavoriteEntity(message.entityKey);
+        }
+        return;
       case 'setTagSort':
         await this.preferences.setTagSortMode(message.mode);
+        return;
+      case 'setEntitySort':
+        await this.preferences.setEntitySortMode(message.mode);
         return;
       case 'setTaskFilter':
         this.taskFilter = message.filter;
@@ -223,6 +231,13 @@ export class DashboardPanel implements vscode.Disposable {
           await this.preferences.setTagAccessOrderAndFavorites(
             mergeOrder(message.tagKeys, index.tags.keys()),
             [...favoriteTags],
+          );
+        }
+        return;
+      case 'reorderEntities':
+        if (this.preferences.value.entitySortMode === 'custom') {
+          await this.preferences.setEntityAccessOrder(
+            mergeOrder(message.entityKeys, index.entities.keys()),
           );
         }
         return;

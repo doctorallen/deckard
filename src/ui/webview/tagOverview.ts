@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { PreferencesStore } from '../../core/storage/preferences';
-import { TagOverviewMessage } from '../../core/types';
+import { TagOverviewMessage, TaskFilter } from '../../core/types';
 import { createTagOverviewSnapshot } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
+import { toggleTask } from '../commands/taskActions';
 import { parseTagOverviewMessage } from './messages';
 import { getTagOverviewHtml } from './tagOverviewHtml';
 
@@ -51,6 +52,9 @@ export class TagOverviewPanels implements vscode.Disposable {
       return;
     }
     await this.preferences.recordTagAccess(tagKey);
+    if (this.indexer.getSnapshot().entities.has(tagKey)) {
+      await this.preferences.recordEntityAccess(tagKey);
+    }
 
     let panel = this.panels.get(tagKey);
     if (!panel) {
@@ -170,6 +174,7 @@ export class TagOverviewPanels implements vscode.Disposable {
 class TagOverviewPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
+  private taskFilter: TaskFilter = 'active';
 
   public constructor(
     private readonly tagKey: string,
@@ -186,8 +191,10 @@ class TagOverviewPanel implements vscode.Disposable {
    */
   public show(): void {
     if (!this.panel) {
-      const tagLabel =
-        this.indexer.getSnapshot().tags.get(this.tagKey)?.label ?? this.tagKey;
+      const tagLabel = getOverviewTitle(
+        this.indexer.getSnapshot(),
+        this.tagKey,
+      );
       const panel = vscode.window.createWebviewPanel(
         'deckard.tagOverview',
         `${tagLabel} Overview`,
@@ -199,6 +206,17 @@ class TagOverviewPanel implements vscode.Disposable {
         },
       );
       this.attachPanel(panel);
+    }
+
+    function getOverviewTitle(
+      index: ReturnType<WorkspaceIndexer['getSnapshot']>,
+      tagKey: string,
+    ): string {
+      const entity = index.entities.get(tagKey);
+      if (entity) {
+        return `${entity.kind[0].toUpperCase()}${entity.kind.slice(1)}: ${entity.name}`;
+      }
+      return `${index.tags.get(tagKey)?.label ?? tagKey} Overview`;
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
@@ -230,6 +248,7 @@ class TagOverviewPanel implements vscode.Disposable {
       this.indexer.getSnapshot(),
       this.preferences.value,
       this.tagKey,
+      this.taskFilter,
     );
     if (snapshot) {
       void this.panel.webview.postMessage({ type: 'state', data: snapshot });
@@ -302,8 +321,29 @@ class TagOverviewPanel implements vscode.Disposable {
       await this.preferences.setRenderMode(message.mode);
       return;
     }
+    if (message.type === 'setTaskFilter') {
+      this.taskFilter = message.filter;
+      this.refresh();
+      return;
+    }
     if (message.type === 'setTagOverviewSort') {
       await this.preferences.setTagOverviewSortMode(message.mode);
+      return;
+    }
+    if (message.type === 'setTagOverviewLayout') {
+      await this.preferences.setTagOverviewLayout(message.layout);
+      return;
+    }
+    if (message.type === 'toggleTask') {
+      const task = createTagOverviewSnapshot(
+        this.indexer.getSnapshot(),
+        this.preferences.value,
+        this.tagKey,
+        this.taskFilter,
+      )?.tasks.find((candidate) => candidate.task.id === message.taskId)?.task;
+      if (task) {
+        await toggleTask(task, message.completed);
+      }
       return;
     }
     if (message.type !== 'openSource') {
@@ -314,6 +354,7 @@ class TagOverviewPanel implements vscode.Disposable {
       this.indexer.getSnapshot(),
       this.preferences.value,
       this.tagKey,
+      this.taskFilter,
     );
     const card = snapshot?.sections.find(
       (section) =>
@@ -323,6 +364,15 @@ class TagOverviewPanel implements vscode.Disposable {
     if (card) {
       await this.preferences.recordSectionAccess(card.id);
       await openSourceAt(card.filePath, card.startLine);
+      return;
+    }
+    const task = snapshot?.tasks.find(
+      (candidate) =>
+        candidate.task.filePath === message.filePath &&
+        candidate.task.lineNumber === message.line,
+    );
+    if (task) {
+      await openSourceAt(task.task.filePath, task.task.lineNumber);
     }
   }
 }

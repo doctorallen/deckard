@@ -1,4 +1,5 @@
 import {
+  EntityKind,
   HeadingTagSpan,
   ParsedFile,
   Section,
@@ -12,12 +13,79 @@ interface HeadingMatch {
   text: string;
 }
 
+interface Frontmatter {
+  tags: TagReference[];
+  links: string[];
+  tagSpans: HeadingTagSpan[];
+  endLine?: number;
+}
+
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
 const taskPattern = /^(\s*)([-*+])[ \t]+\[([ xX])\][ \t]+(.*)$/;
-const tagPattern = /(^|[^\w])([@#])([A-Za-z0-9][A-Za-z0-9_-]*)\b/g;
+const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
+const monthDatePattern =
+  /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i;
+const nextWeekdayPattern =
+  /\bnext\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i;
 
 export interface MarkdownParseOptions {
   parseInlineTags?: boolean;
+  entityNamespaceAliases?: EntityNamespaceAliases;
+  personMarker?: string;
+}
+
+export type EntityNamespaceAliases = Readonly<Record<string, string>>;
+
+const entityNamespaces = new Set(['project', 'topic', 'org', 'meeting']);
+const defaultEntityNamespaceAliases: Record<string, string> = {
+  project: 'project',
+  topic: 'topic',
+  meeting: 'meeting',
+  org: 'org',
+  organization: 'org',
+};
+
+/**
+ * Merges valid user aliases with Deckard's canonical entity namespaces.
+ */
+export function getEntityNamespaceAliases(
+  configured: unknown,
+): EntityNamespaceAliases {
+  const aliases = { ...defaultEntityNamespaceAliases };
+  if (!configured || typeof configured !== 'object' || Array.isArray(configured)) {
+    return aliases;
+  }
+
+  Object.entries(configured).forEach(([alias, entityType]) => {
+    const normalizedAlias = alias.trim().toLowerCase();
+    const normalizedType =
+      typeof entityType === 'string'
+        ? entityType.trim().toLowerCase()
+        : undefined;
+    const namespace =
+      normalizedType === 'organization' ? 'org' : normalizedType;
+    if (
+      /^[a-z][a-z0-9_-]*$/.test(normalizedAlias) &&
+      namespace !== undefined &&
+      entityNamespaces.has(namespace)
+    ) {
+      aliases[normalizedAlias] = namespace;
+    }
+  });
+
+  return aliases;
+}
+
+/**
+ * Limits people markers to one punctuation character so they remain distinct
+ * from Markdown syntax and can be matched safely in editor completion.
+ */
+export function getPersonMarker(configured: unknown): string {
+  return typeof configured === 'string' &&
+    /^[!$%&*+,.?:;=@^|~]$/.test(configured)
+    ? configured
+    : '@';
 }
 
 /**
@@ -33,15 +101,42 @@ export function parseMarkdown(
   options: MarkdownParseOptions = {},
 ): ParsedFile {
   const lines = content.split(/\r?\n/);
+  const personMarker = getPersonMarker(options.personMarker);
+  const frontmatter = parseFrontmatter(
+    lines,
+    options.entityNamespaceAliases,
+    personMarker,
+  );
   const fencedLines = findFencedLines(lines);
+  if (frontmatter.endLine !== undefined) {
+    for (let lineIndex = 0; lineIndex <= frontmatter.endLine; lineIndex += 1) {
+      fencedLines.add(lineIndex);
+    }
+  }
   const headings = findHeadings(lines, fencedLines);
   const headingSections = headings.map((heading, headingIndex) =>
-    createSection(filePath, lines, headings, heading, headingIndex, metadata),
+    createSection(
+      filePath,
+      lines,
+      headings,
+      heading,
+      headingIndex,
+      metadata,
+      frontmatter.tags,
+      personMarker,
+    ),
   );
   const inlineSections =
     options.parseInlineTags === false
       ? []
-      : findInlineSections(filePath, lines, fencedLines, metadata);
+      : findInlineSections(
+          filePath,
+          lines,
+          fencedLines,
+          metadata,
+          frontmatter.tags,
+          personMarker,
+        );
   const sections = [...headingSections, ...inlineSections].sort(
     (left, right) => left.startLine - right.startLine,
   );
@@ -52,29 +147,40 @@ export function parseMarkdown(
     headingSections,
     fencedLines,
     metadata,
+    frontmatter.tags,
+    personMarker,
   );
 
-  return {
+  return normalizeParsedTagReferences({
     filePath,
     content,
     sections,
     tasks,
+    links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
-  };
+  }, options.entityNamespaceAliases);
 }
 
 /**
  * Normalizes tag identity without rewriting the spelling shown to users.
  *
- * A shared key lets `#Work` and `@work` aggregate together while retaining
- * the first source label for display in the editor and webviews.
+ * The marker is part of the key, keeping people (`@`) distinct from `#` tags
+ * while retaining the source spelling for display in the editor and webviews.
  */
-export function extractTags(text: string): TagReference[] {
+export function extractTags(
+  text: string,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+  personMarker?: string,
+): TagReference[] {
   const tags: TagReference[] = [];
   const seen = new Set<string>();
 
-  for (const match of findTagMatches(text)) {
+  for (const match of findTagMatches(
+    text,
+    entityNamespaceAliases,
+    personMarker,
+  )) {
     const key = match.key;
 
     if (!seen.has(key)) {
@@ -87,13 +193,267 @@ export function extractTags(text: string): TagReference[] {
 }
 
 /**
+ * Extracts workspace-local Wiki link targets without treating their labels as
+ * paths. Resolution happens against the current workspace index.
+ */
+export function extractWikiLinks(text: string): string[] {
+  const links = new Set<string>();
+
+  for (const match of text.matchAll(wikiLinkPattern)) {
+    const target = match[1].trim();
+    if (target.length > 0) {
+      links.add(target);
+    }
+  }
+
+  return [...links];
+}
+
+/**
+ * Identifies the entity class encoded by a canonical tag.
+ *
+ * Internally normalized @ tags are people. Namespaced # tags name workspace
+ * entities, while unnamespaced # tags remain lightweight labels.
+ */
+export function getEntityKind(
+  tag: TagReference,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): EntityKind | undefined {
+  const key = normalizeTagKey(tag.key, entityNamespaceAliases);
+  if (key.startsWith('@')) {
+    return 'person';
+  }
+
+  const namespace = key.slice(1).split('/', 1)[0];
+  if (
+    namespace === 'project' ||
+    namespace === 'topic' ||
+    namespace === 'meeting'
+  ) {
+    return namespace;
+  }
+  if (namespace === 'org' || namespace === 'organization') {
+    return 'organization';
+  }
+  return undefined;
+}
+
+  /**
+   * Parses the small YAML subset used for portable entity metadata. Unsupported
+   * YAML remains ordinary Markdown and does not prevent notes from indexing.
+   */
+  function parseFrontmatter(
+    lines: string[],
+    entityNamespaceAliases?: EntityNamespaceAliases,
+    personMarker?: string,
+  ): Frontmatter {
+    if (lines[0]?.trim() !== '---') {
+      return { tags: [], links: [], tagSpans: [] };
+    }
+    const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+    if (end < 0) {
+      return { tags: [], links: [], tagSpans: [] };
+    }
+
+    const values = new Map<string, string[]>();
+    const tagSpans: HeadingTagSpan[] = [];
+    let currentKey: string | undefined;
+    lines.slice(1, end).forEach((line, lineIndex) => {
+      const lineNumber = lineIndex + 2;
+      const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/);
+      if (property) {
+        currentKey = property[1].toLowerCase();
+        values.set(currentKey, splitFrontmatterValues(property[2]));
+        const valueStart = line.indexOf(property[2], property[1].length + 1);
+        tagSpans.push(
+          ...createFrontmatterTagSpans(
+            currentKey,
+            property[2],
+            lineNumber,
+            valueStart,
+            entityNamespaceAliases,
+            personMarker,
+          ),
+        );
+        return;
+      }
+      const listItem = line.match(/^\s*-\s+(.+?)\s*$/);
+      if (listItem && currentKey) {
+        values.get(currentKey)?.push(unquote(listItem[1]));
+        tagSpans.push(
+          ...createFrontmatterTagSpans(
+            currentKey,
+            listItem[1],
+            lineNumber,
+            line.indexOf(listItem[1]),
+            entityNamespaceAliases,
+            personMarker,
+          ),
+        );
+      }
+    });
+
+    const tags: TagReference[] = [];
+    const links: string[] = [];
+    values.forEach((fieldValues, key) => {
+      if (key === 'links') {
+        fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
+        return;
+      }
+      fieldValues.forEach((value) => {
+        const tag = frontmatterValueToTag(
+          key,
+          value,
+          entityNamespaceAliases,
+          personMarker,
+        );
+        if (tag) {
+          tags.push(tag);
+        }
+      });
+    });
+
+    return {
+      tags: deduplicateTagReferences(tags),
+      links: [...new Set(links)],
+      tagSpans,
+      endLine: end,
+    };
+  }
+
+  function splitFrontmatterValues(value: string): string[] {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map((item) => unquote(item.trim()))
+        .filter(Boolean);
+    }
+    return [unquote(trimmed)];
+  }
+
+  function unquote(value: string): string {
+    return value.replace(/^['"]|['"]$/g, '');
+  }
+
+  function frontmatterValueToTag(
+    field: string,
+    value: string,
+    entityNamespaceAliases?: EntityNamespaceAliases,
+    personMarker?: string,
+  ): TagReference | undefined {
+    const existing = extractTags(
+      value,
+      entityNamespaceAliases,
+      personMarker,
+    )[0];
+    if (existing) {
+      return existing;
+    }
+    const slug = toSlug(value);
+    if (!slug) {
+      return undefined;
+    }
+    if (field === 'person' || field === 'people') {
+      return {
+        key: `@${slug}`,
+        label: `${getPersonMarker(personMarker)}${slug}`,
+      };
+    }
+    const namespace =
+      field === 'organization' || field === 'organizations'
+        ? 'org'
+        : field.replace(/s$/, '');
+    if (
+      namespace === 'project' ||
+      namespace === 'topic' ||
+      namespace === 'org' ||
+      namespace === 'meeting'
+    ) {
+      return {
+        key: `#${namespace}/${slug}`,
+        label: `#${namespace}/${slug}`,
+      };
+    }
+    if (field === 'tag' || field === 'tags') {
+      return { key: `#${slug}`, label: `#${slug}` };
+    }
+    return undefined;
+  }
+
+  function createFrontmatterTagSpans(
+    field: string,
+    rawValue: string,
+    lineNumber: number,
+    valueStart: number,
+    entityNamespaceAliases?: EntityNamespaceAliases,
+    personMarker?: string,
+  ): HeadingTagSpan[] {
+    const trimmed = rawValue.trim();
+    if (!trimmed || valueStart < 0) {
+      return [];
+    }
+
+    const isArray = trimmed.startsWith('[') && trimmed.endsWith(']');
+    const content = isArray ? trimmed.slice(1, -1) : rawValue;
+    const contentStart =
+      valueStart +
+      (isArray
+        ? rawValue.indexOf('[') + 1
+        : 0);
+    let offset = 0;
+
+    return content.split(',').flatMap((item) => {
+      const leading = item.length - item.trimStart().length;
+      const sourceValue = item.trim();
+      const value = unquote(sourceValue);
+      const tag = frontmatterValueToTag(
+        field,
+        value,
+        entityNamespaceAliases,
+        personMarker,
+      );
+      const quoteOffset = /^['"]/.test(sourceValue) ? 1 : 0;
+      const startColumn = contentStart + offset + leading + quoteOffset;
+      offset += item.length + 1;
+
+      if (!tag || !value) {
+        return [];
+      }
+
+      return [
+        {
+          key: tag.key,
+          label: tag.label,
+          lineNumber,
+          startColumn,
+          endColumn: startColumn + value.length,
+        },
+      ];
+    });
+  }
+
+  function toSlug(value: string): string | undefined {
+    const slug = value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return slug || undefined;
+  }
+
+/**
  * Keeps the older heading-only span contract for callers that need it.
  *
  * Heading spans remain useful as the conservative default for editor links;
  * callers that opt into inline tags use `extractTagSpans` directly.
  */
 export function extractHeadingTagSpans(content: string): HeadingTagSpan[] {
-  return extractTagSpans(content, false);
+  return collectTagSpans(content, false, false);
 }
 
 /**
@@ -105,11 +465,37 @@ export function extractHeadingTagSpans(content: string): HeadingTagSpan[] {
 export function extractTagSpans(
   content: string,
   parseInlineTags = true,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+  personMarker?: string,
+): HeadingTagSpan[] {
+  return collectTagSpans(
+    content,
+    parseInlineTags,
+    true,
+    entityNamespaceAliases,
+    personMarker,
+  );
+}
+
+function collectTagSpans(
+  content: string,
+  parseInlineTags: boolean,
+  includeFrontmatter: boolean,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+  personMarker?: string,
 ): HeadingTagSpan[] {
   const lines = content.split(/\r?\n/);
+  const frontmatter = parseFrontmatter(
+    lines,
+    entityNamespaceAliases,
+    personMarker,
+  );
   const fencedLines = findFencedLines(lines);
 
-  return lines.flatMap((line, lineIndex) => {
+  const contentSpans = lines.flatMap((line, lineIndex) => {
+    if (frontmatter.endLine !== undefined && lineIndex <= frontmatter.endLine) {
+      return [];
+    }
     if (fencedLines.has(lineIndex)) {
       return [];
     }
@@ -117,15 +503,31 @@ export function extractTagSpans(
     const heading = line.match(headingPattern);
     if (heading) {
       const headingTextStart = heading[0].indexOf(heading[2]);
-      return createTagSpans(heading[2], lineIndex + 1, headingTextStart);
+      return createTagSpans(
+        heading[2],
+        lineIndex + 1,
+        headingTextStart,
+        entityNamespaceAliases,
+        personMarker,
+      );
     }
 
     if (!parseInlineTags) {
       return [];
     }
 
-    return createTagSpans(line, lineIndex + 1, 0);
+    return createTagSpans(
+      line,
+      lineIndex + 1,
+      0,
+      entityNamespaceAliases,
+      personMarker,
+    );
   });
+
+  return includeFrontmatter
+    ? [...frontmatter.tagSpans, ...contentSpans]
+    : contentSpans;
 }
 
 /**
@@ -138,8 +540,14 @@ function createTagSpans(
   text: string,
   lineNumber: number,
   columnOffset: number,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+  personMarker?: string,
 ): HeadingTagSpan[] {
-  return findTagMatches(text).map((match) => ({
+  return findTagMatches(
+    text,
+    entityNamespaceAliases,
+    personMarker,
+  ).map((match) => ({
     key: match.key,
     label: match.label,
     lineNumber,
@@ -149,15 +557,63 @@ function createTagSpans(
 }
 
 /**
+ * Collapses configured aliases onto one key so views, favorites, and search
+ * treat `#proj/atlas` and `#project/atlas` as the same entity.
+ */
+function normalizeParsedTagReferences(
+  parsed: ParsedFile,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): ParsedFile {
+  [...parsed.sections, ...parsed.tasks].forEach((item) => {
+    const tags: string[] = [];
+    const tagLabels: Record<string, string> = {};
+
+    item.tags.forEach((key) => {
+      const normalizedKey = normalizeTagKey(key, entityNamespaceAliases);
+      if (!tags.includes(normalizedKey)) {
+        tags.push(normalizedKey);
+      }
+      tagLabels[normalizedKey] ??= item.tagLabels[key] ?? key;
+    });
+
+    item.tags = tags;
+    item.tagLabels = tagLabels;
+  });
+
+  return parsed;
+}
+
+function normalizeTagKey(
+  key: string,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): string {
+  if (!key.startsWith('#')) {
+    return key;
+  }
+
+  const [namespace, ...name] = key.slice(1).split('/');
+  if (!namespace || name.length === 0) {
+    return key;
+  }
+
+  const canonicalNamespace = getEntityNamespaceAliases(entityNamespaceAliases)[
+    namespace.toLowerCase()
+  ];
+  return canonicalNamespace
+    ? `#${canonicalNamespace}/${name.join('/')}`
+    : key;
+}
+
+/**
  * Removes tag syntax from display titles while preserving numeric hash text.
  *
  * Numeric hashes can be dates or ordinary heading content, so stripping them
  * would make related-note titles misleading even though they are not tags.
  */
-export function stripTags(text: string): string {
+export function stripTags(text: string, personMarker?: string): string {
   return text
     .replace(
-      tagPattern,
+      createTagPattern(getPersonMarker(personMarker)),
       (fullMatch, prefix: string, marker: string, rawName: string) =>
         isNumericHashTag(marker, rawName) ? fullMatch : prefix,
     )
@@ -176,8 +632,13 @@ interface TagMatch extends TagReference {
  * Centralizing normalization and numeric-hash filtering keeps counts,
  * navigation ranges, and rendered titles consistent with one another.
  */
-function findTagMatches(text: string): TagMatch[] {
-  return [...text.matchAll(tagPattern)].flatMap((match) => {
+function findTagMatches(
+  text: string,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+  personMarker?: string,
+): TagMatch[] {
+  const activePersonMarker = getPersonMarker(personMarker);
+  return [...text.matchAll(createTagPattern(activePersonMarker))].flatMap((match) => {
     const marker = match[2];
     const rawName = match[3];
     if (isNumericHashTag(marker, rawName)) {
@@ -187,13 +648,29 @@ function findTagMatches(text: string): TagMatch[] {
     const markerIndex = (match.index ?? 0) + match[0].lastIndexOf(marker);
     return [
       {
-        key: rawName.toLowerCase(),
+        key:
+          marker === activePersonMarker
+            ? `@${rawName.toLowerCase()}`
+            : marker === '@'
+              ? `#tag-at/${rawName.toLowerCase()}`
+            : normalizeTagKey(
+                `${marker}${rawName.toLowerCase()}`,
+                entityNamespaceAliases,
+              ),
         label: `${marker}${rawName}`,
         start: markerIndex,
         end: markerIndex + marker.length + rawName.length,
       },
     ];
   });
+}
+
+function createTagPattern(personMarker: string): RegExp {
+  const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+  return new RegExp(
+    `(^|[^\\w])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
+    'g',
+  );
 }
 
 /**
@@ -242,15 +719,21 @@ function createSection(
   heading: HeadingMatch,
   headingIndex: number,
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
+  frontmatterTags: TagReference[] = [],
+  personMarker?: string,
 ): Section {
   const nextBoundary = headings
     .slice(headingIndex + 1)
     .find((candidate) => candidate.level <= heading.level);
   const endLine = nextBoundary ? nextBoundary.lineNumber - 1 : lines.length;
-  const sectionTags = extractTags(heading.text);
+  const sectionTags = mergeTagReferences(
+    frontmatterTags,
+    extractTags(heading.text, undefined, personMarker),
+  );
   const tagLabels = Object.fromEntries(
     sectionTags.map((tag) => [tag.key, tag.label]),
   );
+  const rawContent = lines.slice(heading.lineNumber - 1, endLine).join('\n');
 
   return {
     id: createId(
@@ -262,7 +745,8 @@ function createSection(
     headingLevel: heading.level,
     tags: sectionTags.map((tag) => tag.key),
     tagLabels,
-    rawContent: lines.slice(heading.lineNumber - 1, endLine).join('\n'),
+    links: extractWikiLinks(rawContent),
+    rawContent,
     startLine: heading.lineNumber,
     endLine,
     createdAt: metadata?.createdAt,
@@ -279,6 +763,8 @@ function findInlineSections(
   lines: string[],
   fencedLines: Set<number>,
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
+  frontmatterTags: TagReference[] = [],
+  personMarker?: string,
 ): Section[] {
   return lines.flatMap((line, lineIndex) => {
     if (
@@ -289,10 +775,11 @@ function findInlineSections(
       return [];
     }
 
-    const inlineTags = extractTags(line);
-    if (inlineTags.length === 0) {
+    const localTags = extractTags(line, undefined, personMarker);
+    if (localTags.length === 0) {
       return [];
     }
+    const inlineTags = mergeTagReferences(frontmatterTags, localTags);
 
     const lineNumber = lineIndex + 1;
     return [
@@ -306,6 +793,7 @@ function findInlineSections(
         tagLabels: Object.fromEntries(
           inlineTags.map((tag) => [tag.key, tag.label]),
         ),
+        links: extractWikiLinks(line),
         rawContent: '',
         startLine: lineNumber,
         endLine: lineNumber,
@@ -329,6 +817,8 @@ function findTasks(
   headingSections: Section[],
   fencedLines: Set<number>,
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
+  frontmatterTags: TagReference[] = [],
+  personMarker?: string,
 ): Task[] {
   return lines.flatMap((line, lineIndex) => {
     if (fencedLines.has(lineIndex)) {
@@ -343,14 +833,19 @@ function findTasks(
     const sectionIndex = findNearestHeadingIndex(headings, lineNumber);
     const section =
       sectionIndex >= 0 ? headingSections[sectionIndex] : undefined;
-    const inlineTags = extractTags(match[4]);
+    const inlineTags = extractTags(match[4], undefined, personMarker);
+    const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
+    const inheritedLabels =
+      section?.tagLabels ??
+      Object.fromEntries(frontmatterTags.map((tag) => [tag.key, tag.label]));
     const tags = mergeTags(
-      section?.tags ?? [],
+      inheritedTags,
       inlineTags.map((tag) => tag.key),
     );
-    const tagLabels = mergeTagLabels(section?.tagLabels ?? {}, inlineTags);
+    const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
     const checkboxColumn = match[1].length + match[2].length + 2;
     const checkboxValue = match[3] as ' ' | 'x' | 'X';
+    const dueDate = findTaskDate(match[4], metadata?.updatedAt);
 
     return [
       {
@@ -361,6 +856,8 @@ function findTasks(
         completed: checkboxValue !== ' ',
         tags,
         tagLabels,
+        dueAt: dueDate?.at,
+        dueText: dueDate?.text,
         lineNumber,
         checkboxColumn,
         checkboxValue,
@@ -370,6 +867,106 @@ function findTasks(
       },
     ];
   });
+}
+
+interface TaskDate {
+  at: number;
+  text: string;
+}
+
+/**
+ * Resolves clear task dates without guessing when a relative date has no
+ * trustworthy note timestamp to anchor it.
+ */
+function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
+  const explicit = text.match(explicitDatePattern);
+  if (explicit) {
+    const at = createLocalDate(
+      Number(explicit[1]),
+      Number(explicit[2]) - 1,
+      Number(explicit[3]),
+    );
+    return at === undefined ? undefined : { at, text: explicit[0] };
+  }
+
+  const monthDate = text.match(monthDatePattern);
+  if (monthDate && anchor !== undefined) {
+    const month = monthNumbers[monthDate[1].toLowerCase()];
+    const year = monthDate[3]
+      ? Number(monthDate[3])
+      : new Date(anchor).getFullYear();
+    const at =
+      month === undefined
+        ? undefined
+        : createLocalDate(year, month, Number(monthDate[2]));
+    return at === undefined ? undefined : { at, text: monthDate[0] };
+  }
+
+  const nextWeekday = text.match(nextWeekdayPattern);
+  if (nextWeekday && anchor !== undefined) {
+    const date = new Date(anchor);
+    const targetDay = weekdayNames.indexOf(nextWeekday[1].toLowerCase());
+    const offset = ((targetDay - date.getDay() + 7) % 7) || 7;
+    date.setDate(date.getDate() + offset);
+    date.setHours(0, 0, 0, 0);
+    return { at: date.getTime(), text: nextWeekday[0] };
+  }
+
+  return undefined;
+}
+
+const monthNumbers: Record<string, number> = {
+  january: 0,
+  jan: 0,
+  february: 1,
+  feb: 1,
+  march: 2,
+  mar: 2,
+  april: 3,
+  apr: 3,
+  may: 4,
+  june: 5,
+  jun: 5,
+  july: 6,
+  jul: 6,
+  august: 7,
+  aug: 7,
+  september: 8,
+  sep: 8,
+  sept: 8,
+  october: 9,
+  oct: 9,
+  november: 10,
+  nov: 10,
+  december: 11,
+  dec: 11,
+};
+
+const weekdayNames = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+];
+
+function createLocalDate(
+  year: number,
+  month: number,
+  day: number,
+): number | undefined {
+  const date = new Date(year, month, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month ||
+    date.getDate() !== day
+  ) {
+    return undefined;
+  }
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }
 
 /**
@@ -424,6 +1021,19 @@ function findNearestHeadingIndex(
  */
 function mergeTags(sectionTags: string[], inlineTags: string[]): string[] {
   return [...new Set([...sectionTags, ...inlineTags])];
+}
+
+function mergeTagReferences(
+  inherited: TagReference[],
+  local: TagReference[],
+): TagReference[] {
+  return deduplicateTagReferences([...inherited, ...local]);
+}
+
+function deduplicateTagReferences(tags: TagReference[]): TagReference[] {
+  const deduplicated = new Map<string, TagReference>();
+  tags.forEach((tag) => deduplicated.set(tag.key, tag));
+  return [...deduplicated.values()];
 }
 
 /**

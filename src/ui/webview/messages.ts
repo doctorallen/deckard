@@ -3,7 +3,9 @@ import {
   RenderMode,
   SidebarMessage,
   TagOverviewMessage,
+  TagOverviewLayout,
   TagOverviewSortMode,
+  RelatedNotesSortMode,
   TagSortMode,
   TaskSortMode,
   TaskFilter,
@@ -36,7 +38,15 @@ export function parseDashboardMessage(
       return typeof value.tagKey === 'string'
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'toggleFavoriteEntity':
+      return typeof value.entityKey === 'string'
+        ? (value as unknown as DashboardMessage)
+        : undefined;
     case 'setTagSort':
+      return isTagSortMode(value.mode)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
+    case 'setEntitySort':
       return isTagSortMode(value.mode)
         ? (value as unknown as DashboardMessage)
         : undefined;
@@ -60,6 +70,10 @@ export function parseDashboardMessage(
       return isStringArray(value.tagKeys) &&
         typeof value.tagKey === 'string' &&
         typeof value.isFavorite === 'boolean'
+        ? (value as unknown as DashboardMessage)
+        : undefined;
+    case 'reorderEntities':
+      return isStringArray(value.entityKeys)
         ? (value as unknown as DashboardMessage)
         : undefined;
     case 'openTag':
@@ -86,12 +100,27 @@ export function parseTagOverviewMessage(
       ? (value as unknown as TagOverviewMessage)
       : undefined;
   }
+  if (value.type === 'toggleTask') {
+    return typeof value.taskId === 'string' &&
+      typeof value.completed === 'boolean'
+      ? (value as unknown as TagOverviewMessage)
+      : undefined;
+  }
+  if (value.type === 'setTaskFilter' && isTaskFilter(value.filter)) {
+    return value as unknown as TagOverviewMessage;
+  }
   if (value.type === 'setRenderMode' && isRenderMode(value.mode)) {
     return value as unknown as TagOverviewMessage;
   }
   if (
     value.type === 'setTagOverviewSort' &&
     isTagOverviewSortMode(value.mode)
+  ) {
+    return value as unknown as TagOverviewMessage;
+  }
+  if (
+    value.type === 'setTagOverviewLayout' &&
+    isTagOverviewLayout(value.layout)
   ) {
     return value as unknown as TagOverviewMessage;
   }
@@ -119,7 +148,17 @@ export function parseSidebarMessage(
   if (value.type === 'openTag' && typeof value.tagKey === 'string') {
     return value as unknown as SidebarMessage;
   }
-  if (value.type === 'openDashboard' || value.type === 'createDailyNote') {
+  if (
+    value.type === 'setRelatedNotesSort' &&
+    isRelatedNotesSortMode(value.mode)
+  ) {
+    return value as unknown as SidebarMessage;
+  }
+  if (
+    value.type === 'openDashboard' ||
+    value.type === 'createDailyNote' ||
+    value.type === 'openHelp'
+  ) {
     return value as unknown as SidebarMessage;
   }
   return undefined;
@@ -187,6 +226,25 @@ function isTagOverviewSortMode(value: unknown): value is TagOverviewSortMode {
     value === 'alphabetical' ||
     value === 'created' ||
     value === 'updated' ||
+    value === 'access'
+  );
+}
+
+/**
+ * Keeps the Tag Overview layout constrained to its two supported views.
+ */
+function isTagOverviewLayout(value: unknown): value is TagOverviewLayout {
+  return value === 'tabs' || value === 'split';
+}
+
+/**
+ * Keeps Related Notes sorting constrained to its supported modes.
+ */
+function isRelatedNotesSortMode(value: unknown): value is RelatedNotesSortMode {
+  return (
+    value === 'newest' ||
+    value === 'oldest' ||
+    value === 'tags' ||
     value === 'access'
   );
 }

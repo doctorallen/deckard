@@ -27,6 +27,8 @@ suite('Preferences store', () => {
     await store.toggleFavorite('case');
     await store.setTagSortMode('custom');
     await store.setTagOverviewSortMode('access');
+    await store.setTagOverviewLayout('split');
+    await store.setRelatedNotesSortMode('newest');
     await store.setTagAccessOrder(['case', 'missing']);
     await store.recordTagAccess('case');
     await store.recordTagAccess('case');
@@ -40,6 +42,8 @@ suite('Preferences store', () => {
     assert.deepStrictEqual(store.value.favoriteTags, ['case']);
     assert.strictEqual(store.value.tagSortMode, 'custom');
     assert.strictEqual(store.value.tagOverviewSortMode, 'access');
+    assert.strictEqual(store.value.tagOverviewLayout, 'split');
+    assert.strictEqual(store.value.relatedNotesSortMode, 'newest');
     assert.deepStrictEqual(store.value.tagAccessOrder, ['case']);
     assert.deepStrictEqual(store.value.tagAccessCounts, { case: 2 });
     assert.deepStrictEqual(store.value.taskOrder, ['task-1']);
@@ -58,6 +62,31 @@ suite('Preferences store', () => {
 
     assert.deepStrictEqual(store.value.tagAccessOrder, ['other', 'case']);
     assert.deepStrictEqual(store.value.favoriteTags, ['other']);
+
+    store.dispose();
+  });
+
+  test('persists entity favorites, sort state, and access counts', async () => {
+    const memento = new MemoryMemento();
+    const store = new PreferencesStore(memento);
+
+    await store.toggleFavoriteEntity('#project/neon-relay');
+    await store.setEntitySortMode('access');
+    await store.setEntityAccessOrder(['#project/neon-relay', '@mara-vale']);
+    await store.recordEntityAccess('#project/neon-relay');
+    await store.recordEntityAccess('#project/neon-relay');
+    await store.prune([], [], [], ['#project/neon-relay']);
+
+    assert.deepStrictEqual(store.value.favoriteEntities, [
+      '#project/neon-relay',
+    ]);
+    assert.strictEqual(store.value.entitySortMode, 'access');
+    assert.deepStrictEqual(store.value.entityAccessOrder, [
+      '#project/neon-relay',
+    ]);
+    assert.deepStrictEqual(store.value.entityAccessCounts, {
+      '#project/neon-relay': 2,
+    });
 
     store.dispose();
   });
