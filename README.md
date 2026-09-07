@@ -29,9 +29,11 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `replicant`.
 
-| Replicant | Oblivion | LCARS | Tomcat | Fellowship |
-|---|---|---|---|---|
-| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220">|
+| **Replicant** | **Oblivion** | **LCARS** |
+| --- | --- | --- |
+| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> |
+| **Tomcat** | **Fellowship** | **Synthwave** |
+| <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220"> | <img src="docs/images/dashboard-synthwave.png" alt="Synthwave theme Dashboard." width="220"> |
 
 ## Get started
 

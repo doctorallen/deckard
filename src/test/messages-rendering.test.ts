@@ -192,6 +192,7 @@ suite('Webview contracts', () => {
       'replicant',
       'oblivion',
       'lcars',
+      'synthwave',
       'tomcat',
       'fellowship',
     ]);
@@ -333,6 +334,26 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('synthwave').includes('--bg-dark: #090713'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('synthwave').includes('repeating-linear-gradient'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('synthwave').includes(
+        'background: var(--cyan); color: var(--bg-dark);',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('synthwave').includes(
+        '.favorite-toggle.favorite { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }',
       ),
       true,
     );

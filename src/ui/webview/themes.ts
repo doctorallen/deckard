@@ -4,6 +4,7 @@ export const deckardThemes = [
   'replicant',
   'oblivion',
   'lcars',
+  'synthwave',
   'tomcat',
   'fellowship',
 ] as const;
@@ -28,6 +29,76 @@ export function getDeckardTheme(): DeckardTheme {
 export function getDeckardThemeCss(theme: DeckardTheme): string {
   if (theme === 'replicant') {
     return replicantHoverCss;
+  }
+
+  if (theme === 'synthwave') {
+    return `
+:root {
+  --bg-dark: #090713;
+  --bg: #100c20;
+  --panel-bg: #15102f;
+  --panel: #15102f;
+  --panel-raised: #211748;
+  --panel-deep: #070611;
+  --text: #e7e8ff;
+  --muted: #8e8bb3;
+  --slate-border: #33295e;
+  --line: #4c3d87;
+  --line-strong: #8f75ff;
+  --cyan-bright: #5ff7ff;
+  --cyan: #00e5ff;
+  --amber-bright: #ff8b55;
+  --amber: #ff3ca6;
+  --amber-dim: #8c4d92;
+  --green: #62f5ff;
+  --toxic-green: #62f5ff;
+  --favorite-red: #ff2d95;
+  --warning-orange: #ff8b55;
+  --font-display: var(--vscode-font-family, 'Arial Narrow', 'Avenir Next Condensed', sans-serif);
+  --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', monospace);
+}
+body {
+  background-color: var(--bg-dark);
+  background-image: linear-gradient(rgba(0, 229, 255, .11) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 45, 149, .1) 1px, transparent 1px), linear-gradient(135deg, transparent 0 49%, rgba(143, 117, 255, .05) 49.5%, transparent 50%), repeating-linear-gradient(0deg, rgba(255, 255, 255, .028) 0, rgba(255, 255, 255, .028) 1px, transparent 1px, transparent 4px);
+  background-size: 32px 32px, 32px 32px, 96px 96px, 100% 4px;
+}
+main { border: 1px solid rgba(76, 61, 135, .72); border-top: 2px solid var(--cyan); border-bottom-color: var(--favorite-red); background: rgba(9, 7, 19, .38); box-shadow: 0 0 24px rgba(255, 45, 149, .14), inset 0 0 0 1px rgba(0, 229, 255, .08); }
+main::before, main::after { content: ''; position: absolute; height: 3px; pointer-events: none; }
+main::before { top: -2px; right: 24px; width: 92px; background: var(--favorite-red); box-shadow: -18px 0 0 var(--cyan); clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 100%, 6px 100%); }
+main::after { bottom: -2px; left: 24px; width: 72px; background: var(--amber-bright); box-shadow: 84px 0 0 var(--cyan); }
+header { position: relative; border-color: var(--line); box-shadow: 0 2px 0 rgba(255, 45, 149, .32), 0 0 16px rgba(0, 229, 255, .12); }
+header::after { content: ''; position: absolute; right: 0; bottom: -2px; width: 64px; height: 3px; background: var(--favorite-red); box-shadow: -72px 0 0 var(--cyan); }
+h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-family: var(--font-display); letter-spacing: .08em; text-transform: uppercase; text-shadow: 0 0 12px rgba(95, 247, 255, .18); }
+h1 { letter-spacing: .12em; }
+.eyebrow, .tag-group h3 { color: var(--amber-bright); }
+.telemetry-line span:last-child { color: var(--cyan-bright); }
+.section-heading { border-bottom: 1px solid rgba(0, 229, 255, .3); padding-bottom: 6px; }
+.section-readout { color: var(--cyan); }
+button, select, .tag-open { border-color: var(--cyan); border-radius: 0; background: rgba(7, 6, 17, .94); color: var(--cyan-bright); font-family: var(--font-mono); letter-spacing: .04em; clip-path: polygon(0 5px, 5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%); }
+button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--cyan); background: var(--cyan); color: var(--bg-dark); box-shadow: 0 0 12px rgba(0, 229, 255, .28); }
+input[type='checkbox'] { accent-color: var(--cyan); }
+.metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(21, 16, 47, .92); box-shadow: inset 3px 0 0 var(--favorite-red), 0 0 0 1px rgba(0, 229, 255, .1); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
+.metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .task:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .task-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2), .view-panel:nth-child(3n + 2) { box-shadow: inset 3px 0 0 var(--cyan), 0 0 0 1px rgba(255, 45, 149, .1); }
+.metric::before { border-bottom-color: var(--cyan); color: var(--amber-dim); }
+.metric:nth-child(3n + 2)::before { border-bottom-color: var(--favorite-red); }
+.metric:nth-child(3n)::before { border-bottom-color: var(--amber-bright); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover { border-color: var(--cyan); background: var(--panel-raised); box-shadow: inset 4px 0 0 var(--cyan), 0 0 14px rgba(0, 229, 255, .2); }
+.tag-name, .task-title a { color: var(--cyan-bright); }
+.task-meta { color: var(--muted); }
+.tag-filter summary, .tag-filter-search { border-color: var(--line); background: var(--panel-deep); }
+.tag-filter summary:hover, .tag-filter-search:focus { border-color: var(--favorite-red); color: var(--favorite-red); }
+.tag-filter-menu, .rank-context-menu { border-color: var(--cyan); background: var(--panel-deep); box-shadow: 0 0 20px rgba(0, 229, 255, .16); }
+.drag-ghost { border-color: var(--cyan); background: var(--panel-raised); }
+.drag-placeholder { border-color: var(--favorite-red); }
+.empty { border-color: var(--line); background: var(--panel-deep); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
+.favorite-toggle { border-color: var(--favorite-red); background: rgba(255, 45, 149, .08); color: var(--favorite-red); }
+.favorite-toggle.favorite { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }
+.favorite-toggle .favorite-heart { color: var(--favorite-red); }
+.favorite-toggle.favorite .favorite-heart { color: var(--bg-dark); }
+.favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }
+.favorite-toggle:hover .favorite-heart, .favorite-toggle:focus-visible .favorite-heart { color: var(--bg-dark); }
+${contentHoverCss} .card .tag-open { color: var(--text); }
+`;
   }
 
   if (theme === 'tomcat') {
