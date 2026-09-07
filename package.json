@@ -93,6 +93,7 @@
             "replicant",
             "oblivion",
             "lcars",
+            "synthwave",
             "tomcat",
             "fellowship"
           ],
@@ -100,6 +101,7 @@
             "Deckard's original replicant terminal interface.",
             "A dark technical operations interface inspired by the Oblivion reference screens.",
             "A warm, high-contrast interface inspired by LCARS from Star Trek: The Next Generation.",
+            "A neon grid interface inspired by 1980s synthwave and outrun aesthetics.",
             "A flight-display interface inspired by F-14 Tomcat HUD instrumentation.",
             "A woodland travel-journal interface inspired by The Lord of the Rings."
           ],
