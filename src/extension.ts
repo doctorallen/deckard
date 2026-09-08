@@ -9,6 +9,7 @@ import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
+import { renameIndexedTag } from './ui/commands/renameTag';
 import { EditorTagDecorations } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
@@ -145,6 +146,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('deckard.moveTagsToFrontmatter', () =>
       moveInlineTagsToFrontmatter(),
+    ),
+    vscode.commands.registerCommand('deckard.renameTag', () =>
+      renameIndexedTag(indexer),
     ),
   );
 

@@ -27,6 +27,7 @@ suite('Extension Test Suite', () => {
         'deckard.searchWorkspace',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
+        'deckard.renameTag',
       ],
     );
     assert.strictEqual(
@@ -109,6 +110,9 @@ suite('Extension Test Suite', () => {
       (await vscode.commands.getCommands(true)).includes(
         'deckard.searchWorkspace',
       ),
+    );
+    assert.ok(
+      (await vscode.commands.getCommands(true)).includes('deckard.renameTag'),
     );
   });
 });

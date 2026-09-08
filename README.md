@@ -59,6 +59,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
+| **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 
 ## Markdown format
 
@@ -89,6 +90,8 @@ topics:
 Supported front-matter values are highlighted in the editor and Cmd/Ctrl-clickable just like inline tags: `people`/`person` maps to `@person`, while `projects`, `topics`, `organizations`, and `meetings` map to their typed `#` tags.
 
 Run `Deckard: Move Inline Tags to Front Matter` to collect explicit tags from the current note into plural front-matter fields. Existing values are merged, unrelated YAML fields are preserved, and source tag tokens are removed. Because the resulting metadata applies to the entire note, use the command only for context that belongs to every heading and task in that note.
+
+Run `Deckard: Rename Tag` to search the indexed tag list, choose a replacement, and update every matching source occurrence without changing ordinary prose or fenced code. Enter a complete tag such as `#management/new-name`, or enter only a new name to keep the selected tag's marker and namespace.
 
 - Headings use the ATX form `# Heading` through `###### Heading`. Optional closing hashes are removed from the heading title.
 - Tasks use `-`, `*`, or `+` followed by `[ ]` for open items or `[x]`/`[X]` for completed items.
