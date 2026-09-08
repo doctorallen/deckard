@@ -14,6 +14,8 @@ export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
 
+export type TagTitleDisplayMode = 'inline' | 'separate';
+
 export type RenderMode = 'markdown' | 'html';
 
 export type BuiltInEntityKind =
@@ -43,6 +45,7 @@ export interface Entity {
   name: string;
   sectionIds: string[];
   taskIds: string[];
+  filePaths: string[];
   count: number;
   isFavorite: boolean;
   updatedAt?: number;
@@ -92,6 +95,7 @@ export interface ParsedFile {
   content: string;
   sections: Section[];
   tasks: Task[];
+  frontmatterTags: TagReference[];
   links: string[];
   createdAt?: number;
   updatedAt?: number;
@@ -102,6 +106,7 @@ export interface TagInfo {
   label: string;
   sectionIds: string[];
   taskIds: string[];
+  filePaths: string[];
   count: number;
   isFavorite: boolean;
 }
@@ -167,12 +172,14 @@ export interface TagOverviewSnapshot {
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
+  tagTitleDisplayMode: TagTitleDisplayMode;
 }
 
 export interface TagOverviewCard {
   id: string;
   filePath: string;
   heading: string;
+  titleTags: TagReference[];
   tags: TagReference[];
   rawContent: string;
   renderedHtml: string;
@@ -194,6 +201,7 @@ export interface RankedNote {
   title: string;
   fileName: string;
   sourceLine: number;
+  titleTags: TagReference[];
   updatedAt?: number;
   matchedTags: TagReference[];
   matchCount: number;
@@ -240,6 +248,7 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
 }
 

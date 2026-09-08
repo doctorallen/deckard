@@ -11,6 +11,7 @@ import {
   TagInfo,
   Task,
   TaskFilter,
+  TagTitleDisplayMode,
   TagOverviewCard,
   TagOverviewSortMode,
   TagOverviewSnapshot,
@@ -168,6 +169,7 @@ export function sortTags(
     ...tag,
     sectionIds: [...tag.sectionIds],
     taskIds: [...tag.taskIds],
+    filePaths: [...tag.filePaths],
     isFavorite: preferences.favoriteTags.includes(tag.key),
   }));
 
@@ -287,6 +289,7 @@ export function createTagOverviewSnapshot(
   preferences: PersistedPreferences,
   tagKey: string,
   taskFilter: TaskFilter = 'active',
+  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): TagOverviewSnapshot | undefined {
   const tag = index.tags.get(tagKey);
   if (!tag) {
@@ -297,7 +300,17 @@ export function createTagOverviewSnapshot(
     .map((sectionId) => index.sections.get(sectionId))
     .filter((section): section is Section => section !== undefined)
     .map((section) =>
-      createTagOverviewCard(section, preferences.sectionAccessCounts),
+      createTagOverviewCard(
+        section,
+        preferences.sectionAccessCounts,
+        tagTitleDisplayMode,
+      ),
+    )
+    .concat(
+      tag.filePaths
+        .map((filePath) => index.files.get(filePath))
+        .filter((file): file is ParsedFile => file !== undefined)
+        .map((file) => createFileOverviewCard(file)),
     )
     .sort((left, right) =>
       compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
@@ -308,6 +321,7 @@ export function createTagOverviewSnapshot(
       ...tag,
       sectionIds: [...tag.sectionIds],
       taskIds: [...tag.taskIds],
+      filePaths: [...tag.filePaths],
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
     entity: index.entities.get(tagKey),
@@ -321,6 +335,7 @@ export function createTagOverviewSnapshot(
     renderMode: preferences.renderMode,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,
+    tagTitleDisplayMode,
   };
 }
 
@@ -339,6 +354,7 @@ export function createTagOverviewSidebarSnapshot(
     title: section.heading,
     fileName: getFileName(section.filePath) ?? section.filePath,
     sourceLine: section.startLine,
+    titleTags: section.titleTags,
     matchedTags: [tag],
     matchCount: 1,
     totalTagCount: 1,
@@ -349,6 +365,7 @@ export function createTagOverviewSidebarSnapshot(
     activeTags: [],
     notes,
     tagOverview: tag,
+    tagTitleDisplayMode: snapshot.tagTitleDisplayMode,
     state: notes.length > 0 ? 'ready' : 'noMatches',
   };
 }
@@ -375,12 +392,14 @@ export function createSidebarSnapshot(
   enableKeywordLinks = true,
   relatedNotesSortMode: RelatedNotesSortMode = 'tags',
   sectionAccessCounts: Record<string, number> = {},
+  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): SidebarNotesSnapshot {
   if (!activeFile) {
     return {
       activeTags: [],
       notes: [],
       relatedNotesSortMode,
+      tagTitleDisplayMode,
       state: 'noMarkdown',
     };
   }
@@ -392,12 +411,14 @@ export function createSidebarSnapshot(
     activeFile,
     activeTags,
     enableKeywordLinks,
+    tagTitleDisplayMode,
   );
   return {
     activeFileName: getFileName(activeFilePath),
     activeTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
+    tagTitleDisplayMode,
     state:
       notes.length > 0
         ? 'ready'
@@ -418,6 +439,7 @@ export function collectFileTags(file: ParsedFile): TagReference[] {
     }
   };
 
+  file.frontmatterTags.forEach((tag) => addTag(tag.key, tag.label));
   file.sections.forEach((section) => {
     section.tags.forEach((key) => addTag(key, section.tagLabels[key]));
   });
@@ -449,6 +471,7 @@ export function rankRelatedNotes(
   activeFile: ParsedFile,
   activeTags: TagReference[],
   enableKeywordLinks = true,
+  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): RankedNote[] {
   const activeKeys = new Set(activeTags.map((tag) => tag.key));
   const notes: RankedNote[] = [];
@@ -488,12 +511,22 @@ export function rankRelatedNotes(
     const references: Array<
       Pick<
         RankedNote,
-        'sectionId' | 'title' | 'sourceLine' | 'updatedAt' | 'matchedTags'
+        | 'sectionId'
+        | 'title'
+        | 'sourceLine'
+        | 'titleTags'
+        | 'updatedAt'
+        | 'matchedTags'
       >
     > = matchingSections.map((section) => ({
       sectionId: section.id,
-      title: stripTags(section.heading),
+      title: getNoteTitle(section.heading, tagTitleDisplayMode),
       sourceLine: section.startLine,
+      titleTags: getTitleTags(
+        section.tags,
+        section.tagLabels,
+        getInlineSource(section),
+      ),
       updatedAt: file.updatedAt ?? section.updatedAt,
       matchedTags: activeTags.filter((tag) => section.tags.includes(tag.key)),
     }));
@@ -508,8 +541,9 @@ export function rankRelatedNotes(
     matchingTasks.forEach((task) => {
       references.push({
         sectionId: task.sectionId,
-        title: stripTags(task.title),
+        title: getNoteTitle(task.title, tagTitleDisplayMode),
         sourceLine: task.lineNumber,
+        titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
         updatedAt: file.updatedAt ?? task.updatedAt,
         matchedTags: activeTags.filter((tag) => task.tags.includes(tag.key)),
       });
@@ -522,6 +556,7 @@ export function rankRelatedNotes(
         title: reference.title,
         fileName: getFileName(filePath) ?? filePath,
         sourceLine: reference.sourceLine,
+        titleTags: reference.titleTags,
         updatedAt: reference.updatedAt,
         matchedTags: reference.matchedTags,
         matchCount: reference.matchedTags.length,
@@ -619,6 +654,7 @@ export function sortEntities(
     ...entity,
     sectionIds: [...entity.sectionIds],
     taskIds: [...entity.taskIds],
+    filePaths: [...entity.filePaths],
     isFavorite: preferences.favoriteEntities.includes(entity.key),
   }));
 
@@ -730,11 +766,17 @@ function createDashboardTask(
 function createTagOverviewCard(
   section: Section,
   sectionAccessCounts: Record<string, number>,
+  tagTitleDisplayMode: TagTitleDisplayMode,
 ): TagOverviewCard {
   return {
     id: section.id,
     filePath: section.filePath,
-    heading: stripTags(section.heading),
+    heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    titleTags: getTitleTags(
+      section.tags,
+      section.tagLabels,
+      getInlineSource(section),
+    ),
     tags: section.tags.map((key) => ({
       key,
       label: section.tagLabels[key] ?? `#${key}`,
@@ -746,6 +788,56 @@ function createTagOverviewCard(
     updatedAt: section.updatedAt,
     accessCount: sectionAccessCounts[section.id] ?? 0,
   };
+}
+
+function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
+  const heading = getFileName(file.filePath) ?? file.filePath;
+  const rawContent = getFrontmatterBody(file.content);
+  return {
+    id: `frontmatter:${file.filePath}`,
+    filePath: file.filePath,
+    heading,
+    titleTags: [],
+    tags: file.frontmatterTags.map((tag) => ({ ...tag })),
+    rawContent,
+    renderedHtml: renderMarkdown(rawContent),
+    startLine: 1,
+    createdAt: file.createdAt,
+    updatedAt: file.updatedAt,
+    accessCount: 0,
+  };
+}
+
+export function normalizeTagTitleDisplayMode(
+  value: unknown,
+): TagTitleDisplayMode {
+  return value === 'separate' ? 'separate' : 'inline';
+}
+
+function getNoteTitle(
+  heading: string,
+  tagTitleDisplayMode: TagTitleDisplayMode,
+): string {
+  return tagTitleDisplayMode === 'separate' ? stripTags(heading) : heading;
+}
+
+function getTitleTags(
+  tagKeys: string[],
+  tagLabels: Record<string, string>,
+  title: string,
+): TagReference[] {
+  return tagKeys
+    .map((key) => ({
+      key,
+      label: tagLabels[key] ?? `#${key}`,
+    }))
+    .filter((tag) => title.includes(tag.label));
+}
+
+function getInlineSource(section: Section): string {
+  return section.isInline && section.rawContent
+    ? section.rawContent
+    : section.heading;
 }
 
 /**
@@ -821,6 +913,17 @@ function compareDatesDescending(
 function getSectionBody(rawContent: string): string {
   const lines = rawContent.split(/\r?\n/);
   return lines.length > 1 ? lines.slice(1).join('\n').replace(/^\n/, '') : '';
+}
+
+function getFrontmatterBody(content: string): string {
+  const lines = content.split(/\r?\n/);
+  if (lines[0]?.trim() !== '---') {
+    return content;
+  }
+  const endLine = lines.findIndex(
+    (line, index) => index > 0 && line.trim() === '---',
+  );
+  return endLine >= 0 ? lines.slice(endLine + 1).join('\n').replace(/^\n/, '') : content;
 }
 
 /**

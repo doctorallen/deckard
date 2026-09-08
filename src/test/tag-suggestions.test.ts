@@ -211,6 +211,7 @@ function createTag(key: string, count: number): TagInfo {
     label: key,
     sectionIds: [],
     taskIds: [],
+    filePaths: [],
     count,
     isFavorite: false,
   };

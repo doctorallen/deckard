@@ -28,7 +28,7 @@ export class EditorTagDecorations implements vscode.Disposable {
     this.disposables.push(this.decorationType);
     this.disposables.push(
       vscode.languages.registerDocumentLinkProvider(
-        { language: 'markdown' },
+        markdownDocumentSelector,
         {
           provideDocumentLinks: (document) =>
             this.provideDocumentLinks(document),
@@ -165,6 +165,11 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
   }
 }
+
+const markdownDocumentSelector: vscode.DocumentSelector = [
+  { language: 'markdown' },
+  { pattern: '**/*.md' },
+];
 
 /**
  * Uses the URI extension rather than language mode because users can associate

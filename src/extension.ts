@@ -46,8 +46,8 @@ export function activate(context: vscode.ExtensionContext): void {
     indexer,
     preferences,
     context.extensionUri,
-    (tagKey) => {
-      void tagPanels.show(tagKey);
+    async (tagKey) => {
+      await tagPanels.show(tagKey);
     },
   );
   const sidebarNotes = new SidebarNotesView(

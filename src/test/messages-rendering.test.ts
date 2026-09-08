@@ -477,6 +477,12 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      html.includes("state.tagTitleDisplayMode === 'separate'"),
+      true,
+    );
+    assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
+    assert.strictEqual(html.includes('class="tag-open inline-tag"'), true);
+    assert.strictEqual(
       html.includes('.overview-tabs button.active { border-bottom-color:'),
       false,
     );
@@ -540,6 +546,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('set-related-notes-sort'), true);
     assert.strictEqual(html.includes('related-notes-sort-control'), true);
     assert.strictEqual(html.includes('related-notes-sort-icon'), true);
+    assert.strictEqual(
+      html.includes("state.tagTitleDisplayMode === 'separate'"),
+      true,
+    );
+    assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
+    assert.strictEqual(html.includes("renderTag(tag, 'inline-tag')"), true);
     assert.strictEqual(html.includes('>Most tags</option>'), true);
     assert.strictEqual(html.includes('>Newest</option>'), true);
     assert.strictEqual(html.includes('>Oldest</option>'), true);
@@ -581,6 +593,7 @@ suite('Webview contracts', () => {
       'deckard.notesFolder',
       'deckard.dailyNoteTemplate',
       'deckard.parseInlineTags',
+      'deckard.tagTitleDisplayMode',
       'deckard.enableTagAutocomplete',
       'deckard.enableKeywordLinks',
       'deckard.entityNamespaceAliases',

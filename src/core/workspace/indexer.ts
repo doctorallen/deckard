@@ -527,6 +527,27 @@ export function buildWorkspaceIndex(
         );
       });
     });
+    const contentTagKeys = new Set([
+      ...file.sections.flatMap((section) => section.tags),
+      ...file.tasks.flatMap((task) => task.tags),
+    ]);
+    file.frontmatterTags.forEach((tagReference) => {
+      if (contentTagKeys.has(tagReference.key)) {
+        return;
+      }
+      const tag = getOrCreateTag(tags, tagReference.key, tagReference.label);
+      if (!tag.filePaths.includes(file.filePath)) {
+        tag.filePaths.push(file.filePath);
+      }
+      addEntityReference(
+        entities,
+        tagReference.key,
+        tagReference.label,
+        'file',
+        file.filePath,
+        file.updatedAt,
+      );
+    });
   });
 
   tags.forEach((tag) => {
@@ -537,7 +558,8 @@ export function buildWorkspaceIndex(
       const task = tasks.get(taskId);
       return !task?.sectionId || !taggedSections.has(task.sectionId);
     });
-    tag.count = taggedSections.size + standaloneTasks.length;
+    tag.count =
+      taggedSections.size + standaloneTasks.length + tag.filePaths.length;
   });
   entities.forEach((entity) => {
     const entitySections = new Set(entity.sectionIds);
@@ -545,7 +567,8 @@ export function buildWorkspaceIndex(
       const task = tasks.get(taskId);
       return !task?.sectionId || !entitySections.has(task.sectionId);
     });
-    entity.count = entitySections.size + standaloneTasks.length;
+    entity.count =
+      entitySections.size + standaloneTasks.length + entity.filePaths.length;
   });
 
   return {
@@ -576,6 +599,7 @@ function getOrCreateTag(
     label,
     sectionIds: [],
     taskIds: [],
+    filePaths: [],
     count: 0,
     isFavorite: false,
   };
@@ -591,7 +615,7 @@ function addEntityReference(
   entities: Map<string, Entity>,
   key: string,
   label: string,
-  referenceType: 'section' | 'task',
+  referenceType: 'section' | 'task' | 'file',
   referenceId: string,
   updatedAt: number | undefined,
 ): void {
@@ -609,6 +633,7 @@ function addEntityReference(
       name: getEntityName(label),
       sectionIds: [],
       taskIds: [],
+      filePaths: [],
       count: 0,
       isFavorite: false,
       updatedAt,
@@ -617,7 +642,11 @@ function addEntityReference(
   }
 
   const references =
-    referenceType === 'section' ? entity.sectionIds : entity.taskIds;
+    referenceType === 'section'
+      ? entity.sectionIds
+      : referenceType === 'task'
+        ? entity.taskIds
+        : entity.filePaths;
   references.push(referenceId);
   if (updatedAt !== undefined && (entity.updatedAt ?? 0) < updatedAt) {
     entity.updatedAt = updatedAt;

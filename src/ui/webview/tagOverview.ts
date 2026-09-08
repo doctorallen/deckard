@@ -2,9 +2,17 @@ import * as vscode from 'vscode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
-import { TagOverviewMessage, TaskFilter } from '../../core/types';
-import { createTagOverviewSnapshot } from '../state/dashboardState';
+import {
+  TagOverviewMessage,
+  TagTitleDisplayMode,
+  TaskFilter,
+} from '../../core/types';
+import {
+  createTagOverviewSnapshot,
+  normalizeTagTitleDisplayMode,
+} from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
 import { toggleTask } from '../commands/taskActions';
 import { parseTagOverviewMessage } from './messages';
@@ -38,6 +46,9 @@ export class TagOverviewPanels implements vscode.Disposable {
           this.panels.forEach((panel) => panel.renderHtml());
           this.refresh();
         }
+        if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
+          this.refresh();
+        }
       }),
     );
   }
@@ -54,23 +65,25 @@ export class TagOverviewPanels implements vscode.Disposable {
    */
   public async show(tagKey: string): Promise<void> {
     await this.indexer.ready;
-    if (!this.indexer.getSnapshot().tags.has(tagKey)) {
+    const index = this.indexer.getSnapshot();
+    const canonicalTagKey = resolveIndexedTagKey(index.tags, tagKey);
+    if (!canonicalTagKey) {
       void vscode.window.showWarningMessage(
         `Deckard could not find the tag: ${tagKey}`,
       );
       return;
     }
-    await this.preferences.recordTagAccess(tagKey);
-    if (this.indexer.getSnapshot().entities.has(tagKey)) {
-      await this.preferences.recordEntityAccess(tagKey);
+    await this.preferences.recordTagAccess(canonicalTagKey);
+    if (index.entities.has(canonicalTagKey)) {
+      await this.preferences.recordEntityAccess(canonicalTagKey);
     }
 
-    let panel = this.panels.get(tagKey);
+    let panel = this.panels.get(canonicalTagKey);
     if (!panel) {
-      panel = this.createPanel(tagKey);
+      panel = this.createPanel(canonicalTagKey);
     }
     panel.show();
-    this.setActiveTagKey(tagKey);
+    this.setActiveTagKey(canonicalTagKey);
   }
 
   /**
@@ -81,8 +94,12 @@ export class TagOverviewPanels implements vscode.Disposable {
     state: unknown,
   ): Promise<void> {
     await this.indexer.ready;
-    const tagKey = getSerializedTagKey(state);
-    if (!tagKey || !this.indexer.getSnapshot().tags.has(tagKey)) {
+    const index = this.indexer.getSnapshot();
+    const serializedTagKey = getSerializedTagKey(state);
+    const tagKey = serializedTagKey
+      ? resolveIndexedTagKey(index.tags, serializedTagKey)
+      : undefined;
+    if (!tagKey) {
       webviewPanel.dispose();
       return;
     }
@@ -258,6 +275,7 @@ class TagOverviewPanel implements vscode.Disposable {
       this.preferences.value,
       this.tagKey,
       this.taskFilter,
+      this.getTagTitleDisplayMode(),
     );
     if (snapshot) {
       void this.panel.webview.postMessage({ type: 'state', data: snapshot });
@@ -309,6 +327,14 @@ class TagOverviewPanel implements vscode.Disposable {
     }
   }
 
+  private getTagTitleDisplayMode(): TagTitleDisplayMode {
+    return normalizeTagTitleDisplayMode(
+      vscode.workspace
+        .getConfiguration('deckard')
+        .get<unknown>('tagTitleDisplayMode', 'inline'),
+    );
+  }
+
   /**
    * Validates raw webview input before dispatching any overview action.
    */
@@ -326,8 +352,12 @@ class TagOverviewPanel implements vscode.Disposable {
    */
   private async handleValidMessage(message: TagOverviewMessage): Promise<void> {
     if (message.type === 'openTag') {
-      if (this.indexer.getSnapshot().tags.has(message.tagKey)) {
-        await this.onOpenTag(message.tagKey);
+      const tagKey = resolveIndexedTagKey(
+        this.indexer.getSnapshot().tags,
+        message.tagKey,
+      );
+      if (tagKey) {
+        await this.onOpenTag(tagKey);
       }
       return;
     }
@@ -355,6 +385,7 @@ class TagOverviewPanel implements vscode.Disposable {
         this.preferences.value,
         this.tagKey,
         this.taskFilter,
+        this.getTagTitleDisplayMode(),
       )?.tasks.find((candidate) => candidate.task.id === message.taskId)?.task;
       if (task) {
         await toggleTask(task, message.completed);
@@ -370,6 +401,7 @@ class TagOverviewPanel implements vscode.Disposable {
       this.preferences.value,
       this.tagKey,
       this.taskFilter,
+      this.getTagTitleDisplayMode(),
     );
     const card = snapshot?.sections.find(
       (section) =>

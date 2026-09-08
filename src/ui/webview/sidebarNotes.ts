@@ -2,12 +2,18 @@ import * as vscode from 'vscode';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { ParsedFile, SidebarMessage } from '../../core/types';
+import {
+  ParsedFile,
+  SidebarMessage,
+  TagTitleDisplayMode,
+} from '../../core/types';
 import {
   createSidebarSnapshot,
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
+  normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
@@ -43,6 +49,9 @@ export class SidebarNotesView
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.enableKeywordLinks')) {
+          this.refresh();
+        }
+        if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.theme')) {
@@ -138,6 +147,8 @@ export class SidebarNotesView
         index,
         this.preferences.value,
         activeTagKey,
+        'active',
+        this.getTagTitleDisplayMode(),
       );
       if (overview) {
         return createTagOverviewSidebarSnapshot(overview);
@@ -152,6 +163,15 @@ export class SidebarNotesView
       this.areKeywordLinksEnabled(),
       this.preferences.value.relatedNotesSortMode,
       this.preferences.value.sectionAccessCounts,
+      this.getTagTitleDisplayMode(),
+    );
+  }
+
+  private getTagTitleDisplayMode(): TagTitleDisplayMode {
+    return normalizeTagTitleDisplayMode(
+      vscode.workspace
+        .getConfiguration('deckard')
+        .get<unknown>('tagTitleDisplayMode', 'inline'),
     );
   }
 
@@ -218,8 +238,9 @@ export class SidebarNotesView
       return;
     }
     if (message.type === 'openTag') {
-      if (index.tags.has(message.tagKey)) {
-        await this.onOpenTag(message.tagKey);
+      const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
+      if (tagKey) {
+        await this.onOpenTag(tagKey);
       }
       return;
     }

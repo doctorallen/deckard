@@ -386,7 +386,7 @@ suite('Dashboard state', () => {
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.title),
-      ['First reference', 'Second reference'],
+      ['First reference #work', 'Second reference #work'],
     );
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.fileName),
@@ -395,6 +395,20 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.sourceLine),
       [1, 3],
+    );
+
+    const separate = createSidebarSnapshot(
+      index,
+      active.filePath,
+      active,
+      true,
+      'tags',
+      {},
+      'separate',
+    );
+    assert.deepStrictEqual(
+      separate.notes.map((note) => note.title),
+      ['First reference', 'Second reference'],
     );
   });
 
@@ -447,12 +461,25 @@ suite('Dashboard state', () => {
     const snapshot = createTagOverviewSnapshot(index, preferences, '#work');
 
     assert.ok(snapshot);
-    assert.strictEqual(snapshot.sections[0].heading, 'Heading');
+    assert.strictEqual(snapshot.sections[0].heading, 'Heading #work');
+    assert.deepStrictEqual(snapshot.sections[0].titleTags, [
+      { key: '#work', label: '#work' },
+    ]);
     assert.strictEqual(snapshot.sections[0].rawContent, 'Body text');
     assert.strictEqual(snapshot.sections[0].createdAt, 10);
     assert.strictEqual(snapshot.sections[0].updatedAt, 20);
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
     assert.strictEqual(snapshot.layout, 'tabs');
+
+    const separate = createTagOverviewSnapshot(
+      index,
+      preferences,
+      '#work',
+      'active',
+      'separate',
+    );
+    assert.ok(separate);
+    assert.strictEqual(separate.sections[0].heading, 'Heading');
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -515,11 +542,76 @@ suite('Dashboard state', () => {
 
     assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
-    assert.strictEqual(snapshot.sections[0].heading, 'Inline note');
+    assert.strictEqual(snapshot.sections[0].heading, 'Inline note #work');
     assert.deepStrictEqual(snapshot.sections[0].tags, [
       { key: '#work', label: '#work' },
     ]);
+    assert.deepStrictEqual(snapshot.sections[0].titleTags, [
+      { key: '#work', label: '#work' },
+    ]);
     assert.strictEqual(snapshot.sections[0].startLine, 1);
+  });
+
+  test('keeps tags from wrapped inline entries available as title buttons', () => {
+    const parsed = parseMarkdown(
+      'notes/wrapped-inline.md',
+      [
+        '#project/neon-relay is a project. #topic/synthetic-memory is a topic.',
+        '#org/lumen-transit is an organization. #meeting/sector-nine-briefing is a',
+        'meeting. Ordinary labels such as #follow-up remain lightweight tags.',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#meeting/sector-nine-briefing',
+    );
+
+    assert.ok(snapshot);
+    assert.deepStrictEqual(snapshot.sections[0].titleTags, [
+      { key: '#project/neon-relay', label: '#project/neon-relay' },
+      { key: '#topic/synthetic-memory', label: '#topic/synthetic-memory' },
+      { key: '#org/lumen-transit', label: '#org/lumen-transit' },
+      {
+        key: '#meeting/sector-nine-briefing',
+        label: '#meeting/sector-nine-briefing',
+      },
+      { key: '#follow-up', label: '#follow-up' },
+    ]);
+  });
+
+  test('keeps numbered inline entries separate in tag overviews', () => {
+    const parsed = parseMarkdown(
+      'notes/numbered-inline.md',
+      [
+        '1. @ivo-chen verifies the physical junction.',
+        '2. @mara-vale approves an operational exception.',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const ivo = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '@ivo-chen',
+    );
+    const mara = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '@mara-vale',
+    );
+
+    assert.ok(ivo);
+    assert.ok(mara);
+    assert.deepStrictEqual(ivo.sections.map((section) => section.heading), [
+      '1. @ivo-chen verifies the physical junction.',
+    ]);
+    assert.deepStrictEqual(mara.sections.map((section) => section.heading), [
+      '2. @mara-vale approves an operational exception.',
+    ]);
+    assert.strictEqual(ivo.sections[0].rawContent, '');
+    assert.strictEqual(mara.sections[0].rawContent, '');
   });
 
   test('includes nested bullets in tagged list overview cards', () => {
@@ -573,7 +665,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       sidebar.notes.map((note) => note.title),
-      ['Alpha', 'Beta', 'Zeta'],
+      ['Alpha #work', 'Beta #work', 'Zeta #work'],
     );
     assert.deepStrictEqual(
       sidebar.notes.map((note) => note.fileName),
@@ -587,6 +679,20 @@ suite('Dashboard state', () => {
       key: '#work',
       label: '#work',
     });
+
+    const separateOverview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#work',
+      'active',
+      'separate',
+    );
+    assert.ok(separateOverview);
+    const separateSidebar = createTagOverviewSidebarSnapshot(separateOverview);
+    assert.deepStrictEqual(
+      separateSidebar.notes.map((note) => note.title),
+      ['Alpha', 'Beta', 'Zeta'],
+    );
   });
 });
 
@@ -599,6 +705,7 @@ function createTag(key: string, count: number): TagInfo {
       (_, index) => `${key}-section-${index}`,
     ),
     taskIds: [],
+    filePaths: [],
     count,
     isFavorite: false,
   };
@@ -612,6 +719,7 @@ function createEntity(key: string, name: string, count: number): Entity {
     name,
     sectionIds: [],
     taskIds: [],
+    filePaths: [],
     count,
     isFavorite: false,
   };
@@ -674,6 +782,7 @@ function createCard(
     id: heading,
     filePath: `notes/${heading.toLowerCase()}.md`,
     heading,
+    titleTags: [],
     tags: [],
     rawContent: '',
     renderedHtml: '',

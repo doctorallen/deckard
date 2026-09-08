@@ -127,6 +127,19 @@
           "default": true,
           "description": "Index tags on non-heading Markdown lines as standalone entries."
         },
+        "deckard.tagTitleDisplayMode": {
+          "type": "string",
+          "enum": [
+            "inline",
+            "separate"
+          ],
+          "enumDescriptions": [
+            "Keep tags in related-note and tag-overview titles.",
+            "Remove tags from titles and show them as separate tag controls."
+          ],
+          "default": "inline",
+          "description": "Choose whether tags stay inline in note titles or appear separately."
+        },
         "deckard.enableTagAutocomplete": {
           "type": "boolean",
           "default": true,

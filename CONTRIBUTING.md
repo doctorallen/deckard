@@ -12,6 +12,17 @@ Also update `README.md` when the feature needs installation, configuration, or
 reference documentation. Help and README must describe the same current
 behavior before a change is merged.
 
+## Running the development host
+
+The **Run Extension** launch configuration uses repository-local
+`development-user-data` and `development-extensions` directories under
+`.vscode/` and passes VS Code's `--disable-extensions` flag. This follows
+VS Code's extension-debugging guidance and prevents installed extensions,
+including another Deckard version, from registering overlapping commands or
+link providers in the Extension Development Host. The integration test runner
+uses the same `--disable-extensions` safeguard. The directories are ignored by
+Git and can be removed when a clean development profile is needed.
+
 ## Release workflow
 
 Open pull requests from `dev` into `main` or the current `master` branch.

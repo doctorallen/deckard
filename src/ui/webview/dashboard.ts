@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { DashboardMessage, DashboardSnapshot } from '../../core/types';
 import { createDashboardSnapshot } from '../state/dashboardState';
@@ -24,7 +25,7 @@ export class DashboardPanel implements vscode.Disposable {
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
-    private readonly onOpenTag: (tagKey: string) => void,
+    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
@@ -256,8 +257,11 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       case 'openTag':
-        if (index.tags.has(message.tagKey)) {
-          this.onOpenTag(message.tagKey);
+        {
+          const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
+          if (tagKey) {
+            await this.onOpenTag(tagKey);
+          }
         }
         return;
     }

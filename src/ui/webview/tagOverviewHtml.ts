@@ -73,6 +73,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
+.inline-tag { min-height: 24px; margin-left: 6px; padding: 2px 6px; font-size: .78em; vertical-align: 1px; }
 .cards { display: grid; gap: 12px; margin-top: 20px; }
 .card { border: 2px solid var(--line); background: var(--panel); padding: 14px; cursor: pointer; }
 .card:hover { border-color: var(--amber); }
@@ -129,6 +130,42 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return formatPart(kind) + ': ' + formatPart(name);
   }
 
+  /** Replace source tag tokens with buttons while preserving their position. */
+  function renderInlineTitle(title, tags) {
+    const references = tags || [];
+    const labels = references.map(function (tag) { return tag.label; }).filter(Boolean).sort(function (left, right) { return right.length - left.length; });
+    if (!labels.length) return escapeHtml(title);
+    const pattern = new RegExp(labels.map(function (label) {
+      return String(label).split('').map(function (character) {
+        return '[]{}()|^$+*?.-'.indexOf(character) >= 0 || character === String.fromCharCode(92)
+          ? String.fromCharCode(92) + character
+          : character;
+      }).join('');
+    }).join('|'), 'g');
+    let rendered = '';
+    let offset = 0;
+    const matchedKeys = new Set();
+    title.replace(pattern, function (match, matchOffset) {
+      rendered += escapeHtml(title.slice(offset, matchOffset));
+      const tag = references.find(function (candidate) { return candidate.label === match; });
+      if (tag) {
+        matchedKeys.add(tag.key);
+      }
+      rendered += tag
+        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>'
+        : escapeHtml(match);
+      offset = matchOffset + match.length;
+      return match;
+    });
+    const trailingTags = references
+      .filter(function (tag) { return !matchedKeys.has(tag.key); })
+      .map(function (tag) {
+        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
+      })
+      .join('');
+    return rendered + escapeHtml(title.slice(offset)) + trailingTags;
+  }
+
   /** Rebuild the cards from the latest host snapshot without local duplication. */
   function render() {
     if (!state) return;
@@ -136,15 +173,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : state.tag.label + ' Overview';
     const entityMeta = state.entity
-      ? '<div class="entity-meta">' + escapeHtml(state.entity.label) + ' · ' + state.entity.sectionIds.length + ' note entries · ' + state.entity.taskIds.length + ' tasks</div>'
+      ? '<div class="entity-meta">' + escapeHtml(state.entity.label) + ' · ' + (state.entity.sectionIds.length + state.entity.filePaths.length) + ' note entries · ' + state.entity.taskIds.length + ' tasks</div>'
       : '';
     const cards = state.sections.length ? state.sections.map(function (section) {
       const fileName = section.filePath.split('/').pop() || section.filePath;
       const content = section.rawContent ? (state.renderMode === 'html' ? '<div class="rendered">' + section.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(section.rawContent) + '</pre>') : '';
-      const tags = section.tags.map(function (tag) {
+      const titleHtml = state.tagTitleDisplayMode === 'inline'
+        ? renderInlineTitle(section.heading, section.titleTags)
+        : escapeHtml(section.heading);
+      const tags = state.tagTitleDisplayMode === 'separate' ? section.tags.map(function (tag) {
         return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
-      }).join('');
-      return '<article class="card" tabindex="0" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + escapeHtml(section.heading) + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
+      }).join('') : '';
+      return '<article class="card" tabindex="0" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
     }).join('') : '<div class="empty">No sections currently carry this tag.</div>';
     const tasks = state.tasks.length ? '<div class="task-summary">' + state.tasks.map(function (item) {
       const task = item.task;

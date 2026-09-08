@@ -170,4 +170,38 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].startLine, 1);
   });
+
+  test('indexes front-matter entities without a heading or task', () => {
+    const parsed = parseMarkdown(
+      'notes/metadata-only.md',
+      [
+        '---',
+        'projects: [neon-relay]',
+        'topics: [operations]',
+        '---',
+        'A note described only by its metadata.',
+      ].join('\n'),
+    );
+    const index = buildWorkspaceIndex(
+      new Map([[parsed.filePath, parsed]]),
+    );
+
+    assert.deepStrictEqual(parsed.frontmatterTags, [
+      { key: '#project/neon-relay', label: '#project/neon-relay' },
+      { key: '#topic/operations', label: '#topic/operations' },
+    ]);
+    assert.deepStrictEqual(index.tags.get('#project/neon-relay')?.filePaths, [
+      'notes/metadata-only.md',
+    ]);
+    assert.strictEqual(index.tags.get('#project/neon-relay')?.count, 1);
+    assert.strictEqual(index.entities.get('#project/neon-relay')?.count, 1);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/neon-relay',
+    );
+    assert.ok(snapshot);
+    assert.strictEqual(snapshot.sections.length, 1);
+    assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');
+  });
 });

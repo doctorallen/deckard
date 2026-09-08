@@ -72,6 +72,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note:hover { border-color: var(--line-strong); }
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
+.inline-tag { display: inline-block; margin-left: 5px; padding: 1px 5px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }
 .match-count { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .source { margin-top: 4px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .note .tag-list { margin-top: 7px; }
@@ -93,10 +94,46 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render tag links through one delegated action shape for every sidebar state. */
+  function renderTag(tag, extraClass) {
+    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
+  }
+
   function renderTags(tags, extraClass) {
     return tags.map(function (tag) {
-      return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
+      return renderTag(tag, extraClass);
     }).join('');
+  }
+
+  /** Replace source tag tokens with buttons without changing the title text. */
+  function renderInlineTitle(title, tags) {
+    const references = tags || [];
+    const labels = references.map(function (tag) { return tag.label; }).filter(Boolean).sort(function (left, right) { return right.length - left.length; });
+    if (!labels.length) return escapeHtml(title);
+    const pattern = new RegExp(labels.map(function (label) {
+      return String(label).split('').map(function (character) {
+        return '[]{}()|^$+*?.-'.indexOf(character) >= 0 || character === String.fromCharCode(92)
+          ? String.fromCharCode(92) + character
+          : character;
+      }).join('');
+    }).join('|'), 'g');
+    let rendered = '';
+    let offset = 0;
+    const matchedKeys = new Set();
+    title.replace(pattern, function (match, matchOffset) {
+      rendered += escapeHtml(title.slice(offset, matchOffset));
+      const tag = references.find(function (candidate) { return candidate.label === match; });
+      if (tag) {
+        matchedKeys.add(tag.key);
+      }
+      rendered += tag ? renderTag(tag, 'inline-tag') : escapeHtml(match);
+      offset = matchOffset + match.length;
+      return match;
+    });
+    const trailingTags = references
+      .filter(function (tag) { return !matchedKeys.has(tag.key); })
+      .map(function (tag) { return renderTag(tag, 'inline-tag'); })
+      .join('');
+    return rendered + escapeHtml(title.slice(offset)) + trailingTags;
   }
 
   /** Render explicit empty states so the sidebar explains why no notes appear. */
@@ -114,10 +151,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
     } else {
       content = '<div class="note-list">' + state.notes.map(function (note) {
         const title = note.title || note.fileName || note.filePath;
+        const titleHtml = state.tagTitleDisplayMode === 'inline'
+          ? renderInlineTitle(title, note.titleTags)
+          : escapeHtml(title);
         const fileName = note.fileName || note.filePath;
-        const tags = renderTags(note.matchedTags, 'matched-tag');
+        const tags = state.tagTitleDisplayMode === 'separate'
+          ? renderTags(note.matchedTags, 'matched-tag')
+          : '';
         const matchCount = note.matchCount ? '<span class="match-count">' + note.matchCount + '/' + note.totalTagCount + '</span>' : '';
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + escapeHtml(title) + '</h2>' + matchCount + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + matchCount + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';

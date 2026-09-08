@@ -44,6 +44,18 @@ suite('Extension Test Suite', () => {
     );
     assert.strictEqual(
       extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.tagTitleDisplayMode'
+      ].default,
+      'inline',
+    );
+    assert.deepStrictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.tagTitleDisplayMode'
+      ].enum,
+      ['inline', 'separate'],
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
         'deckard.enableKeywordLinks'
       ].default,
       true,

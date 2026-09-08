@@ -2,4 +2,6 @@ out
 dist
 node_modules
 .vscode-test/
+.vscode/development-user-data/
+.vscode/development-extensions/
 *.vsix

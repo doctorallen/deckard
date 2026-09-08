@@ -397,6 +397,73 @@ suite('Markdown parser', () => {
     );
   });
 
+  test('groups consecutive tagged prose lines into one inline entry', () => {
+    const parsed = parseMarkdown(
+      'notes/inline-paragraph.md',
+      [
+        '# Tag reference',
+        '#project/neon-relay is a project. #topic/synthetic-memory is a topic.',
+        '#org/lumen-transit is an organization. #meeting/sector-nine-briefing is a',
+        'meeting. Ordinary labels such as #follow-up remain lightweight tags.',
+        '',
+        '# Next section',
+      ].join('\n'),
+    );
+
+    const inline = parsed.sections.find((section) => section.isInline);
+    assert.ok(inline);
+    assert.strictEqual(inline.heading, '#project/neon-relay is a project. #topic/synthetic-memory is a topic.');
+    assert.strictEqual(inline.startLine, 2);
+    assert.strictEqual(inline.endLine, 4);
+    assert.strictEqual(
+      inline.rawContent,
+      [
+        '#project/neon-relay is a project. #topic/synthetic-memory is a topic.',
+        '#org/lumen-transit is an organization. #meeting/sector-nine-briefing is a',
+        'meeting. Ordinary labels such as #follow-up remain lightweight tags.',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(inline.tags, [
+      '#project/neon-relay',
+      '#topic/synthetic-memory',
+      '#org/lumen-transit',
+      '#meeting/sector-nine-briefing',
+      '#follow-up',
+    ]);
+  });
+
+  test('keeps tagged numbered list items independent', () => {
+    const parsed = parseMarkdown(
+      'notes/numbered-list.md',
+      [
+        '# Escalation ladder',
+        '1. @ivo-chen verifies the physical junction.',
+        '2. @mara-vale approves an operational exception.',
+        '3. Lumen Transit control records the final decision.',
+      ].join('\n'),
+    );
+
+    assert.deepStrictEqual(
+      parsed.sections.map((section) => section.heading),
+      [
+        'Escalation ladder',
+        '1. @ivo-chen verifies the physical junction.',
+        '2. @mara-vale approves an operational exception.',
+      ],
+    );
+    assert.deepStrictEqual(
+      parsed.sections.slice(1).map((section) => [section.startLine, section.endLine]),
+      [
+        [2, 2],
+        [3, 3],
+      ],
+    );
+    assert.deepStrictEqual(parsed.sections.slice(1).map((section) => section.tags), [
+      ['@ivo-chen'],
+      ['@mara-vale'],
+    ]);
+  });
+
   test('includes nested bullets under a tagged list item', () => {
     const content = [
       '# Night route',

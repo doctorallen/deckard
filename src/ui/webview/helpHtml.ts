@@ -131,7 +131,7 @@ projects: [neon-relay]
 people: [mara-vale]
 topics: [signal-integrity]
 ---</code></pre>
-      <p>Supported singular and plural keys are <code>person</code>/<code>people</code>, <code>project</code>/<code>projects</code>, <code>topic</code>/<code>topics</code>, <code>organization</code>/<code>organizations</code>, <code>meeting</code>/<code>meetings</code>, and <code>tag</code>/<code>tags</code>. Values are highlighted and Cmd/Ctrl-clickable.</p>
+      <p>Supported singular and plural keys are <code>person</code>/<code>people</code>, <code>project</code>/<code>projects</code>, <code>topic</code>/<code>topics</code>, <code>organization</code>/<code>organizations</code>, <code>meeting</code>/<code>meetings</code>, and <code>tag</code>/<code>tags</code>. Values are highlighted and Cmd/Ctrl-clickable, and metadata-only notes still create indexed tag overviews even without a heading or task.</p>
       <p class="note">Use <code>Deckard: Move Inline Tags to Front Matter</code> when the tags apply to the whole note. It merges existing metadata and removes explicit source tags.</p>
     </section>
 
@@ -164,7 +164,8 @@ topics: [signal-integrity]
         <div class="card"><h3>Control tag autocomplete</h3><p><code>deckard.enableTagAutocomplete</code> shows indexed tag and people suggestions by default. Disable it without changing tag indexing, highlighting, or Cmd/Ctrl-click navigation.</p></div>
         <div class="card"><h3>Customize entity aliases</h3><p><code>deckard.entityNamespaceAliases</code> maps one namespace to another, including completely custom targets. For example, <code>{ "proj": "project", "leadership": "management" }</code> makes <code>#proj/atlas</code> a project and collapses <code>#leadership/performance</code> into <code>#management/performance</code>.</p></div>
         <div class="card"><h3>Customize people markers</h3><p><code>deckard.personMarker</code> defaults to <code>@</code>. Set it to <code>~</code> to use <code>~mara-vale</code> for people and keep <code>@inbox</code> as a lightweight tag.</p></div>
-        <div class="card"><h3>Inline entries</h3><p><code>deckard.parseInlineTags</code> controls whether tagged non-heading, non-task lines become separate note entries. Headings and tasks are always indexed.</p></div>
+        <div class="card"><h3>Inline entries</h3><p><code>deckard.parseInlineTags</code> controls whether tagged non-heading, non-task lines become separate note entries. Consecutive tagged prose lines are grouped into one entry so wrapped text does not create truncated duplicate titles. A tagged unordered or numbered list item includes its indented child bullets. Headings and tasks are always indexed.</p></div>
+        <div class="card"><h3>Note title tags</h3><p><code>deckard.tagTitleDisplayMode</code> defaults to <code>inline</code>, keeping source tags in related-note and tag-overview titles as clickable buttons. Set it to <code>separate</code> to pull tags out into dedicated controls after each title.</p></div>
       </div>
     </section>
 

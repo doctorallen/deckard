@@ -28,6 +28,7 @@ interface Frontmatter {
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
 const taskPattern = /^(\s*)([-*+])[ \t]+\[([ xX])\][ \t]+(.*)$/;
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
+const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
 const monthDatePattern =
@@ -182,6 +183,7 @@ export function parseMarkdown(
     content,
     sections,
     tasks,
+    frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
@@ -649,23 +651,37 @@ function normalizeParsedTagReferences(
   parsed: ParsedFile,
   entityNamespaceAliases?: EntityNamespaceAliases,
 ): ParsedFile {
+  parsed.frontmatterTags = normalizeTagReferences(
+    parsed.frontmatterTags,
+    entityNamespaceAliases,
+  );
   [...parsed.sections, ...parsed.tasks].forEach((item) => {
-    const tags: string[] = [];
-    const tagLabels: Record<string, string> = {};
-
-    item.tags.forEach((key) => {
-      const normalizedKey = normalizeTagKey(key, entityNamespaceAliases);
-      if (!tags.includes(normalizedKey)) {
-        tags.push(normalizedKey);
-      }
-      tagLabels[normalizedKey] ??= item.tagLabels[key] ?? key;
-    });
-
-    item.tags = tags;
-    item.tagLabels = tagLabels;
+    const normalized = normalizeTagReferences(
+      item.tags.map((key) => ({
+        key,
+        label: item.tagLabels[key] ?? key,
+      })),
+      entityNamespaceAliases,
+    );
+    item.tags = normalized.map((tag) => tag.key);
+    item.tagLabels = Object.fromEntries(
+      normalized.map((tag) => [tag.key, tag.label]),
+    );
   });
 
   return parsed;
+}
+
+function normalizeTagReferences(
+  references: TagReference[],
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): TagReference[] {
+  const normalized = new Map<string, TagReference>();
+  references.forEach((reference) => {
+    const key = normalizeTagKey(reference.key, entityNamespaceAliases);
+    normalized.set(key, normalized.get(key) ?? { key, label: reference.label });
+  });
+  return [...normalized.values()];
 }
 
 function normalizeTagKey(
@@ -851,51 +867,122 @@ function findInlineSections(
   frontmatterTags: TagReference[] = [],
   personMarker?: string,
 ): Section[] {
-  return lines.flatMap((line, lineIndex) => {
+  const sections: Section[] = [];
+  let lineIndex = 0;
+
+  while (lineIndex < lines.length) {
+    const line = lines[lineIndex];
     if (
       fencedLines.has(lineIndex) ||
       headingPattern.test(line) ||
       taskPattern.test(line)
     ) {
-      return [];
+      lineIndex += 1;
+      continue;
+    }
+
+    const listItem = getListItemMatch(line);
+    if (listItem) {
+      const localTags = extractTags(line, undefined, personMarker);
+      if (localTags.length > 0) {
+        const lineNumber = lineIndex + 1;
+        const endLine = findListItemEndLine(
+          lines,
+          lineIndex,
+          listItem.indentation,
+        );
+        const rawContent = lines.slice(lineIndex, endLine).join('\n');
+        sections.push(
+          createInlineSection(
+            filePath,
+            line,
+            lineNumber,
+            endLine,
+            rawContent,
+            localTags,
+            frontmatterTags,
+            metadata,
+          ),
+        );
+      }
+      lineIndex += 1;
+      continue;
     }
 
     const localTags = extractTags(line, undefined, personMarker);
     if (localTags.length === 0) {
-      return [];
+      lineIndex += 1;
+      continue;
     }
-    const inlineTags = mergeTagReferences(frontmatterTags, localTags);
 
-    const lineNumber = lineIndex + 1;
-    const listItem = getListItemMatch(line);
-    const endLine =
-      listItem === undefined
-        ? lineNumber
-        : findListItemEndLine(lines, lineIndex, listItem.indentation);
+    const startLineIndex = lineIndex;
+    const paragraphLines = [line];
+    lineIndex += 1;
+    while (lineIndex < lines.length) {
+      const continuation = lines[lineIndex];
+      if (
+        fencedLines.has(lineIndex) ||
+        headingPattern.test(continuation) ||
+        taskPattern.test(continuation) ||
+        getListItemMatch(continuation) ||
+        extractTags(continuation, undefined, personMarker).length === 0
+      ) {
+        break;
+      }
+      paragraphLines.push(continuation);
+      lineIndex += 1;
+    }
+
+    const lineNumber = startLineIndex + 1;
     const rawContent =
-      listItem === undefined
-        ? ''
-        : lines.slice(lineIndex, endLine).join('\n');
-    return [
-      {
-        id: createId('inline', `${filePath}:${lineNumber}:${line}`),
+      paragraphLines.length > 1 ? paragraphLines.join('\n') : '';
+    sections.push(
+      createInlineSection(
         filePath,
-        heading: line.trim(),
-        headingLevel: 0,
-        isInline: true,
-        tags: inlineTags.map((tag) => tag.key),
-        tagLabels: Object.fromEntries(
-          inlineTags.map((tag) => [tag.key, tag.label]),
-        ),
-        links: extractWikiLinks(listItem === undefined ? line : rawContent),
+        line,
+        lineNumber,
+        lineNumber + paragraphLines.length - 1,
         rawContent,
-        startLine: lineNumber,
-        endLine,
-        createdAt: metadata?.createdAt,
-        updatedAt: metadata?.updatedAt,
-      },
-    ];
-  });
+        paragraphLines.flatMap((paragraphLine) =>
+          extractTags(paragraphLine, undefined, personMarker),
+        ),
+        frontmatterTags,
+        metadata,
+      ),
+    );
+  }
+
+  return sections;
+}
+
+function createInlineSection(
+  filePath: string,
+  sourceLine: string,
+  lineNumber: number,
+  endLine: number,
+  rawContent: string,
+  localTags: TagReference[],
+  frontmatterTags: TagReference[],
+  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
+): Section {
+  const inlineTags = mergeTagReferences(frontmatterTags, localTags);
+  return {
+    id: createId('inline', `${filePath}:${lineNumber}:${sourceLine}`),
+    filePath,
+    heading: sourceLine.trim(),
+    headingLevel: 0,
+    isInline: true,
+    tags: inlineTags.map((tag) => tag.key),
+    tagLabels: Object.fromEntries(
+      inlineTags.map((tag) => [tag.key, tag.label]),
+    ),
+    links: extractWikiLinks(rawContent || sourceLine),
+    rawContent,
+    startLine: lineNumber,
+    endLine,
+    createdAt: metadata?.createdAt,
+    updatedAt: metadata?.updatedAt,
+  };
 }
 
 /**
@@ -1109,7 +1196,7 @@ function findNearestSection(
 }
 
 function getListItemMatch(line: string): ListItemMatch | undefined {
-  const match = line.match(listItemPattern);
+  const match = line.match(listItemPattern) ?? line.match(orderedListItemPattern);
   return match ? { indentation: match[1].length } : undefined;
 }
 
