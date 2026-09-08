@@ -83,6 +83,64 @@ suite('Markdown parser', () => {
     assert.strictEqual(parsed.tasks[0].dueText, '2026-09-12');
   });
 
+  test('parses tags on H4-H6 headings without treating heading hashes as tags', () => {
+    const content = [
+      '## something',
+      '#### Detail #h4',
+      '##### Deeper #h5',
+      '###### Deepest #h6',
+    ].join('\n');
+    const parsed = parseMarkdown('headings.md', content);
+
+    assert.deepStrictEqual(
+      parsed.sections.map((section) => section.heading),
+      ['something', 'Detail #h4', 'Deeper #h5', 'Deepest #h6'],
+    );
+    assert.deepStrictEqual(
+      parsed.sections.map((section) => section.tags),
+      [[], ['#h4'], ['#h5'], ['#h6']],
+    );
+    assert.deepStrictEqual(
+      extractHeadingTagSpans(content).map((span) => ({
+        key: span.key,
+        lineNumber: span.lineNumber,
+      })),
+      [
+        { key: '#h4', lineNumber: 2 },
+        { key: '#h5', lineNumber: 3 },
+        { key: '#h6', lineNumber: 4 },
+      ],
+    );
+    assert.deepStrictEqual(extractTags('## something'), []);
+    assert.deepStrictEqual(extractTags('##something'), []);
+    assert.deepStrictEqual(
+      parseMarkdown('not-a-heading.md', '##something').sections,
+      [],
+    );
+  });
+
+  test('supports a heading whose title is only a tag', () => {
+    const content = '#### #SDLC';
+    const parsed = parseMarkdown('tag-heading.md', content);
+
+    assert.strictEqual(parsed.sections.length, 1);
+    assert.strictEqual(parsed.sections[0].heading, '#SDLC');
+    assert.strictEqual(parsed.sections[0].headingLevel, 4);
+    assert.deepStrictEqual(parsed.sections[0].tags, ['#sdlc']);
+    assert.deepStrictEqual(parsed.sections[0].tagLabels, {
+      '#sdlc': '#SDLC',
+    });
+    assert.deepStrictEqual(extractHeadingTagSpans(content), [
+      {
+        key: '#sdlc',
+        label: '#SDLC',
+        lineNumber: 1,
+        startColumn: 5,
+        endColumn: 10,
+      },
+    ]);
+  });
+
   test('normalizes configured entity namespace aliases', () => {
     const aliases = getEntityNamespaceAliases({
       proj: 'project',
@@ -337,6 +395,45 @@ suite('Markdown parser', () => {
       parsed.sections.some((section) => section.tags.includes('ignored')),
       false,
     );
+  });
+
+  test('includes nested bullets under a tagged list item', () => {
+    const content = [
+      '# Night route',
+      '- #project/east-junction',
+      '  - Finishing the relay inspection.',
+      '  - Moving the patrol to the abandoned platform.',
+      '  - [ ] Verify the floodwall sensor.',
+      '- #project/neon-relay',
+      '  - Keep this sibling entry separate.',
+    ].join('\n');
+    const parsed = parseMarkdown('notes/list-items.md', content);
+    const eastJunction = parsed.sections.find((section) =>
+      section.tags.includes('#project/east-junction'),
+    );
+
+    assert.ok(eastJunction);
+    assert.strictEqual(eastJunction.isInline, true);
+    assert.strictEqual(eastJunction.startLine, 2);
+    assert.strictEqual(eastJunction.endLine, 5);
+    assert.strictEqual(
+      eastJunction.rawContent,
+      [
+        '- #project/east-junction',
+        '  - Finishing the relay inspection.',
+        '  - Moving the patrol to the abandoned platform.',
+        '  - [ ] Verify the floodwall sensor.',
+      ].join('\n'),
+    );
+    assert.strictEqual(parsed.tasks[0].sectionId, eastJunction.id);
+    assert.deepStrictEqual(parsed.tasks[0].tags, ['#project/east-junction']);
+
+    const neonRelay = parsed.sections.find((section) =>
+      section.tags.includes('#project/neon-relay'),
+    );
+    assert.ok(neonRelay);
+    assert.strictEqual(neonRelay.startLine, 6);
+    assert.strictEqual(neonRelay.endLine, 7);
   });
 
   test('can disable standalone inline tag entries', () => {

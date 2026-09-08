@@ -14,6 +14,10 @@ interface HeadingMatch {
   text: string;
 }
 
+interface ListItemMatch {
+  indentation: number;
+}
+
 interface Frontmatter {
   tags: TagReference[];
   links: string[];
@@ -23,6 +27,7 @@ interface Frontmatter {
 
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
 const taskPattern = /^(\s*)([-*+])[ \t]+\[([ xX])\][ \t]+(.*)$/;
+const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
 const monthDatePattern =
@@ -165,8 +170,7 @@ export function parseMarkdown(
   const tasks = findTasks(
     filePath,
     lines,
-    headings,
-    headingSections,
+    sections,
     fencedLines,
     metadata,
     frontmatter.tags,
@@ -749,7 +753,7 @@ function findTagMatches(
 function createTagPattern(personMarker: string): RegExp {
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
   return new RegExp(
-    `(^|[^\\w])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
+    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
     'g',
   );
 }
@@ -863,6 +867,15 @@ function findInlineSections(
     const inlineTags = mergeTagReferences(frontmatterTags, localTags);
 
     const lineNumber = lineIndex + 1;
+    const listItem = getListItemMatch(line);
+    const endLine =
+      listItem === undefined
+        ? lineNumber
+        : findListItemEndLine(lines, lineIndex, listItem.indentation);
+    const rawContent =
+      listItem === undefined
+        ? ''
+        : lines.slice(lineIndex, endLine).join('\n');
     return [
       {
         id: createId('inline', `${filePath}:${lineNumber}:${line}`),
@@ -874,10 +887,10 @@ function findInlineSections(
         tagLabels: Object.fromEntries(
           inlineTags.map((tag) => [tag.key, tag.label]),
         ),
-        links: extractWikiLinks(line),
-        rawContent: '',
+        links: extractWikiLinks(listItem === undefined ? line : rawContent),
+        rawContent,
         startLine: lineNumber,
-        endLine: lineNumber,
+        endLine,
         createdAt: metadata?.createdAt,
         updatedAt: metadata?.updatedAt,
       },
@@ -894,8 +907,7 @@ function findInlineSections(
 function findTasks(
   filePath: string,
   lines: string[],
-  headings: HeadingMatch[],
-  headingSections: Section[],
+  sections: Section[],
   fencedLines: Set<number>,
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   frontmatterTags: TagReference[] = [],
@@ -911,9 +923,7 @@ function findTasks(
     }
 
     const lineNumber = lineIndex + 1;
-    const sectionIndex = findNearestHeadingIndex(headings, lineNumber);
-    const section =
-      sectionIndex >= 0 ? headingSections[sectionIndex] : undefined;
+    const section = findNearestSection(sections, lineNumber);
     const inlineTags = extractTags(match[4], undefined, personMarker);
     const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
     const inheritedLabels =
@@ -1080,21 +1090,59 @@ export function findFencedLines(lines: string[]): Set<number> {
 }
 
 /**
- * Finds the last heading before a task so inherited tags follow source order.
+ * Finds the nearest containing section so inherited tags follow source order.
  */
-function findNearestHeadingIndex(
-  headings: HeadingMatch[],
+function findNearestSection(
+  sections: Section[],
   lineNumber: number,
+): Section | undefined {
+  return sections
+    .filter(
+      (section) =>
+        section.startLine < lineNumber && section.endLine >= lineNumber,
+    )
+    .sort(
+      (left, right) =>
+        right.startLine - left.startLine ||
+        right.headingLevel - left.headingLevel,
+    )[0];
+}
+
+function getListItemMatch(line: string): ListItemMatch | undefined {
+  const match = line.match(listItemPattern);
+  return match ? { indentation: match[1].length } : undefined;
+}
+
+/**
+ * Extends a tagged list item through its indented descendants, using the
+ * same boundary rule as a heading section: the next sibling or ancestor item
+ * ends the note.
+ */
+function findListItemEndLine(
+  lines: string[],
+  startIndex: number,
+  indentation: number,
 ): number {
-  let nearestIndex = -1;
-
-  headings.forEach((heading, headingIndex) => {
-    if (heading.lineNumber < lineNumber) {
-      nearestIndex = headingIndex;
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    const listItem = getListItemMatch(line);
+    if (listItem && listItem.indentation <= indentation) {
+      return index;
     }
-  });
 
-  return nearestIndex;
+    if (
+      line.trim().length > 0 &&
+      getLeadingWhitespaceLength(line) <= indentation
+    ) {
+      return index;
+    }
+  }
+
+  return lines.length;
+}
+
+function getLeadingWhitespaceLength(line: string): number {
+  return line.match(/^\s*/)?.[0].length ?? 0;
 }
 
 /**

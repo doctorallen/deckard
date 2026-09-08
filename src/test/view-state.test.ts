@@ -522,6 +522,35 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.sections[0].startLine, 1);
   });
 
+  test('includes nested bullets in tagged list overview cards', () => {
+    const parsed = parseMarkdown(
+      'notes/list-item.md',
+      [
+        '- #project/east-junction',
+        '  - Finishing the relay inspection.',
+        '  - Moving the patrol to the abandoned platform.',
+        '- #project/neon-relay',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/east-junction',
+    );
+
+    assert.ok(snapshot);
+    assert.strictEqual(snapshot.sections.length, 1);
+    assert.strictEqual(
+      snapshot.sections[0].rawContent,
+      [
+        '  - Finishing the relay inspection.',
+        '  - Moving the patrol to the abandoned platform.',
+      ].join('\n'),
+    );
+  });
+
   test('projects tag overview cards into sidebar notes without changing order', () => {
     const first = createFile(
       'notes/first.md',

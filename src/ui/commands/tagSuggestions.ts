@@ -204,7 +204,7 @@ export function getTagCompletionContext(
   const linePrefix = line.slice(0, character);
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
   const tagTokenPattern = new RegExp(
-    `(^|[^\\w])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)?$`,
+    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)?$`,
   );
   const match = linePrefix.match(tagTokenPattern);
   if (!match) {
