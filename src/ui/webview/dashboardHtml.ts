@@ -115,7 +115,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .task-filter-toggle button { display: inline-grid; width: 30px; place-items: center; padding: 5px; }
 .task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .tag-filter { position: relative; }
-.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); text-transform: uppercase; }
+.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }
 .tag-filter summary .control-icon-svg { color: inherit; }
 .tag-filter summary::-webkit-details-marker { display: none; }
 .tag-filter summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); }

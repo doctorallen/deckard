@@ -180,6 +180,12 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
     assert.strictEqual(html.includes("'Active tasks'"), true);
+    assert.strictEqual(
+      html.includes(
+        '.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes('class="tag-open"'), false);
     assert.strictEqual(
       html.includes("const entityRow = event.target.closest('.entity-row');"),
