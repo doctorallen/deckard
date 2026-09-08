@@ -140,14 +140,9 @@
           },
           "additionalProperties": {
             "type": "string",
-            "enum": [
-              "project",
-              "topic",
-              "organization",
-              "meeting"
-            ]
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
           },
-          "description": "Maps custom #namespace aliases to canonical entity types. For example, { \"proj\": \"project\", \"client\": \"organization\" } recognizes #proj/atlas and #client/acme."
+          "description": "Maps one #namespace to another. Targets can be built-in or custom; for example, { \"proj\": \"project\", \"leadership\": \"management\" } treats #proj/atlas as a project and collapses #leadership/performance into #management/performance."
         },
         "deckard.personMarker": {
           "type": "string",

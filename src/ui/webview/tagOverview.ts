@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { formatEntityTitle } from '../../core/markdown/parser';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { TagOverviewMessage, TaskFilter } from '../../core/types';
@@ -222,7 +223,7 @@ class TagOverviewPanel implements vscode.Disposable {
     ): string {
       const entity = index.entities.get(tagKey);
       if (entity) {
-        return `${entity.kind[0].toUpperCase()}${entity.kind.slice(1)}: ${entity.name}`;
+        return formatEntityTitle(entity.kind, entity.name);
       }
       return `${index.tags.get(tagKey)?.label ?? tagKey} Overview`;
     }

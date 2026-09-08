@@ -64,7 +64,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 
 Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled.
 
-By default, use `@` for people and namespaced `#` tags for canonical workspace entities:
+By default, use `@` for people and namespaced `#` tags for workspace entities:
 
 ```markdown
 # Project Atlas #project/atlas
@@ -73,7 +73,7 @@ Met with @alex-smith about [[Q3 planning]].
 - [ ] Send the proposal by 2026-09-12 #project/atlas
 ```
 
-`#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs. Simple `#follow-up` tags remain supported. Deckard distinguishes `@alex` from `#alex`. You can configure namespace aliases and move the people marker; when the people marker is changed from `@`, `@name` becomes a lightweight tag.
+`#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs. Any other namespaced tag, such as `#management/performance`, creates a new namespace automatically and appears as `Management: Performance` in its overview. Simple unnamespaced `#follow-up` tags remain supported and appear in the Dashboard under **Other tags**. Deckard distinguishes `@alex` from `#alex`. You can configure namespace aliases to map a custom namespace to any built-in or custom target namespace, and you can move the people marker; when the people marker is changed from `@`, `@name` becomes a lightweight tag.
 
 Frontmatter can add portable entity context to every heading and task in a note:
 
@@ -117,9 +117,9 @@ Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed t
 
 ## Dashboard
 
-Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, canonical tags, and tasks in one place.
+Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, namespaced entities, lightweight tags, and tasks in one place.
 
-- **Tags** lists people, projects, topics, organizations, and meetings as canonical tags. Filter by type, favorite important tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a tag or use its context menu to move it to the top or bottom.
+- **Tags** lists built-in and automatically created namespaced entities, plus unnamespaced lightweight tags under **Other tags**. Use **All types** to show everything; built-in and user-created namespaces are also available as type filters. Favorite important tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a tag or use its context menu to move it to the top or bottom.
 - **Tasks** lets you switch between all, active, and completed tasks, and sort by rank, creation time, or update time. Rank is the default. Date sorting uses the source file's filesystem timestamps.
 - **Task tags** lets you select one or more tags. A task appears when it matches any selected tag.
 - Select a tag to open its [tag overview](#tag-overviews).
@@ -129,7 +129,7 @@ Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, 
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, canonical tag, and Wiki-link totals from the index. It also shows the most-viewed tags, canonical tags, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
+Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
 
 ## Related Notes
 
@@ -190,7 +190,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Heading and task-line tags remain available when `false`. |
 | `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |
 | `deckard.enableKeywordLinks` | `true` | Includes significant shared keywords when Related Notes finds matches. Disable it to show shared tags and intentional Wiki links only. |
-| `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps custom `#namespace` aliases to canonical entity types. For example, `{ "proj": "project", "client": "organization" }` treats `#proj/atlas` and `#client/acme` as canonical project and organization tags. |
+| `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps one `#namespace` to another. Targets can be built-in or custom; for example, `{ "proj": "project", "leadership": "management" }` treats `#proj/atlas` as a project and collapses `#leadership/performance` into `#management/performance`. Other namespaced tags become entities automatically without configuration. |
 | `deckard.personMarker` | `@` | Selects the single punctuation character that identifies people. Set it to `~` to use `~mara-vale` for people and reserve `@inbox` for a lightweight tag. |
 
 ## Source safety and persistence

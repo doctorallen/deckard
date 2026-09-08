@@ -197,6 +197,42 @@ suite('Dashboard state', () => {
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
+  test('keeps lightweight tags alongside canonical entities in the dashboard', () => {
+    const parsed = createFile(
+      'notes/project.md',
+      '# Project #project-name #project/project-name #management/performance',
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createDashboardSnapshot(index, defaultPreferences, 'active');
+
+    assert.strictEqual(
+      snapshot.tags.some((tag) => tag.key === '#project-name'),
+      true,
+    );
+    assert.strictEqual(
+      snapshot.entities.some((entity) => entity.key === '#project-name'),
+      false,
+    );
+    assert.strictEqual(
+      snapshot.entities.some((entity) => entity.key === '#project/project-name'),
+      true,
+    );
+    assert.strictEqual(
+      snapshot.entities.find(
+        (entity) => entity.key === '#management/performance',
+      )?.kind,
+      'management',
+    );
+    assert.strictEqual(
+      createTagOverviewSnapshot(
+        index,
+        defaultPreferences,
+        '#management/performance',
+      )?.entity?.name,
+      'performance',
+    );
+  });
+
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
     const snapshot = createDashboardSnapshot(

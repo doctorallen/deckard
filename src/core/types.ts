@@ -16,12 +16,20 @@ export type TaskFilter = 'all' | 'active' | 'completed';
 
 export type RenderMode = 'markdown' | 'html';
 
-export type EntityKind =
+export type BuiltInEntityKind =
   | 'person'
   | 'project'
   | 'topic'
   | 'organization'
   | 'meeting';
+
+/**
+ * Entity kinds include built-in types and workspace-defined namespaces.
+ *
+ * The open string branch lets a namespaced tag such as `#management/item`
+ * become an entity without requiring a configuration entry first.
+ */
+export type EntityKind = BuiltInEntityKind | (string & {});
 
 export interface TagReference {
   key: string;

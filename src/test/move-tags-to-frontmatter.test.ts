@@ -6,7 +6,7 @@ suite('Move inline tags to front matter', () => {
   test('groups explicit tags into typed front matter and removes their source tokens', () => {
     const transformed = moveInlineTagsToFrontmatterContent(
       [
-        '# Launch #project/atlas @mara-vale',
+        '# Launch #project/atlas #management/performance @mara-vale',
         '',
         '- [ ] Send the brief #topic/launch-readiness #follow-up',
       ].join('\n'),
@@ -19,7 +19,7 @@ suite('Move inline tags to front matter', () => {
         'people: [mara-vale]',
         'projects: [atlas]',
         'topics: [launch-readiness]',
-        'tags: [follow-up]',
+        'tags: [management/performance, follow-up]',
         '---',
         '# Launch',
         '',

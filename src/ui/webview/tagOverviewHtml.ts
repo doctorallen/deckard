@@ -121,11 +121,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="m5.5 8 1.7 1.7 3.3-3.3"/></svg>';
   }
 
+  /** Give built-in and user-created namespaces the same readable title form. */
+  function formatEntityTitle(kind, name) {
+    function formatPart(value) {
+      return String(value).replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (character) { return character.toUpperCase(); });
+    }
+    return formatPart(kind) + ': ' + formatPart(name);
+  }
+
   /** Rebuild the cards from the latest host snapshot without local duplication. */
   function render() {
     if (!state) return;
     const title = state.entity
-      ? state.entity.kind.charAt(0).toUpperCase() + state.entity.kind.slice(1) + ': ' + state.entity.name
+      ? formatEntityTitle(state.entity.kind, state.entity.name)
       : state.tag.label + ' Overview';
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + escapeHtml(state.entity.label) + ' · ' + state.entity.sectionIds.length + ' note entries · ' + state.entity.taskIds.length + ' tasks</div>'

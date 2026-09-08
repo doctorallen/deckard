@@ -1,4 +1,5 @@
 import {
+  BuiltInEntityKind,
   EntityKind,
   HeadingTagSpan,
   ParsedFile,
@@ -28,6 +29,8 @@ const monthDatePattern =
   /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i;
 const nextWeekdayPattern =
   /\bnext\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i;
+const namespacePattern = /^[a-z][a-z0-9_-]*$/;
+const reservedNamespace = 'tag-at';
 
 export interface MarkdownParseOptions {
   parseInlineTags?: boolean;
@@ -37,7 +40,6 @@ export interface MarkdownParseOptions {
 
 export type EntityNamespaceAliases = Readonly<Record<string, string>>;
 
-const entityNamespaces = new Set(['project', 'topic', 'org', 'meeting']);
 const defaultEntityNamespaceAliases: Record<string, string> = {
   project: 'project',
   topic: 'topic',
@@ -47,7 +49,8 @@ const defaultEntityNamespaceAliases: Record<string, string> = {
 };
 
 /**
- * Merges valid user aliases with Deckard's canonical entity namespaces.
+ * Normalizes built-in aliases and accepts valid workspace-defined namespace
+ * aliases without requiring the target namespace to be predeclared.
  */
 export function getEntityNamespaceAliases(
   configured: unknown,
@@ -66,15 +69,34 @@ export function getEntityNamespaceAliases(
     const namespace =
       normalizedType === 'organization' ? 'org' : normalizedType;
     if (
-      /^[a-z][a-z0-9_-]*$/.test(normalizedAlias) &&
+      namespacePattern.test(normalizedAlias) &&
       namespace !== undefined &&
-      entityNamespaces.has(namespace)
+      namespacePattern.test(namespace) &&
+      normalizedAlias !== reservedNamespace &&
+      namespace !== reservedNamespace
     ) {
       aliases[normalizedAlias] = namespace;
     }
   });
 
+  Object.keys(aliases).forEach((alias) => {
+    aliases[alias] = resolveNamespaceAlias(alias, aliases);
+  });
+
   return aliases;
+}
+
+function resolveNamespaceAlias(
+  namespace: string,
+  aliases: Record<string, string>,
+): string {
+  let current = namespace;
+  const visited = new Set<string>();
+  while (aliases[current] && !visited.has(current)) {
+    visited.add(current);
+    current = aliases[current];
+  }
+  return current;
 }
 
 /**
@@ -224,18 +246,63 @@ export function getEntityKind(
     return 'person';
   }
 
-  const namespace = key.slice(1).split('/', 1)[0];
-  if (
-    namespace === 'project' ||
-    namespace === 'topic' ||
-    namespace === 'meeting'
-  ) {
-    return namespace;
+  const namespace = getEntityNamespace(tag, entityNamespaceAliases);
+  return namespace === 'org' || namespace === 'organization'
+    ? 'organization'
+    : namespace;
+}
+
+/**
+ * Returns the namespace encoded by a namespaced hash tag.
+ *
+ * Every namespace creates an entity on first use. The internal `tag-at`
+ * namespace remains excluded because it represents a generic `@` tag when the
+ * people marker is customized.
+ */
+export function getEntityNamespace(
+  tag: TagReference,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): string | undefined {
+  const key = normalizeTagKey(tag.key, entityNamespaceAliases);
+  if (!key.startsWith('#')) {
+    return undefined;
   }
-  if (namespace === 'org' || namespace === 'organization') {
-    return 'organization';
+
+  const [namespace, ...name] = key.slice(1).split('/');
+  if (!namespace || name.length === 0 || namespace.toLowerCase() === 'tag-at') {
+    return undefined;
   }
-  return undefined;
+
+  return namespace.toLowerCase();
+}
+
+/**
+ * Identifies the fixed entity kinds that have dedicated front matter groups
+ * and Dashboard filters.
+ */
+export function isBuiltInEntityKind(
+  kind: EntityKind | undefined,
+): kind is BuiltInEntityKind {
+  return (
+    kind === 'person' ||
+    kind === 'project' ||
+    kind === 'topic' ||
+    kind === 'organization' ||
+    kind === 'meeting'
+  );
+}
+
+/**
+ * Formats an entity title for overview tabs and panel titles.
+ */
+export function formatEntityTitle(kind: string, name: string): string {
+  return `${formatTitlePart(kind)}: ${formatTitlePart(name)}`;
+}
+
+function formatTitlePart(value: string): string {
+  return value
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b[a-z]/g, (character) => character.toUpperCase());
 }
 
   /**
@@ -353,6 +420,20 @@ export function getEntityKind(
     )[0];
     if (existing) {
       return existing;
+    }
+    if (field === 'tag' || field === 'tags') {
+      const namespacedValue = value
+        .trim()
+        .match(
+          /^#?([A-Za-z][A-Za-z0-9_-]*(?:\/[A-Za-z0-9][A-Za-z0-9_-]*)+)$/,
+        );
+      if (namespacedValue) {
+        const label = `#${namespacedValue[1]}`;
+        return {
+          key: normalizeTagKey(label.toLowerCase(), entityNamespaceAliases),
+          label,
+        };
+      }
     }
     const slug = toSlug(value);
     if (!slug) {

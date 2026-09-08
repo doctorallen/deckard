@@ -180,6 +180,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
+  function formatEntityKindLabel(value) {
+    return String(value).replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (character) { return character.toUpperCase(); });
+  }
+
   /** Use familiar list and checkbox icons without losing accessible labels. */
   function taskFilterIcon(filter) {
     if (filter === 'all') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 4h8M5 8h8M5 12h8"/><circle cx="2.5" cy="4" r=".5"/><circle cx="2.5" cy="8" r=".5"/><circle cx="2.5" cy="12" r=".5"/></svg>';
@@ -513,9 +517,30 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const hasRenderedTagFilter = Boolean(currentTagFilter);
     if (currentTagFilter) taskTagFilterOpen = currentTagFilter.open;
     const tagOptionsScrollTop = currentTagOptions ? currentTagOptions.scrollTop : 0;
+    const builtInEntityKindLabels = {
+      person: 'People',
+      project: 'Projects',
+      topic: 'Topics',
+      organization: 'Organizations',
+      meeting: 'Meetings'
+    };
+    const customEntityKinds = Array.from(new Set(state.entities.map(function (entity) { return entity.kind; })))
+      .filter(function (kind) { return !builtInEntityKindLabels[kind]; })
+      .sort();
+    const entityKindOptions = [
+      { value: 'all', label: 'All types' },
+      ...Object.keys(builtInEntityKindLabels).map(function (kind) { return { value: kind, label: builtInEntityKindLabels[kind] }; }),
+      ...customEntityKinds.map(function (kind) { return { value: kind, label: formatEntityKindLabel(kind) }; })
+    ].map(function (option) {
+      return '<option value="' + escapeHtml(option.value) + '" ' + (entityKindFilter === option.value ? 'selected' : '') + '>' + escapeHtml(option.label) + '</option>';
+    }).join('');
     const filteredEntities = state.entities.filter(function (entity) {
       return entityKindFilter === 'all' || entity.kind === entityKindFilter;
     });
+    const entityKeys = new Set(state.entities.map(function (entity) { return entity.key; }));
+    const lightweightTags = entityKindFilter === 'all'
+      ? state.tags.filter(function (tag) { return !entityKeys.has(tag.key); })
+      : [];
     const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
     const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
     const renderEntity = function (entity) {
@@ -523,11 +548,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
       const favoriteLabel = entity.isFavorite ? 'Unfavorite' : 'Favorite';
       return '<div class="entity-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-entity-key="' + escapeHtml(entity.key) + '"><div class="entity-main"><span class="tag-name">' + escapeHtml(entity.name) + '</span><span class="tag-count">' + entity.count + '</span></div><div class="tag-actions"><span class="entity-kind">' + escapeHtml(entity.kind) + '</span><button class="favorite-toggle ' + (entity.isFavorite ? 'favorite' : '') + '" data-action="favorite-entity" data-entity-key="' + escapeHtml(entity.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(entity.name) + '"><svg class="favorite-heart" viewBox="-1 -1 18 16" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 1H6V3H10V1H14V3H16V8H14V10H12V12H10V14H6V12H4V10H2V8H0V3H2Z"/></svg></button></div></div>';
     };
+    const renderTag = function (tag) {
+      const draggable = state.tagSortMode === 'custom';
+      const favoriteLabel = tag.isFavorite ? 'Unfavorite' : 'Favorite';
+      return '<div class="tag-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-tag-key="' + escapeHtml(tag.key) + '"><div class="tag-main"><span class="tag-name">' + escapeHtml(tag.label) + '</span><span class="tag-count">' + tag.count + '</span></div><div class="tag-actions"><button class="favorite-toggle ' + (tag.isFavorite ? 'favorite' : '') + '" data-action="favorite-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(tag.label) + '"><svg class="favorite-heart" viewBox="-1 -1 18 16" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 1H6V3H10V1H14V3H16V8H14V10H12V12H10V14H6V12H4V10H2V8H0V3H2Z"/></svg></button></div></div>';
+    };
     const favoriteEntities = filteredEntities.filter(function (entity) { return entity.isFavorite; }).map(renderEntity).join('');
     const otherEntities = filteredEntities.filter(function (entity) { return !entity.isFavorite; }).map(renderEntity).join('');
-    const entities = filteredEntities.length
-      ? (favoriteEntities ? '<div class="tag-group" data-entity-group="favorites"><h3>Favorites</h3><div class="entity-list">' + favoriteEntities + '</div></div>' : '') +
-        (otherEntities ? '<div class="tag-group" data-entity-group="all"><h3>All tags</h3><div class="entity-list">' + otherEntities + '</div></div>' : '')
+    const favoriteLightweightTags = lightweightTags.filter(function (tag) { return tag.isFavorite; }).map(renderTag).join('');
+    const otherLightweightTags = lightweightTags.filter(function (tag) { return !tag.isFavorite; }).map(renderTag).join('');
+    const favoriteRows = favoriteEntities + favoriteLightweightTags;
+    const tagContent = filteredEntities.length || lightweightTags.length
+      ? (favoriteRows ? '<div class="tag-group" data-entity-group="favorites" data-tag-group="favorites"><h3>Favorites</h3><div class="entity-list">' + favoriteRows + '</div></div>' : '') +
+        (otherEntities ? '<div class="tag-group" data-entity-group="all"><h3>All tags</h3><div class="entity-list">' + otherEntities + '</div></div>' : '') +
+        (otherLightweightTags ? '<div class="tag-group" data-tag-group="all"><h3>Other tags</h3><div class="tag-list">' + otherLightweightTags + '</div></div>' : '')
       : '<div class="empty">No tags match this type.</div>';
     const tasks = state.tasks.length ? state.tasks.map(function (item) {
       const task = item.task;
@@ -565,7 +599,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
         '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
       '</div></header>' +
-      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type"><option value="all" ' + (entityKindFilter === 'all' ? 'selected' : '') + '>All types</option><option value="person" ' + (entityKindFilter === 'person' ? 'selected' : '') + '>People</option><option value="project" ' + (entityKindFilter === 'project' ? 'selected' : '') + '>Projects</option><option value="topic" ' + (entityKindFilter === 'topic' ? 'selected' : '') + '>Topics</option><option value="organization" ' + (entityKindFilter === 'organization' ? 'selected' : '') + '>Organizations</option><option value="meeting" ' + (entityKindFilter === 'meeting' ? 'selected' : '') + '>Meetings</option></select>' + filterIcon + '</span><span class="control-icon"><select data-action="set-entity-sort" aria-label="Sort tags"><option value="alphabetical" ' + (state.entitySortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.entitySortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.entitySortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.entitySortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></div></div><div class="entity-list">' + entities + '</div></section>' +
+      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type">' + entityKindOptions + '</select>' + filterIcon + '</span><span class="control-icon"><select data-action="set-entity-sort" aria-label="Sort entity tags"><option value="alphabetical" ' + (state.entitySortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.entitySortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.entitySortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.entitySortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span><span class="control-icon"><select data-action="set-sort" aria-label="Sort lightweight tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></div></div><div class="entity-list">' + tagContent + '</div></section>' +
       '<section aria-labelledby="tasks-heading"><div class="section-heading"><h2 id="tasks-heading">Tasks <span class="tag-count">' + state.activeTaskCount + ' active</span></h2><span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></div><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + filters + '</div>' + taskTagFilter + '</div><div class="task-list">' + tasks + '</div></section></div>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
@@ -620,6 +654,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (entityRow && !event.target.closest('button, input, a')) {
       send({ type: 'openTag', tagKey: entityRow.dataset.entityKey });
     }
+    const tagRow = event.target.closest('.tag-row');
+    if (tagRow && !event.target.closest('button, input, a')) {
+      send({ type: 'openTag', tagKey: tagRow.dataset.tagKey });
+    }
   });
 
   document.addEventListener('keydown', function (event) {
@@ -638,6 +676,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (entityRow && !event.target.closest('button, input, a')) {
       event.preventDefault();
       send({ type: 'openTag', tagKey: entityRow.dataset.entityKey });
+      return;
+    }
+    const tagRow = event.target.closest('.tag-row');
+    if (tagRow && !event.target.closest('button, input, a')) {
+      event.preventDefault();
+      send({ type: 'openTag', tagKey: tagRow.dataset.tagKey });
     }
   });
 

@@ -4,6 +4,7 @@ import {
   extractHeadingTagSpans,
   extractTagSpans,
   extractTags,
+  formatEntityTitle,
   extractWikiLinks,
   getEntityNamespaceAliases,
   getEntityKind,
@@ -68,6 +69,17 @@ suite('Markdown parser', () => {
       getEntityKind({ key: '@alex-smith', label: '@alex-smith' }),
       'person',
     );
+    assert.strictEqual(
+      getEntityKind({
+        key: '#management/performance',
+        label: '#management/performance',
+      }),
+      'management',
+    );
+    assert.strictEqual(
+      formatEntityTitle('management', 'performance'),
+      'Management: Performance',
+    );
     assert.strictEqual(parsed.tasks[0].dueText, '2026-09-12');
   });
 
@@ -75,10 +87,12 @@ suite('Markdown parser', () => {
     const aliases = getEntityNamespaceAliases({
       proj: 'project',
       client: 'organization',
+      leadership: 'management',
+      operations: 'management',
     });
     const parsed = parseMarkdown(
       'atlas.md',
-      '# Atlas #proj/atlas #client/acme',
+      '# Atlas #proj/atlas #client/acme #leadership/performance #operations/performance #management/performance',
       undefined,
       { entityNamespaceAliases: aliases },
     );
@@ -86,6 +100,7 @@ suite('Markdown parser', () => {
     assert.deepStrictEqual(parsed.sections[0].tags, [
       '#project/atlas',
       '#org/acme',
+      '#management/performance',
     ]);
     assert.deepStrictEqual(
       extractTagSpans('# Atlas #proj/atlas', true, aliases).map(
@@ -96,6 +111,13 @@ suite('Markdown parser', () => {
     assert.strictEqual(
       getEntityKind({ key: '#client/acme', label: '#client/acme' }, aliases),
       'organization',
+    );
+    assert.strictEqual(
+      getEntityKind(
+        { key: '#leadership/performance', label: '#leadership/performance' },
+        aliases,
+      ),
+      'management',
     );
   });
 
@@ -153,6 +175,29 @@ suite('Markdown parser', () => {
       '@alex-smith',
       '#topic/leadership',
     ]);
+  });
+
+  test('keeps custom namespaced tags when they come from tag frontmatter', () => {
+    const parsed = parseMarkdown(
+      'management.md',
+      [
+        '---',
+        'tags: [management/performance]',
+        '---',
+        '# Review',
+      ].join('\n'),
+    );
+
+    assert.deepStrictEqual(parsed.sections[0].tags, [
+      '#management/performance',
+    ]);
+    assert.strictEqual(
+      getEntityKind({
+        key: '#management/performance',
+        label: '#management/performance',
+      }),
+      'management',
+    );
   });
 
   test('returns typed clickable spans for supported frontmatter values', () => {

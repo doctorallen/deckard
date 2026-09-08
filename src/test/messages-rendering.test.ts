@@ -185,6 +185,11 @@ suite('Webview contracts', () => {
       html.includes("const entityRow = event.target.closest('.entity-row');"),
       true,
     );
+    assert.strictEqual(
+      html.includes('const lightweightTags = entityKindFilter ==='),
+      true,
+    );
+    assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
@@ -475,6 +480,11 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes('data-action="set-mode" data-mode="html"'),
+      true,
+    );
+    assert.strictEqual(html.includes('function formatEntityTitle(kind, name)'), true);
+    assert.strictEqual(
+      html.includes("formatEntityTitle(state.entity.kind, state.entity.name)"),
       true,
     );
     assert.strictEqual(

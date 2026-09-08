@@ -6,6 +6,7 @@ import {
   getEntityKind,
   getEntityNamespaceAliases,
   getPersonMarker,
+  isBuiltInEntityKind,
 } from '../../core/markdown/parser';
 import { TagReference } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -231,7 +232,7 @@ function getFrontmatterValue(tag: TagReference): string {
   }
 
   const kind = getEntityKind(tag);
-  if (kind) {
+  if (isBuiltInEntityKind(kind)) {
     return tag.key.slice(tag.key.indexOf('/') + 1);
   }
 
