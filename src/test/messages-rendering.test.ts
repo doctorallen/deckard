@@ -231,6 +231,18 @@ suite('Webview contracts', () => {
       html.includes('const lightweightTags = entityKindFilter ==='),
       true,
     );
+    assert.strictEqual(
+      html.includes("{ value: 'other', label: 'Other tags' }"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("const tagSortControl = entityKindFilter === 'other'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("const entitySortControl = entityKindFilter !== 'other'"),
+      true,
+    );
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
   });
 
