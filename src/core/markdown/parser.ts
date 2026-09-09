@@ -656,6 +656,12 @@ function normalizeParsedTagReferences(
     entityNamespaceAliases,
   );
   [...parsed.sections, ...parsed.tasks].forEach((item) => {
+    if ('headingTags' in item) {
+      item.headingTags = normalizeTagReferences(
+        item.headingTags ?? [],
+        entityNamespaceAliases,
+      );
+    }
     const normalized = normalizeTagReferences(
       item.tags.map((key) => ({
         key,
@@ -827,23 +833,23 @@ function createSection(
     .slice(headingIndex + 1)
     .find((candidate) => candidate.level <= heading.level);
   const endLine = nextBoundary ? nextBoundary.lineNumber - 1 : lines.length;
-  const sectionTags = mergeTagReferences(
-    frontmatterTags,
-    extractTags(heading.text, undefined, personMarker),
-  );
+  const headingTags = extractTags(heading.text, undefined, personMarker);
+  const sectionTags = mergeTagReferences(frontmatterTags, headingTags);
   const tagLabels = Object.fromEntries(
     sectionTags.map((tag) => [tag.key, tag.label]),
   );
   const rawContent = lines.slice(heading.lineNumber - 1, endLine).join('\n');
+  const parentHeading = findNearestParentHeading(headings, headingIndex);
 
   return {
-    id: createId(
-      'section',
-      `${filePath}:${heading.lineNumber}:${heading.text}`,
-    ),
+    id: createHeadingSectionId(filePath, heading),
     filePath,
     heading: heading.text,
     headingLevel: heading.level,
+    headingTags,
+    parentSectionId: parentHeading
+      ? createHeadingSectionId(filePath, parentHeading)
+      : undefined,
     tags: sectionTags.map((tag) => tag.key),
     tagLabels,
     links: extractWikiLinks(rawContent),
@@ -853,6 +859,39 @@ function createSection(
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
   };
+}
+
+/**
+ * Finds the nearest structurally containing heading, even when that heading
+ * does not carry a tag itself. The index can then walk farther upward to find
+ * the nearest tagged ancestor.
+ */
+function findNearestParentHeading(
+  headings: HeadingMatch[],
+  headingIndex: number,
+): HeadingMatch | undefined {
+  const heading = headings[headingIndex];
+  if (!heading) {
+    return undefined;
+  }
+
+  for (let index = headingIndex - 1; index >= 0; index -= 1) {
+    if (headings[index].level < heading.level) {
+      return headings[index];
+    }
+  }
+
+  return undefined;
+}
+
+function createHeadingSectionId(
+  filePath: string,
+  heading: HeadingMatch,
+): string {
+  return createId(
+    'section',
+    `${filePath}:${heading.lineNumber}:${heading.text}`,
+  );
 }
 
 /**
@@ -972,6 +1011,7 @@ function createInlineSection(
     heading: sourceLine.trim(),
     headingLevel: 0,
     isInline: true,
+    headingTags: [],
     tags: inlineTags.map((tag) => tag.key),
     tagLabels: Object.fromEntries(
       inlineTags.map((tag) => [tag.key, tag.label]),

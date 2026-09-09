@@ -77,7 +77,7 @@ export function parseDashboardMessage(
         ? (value as unknown as DashboardMessage)
         : undefined;
     case 'openTag':
-      return typeof value.tagKey === 'string'
+      return isOpenTagMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
     default:
@@ -124,7 +124,7 @@ export function parseTagOverviewMessage(
   ) {
     return value as unknown as TagOverviewMessage;
   }
-  if (value.type === 'openTag' && typeof value.tagKey === 'string') {
+  if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return value as unknown as TagOverviewMessage;
   }
   return undefined;
@@ -145,7 +145,7 @@ export function parseSidebarMessage(
       ? (value as unknown as SidebarMessage)
       : undefined;
   }
-  if (value.type === 'openTag' && typeof value.tagKey === 'string') {
+  if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return value as unknown as SidebarMessage;
   }
   if (
@@ -173,6 +173,13 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
     typeof value.line === 'number' &&
     Number.isInteger(value.line) &&
     value.line > 0
+  );
+}
+
+function isOpenTagMessage(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.tagKey === 'string' &&
+    (value.filterTagKey === undefined || typeof value.filterTagKey === 'string')
   );
 }
 

@@ -482,6 +482,151 @@ suite('Dashboard state', () => {
     assert.strictEqual(separate.sections[0].heading, 'Heading');
   });
 
+  test('filters a tag overview to entries carrying both relationship tags', () => {
+    const parsed = createFile(
+      'notes/filtered-relationship.md',
+      [
+        '# Parent route #parent',
+        '## Shared child #child',
+        '- [ ] Both tags',
+        '# Child-only route #child',
+        '- [ ] Child only',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#child',
+      'active',
+      'inline',
+      true,
+      '#parent',
+    );
+
+    assert.ok(snapshot);
+    assert.deepStrictEqual(snapshot.filterTag, {
+      key: '#parent',
+      label: '#parent',
+    });
+    assert.deepStrictEqual(
+      snapshot.sections.map((section) => section.heading),
+      ['Shared child #child'],
+    );
+    assert.deepStrictEqual(
+      snapshot.tasks.map((item) => item.task.title),
+      ['Both tags'],
+    );
+    assert.deepStrictEqual(
+      createTagOverviewSidebarSnapshot(snapshot).tagOverviewFilter,
+      { key: '#parent', label: '#parent' },
+    );
+
+    const reverse = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#parent',
+      'active',
+      'inline',
+      true,
+      '#child',
+    );
+    assert.ok(reverse);
+    assert.deepStrictEqual(
+      reverse.sections.map((section) => section.heading),
+      ['Shared child #child'],
+    );
+    assert.deepStrictEqual(
+      reverse.tasks.map((item) => item.task.title),
+      ['Both tags'],
+    );
+  });
+
+  test('projects parent and child heading relationships into tag overviews', () => {
+    const parsed = parseMarkdown(
+      'notes/relationship-overview.md',
+      [
+        '# Relay map #parent',
+        '## Un tagged details',
+        '### Signal route #child',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const child = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#child',
+    );
+    const parent = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#parent',
+    );
+
+    assert.ok(child);
+    assert.ok(parent);
+    assert.deepStrictEqual(
+      child.parentTags.map((relationship) => ({
+        key: relationship.parent.key,
+        label: relationship.parent.label,
+        count: relationship.count,
+      })),
+      [{ key: '#parent', label: '#parent', count: 1 }],
+    );
+    assert.deepStrictEqual(
+      parent.childTags.map((relationship) => ({
+        key: relationship.child.key,
+        label: relationship.child.label,
+        count: relationship.count,
+      })),
+      [{ key: '#child', label: '#child', count: 1 }],
+    );
+    assert.deepStrictEqual(parent.parentTags, []);
+    assert.deepStrictEqual(child.childTags, []);
+  });
+
+  test('projects dense relationship groups and supports disabling them', () => {
+    const parentTags = Array.from(
+      { length: 12 },
+      (_, index) => `#parent/${String(index + 1).padStart(2, '0')}`,
+    );
+    const childTags = Array.from(
+      { length: 12 },
+      (_, index) => `#child/${String(index + 1).padStart(2, '0')}`,
+    );
+    const parsed = parseMarkdown(
+      'notes/dense-relationships.md',
+      [
+        `## Parent signal array ${parentTags.join(' ')}`,
+        '### Relationship stress test #hub/relationship-overview',
+        `#### Child signal array ${childTags.join(' ')}`,
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const enabled = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#hub/relationship-overview',
+    );
+    const disabled = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#hub/relationship-overview',
+      'active',
+      'inline',
+      false,
+    );
+
+    assert.ok(enabled);
+    assert.ok(disabled);
+    assert.strictEqual(enabled.parentTags.length, 12);
+    assert.strictEqual(enabled.childTags.length, 12);
+    assert.deepStrictEqual(disabled.parentTags, []);
+    assert.deepStrictEqual(disabled.childTags, []);
+  });
+
   test('filters generic-tag overview tasks by completion state', () => {
     const parsed = parseMarkdown(
       'notes/work.md',
@@ -692,6 +837,39 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       separateSidebar.notes.map((note) => note.title),
       ['Alpha', 'Beta', 'Zeta'],
+    );
+  });
+
+  test('projects tag overview relationships into the sidebar tree', () => {
+    const parsed = createFile(
+      'notes/relationship-sidebar.md',
+      [
+        '# Parent route #parent',
+        '## Focus route #focus',
+        '### Child route #child',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const overview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#focus',
+    );
+
+    assert.ok(overview);
+    const sidebar = createTagOverviewSidebarSnapshot(overview);
+
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.parentTags.map(
+        (relationship) => relationship.parent.key,
+      ),
+      ['#parent'],
+    );
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.childTags.map(
+        (relationship) => relationship.child.key,
+      ),
+      ['#child'],
     );
   });
 });

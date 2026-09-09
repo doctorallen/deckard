@@ -35,6 +35,16 @@ This heading has no tag and should remain an ordinary heading.
 
 The tag-only headings above exercise H4, H5, and H6 source locations.
 
+## Ghostline relay #project/ghostline-relay #org/echo-foundry
+
+### Untagged calibration notes
+
+#### Signal lock #topic/quantum-drift #risk/thermal-leak
+
+The tagged signal heading is nested below an untagged heading, so its nearest
+tagged ancestor remains the Ghostline relay. Multiple tags on either heading
+exercise every parent/child combination in Tag Overview.
+
 ```markdown
 #### #ignored-in-fenced-code
 ```

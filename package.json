@@ -140,6 +140,11 @@
           "default": "inline",
           "description": "Choose whether tags stay inline in note titles or appear separately."
         },
+        "deckard.enableHeadingTagRelationships": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inferred parent and child heading tag relationships in Tag Overviews."
+        },
         "deckard.enableTagAutocomplete": {
           "type": "boolean",
           "default": true,

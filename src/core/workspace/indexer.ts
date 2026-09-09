@@ -6,6 +6,7 @@ import {
   SearchResult,
   Section,
   TagInfo,
+  TagRelationship,
   TagReference,
   Task,
   WorkspaceIndex,
@@ -550,6 +551,8 @@ export function buildWorkspaceIndex(
     });
   });
 
+  const { tagParents, tagChildren } = buildHeadingTagRelationships(sections);
+
   tags.forEach((tag) => {
     // A task inside a tagged section is already represented by that section;
     // count it separately only when its tag would otherwise have no entry.
@@ -577,8 +580,122 @@ export function buildWorkspaceIndex(
     tasks,
     tags,
     entities,
+    tagParents,
+    tagChildren,
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * Infers relationships from explicit heading tags while skipping untagged
+ * headings between a tagged child and its nearest tagged ancestor.
+ */
+function buildHeadingTagRelationships(
+  sections: Map<string, Section>,
+): {
+  tagParents: Map<string, TagRelationship[]>;
+  tagChildren: Map<string, TagRelationship[]>;
+} {
+  const relationships = new Map<string, MutableTagRelationship>();
+
+  sections.forEach((section) => {
+    const childTags = section.headingTags ?? [];
+    if (childTags.length === 0) {
+      return;
+    }
+
+    const parent = findNearestTaggedAncestor(section, sections);
+    if (!parent) {
+      return;
+    }
+
+    const parentTags = parent.headingTags ?? [];
+    parentTags.forEach((parentTag) => {
+      childTags.forEach((childTag) => {
+        if (parentTag.key === childTag.key) {
+          return;
+        }
+        const relationshipKey = `${parentTag.key}\u0000${childTag.key}`;
+        const relationship = relationships.get(relationshipKey) ?? {
+          parent: { ...parentTag },
+          child: { ...childTag },
+          sectionIds: [],
+        };
+        if (!relationship.sectionIds.includes(section.id)) {
+          relationship.sectionIds.push(section.id);
+        }
+        relationships.set(relationshipKey, relationship);
+      });
+    });
+  });
+
+  const tagParents = new Map<string, TagRelationship[]>();
+  const tagChildren = new Map<string, TagRelationship[]>();
+  [...relationships.values()]
+    .map((relationship) => ({
+      parent: relationship.parent,
+      child: relationship.child,
+      sectionIds: [...relationship.sectionIds].sort(),
+      count: relationship.sectionIds.length,
+    }))
+    .sort(compareTagRelationships)
+    .forEach((relationship) => {
+      appendRelationship(tagParents, relationship.child.key, relationship);
+      appendRelationship(tagChildren, relationship.parent.key, relationship);
+    });
+
+  return { tagParents, tagChildren };
+}
+
+interface MutableTagRelationship {
+  parent: TagReference;
+  child: TagReference;
+  sectionIds: string[];
+}
+
+function findNearestTaggedAncestor(
+  section: Section,
+  sections: Map<string, Section>,
+): Section | undefined {
+  const visited = new Set<string>();
+  let parentSectionId = section.parentSectionId;
+  while (parentSectionId && !visited.has(parentSectionId)) {
+    visited.add(parentSectionId);
+    const parent = sections.get(parentSectionId);
+    if (!parent) {
+      return undefined;
+    }
+    if ((parent.headingTags?.length ?? 0) > 0) {
+      return parent;
+    }
+    parentSectionId = parent.parentSectionId;
+  }
+  return undefined;
+}
+
+function appendRelationship(
+  relationships: Map<string, TagRelationship[]>,
+  tagKey: string,
+  relationship: TagRelationship,
+): void {
+  const existing = relationships.get(tagKey);
+  if (existing) {
+    existing.push(relationship);
+  } else {
+    relationships.set(tagKey, [relationship]);
+  }
+}
+
+function compareTagRelationships(
+  left: TagRelationship,
+  right: TagRelationship,
+): number {
+  return (
+    left.parent.label.localeCompare(right.parent.label) ||
+    left.child.label.localeCompare(right.child.label) ||
+    left.parent.key.localeCompare(right.parent.key) ||
+    left.child.key.localeCompare(right.child.key)
+  );
 }
 
 /**

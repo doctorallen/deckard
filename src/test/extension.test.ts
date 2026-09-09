@@ -56,6 +56,12 @@ suite('Extension Test Suite', () => {
     );
     assert.strictEqual(
       extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.enableHeadingTagRelationships'
+      ].default,
+      true,
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
         'deckard.enableKeywordLinks'
       ].default,
       true,

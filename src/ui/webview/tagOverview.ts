@@ -29,6 +29,7 @@ export class TagOverviewPanels implements vscode.Disposable {
   private readonly panels = new Map<string, TagOverviewPanel>();
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   private activeTagKey: string | undefined;
+  private activeFilterTagKey: string | undefined;
 
   public readonly onDidChange = this.changeEmitter.event;
 
@@ -49,6 +50,13 @@ export class TagOverviewPanels implements vscode.Disposable {
         if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
           this.refresh();
         }
+        if (
+          event.affectsConfiguration(
+            'deckard.enableHeadingTagRelationships',
+          )
+        ) {
+          this.refresh();
+        }
       }),
     );
   }
@@ -61,9 +69,19 @@ export class TagOverviewPanels implements vscode.Disposable {
   }
 
   /**
+   * Returns the optional relationship filter for the active overview.
+   */
+  public getActiveTagFilterKey(): string | undefined {
+    return this.activeFilterTagKey;
+  }
+
+  /**
    * Records access only for current tags, then reveals the shared panel instance.
    */
-  public async show(tagKey: string): Promise<void> {
+  public async show(
+    tagKey: string,
+    filterTagKey?: string,
+  ): Promise<void> {
     await this.indexer.ready;
     const index = this.indexer.getSnapshot();
     const canonicalTagKey = resolveIndexedTagKey(index.tags, tagKey);
@@ -73,6 +91,13 @@ export class TagOverviewPanels implements vscode.Disposable {
       );
       return;
     }
+    const resolvedFilterTagKey = filterTagKey
+      ? resolveIndexedTagKey(index.tags, filterTagKey)
+      : undefined;
+    const effectiveFilterTagKey =
+      resolvedFilterTagKey && resolvedFilterTagKey !== canonicalTagKey
+        ? resolvedFilterTagKey
+        : undefined;
     await this.preferences.recordTagAccess(canonicalTagKey);
     if (index.entities.has(canonicalTagKey)) {
       await this.preferences.recordEntityAccess(canonicalTagKey);
@@ -82,8 +107,9 @@ export class TagOverviewPanels implements vscode.Disposable {
     if (!panel) {
       panel = this.createPanel(canonicalTagKey);
     }
+    panel.setFilterTagKey(effectiveFilterTagKey);
     panel.show();
-    this.setActiveTagKey(canonicalTagKey);
+    this.setActiveTagOverview(canonicalTagKey, effectiveFilterTagKey);
   }
 
   /**
@@ -103,18 +129,31 @@ export class TagOverviewPanels implements vscode.Disposable {
       webviewPanel.dispose();
       return;
     }
+    const serializedFilterTagKey = getSerializedFilterTagKey(state);
+    const filterTagKey = serializedFilterTagKey
+      ? resolveIndexedTagKey(index.tags, serializedFilterTagKey)
+      : undefined;
 
     const existingPanel = this.panels.get(tagKey);
     if (existingPanel) {
       webviewPanel.dispose();
+      existingPanel.setFilterTagKey(
+        filterTagKey && filterTagKey !== tagKey ? filterTagKey : undefined,
+      );
       existingPanel.show();
+      if (webviewPanel.active) {
+        this.setActiveTagOverview(tagKey, existingPanel.getFilterTagKey());
+      }
       return;
     }
 
     const panel = this.createPanel(tagKey);
+    panel.setFilterTagKey(
+      filterTagKey && filterTagKey !== tagKey ? filterTagKey : undefined,
+    );
     panel.restore(webviewPanel);
     if (webviewPanel.active) {
-      this.setActiveTagKey(tagKey);
+      this.setActiveTagOverview(tagKey, panel.getFilterTagKey());
     }
   }
 
@@ -122,7 +161,7 @@ export class TagOverviewPanels implements vscode.Disposable {
    * Releases the registry event source and every panel it owns.
    */
   public dispose(): void {
-    this.setActiveTagKey(undefined);
+    this.setActiveTagOverview(undefined, undefined);
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     this.panels.forEach((panel) => panel.dispose());
     this.panels.clear();
@@ -154,7 +193,7 @@ export class TagOverviewPanels implements vscode.Disposable {
       this.preferences,
       this.extensionUri,
       () => this.removePanel(tagKey),
-      (nextTagKey) => this.show(nextTagKey),
+      (nextTagKey, filterTagKey) => this.show(nextTagKey, filterTagKey),
       (active) => this.handlePanelActivity(tagKey, active),
     );
     this.panels.set(tagKey, panel);
@@ -167,7 +206,7 @@ export class TagOverviewPanels implements vscode.Disposable {
   private removePanel(tagKey: string): void {
     this.panels.delete(tagKey);
     if (this.activeTagKey === tagKey) {
-      this.setActiveTagKey(undefined);
+      this.setActiveTagOverview(undefined, undefined);
     }
   }
 
@@ -176,20 +215,30 @@ export class TagOverviewPanels implements vscode.Disposable {
    */
   private handlePanelActivity(tagKey: string, active: boolean): void {
     if (active) {
-      this.setActiveTagKey(tagKey);
+      this.setActiveTagOverview(
+        tagKey,
+        this.panels.get(tagKey)?.getFilterTagKey(),
+      );
     } else if (this.activeTagKey === tagKey) {
-      this.setActiveTagKey(undefined);
+      this.setActiveTagOverview(undefined, undefined);
     }
   }
 
   /**
-   * Emits only meaningful active-tag transitions to avoid sidebar churn.
+   * Emits only meaningful active-overview transitions to avoid sidebar churn.
    */
-  private setActiveTagKey(tagKey: string | undefined): void {
-    if (this.activeTagKey === tagKey) {
+  private setActiveTagOverview(
+    tagKey: string | undefined,
+    filterTagKey: string | undefined,
+  ): void {
+    if (
+      this.activeTagKey === tagKey &&
+      this.activeFilterTagKey === filterTagKey
+    ) {
       return;
     }
     this.activeTagKey = tagKey;
+    this.activeFilterTagKey = filterTagKey;
     this.changeEmitter.fire();
   }
 }
@@ -201,6 +250,7 @@ class TagOverviewPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private taskFilter: TaskFilter = 'active';
+  private filterTagKey: string | undefined;
 
   public constructor(
     private readonly tagKey: string,
@@ -208,9 +258,20 @@ class TagOverviewPanel implements vscode.Disposable {
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly onDispose: () => void,
-    private readonly onOpenTag: (tagKey: string) => Promise<void>,
+    private readonly onOpenTag: (
+      tagKey: string,
+      filterTagKey?: string,
+    ) => Promise<void>,
     private readonly onViewStateChange: (active: boolean) => void,
   ) {}
+
+  public setFilterTagKey(filterTagKey: string | undefined): void {
+    this.filterTagKey = filterTagKey;
+  }
+
+  public getFilterTagKey(): string | undefined {
+    return this.filterTagKey;
+  }
 
   /**
    * Creates or reveals the panel, then projects the latest overview state.
@@ -276,6 +337,8 @@ class TagOverviewPanel implements vscode.Disposable {
       this.tagKey,
       this.taskFilter,
       this.getTagTitleDisplayMode(),
+      this.areHeadingTagRelationshipsEnabled(),
+      this.filterTagKey,
     );
     if (snapshot) {
       void this.panel.webview.postMessage({ type: 'state', data: snapshot });
@@ -335,6 +398,12 @@ class TagOverviewPanel implements vscode.Disposable {
     );
   }
 
+  private areHeadingTagRelationshipsEnabled(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('enableHeadingTagRelationships', true);
+  }
+
   /**
    * Validates raw webview input before dispatching any overview action.
    */
@@ -357,7 +426,16 @@ class TagOverviewPanel implements vscode.Disposable {
         message.tagKey,
       );
       if (tagKey) {
-        await this.onOpenTag(tagKey);
+        const filterTagKey = message.filterTagKey
+          ? resolveIndexedTagKey(
+              this.indexer.getSnapshot().tags,
+              message.filterTagKey,
+            )
+          : undefined;
+        await this.onOpenTag(
+          tagKey,
+          filterTagKey && filterTagKey !== tagKey ? filterTagKey : undefined,
+        );
       }
       return;
     }
@@ -386,6 +464,8 @@ class TagOverviewPanel implements vscode.Disposable {
         this.tagKey,
         this.taskFilter,
         this.getTagTitleDisplayMode(),
+        this.areHeadingTagRelationshipsEnabled(),
+        this.filterTagKey,
       )?.tasks.find((candidate) => candidate.task.id === message.taskId)?.task;
       if (task) {
         await toggleTask(task, message.completed);
@@ -402,6 +482,8 @@ class TagOverviewPanel implements vscode.Disposable {
       this.tagKey,
       this.taskFilter,
       this.getTagTitleDisplayMode(),
+      this.areHeadingTagRelationshipsEnabled(),
+      this.filterTagKey,
     );
     const card = snapshot?.sections.find(
       (section) =>
@@ -434,4 +516,15 @@ function getSerializedTagKey(state: unknown): string | undefined {
 
   const tagKey = (state as { tagKey?: unknown }).tagKey;
   return typeof tagKey === 'string' && tagKey.length > 0 ? tagKey : undefined;
+}
+
+function getSerializedFilterTagKey(state: unknown): string | undefined {
+  if (typeof state !== 'object' || state === null) {
+    return undefined;
+  }
+
+  const filterTagKey = (state as { filterTagKey?: unknown }).filterTagKey;
+  return typeof filterTagKey === 'string' && filterTagKey.length > 0
+    ? filterTagKey
+    : undefined;
 }

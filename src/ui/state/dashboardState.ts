@@ -16,6 +16,7 @@ import {
   TagOverviewSortMode,
   TagOverviewSnapshot,
   TagReference,
+  TagRelationship,
   TaskSortMode,
   SidebarNotesSnapshot,
   WorkspaceIndex,
@@ -290,15 +291,38 @@ export function createTagOverviewSnapshot(
   tagKey: string,
   taskFilter: TaskFilter = 'active',
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  enableHeadingTagRelationships = true,
+  filterTagKey?: string,
 ): TagOverviewSnapshot | undefined {
   const tag = index.tags.get(tagKey);
   if (!tag) {
     return undefined;
   }
+  const filterTag = filterTagKey ? index.tags.get(filterTagKey) : undefined;
+  const effectiveFilterTagKey = filterTag?.key;
 
-  const sections = tag.sectionIds
-    .map((sectionId) => index.sections.get(sectionId))
-    .filter((section): section is Section => section !== undefined)
+  // A relationship filter uses contextual membership so either navigation
+  // direction can show the shared child section and its tasks.
+  const sectionCandidates =
+    effectiveFilterTagKey === undefined
+      ? tag.sectionIds
+          .map((sectionId) => index.sections.get(sectionId))
+          .filter((section): section is Section => section !== undefined)
+      : [...index.sections.values()].filter(
+          (section) =>
+            sectionIncludesTag(index, section, tag.key) &&
+            sectionIncludesTag(index, section, effectiveFilterTagKey),
+        );
+  const fileCandidates = tag.filePaths
+    .map((filePath) => index.files.get(filePath))
+    .filter((file): file is ParsedFile => file !== undefined)
+    .filter(
+      (file) =>
+        effectiveFilterTagKey === undefined ||
+        fileIncludesTag(index, file, effectiveFilterTagKey),
+    );
+
+  const sections = sectionCandidates
     .map((section) =>
       createTagOverviewCard(
         section,
@@ -306,12 +330,7 @@ export function createTagOverviewSnapshot(
         tagTitleDisplayMode,
       ),
     )
-    .concat(
-      tag.filePaths
-        .map((filePath) => index.files.get(filePath))
-        .filter((file): file is ParsedFile => file !== undefined)
-        .map((file) => createFileOverviewCard(file)),
-    )
+    .concat(fileCandidates.map((file) => createFileOverviewCard(file)))
     .sort((left, right) =>
       compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
     );
@@ -325,10 +344,27 @@ export function createTagOverviewSnapshot(
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
     entity: index.entities.get(tagKey),
+    filterTag: filterTag
+      ? { key: filterTag.key, label: filterTag.label }
+      : undefined,
+    parentTags: enableHeadingTagRelationships
+      ? cloneTagRelationships(index.tagParents?.get(tagKey) ?? [])
+      : [],
+    childTags: enableHeadingTagRelationships
+      ? cloneTagRelationships(index.tagChildren?.get(tagKey) ?? [])
+      : [],
     sections,
-    tasks: tag.taskIds
-      .map((taskId) => index.tasks.get(taskId))
-      .filter((task): task is Task => task !== undefined)
+    tasks: (
+      effectiveFilterTagKey === undefined
+        ? tag.taskIds
+            .map((taskId) => index.tasks.get(taskId))
+            .filter((task): task is Task => task !== undefined)
+        : [...index.tasks.values()].filter(
+            (task) =>
+              taskIncludesTag(index, task, tag.key) &&
+              taskIncludesTag(index, task, effectiveFilterTagKey),
+          )
+    )
       .filter((task) => matchesTaskFilter(task, taskFilter))
       .map((task) => createDashboardTask(task, index.sections)),
     taskFilter,
@@ -337,6 +373,66 @@ export function createTagOverviewSnapshot(
     layout: preferences.tagOverviewLayout,
     tagTitleDisplayMode,
   };
+}
+
+function cloneTagRelationships(
+  relationships: TagRelationship[],
+): TagRelationship[] {
+  return relationships.map((relationship) => ({
+    parent: { ...relationship.parent },
+    child: { ...relationship.child },
+    sectionIds: [...relationship.sectionIds],
+    count: relationship.count,
+  }));
+}
+
+function sectionIncludesTag(
+  index: WorkspaceIndex,
+  section: Section,
+  tagKey: string,
+): boolean {
+  if (section.tags.includes(tagKey)) {
+    return true;
+  }
+
+  let parentSectionId = section.parentSectionId;
+  while (parentSectionId) {
+    const parent = index.sections.get(parentSectionId);
+    if (!parent) {
+      break;
+    }
+    if (parent.headingTags?.some((tag) => tag.key === tagKey)) {
+      return true;
+    }
+    parentSectionId = parent.parentSectionId;
+  }
+  return false;
+}
+
+function taskIncludesTag(
+  index: WorkspaceIndex,
+  task: Task,
+  tagKey: string,
+): boolean {
+  if (task.tags.includes(tagKey)) {
+    return true;
+  }
+  const section = task.sectionId
+    ? index.sections.get(task.sectionId)
+    : undefined;
+  return section ? sectionIncludesTag(index, section, tagKey) : false;
+}
+
+function fileIncludesTag(
+  index: WorkspaceIndex,
+  file: ParsedFile,
+  tagKey: string,
+): boolean {
+  return (
+    file.frontmatterTags.some((tag) => tag.key === tagKey) ||
+    file.sections.some((section) => sectionIncludesTag(index, section, tagKey)) ||
+    file.tasks.some((task) => taskIncludesTag(index, task, tagKey))
+  );
 }
 
 /**
@@ -365,6 +461,13 @@ export function createTagOverviewSidebarSnapshot(
     activeTags: [],
     notes,
     tagOverview: tag,
+    tagOverviewFilter: snapshot.filterTag
+      ? { ...snapshot.filterTag }
+      : undefined,
+    tagOverviewRelationships: {
+      parentTags: cloneTagRelationships(snapshot.parentTags),
+      childTags: cloneTagRelationships(snapshot.childTags),
+    },
     tagTitleDisplayMode: snapshot.tagTitleDisplayMode,
     state: notes.length > 0 ? 'ready' : 'noMatches',
   };

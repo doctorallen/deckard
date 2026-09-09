@@ -62,6 +62,10 @@ export interface Section {
   heading: string;
   headingLevel: number;
   isInline?: boolean;
+  /** Tags written on this heading, excluding inherited front-matter tags. */
+  headingTags?: TagReference[];
+  /** Structural heading parent, including untagged intermediate headings. */
+  parentSectionId?: string;
   tags: string[];
   tagLabels: Record<string, string>;
   links: string[];
@@ -111,12 +115,23 @@ export interface TagInfo {
   isFavorite: boolean;
 }
 
+export interface TagRelationship {
+  parent: TagReference;
+  child: TagReference;
+  sectionIds: string[];
+  count: number;
+}
+
 export interface WorkspaceIndex {
   files: Map<string, ParsedFile>;
   sections: Map<string, Section>;
   tasks: Map<string, Task>;
   tags: Map<string, TagInfo>;
   entities: Map<string, Entity>;
+  /** Child tag key -> relationships whose parent is a tagged ancestor. */
+  tagParents?: Map<string, TagRelationship[]>;
+  /** Parent tag key -> relationships whose child is a nested tagged heading. */
+  tagChildren?: Map<string, TagRelationship[]>;
   updatedAt: number;
 }
 
@@ -166,6 +181,9 @@ export interface DashboardSnapshot {
 export interface TagOverviewSnapshot {
   tag: TagInfo;
   entity?: Entity;
+  filterTag?: TagReference;
+  parentTags: TagRelationship[];
+  childTags: TagRelationship[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
   taskFilter: TaskFilter;
@@ -248,6 +266,11 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  tagOverviewFilter?: TagReference;
+  tagOverviewRelationships?: {
+    parentTags: TagRelationship[];
+    childTags: TagRelationship[];
+  };
   tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
 }
@@ -319,6 +342,7 @@ export interface ReorderEntitiesMessage {
 export interface OpenTagMessage {
   type: 'openTag';
   tagKey: string;
+  filterTagKey?: string;
 }
 
 export interface SetTagOverviewSortMessage {

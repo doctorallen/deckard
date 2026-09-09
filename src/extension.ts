@@ -54,8 +54,7 @@ export function activate(context: vscode.ExtensionContext): void {
     indexer,
     preferences,
     tagPanels,
-    (tagKey) => tagPanels.show(tagKey),
-    () => dashboard.show(),
+    (tagKey, filterTagKey) => tagPanels.show(tagKey, filterTagKey),
     context.extension.packageJSON.version,
   );
   const stats = new StatsPanel(indexer, preferences, context.extensionUri);

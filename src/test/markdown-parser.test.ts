@@ -141,6 +141,31 @@ suite('Markdown parser', () => {
     ]);
   });
 
+  test('tracks explicit heading tags separately from structural ancestors', () => {
+    const parsed = parseMarkdown(
+      'heading-relationships.md',
+      [
+        '# Relay map #parent',
+        '## Untagged operating notes',
+        '### Signal route #child',
+        '## Alternate route #sibling',
+      ].join('\n'),
+    );
+
+    const [parent, intermediate, child, sibling] = parsed.sections;
+    assert.deepStrictEqual(parent.headingTags, [
+      { key: '#parent', label: '#parent' },
+    ]);
+    assert.deepStrictEqual(intermediate.headingTags, []);
+    assert.deepStrictEqual(child.headingTags, [
+      { key: '#child', label: '#child' },
+    ]);
+    assert.strictEqual(parent.parentSectionId, undefined);
+    assert.strictEqual(intermediate.parentSectionId, parent.id);
+    assert.strictEqual(child.parentSectionId, intermediate.id);
+    assert.strictEqual(sibling.parentSectionId, parent.id);
+  });
+
   test('normalizes configured entity namespace aliases', () => {
     const aliases = getEntityNamespaceAliases({
       proj: 'project',
