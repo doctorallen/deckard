@@ -150,6 +150,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
+  console.log('[Deckard Related Notes] Webview script started.');
   let state;
   let tagContextMenu;
   let tagContextKey;
@@ -318,11 +319,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
-    const tagOverviewName = state.tagOverviewFilter
-      ? renderTag(state.tagOverview, 'active-filter-tag') + '<span class="active-filter-joiner"> AND </span>' + renderTag(state.tagOverviewFilter, 'active-filter-tag')
-      : renderTag(state.tagOverview, 'active-filter-tag');
     const context = state.tagOverview
-      ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + tagOverviewName + '</div></div>'
+      ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
+        ? renderTag(state.tagOverview, 'active-filter-tag') + '<span class="active-filter-joiner"> AND </span>' + renderTag(state.tagOverviewFilter, 'active-filter-tag')
+        : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">Current note</div><div class="active-name">' + escapeHtml(state.activeFileName) + '</div>' + activeTags + '</div>' : '');
     const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Most tags</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
@@ -386,8 +386,14 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
   });
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') { state = event.data.data; render(); }
+    if (event.data && event.data.type === 'state') {
+      console.log('[Deckard Related Notes] Received state:', event.data.data.state);
+      state = event.data.data;
+      render();
+    }
   });
+  console.log('[Deckard Related Notes] Requesting initial state.');
+  vscode.postMessage({ type: 'ready' });
 }());
 </script>
 </body>

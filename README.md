@@ -137,11 +137,11 @@ Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, ta
 
 ## Related Notes
 
-The **Related Notes** view appears in the Explorer under the Deckard Activity Bar container. With a saved Markdown note open, it ranks related entries by shared tags/entities, Wiki links, and significant shared keywords.
+The **Related Notes** view appears in the Explorer under the Deckard Activity Bar container. With a saved Markdown note open, it ranks related entries by all shared tags/entities across the note, Wiki links, and significant shared keywords.
 
-Related entries are ranked by shared tags/entities, Wiki links, and significant shared keywords. Use the Related Notes sort control to order results by **Most tags**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
+Related entries are ranked by all shared tags/entities across the note, Wiki links, and significant shared keywords. Use the Related Notes sort control to order results by **Most tags**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
 
-When a Tag Overview is active, the sidebar also shows a compact **Relationship tree**. Expand **Parents**, **Siblings**, or **Children**, then expand a namespace branch to navigate relationships without leaving the narrow sidebar. Relationship clicks carry the current tag as a second filter, so the destination shows only entries carrying both tags.
+When a Tag Overview is the active editor tab, the sidebar switches from related notes to a compact **Relationship tree**. Expand **Parents**, **Siblings**, or **Children**, then expand a namespace branch to navigate relationships without leaving the narrow sidebar. Relationship clicks carry the current tag as a second filter, so the destination shows only entries carrying both tags. Returning to a Markdown editor restores the related-notes projection.
 
 Select the question-mark button in the Related Notes toolbar to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.
 

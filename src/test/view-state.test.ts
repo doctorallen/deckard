@@ -299,6 +299,40 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.notes[0].totalTagCount, 3);
   });
 
+  test('ranks notes by shared tags across every section in the note', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work #urgent #case',
+    );
+    const weaker = createFile('notes/a-weaker.md', '# Weaker #work');
+    const stronger = createFile(
+      'notes/z-stronger.md',
+      '# Stronger #work\n\n## Urgent #urgent\n\n## Case #case',
+    );
+    const index = createFileIndex([active, weaker, stronger]);
+
+    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+
+    assert.deepStrictEqual(
+      snapshot.notes.slice(0, 3).map((note) => note.filePath),
+      [
+        'notes/z-stronger.md',
+        'notes/z-stronger.md',
+        'notes/z-stronger.md',
+      ],
+    );
+    assert.strictEqual(snapshot.notes[0].matchCount, 3);
+    assert.deepStrictEqual(
+      snapshot.notes[0].matchedTags.map((tag) => tag.key),
+      ['#case', '#urgent', '#work'],
+    );
+    const weakerNote = snapshot.notes.find(
+      (note) => note.filePath === 'notes/a-weaker.md',
+    );
+    assert.ok(weakerNote);
+    assert.strictEqual(weakerNote.matchCount, 1);
+  });
+
   test('can disable keyword-only related-note matches', () => {
     const active = createFile(
       'notes/current.md',
@@ -371,6 +405,28 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
       ['#alpha', '#middle', '#zeta'],
+    );
+  });
+
+  test('collects active tags from front matter, sections, and tasks', () => {
+    const active = createFile(
+      'notes/current.md',
+      [
+        '---',
+        'tags: [frontmatter]',
+        '---',
+        '# Current #section',
+        '- [ ] Task #task',
+      ].join('\n'),
+    );
+    const related = createFile('notes/related.md', '# Related #frontmatter');
+    const index = createFileIndex([active, related]);
+
+    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+
+    assert.deepStrictEqual(
+      snapshot.activeTags.map((tag) => tag.key),
+      ['#frontmatter', '#section', '#task'],
     );
   });
 

@@ -694,7 +694,7 @@ export function rankRelatedNotes(
         getInlineSource(section),
       ),
       updatedAt: file.updatedAt ?? section.updatedAt,
-      matchedTags: activeTags.filter((tag) => section.tags.includes(tag.key)),
+      matchedTags,
     }));
     // A task under a matching section is already visible through that section;
     // include only standalone matches to keep sidebar entries distinct.
@@ -711,7 +711,7 @@ export function rankRelatedNotes(
         sourceLine: task.lineNumber,
         titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
         updatedAt: file.updatedAt ?? task.updatedAt,
-        matchedTags: activeTags.filter((tag) => task.tags.includes(tag.key)),
+        matchedTags,
       });
     });
 

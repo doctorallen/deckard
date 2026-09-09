@@ -43,6 +43,13 @@ export class TagOverviewPanels implements vscode.Disposable {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (editor && this.activeTagKey) {
+          this.setActiveTagOverview(undefined, undefined);
+        }
+      }),
+    );
+    this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.theme')) {
           this.panels.forEach((panel) => panel.renderHtml());
@@ -74,6 +81,17 @@ export class TagOverviewPanels implements vscode.Disposable {
    */
   public getActiveTagFilterKey(): string | undefined {
     return this.activeFilterTagKey;
+  }
+
+  /**
+   * Returns whether the selected editor tab is a Deckard Tag Overview.
+   */
+  public isActive(): boolean {
+    const input =
+      vscode.window.tabGroups?.activeTabGroup?.activeTab?.input;
+    return Boolean(
+      this.activeTagKey && isDeckardTagOverviewInput(input),
+    );
   }
 
   /**
@@ -516,6 +534,20 @@ class TagOverviewPanel implements vscode.Disposable {
       await openSourceAt(task.task.filePath, task.task.lineNumber);
     }
   }
+}
+
+/**
+ * Identifies the active tab shape without depending on a runtime VS Code class.
+ */
+function isDeckardTagOverviewInput(
+  input: vscode.Tab['input'] | undefined,
+): boolean {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    'viewType' in input &&
+    input.viewType === 'deckard.tagOverview'
+  );
 }
 
 /**

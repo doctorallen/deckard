@@ -392,6 +392,10 @@ export interface SetRelatedNotesSortMessage {
   mode: RelatedNotesSortMode;
 }
 
+export interface SidebarReadyMessage {
+  type: 'ready';
+}
+
 export type DashboardMessage =
   | OpenSourceMessage
   | ToggleTaskMessage
@@ -419,6 +423,7 @@ export type TagOverviewMessage =
   | SetTagOverviewLayoutMessage;
 
 export type SidebarMessage =
+  | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage
   | RenameTagMessage

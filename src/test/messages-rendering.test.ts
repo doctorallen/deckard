@@ -723,6 +723,10 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      html.includes('const tagOverviewName = state.tagOverviewFilter'),
+      false,
+    );
+    assert.strictEqual(
       html.includes('function renderTagControl(tag, content, extraClass)'),
       false,
     );
@@ -844,6 +848,9 @@ suite('Webview contracts', () => {
   });
 
   test('accepts only valid sidebar navigation messages', () => {
+    assert.deepStrictEqual(parseSidebarMessage({ type: 'ready' }), {
+      type: 'ready',
+    });
     assert.deepStrictEqual(
       parseSidebarMessage({
         type: 'openSource',

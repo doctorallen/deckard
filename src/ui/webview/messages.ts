@@ -147,6 +147,9 @@ export function parseSidebarMessage(
     return undefined;
   }
 
+  if (value.type === 'ready') {
+    return { type: 'ready' };
+  }
   if (value.type === 'openSource') {
     return isSourceMessage(value)
       ? (value as unknown as SidebarMessage)
