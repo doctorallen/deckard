@@ -87,10 +87,9 @@ export class TagOverviewPanels implements vscode.Disposable {
    * Returns whether the selected editor tab is a Deckard Tag Overview.
    */
   public isActive(): boolean {
-    const input =
-      vscode.window.tabGroups?.activeTabGroup?.activeTab?.input;
     return Boolean(
-      this.activeTagKey && isDeckardTagOverviewInput(input),
+      this.activeTagKey &&
+        this.panels.get(this.activeTagKey)?.isActive(),
     );
   }
 
@@ -290,6 +289,13 @@ class TagOverviewPanel implements vscode.Disposable {
 
   public getFilterTagKey(): string | undefined {
     return this.filterTagKey;
+  }
+
+  /**
+   * Reports the panel state maintained by VS Code's webview lifecycle.
+   */
+  public isActive(): boolean {
+    return this.panel?.active === true;
   }
 
   /**
@@ -536,22 +542,8 @@ class TagOverviewPanel implements vscode.Disposable {
   }
 }
 
-/**
- * Identifies the active tab shape without depending on a runtime VS Code class.
- */
-function isDeckardTagOverviewInput(
-  input: vscode.Tab['input'] | undefined,
-): boolean {
-  return (
-    typeof input === 'object' &&
-    input !== null &&
-    'viewType' in input &&
-    input.viewType === 'deckard.tagOverview'
-  );
-}
-
-/**
- * Extracts the serialized tag key while rejecting malformed serializer state.
+ /**
+  * Extracts the serialized tag key while rejecting malformed serializer state.
  */
 function getSerializedTagKey(state: unknown): string | undefined {
   if (typeof state !== 'object' || state === null) {

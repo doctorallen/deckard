@@ -990,6 +990,28 @@ suite('Dashboard state', () => {
       ),
       ['#sibling'],
     );
+
+    const filteredOverview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#focus',
+      'active',
+      'inline',
+      true,
+      '#parent',
+    );
+    assert.ok(filteredOverview);
+    const filteredSidebar = createTagOverviewSidebarSnapshot(filteredOverview);
+    assert.deepStrictEqual(filteredSidebar.tagOverviewFilter, {
+      key: '#parent',
+      label: '#parent',
+    });
+    assert.deepStrictEqual(
+      filteredSidebar.tagOverviewRelationships?.childTags.map(
+        (relationship) => relationship.child.key,
+      ),
+      ['#child'],
+    );
   });
 });
 
