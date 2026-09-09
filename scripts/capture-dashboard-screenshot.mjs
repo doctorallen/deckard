@@ -221,7 +221,7 @@ async function activate() {
       await run('workbench.view.extension.deckard');
       await run('deckard.relatedNotes.focus');
     } else if (view === 'tag-overview') {
-      await run('deckard.showTagOverview', 'project/neon-relay');
+      await run('deckard.showTagOverview', '#project/neon-relay');
     } else {
       await run(${JSON.stringify(selectedView.command)});
     }

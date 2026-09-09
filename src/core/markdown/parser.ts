@@ -1,4 +1,5 @@
 import {
+  BuiltInEntityKind,
   EntityKind,
   HeadingTagSpan,
   ParsedFile,
@@ -13,6 +14,10 @@ interface HeadingMatch {
   text: string;
 }
 
+interface ListItemMatch {
+  indentation: number;
+}
+
 interface Frontmatter {
   tags: TagReference[];
   links: string[];
@@ -22,12 +27,16 @@ interface Frontmatter {
 
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
 const taskPattern = /^(\s*)([-*+])[ \t]+\[([ xX])\][ \t]+(.*)$/;
+const listItemPattern = /^(\s*)([-*+])[ \t]+/;
+const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const wikiLinkPattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
 const monthDatePattern =
   /\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i;
 const nextWeekdayPattern =
   /\bnext\s+(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i;
+const namespacePattern = /^[a-z][a-z0-9_-]*$/;
+const reservedNamespace = 'tag-at';
 
 export interface MarkdownParseOptions {
   parseInlineTags?: boolean;
@@ -37,7 +46,6 @@ export interface MarkdownParseOptions {
 
 export type EntityNamespaceAliases = Readonly<Record<string, string>>;
 
-const entityNamespaces = new Set(['project', 'topic', 'org', 'meeting']);
 const defaultEntityNamespaceAliases: Record<string, string> = {
   project: 'project',
   topic: 'topic',
@@ -47,7 +55,8 @@ const defaultEntityNamespaceAliases: Record<string, string> = {
 };
 
 /**
- * Merges valid user aliases with Deckard's canonical entity namespaces.
+ * Normalizes built-in aliases and accepts valid workspace-defined namespace
+ * aliases without requiring the target namespace to be predeclared.
  */
 export function getEntityNamespaceAliases(
   configured: unknown,
@@ -66,15 +75,34 @@ export function getEntityNamespaceAliases(
     const namespace =
       normalizedType === 'organization' ? 'org' : normalizedType;
     if (
-      /^[a-z][a-z0-9_-]*$/.test(normalizedAlias) &&
+      namespacePattern.test(normalizedAlias) &&
       namespace !== undefined &&
-      entityNamespaces.has(namespace)
+      namespacePattern.test(namespace) &&
+      normalizedAlias !== reservedNamespace &&
+      namespace !== reservedNamespace
     ) {
       aliases[normalizedAlias] = namespace;
     }
   });
 
+  Object.keys(aliases).forEach((alias) => {
+    aliases[alias] = resolveNamespaceAlias(alias, aliases);
+  });
+
   return aliases;
+}
+
+function resolveNamespaceAlias(
+  namespace: string,
+  aliases: Record<string, string>,
+): string {
+  let current = namespace;
+  const visited = new Set<string>();
+  while (aliases[current] && !visited.has(current)) {
+    visited.add(current);
+    current = aliases[current];
+  }
+  return current;
 }
 
 /**
@@ -143,8 +171,7 @@ export function parseMarkdown(
   const tasks = findTasks(
     filePath,
     lines,
-    headings,
-    headingSections,
+    sections,
     fencedLines,
     metadata,
     frontmatter.tags,
@@ -156,6 +183,7 @@ export function parseMarkdown(
     content,
     sections,
     tasks,
+    frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
@@ -224,18 +252,63 @@ export function getEntityKind(
     return 'person';
   }
 
-  const namespace = key.slice(1).split('/', 1)[0];
-  if (
-    namespace === 'project' ||
-    namespace === 'topic' ||
-    namespace === 'meeting'
-  ) {
-    return namespace;
+  const namespace = getEntityNamespace(tag, entityNamespaceAliases);
+  return namespace === 'org' || namespace === 'organization'
+    ? 'organization'
+    : namespace;
+}
+
+/**
+ * Returns the namespace encoded by a namespaced hash tag.
+ *
+ * Every namespace creates an entity on first use. The internal `tag-at`
+ * namespace remains excluded because it represents a generic `@` tag when the
+ * people marker is customized.
+ */
+export function getEntityNamespace(
+  tag: TagReference,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): string | undefined {
+  const key = normalizeTagKey(tag.key, entityNamespaceAliases);
+  if (!key.startsWith('#')) {
+    return undefined;
   }
-  if (namespace === 'org' || namespace === 'organization') {
-    return 'organization';
+
+  const [namespace, ...name] = key.slice(1).split('/');
+  if (!namespace || name.length === 0 || namespace.toLowerCase() === 'tag-at') {
+    return undefined;
   }
-  return undefined;
+
+  return namespace.toLowerCase();
+}
+
+/**
+ * Identifies the fixed entity kinds that have dedicated front matter groups
+ * and Dashboard filters.
+ */
+export function isBuiltInEntityKind(
+  kind: EntityKind | undefined,
+): kind is BuiltInEntityKind {
+  return (
+    kind === 'person' ||
+    kind === 'project' ||
+    kind === 'topic' ||
+    kind === 'organization' ||
+    kind === 'meeting'
+  );
+}
+
+/**
+ * Formats an entity title for overview tabs and panel titles.
+ */
+export function formatEntityTitle(kind: string, name: string): string {
+  return `${formatTitlePart(kind)}: ${formatTitlePart(name)}`;
+}
+
+function formatTitlePart(value: string): string {
+  return value
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b[a-z]/g, (character) => character.toUpperCase());
 }
 
   /**
@@ -353,6 +426,20 @@ export function getEntityKind(
     )[0];
     if (existing) {
       return existing;
+    }
+    if (field === 'tag' || field === 'tags') {
+      const namespacedValue = value
+        .trim()
+        .match(
+          /^#?([A-Za-z][A-Za-z0-9_-]*(?:\/[A-Za-z0-9][A-Za-z0-9_-]*)+)$/,
+        );
+      if (namespacedValue) {
+        const label = `#${namespacedValue[1]}`;
+        return {
+          key: normalizeTagKey(label.toLowerCase(), entityNamespaceAliases),
+          label,
+        };
+      }
     }
     const slug = toSlug(value);
     if (!slug) {
@@ -564,23 +651,43 @@ function normalizeParsedTagReferences(
   parsed: ParsedFile,
   entityNamespaceAliases?: EntityNamespaceAliases,
 ): ParsedFile {
+  parsed.frontmatterTags = normalizeTagReferences(
+    parsed.frontmatterTags,
+    entityNamespaceAliases,
+  );
   [...parsed.sections, ...parsed.tasks].forEach((item) => {
-    const tags: string[] = [];
-    const tagLabels: Record<string, string> = {};
-
-    item.tags.forEach((key) => {
-      const normalizedKey = normalizeTagKey(key, entityNamespaceAliases);
-      if (!tags.includes(normalizedKey)) {
-        tags.push(normalizedKey);
-      }
-      tagLabels[normalizedKey] ??= item.tagLabels[key] ?? key;
-    });
-
-    item.tags = tags;
-    item.tagLabels = tagLabels;
+    if ('headingTags' in item) {
+      item.headingTags = normalizeTagReferences(
+        item.headingTags ?? [],
+        entityNamespaceAliases,
+      );
+    }
+    const normalized = normalizeTagReferences(
+      item.tags.map((key) => ({
+        key,
+        label: item.tagLabels[key] ?? key,
+      })),
+      entityNamespaceAliases,
+    );
+    item.tags = normalized.map((tag) => tag.key);
+    item.tagLabels = Object.fromEntries(
+      normalized.map((tag) => [tag.key, tag.label]),
+    );
   });
 
   return parsed;
+}
+
+function normalizeTagReferences(
+  references: TagReference[],
+  entityNamespaceAliases?: EntityNamespaceAliases,
+): TagReference[] {
+  const normalized = new Map<string, TagReference>();
+  references.forEach((reference) => {
+    const key = normalizeTagKey(reference.key, entityNamespaceAliases);
+    normalized.set(key, normalized.get(key) ?? { key, label: reference.label });
+  });
+  return [...normalized.values()];
 }
 
 function normalizeTagKey(
@@ -668,7 +775,7 @@ function findTagMatches(
 function createTagPattern(personMarker: string): RegExp {
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
   return new RegExp(
-    `(^|[^\\w])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
+    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
     'g',
   );
 }
@@ -726,23 +833,23 @@ function createSection(
     .slice(headingIndex + 1)
     .find((candidate) => candidate.level <= heading.level);
   const endLine = nextBoundary ? nextBoundary.lineNumber - 1 : lines.length;
-  const sectionTags = mergeTagReferences(
-    frontmatterTags,
-    extractTags(heading.text, undefined, personMarker),
-  );
+  const headingTags = extractTags(heading.text, undefined, personMarker);
+  const sectionTags = mergeTagReferences(frontmatterTags, headingTags);
   const tagLabels = Object.fromEntries(
     sectionTags.map((tag) => [tag.key, tag.label]),
   );
   const rawContent = lines.slice(heading.lineNumber - 1, endLine).join('\n');
+  const parentHeading = findNearestParentHeading(headings, headingIndex);
 
   return {
-    id: createId(
-      'section',
-      `${filePath}:${heading.lineNumber}:${heading.text}`,
-    ),
+    id: createHeadingSectionId(filePath, heading),
     filePath,
     heading: heading.text,
     headingLevel: heading.level,
+    headingTags,
+    parentSectionId: parentHeading
+      ? createHeadingSectionId(filePath, parentHeading)
+      : undefined,
     tags: sectionTags.map((tag) => tag.key),
     tagLabels,
     links: extractWikiLinks(rawContent),
@@ -752,6 +859,39 @@ function createSection(
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
   };
+}
+
+/**
+ * Finds the nearest structurally containing heading, even when that heading
+ * does not carry a tag itself. The index can then walk farther upward to find
+ * the nearest tagged ancestor.
+ */
+function findNearestParentHeading(
+  headings: HeadingMatch[],
+  headingIndex: number,
+): HeadingMatch | undefined {
+  const heading = headings[headingIndex];
+  if (!heading) {
+    return undefined;
+  }
+
+  for (let index = headingIndex - 1; index >= 0; index -= 1) {
+    if (headings[index].level < heading.level) {
+      return headings[index];
+    }
+  }
+
+  return undefined;
+}
+
+function createHeadingSectionId(
+  filePath: string,
+  heading: HeadingMatch,
+): string {
+  return createId(
+    'section',
+    `${filePath}:${heading.lineNumber}:${heading.text}`,
+  );
 }
 
 /**
@@ -766,42 +906,123 @@ function findInlineSections(
   frontmatterTags: TagReference[] = [],
   personMarker?: string,
 ): Section[] {
-  return lines.flatMap((line, lineIndex) => {
+  const sections: Section[] = [];
+  let lineIndex = 0;
+
+  while (lineIndex < lines.length) {
+    const line = lines[lineIndex];
     if (
       fencedLines.has(lineIndex) ||
       headingPattern.test(line) ||
       taskPattern.test(line)
     ) {
-      return [];
+      lineIndex += 1;
+      continue;
+    }
+
+    const listItem = getListItemMatch(line);
+    if (listItem) {
+      const localTags = extractTags(line, undefined, personMarker);
+      if (localTags.length > 0) {
+        const lineNumber = lineIndex + 1;
+        const endLine = findListItemEndLine(
+          lines,
+          lineIndex,
+          listItem.indentation,
+        );
+        const rawContent = lines.slice(lineIndex, endLine).join('\n');
+        sections.push(
+          createInlineSection(
+            filePath,
+            line,
+            lineNumber,
+            endLine,
+            rawContent,
+            localTags,
+            frontmatterTags,
+            metadata,
+          ),
+        );
+      }
+      lineIndex += 1;
+      continue;
     }
 
     const localTags = extractTags(line, undefined, personMarker);
     if (localTags.length === 0) {
-      return [];
+      lineIndex += 1;
+      continue;
     }
-    const inlineTags = mergeTagReferences(frontmatterTags, localTags);
 
-    const lineNumber = lineIndex + 1;
-    return [
-      {
-        id: createId('inline', `${filePath}:${lineNumber}:${line}`),
+    const startLineIndex = lineIndex;
+    const paragraphLines = [line];
+    lineIndex += 1;
+    while (lineIndex < lines.length) {
+      const continuation = lines[lineIndex];
+      if (
+        fencedLines.has(lineIndex) ||
+        headingPattern.test(continuation) ||
+        taskPattern.test(continuation) ||
+        getListItemMatch(continuation) ||
+        extractTags(continuation, undefined, personMarker).length === 0
+      ) {
+        break;
+      }
+      paragraphLines.push(continuation);
+      lineIndex += 1;
+    }
+
+    const lineNumber = startLineIndex + 1;
+    const rawContent =
+      paragraphLines.length > 1 ? paragraphLines.join('\n') : '';
+    sections.push(
+      createInlineSection(
         filePath,
-        heading: line.trim(),
-        headingLevel: 0,
-        isInline: true,
-        tags: inlineTags.map((tag) => tag.key),
-        tagLabels: Object.fromEntries(
-          inlineTags.map((tag) => [tag.key, tag.label]),
+        line,
+        lineNumber,
+        lineNumber + paragraphLines.length - 1,
+        rawContent,
+        paragraphLines.flatMap((paragraphLine) =>
+          extractTags(paragraphLine, undefined, personMarker),
         ),
-        links: extractWikiLinks(line),
-        rawContent: '',
-        startLine: lineNumber,
-        endLine: lineNumber,
-        createdAt: metadata?.createdAt,
-        updatedAt: metadata?.updatedAt,
-      },
-    ];
-  });
+        frontmatterTags,
+        metadata,
+      ),
+    );
+  }
+
+  return sections;
+}
+
+function createInlineSection(
+  filePath: string,
+  sourceLine: string,
+  lineNumber: number,
+  endLine: number,
+  rawContent: string,
+  localTags: TagReference[],
+  frontmatterTags: TagReference[],
+  metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
+): Section {
+  const inlineTags = mergeTagReferences(frontmatterTags, localTags);
+  return {
+    id: createId('inline', `${filePath}:${lineNumber}:${sourceLine}`),
+    filePath,
+    heading: sourceLine.trim(),
+    headingLevel: 0,
+    isInline: true,
+    headingTags: [],
+    tags: inlineTags.map((tag) => tag.key),
+    tagLabels: Object.fromEntries(
+      inlineTags.map((tag) => [tag.key, tag.label]),
+    ),
+    links: extractWikiLinks(rawContent || sourceLine),
+    rawContent,
+    startLine: lineNumber,
+    endLine,
+    createdAt: metadata?.createdAt,
+    updatedAt: metadata?.updatedAt,
+  };
 }
 
 /**
@@ -813,8 +1034,7 @@ function findInlineSections(
 function findTasks(
   filePath: string,
   lines: string[],
-  headings: HeadingMatch[],
-  headingSections: Section[],
+  sections: Section[],
   fencedLines: Set<number>,
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   frontmatterTags: TagReference[] = [],
@@ -830,9 +1050,7 @@ function findTasks(
     }
 
     const lineNumber = lineIndex + 1;
-    const sectionIndex = findNearestHeadingIndex(headings, lineNumber);
-    const section =
-      sectionIndex >= 0 ? headingSections[sectionIndex] : undefined;
+    const section = findNearestSection(sections, lineNumber);
     const inlineTags = extractTags(match[4], undefined, personMarker);
     const inheritedTags = section?.tags ?? frontmatterTags.map((tag) => tag.key);
     const inheritedLabels =
@@ -999,21 +1217,59 @@ export function findFencedLines(lines: string[]): Set<number> {
 }
 
 /**
- * Finds the last heading before a task so inherited tags follow source order.
+ * Finds the nearest containing section so inherited tags follow source order.
  */
-function findNearestHeadingIndex(
-  headings: HeadingMatch[],
+function findNearestSection(
+  sections: Section[],
   lineNumber: number,
+): Section | undefined {
+  return sections
+    .filter(
+      (section) =>
+        section.startLine < lineNumber && section.endLine >= lineNumber,
+    )
+    .sort(
+      (left, right) =>
+        right.startLine - left.startLine ||
+        right.headingLevel - left.headingLevel,
+    )[0];
+}
+
+function getListItemMatch(line: string): ListItemMatch | undefined {
+  const match = line.match(listItemPattern) ?? line.match(orderedListItemPattern);
+  return match ? { indentation: match[1].length } : undefined;
+}
+
+/**
+ * Extends a tagged list item through its indented descendants, using the
+ * same boundary rule as a heading section: the next sibling or ancestor item
+ * ends the note.
+ */
+function findListItemEndLine(
+  lines: string[],
+  startIndex: number,
+  indentation: number,
 ): number {
-  let nearestIndex = -1;
-
-  headings.forEach((heading, headingIndex) => {
-    if (heading.lineNumber < lineNumber) {
-      nearestIndex = headingIndex;
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    const listItem = getListItemMatch(line);
+    if (listItem && listItem.indentation <= indentation) {
+      return index;
     }
-  });
 
-  return nearestIndex;
+    if (
+      line.trim().length > 0 &&
+      getLeadingWhitespaceLength(line) <= indentation
+    ) {
+      return index;
+    }
+  }
+
+  return lines.length;
+}
+
+function getLeadingWhitespaceLength(line: string): number {
+  return line.match(/^\s*/)?.[0].length ?? 0;
 }
 
 /**

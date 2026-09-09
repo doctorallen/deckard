@@ -2,12 +2,18 @@ import * as vscode from 'vscode';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { ParsedFile, SidebarMessage } from '../../core/types';
+import {
+  ParsedFile,
+  SidebarMessage,
+  TagTitleDisplayMode,
+} from '../../core/types';
 import {
   createSidebarSnapshot,
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
+  normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
@@ -30,8 +36,10 @@ export class SidebarNotesView
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
     private readonly tagOverview: ActiveTagOverview,
-    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
-    private readonly onReveal: () => void | Promise<void>,
+    private readonly onOpenTag: (
+      tagKey: string,
+      filterTagKey?: string,
+    ) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
@@ -43,6 +51,16 @@ export class SidebarNotesView
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.enableKeywordLinks')) {
+          this.refresh();
+        }
+        if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
+          this.refresh();
+        }
+        if (
+          event.affectsConfiguration(
+            'deckard.enableHeadingTagRelationships',
+          )
+        ) {
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.theme')) {
@@ -61,30 +79,15 @@ export class SidebarNotesView
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
     this.renderHtml();
-    let wasVisible = false;
-    const handleVisibilityChange = (): void => {
-      if (
-        webviewView.visible &&
-        !wasVisible &&
-        shouldOpenDashboardForSidebarReveal(
-          vscode.window.activeTextEditor?.document,
-        )
-      ) {
-        void this.onReveal();
-      }
-      wasVisible = webviewView.visible;
-    };
     this.viewDisposables = [
       webviewView.onDidDispose(() => {
         this.view = undefined;
         this.disposeViewListeners();
       }),
-      webviewView.onDidChangeVisibility(handleVisibilityChange),
       webviewView.webview.onDidReceiveMessage((message) => {
         void this.handleMessage(message);
       }),
     ];
-    handleVisibilityChange();
     void this.indexer.ready.then(() => this.refresh());
   }
 
@@ -133,11 +136,16 @@ export class SidebarNotesView
   private createSnapshot() {
     const index = this.indexer.getSnapshot();
     const activeTagKey = this.tagOverview.getActiveTagKey();
+    const activeTagFilterKey = this.tagOverview.getActiveTagFilterKey();
     if (activeTagKey) {
       const overview = createTagOverviewSnapshot(
         index,
         this.preferences.value,
         activeTagKey,
+        'active',
+        this.getTagTitleDisplayMode(),
+        this.areHeadingTagRelationshipsEnabled(),
+        activeTagFilterKey,
       );
       if (overview) {
         return createTagOverviewSidebarSnapshot(overview);
@@ -152,6 +160,15 @@ export class SidebarNotesView
       this.areKeywordLinksEnabled(),
       this.preferences.value.relatedNotesSortMode,
       this.preferences.value.sectionAccessCounts,
+      this.getTagTitleDisplayMode(),
+    );
+  }
+
+  private getTagTitleDisplayMode(): TagTitleDisplayMode {
+    return normalizeTagTitleDisplayMode(
+      vscode.workspace
+        .getConfiguration('deckard')
+        .get<unknown>('tagTitleDisplayMode', 'inline'),
     );
   }
 
@@ -182,6 +199,12 @@ export class SidebarNotesView
     return vscode.workspace
       .getConfiguration('deckard', vscode.window.activeTextEditor?.document.uri)
       .get<boolean>('enableKeywordLinks', true);
+  }
+
+  private areHeadingTagRelationshipsEnabled(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('enableHeadingTagRelationships', true);
   }
 
   /**
@@ -218,8 +241,9 @@ export class SidebarNotesView
       return;
     }
     if (message.type === 'openTag') {
-      if (index.tags.has(message.tagKey)) {
-        await this.onOpenTag(message.tagKey);
+      const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
+      if (tagKey) {
+        await this.onOpenTag(tagKey, message.filterTagKey);
       }
       return;
     }
@@ -246,6 +270,7 @@ export class SidebarNotesView
 interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
+  getActiveTagFilterKey(): string | undefined;
 }
 
 /**
@@ -261,13 +286,4 @@ interface ActiveFile {
  */
 function isMarkdownDocument(document: vscode.TextDocument): boolean {
   return isMarkdownFile(document.uri);
-}
-
-/**
- * Avoids taking focus from a Markdown note when Related Notes is opened.
- */
-export function shouldOpenDashboardForSidebarReveal(
-  document: Pick<vscode.TextDocument, 'uri'> | undefined,
-): boolean {
-  return !document || !isMarkdownFile(document.uri);
 }

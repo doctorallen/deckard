@@ -27,6 +27,7 @@ suite('Extension Test Suite', () => {
         'deckard.searchWorkspace',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
+        'deckard.renameTag',
       ],
     );
     assert.strictEqual(
@@ -38,6 +39,24 @@ suite('Extension Test Suite', () => {
     assert.strictEqual(
       extension.packageJSON.contributes?.configuration?.properties[
         'deckard.parseInlineTags'
+      ].default,
+      true,
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.tagTitleDisplayMode'
+      ].default,
+      'inline',
+    );
+    assert.deepStrictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.tagTitleDisplayMode'
+      ].enum,
+      ['inline', 'separate'],
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.enableHeadingTagRelationships'
       ].default,
       true,
     );
@@ -109,6 +128,9 @@ suite('Extension Test Suite', () => {
       (await vscode.commands.getCommands(true)).includes(
         'deckard.searchWorkspace',
       ),
+    );
+    assert.ok(
+      (await vscode.commands.getCommands(true)).includes('deckard.renameTag'),
     );
   });
 });

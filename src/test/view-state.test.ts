@@ -197,6 +197,42 @@ suite('Dashboard state', () => {
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
+  test('keeps lightweight tags alongside canonical entities in the dashboard', () => {
+    const parsed = createFile(
+      'notes/project.md',
+      '# Project #project-name #project/project-name #management/performance',
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createDashboardSnapshot(index, defaultPreferences, 'active');
+
+    assert.strictEqual(
+      snapshot.tags.some((tag) => tag.key === '#project-name'),
+      true,
+    );
+    assert.strictEqual(
+      snapshot.entities.some((entity) => entity.key === '#project-name'),
+      false,
+    );
+    assert.strictEqual(
+      snapshot.entities.some((entity) => entity.key === '#project/project-name'),
+      true,
+    );
+    assert.strictEqual(
+      snapshot.entities.find(
+        (entity) => entity.key === '#management/performance',
+      )?.kind,
+      'management',
+    );
+    assert.strictEqual(
+      createTagOverviewSnapshot(
+        index,
+        defaultPreferences,
+        '#management/performance',
+      )?.entity?.name,
+      'performance',
+    );
+  });
+
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
     const snapshot = createDashboardSnapshot(
@@ -350,7 +386,7 @@ suite('Dashboard state', () => {
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.title),
-      ['First reference', 'Second reference'],
+      ['First reference #work', 'Second reference #work'],
     );
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.fileName),
@@ -359,6 +395,20 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.sourceLine),
       [1, 3],
+    );
+
+    const separate = createSidebarSnapshot(
+      index,
+      active.filePath,
+      active,
+      true,
+      'tags',
+      {},
+      'separate',
+    );
+    assert.deepStrictEqual(
+      separate.notes.map((note) => note.title),
+      ['First reference', 'Second reference'],
     );
   });
 
@@ -411,12 +461,170 @@ suite('Dashboard state', () => {
     const snapshot = createTagOverviewSnapshot(index, preferences, '#work');
 
     assert.ok(snapshot);
-    assert.strictEqual(snapshot.sections[0].heading, 'Heading');
+    assert.strictEqual(snapshot.sections[0].heading, 'Heading #work');
+    assert.deepStrictEqual(snapshot.sections[0].titleTags, [
+      { key: '#work', label: '#work' },
+    ]);
     assert.strictEqual(snapshot.sections[0].rawContent, 'Body text');
     assert.strictEqual(snapshot.sections[0].createdAt, 10);
     assert.strictEqual(snapshot.sections[0].updatedAt, 20);
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
     assert.strictEqual(snapshot.layout, 'tabs');
+
+    const separate = createTagOverviewSnapshot(
+      index,
+      preferences,
+      '#work',
+      'active',
+      'separate',
+    );
+    assert.ok(separate);
+    assert.strictEqual(separate.sections[0].heading, 'Heading');
+  });
+
+  test('filters a tag overview to entries carrying both relationship tags', () => {
+    const parsed = createFile(
+      'notes/filtered-relationship.md',
+      [
+        '# Parent route #parent',
+        '## Shared child #child',
+        '- [ ] Both tags',
+        '# Child-only route #child',
+        '- [ ] Child only',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#child',
+      'active',
+      'inline',
+      true,
+      '#parent',
+    );
+
+    assert.ok(snapshot);
+    assert.deepStrictEqual(snapshot.filterTag, {
+      key: '#parent',
+      label: '#parent',
+    });
+    assert.deepStrictEqual(
+      snapshot.sections.map((section) => section.heading),
+      ['Shared child #child'],
+    );
+    assert.deepStrictEqual(
+      snapshot.tasks.map((item) => item.task.title),
+      ['Both tags'],
+    );
+    assert.deepStrictEqual(
+      createTagOverviewSidebarSnapshot(snapshot).tagOverviewFilter,
+      { key: '#parent', label: '#parent' },
+    );
+
+    const reverse = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#parent',
+      'active',
+      'inline',
+      true,
+      '#child',
+    );
+    assert.ok(reverse);
+    assert.deepStrictEqual(
+      reverse.sections.map((section) => section.heading),
+      ['Shared child #child'],
+    );
+    assert.deepStrictEqual(
+      reverse.tasks.map((item) => item.task.title),
+      ['Both tags'],
+    );
+  });
+
+  test('projects parent and child heading relationships into tag overviews', () => {
+    const parsed = parseMarkdown(
+      'notes/relationship-overview.md',
+      [
+        '# Relay map #parent',
+        '## Un tagged details',
+        '### Signal route #child',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const child = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#child',
+    );
+    const parent = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#parent',
+    );
+
+    assert.ok(child);
+    assert.ok(parent);
+    assert.deepStrictEqual(
+      child.parentTags.map((relationship) => ({
+        key: relationship.parent.key,
+        label: relationship.parent.label,
+        count: relationship.count,
+      })),
+      [{ key: '#parent', label: '#parent', count: 1 }],
+    );
+    assert.deepStrictEqual(
+      parent.childTags.map((relationship) => ({
+        key: relationship.child.key,
+        label: relationship.child.label,
+        count: relationship.count,
+      })),
+      [{ key: '#child', label: '#child', count: 1 }],
+    );
+    assert.deepStrictEqual(parent.parentTags, []);
+    assert.deepStrictEqual(child.childTags, []);
+  });
+
+  test('projects dense relationship groups and supports disabling them', () => {
+    const parentTags = Array.from(
+      { length: 12 },
+      (_, index) => `#parent/${String(index + 1).padStart(2, '0')}`,
+    );
+    const childTags = Array.from(
+      { length: 12 },
+      (_, index) => `#child/${String(index + 1).padStart(2, '0')}`,
+    );
+    const parsed = parseMarkdown(
+      'notes/dense-relationships.md',
+      [
+        `## Parent signal array ${parentTags.join(' ')}`,
+        '### Relationship stress test #hub/relationship-overview',
+        `#### Child signal array ${childTags.join(' ')}`,
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const enabled = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#hub/relationship-overview',
+    );
+    const disabled = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#hub/relationship-overview',
+      'active',
+      'inline',
+      false,
+    );
+
+    assert.ok(enabled);
+    assert.ok(disabled);
+    assert.strictEqual(enabled.parentTags.length, 12);
+    assert.strictEqual(enabled.childTags.length, 12);
+    assert.deepStrictEqual(disabled.parentTags, []);
+    assert.deepStrictEqual(disabled.childTags, []);
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -479,11 +687,105 @@ suite('Dashboard state', () => {
 
     assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
-    assert.strictEqual(snapshot.sections[0].heading, 'Inline note');
+    assert.strictEqual(snapshot.sections[0].heading, 'Inline note #work');
     assert.deepStrictEqual(snapshot.sections[0].tags, [
       { key: '#work', label: '#work' },
     ]);
+    assert.deepStrictEqual(snapshot.sections[0].titleTags, [
+      { key: '#work', label: '#work' },
+    ]);
     assert.strictEqual(snapshot.sections[0].startLine, 1);
+  });
+
+  test('keeps tags from wrapped inline entries available as title buttons', () => {
+    const parsed = parseMarkdown(
+      'notes/wrapped-inline.md',
+      [
+        '#project/neon-relay is a project. #topic/synthetic-memory is a topic.',
+        '#org/lumen-transit is an organization. #meeting/sector-nine-briefing is a',
+        'meeting. Ordinary labels such as #follow-up remain lightweight tags.',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#meeting/sector-nine-briefing',
+    );
+
+    assert.ok(snapshot);
+    assert.deepStrictEqual(snapshot.sections[0].titleTags, [
+      { key: '#project/neon-relay', label: '#project/neon-relay' },
+      { key: '#topic/synthetic-memory', label: '#topic/synthetic-memory' },
+      { key: '#org/lumen-transit', label: '#org/lumen-transit' },
+      {
+        key: '#meeting/sector-nine-briefing',
+        label: '#meeting/sector-nine-briefing',
+      },
+      { key: '#follow-up', label: '#follow-up' },
+    ]);
+  });
+
+  test('keeps numbered inline entries separate in tag overviews', () => {
+    const parsed = parseMarkdown(
+      'notes/numbered-inline.md',
+      [
+        '1. @ivo-chen verifies the physical junction.',
+        '2. @mara-vale approves an operational exception.',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const ivo = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '@ivo-chen',
+    );
+    const mara = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '@mara-vale',
+    );
+
+    assert.ok(ivo);
+    assert.ok(mara);
+    assert.deepStrictEqual(ivo.sections.map((section) => section.heading), [
+      '1. @ivo-chen verifies the physical junction.',
+    ]);
+    assert.deepStrictEqual(mara.sections.map((section) => section.heading), [
+      '2. @mara-vale approves an operational exception.',
+    ]);
+    assert.strictEqual(ivo.sections[0].rawContent, '');
+    assert.strictEqual(mara.sections[0].rawContent, '');
+  });
+
+  test('includes nested bullets in tagged list overview cards', () => {
+    const parsed = parseMarkdown(
+      'notes/list-item.md',
+      [
+        '- #project/east-junction',
+        '  - Finishing the relay inspection.',
+        '  - Moving the patrol to the abandoned platform.',
+        '- #project/neon-relay',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/east-junction',
+    );
+
+    assert.ok(snapshot);
+    assert.strictEqual(snapshot.sections.length, 1);
+    assert.strictEqual(
+      snapshot.sections[0].rawContent,
+      [
+        '  - Finishing the relay inspection.',
+        '  - Moving the patrol to the abandoned platform.',
+      ].join('\n'),
+    );
   });
 
   test('projects tag overview cards into sidebar notes without changing order', () => {
@@ -508,7 +810,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       sidebar.notes.map((note) => note.title),
-      ['Alpha', 'Beta', 'Zeta'],
+      ['Alpha #work', 'Beta #work', 'Zeta #work'],
     );
     assert.deepStrictEqual(
       sidebar.notes.map((note) => note.fileName),
@@ -522,6 +824,53 @@ suite('Dashboard state', () => {
       key: '#work',
       label: '#work',
     });
+
+    const separateOverview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#work',
+      'active',
+      'separate',
+    );
+    assert.ok(separateOverview);
+    const separateSidebar = createTagOverviewSidebarSnapshot(separateOverview);
+    assert.deepStrictEqual(
+      separateSidebar.notes.map((note) => note.title),
+      ['Alpha', 'Beta', 'Zeta'],
+    );
+  });
+
+  test('projects tag overview relationships into the sidebar tree', () => {
+    const parsed = createFile(
+      'notes/relationship-sidebar.md',
+      [
+        '# Parent route #parent',
+        '## Focus route #focus',
+        '### Child route #child',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const overview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#focus',
+    );
+
+    assert.ok(overview);
+    const sidebar = createTagOverviewSidebarSnapshot(overview);
+
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.parentTags.map(
+        (relationship) => relationship.parent.key,
+      ),
+      ['#parent'],
+    );
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.childTags.map(
+        (relationship) => relationship.child.key,
+      ),
+      ['#child'],
+    );
   });
 });
 
@@ -534,6 +883,7 @@ function createTag(key: string, count: number): TagInfo {
       (_, index) => `${key}-section-${index}`,
     ),
     taskIds: [],
+    filePaths: [],
     count,
     isFavorite: false,
   };
@@ -547,6 +897,7 @@ function createEntity(key: string, name: string, count: number): Entity {
     name,
     sectionIds: [],
     taskIds: [],
+    filePaths: [],
     count,
     isFavorite: false,
   };
@@ -609,6 +960,7 @@ function createCard(
     id: heading,
     filePath: `notes/${heading.toLowerCase()}.md`,
     heading,
+    titleTags: [],
     tags: [],
     rawContent: '',
     renderedHtml: '',

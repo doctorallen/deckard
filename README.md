@@ -59,12 +59,13 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
+| **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 
 ## Markdown format
 
-Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled.
+Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled; consecutive tagged prose lines are grouped so wrapped explanations do not become truncated duplicate entries.
 
-By default, use `@` for people and namespaced `#` tags for canonical workspace entities:
+By default, use `@` for people and namespaced `#` tags for workspace entities:
 
 ```markdown
 # Project Atlas #project/atlas
@@ -73,7 +74,7 @@ Met with @alex-smith about [[Q3 planning]].
 - [ ] Send the proposal by 2026-09-12 #project/atlas
 ```
 
-`#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs. Simple `#follow-up` tags remain supported. Deckard distinguishes `@alex` from `#alex`. You can configure namespace aliases and move the people marker; when the people marker is changed from `@`, `@name` becomes a lightweight tag.
+`#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs. Any other namespaced tag, such as `#management/performance`, creates a new namespace automatically and appears as `Management: Performance` in its overview. Simple unnamespaced `#follow-up` tags remain supported and appear in the Dashboard under **Other tags**. Deckard distinguishes `@alex` from `#alex`. You can configure namespace aliases to map a custom namespace to any built-in or custom target namespace, and you can move the people marker; when the people marker is changed from `@`, `@name` becomes a lightweight tag.
 
 Frontmatter can add portable entity context to every heading and task in a note:
 
@@ -86,11 +87,14 @@ topics:
 ---
 ```
 
-Supported front-matter values are highlighted in the editor and Cmd/Ctrl-clickable just like inline tags: `people`/`person` maps to `@person`, while `projects`, `topics`, `organizations`, and `meetings` map to their typed `#` tags.
+Supported front-matter values are highlighted in the editor and Cmd/Ctrl-clickable just like inline tags: `people`/`person` maps to `@person`, while `projects`, `topics`, `organizations`, and `meetings` map to their typed `#` tags. These metadata tags remain indexed and openable even when the note has no heading or task.
 
 Run `Deckard: Move Inline Tags to Front Matter` to collect explicit tags from the current note into plural front-matter fields. Existing values are merged, unrelated YAML fields are preserved, and source tag tokens are removed. Because the resulting metadata applies to the entire note, use the command only for context that belongs to every heading and task in that note.
 
+Run `Deckard: Rename Tag` to search the indexed tag list, choose a replacement, and update every matching source occurrence without changing ordinary prose or fenced code. Enter a complete tag such as `#management/new-name`, or enter only a new name to keep the selected tag's marker and namespace.
+
 - Headings use the ATX form `# Heading` through `###### Heading`. Optional closing hashes are removed from the heading title.
+- Tag Overview infers parent and child tag relationships from explicitly tagged headings. A tagged heading is related to the nearest tagged ancestor heading, even when untagged headings appear between them; front-matter tags do not create these relationships.
 - Tasks use `-`, `*`, or `+` followed by `[ ]` for open items or `[x]`/`[X]` for completed items.
 - A task inherits tags from its nearest heading and combines them with tags written on the task line.
 - Tag names start with a letter or number and can contain letters, numbers, `_`, `-`, and `/` namespace segments.
@@ -117,9 +121,9 @@ Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed t
 
 ## Dashboard
 
-Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, canonical tags, and tasks in one place.
+Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, namespaced entities, lightweight tags, and tasks in one place.
 
-- **Tags** lists people, projects, topics, organizations, and meetings as canonical tags. Filter by type, favorite important tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a tag or use its context menu to move it to the top or bottom.
+- **Tags** lists built-in and automatically created namespaced entities, plus unnamespaced lightweight tags under **Other tags**. Use **All types** to show everything; built-in and user-created namespaces are also available as type filters. Favorite important tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a tag or use its context menu to move it to the top or bottom.
 - **Tasks** lets you switch between all, active, and completed tasks, and sort by rank, creation time, or update time. Rank is the default. Date sorting uses the source file's filesystem timestamps.
 - **Task tags** lets you select one or more tags. A task appears when it matches any selected tag.
 - Select a tag to open its [tag overview](#tag-overviews).
@@ -129,13 +133,15 @@ Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, 
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, canonical tag, and Wiki-link totals from the index. It also shows the most-viewed tags, canonical tags, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
+Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
 
 ## Related Notes
 
 The **Related Notes** view appears in the Explorer under the Deckard Activity Bar container. With a saved Markdown note open, it ranks related entries by shared tags/entities, Wiki links, and significant shared keywords.
 
-Related entries are ranked by shared tags/entities, Wiki links, and significant shared keywords. Use the Related Notes sort control to order results by **Most tags**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes; it also opens the Dashboard only when no Markdown editor is active. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
+Related entries are ranked by shared tags/entities, Wiki links, and significant shared keywords. Use the Related Notes sort control to order results by **Most tags**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
+
+When a Tag Overview is active, the sidebar also shows a compact **Relationship tree**. Expand **Parents** or **Children**, then expand a namespace branch to navigate relationships without leaving the narrow sidebar. Relationship clicks carry the current tag as a second filter, so the destination shows only entries carrying both tags.
 
 Select the question-mark button in the Related Notes toolbar to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.
 
@@ -149,9 +155,13 @@ Each overview collects the matching sections from your notes. You can:
 - switch between the original Markdown source and a rendered view; and
 - choose **Tabs** to switch between Notes and Tasks, or **Side by side** to show Notes at 60% width and Tasks at 40%; and
 - filter overview tasks with the grouped **All**, **Active**, and **Completed** controls (which default to **Active**), then use a checkbox to safely update the original Markdown task; and
+- switch inferred **Parent tags** and **Child tags** between a namespace-collapsible **Tree** view and a layered **Graph** view on lightweight tag overviews; both remain clickable, and repeated parent/child pairs show a compact count; and
+- follow a parent or child relationship into the target overview with the current tag applied as a second filter, so only entries carrying both tags are shown; active relationship filters are folded into the page title as **[filter tag] AND [focus tag]**; use **Clear filter** or reopen the focus tag to return to the full overview; and
 - select a section to jump to its heading in the source note.
 
 Opening a tag overview records tag access. Opening a section records section access, which powers the access sort. Tag links inside an overview open the next overview without leaving the workflow.
+
+Set `deckard.enableHeadingTagRelationships` to `false` when you want to hide the inferred Parent tags and Child tags views, including the sidebar tree, while keeping ordinary tag indexing and note content unchanged.
 
 ## Extracting headings
 
@@ -173,6 +183,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.notesFolder": "notes",
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
 	"deckard.parseInlineTags": true,
+	"deckard.enableHeadingTagRelationships": true,
 	"deckard.enableTagAutocomplete": true,
 	"deckard.enableKeywordLinks": true,
 	"deckard.entityNamespaceAliases": {
@@ -187,10 +198,12 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
 | `deckard.theme` | `replicant` | Selects the Replicant, Oblivion, or LCARS visual style for Deckard webviews. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
-| `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Heading and task-line tags remain available when `false`. |
+| `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
+| `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in related-note and tag-overview titles as clickable buttons by default. Set to `separate` to remove tags from titles and show them as separate tag controls. |
+| `deckard.enableHeadingTagRelationships` | `true` | Shows inferred **Parent tags** and **Child tags** in Tag Overview, with Tree and Graph views. Disable it to hide the relationship workspace without changing indexed tags or note content. |
 | `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |
 | `deckard.enableKeywordLinks` | `true` | Includes significant shared keywords when Related Notes finds matches. Disable it to show shared tags and intentional Wiki links only. |
-| `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps custom `#namespace` aliases to canonical entity types. For example, `{ "proj": "project", "client": "organization" }` treats `#proj/atlas` and `#client/acme` as canonical project and organization tags. |
+| `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps one `#namespace` to another. Targets can be built-in or custom; for example, `{ "proj": "project", "leadership": "management" }` treats `#proj/atlas` as a project and collapses `#leadership/performance` into `#management/performance`. Other namespaced tags become entities automatically without configuration. |
 | `deckard.personMarker` | `@` | Selects the single punctuation character that identifies people. Set it to `~` to use `~mara-vale` for people and reserve `@inbox` for a lightweight tag. |
 
 ## Source safety and persistence

@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.3.0",
+  "version": "1.4.0",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -63,6 +63,10 @@
       {
         "command": "deckard.moveTagsToFrontmatter",
         "title": "Deckard: Move Inline Tags to Front Matter"
+      },
+      {
+        "command": "deckard.renameTag",
+        "title": "Deckard: Rename Tag"
       }
     ],
     "viewsContainers": {
@@ -123,6 +127,24 @@
           "default": true,
           "description": "Index tags on non-heading Markdown lines as standalone entries."
         },
+        "deckard.tagTitleDisplayMode": {
+          "type": "string",
+          "enum": [
+            "inline",
+            "separate"
+          ],
+          "enumDescriptions": [
+            "Keep tags in related-note and tag-overview titles.",
+            "Remove tags from titles and show them as separate tag controls."
+          ],
+          "default": "inline",
+          "description": "Choose whether tags stay inline in note titles or appear separately."
+        },
+        "deckard.enableHeadingTagRelationships": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inferred parent and child heading tag relationships in Tag Overviews."
+        },
         "deckard.enableTagAutocomplete": {
           "type": "boolean",
           "default": true,
@@ -140,14 +162,9 @@
           },
           "additionalProperties": {
             "type": "string",
-            "enum": [
-              "project",
-              "topic",
-              "organization",
-              "meeting"
-            ]
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
           },
-          "description": "Maps custom #namespace aliases to canonical entity types. For example, { \"proj\": \"project\", \"client\": \"organization\" } recognizes #proj/atlas and #client/acme."
+          "description": "Maps one #namespace to another. Targets can be built-in or custom; for example, { \"proj\": \"project\", \"leadership\": \"management\" } treats #proj/atlas as a project and collapses #leadership/performance into #management/performance."
         },
         "deckard.personMarker": {
           "type": "string",

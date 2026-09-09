@@ -6,6 +6,7 @@ import {
   SearchResult,
   Section,
   TagInfo,
+  TagRelationship,
   TagReference,
   Task,
   WorkspaceIndex,
@@ -527,7 +528,30 @@ export function buildWorkspaceIndex(
         );
       });
     });
+    const contentTagKeys = new Set([
+      ...file.sections.flatMap((section) => section.tags),
+      ...file.tasks.flatMap((task) => task.tags),
+    ]);
+    file.frontmatterTags.forEach((tagReference) => {
+      if (contentTagKeys.has(tagReference.key)) {
+        return;
+      }
+      const tag = getOrCreateTag(tags, tagReference.key, tagReference.label);
+      if (!tag.filePaths.includes(file.filePath)) {
+        tag.filePaths.push(file.filePath);
+      }
+      addEntityReference(
+        entities,
+        tagReference.key,
+        tagReference.label,
+        'file',
+        file.filePath,
+        file.updatedAt,
+      );
+    });
   });
+
+  const { tagParents, tagChildren } = buildHeadingTagRelationships(sections);
 
   tags.forEach((tag) => {
     // A task inside a tagged section is already represented by that section;
@@ -537,7 +561,8 @@ export function buildWorkspaceIndex(
       const task = tasks.get(taskId);
       return !task?.sectionId || !taggedSections.has(task.sectionId);
     });
-    tag.count = taggedSections.size + standaloneTasks.length;
+    tag.count =
+      taggedSections.size + standaloneTasks.length + tag.filePaths.length;
   });
   entities.forEach((entity) => {
     const entitySections = new Set(entity.sectionIds);
@@ -545,7 +570,8 @@ export function buildWorkspaceIndex(
       const task = tasks.get(taskId);
       return !task?.sectionId || !entitySections.has(task.sectionId);
     });
-    entity.count = entitySections.size + standaloneTasks.length;
+    entity.count =
+      entitySections.size + standaloneTasks.length + entity.filePaths.length;
   });
 
   return {
@@ -554,8 +580,122 @@ export function buildWorkspaceIndex(
     tasks,
     tags,
     entities,
+    tagParents,
+    tagChildren,
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * Infers relationships from explicit heading tags while skipping untagged
+ * headings between a tagged child and its nearest tagged ancestor.
+ */
+function buildHeadingTagRelationships(
+  sections: Map<string, Section>,
+): {
+  tagParents: Map<string, TagRelationship[]>;
+  tagChildren: Map<string, TagRelationship[]>;
+} {
+  const relationships = new Map<string, MutableTagRelationship>();
+
+  sections.forEach((section) => {
+    const childTags = section.headingTags ?? [];
+    if (childTags.length === 0) {
+      return;
+    }
+
+    const parent = findNearestTaggedAncestor(section, sections);
+    if (!parent) {
+      return;
+    }
+
+    const parentTags = parent.headingTags ?? [];
+    parentTags.forEach((parentTag) => {
+      childTags.forEach((childTag) => {
+        if (parentTag.key === childTag.key) {
+          return;
+        }
+        const relationshipKey = `${parentTag.key}\u0000${childTag.key}`;
+        const relationship = relationships.get(relationshipKey) ?? {
+          parent: { ...parentTag },
+          child: { ...childTag },
+          sectionIds: [],
+        };
+        if (!relationship.sectionIds.includes(section.id)) {
+          relationship.sectionIds.push(section.id);
+        }
+        relationships.set(relationshipKey, relationship);
+      });
+    });
+  });
+
+  const tagParents = new Map<string, TagRelationship[]>();
+  const tagChildren = new Map<string, TagRelationship[]>();
+  [...relationships.values()]
+    .map((relationship) => ({
+      parent: relationship.parent,
+      child: relationship.child,
+      sectionIds: [...relationship.sectionIds].sort(),
+      count: relationship.sectionIds.length,
+    }))
+    .sort(compareTagRelationships)
+    .forEach((relationship) => {
+      appendRelationship(tagParents, relationship.child.key, relationship);
+      appendRelationship(tagChildren, relationship.parent.key, relationship);
+    });
+
+  return { tagParents, tagChildren };
+}
+
+interface MutableTagRelationship {
+  parent: TagReference;
+  child: TagReference;
+  sectionIds: string[];
+}
+
+function findNearestTaggedAncestor(
+  section: Section,
+  sections: Map<string, Section>,
+): Section | undefined {
+  const visited = new Set<string>();
+  let parentSectionId = section.parentSectionId;
+  while (parentSectionId && !visited.has(parentSectionId)) {
+    visited.add(parentSectionId);
+    const parent = sections.get(parentSectionId);
+    if (!parent) {
+      return undefined;
+    }
+    if ((parent.headingTags?.length ?? 0) > 0) {
+      return parent;
+    }
+    parentSectionId = parent.parentSectionId;
+  }
+  return undefined;
+}
+
+function appendRelationship(
+  relationships: Map<string, TagRelationship[]>,
+  tagKey: string,
+  relationship: TagRelationship,
+): void {
+  const existing = relationships.get(tagKey);
+  if (existing) {
+    existing.push(relationship);
+  } else {
+    relationships.set(tagKey, [relationship]);
+  }
+}
+
+function compareTagRelationships(
+  left: TagRelationship,
+  right: TagRelationship,
+): number {
+  return (
+    left.parent.label.localeCompare(right.parent.label) ||
+    left.child.label.localeCompare(right.child.label) ||
+    left.parent.key.localeCompare(right.parent.key) ||
+    left.child.key.localeCompare(right.child.key)
+  );
 }
 
 /**
@@ -576,6 +716,7 @@ function getOrCreateTag(
     label,
     sectionIds: [],
     taskIds: [],
+    filePaths: [],
     count: 0,
     isFavorite: false,
   };
@@ -591,7 +732,7 @@ function addEntityReference(
   entities: Map<string, Entity>,
   key: string,
   label: string,
-  referenceType: 'section' | 'task',
+  referenceType: 'section' | 'task' | 'file',
   referenceId: string,
   updatedAt: number | undefined,
 ): void {
@@ -609,6 +750,7 @@ function addEntityReference(
       name: getEntityName(label),
       sectionIds: [],
       taskIds: [],
+      filePaths: [],
       count: 0,
       isFavorite: false,
       updatedAt,
@@ -617,7 +759,11 @@ function addEntityReference(
   }
 
   const references =
-    referenceType === 'section' ? entity.sectionIds : entity.taskIds;
+    referenceType === 'section'
+      ? entity.sectionIds
+      : referenceType === 'task'
+        ? entity.taskIds
+        : entity.filePaths;
   references.push(referenceId);
   if (updatedAt !== undefined && (entity.updatedAt ?? 0) < updatedAt) {
     entity.updatedAt = updatedAt;

@@ -9,6 +9,7 @@ import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
+import { renameIndexedTag } from './ui/commands/renameTag';
 import { EditorTagDecorations } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
@@ -45,16 +46,15 @@ export function activate(context: vscode.ExtensionContext): void {
     indexer,
     preferences,
     context.extensionUri,
-    (tagKey) => {
-      void tagPanels.show(tagKey);
+    async (tagKey) => {
+      await tagPanels.show(tagKey);
     },
   );
   const sidebarNotes = new SidebarNotesView(
     indexer,
     preferences,
     tagPanels,
-    (tagKey) => tagPanels.show(tagKey),
-    () => dashboard.show(),
+    (tagKey, filterTagKey) => tagPanels.show(tagKey, filterTagKey),
     context.extension.packageJSON.version,
   );
   const stats = new StatsPanel(indexer, preferences, context.extensionUri);
@@ -145,6 +145,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('deckard.moveTagsToFrontmatter', () =>
       moveInlineTagsToFrontmatter(),
+    ),
+    vscode.commands.registerCommand('deckard.renameTag', () =>
+      renameIndexedTag(indexer),
     ),
   );
 

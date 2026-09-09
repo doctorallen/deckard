@@ -14,14 +14,24 @@ export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
 
+export type TagTitleDisplayMode = 'inline' | 'separate';
+
 export type RenderMode = 'markdown' | 'html';
 
-export type EntityKind =
+export type BuiltInEntityKind =
   | 'person'
   | 'project'
   | 'topic'
   | 'organization'
   | 'meeting';
+
+/**
+ * Entity kinds include built-in types and workspace-defined namespaces.
+ *
+ * The open string branch lets a namespaced tag such as `#management/item`
+ * become an entity without requiring a configuration entry first.
+ */
+export type EntityKind = BuiltInEntityKind | (string & {});
 
 export interface TagReference {
   key: string;
@@ -35,6 +45,7 @@ export interface Entity {
   name: string;
   sectionIds: string[];
   taskIds: string[];
+  filePaths: string[];
   count: number;
   isFavorite: boolean;
   updatedAt?: number;
@@ -51,6 +62,10 @@ export interface Section {
   heading: string;
   headingLevel: number;
   isInline?: boolean;
+  /** Tags written on this heading, excluding inherited front-matter tags. */
+  headingTags?: TagReference[];
+  /** Structural heading parent, including untagged intermediate headings. */
+  parentSectionId?: string;
   tags: string[];
   tagLabels: Record<string, string>;
   links: string[];
@@ -84,6 +99,7 @@ export interface ParsedFile {
   content: string;
   sections: Section[];
   tasks: Task[];
+  frontmatterTags: TagReference[];
   links: string[];
   createdAt?: number;
   updatedAt?: number;
@@ -94,8 +110,16 @@ export interface TagInfo {
   label: string;
   sectionIds: string[];
   taskIds: string[];
+  filePaths: string[];
   count: number;
   isFavorite: boolean;
+}
+
+export interface TagRelationship {
+  parent: TagReference;
+  child: TagReference;
+  sectionIds: string[];
+  count: number;
 }
 
 export interface WorkspaceIndex {
@@ -104,6 +128,10 @@ export interface WorkspaceIndex {
   tasks: Map<string, Task>;
   tags: Map<string, TagInfo>;
   entities: Map<string, Entity>;
+  /** Child tag key -> relationships whose parent is a tagged ancestor. */
+  tagParents?: Map<string, TagRelationship[]>;
+  /** Parent tag key -> relationships whose child is a nested tagged heading. */
+  tagChildren?: Map<string, TagRelationship[]>;
   updatedAt: number;
 }
 
@@ -153,18 +181,23 @@ export interface DashboardSnapshot {
 export interface TagOverviewSnapshot {
   tag: TagInfo;
   entity?: Entity;
+  filterTag?: TagReference;
+  parentTags: TagRelationship[];
+  childTags: TagRelationship[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
   taskFilter: TaskFilter;
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
+  tagTitleDisplayMode: TagTitleDisplayMode;
 }
 
 export interface TagOverviewCard {
   id: string;
   filePath: string;
   heading: string;
+  titleTags: TagReference[];
   tags: TagReference[];
   rawContent: string;
   renderedHtml: string;
@@ -186,6 +219,7 @@ export interface RankedNote {
   title: string;
   fileName: string;
   sourceLine: number;
+  titleTags: TagReference[];
   updatedAt?: number;
   matchedTags: TagReference[];
   matchCount: number;
@@ -232,6 +266,12 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  tagOverviewFilter?: TagReference;
+  tagOverviewRelationships?: {
+    parentTags: TagRelationship[];
+    childTags: TagRelationship[];
+  };
+  tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
 }
 
@@ -302,6 +342,7 @@ export interface ReorderEntitiesMessage {
 export interface OpenTagMessage {
   type: 'openTag';
   tagKey: string;
+  filterTagKey?: string;
 }
 
 export interface SetTagOverviewSortMessage {

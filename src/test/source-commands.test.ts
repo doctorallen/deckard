@@ -12,6 +12,7 @@ import {
   getExtractedNoteFileName,
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
+import { parseRenameTag, replaceIndexedTag } from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
 
 suite('Source commands', () => {
@@ -57,6 +58,72 @@ suite('Source commands', () => {
     assert.strictEqual(await toggleTask(parsed.tasks[0], true), false);
     assert.strictEqual(document.lineAt(0).text, '- [ ] Changed title');
     await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('renames matching tag spans without touching prose or fenced code', () => {
+    const originalContent = [
+      '# Today #old #older',
+      '',
+      'A note with #old and #oldish.',
+      '- [ ] Follow up #old',
+      '',
+      '```markdown',
+      '#old',
+      '```',
+    ].join('\n');
+
+    const result = replaceIndexedTag(originalContent, '#old', {
+      key: '#new',
+      label: '#new',
+    });
+
+    assert.strictEqual(result.occurrenceCount, 3);
+    assert.strictEqual(
+      result.content,
+      [
+        '# Today #new #older',
+        '',
+        'A note with #new and #oldish.',
+        '- [ ] Follow up #new',
+        '',
+        '```markdown',
+        '#old',
+        '```',
+      ].join('\n'),
+    );
+  });
+
+  test('preserves front-matter value shapes while renaming tags', () => {
+    const originalContent = [
+      '---',
+      'tags: [old, #old]',
+      '---',
+      '# Today #old',
+    ].join('\n');
+
+    const result = replaceIndexedTag(originalContent, '#old', {
+      key: '#new',
+      label: '#new',
+    });
+
+    assert.strictEqual(result.occurrenceCount, 3);
+    assert.strictEqual(
+      result.content,
+      ['---', 'tags: [new, #new]', '---', '# Today #new'].join('\n'),
+    );
+  });
+
+  test('infers a selected namespace for a bare replacement name', () => {
+    assert.deepStrictEqual(
+      parseRenameTag('new-performance', {
+        key: '#management/performance',
+        label: '#management/performance',
+      }),
+      {
+        key: '#management/new-performance',
+        label: '#management/new-performance',
+      },
+    );
   });
 
   test('opens a source document at the requested one-based line', async () => {

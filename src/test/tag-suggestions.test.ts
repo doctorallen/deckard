@@ -102,6 +102,10 @@ suite('Tag suggestions', () => {
       '/tmp/deckard/notes/case.md',
       '# Heading #project',
     );
+    const repeatedHeadingMarkerDocument = createDocument(
+      '/tmp/deckard/notes/case.md',
+      '## something',
+    );
     const textDocument = createDocument('/tmp/deckard/notes/case.txt', '@pro');
     const hashItems = await provider.provideCompletionItems(
       hashDocument,
@@ -123,6 +127,10 @@ suite('Tag suggestions', () => {
       headingTagDocument,
       new vscode.Position(0, 11),
     );
+    const repeatedHeadingMarkerItems = await provider.provideCompletionItems(
+      repeatedHeadingMarkerDocument,
+      new vscode.Position(0, 2),
+    );
     const textItems = await provider.provideCompletionItems(
       textDocument,
       new vscode.Position(0, 4),
@@ -142,6 +150,7 @@ suite('Tag suggestions', () => {
       headingTagItems.map((item) => item.label),
       ['#project'],
     );
+    assert.deepStrictEqual(repeatedHeadingMarkerItems, []);
     assert.deepStrictEqual(textItems, []);
     provider.dispose();
   });
@@ -202,6 +211,7 @@ function createTag(key: string, count: number): TagInfo {
     label: key,
     sectionIds: [],
     taskIds: [],
+    filePaths: [],
     count,
     isFavorite: false,
   };

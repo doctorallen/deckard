@@ -2,7 +2,10 @@ import * as assert from 'assert';
 
 import * as vscode from 'vscode';
 
-import { isMarkdownDocument } from '../ui/commands/tagDecorations';
+import {
+  EditorTagDecorations,
+  isMarkdownDocument,
+} from '../ui/commands/tagDecorations';
 
 suite('Tag decorations', () => {
   test('recognizes .md files regardless of language mode', () => {
@@ -28,4 +31,57 @@ suite('Tag decorations', () => {
       false,
     );
   });
+
+  test('creates overview links for front matter on associated Markdown files', () => {
+    const decorations = new EditorTagDecorations();
+    try {
+      const content = [
+        '---',
+        'projects: [neon-relay]',
+        'people: [mara-vale, ivo-chen]',
+        'topics: [operations, risk-management]',
+        '---',
+        '# Relay protocol',
+      ].join('\n');
+      const document = {
+        languageId: 'plaintext',
+        uri: vscode.Uri.file('/tmp/deckard/front-matter.md'),
+        getText: () => content,
+      } as unknown as vscode.TextDocument;
+      const provider = decorations as unknown as {
+        provideDocumentLinks(document: vscode.TextDocument): vscode.DocumentLink[];
+      };
+
+      const links = provider.provideDocumentLinks(document);
+      const projectLink = links.find((link) =>
+        decodeURIComponent(link.target?.query ?? '').includes(
+          '#project/neon-relay',
+        ),
+      );
+      const operationsLink = links.find((link) =>
+        decodeURIComponent(link.target?.query ?? '').includes(
+          '#topic/operations',
+        ),
+      );
+
+      assert.ok(projectLink);
+      assert.ok(
+        operationsLink,
+        links.map((link) => link.target?.toString()).join('\n'),
+      );
+      assert.deepStrictEqual(
+        JSON.parse(decodeURIComponent(projectLink.target?.query ?? '')),
+        ['#project/neon-relay'],
+      );
+      assert.strictEqual(operationsLink.range.start.line, 3);
+      assert.strictEqual(operationsLink.range.start.character, 9);
+      assert.deepStrictEqual(
+        JSON.parse(decodeURIComponent(operationsLink.target?.query ?? '')),
+        ['#topic/operations'],
+      );
+    } finally {
+      decorations.dispose();
+    }
+  });
+
 });

@@ -139,6 +139,90 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(index.entities.get('#project/atlas')?.count, 1);
   });
 
+  test('aggregates heading tag relationships through untagged headings', () => {
+    const parsed = parseMarkdown(
+      'notes/relationships.md',
+      [
+        '# Relay map #parent/alpha #parent/beta',
+        '## Un tagged operating notes',
+        '### Signal route #child/alpha #child/beta',
+        '# Alternate relay #parent/alpha',
+        '## Signal route #child/alpha',
+        '# Repeated marker #same',
+        '## Nested repeated marker #same',
+      ].join('\n'),
+    );
+    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
+
+    const childParents = index.tagParents?.get('#child/alpha') ?? [];
+    assert.deepStrictEqual(
+      childParents.map((relationship) => ({
+        parent: relationship.parent.key,
+        child: relationship.child.key,
+        count: relationship.count,
+      })),
+      [
+        {
+          parent: '#parent/alpha',
+          child: '#child/alpha',
+          count: 2,
+        },
+        {
+          parent: '#parent/beta',
+          child: '#child/alpha',
+          count: 1,
+        },
+      ],
+    );
+
+    const parentChildren = index.tagChildren?.get('#parent/alpha') ?? [];
+    assert.deepStrictEqual(
+      parentChildren.map((relationship) => ({
+        parent: relationship.parent.key,
+        child: relationship.child.key,
+        count: relationship.count,
+      })),
+      [
+        {
+          parent: '#parent/alpha',
+          child: '#child/alpha',
+          count: 2,
+        },
+        {
+          parent: '#parent/alpha',
+          child: '#child/beta',
+          count: 1,
+        },
+      ],
+    );
+    assert.strictEqual(
+      (index.tagChildren?.get('#same') ?? []).some(
+        (relationship) => relationship.child.key === '#same',
+      ),
+      false,
+    );
+  });
+
+  test('does not infer relationships from inherited front-matter tags', () => {
+    const parsed = parseMarkdown(
+      'notes/frontmatter-relationships.md',
+      [
+        '---',
+        'project: Relay map',
+        '---',
+        '# Parent heading',
+        '## Child heading #child',
+      ].join('\n'),
+    );
+    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
+
+    assert.deepStrictEqual(index.tagParents?.get('#child') ?? [], []);
+    assert.deepStrictEqual(
+      index.tagChildren?.get('#project/relay-map') ?? [],
+      [],
+    );
+  });
+
   test('carries inline-only notes from scanner into tag overview', () => {
     const workspaceUri = vscode.Uri.file('/tmp/deckard-inline-overview');
     const noteUri = vscode.Uri.joinPath(
@@ -169,5 +253,39 @@ suite('Workspace scanner and index', () => {
     assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].startLine, 1);
+  });
+
+  test('indexes front-matter entities without a heading or task', () => {
+    const parsed = parseMarkdown(
+      'notes/metadata-only.md',
+      [
+        '---',
+        'projects: [neon-relay]',
+        'topics: [operations]',
+        '---',
+        'A note described only by its metadata.',
+      ].join('\n'),
+    );
+    const index = buildWorkspaceIndex(
+      new Map([[parsed.filePath, parsed]]),
+    );
+
+    assert.deepStrictEqual(parsed.frontmatterTags, [
+      { key: '#project/neon-relay', label: '#project/neon-relay' },
+      { key: '#topic/operations', label: '#topic/operations' },
+    ]);
+    assert.deepStrictEqual(index.tags.get('#project/neon-relay')?.filePaths, [
+      'notes/metadata-only.md',
+    ]);
+    assert.strictEqual(index.tags.get('#project/neon-relay')?.count, 1);
+    assert.strictEqual(index.entities.get('#project/neon-relay')?.count, 1);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/neon-relay',
+    );
+    assert.ok(snapshot);
+    assert.strictEqual(snapshot.sections.length, 1);
+    assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');
   });
 });

@@ -10,7 +10,6 @@ import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml } from '../ui/webview/helpHtml';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { shouldOpenDashboardForSidebarReveal } from '../ui/webview/sidebarNotes';
 import { getTagOverviewHtml } from '../ui/webview/tagOverviewHtml';
 import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
 
@@ -118,6 +117,22 @@ suite('Webview contracts', () => {
     );
     assert.deepStrictEqual(
       parseTagOverviewMessage({
+        type: 'openTag',
+        tagKey: '#child',
+        filterTagKey: '#parent',
+      }),
+      { type: 'openTag', tagKey: '#child', filterTagKey: '#parent' },
+    );
+    assert.strictEqual(
+      parseTagOverviewMessage({
+        type: 'openTag',
+        tagKey: '#child',
+        filterTagKey: 42,
+      }),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseTagOverviewMessage({
         type: 'setTagOverviewSort',
         mode: 'access',
       }),
@@ -180,11 +195,22 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
     assert.strictEqual(html.includes("'Active tasks'"), true);
+    assert.strictEqual(
+      html.includes(
+        '.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes('class="tag-open"'), false);
     assert.strictEqual(
       html.includes("const entityRow = event.target.closest('.entity-row');"),
       true,
     );
+    assert.strictEqual(
+      html.includes('const lightweightTags = entityKindFilter ==='),
+      true,
+    );
+    assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
@@ -270,6 +296,24 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.note .tag-list button { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.inline-tag { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.sidebar-relationships, .relationship-workspace',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.sidebar-relationship-items { margin-left: 8px; border-left: 3px solid var(--cyan); }',
       ),
       true,
     );
@@ -466,6 +510,12 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      html.includes("state.tagTitleDisplayMode === 'separate'"),
+      true,
+    );
+    assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
+    assert.strictEqual(html.includes('class="tag-open inline-tag"'), true);
+    assert.strictEqual(
       html.includes('.overview-tabs button.active { border-bottom-color:'),
       false,
     );
@@ -477,6 +527,12 @@ suite('Webview contracts', () => {
       html.includes('data-action="set-mode" data-mode="html"'),
       true,
     );
+    assert.strictEqual(html.includes('function formatEntityTitle(kind, name)'), true);
+    assert.strictEqual(
+      html.includes("formatEntityTitle(state.entity.kind, state.entity.name)"),
+      true,
+    );
+    assert.strictEqual(html.includes('const relationships = state.entity'), true);
     assert.strictEqual(
       html.includes('title="Source: show the original Markdown"'),
       true,
@@ -495,6 +551,72 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Rendered</button>'), false);
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
+    assert.strictEqual(
+      html.includes('function renderRelationshipTree(parentRelationships, childRelationships, rootTag)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('function renderRelationshipGraph(parentRelationships, childRelationships, rootTag)'),
+      true,
+    );
+    assert.strictEqual(html.includes('Heading relationships'), true);
+    assert.strictEqual(html.includes('data-action="set-relationship-view"'), true);
+    assert.strictEqual(html.includes('data-view="tree"'), true);
+    assert.strictEqual(html.includes('data-view="graph"'), true);
+    assert.strictEqual(html.includes('class="relationship-tree-group"'), true);
+    assert.strictEqual(html.includes('class="relationship-node"'), true);
+    assert.strictEqual(html.includes('data-filter-tag-key'), true);
+    assert.strictEqual(html.includes('const filterTitle = state.filterTag'), true);
+    assert.strictEqual(
+      html.includes('function renderOverviewTagLink(tag, text)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="overview-tag-link" data-action="open-tag"'),
+      true,
+    );
+    assert.strictEqual(html.includes('class="overview-title-filter"'), true);
+    assert.strictEqual(html.includes('class="overview-title-joiner"> AND </span>'), true);
+    assert.strictEqual(html.includes('<h1 aria-label="'), true);
+    assert.strictEqual(html.includes('escapeHtml(titleAriaLabel)'), true);
+    assert.strictEqual(
+      html.includes(
+        "state.filterTag ? renderOverviewTagLink(state.filterTag, state.filterTag.label) + ' · ' : ''",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        'state.filterTag ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('state.filterTag ? state.tasks.length : state.entity.taskIds.length'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.overview-title-joiner { color: var(--amber);'),
+      true,
+    );
+    assert.strictEqual(html.includes('title-filter-clear'), true);
+    assert.strictEqual(html.includes('filter-context'), false);
+    assert.strictEqual(html.includes('aria-label="Clear relationship filter"'), true);
+    assert.strictEqual(html.includes('Clear filter'), true);
+    assert.strictEqual(html.includes('class="relationship-count"'), true);
+    assert.strictEqual(
+      html.includes(
+        '.tag-open.relationship-tag:hover, .tag-open.relationship-tag:focus-visible { color: var(--text); }',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes('.relationship-workspace { margin-top: 16px; overflow: hidden;'), true);
+    assert.strictEqual(
+      html.includes(
+        '.relationship-tree-root .tag-open.relationship-tag, .relationship-tree-item .tag-open.relationship-tag',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes("type: 'toggleTask'"), true);
     assert.strictEqual(html.includes('data-action="set-task-filter"'), true);
     assert.strictEqual(
@@ -524,10 +646,74 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('set-related-notes-sort'), true);
     assert.strictEqual(html.includes('related-notes-sort-control'), true);
     assert.strictEqual(html.includes('related-notes-sort-icon'), true);
+    assert.strictEqual(
+      html.includes("state.tagTitleDisplayMode === 'separate'"),
+      true,
+    );
+    assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
+    assert.strictEqual(html.includes("renderTag(tag, 'inline-tag')"), true);
     assert.strictEqual(html.includes('>Most tags</option>'), true);
     assert.strictEqual(html.includes('>Newest</option>'), true);
     assert.strictEqual(html.includes('>Oldest</option>'), true);
     assert.strictEqual(html.includes('>Most accessed</option>'), true);
+    assert.strictEqual(
+      html.includes('function renderSidebarRelationships(snapshot)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="sidebar-relationship-branch"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="sidebar-relationship-namespace"'),
+      true,
+    );
+    assert.strictEqual(html.includes('Relationship tree'), true);
+    assert.strictEqual(html.includes('data-filter-tag-key'), true);
+    assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
+    assert.strictEqual(html.includes('active-filter-label'), false);
+    assert.strictEqual(html.includes('active-filter-joiner'), true);
+    assert.strictEqual(html.includes('class="active-filter-tag"'), true);
+    assert.strictEqual(
+      html.includes('if (!relationships || snapshot.tagOverviewFilter) return \'\';'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        "renderTag(snapshot.tagOverview, 'tag-open relationship-tag')",
+      ),
+      false,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.sidebar-relationships .tag-open.relationship-tag:hover',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.sidebar-relationships { margin-top: 8px; overflow: hidden;',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.sidebar-relationships .tag-open.relationship-tag {\n  display: flex;',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.sidebar-relationships .sidebar-relationship-branch > summary',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag::before',
+      ),
+      false,
+    );
   });
 
   test('renders Help navigation for quick-start and advanced sections', () => {
@@ -545,6 +731,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('<section id="quick-start">'), true);
     assert.strictEqual(html.includes('<section id="commands">'), true);
     assert.strictEqual(html.includes('<section id="advanced">'), true);
+    assert.strictEqual(html.includes('Heading relationships'), true);
+    assert.strictEqual(html.includes('Parent tags'), true);
+    assert.strictEqual(html.includes('Child tags'), true);
 
     for (const command of [
       'Deckard: Open Dashboard',
@@ -565,6 +754,8 @@ suite('Webview contracts', () => {
       'deckard.notesFolder',
       'deckard.dailyNoteTemplate',
       'deckard.parseInlineTags',
+      'deckard.tagTitleDisplayMode',
+      'deckard.enableHeadingTagRelationships',
       'deckard.enableTagAutocomplete',
       'deckard.enableKeywordLinks',
       'deckard.entityNamespaceAliases',
@@ -579,7 +770,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('resources/deckard.svg'), true);
     assert.strictEqual(
       html.includes('When no Markdown editor is active'),
-      true,
+      false,
     );
     assert.strictEqual(html.includes('M2 2h5v5H2zm7 0h5v3H9'), true);
     assert.strictEqual(
@@ -588,22 +779,6 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-  });
-
-  test('suppresses automatic Dashboard opening for active Markdown notes', () => {
-    assert.strictEqual(
-      shouldOpenDashboardForSidebarReveal({
-        uri: vscode.Uri.file('/deckard/note.md'),
-      }),
-      false,
-    );
-    assert.strictEqual(
-      shouldOpenDashboardForSidebarReveal({
-        uri: vscode.Uri.file('/deckard/notes.txt'),
-      }),
-      true,
-    );
-    assert.strictEqual(shouldOpenDashboardForSidebarReveal(undefined), true);
   });
 
   test('accepts only valid sidebar navigation messages', () => {
@@ -618,6 +793,22 @@ suite('Webview contracts', () => {
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
       { type: 'openTag', tagKey: 'work' },
+    );
+    assert.deepStrictEqual(
+      parseSidebarMessage({
+        type: 'openTag',
+        tagKey: '#child',
+        filterTagKey: '#parent',
+      }),
+      { type: 'openTag', tagKey: '#child', filterTagKey: '#parent' },
+    );
+    assert.strictEqual(
+      parseSidebarMessage({
+        type: 'openTag',
+        tagKey: '#child',
+        filterTagKey: 42,
+      }),
+      undefined,
     );
     assert.deepStrictEqual(parseSidebarMessage({ type: 'openDashboard' }), {
       type: 'openDashboard',
