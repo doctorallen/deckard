@@ -213,7 +213,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function openRankContextMenu(event, row) {
     const kind = row.dataset.entityKey ? 'entity' : row.dataset.tagKey ? 'tag' : 'task';
     const key = row.dataset.entityKey || row.dataset.tagKey || row.dataset.taskId;
-    if (!key || !canRank(kind)) return;
+    if (!key || (kind === 'task' && !canRank(kind))) return;
     event.preventDefault();
     closeRankContextMenu();
     if (!rankContextMenu) {
@@ -225,7 +225,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
     rankContextKind = kind;
     rankContextKey = key;
-    rankContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="top">Move to top</button><button type="button" role="menuitem" data-context-action="bottom">Move to bottom</button>';
+    const actions = [];
+    if (kind === 'tag' || kind === 'entity') {
+      actions.push('<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>');
+    }
+    if (canRank(kind)) {
+      actions.push('<button type="button" role="menuitem" data-context-action="top">Move to top</button>');
+      actions.push('<button type="button" role="menuitem" data-context-action="bottom">Move to bottom</button>');
+    }
+    if (!actions.length) return;
+    rankContextMenu.innerHTML = actions.join('');
     rankContextMenu.hidden = false;
     const bounds = rankContextMenu.getBoundingClientRect();
     rankContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
@@ -615,7 +624,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
   document.addEventListener('click', function (event) {
     const contextAction = event.target.closest('#rank-context-menu [data-context-action]');
     if (contextAction) {
-      moveContextItem(contextAction.dataset.contextAction === 'top');
+      if (contextAction.dataset.contextAction === 'rename-tag') {
+        const tagKey = rankContextKind === 'tag' || rankContextKind === 'entity'
+          ? rankContextKey
+          : undefined;
+        closeRankContextMenu();
+        if (tagKey) send({ type: 'renameTag', tagKey: tagKey });
+      } else {
+        moveContextItem(contextAction.dataset.contextAction === 'top');
+      }
       return;
     }
     if (rankContextMenu && !event.target.closest('#rank-context-menu')) closeRankContextMenu();

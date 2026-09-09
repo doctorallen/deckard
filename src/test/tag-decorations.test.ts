@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 
 import {
   EditorTagDecorations,
+  createTagRenameHoverMessage,
   isMarkdownDocument,
 } from '../ui/commands/tagDecorations';
 
@@ -82,6 +83,22 @@ suite('Tag decorations', () => {
     } finally {
       decorations.dispose();
     }
+  });
+
+  test('creates a trusted rename action for tag hovers', () => {
+    const hover = createTagRenameHoverMessage(
+      '#project/neon-relay',
+      '#project/neon-relay',
+    );
+
+    assert.strictEqual(
+      hover.value.includes('command:deckard.renameTag'),
+      true,
+    );
+    assert.strictEqual(hover.value.includes('command:deckard.showTagOverview'), false);
+    assert.deepStrictEqual(hover.isTrusted, {
+      enabledCommands: ['deckard.renameTag'],
+    });
   });
 
 });

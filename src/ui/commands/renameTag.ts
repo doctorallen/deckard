@@ -15,6 +15,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
 
 interface RenameTagOptions {
@@ -40,18 +41,20 @@ interface RenamePlan {
 }
 
 /**
- * Prompts for an indexed tag and applies a source-safe rename to every parsed
- * occurrence, including occurrences represented by note-level front matter.
+ * Prompts for an indexed tag when no source key is supplied, then applies a
+ * source-safe rename to every parsed occurrence, including occurrences
+ * represented by note-level front matter.
  */
 export async function renameIndexedTag(
   indexer: WorkspaceIndexer,
-): Promise<boolean> {
+  requestedTagKey?: string,
+): Promise<TagReference | undefined> {
   try {
     await indexer.ready;
     const index = indexer.getSnapshot();
-    const sourceTag = await chooseIndexedTag(index);
+    const sourceTag = await chooseIndexedTag(index, requestedTagKey);
     if (!sourceTag) {
-      return false;
+      return undefined;
     }
 
     const parseOptions = getParseOptions(
@@ -60,14 +63,14 @@ export async function renameIndexedTag(
     );
     const replacement = await chooseReplacementTag(sourceTag, parseOptions);
     if (!replacement) {
-      return false;
+      return undefined;
     }
 
     if (replacement.key === sourceTag.key) {
       void vscode.window.showInformationMessage(
         `${sourceTag.label} already uses that tag identity.`,
       );
-      return false;
+      return undefined;
     }
 
     const plan = await createRenamePlan(index, sourceTag.key, replacement);
@@ -75,13 +78,13 @@ export async function renameIndexedTag(
       void vscode.window.showWarningMessage(
         `Deckard could not rename ${sourceTag.label} because ${plan.staleFilePath} changed after indexing.`,
       );
-      return false;
+      return undefined;
     }
     if (plan.occurrenceCount === 0) {
       void vscode.window.showWarningMessage(
         `Deckard could not find any current source occurrences of ${sourceTag.label}.`,
       );
-      return false;
+      return undefined;
     }
 
     const edit = new vscode.WorkspaceEdit();
@@ -102,7 +105,7 @@ export async function renameIndexedTag(
       void vscode.window.showErrorMessage(
         `Deckard could not rename ${sourceTag.label}. VS Code rejected the source edit.`,
       );
-      return false;
+      return undefined;
     }
 
     for (const file of plan.files) {
@@ -110,10 +113,17 @@ export async function renameIndexedTag(
         void vscode.window.showErrorMessage(
           `Deckard renamed ${sourceTag.label} in memory but could not save ${file.document.uri.fsPath}.`,
         );
-        return false;
+        return undefined;
       }
     }
 
+    try {
+      await indexer.refresh();
+    } catch (error) {
+      void vscode.window.showWarningMessage(
+        `Renamed ${sourceTag.label} to ${replacement.label}, but Deckard could not refresh its index: ${String(error)}`,
+      );
+    }
     void vscode.window.showInformationMessage(
       `Renamed ${sourceTag.label} to ${replacement.label} in ${formatCount(
         plan.occurrenceCount,
@@ -121,12 +131,12 @@ export async function renameIndexedTag(
         'occurrences',
       )}.`,
     );
-    return true;
+    return replacement;
   } catch (error) {
     void vscode.window.showErrorMessage(
       `Deckard could not rename a tag: ${String(error)}`,
     );
-    return false;
+    return undefined;
   }
 }
 
@@ -203,7 +213,22 @@ export function replaceIndexedTag(
 
 async function chooseIndexedTag(
   index: WorkspaceIndex,
+  requestedTagKey?: string,
 ): Promise<TagInfo | undefined> {
+  if (requestedTagKey !== undefined) {
+    const canonicalTagKey = resolveIndexedTagKey(index.tags, requestedTagKey);
+    const requestedTag = canonicalTagKey
+      ? index.tags.get(canonicalTagKey)
+      : undefined;
+    if (requestedTag) {
+      return requestedTag;
+    }
+    void vscode.window.showWarningMessage(
+      `Deckard could not find the tag: ${requestedTagKey}`,
+    );
+    return undefined;
+  }
+
   const tags = [...index.tags.values()].sort(
     (left, right) =>
       left.label.localeCompare(right.label) ||

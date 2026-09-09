@@ -179,6 +179,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .relationship-tag { display: inline-flex; align-items: center; gap: 6px; }
 .tag-open.relationship-tag, .tag-open.relationship-tag:hover, .tag-open.relationship-tag:focus-visible { color: var(--text); }
 .relationship-count { color: var(--muted); font-size: 10px; }
+.tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.tag-context-menu[hidden] { display: none; }
+.tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .cards { display: grid; gap: 12px; margin-top: 20px; }
 .title-filter-clear { min-height: 24px; margin-top: 8px; padding: 2px 6px; font-size: 10px; }
 .card { border: 2px solid var(--line); background: var(--panel); padding: 14px; cursor: pointer; }
@@ -216,6 +219,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
   let state;
   let activeTab = 'notes';
   let relationshipView = 'tree';
+  let tagContextMenu;
+  let tagContextKey;
 
   /** Escape headings and source paths before inserting snapshot data as HTML. */
   function escapeHtml(value) {
@@ -252,6 +257,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<button class="overview-tag-link" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(text) + '</button>';
   }
 
+  function closeTagContextMenu() {
+    if (tagContextMenu) tagContextMenu.hidden = true;
+    tagContextKey = undefined;
+  }
+
+  function openTagContextMenu(event, target) {
+    const tagKey = target.dataset.tagKey;
+    if (!tagKey) return;
+    event.preventDefault();
+    closeTagContextMenu();
+    if (!tagContextMenu) {
+      tagContextMenu = document.createElement('div');
+      tagContextMenu.id = 'tag-context-menu';
+      tagContextMenu.className = 'tag-context-menu';
+      tagContextMenu.setAttribute('role', 'menu');
+      document.body.appendChild(tagContextMenu);
+    }
+    tagContextKey = tagKey;
+    tagContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>';
+    tagContextMenu.hidden = false;
+    const bounds = tagContextMenu.getBoundingClientRect();
+    tagContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
+    tagContextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
+    tagContextMenu.querySelector('button').focus();
+  }
+
   /** Replace source tag tokens with buttons while preserving their position. */
   function renderInlineTitle(title, tags) {
     const references = tags || [];
@@ -274,7 +305,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         matchedKeys.add(tag.key);
       }
       rendered += tag
-        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>'
+        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>'
         : escapeHtml(match);
       offset = matchOffset + match.length;
       return match;
@@ -282,7 +313,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const trailingTags = references
       .filter(function (tag) { return !matchedKeys.has(tag.key); })
       .map(function (tag) {
-        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
+        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
       })
       .join('');
     return rendered + escapeHtml(title.slice(offset)) + trailingTags;
@@ -293,7 +324,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const countHtml = Number(count) > 1
       ? '<span class="relationship-count">x' + escapeHtml(count) + '</span>'
       : '';
-    const label = direction === 'parent' ? 'Open parent tag ' : 'Open child tag ';
+    const label = direction === 'parent'
+      ? 'Open parent tag '
+      : direction === 'child'
+        ? 'Open child tag '
+        : 'Current tag ';
     const filterAttribute = filterTagKey
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
@@ -333,7 +368,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
 
   /** Render the compact, namespace-collapsible parent/child relationship tree. */
   function renderRelationshipTree(parentRelationships, childRelationships, rootTag) {
-    return '<div class="relationship-tree"><div class="relationship-tree-root"><span class="relationship-tree-root-label">Focus</span><button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(rootTag.key) + '" aria-label="Current tag ' + escapeHtml(rootTag.label) + '">' + escapeHtml(rootTag.label) + '</button></div><div class="relationship-tree-columns"><section class="relationship-tree-column" aria-labelledby="tree-parents-heading"><h3 id="tree-parents-heading" class="relationship-tree-column-heading"><span>Parents</span><span class="relationship-tree-column-count">' + parentRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(parentRelationships, 'parent', rootTag.key) + '</section><section class="relationship-tree-column" aria-labelledby="tree-children-heading"><h3 id="tree-children-heading" class="relationship-tree-column-heading"><span>Children</span><span class="relationship-tree-column-count">' + childRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(childRelationships, 'child', rootTag.key) + '</section></div></div>';
+    return '<div class="relationship-tree"><div class="relationship-tree-root"><span class="relationship-tree-root-label">Focus</span>' + renderRelationshipTag(rootTag, 0, 'focus') + '</div><div class="relationship-tree-columns"><section class="relationship-tree-column" aria-labelledby="tree-parents-heading"><h3 id="tree-parents-heading" class="relationship-tree-column-heading"><span>Parents</span><span class="relationship-tree-column-count">' + parentRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(parentRelationships, 'parent', rootTag.key) + '</section><section class="relationship-tree-column" aria-labelledby="tree-children-heading"><h3 id="tree-children-heading" class="relationship-tree-column-heading"><span>Children</span><span class="relationship-tree-column-count">' + childRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(childRelationships, 'child', rootTag.key) + '</section></div></div>';
   }
 
   /** Keep graph labels readable while the full value remains available to assistive text. */
@@ -399,7 +434,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const nodes = parents.concat(children).map(function (item) { return item.node; }).join('');
     const rootLeft = rootX - rootWidth / 2;
     const rootTop = rootY - nodeHeight / 2;
-    return '<div class="relationship-graph-shell"><svg class="relationship-graph" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" role="img" aria-label="Layered relationship graph for ' + escapeHtml(rootTag.label) + '"><text class="relationship-graph-label" x="' + (leftPadding + parentWidth / 2) + '" y="24" text-anchor="middle">Parents</text><text class="relationship-graph-label" x="' + rootX + '" y="24" text-anchor="middle">Focus</text><text class="relationship-graph-label" x="' + (childStartX + childWidth / 2) + '" y="24" text-anchor="middle">Children</text>' + edges + '<g class="relationship-root-node"><rect x="' + rootLeft + '" y="' + rootTop + '" width="' + rootWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + rootX + '" y="' + (rootY + 4) + '" text-anchor="middle">' + escapeHtml(shortenGraphLabel(rootTag.label)) + '</text></g>' + nodes + '</svg></div><p class="relationship-graph-caption">Select a node to open its overview. Scroll horizontally when a namespace has many relationships.</p>';
+    return '<div class="relationship-graph-shell"><svg class="relationship-graph" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" role="img" aria-label="Layered relationship graph for ' + escapeHtml(rootTag.label) + '"><text class="relationship-graph-label" x="' + (leftPadding + parentWidth / 2) + '" y="24" text-anchor="middle">Parents</text><text class="relationship-graph-label" x="' + rootX + '" y="24" text-anchor="middle">Focus</text><text class="relationship-graph-label" x="' + (childStartX + childWidth / 2) + '" y="24" text-anchor="middle">Children</text>' + edges + '<g class="relationship-root-node" data-tag-key="' + escapeHtml(rootTag.key) + '"><rect x="' + rootLeft + '" y="' + rootTop + '" width="' + rootWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + rootX + '" y="' + (rootY + 4) + '" text-anchor="middle">' + escapeHtml(shortenGraphLabel(rootTag.label)) + '</text></g>' + nodes + '</svg></div><p class="relationship-graph-caption">Select a node to open its overview. Scroll horizontally when a namespace has many relationships.</p>';
   }
 
   /** Render both relationship modes behind a local view switch. */
@@ -412,6 +447,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Rebuild the cards from the latest host snapshot without local duplication. */
   function render() {
     if (!state) return;
+    closeTagContextMenu();
     const baseTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : state.tag.label + ' Overview';
@@ -445,7 +481,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         ? renderInlineTitle(section.heading, section.titleTags)
         : escapeHtml(section.heading);
       const tags = state.tagTitleDisplayMode === 'separate' ? section.tags.map(function (tag) {
-        return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
+        return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
       }).join('') : '';
       return '<article class="card" tabindex="0" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
     }).join('') : '<div class="empty">' + (state.filterTag ? 'No sections currently carry both tags.' : 'No sections currently carry this tag.') + '</div>';
@@ -469,6 +505,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   document.addEventListener('click', function (event) {
+    const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
+    if (contextAction) {
+      const tagKey = tagContextKey;
+      closeTagContextMenu();
+      if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
+        vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
+      }
+      return;
+    }
+    if (tagContextMenu && !event.target.closest('#tag-context-menu')) {
+      closeTagContextMenu();
+    }
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
@@ -493,7 +541,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const card = event.target.closest('.card, .task');
     if (card) vscode.postMessage({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
   });
+  document.addEventListener('contextmenu', function (event) {
+    const target = event.target.closest('[data-tag-key]');
+    if (target) openTagContextMenu(event, target);
+  });
   document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
+      closeTagContextMenu();
+      return;
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     const relationshipNode = event.target.closest('.relationship-node');
     if (relationshipNode) {

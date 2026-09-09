@@ -345,6 +345,11 @@ export interface OpenTagMessage {
   filterTagKey?: string;
 }
 
+export interface RenameTagMessage {
+  type: 'renameTag';
+  tagKey: string;
+}
+
 export interface SetTagOverviewSortMessage {
   type: 'setTagOverviewSort';
   mode: TagOverviewSortMode;
@@ -390,7 +395,8 @@ export type DashboardMessage =
   | ReorderTasksMessage
   | ReorderTagsMessage
   | ReorderEntitiesMessage
-  | OpenTagMessage;
+  | OpenTagMessage
+  | RenameTagMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -398,12 +404,14 @@ export type TagOverviewMessage =
   | SetTaskFilterMessage
   | SetRenderModeMessage
   | OpenTagMessage
+  | RenameTagMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage;
 
 export type SidebarMessage =
   | OpenSourceMessage
   | OpenTagMessage
+  | RenameTagMessage
   | OpenDashboardMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage

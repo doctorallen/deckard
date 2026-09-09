@@ -68,6 +68,8 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 button { border: 2px solid var(--line); background: var(--panel-deep); color: var(--cyan); padding: 4px 6px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
+.active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
 .section-label { display: block; margin: 16px 0 7px; padding-left: 6px; border-left: 2px solid var(--amber); }
 .note-list { display: grid; gap: 8px; }
 .note { border: 2px solid var(--line); background: var(--panel); padding: 9px; cursor: pointer; }
@@ -137,6 +139,9 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-relationships .sidebar-relationship-items .sidebar-relationship-count { flex: 0 0 auto; }
 .empty { margin-top: 12px; border: 2px dashed var(--line); padding: 14px 10px; color: var(--muted); background: var(--panel-deep); line-height: 1.45; }
+.tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.tag-context-menu[hidden] { display: none; }
+.tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; color: var(--text); text-align: left; text-transform: none; }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
@@ -146,15 +151,43 @@ ${getDeckardThemeCss(getDeckardTheme())}
 (function () {
   const vscode = acquireVsCodeApi();
   let state;
+  let tagContextMenu;
+  let tagContextKey;
 
   /** Escape note paths, titles, and labels before they become markup. */
   function escapeHtml(value) {
     return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
+  function closeTagContextMenu() {
+    if (tagContextMenu) tagContextMenu.hidden = true;
+    tagContextKey = undefined;
+  }
+
+  function openTagContextMenu(event, target) {
+    const tagKey = target.dataset.tagKey;
+    if (!tagKey) return;
+    event.preventDefault();
+    closeTagContextMenu();
+    if (!tagContextMenu) {
+      tagContextMenu = document.createElement('div');
+      tagContextMenu.id = 'tag-context-menu';
+      tagContextMenu.className = 'tag-context-menu';
+      tagContextMenu.setAttribute('role', 'menu');
+      document.body.appendChild(tagContextMenu);
+    }
+    tagContextKey = tagKey;
+    tagContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>';
+    tagContextMenu.hidden = false;
+    const bounds = tagContextMenu.getBoundingClientRect();
+    tagContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
+    tagContextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
+    tagContextMenu.querySelector('button').focus();
+  }
+
   /** Render tag links through one delegated action shape for every sidebar state. */
   function renderTag(tag, extraClass) {
-    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '">' + escapeHtml(tag.label) + '</button>';
+    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
   }
 
   function renderTags(tags, extraClass) {
@@ -251,6 +284,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Render explicit empty states so the sidebar explains why no notes appear. */
   function render() {
     if (!state) return;
+    closeTagContextMenu();
     let content;
     if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
@@ -276,8 +310,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
     const tagOverviewName = state.tagOverviewFilter
-      ? '<span class="active-filter-tag">' + escapeHtml(state.tagOverview.label) + '</span><span class="active-filter-joiner"> AND </span><span class="active-filter-tag">' + escapeHtml(state.tagOverviewFilter.label) + '</span>'
-      : escapeHtml(state.tagOverview.label);
+      ? renderTag(state.tagOverview, 'active-filter-tag') + '<span class="active-filter-joiner"> AND </span>' + renderTag(state.tagOverviewFilter, 'active-filter-tag')
+      : renderTag(state.tagOverview, 'active-filter-tag');
     const context = state.tagOverview
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + tagOverviewName + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">Current note</div><div class="active-name">' + escapeHtml(state.activeFileName) + '</div>' + activeTags + '</div>' : '');
@@ -292,6 +326,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   document.addEventListener('click', function (event) {
+    const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
+    if (contextAction) {
+      const tagKey = tagContextKey;
+      closeTagContextMenu();
+      if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
+        vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
+      }
+      return;
+    }
+    if (tagContextMenu && !event.target.closest('#tag-context-menu')) {
+      closeTagContextMenu();
+    }
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'open-tag') {
@@ -307,7 +353,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const note = event.target.closest('.note');
     if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
   });
+  document.addEventListener('contextmenu', function (event) {
+    const target = event.target.closest('[data-action="open-tag"][data-tag-key]');
+    if (target) openTagContextMenu(event, target);
+  });
   document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
+      closeTagContextMenu();
+      return;
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     if (event.target.closest('[data-action]')) return;
     const note = event.target.closest('.note');

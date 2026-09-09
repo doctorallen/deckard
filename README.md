@@ -91,7 +91,7 @@ Supported front-matter values are highlighted in the editor and Cmd/Ctrl-clickab
 
 Run `Deckard: Move Inline Tags to Front Matter` to collect explicit tags from the current note into plural front-matter fields. Existing values are merged, unrelated YAML fields are preserved, and source tag tokens are removed. Because the resulting metadata applies to the entire note, use the command only for context that belongs to every heading and task in that note.
 
-Run `Deckard: Rename Tag` to search the indexed tag list, choose a replacement, and update every matching source occurrence without changing ordinary prose or fenced code. Enter a complete tag such as `#management/new-name`, or enter only a new name to keep the selected tag's marker and namespace.
+Run `Deckard: Rename Tag` to search the indexed tag list, choose a replacement, and update every matching source occurrence without changing ordinary prose or fenced code. In the Dashboard, Tag Overview, or Related Notes sidebar, right-click a tag and choose **Rename tag**. In a Markdown editor, hover a tag and choose the clickable **Rename** action. Enter a complete tag such as `#management/new-name`, or enter only a new name to keep the selected tag's marker and namespace.
 
 - Headings use the ATX form `# Heading` through `###### Heading`. Optional closing hashes are removed from the heading title.
 - Tag Overview infers parent and child tag relationships from explicitly tagged headings. A tagged heading is related to the nearest tagged ancestor heading, even when untagged headings appear between them; front-matter tags do not create these relationships.
@@ -116,7 +116,7 @@ Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed t
 
 ## Editor assistance
 
-- Tags in Markdown editors receive clickable decorations. Selecting a tag opens its tag overview. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
+- Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its tag overview, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored, and numeric-only hash tags are excluded from `#` completion.
 
 ## Dashboard
@@ -129,7 +129,7 @@ Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, 
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.
-- When tags use custom rank or tasks use Rank, drag rows or right-click a row to move it to the top or bottom. Date-sorted tasks cannot be dragged. Display order changes do not reorder text in your Markdown files.
+- Right-click any tag or entity row to choose **Rename tag**. When tags use custom rank or tasks use Rank, drag rows or right-click a row to move it to the top or bottom. Date-sorted tasks cannot be dragged. Display order changes do not reorder text in your Markdown files.
 
 ## Stats
 

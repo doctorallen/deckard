@@ -16,6 +16,7 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
+import { renameIndexedTag } from '../commands/renameTag';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
 
@@ -244,6 +245,16 @@ export class SidebarNotesView
       const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
       if (tagKey) {
         await this.onOpenTag(tagKey, message.filterTagKey);
+      }
+      return;
+    }
+    if (message.type === 'renameTag') {
+      const replacement = await renameIndexedTag(
+        this.indexer,
+        message.tagKey,
+      );
+      if (replacement) {
+        await this.onOpenTag(replacement.key);
       }
       return;
     }

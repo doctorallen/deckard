@@ -135,7 +135,7 @@ export class EditorTagDecorations implements vscode.Disposable {
         span.lineNumber - 1,
         span.endColumn,
       ),
-      hoverMessage: `Open ${span.label} tag overview`,
+      hoverMessage: createTagRenameHoverMessage(span.label, span.key),
     }));
     editor.setDecorations(this.decorationType, decorations);
   }
@@ -186,9 +186,33 @@ export function isMarkdownDocument(
  * the command URI.
  */
 function createTagOverviewUri(tagKey: string): vscode.Uri {
+  return createTagCommandUri('deckard.showTagOverview', tagKey);
+}
+
+function createTagRenameUri(tagKey: string): vscode.Uri {
+  return createTagCommandUri('deckard.renameTag', tagKey);
+}
+
+function createTagCommandUri(command: string, tagKey: string): vscode.Uri {
   return vscode.Uri.parse(
-    `command:deckard.showTagOverview?${encodeURIComponent(
-      JSON.stringify([tagKey]),
-    )}`,
+    `command:${command}?${encodeURIComponent(JSON.stringify([tagKey]))}`,
   );
+}
+
+export function createTagRenameHoverMessage(
+  label: string,
+  tagKey: string,
+): vscode.MarkdownString {
+  const safeLabel = escapeMarkdown(label);
+  const rename = new vscode.MarkdownString(
+    `[Rename ${safeLabel}](${createTagRenameUri(tagKey)})`,
+  );
+  rename.isTrusted = {
+    enabledCommands: ['deckard.renameTag'],
+  };
+  return rename;
+}
+
+function escapeMarkdown(value: string): string {
+  return value.replace(/[\\`*_[\]{}()#+.!|<>]/g, '\\$&');
 }

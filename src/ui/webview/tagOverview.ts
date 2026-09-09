@@ -14,6 +14,7 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
+import { renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
 import { parseTagOverviewMessage } from './messages';
 import { getTagOverviewHtml } from './tagOverviewHtml';
@@ -420,6 +421,17 @@ class TagOverviewPanel implements vscode.Disposable {
    * Rechecks tag/card membership against the current index before navigation.
    */
   private async handleValidMessage(message: TagOverviewMessage): Promise<void> {
+    if (message.type === 'renameTag') {
+      const replacement = await renameIndexedTag(
+        this.indexer,
+        message.tagKey,
+      );
+      if (replacement) {
+        await this.onOpenTag(replacement.key);
+      }
+      return;
+    }
+
     if (message.type === 'openTag') {
       const tagKey = resolveIndexedTagKey(
         this.indexer.getSnapshot().tags,
