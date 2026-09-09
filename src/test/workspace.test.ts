@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import * as vscode from 'vscode';
 
@@ -200,6 +202,114 @@ suite('Workspace scanner and index', () => {
         (relationship) => relationship.child.key === '#same',
       ),
       false,
+    );
+  });
+
+  test('finds relationships from headings starting at any Markdown level', () => {
+    const parsed = parseMarkdown(
+      'notes/daily-checkins.md',
+      [
+        '## #itd-common-checkins',
+        '### Rob',
+        '- #oracle',
+        '### Math',
+        '#### SDLC #sdlc',
+        '## Keel workspace onboarding #sdlc',
+      ].join('\n'),
+    );
+    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
+
+    assert.deepStrictEqual(
+      index.tagChildren?.get('#itd-common-checkins')?.map((relationship) => ({
+        parent: relationship.parent.key,
+        child: relationship.child.key,
+      })),
+      [{ parent: '#itd-common-checkins', child: '#sdlc' }],
+    );
+  });
+
+  test('aggregates sibling tag relationships for headings with one parent', () => {
+    const parsed = parseMarkdown(
+      'notes/sibling-relationships.md',
+      [
+        '# Top route A #top-a',
+        '# Top route B #top-b',
+        '# Relay map',
+        '## Shared parent',
+        '### First route #alpha',
+        '### Second route #beta',
+        '### Third route #alpha #gamma',
+        '## Separate parent',
+        '### Separate route #delta',
+        '#### Combined route #same-a #same-b',
+        '# Isolated parent',
+        '## Isolated route #isolated-a',
+      ].join('\n'),
+    );
+    const otherParsed = parseMarkdown(
+      'notes/other-sibling-relationships.md',
+      ['# Isolated parent', '## Isolated route #isolated-b'].join('\n'),
+    );
+    const index = buildWorkspaceIndex(
+      new Map([
+        [parsed.filePath, parsed],
+        [otherParsed.filePath, otherParsed],
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      (index.tagSiblings?.get('#top-a') ?? []).map(
+        (relationship) => relationship.sibling.key,
+      ),
+      ['#top-b'],
+    );
+    assert.deepStrictEqual(
+      (index.tagSiblings?.get('#alpha') ?? []).map((relationship) => ({
+        sibling: relationship.sibling.key,
+        count: relationship.count,
+      })),
+      [
+        { sibling: '#beta', count: 2 },
+        { sibling: '#gamma', count: 1 },
+      ],
+    );
+    assert.deepStrictEqual(
+      (index.tagSiblings?.get('#beta') ?? []).map((relationship) => ({
+        sibling: relationship.sibling.key,
+        count: relationship.count,
+      })),
+      [
+        { sibling: '#alpha', count: 2 },
+        { sibling: '#gamma', count: 1 },
+      ],
+    );
+    assert.deepStrictEqual(index.tagSiblings?.get('#delta') ?? [], []);
+    assert.deepStrictEqual(index.tagSiblings?.get('#same-a') ?? [], []);
+    assert.deepStrictEqual(index.tagSiblings?.get('#same-b') ?? [], []);
+    assert.deepStrictEqual(index.tagSiblings?.get('#isolated-a') ?? [], []);
+    assert.deepStrictEqual(index.tagSiblings?.get('#isolated-b') ?? [], []);
+  });
+
+  test('keeps the Tag Scenarios fixture parent-focused', () => {
+    const content = fs.readFileSync(
+      path.resolve(__dirname, '../../development/notes/Tag Scenarios.md'),
+      'utf8',
+    );
+    const parsed = parseMarkdown('development/notes/Tag Scenarios.md', content);
+    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
+
+    assert.deepStrictEqual(index.tagParents?.get('#management/performance') ?? [], []);
+    assert.deepStrictEqual(
+      (index.tagChildren?.get('#management/performance') ?? []).map(
+        (relationship) => ({
+          child: relationship.child.key,
+          count: relationship.count,
+        }),
+      ),
+      [
+        { child: '#risk/thermal-leak', count: 1 },
+        { child: '#topic/quantum-drift', count: 2 },
+      ],
     );
   });
 

@@ -328,6 +328,12 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
+        '.active-name .active-filter-tag { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
         '.sidebar-relationships, .relationship-workspace',
       ),
       true,
@@ -573,14 +579,16 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
     assert.strictEqual(
-      html.includes('function renderRelationshipTree(parentRelationships, childRelationships, rootTag)'),
+      html.includes('function renderRelationshipTree(parentRelationships, childRelationships, siblingRelationships, rootTag)'),
       true,
     );
     assert.strictEqual(
-      html.includes('function renderRelationshipGraph(parentRelationships, childRelationships, rootTag)'),
+      html.includes('function renderRelationshipGraph(parentRelationships, childRelationships, siblingRelationships, rootTag)'),
       true,
     );
     assert.strictEqual(html.includes('Heading relationships'), true);
+    assert.strictEqual(html.includes('<span>Siblings</span>'), true);
+    assert.strictEqual(html.includes('Open sibling tag'), true);
     assert.strictEqual(html.includes('data-action="set-relationship-view"'), true);
     assert.strictEqual(html.includes('data-view="tree"'), true);
     assert.strictEqual(html.includes('data-view="graph"'), true);
@@ -704,6 +712,8 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('Relationship tree'), true);
+    assert.strictEqual(html.includes("branch(siblings, 'sibling', 'Siblings')"), true);
+    assert.strictEqual(html.includes('Open sibling tag'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), true);
     assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
     assert.strictEqual(html.includes('active-filter-label'), false);
@@ -784,6 +794,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('<section id="advanced">'), true);
     assert.strictEqual(html.includes('Heading relationships'), true);
     assert.strictEqual(html.includes('Parent tags'), true);
+    assert.strictEqual(html.includes('Sibling tags'), true);
     assert.strictEqual(html.includes('Child tags'), true);
 
     for (const command of [

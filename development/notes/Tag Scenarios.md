@@ -2,19 +2,21 @@
 tags: [management/performance, project-name]
 ---
 
-# Tag scenario lab #project-name #rename-candidate
+# Tag scenario lab
 
 This note keeps representative tag syntax together for the development
 workspace and Dashboard.
 
-## Lightweight tags
+## Ghostline relay #management/performance #project/ghostline-relay #org/echo-foundry
+
+### Lightweight tags
 
 These ordinary labels stay outside the entity list:
 
 - [ ] Review the sample tag flow #project-name #follow-up
 - [ ] Rename the candidate tag when testing `Deckard: Rename Tag` #rename-candidate
 
-## Custom namespaces and aliases
+### Custom namespaces and aliases
 
 The development workspace maps these custom namespaces to management:
 
@@ -23,19 +25,17 @@ The development workspace maps these custom namespaces to management:
 They should collapse into one `Management: Performance` entity while the
 source labels remain visible where they were written.
 
-## Plain Markdown headings
+### Plain Markdown headings
 
 This heading has no tag and should remain an ordinary heading.
 
-#### #SDLC
+#### #topic/quantum-drift
 
-##### #quality
+##### #risk/thermal-leak
 
-###### #release-candidate
+###### #operations/performance
 
 The tag-only headings above exercise H4, H5, and H6 source locations.
-
-## Ghostline relay #project/ghostline-relay #org/echo-foundry
 
 ### Untagged calibration notes
 

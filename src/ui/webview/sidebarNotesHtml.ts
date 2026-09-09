@@ -201,7 +201,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const countHtml = Number(count) > 1
       ? '<span class="sidebar-relationship-count">x' + escapeHtml(count) + '</span>'
       : '';
-    const label = direction === 'parent' ? 'Open parent tag ' : 'Open child tag ';
+    const label = direction === 'parent'
+      ? 'Open parent tag '
+      : direction === 'child'
+        ? 'Open child tag '
+        : 'Open sibling tag ';
     const filterAttribute = filterTagKey
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
@@ -212,7 +216,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function groupSidebarRelationships(relationships, direction) {
     const groups = new Map();
     (relationships || []).forEach(function (relationship) {
-      const tag = direction === 'parent' ? relationship.parent : relationship.child;
+      const tag = direction === 'parent'
+        ? relationship.parent
+        : direction === 'child'
+          ? relationship.child
+          : relationship.sibling;
       const namespace = String(tag.key || '').replace(/^[@#]/, '').split('/')[0] || 'other';
       if (!groups.has(namespace)) groups.set(namespace, []);
       groups.get(namespace).push({ tag: tag, count: relationship.count });
@@ -222,7 +230,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     });
   }
 
-  /** Render namespace branches inside one parent or child branch. */
+  /** Render namespace branches inside one relationship branch. */
   function renderSidebarRelationshipGroups(relationships, direction, filterTagKey) {
     return groupSidebarRelationships(relationships, direction).map(function (group) {
       const items = group[1].sort(function (left, right) {
@@ -235,18 +243,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }).join('');
   }
 
-  /** Render a narrow, nested parent/child tree when a tag overview is active. */
+  /** Render a narrow, nested relationship tree when a tag overview is active. */
   function renderSidebarRelationships(snapshot) {
     const relationships = snapshot.tagOverviewRelationships;
     if (!relationships || snapshot.tagOverviewFilter) return '';
     const parents = relationships.parentTags || [];
     const children = relationships.childTags || [];
-    if (!parents.length && !children.length) return '';
+    const siblings = relationships.siblingTags || [];
+    if (!parents.length && !children.length && !siblings.length) return '';
     const branch = function (items, direction, heading) {
       if (!items.length) return '';
       return '<details class="sidebar-relationship-branch"><summary><span>' + heading + '</span><span class="sidebar-relationship-count">' + items.length + '</span></summary>' + renderSidebarRelationshipGroups(items, direction, snapshot.tagOverview.key) + '</details>';
     };
-    return '<section class="sidebar-relationships" aria-label="Heading relationship tree"><div class="sidebar-relationships-header"><span class="sidebar-relationships-title">Relationship tree</span><span class="sidebar-relationships-count">' + (parents.length + children.length) + ' direct links</span></div>' + branch(parents, 'parent', 'Parents') + branch(children, 'child', 'Children') + '</section>';
+    return '<section class="sidebar-relationships" aria-label="Heading relationship tree"><div class="sidebar-relationships-header"><span class="sidebar-relationships-title">Relationship tree</span><span class="sidebar-relationships-count">' + (parents.length + children.length + siblings.length) + ' direct links</span></div>' + branch(parents, 'parent', 'Parents') + branch(children, 'child', 'Children') + branch(siblings, 'sibling', 'Siblings') + '</section>';
   }
 
   /** Replace source tag tokens with buttons without changing the title text. */

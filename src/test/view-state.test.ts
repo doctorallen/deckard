@@ -586,6 +586,61 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(child.childTags, []);
   });
 
+  test('projects and filters sibling heading relationships', () => {
+    const parsed = parseMarkdown(
+      'notes/sibling-overview.md',
+      [
+        '# Relay map',
+        '## First route #first',
+        '- [ ] First task',
+        '## Second route #second',
+        '- [ ] Second task',
+        '## Third route #third',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const first = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#first',
+    );
+    const second = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#second',
+    );
+    const filtered = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#second',
+      'active',
+      'inline',
+      true,
+      '#first',
+    );
+
+    assert.ok(first);
+    assert.ok(second);
+    assert.ok(filtered);
+    assert.deepStrictEqual(
+      first.siblingTags.map((relationship) => relationship.sibling.key),
+      ['#second', '#third'],
+    );
+    assert.deepStrictEqual(
+      second.siblingTags.map((relationship) => relationship.sibling.key),
+      ['#first', '#third'],
+    );
+    assert.deepStrictEqual(
+      filtered.sections.map((section) => section.heading),
+      ['Second route #second'],
+    );
+    assert.deepStrictEqual(
+      filtered.tasks.map((item) => item.task.title),
+      ['Second task'],
+    );
+  });
+
   test('projects dense relationship groups and supports disabling them', () => {
     const parentTags = Array.from(
       { length: 12 },
@@ -625,6 +680,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(enabled.childTags.length, 12);
     assert.deepStrictEqual(disabled.parentTags, []);
     assert.deepStrictEqual(disabled.childTags, []);
+    assert.deepStrictEqual(disabled.siblingTags, []);
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -847,6 +903,7 @@ suite('Dashboard state', () => {
         '# Parent route #parent',
         '## Focus route #focus',
         '### Child route #child',
+        '## Sibling route #sibling',
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
@@ -870,6 +927,12 @@ suite('Dashboard state', () => {
         (relationship) => relationship.child.key,
       ),
       ['#child'],
+    );
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.siblingTags.map(
+        (relationship) => relationship.sibling.key,
+      ),
+      ['#sibling'],
     );
   });
 });
