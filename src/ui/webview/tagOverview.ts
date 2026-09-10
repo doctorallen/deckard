@@ -84,16 +84,6 @@ export class TagOverviewPanels implements vscode.Disposable {
   }
 
   /**
-   * Returns whether the selected editor tab is a Deckard Tag Overview.
-   */
-  public isActive(): boolean {
-    return Boolean(
-      this.activeTagKey &&
-        this.panels.get(this.activeTagKey)?.isActive(),
-    );
-  }
-
-  /**
    * Records access only for current tags, then reveals the shared panel instance.
    */
   public async show(
@@ -128,6 +118,7 @@ export class TagOverviewPanels implements vscode.Disposable {
     panel.setFilterTagKey(effectiveFilterTagKey);
     panel.show();
     this.setActiveTagOverview(canonicalTagKey, effectiveFilterTagKey);
+    this.changeEmitter.fire();
   }
 
   /**
@@ -240,6 +231,7 @@ export class TagOverviewPanels implements vscode.Disposable {
     } else if (this.activeTagKey === tagKey) {
       this.setActiveTagOverview(undefined, undefined);
     }
+    this.changeEmitter.fire();
   }
 
   /**
@@ -289,13 +281,6 @@ class TagOverviewPanel implements vscode.Disposable {
 
   public getFilterTagKey(): string | undefined {
     return this.filterTagKey;
-  }
-
-  /**
-   * Reports the panel state maintained by VS Code's webview lifecycle.
-   */
-  public isActive(): boolean {
-    return this.panel?.active === true;
   }
 
   /**

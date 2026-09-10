@@ -213,7 +213,7 @@ export class SidebarNotesView
     const index = this.indexer.getSnapshot();
     const activeTagKey = this.tagOverview.getActiveTagKey();
     const activeTagFilterKey = this.tagOverview.getActiveTagFilterKey();
-    if (activeTagKey && this.tagOverview.isActive()) {
+    if (activeTagKey) {
       const overview = createTagOverviewSnapshot(
         index,
         this.preferences.value,
@@ -419,7 +419,6 @@ interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
   getActiveTagFilterKey(): string | undefined;
-  isActive(): boolean;
 }
 
 /**
