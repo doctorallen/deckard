@@ -64,6 +64,8 @@ export interface Section {
   isInline?: boolean;
   /** Tags written on this heading, excluding inherited front-matter tags. */
   headingTags?: TagReference[];
+  /** Explicit tag groups written on individual source lines. */
+  associationTagGroups?: TagReference[][];
   /** Structural heading parent, including untagged intermediate headings. */
   parentSectionId?: string;
   tags: string[];
@@ -84,6 +86,8 @@ export interface Task {
   completed: boolean;
   tags: string[];
   tagLabels: Record<string, string>;
+  /** Explicit tags written on this task line, excluding inherited tags. */
+  associationTagGroups?: TagReference[][];
   dueAt?: number;
   dueText?: string;
   lineNumber: number;
@@ -115,17 +119,15 @@ export interface TagInfo {
   isFavorite: boolean;
 }
 
-export interface TagRelationship {
-  parent: TagReference;
-  child: TagReference;
+export interface TagAssociation {
+  associatedTag: TagReference;
   sectionIds: string[];
+  taskIds: string[];
   count: number;
-}
-
-export interface TagSiblingRelationship {
-  sibling: TagReference;
-  sectionIds: string[];
-  count: number;
+  /** Total evidence score: co-occurrence is 1; heading proximity decays by depth. */
+  weight: number;
+  coOccurrenceCount: number;
+  headingRelationshipCount: number;
 }
 
 export interface WorkspaceIndex {
@@ -134,12 +136,8 @@ export interface WorkspaceIndex {
   tasks: Map<string, Task>;
   tags: Map<string, TagInfo>;
   entities: Map<string, Entity>;
-  /** Child tag key -> relationships whose parent is a tagged ancestor. */
-  tagParents?: Map<string, TagRelationship[]>;
-  /** Parent tag key -> relationships whose child is a nested tagged heading. */
-  tagChildren?: Map<string, TagRelationship[]>;
-  /** Tag key -> relationships whose sibling shares its structural parent. */
-  tagSiblings?: Map<string, TagSiblingRelationship[]>;
+  /** Tag key -> weighted co-occurrence and heading-proximity associations. */
+  tagAssociations?: Map<string, TagAssociation[]>;
   updatedAt: number;
 }
 
@@ -190,9 +188,7 @@ export interface TagOverviewSnapshot {
   tag: TagInfo;
   entity?: Entity;
   filterTag?: TagReference;
-  parentTags: TagRelationship[];
-  childTags: TagRelationship[];
-  siblingTags: TagSiblingRelationship[];
+  associatedTags: TagAssociation[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
   taskFilter: TaskFilter;
@@ -234,6 +230,15 @@ export interface RankedNote {
   matchCount: number;
   totalTagCount: number;
   overlap: number;
+  relevanceScore: number;
+  associationWeight?: number;
+  relevanceEvidence?: {
+    directTagWeight: number;
+    associationWeight: number;
+    appliedAssociationWeight: number;
+    linkWeight: number;
+    keywordWeight: number;
+  };
   reasons?: string[];
 }
 
@@ -271,15 +276,14 @@ export interface DeckardStatsSnapshot {
 
 export interface SidebarNotesSnapshot {
   activeFileName?: string;
+  activeEntryTitle?: string;
   activeTags: TagReference[];
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
   tagOverviewFilter?: TagReference;
   tagOverviewRelationships?: {
-    parentTags: TagRelationship[];
-    childTags: TagRelationship[];
-    siblingTags: TagSiblingRelationship[];
+    associatedTags: TagAssociation[];
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
@@ -396,6 +400,10 @@ export interface SidebarReadyMessage {
   type: 'ready';
 }
 
+export interface ClearEntryRelatedNotesMessage {
+  type: 'clearEntryRelatedNotes';
+}
+
 export type DashboardMessage =
   | OpenSourceMessage
   | ToggleTaskMessage
@@ -430,4 +438,5 @@ export type SidebarMessage =
   | OpenDashboardMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
-  | SetRelatedNotesSortMessage;
+  | SetRelatedNotesSortMessage
+  | ClearEntryRelatedNotesMessage;

@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.5.0",
+  "version": "1.6.0",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -128,6 +128,18 @@
           "default": true,
           "description": "Index tags on non-heading Markdown lines as standalone entries."
         },
+        "deckard.highlightNoteSections": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Highlight indexed tagged note sections in Markdown editors."
+        },
+        "deckard.autoSelectNoteSections": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Automatically show Related Notes for the tagged note section containing the cursor."
+        },
         "deckard.tagTitleDisplayMode": {
           "type": "string",
           "enum": [
@@ -144,7 +156,7 @@
         "deckard.enableHeadingTagRelationships": {
           "type": "boolean",
           "default": true,
-          "description": "Show inferred parent, sibling, and child heading tag relationships in Tag Overviews."
+          "description": "Show weighted tag associations from explicit co-occurrence and heading proximity in Tag Overviews."
         },
         "deckard.enableTagAutocomplete": {
           "type": "boolean",

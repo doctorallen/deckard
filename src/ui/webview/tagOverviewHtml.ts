@@ -321,21 +321,25 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render one relationship as a keyboard-accessible tag navigation control. */
-  function renderRelationshipTag(tag, count, direction, filterTagKey) {
+  function renderRelationshipTag(tag, count, weight, direction, filterTagKey, detail) {
     const countHtml = Number(count) > 1
       ? '<span class="relationship-count">x' + escapeHtml(count) + '</span>'
+      : '';
+    const scoreHtml = direction === 'associated'
+      ? '<span class="relationship-count">' + Math.round(Number(weight) * 100) + '%</span>'
       : '';
     const label = direction === 'parent'
       ? 'Open parent tag '
       : direction === 'child'
         ? 'Open child tag '
-        : direction === 'sibling'
-          ? 'Open sibling tag '
+        : direction === 'associated'
+          ? 'Open associated tag '
           : 'Current tag ';
     const filterAttribute = filterTagKey
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
-    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + ' aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span>' + countHtml + '</button>';
+    const title = detail ? ' title="' + escapeHtml(detail) + '"' : '';
+    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + title + ' aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span>' + scoreHtml + countHtml + '</button>';
   }
 
   /** Group relationship nodes by namespace so large trees remain scannable. */
@@ -346,10 +350,13 @@ ${getDeckardThemeCss(getDeckardTheme())}
         ? relationship.parent
         : direction === 'child'
           ? relationship.child
-          : relationship.sibling;
+          : relationship.associatedTag;
       const key = String(tag.key || '').replace(/^[@#]/, '').split('/')[0] || 'other';
       if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push({ tag: tag, count: relationship.count });
+      const detail = relationship.coOccurrenceCount
+        ? 'Written together ' + relationship.coOccurrenceCount + ' time' + (relationship.coOccurrenceCount === 1 ? '' : 's') + (relationship.headingRelationshipCount ? '; heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's') : '')
+        : 'Heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's');
+      groups.get(key).push({ tag: tag, count: relationship.count, weight: relationship.weight || 0, coOccurrenceCount: relationship.coOccurrenceCount || 0, detail: detail });
     });
     return Array.from(groups.entries()).sort(function (left, right) {
       return left[0].localeCompare(right[0], undefined, { sensitivity: 'base' });
@@ -364,23 +371,23 @@ ${getDeckardThemeCss(getDeckardTheme())}
         ? 'parent'
         : direction === 'child'
           ? 'child'
-          : 'sibling';
-      return '<div class="relationship-empty">No direct ' + heading + ' headings.</div>';
+          : 'associated';
+      return '<div class="relationship-empty">No ' + heading + ' tags.</div>';
     }
     return groups.map(function (group) {
       const items = group[1].sort(function (left, right) {
-        return left.tag.label.localeCompare(right.tag.label, undefined, { sensitivity: 'base' });
+        return right.coOccurrenceCount - left.coOccurrenceCount || right.weight - left.weight || left.tag.label.localeCompare(right.tag.label, undefined, { sensitivity: 'base' });
       });
       const namespaceLabel = group[0] === 'other' ? 'Other tags' : group[0].replace(/[-_]+/g, ' ');
       return '<details class="relationship-tree-group"><summary><span>' + escapeHtml(namespaceLabel) + '</span><span class="relationship-tree-group-count">' + items.length + '</span></summary><div class="relationship-tree-items">' + items.map(function (item) {
-        return '<div class="relationship-tree-item">' + renderRelationshipTag(item.tag, item.count, direction, filterTagKey) + '</div>';
+        return '<div class="relationship-tree-item">' + renderRelationshipTag(item.tag, item.count, item.weight, direction, filterTagKey, item.detail) + '</div>';
       }).join('') + '</div></details>';
     }).join('');
   }
 
   /** Render the compact, namespace-collapsible relationship tree. */
-  function renderRelationshipTree(parentRelationships, childRelationships, siblingRelationships, rootTag) {
-    return '<div class="relationship-tree"><div class="relationship-tree-root"><span class="relationship-tree-root-label">Focus</span>' + renderRelationshipTag(rootTag, 0, 'focus') + '</div><div class="relationship-tree-columns"><section class="relationship-tree-column" aria-labelledby="tree-parents-heading"><h3 id="tree-parents-heading" class="relationship-tree-column-heading"><span>Parents</span><span class="relationship-tree-column-count">' + parentRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(parentRelationships, 'parent', rootTag.key) + '</section><section class="relationship-tree-column" aria-labelledby="tree-siblings-heading"><h3 id="tree-siblings-heading" class="relationship-tree-column-heading"><span>Siblings</span><span class="relationship-tree-column-count">' + siblingRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(siblingRelationships, 'sibling', rootTag.key) + '</section><section class="relationship-tree-column" aria-labelledby="tree-children-heading"><h3 id="tree-children-heading" class="relationship-tree-column-heading"><span>Children</span><span class="relationship-tree-column-count">' + childRelationships.length + '</span></h3>' + renderRelationshipTreeGroups(childRelationships, 'child', rootTag.key) + '</section></div></div>';
+  function renderRelationshipTree(associations, rootTag) {
+    return '<div class="relationship-tree"><div class="relationship-tree-root"><span class="relationship-tree-root-label">Focus</span>' + renderRelationshipTag(rootTag, 0, 0, 'focus') + '</div><div class="relationship-tree-columns"><section class="relationship-tree-column" aria-labelledby="tree-associated-heading"><h3 id="tree-associated-heading" class="relationship-tree-column-heading"><span>Associated tags</span><span class="relationship-tree-column-count">' + associations.length + '</span></h3>' + renderRelationshipTreeGroups(associations, 'associated', rootTag.key) + '</section></div></div>';
   }
 
   /** Keep graph labels readable while the full value remains available to assistive text. */
@@ -406,8 +413,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
       : direction === 'child'
         ? rootX + 112
         : rootX;
-    const rootEdgeY = direction === 'sibling' ? rootY + 15 : rootY;
-    const edgeY = direction === 'sibling' ? y : centerY;
+    const rootEdgeY = direction === 'associated' ? rootY + 15 : rootY;
+    const edgeY = direction === 'associated' ? y : centerY;
     const edge = '<line class="relationship-edge" x1="' + rootEdgeX + '" y1="' + rootEdgeY + '" x2="' + edgeX + '" y2="' + edgeY + '"></line>';
     const count = Number(item.count) > 1 ? ' x' + item.count : '';
     const label = shortenGraphLabel(node.label) + count;
@@ -415,7 +422,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? 'Open parent tag '
       : direction === 'child'
         ? 'Open child tag '
-        : 'Open sibling tag ') + node.label + (count ? ', ' + item.count + ' relationships' : '');
+        : 'Open associated tag ') + node.label + (count ? ', ' + item.count + ' references' : '');
     const filterAttribute = filterTagKey
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
@@ -424,66 +431,49 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render a layered SVG graph with parents on the left and children on the right. */
-  function renderRelationshipGraph(parentRelationships, childRelationships, siblingRelationships, rootTag) {
+  function renderRelationshipGraph(associations, rootTag) {
     const nodeWidth = 190;
     const nodeHeight = 30;
     const columnGap = 20;
     const maxRows = 12;
-    const parentColumns = Math.max(1, Math.ceil(parentRelationships.length / maxRows));
-    const childColumns = Math.max(1, Math.ceil(childRelationships.length / maxRows));
-    const parentWidth = parentColumns * nodeWidth + (parentColumns - 1) * columnGap;
-    const childWidth = childColumns * nodeWidth + (childColumns - 1) * columnGap;
+    const parentWidth = 0;
+    const childWidth = 0;
     const rootWidth = 224;
     const sideGap = 72;
     const leftPadding = 36;
-    const siblingColumns = Math.min(4, Math.max(1, siblingRelationships.length));
-    const siblingWidth = siblingRelationships.length
+    const siblingColumns = Math.min(4, Math.max(1, associations.length));
+    const siblingWidth = associations.length
       ? siblingColumns * nodeWidth + (siblingColumns - 1) * columnGap
       : 0;
     const width = Math.max(
-      leftPadding * 2 + parentWidth + sideGap + rootWidth + sideGap + childWidth,
+      leftPadding * 2 + rootWidth,
       leftPadding * 2 + siblingWidth,
     );
-    const parentRows = parentRelationships.length ? Math.min(maxRows, Math.ceil(parentRelationships.length / parentColumns)) : 1;
-    const childRows = childRelationships.length ? Math.min(maxRows, Math.ceil(childRelationships.length / childColumns)) : 1;
-    const siblingRows = siblingRelationships.length ? Math.ceil(siblingRelationships.length / siblingColumns) : 0;
-    const rowCount = Math.max(parentRows, childRows);
+    const siblingRows = associations.length ? Math.ceil(associations.length / siblingColumns) : 0;
+    const rowCount = 1;
     const height = Math.max(260, 124 + rowCount * 42 + (siblingRows ? siblingRows * 42 + 48 : 0));
-    const rootX = leftPadding + parentWidth + sideGap + rootWidth / 2;
+    const rootX = Math.max(leftPadding + rootWidth / 2, siblingWidth / 2 + leftPadding);
     const rootY = siblingRows ? 62 + rowCount * 21 : height / 2;
-    const childStartX = leftPadding + parentWidth + sideGap + rootWidth + sideGap;
     const siblingStartX = Math.max(leftPadding, rootX - siblingWidth / 2);
     const siblingStartY = rootY + 72;
-    const parents = [];
-    const children = [];
-    parentRelationships.forEach(function (relationship, index) {
-      const column = Math.floor(index / maxRows);
-      const row = index % maxRows;
-      parents.push(renderGraphNode({ tag: relationship.parent, count: relationship.count }, 'parent', column, row, leftPadding, rootX, rootY, nodeWidth, nodeHeight, columnGap, rootTag.key));
-    });
-    childRelationships.forEach(function (relationship, index) {
-      const column = Math.floor(index / maxRows);
-      const row = index % maxRows;
-      children.push(renderGraphNode({ tag: relationship.child, count: relationship.count }, 'child', column, row, childStartX, rootX, rootY, nodeWidth, nodeHeight, columnGap, rootTag.key));
-    });
     const siblings = [];
-    siblingRelationships.forEach(function (relationship, index) {
+    associations.forEach(function (relationship, index) {
       const column = index % siblingColumns;
       const row = Math.floor(index / siblingColumns);
-      siblings.push(renderGraphNode({ tag: relationship.sibling, count: relationship.count }, 'sibling', column, row, siblingStartX, rootX, rootY, nodeWidth, nodeHeight, columnGap, rootTag.key, siblingStartY));
+      siblings.push(renderGraphNode({ tag: relationship.associatedTag, count: relationship.count }, 'associated', column, row, siblingStartX, rootX, rootY, nodeWidth, nodeHeight, columnGap, rootTag.key, siblingStartY));
     });
-    const edges = parents.concat(children, siblings).map(function (item) { return item.edge; }).join('');
-    const nodes = parents.concat(children, siblings).map(function (item) { return item.node; }).join('');
+    const edges = siblings.map(function (item) { return item.edge; }).join('');
+    const nodes = siblings.map(function (item) { return item.node; }).join('');
     const rootLeft = rootX - rootWidth / 2;
     const rootTop = rootY - nodeHeight / 2;
-    return '<div class="relationship-graph-shell"><svg class="relationship-graph" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" role="img" aria-label="Layered relationship graph for ' + escapeHtml(rootTag.label) + '"><text class="relationship-graph-label" x="' + (leftPadding + parentWidth / 2) + '" y="24" text-anchor="middle">Parents</text><text class="relationship-graph-label" x="' + rootX + '" y="24" text-anchor="middle">Focus</text><text class="relationship-graph-label" x="' + (childStartX + childWidth / 2) + '" y="24" text-anchor="middle">Children</text>' + (siblingRelationships.length ? '<text class="relationship-graph-label" x="' + (siblingStartX + siblingWidth / 2) + '" y="' + (siblingStartY - 28) + '" text-anchor="middle">Siblings</text>' : '') + edges + '<g class="relationship-root-node" data-tag-key="' + escapeHtml(rootTag.key) + '"><rect x="' + rootLeft + '" y="' + rootTop + '" width="' + rootWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + rootX + '" y="' + (rootY + 4) + '" text-anchor="middle">' + escapeHtml(shortenGraphLabel(rootTag.label)) + '</text></g>' + nodes + '</svg></div><p class="relationship-graph-caption">Select a node to open its overview. Scroll horizontally when a namespace has many relationships.</p>';
+    return '<div class="relationship-graph-shell"><svg class="relationship-graph" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" role="img" aria-label="Tag association graph for ' + escapeHtml(rootTag.label) + '"><text class="relationship-graph-label" x="' + rootX + '" y="24" text-anchor="middle">Focus</text>' + (associations.length ? '<text class="relationship-graph-label" x="' + (siblingStartX + siblingWidth / 2) + '" y="' + (siblingStartY - 28) + '" text-anchor="middle">Associated tags</text>' : '') + edges + '<g class="relationship-root-node" data-tag-key="' + escapeHtml(rootTag.key) + '"><rect x="' + rootLeft + '" y="' + rootTop + '" width="' + rootWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + rootX + '" y="' + (rootY + 4) + '" text-anchor="middle">' + escapeHtml(shortenGraphLabel(rootTag.label)) + '</text></g>' + nodes + '</svg></div><p class="relationship-graph-caption">Select a node to open its overview. Scroll horizontally when there are many associations.</p>';
   }
 
   /** Render both relationship modes behind a local view switch. */
-  function renderRelationshipViews(parentRelationships, childRelationships, siblingRelationships, rootTag) {
-    if (!parentRelationships.length && !childRelationships.length && !siblingRelationships.length) return '';
+  function renderRelationshipViews(associations, rootTag) {
+    if (!associations.length) return '';
     const treeActive = relationshipView === 'tree';
-    return '<section class="relationship-workspace" aria-labelledby="relationships-heading"><div class="relationship-workspace-header"><div class="relationship-workspace-title"><h2 id="relationships-heading" class="relationship-heading">Heading relationships</h2><span class="relationship-summary">' + (parentRelationships.length + childRelationships.length + siblingRelationships.length) + ' direct links</span></div><div class="relationship-view-switch" role="tablist" aria-label="Relationship view"><button class="' + (treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="tree" role="tab" aria-selected="' + treeActive + '">Tree</button><button class="' + (!treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="graph" role="tab" aria-selected="' + (!treeActive) + '">Graph</button></div></div><div class="relationship-view-panel"' + (treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipTree(parentRelationships, childRelationships, siblingRelationships, rootTag) + '</div><div class="relationship-view-panel"' + (!treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipGraph(parentRelationships, childRelationships, siblingRelationships, rootTag) + '</div></section>';
+    return '<section class="relationship-workspace" aria-labelledby="relationships-heading"><div class="relationship-workspace-header"><div class="relationship-workspace-title"><h2 id="relationships-heading" class="relationship-heading">Tag associations</h2><span class="relationship-summary">' + associations.length + ' related tags</span></div><div class="relationship-view-switch" role="tablist" aria-label="Relationship view"><button class="' + (treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="tree" role="tab" aria-selected="' + treeActive + '">Tree</button><button class="' + (!treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="graph" role="tab" aria-selected="' + (!treeActive) + '">Graph</button></div></div><div class="relationship-view-panel"' + (treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipTree(associations, rootTag) + '</div><div class="relationship-view-panel"' + (!treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipGraph(associations, rootTag) + '</div></section>';
   }
 
   /** Rebuild the cards from the latest host snapshot without local duplication. */
@@ -542,12 +532,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       : '<div class="overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (' + state.sections.length + ')</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (' + state.tasks.length + ')</button></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const relationships = state.entity
       ? ''
-      : renderRelationshipViews(
-        state.parentTags,
-        state.childTags,
-        state.siblingTags,
-        state.tag,
-      );
+      : renderRelationshipViews(state.associatedTags, state.tag);
     document.getElementById('app').innerHTML = '<header><div><p class="eyebrow">DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW</p><h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + filterContext + '</div><div class="toolbar" role="group" aria-label="Tag entry view controls"><div class="toolbar-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div><select data-action="set-sort" aria-label="Sort tag entries"><option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m6 4-4 4 4 4M10 4l4 4-4 4"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button></div></div></header>' + relationships + layoutContent;
   }
 

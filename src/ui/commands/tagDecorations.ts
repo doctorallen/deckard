@@ -4,6 +4,7 @@ import {
   extractTagSpans,
   getEntityNamespaceAliases,
   getPersonMarker,
+  parseMarkdown,
 } from '../../core/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
@@ -23,9 +24,17 @@ export class EditorTagDecorations implements vscode.Disposable {
       cursor: 'pointer',
       textDecoration: 'none',
     });
+  private readonly noteDecorationType =
+    vscode.window.createTextEditorDecorationType({
+      isWholeLine: true,
+      backgroundColor: 'rgba(255, 255, 255, 0.025)',
+      border: '0 0 0 1px solid',
+      borderColor: 'rgba(255, 255, 255, 0.18)',
+    });
 
   public constructor() {
     this.disposables.push(this.decorationType);
+    this.disposables.push(this.noteDecorationType);
     this.disposables.push(
       vscode.languages.registerDocumentLinkProvider(
         markdownDocumentSelector,
@@ -46,6 +55,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.parseInlineTags') ||
+          event.affectsConfiguration('deckard.highlightNoteSections') ||
           event.affectsConfiguration('deckard.entityNamespaceAliases') ||
           event.affectsConfiguration('deckard.personMarker')
         ) {
@@ -120,14 +130,19 @@ export class EditorTagDecorations implements vscode.Disposable {
   private updateEditor(editor: vscode.TextEditor): void {
     if (!isMarkdownDocument(editor.document)) {
       editor.setDecorations(this.decorationType, []);
+      editor.setDecorations(this.noteDecorationType, []);
       return;
     }
 
+    const content = editor.document.getText();
+    const parseInlineTags = this.parseInlineTags(editor.document);
+    const entityNamespaceAliases = this.entityNamespaceAliases(editor.document);
+    const personMarker = this.personMarker(editor.document);
     const decorations = extractTagSpans(
-      editor.document.getText(),
-      this.parseInlineTags(editor.document),
-      this.entityNamespaceAliases(editor.document),
-      this.personMarker(editor.document),
+      content,
+      parseInlineTags,
+      entityNamespaceAliases,
+      personMarker,
     ).map((span) => ({
       range: new vscode.Range(
         span.lineNumber - 1,
@@ -138,6 +153,58 @@ export class EditorTagDecorations implements vscode.Disposable {
       hoverMessage: createTagRenameHoverMessage(span.label, span.key),
     }));
     editor.setDecorations(this.decorationType, decorations);
+
+    const parsed = parseMarkdown('', content, undefined, {
+      parseInlineTags,
+      entityNamespaceAliases,
+      personMarker,
+    });
+    const entries: EditorEntry[] = [];
+    parsed.sections
+      .filter(
+        (section) =>
+          (section.headingTags?.length ?? 0) > 0 ||
+          (section.isInline && (section.associationTagGroups?.length ?? 0) > 0),
+      )
+      .forEach((section) =>
+        entries.push({
+          startLine: section.startLine,
+          endLine: section.endLine,
+          title: section.heading,
+        }),
+      );
+    parsed.tasks
+      .filter((task) => (task.associationTagGroups?.length ?? 0) > 0)
+      .forEach((task) =>
+        entries.push({
+          startLine: task.lineNumber,
+          endLine: task.lineNumber,
+          title: task.title,
+        }),
+      );
+
+    editor.setDecorations(
+      this.noteDecorationType,
+      this.shouldHighlightNoteSections(editor.document)
+        ? entries.map((entry) => {
+            const endLine =
+              Math.min(entry.endLine, editor.document.lineCount) - 1;
+            return {
+              range: new vscode.Range(
+                entry.startLine - 1,
+                0,
+                endLine,
+                editor.document.lineAt(endLine).text.length,
+              ),
+              hoverMessage: createEntryRelatedNotesHoverMessage(
+                entry.title,
+                editor.document.uri.toString(),
+                entry.startLine,
+              ),
+            };
+          })
+        : [],
+    );
   }
 
   /**
@@ -147,6 +214,12 @@ export class EditorTagDecorations implements vscode.Disposable {
     return vscode.workspace
       .getConfiguration('deckard', document.uri)
       .get<boolean>('parseInlineTags', true);
+  }
+
+  private shouldHighlightNoteSections(document: vscode.TextDocument): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard', document.uri)
+      .get<boolean>('highlightNoteSections', true);
   }
 
   private entityNamespaceAliases(document: vscode.TextDocument) {
@@ -171,6 +244,12 @@ const markdownDocumentSelector: vscode.DocumentSelector = [
   { pattern: '**/*.md' },
 ];
 
+interface EditorEntry {
+  startLine: number;
+  endLine: number;
+  title: string;
+}
+
 /**
  * Uses the URI extension rather than language mode because users can associate
  * or edit a Markdown file with a different language identifier.
@@ -193,6 +272,17 @@ function createTagRenameUri(tagKey: string): vscode.Uri {
   return createTagCommandUri('deckard.renameTag', tagKey);
 }
 
+function createEntryRelatedNotesUri(
+  documentUri: string,
+  lineNumber: number,
+): vscode.Uri {
+  return vscode.Uri.parse(
+    `command:deckard.showEntryRelatedNotes?${encodeURIComponent(
+      JSON.stringify([documentUri, lineNumber]),
+    )}`,
+  );
+}
+
 function createTagCommandUri(command: string, tagKey: string): vscode.Uri {
   return vscode.Uri.parse(
     `command:${command}?${encodeURIComponent(JSON.stringify([tagKey]))}`,
@@ -211,6 +301,20 @@ export function createTagRenameHoverMessage(
     enabledCommands: ['deckard.renameTag'],
   };
   return rename;
+}
+
+export function createEntryRelatedNotesHoverMessage(
+  title: string,
+  documentUri: string,
+  lineNumber: number,
+): vscode.MarkdownString {
+  const hover = new vscode.MarkdownString(
+    `[Show related notes for ${escapeMarkdown(title)}](${createEntryRelatedNotesUri(documentUri, lineNumber)})`,
+  );
+  hover.isTrusted = {
+    enabledCommands: ['deckard.showEntryRelatedNotes'],
+  };
+  return hover;
 }
 
 function escapeMarkdown(value: string): string {

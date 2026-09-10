@@ -346,13 +346,13 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.sidebar-relationships, .relationship-workspace',
+        '.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0;',
       ),
       true,
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.sidebar-relationship-items { margin-left: 8px; border-left: 3px solid var(--cyan); }',
+        '.sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; }',
       ),
       true,
     );
@@ -591,16 +591,16 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
     assert.strictEqual(
-      html.includes('function renderRelationshipTree(parentRelationships, childRelationships, siblingRelationships, rootTag)'),
+      html.includes('function renderRelationshipTree(associations, rootTag)'),
       true,
     );
     assert.strictEqual(
-      html.includes('function renderRelationshipGraph(parentRelationships, childRelationships, siblingRelationships, rootTag)'),
+      html.includes('function renderRelationshipGraph(associations, rootTag)'),
       true,
     );
-    assert.strictEqual(html.includes('Heading relationships'), true);
-    assert.strictEqual(html.includes('<span>Siblings</span>'), true);
-    assert.strictEqual(html.includes('Open sibling tag'), true);
+    assert.strictEqual(html.includes('Tag associations'), true);
+    assert.strictEqual(html.includes('<span>Associated tags</span>'), true);
+    assert.strictEqual(html.includes('Open associated tag'), true);
     assert.strictEqual(html.includes('data-action="set-relationship-view"'), true);
     assert.strictEqual(html.includes('data-view="tree"'), true);
     assert.strictEqual(html.includes('data-view="graph"'), true);
@@ -690,14 +690,24 @@ suite('Webview contracts', () => {
     );
   });
 
-  test('does not render related-note reasons', () => {
+  test('renders formatted related-note relevance explanations', () => {
     const html = getSidebarNotesHtml(
       { cspSource: 'vscode-webview://deckard' },
       '1.0.0',
     );
 
     assert.strictEqual(html.includes('class="reason"'), false);
-    assert.strictEqual(html.includes('note.reasons'), false);
+    assert.strictEqual(html.includes('note.reasons'), true);
+    assert.strictEqual(html.includes('const relevanceReasons = note.reasons'), true);
+    assert.strictEqual(
+      html.includes('class="relevance-tooltip" role="tooltip"'),
+      true,
+    );
+    assert.strictEqual(html.includes('Association weight'), true);
+    assert.strictEqual(
+      html.includes('.note:hover, .note:focus-within { z-index: 20;'),
+      true,
+    );
     assert.strictEqual(html.includes('set-related-notes-sort'), true);
     assert.strictEqual(html.includes('related-notes-sort-control'), true);
     assert.strictEqual(html.includes('related-notes-sort-icon'), true);
@@ -707,7 +717,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
     assert.strictEqual(html.includes("renderTag(tag, 'inline-tag')"), true);
-    assert.strictEqual(html.includes('>Most tags</option>'), true);
+    assert.strictEqual(html.includes('>Relevance</option>'), true);
     assert.strictEqual(html.includes('>Newest</option>'), true);
     assert.strictEqual(html.includes('>Oldest</option>'), true);
     assert.strictEqual(html.includes('>Most accessed</option>'), true);
@@ -721,11 +731,28 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes('class="sidebar-relationship-namespace"'),
+      false,
+    );
+    assert.strictEqual(html.includes('Associated tags'), true);
+    assert.strictEqual(
+      html.includes('function renderSidebarAssociations(relationships, filterTagKey)'),
       true,
     );
-    assert.strictEqual(html.includes('Relationship tree'), true);
-    assert.strictEqual(html.includes("branch(siblings, 'sibling', 'Siblings')"), true);
-    assert.strictEqual(html.includes('Open sibling tag'), true);
+    assert.strictEqual(html.includes('Open associated tag'), true);
+    assert.strictEqual(
+      html.includes('class="sidebar-association-tooltip" role="tooltip"'),
+      true,
+    );
+    assert.strictEqual(html.includes("aria-label=\"Association strength ' + percentage + ' percent\""), true);
+    assert.strictEqual(html.includes("' + percentage + '%</span>"), true);
+    assert.strictEqual(html.includes('Total weight'), true);
+    assert.strictEqual(
+      html.includes('border-left: 2px solid var(--cyan);'),
+      false,
+    );
+    assert.strictEqual(html.includes('class="relevance-score"'), true);
+    assert.strictEqual(html.includes('const relevance = state.tagOverview'), true);
+    assert.strictEqual(html.includes('note.relevanceScore'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), true);
     assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
     assert.strictEqual(html.includes('active-filter-label'), false);
@@ -769,13 +796,13 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '.sidebar-relationships { margin-top: 8px; overflow: hidden;',
+        '.sidebar-relationships { margin-top: 8px; overflow: visible;',
       ),
       true,
     );
     assert.strictEqual(
       html.includes(
-        '.sidebar-relationships .tag-open.relationship-tag {\n  display: flex;',
+        '.sidebar-relationships .tag-open.relationship-tag {\n  position: relative;',
       ),
       true,
     );
@@ -808,10 +835,14 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('<section id="quick-start">'), true);
     assert.strictEqual(html.includes('<section id="commands">'), true);
     assert.strictEqual(html.includes('<section id="advanced">'), true);
-    assert.strictEqual(html.includes('Heading relationships'), true);
-    assert.strictEqual(html.includes('Parent tags'), true);
-    assert.strictEqual(html.includes('Sibling tags'), true);
-    assert.strictEqual(html.includes('Child tags'), true);
+    assert.strictEqual(html.includes('Tag associations'), true);
+    assert.strictEqual(html.includes('Associated tags'), true);
+    assert.strictEqual(html.includes('.step, .card { min-width: 0;'), true);
+    assert.strictEqual(html.includes('code { overflow-wrap: anywhere;'), true);
+    assert.strictEqual(
+      html.includes('.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }'),
+      true,
+    );
 
     for (const command of [
       'Deckard: Open Dashboard',
@@ -832,6 +863,8 @@ suite('Webview contracts', () => {
       'deckard.notesFolder',
       'deckard.dailyNoteTemplate',
       'deckard.parseInlineTags',
+      'deckard.highlightNoteSections',
+      'deckard.autoSelectNoteSections',
       'deckard.tagTitleDisplayMode',
       'deckard.enableHeadingTagRelationships',
       'deckard.enableTagAutocomplete',
@@ -904,6 +937,10 @@ suite('Webview contracts', () => {
     assert.deepStrictEqual(parseSidebarMessage({ type: 'openHelp' }), {
       type: 'openHelp',
     });
+    assert.deepStrictEqual(
+      parseSidebarMessage({ type: 'clearEntryRelatedNotes' }),
+      { type: 'clearEntryRelatedNotes' },
+    );
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'setRelatedNotesSort', mode: 'access' }),
       { type: 'setRelatedNotesSort', mode: 'access' },

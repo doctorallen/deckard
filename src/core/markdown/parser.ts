@@ -662,6 +662,9 @@ function normalizeParsedTagReferences(
         entityNamespaceAliases,
       );
     }
+    item.associationTagGroups = (item.associationTagGroups ?? []).map((group) =>
+      normalizeTagReferences(group, entityNamespaceAliases),
+    );
     const normalized = normalizeTagReferences(
       item.tags.map((key) => ({
         key,
@@ -847,6 +850,7 @@ function createSection(
     heading: heading.text,
     headingLevel: heading.level,
     headingTags,
+    associationTagGroups: [headingTags],
     parentSectionId: parentHeading
       ? createHeadingSectionId(filePath, parentHeading)
       : undefined,
@@ -938,7 +942,7 @@ function findInlineSections(
             lineNumber,
             endLine,
             rawContent,
-            localTags,
+            [localTags],
             frontmatterTags,
             metadata,
           ),
@@ -982,7 +986,7 @@ function findInlineSections(
         lineNumber,
         lineNumber + paragraphLines.length - 1,
         rawContent,
-        paragraphLines.flatMap((paragraphLine) =>
+        paragraphLines.map((paragraphLine) =>
           extractTags(paragraphLine, undefined, personMarker),
         ),
         frontmatterTags,
@@ -1000,10 +1004,11 @@ function createInlineSection(
   lineNumber: number,
   endLine: number,
   rawContent: string,
-  localTags: TagReference[],
+  associationTagGroups: TagReference[][],
   frontmatterTags: TagReference[],
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
 ): Section {
+  const localTags = associationTagGroups.flat();
   const inlineTags = mergeTagReferences(frontmatterTags, localTags);
   return {
     id: createId('inline', `${filePath}:${lineNumber}:${sourceLine}`),
@@ -1012,6 +1017,7 @@ function createInlineSection(
     headingLevel: 0,
     isInline: true,
     headingTags: [],
+    associationTagGroups,
     tags: inlineTags.map((tag) => tag.key),
     tagLabels: Object.fromEntries(
       inlineTags.map((tag) => [tag.key, tag.label]),
@@ -1074,6 +1080,7 @@ function findTasks(
         completed: checkboxValue !== ' ',
         tags,
         tagLabels,
+        associationTagGroups: [inlineTags],
         dueAt: dueDate?.at,
         dueText: dueDate?.text,
         lineNumber,

@@ -150,6 +150,9 @@ export function parseSidebarMessage(
   if (value.type === 'ready') {
     return { type: 'ready' };
   }
+  if (value.type === 'clearEntryRelatedNotes') {
+    return { type: 'clearEntryRelatedNotes' };
+  }
   if (value.type === 'openSource') {
     return isSourceMessage(value)
       ? (value as unknown as SidebarMessage)

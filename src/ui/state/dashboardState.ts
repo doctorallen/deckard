@@ -16,8 +16,7 @@ import {
   TagOverviewSortMode,
   TagOverviewSnapshot,
   TagReference,
-  TagRelationship,
-  TagSiblingRelationship,
+  TagAssociation,
   TaskSortMode,
   SidebarNotesSnapshot,
   WorkspaceIndex,
@@ -301,22 +300,18 @@ export function createTagOverviewSnapshot(
   }
   const filterTag = filterTagKey ? index.tags.get(filterTagKey) : undefined;
   const effectiveFilterTagKey = filterTag?.key;
-  // The existing filter message carries only the other tag, so preserve
-  // parent/child filtering when the same pair also occurs as siblings.
-  const siblingRelationship =
-    effectiveFilterTagKey &&
-    !hasParentChildRelationship(index, tag.key, effectiveFilterTagKey)
-      ? findSiblingRelationship(index, tag.key, effectiveFilterTagKey)
-      : undefined;
-  const siblingSectionIds = siblingRelationship
-    ? new Set(siblingRelationship.sectionIds)
+  const association =
+    effectiveFilterTagKey === undefined
+      ? undefined
+      : findTagAssociation(index, tag.key, effectiveFilterTagKey);
+  const associationSectionIds = association
+    ? new Set(association.sectionIds)
     : undefined;
+  const associationTaskIds = association ? new Set(association.taskIds) : undefined;
 
-  // A relationship filter uses contextual membership so either navigation
-  // direction can show the shared child section and its tasks.
   let sectionCandidates: Section[];
-  if (siblingSectionIds) {
-    sectionCandidates = [...siblingSectionIds]
+  if (associationSectionIds) {
+    sectionCandidates = [...associationSectionIds]
       .map((sectionId) => index.sections.get(sectionId))
       .filter((section): section is Section => section !== undefined);
   } else if (effectiveFilterTagKey === undefined) {
@@ -330,7 +325,7 @@ export function createTagOverviewSnapshot(
         sectionIncludesTag(index, section, effectiveFilterTagKey),
     );
   }
-  const fileCandidates = (siblingSectionIds ? [] : tag.filePaths)
+  const fileCandidates = (association ? [] : tag.filePaths)
     .map((filePath) => index.files.get(filePath))
     .filter((file): file is ParsedFile => file !== undefined)
     .filter(
@@ -352,11 +347,10 @@ export function createTagOverviewSnapshot(
       compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
     );
   let taskCandidates: Task[];
-  if (siblingSectionIds) {
-    taskCandidates = [...index.tasks.values()].filter(
-      (task) =>
-        task.sectionId !== undefined && siblingSectionIds.has(task.sectionId),
-    );
+  if (associationTaskIds) {
+    taskCandidates = [...associationTaskIds]
+      .map((taskId) => index.tasks.get(taskId))
+      .filter((task): task is Task => task !== undefined);
   } else if (effectiveFilterTagKey === undefined) {
     taskCandidates = tag.taskIds
       .map((taskId) => index.tasks.get(taskId))
@@ -381,14 +375,8 @@ export function createTagOverviewSnapshot(
     filterTag: filterTag
       ? { key: filterTag.key, label: filterTag.label }
       : undefined,
-    parentTags: enableHeadingTagRelationships
-      ? cloneTagRelationships(index.tagParents?.get(tagKey) ?? [])
-      : [],
-    childTags: enableHeadingTagRelationships
-      ? cloneTagRelationships(index.tagChildren?.get(tagKey) ?? [])
-      : [],
-    siblingTags: enableHeadingTagRelationships
-      ? cloneTagSiblingRelationships(index.tagSiblings?.get(tagKey) ?? [])
+    associatedTags: enableHeadingTagRelationships
+      ? cloneTagAssociations(index.tagAssociations?.get(tagKey) ?? [])
       : [],
     sections,
     tasks: taskCandidates
@@ -402,49 +390,27 @@ export function createTagOverviewSnapshot(
   };
 }
 
-function cloneTagRelationships(
-  relationships: TagRelationship[],
-): TagRelationship[] {
+function cloneTagAssociations(
+  relationships: TagAssociation[],
+): TagAssociation[] {
   return relationships.map((relationship) => ({
-    parent: { ...relationship.parent },
-    child: { ...relationship.child },
+    associatedTag: { ...relationship.associatedTag },
     sectionIds: [...relationship.sectionIds],
+    taskIds: [...relationship.taskIds],
     count: relationship.count,
+    weight: relationship.weight,
+    coOccurrenceCount: relationship.coOccurrenceCount,
+    headingRelationshipCount: relationship.headingRelationshipCount,
   }));
 }
 
-function cloneTagSiblingRelationships(
-  relationships: TagSiblingRelationship[],
-): TagSiblingRelationship[] {
-  return relationships.map((relationship) => ({
-    sibling: { ...relationship.sibling },
-    sectionIds: [...relationship.sectionIds],
-    count: relationship.count,
-  }));
-}
-
-function findSiblingRelationship(
+function findTagAssociation(
   index: WorkspaceIndex,
   tagKey: string,
-  siblingKey: string,
-): TagSiblingRelationship | undefined {
-  return index.tagSiblings?.get(tagKey)?.find(
-    (relationship) => relationship.sibling.key === siblingKey,
-  );
-}
-
-function hasParentChildRelationship(
-  index: WorkspaceIndex,
-  tagKey: string,
-  otherTagKey: string,
-): boolean {
-  return (
-    index.tagParents?.get(tagKey)?.some(
-      (relationship) => relationship.parent.key === otherTagKey,
-    ) === true ||
-    index.tagChildren?.get(tagKey)?.some(
-      (relationship) => relationship.child.key === otherTagKey,
-    ) === true
+  associatedTagKey: string,
+): TagAssociation | undefined {
+  return index.tagAssociations?.get(tagKey)?.find(
+    (relationship) => relationship.associatedTag.key === associatedTagKey,
   );
 }
 
@@ -517,6 +483,7 @@ export function createTagOverviewSidebarSnapshot(
     matchCount: 1,
     totalTagCount: 1,
     overlap: 1,
+    relevanceScore: 100,
   }));
 
   return {
@@ -527,9 +494,7 @@ export function createTagOverviewSidebarSnapshot(
       ? { ...snapshot.filterTag }
       : undefined,
     tagOverviewRelationships: {
-      parentTags: cloneTagRelationships(snapshot.parentTags),
-      childTags: cloneTagRelationships(snapshot.childTags),
-      siblingTags: cloneTagSiblingRelationships(snapshot.siblingTags),
+      associatedTags: cloneTagAssociations(snapshot.associatedTags),
     },
     tagTitleDisplayMode: snapshot.tagTitleDisplayMode,
     state: notes.length > 0 ? 'ready' : 'noMatches',
@@ -559,6 +524,7 @@ export function createSidebarSnapshot(
   relatedNotesSortMode: RelatedNotesSortMode = 'tags',
   sectionAccessCounts: Record<string, number> = {},
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  activeEntryTitle?: string,
 ): SidebarNotesSnapshot {
   if (!activeFile) {
     return {
@@ -581,6 +547,7 @@ export function createSidebarSnapshot(
   );
   return {
     activeFileName: getFileName(activeFilePath),
+    activeEntryTitle,
     activeTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
@@ -650,12 +617,29 @@ export function rankRelatedNotes(
     const candidateTags = collectFileTags(file);
     const candidateKeys = new Set(candidateTags.map((tag) => tag.key));
     const matchedTags = activeTags.filter((tag) => candidateKeys.has(tag.key));
+    const associatedMatches = candidateTags.flatMap((candidateTag) => {
+      const associations = activeTags
+        .map((activeTag) =>
+          findTagAssociation(index, activeTag.key, candidateTag.key),
+        )
+        .filter((association): association is TagAssociation => association !== undefined);
+      const weight = associations.reduce(
+        (total, association) => total + association.weight,
+        0,
+      );
+      return weight > 0 ? [{ tag: candidateTag, weight }] : [];
+    });
+    const associationWeight = associatedMatches.reduce(
+      (total, match) => total + match.weight,
+      0,
+    );
     const directLink = filesAreLinked(activeFile, file);
     const sharedKeywords = enableKeywordLinks
       ? getSharedKeywords(activeFile, file)
       : [];
     if (
       matchedTags.length === 0 &&
+      associationWeight === 0 &&
       !directLink &&
       sharedKeywords.length === 0
     ) {
@@ -663,9 +647,29 @@ export function rankRelatedNotes(
     }
 
     const unionSize = new Set([...activeKeys, ...candidateKeys]).size;
+    const directTagWeight = matchedTags.length * 2;
+    const appliedAssociationWeight = Math.min(
+      associationWeight,
+      activeTags.length,
+    );
+    const linkWeight = directLink ? 0.25 : 0;
+    const keywordWeight = sharedKeywords.length > 0 ? 0.1 : 0;
+    const relevanceScore = Math.round(
+      Math.min(
+        1,
+        (directTagWeight +
+          appliedAssociationWeight +
+          linkWeight +
+          keywordWeight) /
+          Math.max(1, activeTags.length * 2),
+      ) * 100,
+    );
     const matchingSections = file.sections.filter(
       (section) =>
         section.tags.some((tagKey) => activeKeys.has(tagKey)) ||
+        section.tags.some((tagKey) =>
+          associatedMatches.some((match) => match.tag.key === tagKey),
+        ) ||
         directLink ||
         sharedKeywords.some((keyword) =>
           section.rawContent.toLowerCase().includes(keyword),
@@ -700,7 +704,10 @@ export function rankRelatedNotes(
     // include only standalone matches to keep sidebar entries distinct.
     const matchingTasks = file.tasks.filter(
       (task) =>
-        task.tags.some((tagKey) => activeKeys.has(tagKey)) &&
+        (task.tags.some((tagKey) => activeKeys.has(tagKey)) ||
+          task.tags.some((tagKey) =>
+            associatedMatches.some((match) => match.tag.key === tagKey),
+          )) &&
         (!task.sectionId || !matchingSectionIds.has(task.sectionId)),
     );
 
@@ -727,11 +734,28 @@ export function rankRelatedNotes(
         matchedTags: reference.matchedTags,
         matchCount: reference.matchedTags.length,
         totalTagCount: activeTags.length,
-        overlap: unionSize > 0 ? reference.matchedTags.length / unionSize : 0,
+        overlap:
+          unionSize > 0 ? relevanceScore / 100 : 0,
+        relevanceScore,
+        associationWeight,
+        relevanceEvidence: {
+          directTagWeight,
+          associationWeight,
+          appliedAssociationWeight,
+          linkWeight,
+          keywordWeight,
+        },
         reasons: [
           ...(reference.matchedTags.length > 0
             ? [
                 `Shared: ${reference.matchedTags.map((tag) => tag.label).join(', ')}`,
+              ]
+            : []),
+          ...(associatedMatches.length > 0
+            ? [
+                `Associated: ${associatedMatches
+                  .map((match) => match.tag.label)
+                  .join(', ')}`,
               ]
             : []),
           ...(directLink ? ['Linked note'] : []),
@@ -800,6 +824,7 @@ function compareRelatedNoteDates(
 function compareRelatedNotes(left: RankedNote, right: RankedNote): number {
   return (
     right.matchCount - left.matchCount ||
+    (right.associationWeight ?? 0) - (left.associationWeight ?? 0) ||
     right.overlap - left.overlap ||
     (right.reasons?.length ?? 0) - (left.reasons?.length ?? 0) ||
     left.filePath.localeCompare(right.filePath) ||

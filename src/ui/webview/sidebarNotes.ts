@@ -33,6 +33,8 @@ export class SidebarNotesView
   private readonly output = vscode.window.createOutputChannel('Deckard');
   private view: vscode.WebviewView | undefined;
   private viewDisposables: vscode.Disposable[] = [];
+  private entryContext: EntryContext | undefined;
+  private suppressAutomaticEntrySelection = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -49,7 +51,20 @@ export class SidebarNotesView
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
-      vscode.window.onDidChangeActiveTextEditor(() => this.refresh()),
+      vscode.window.onDidChangeActiveTextEditor(() => {
+        this.suppressAutomaticEntrySelection = false;
+        this.updateEntryContextFromActiveEditor(true);
+        this.refresh();
+      }),
+    );
+    this.disposables.push(
+      vscode.window.onDidChangeTextEditorSelection((event) => {
+        if (event.textEditor === vscode.window.activeTextEditor) {
+          this.suppressAutomaticEntrySelection = false;
+          this.updateEntryContextFromActiveEditor(true);
+          this.refresh();
+        }
+      }),
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -68,6 +83,10 @@ export class SidebarNotesView
         }
         if (event.affectsConfiguration('deckard.theme')) {
           this.renderHtml();
+          this.refresh();
+        }
+        if (event.affectsConfiguration('deckard.autoSelectNoteSections')) {
+          this.updateEntryContextFromActiveEditor();
           this.refresh();
         }
       }),
@@ -113,6 +132,32 @@ export class SidebarNotesView
     this.disposeViewListeners();
     this.view = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+  }
+
+  /**
+   * Narrows the sidebar to one tagged entry selected from a Markdown hover.
+   */
+  public async showRelatedNotesForEntry(
+    documentUri: vscode.Uri,
+    sourceLine: number,
+  ): Promise<void> {
+    await this.indexer.ready;
+    const index = this.indexer.getSnapshot();
+    const filePath = this.indexer.getFilePath(documentUri);
+    const file = index.files.get(filePath);
+    const entry = file && findTaggedEntry(file, sourceLine);
+    if (!file || !entry) {
+      void vscode.window.showWarningMessage(
+        'Deckard could not find that tagged note entry. Save the file and try again.',
+      );
+      return;
+    }
+
+    this.entryContext = { filePath, sourceLine, source: 'manual' };
+    this.suppressAutomaticEntrySelection = false;
+    await vscode.commands.executeCommand('workbench.view.extension.deckard');
+    this.view?.show(true);
+    this.refresh();
   }
 
   /**
@@ -183,15 +228,20 @@ export class SidebarNotesView
       }
     }
 
+    this.updateEntryContextFromActiveEditor();
     const active = this.getActiveFile();
+    const activeEntry = active && this.entryContext?.filePath === active.filePath
+      ? createEntryFile(active.file, this.entryContext.sourceLine)
+      : undefined;
     return createSidebarSnapshot(
       index,
       active?.filePath,
-      active?.file,
+      activeEntry ?? active?.file,
       this.areKeywordLinksEnabled(),
       this.preferences.value.relatedNotesSortMode,
       this.preferences.value.sectionAccessCounts,
       this.getTagTitleDisplayMode(),
+      activeEntry ? getEntryTitle(activeEntry) : undefined,
     );
   }
 
@@ -221,6 +271,45 @@ export class SidebarNotesView
       filePath,
       file,
     };
+  }
+
+  /**
+   * Keeps the sidebar focused on the smallest tagged entry containing the cursor.
+   */
+  private updateEntryContextFromActiveEditor(fromSelection = false): void {
+    const editor = vscode.window.activeTextEditor;
+    const active = this.getActiveFile();
+    if (!editor || !active) {
+      this.entryContext = undefined;
+      return;
+    }
+    if (
+      !fromSelection &&
+      (this.suppressAutomaticEntrySelection ||
+        this.entryContext?.source === 'manual')
+    ) {
+      return;
+    }
+    if (!this.shouldAutoSelectNoteSections(editor.document)) {
+      if (this.entryContext?.source === 'cursor') {
+        this.entryContext = undefined;
+      }
+      return;
+    }
+    const entry = findTaggedEntry(active.file, editor.selection.active.line + 1);
+    this.entryContext = entry
+      ? {
+          filePath: active.filePath,
+          sourceLine: getEntryStartLine(entry),
+          source: 'cursor',
+        }
+      : undefined;
+  }
+
+  private shouldAutoSelectNoteSections(document: vscode.TextDocument): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard', document.uri)
+      .get<boolean>('autoSelectNoteSections', true);
   }
 
   /**
@@ -257,6 +346,12 @@ export class SidebarNotesView
     const index = this.indexer.getSnapshot();
     if (message.type === 'ready') {
       this.log('Related Notes webview is ready; refreshing state.');
+      this.refresh();
+      return;
+    }
+    if (message.type === 'clearEntryRelatedNotes') {
+      this.entryContext = undefined;
+      this.suppressAutomaticEntrySelection = true;
       this.refresh();
       return;
     }
@@ -333,6 +428,76 @@ interface ActiveTagOverview {
 interface ActiveFile {
   filePath: string;
   file: ParsedFile;
+}
+
+interface EntryContext {
+  filePath: string;
+  sourceLine: number;
+  source: 'cursor' | 'manual';
+}
+
+function findTaggedEntry(file: ParsedFile, sourceLine: number) {
+  const task = file.tasks.find(
+    (candidate) =>
+      candidate.lineNumber === sourceLine &&
+      (candidate.associationTagGroups?.length ?? 0) > 0,
+  );
+  if (task) {
+    return task;
+  }
+  return file.sections
+    .filter(
+      (section) =>
+        section.startLine <= sourceLine &&
+        section.endLine >= sourceLine &&
+        ((section.headingTags?.length ?? 0) > 0 ||
+          (section.isInline &&
+            (section.associationTagGroups?.length ?? 0) > 0)),
+    )
+    .sort(
+      (left, right) =>
+        left.endLine - left.startLine - (right.endLine - right.startLine) ||
+        right.startLine - left.startLine,
+    )[0];
+}
+
+function getEntryStartLine(
+  entry: NonNullable<ReturnType<typeof findTaggedEntry>>,
+): number {
+  return 'heading' in entry ? entry.startLine : entry.lineNumber;
+}
+
+function createEntryFile(
+  file: ParsedFile,
+  sourceLine: number,
+): ParsedFile | undefined {
+  const entry = findTaggedEntry(file, sourceLine);
+  if (!entry) {
+    return undefined;
+  }
+
+  if ('heading' in entry) {
+    return {
+      ...file,
+      content: entry.rawContent,
+      sections: [entry],
+      tasks: file.tasks.filter((task) => task.sectionId === entry.id),
+      frontmatterTags: [],
+      links: entry.links,
+    };
+  }
+  return {
+    ...file,
+    content: entry.sourceLineText,
+    sections: [],
+    tasks: [entry],
+    frontmatterTags: [],
+    links: [],
+  };
+}
+
+function getEntryTitle(file: ParsedFile): string | undefined {
+  return file.sections[0]?.heading ?? file.tasks[0]?.title;
 }
 
 /**

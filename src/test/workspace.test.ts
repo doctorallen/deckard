@@ -141,13 +141,15 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(index.entities.get('#project/atlas')?.count, 1);
   });
 
-  test('aggregates heading tag relationships through untagged headings', () => {
+  test('weights direct co-occurrence above heading proximity', () => {
     const parsed = parseMarkdown(
       'notes/relationships.md',
       [
         '# Relay map #parent/alpha #parent/beta',
         '## Un tagged operating notes',
         '### Signal route #child/alpha #child/beta',
+        '- [ ] Review route #child/alpha #task/review',
+        'Tagged line #child/alpha #line/evidence',
         '# Alternate relay #parent/alpha',
         '## Signal route #child/alpha',
         '# Repeated marker #same',
@@ -156,181 +158,45 @@ suite('Workspace scanner and index', () => {
     );
     const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
 
-    const childParents = index.tagParents?.get('#child/alpha') ?? [];
+    const childAssociations = index.tagAssociations?.get('#child/alpha') ?? [];
     assert.deepStrictEqual(
-      childParents.map((relationship) => ({
-        parent: relationship.parent.key,
-        child: relationship.child.key,
-        count: relationship.count,
+      childAssociations.map((association) => ({
+        key: association.associatedTag.key,
+        weight: association.weight,
+        coOccurrenceCount: association.coOccurrenceCount,
+        headingRelationshipCount: association.headingRelationshipCount,
       })),
       [
-        {
-          parent: '#parent/alpha',
-          child: '#child/alpha',
-          count: 2,
-        },
-        {
-          parent: '#parent/beta',
-          child: '#child/alpha',
-          count: 1,
-        },
+        { key: '#child/beta', weight: 1, coOccurrenceCount: 1, headingRelationshipCount: 0 },
+        { key: '#line/evidence', weight: 1, coOccurrenceCount: 1, headingRelationshipCount: 0 },
+        { key: '#task/review', weight: 1, coOccurrenceCount: 1, headingRelationshipCount: 0 },
+        { key: '#parent/alpha', weight: 0.75, coOccurrenceCount: 0, headingRelationshipCount: 2 },
+        { key: '#parent/beta', weight: 0.25, coOccurrenceCount: 0, headingRelationshipCount: 1 },
       ],
     );
-
-    const parentChildren = index.tagChildren?.get('#parent/alpha') ?? [];
     assert.deepStrictEqual(
-      parentChildren.map((relationship) => ({
-        parent: relationship.parent.key,
-        child: relationship.child.key,
-        count: relationship.count,
-      })),
-      [
-        {
-          parent: '#parent/alpha',
-          child: '#child/alpha',
-          count: 2,
-        },
-        {
-          parent: '#parent/alpha',
-          child: '#child/beta',
-          count: 1,
-        },
-      ],
-    );
-    assert.strictEqual(
-      (index.tagChildren?.get('#same') ?? []).some(
-        (relationship) => relationship.child.key === '#same',
-      ),
-      false,
+      index.tagAssociations?.get('#same') ?? [],
+      [],
     );
   });
 
-  test('finds relationships from headings starting at any Markdown level', () => {
+  test('does not associate tags on separate headings or inherited front matter', () => {
     const parsed = parseMarkdown(
-      'notes/daily-checkins.md',
-      [
-        '## #itd-common-checkins',
-        '### Rob',
-        '- #oracle',
-        '### Math',
-        '#### SDLC #sdlc',
-        '## Keel workspace onboarding #sdlc',
-      ].join('\n'),
-    );
-    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
-
-    assert.deepStrictEqual(
-      index.tagChildren?.get('#itd-common-checkins')?.map((relationship) => ({
-        parent: relationship.parent.key,
-        child: relationship.child.key,
-      })),
-      [{ parent: '#itd-common-checkins', child: '#sdlc' }],
-    );
-  });
-
-  test('aggregates sibling tag relationships for headings with one parent', () => {
-    const parsed = parseMarkdown(
-      'notes/sibling-relationships.md',
-      [
-        '# Top route A #top-a',
-        '# Top route B #top-b',
-        '# Relay map',
-        '## Shared parent',
-        '### First route #alpha',
-        '### Second route #beta',
-        '### Third route #alpha #gamma',
-        '## Separate parent',
-        '### Separate route #delta',
-        '#### Combined route #same-a #same-b',
-        '# Isolated parent',
-        '## Isolated route #isolated-a',
-      ].join('\n'),
-    );
-    const otherParsed = parseMarkdown(
-      'notes/other-sibling-relationships.md',
-      ['# Isolated parent', '## Isolated route #isolated-b'].join('\n'),
-    );
-    const index = buildWorkspaceIndex(
-      new Map([
-        [parsed.filePath, parsed],
-        [otherParsed.filePath, otherParsed],
-      ]),
-    );
-
-    assert.deepStrictEqual(
-      (index.tagSiblings?.get('#top-a') ?? []).map(
-        (relationship) => relationship.sibling.key,
-      ),
-      ['#top-b'],
-    );
-    assert.deepStrictEqual(
-      (index.tagSiblings?.get('#alpha') ?? []).map((relationship) => ({
-        sibling: relationship.sibling.key,
-        count: relationship.count,
-      })),
-      [
-        { sibling: '#beta', count: 2 },
-        { sibling: '#gamma', count: 1 },
-      ],
-    );
-    assert.deepStrictEqual(
-      (index.tagSiblings?.get('#beta') ?? []).map((relationship) => ({
-        sibling: relationship.sibling.key,
-        count: relationship.count,
-      })),
-      [
-        { sibling: '#alpha', count: 2 },
-        { sibling: '#gamma', count: 1 },
-      ],
-    );
-    assert.deepStrictEqual(index.tagSiblings?.get('#delta') ?? [], []);
-    assert.deepStrictEqual(index.tagSiblings?.get('#same-a') ?? [], []);
-    assert.deepStrictEqual(index.tagSiblings?.get('#same-b') ?? [], []);
-    assert.deepStrictEqual(index.tagSiblings?.get('#isolated-a') ?? [], []);
-    assert.deepStrictEqual(index.tagSiblings?.get('#isolated-b') ?? [], []);
-  });
-
-  test('keeps the Tag Scenarios fixture parent-focused', () => {
-    const content = fs.readFileSync(
-      path.resolve(__dirname, '../../development/notes/Tag Scenarios.md'),
-      'utf8',
-    );
-    const parsed = parseMarkdown('development/notes/Tag Scenarios.md', content);
-    const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
-
-    assert.deepStrictEqual(index.tagParents?.get('#management/performance') ?? [], []);
-    assert.deepStrictEqual(
-      (index.tagChildren?.get('#management/performance') ?? []).map(
-        (relationship) => ({
-          child: relationship.child.key,
-          count: relationship.count,
-        }),
-      ),
-      [
-        { child: '#risk/thermal-leak', count: 1 },
-        { child: '#topic/quantum-drift', count: 2 },
-      ],
-    );
-  });
-
-  test('does not infer relationships from inherited front-matter tags', () => {
-    const parsed = parseMarkdown(
-      'notes/frontmatter-relationships.md',
+      'notes/association-boundaries.md',
       [
         '---',
         'project: Relay map',
         '---',
-        '# Parent heading',
-        '## Child heading #child',
+        '# First route #first',
+        '# Second route #second',
+        'Separate line #third',
+        'Another line #fourth',
       ].join('\n'),
     );
     const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
-
-    assert.deepStrictEqual(index.tagParents?.get('#child') ?? [], []);
-    assert.deepStrictEqual(
-      index.tagChildren?.get('#project/relay-map') ?? [],
-      [],
-    );
+    assert.deepStrictEqual(index.tagAssociations?.get('#first') ?? [], []);
+    assert.deepStrictEqual(index.tagAssociations?.get('#third') ?? [], []);
+    assert.deepStrictEqual(index.tagAssociations?.get('#project/relay-map') ?? [], []);
   });
 
   test('carries inline-only notes from scanner into tag overview', () => {

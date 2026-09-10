@@ -46,7 +46,7 @@ export function getSidebarNotesHtml(
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 220px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 12px; }
 main { width: 100%; padding: 12px; border-top: 2px solid var(--amber); }
-h2, .eyebrow, .source, .match-count, .version { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+h2, .eyebrow, .source, .relevance-score, .version { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
 .eyebrow { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--amber); font-size: 10px; letter-spacing: .15em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
@@ -54,6 +54,8 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .active-name { margin-top: 3px; }
+.clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
+.clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .active-filter-tag { color: var(--cyan); font-weight: 700; }
 .active-filter-joiner { color: var(--amber); font-weight: 700; }
 .sidebar-toolbar { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
@@ -72,16 +74,24 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
 .section-label { display: block; margin: 16px 0 7px; padding-left: 6px; border-left: 2px solid var(--amber); }
 .note-list { display: grid; gap: 8px; }
-.note { border: 2px solid var(--line); background: var(--panel); padding: 9px; cursor: pointer; }
-.note:hover { border-color: var(--line-strong); }
+.note { position: relative; border: 2px solid var(--line); background: var(--panel); padding: 9px; cursor: pointer; }
+.note:hover, .note:focus-within { z-index: 20; border-color: var(--line-strong); }
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
 .inline-tag { display: inline-block; margin-left: 5px; padding: 1px 5px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }
-.match-count { flex: 0 0 auto; color: var(--green); font-size: 10px; }
+.relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
+.relevance-wrap { position: relative; flex: 0 0 auto; }
+.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
+.relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip { display: block; }
+.relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
+.relevance-tooltip li + li { margin-top: 3px; }
+.relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
+.relevance-weights strong { color: var(--green); font-weight: 600; }
 .source { margin-top: 4px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button { color: var(--text); }
-.sidebar-relationships { margin-top: 8px; overflow: hidden; border: 2px solid var(--line); background: var(--panel-deep); }
+.sidebar-relationships { margin-top: 8px; overflow: visible; border: 2px solid var(--line); background: var(--panel-deep); }
 .sidebar-relationships-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 8px; border-bottom: 2px solid var(--line); }
 .sidebar-relationships-title { color: var(--amber); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .sidebar-relationships-count { color: var(--muted); font: 10px var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -92,13 +102,16 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .sidebar-relationships summary:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
 .sidebar-relationships .sidebar-relationship-branch > summary { padding: 7px 10px; border-left: 4px solid var(--amber); background: var(--panel-raised); color: var(--amber); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
 .sidebar-relationships .sidebar-relationship-branch > summary:hover, .sidebar-relationships .sidebar-relationship-branch > summary:focus-visible { background: var(--panel); color: var(--amber-bright); }
-.sidebar-relationship-count { color: var(--muted); font: 10px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.sidebar-relationship-count, .sidebar-association-score { color: var(--muted); font: 10px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.sidebar-association-score { flex: 0 0 auto; color: var(--green); }
+.sidebar-association-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
 .sidebar-relationship-namespace { border-top: 1px solid var(--line); margin: 3px 0 0 10px; }
 .sidebar-relationship-namespace > summary { padding: 5px 8px 5px 10px; border-left: 3px solid var(--cyan); background: var(--panel-deep); color: var(--cyan); font-size: 10px; font-weight: 650; letter-spacing: .06em; }
 .sidebar-relationship-namespace > summary:hover, .sidebar-relationship-namespace > summary:focus-visible { background: var(--panel-raised); color: var(--cyan-bright); }
-.sidebar-relationship-items { display: grid; gap: 3px; margin: 0 8px 5px 20px; padding: 3px 0 0 14px; border-left: 2px solid var(--cyan); }
-.sidebar-relationship-items .tag-open { width: 100%; min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-relationship-items { display: grid; gap: 3px; margin: 0 8px 5px; padding: 3px 0 0; }
+.sidebar-relationship-items .tag-open { width: 100%; min-width: 0; overflow: visible; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-relationships .tag-open.relationship-tag {
+  position: relative;
   display: flex;
   width: 100%;
   min-width: 0;
@@ -124,6 +137,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 }
 .sidebar-relationships .tag-open.relationship-tag:hover,
 .sidebar-relationships .tag-open.relationship-tag:focus-visible {
+  z-index: 10;
   border-left-color: var(--amber);
   background: var(--panel-raised);
   color: var(--text);
@@ -138,6 +152,14 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 }
 .sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-relationships .sidebar-relationship-items .sidebar-relationship-count { flex: 0 0 auto; }
+.sidebar-association-score-wrap { position: relative; }
+.sidebar-association-score-wrap:hover .sidebar-association-tooltip,
+.sidebar-association-score-wrap:focus-within .sidebar-association-tooltip { display: block; }
+.sidebar-association-tooltip { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; display: none; width: 210px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; pointer-events: none; }
+.sidebar-association-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.sidebar-association-tooltip p { margin: 6px 0; }
+.sidebar-association-tooltip-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
+.sidebar-association-tooltip-weights strong { color: var(--green); font-weight: 600; }
 .empty { margin-top: 12px; border: 2px dashed var(--line); padding: 14px 10px; color: var(--muted); background: var(--panel-deep); line-height: 1.45; }
 .tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .tag-context-menu[hidden] { display: none; }
@@ -198,49 +220,34 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render one relationship node for the narrow sidebar tree. */
-  function renderSidebarRelationshipTag(tag, count, direction, filterTagKey) {
+  function renderSidebarRelationshipTag(tag, count, weight, coOccurrenceCount, headingRelationshipCount, direction, filterTagKey, detail) {
     const countHtml = Number(count) > 1
       ? '<span class="sidebar-relationship-count">x' + escapeHtml(count) + '</span>'
       : '';
+    const directWeight = Number(coOccurrenceCount);
+    const headingWeight = Math.max(0, Number(weight) - directWeight);
+    const percentage = Math.round(Number(weight) * 100);
+    const scoreHtml = '<span class="sidebar-association-score-wrap"><span class="sidebar-association-score" aria-label="Association strength ' + percentage + ' percent">' + percentage + '%</span><span class="sidebar-association-tooltip" role="tooltip"><span class="sidebar-association-tooltip-header"><strong>Association strength</strong><strong>' + percentage + '%</strong></span><p>' + escapeHtml(detail) + '</p><div class="sidebar-association-tooltip-weights"><span>Direct weight</span><strong>' + directWeight.toFixed(2) + '</strong><span>Heading weight</span><strong>' + headingWeight.toFixed(2) + '</strong><span>Total weight</span><strong>' + Number(weight).toFixed(2) + '</strong></div></span></span>';
     const label = direction === 'parent'
       ? 'Open parent tag '
       : direction === 'child'
         ? 'Open child tag '
-        : 'Open sibling tag ';
+        : 'Open associated tag ';
     const filterAttribute = filterTagKey
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
-    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + ' aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span>' + countHtml + '</button>';
+    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + ' aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span><span class="sidebar-association-meta">' + scoreHtml + countHtml + '</span></button>';
   }
 
-  /** Group sidebar relationship nodes by namespace before they are nested. */
-  function groupSidebarRelationships(relationships, direction) {
-    const groups = new Map();
-    (relationships || []).forEach(function (relationship) {
-      const tag = direction === 'parent'
-        ? relationship.parent
-        : direction === 'child'
-          ? relationship.child
-          : relationship.sibling;
-      const namespace = String(tag.key || '').replace(/^[@#]/, '').split('/')[0] || 'other';
-      if (!groups.has(namespace)) groups.set(namespace, []);
-      groups.get(namespace).push({ tag: tag, count: relationship.count });
-    });
-    return Array.from(groups.entries()).sort(function (left, right) {
-      return left[0].localeCompare(right[0], undefined, { sensitivity: 'base' });
-    });
-  }
-
-  /** Render namespace branches inside one relationship branch. */
-  function renderSidebarRelationshipGroups(relationships, direction, filterTagKey) {
-    return groupSidebarRelationships(relationships, direction).map(function (group) {
-      const items = group[1].sort(function (left, right) {
-        return left.tag.label.localeCompare(right.tag.label, undefined, { sensitivity: 'base' });
-      });
-      const namespaceLabel = group[0] === 'other' ? 'Other tags' : group[0].replace(/[-_]+/g, ' ');
-      return '<details class="sidebar-relationship-namespace"><summary><span>' + escapeHtml(namespaceLabel) + '</span><span class="sidebar-relationship-count">' + items.length + '</span></summary><div class="sidebar-relationship-items">' + items.map(function (item) {
-        return renderSidebarRelationshipTag(item.tag, item.count, direction, filterTagKey);
-      }).join('') + '</div></details>';
+  /** Render every association in one strength-sorted list. */
+  function renderSidebarAssociations(relationships, filterTagKey) {
+    return relationships.slice().sort(function (left, right) {
+      return right.coOccurrenceCount - left.coOccurrenceCount || right.weight - left.weight || left.associatedTag.label.localeCompare(right.associatedTag.label, undefined, { sensitivity: 'base' });
+    }).map(function (relationship) {
+      const detail = relationship.coOccurrenceCount
+        ? 'Written together ' + relationship.coOccurrenceCount + ' time' + (relationship.coOccurrenceCount === 1 ? '' : 's') + (relationship.headingRelationshipCount ? '; heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's') : '')
+        : 'Heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's');
+      return renderSidebarRelationshipTag(relationship.associatedTag, relationship.count, relationship.weight, relationship.coOccurrenceCount, relationship.headingRelationshipCount, 'associated', filterTagKey, detail);
     }).join('');
   }
 
@@ -248,15 +255,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function renderSidebarRelationships(snapshot) {
     const relationships = snapshot.tagOverviewRelationships;
     if (!relationships || snapshot.tagOverviewFilter) return '';
-    const parents = relationships.parentTags || [];
-    const children = relationships.childTags || [];
-    const siblings = relationships.siblingTags || [];
-    if (!parents.length && !children.length && !siblings.length) return '';
-    const branch = function (items, direction, heading) {
-      if (!items.length) return '';
-      return '<details class="sidebar-relationship-branch"><summary><span>' + heading + '</span><span class="sidebar-relationship-count">' + items.length + '</span></summary>' + renderSidebarRelationshipGroups(items, direction, snapshot.tagOverview.key) + '</details>';
-    };
-    return '<section class="sidebar-relationships" aria-label="Heading relationship tree"><div class="sidebar-relationships-header"><span class="sidebar-relationships-title">Relationship tree</span><span class="sidebar-relationships-count">' + (parents.length + children.length + siblings.length) + ' direct links</span></div>' + branch(parents, 'parent', 'Parents') + branch(children, 'child', 'Children') + branch(siblings, 'sibling', 'Siblings') + '</section>';
+    const associations = relationships.associatedTags || [];
+    if (!associations.length) return '';
+    return '<section class="sidebar-relationships" aria-label="Tag associations"><details class="sidebar-relationship-branch"><summary><span>Associated tags</span><span class="sidebar-relationship-count">' + associations.length + '</span></summary><div class="sidebar-relationship-items sidebar-association-items">' + renderSidebarAssociations(associations, snapshot.tagOverview.key) + '</div></details></section>';
   }
 
   /** Replace source tag tokens with buttons without changing the title text. */
@@ -314,8 +315,26 @@ ${getDeckardThemeCss(getDeckardTheme())}
         const tags = state.tagTitleDisplayMode === 'separate'
           ? renderTags(note.matchedTags, 'matched-tag')
           : '';
-        const matchCount = note.matchCount ? '<span class="match-count">' + note.matchCount + '/' + note.totalTagCount + '</span>' : '';
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + matchCount + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+        const relevanceReasons = note.reasons && note.reasons.length
+          ? note.reasons
+          : ['Related note'];
+        const evidence = note.relevanceEvidence || {
+          directTagWeight: 0,
+          associationWeight: note.associationWeight || 0,
+          appliedAssociationWeight: note.associationWeight || 0,
+          linkWeight: 0,
+          keywordWeight: 0,
+        };
+        const weights = [
+          ['Shared-tag weight', evidence.directTagWeight],
+          ['Association weight', evidence.appliedAssociationWeight],
+          ['Link weight', evidence.linkWeight],
+          ['Keyword weight', evidence.keywordWeight],
+        ].filter(function (item) { return item[1] > 0; });
+        const relevance = state.tagOverview
+          ? ''
+          : '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + '</div></span></span>';
+        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
@@ -323,9 +342,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
         ? renderTag(state.tagOverview, 'active-filter-tag') + '<span class="active-filter-joiner"> AND </span>' + renderTag(state.tagOverviewFilter, 'active-filter-tag')
         : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
-      : (state.activeFileName ? '<div class="active-file"><div class="active-label">Current note</div><div class="active-name">' + escapeHtml(state.activeFileName) + '</div>' + activeTags + '</div>' : '');
+      : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
     const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
-      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Most tags</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
+      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
     const sectionLabel = state.tagOverview
       ? '<span class="section-label">Current notes</span>'
@@ -357,6 +376,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });
       if (target.dataset.action === 'create-daily-note') vscode.postMessage({ type: 'createDailyNote' });
+      if (target.dataset.action === 'clear-entry-related-notes') vscode.postMessage({ type: 'clearEntryRelatedNotes' });
       return;
     }
     const note = event.target.closest('.note');

@@ -44,6 +44,18 @@ suite('Extension Test Suite', () => {
     );
     assert.strictEqual(
       extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.highlightNoteSections'
+      ].default,
+      true,
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.autoSelectNoteSections'
+      ].default,
+      true,
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
         'deckard.tagTitleDisplayMode'
       ].default,
       'inline',
@@ -131,6 +143,11 @@ suite('Extension Test Suite', () => {
     );
     assert.ok(
       (await vscode.commands.getCommands(true)).includes('deckard.renameTag'),
+    );
+    assert.ok(
+      (await vscode.commands.getCommands(true)).includes(
+        'deckard.showEntryRelatedNotes',
+      ),
     );
   });
 });
