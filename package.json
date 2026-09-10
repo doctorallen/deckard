@@ -172,7 +172,23 @@
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Include significant shared keywords when finding related notes. Disable to use shared tags and intentional Wiki links only."
+          "description": "Include capped, section-scoped lexical similarity when finding related notes. Disable to use shared tags and intentional Wiki links only."
+        },
+        "deckard.relatedNotesAssociationMinimumSupport": {
+          "type": "number",
+          "scope": "resource",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 1,
+          "description": "Minimum distinct atomic source units required before a learned tag association affects Related Notes. One preserves intentional one-off associations."
+        },
+        "deckard.relatedNotesRecencyHalfLifeDays": {
+          "type": "number",
+          "scope": "resource",
+          "minimum": 0,
+          "maximum": 3650,
+          "default": 0,
+          "description": "Optional Related Notes recency tie-breaker half-life in days. Zero disables it; daily-note and front-matter dates are preferred over filesystem dates."
         },
         "deckard.entityNamespaceAliases": {
           "type": "object",

@@ -126,6 +126,14 @@ export interface TagAssociation {
   count: number;
   /** Total evidence score: co-occurrence is 1; heading proximity decays by depth. */
   weight: number;
+  /** Prevalence- and support-normalized relevance used for Related Notes. */
+  normalizedWeight: number;
+  /** Distinct atomic source units containing the source tag. */
+  tagSourceUnitCount: number;
+  /** Distinct atomic source units containing the associated tag. */
+  associatedTagSourceUnitCount: number;
+  /** Total atomic source units observed while building this relationship. */
+  totalSourceUnitCount: number;
   coOccurrenceCount: number;
   headingRelationshipCount: number;
 }
@@ -224,6 +232,10 @@ export interface RankedNote {
   title: string;
   fileName: string;
   sourceLine: number;
+  /** Outline context, including the entry title, for disambiguating daily notes. */
+  headingPath: string[];
+  /** Date inferred from a daily-note filename or date heading, when present. */
+  dailyDate?: string;
   titleTags: TagReference[];
   updatedAt?: number;
   matchedTags: TagReference[];
@@ -236,16 +248,25 @@ export interface RankedNote {
     selectedTag: TagReference;
     candidateTag: TagReference;
     associationWeight: number;
+    normalizedAssociationWeight: number;
+    sourceUnitCount: number;
+    selectedTagSourceUnitCount: number;
+    candidateTagSourceUnitCount: number;
+    totalSourceUnitCount: number;
     selectedWeight: number;
     contribution: number;
   }>;
   relevanceEvidence?: {
     directTagWeight: number;
     associationWeight: number;
+    normalizedAssociationWeight: number;
     appliedAssociationWeight: number;
-    linkWeight: number;
-    keywordWeight: number;
+    entryLinkWeight: number;
+    fileLinkWeight: number;
+    lexicalWeight: number;
+    recencyWeight: number;
     specificityPenalty: number;
+    lexicalTerms: Array<{ term: string; contribution: number }>;
   };
   reasons?: string[];
 }

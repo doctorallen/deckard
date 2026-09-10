@@ -28,29 +28,33 @@ export function getRelatedNotesDebugHtml(
       return `<tr><td>${escapeHtml(tag.label)}</td><td>${selectedWeight.toFixed(2)}</td><td>2.00</td><td>${(selectedWeight * 2).toFixed(2)}</td></tr>`;
     }).join('');
     const associationRows = (note.associationMatches ?? []).map((match) =>
-      `<tr><td>${escapeHtml(match.selectedTag.label)}</td><td>${escapeHtml(match.candidateTag.label)}</td><td>${match.associationWeight.toFixed(2)}</td><td>${match.selectedWeight.toFixed(2)}</td><td>${match.contribution.toFixed(2)}</td></tr>`,
+      `<tr><td>${escapeHtml(match.selectedTag.label)}</td><td>${escapeHtml(match.candidateTag.label)}</td><td>${match.sourceUnitCount}</td><td>${match.selectedTagSourceUnitCount} / ${match.candidateTagSourceUnitCount} / ${match.totalSourceUnitCount}</td><td>${match.associationWeight.toFixed(2)}</td><td>${match.normalizedAssociationWeight.toFixed(2)}</td><td>${match.selectedWeight.toFixed(2)}</td><td>${match.contribution.toFixed(2)}</td></tr>`,
     ).join('');
     const associationCap = evidence
-      ? `<p class="lead">The selected-tag saturation scale is <code>${selectedWeightCalculation} = ${totalSelectedWeight.toFixed(2)}</code>. Raw association paths total <code>${evidence.associationWeight.toFixed(2)}</code>. Deckard uses <code>${totalSelectedWeight.toFixed(2)} x (${evidence.associationWeight.toFixed(2)} / (${evidence.associationWeight.toFixed(2)} + ${totalSelectedWeight.toFixed(2)})) = ${evidence.appliedAssociationWeight.toFixed(2)}</code>. Stronger association evidence continues to raise the score, but with diminishing returns toward the selected-tag total, so indirect links cannot outweigh direct matches.</p>`
+      ? `<p class="lead">The selected-tag saturation scale is <code>${selectedWeightCalculation} = ${totalSelectedWeight.toFixed(2)}</code>. Raw association paths total <code>${evidence.associationWeight.toFixed(2)}</code>; support/prevalence-normalized paths total <code>${evidence.normalizedAssociationWeight.toFixed(2)}</code>. Deckard uses <code>${totalSelectedWeight.toFixed(2)} x (${evidence.normalizedAssociationWeight.toFixed(2)} / (${evidence.normalizedAssociationWeight.toFixed(2)} + ${totalSelectedWeight.toFixed(2)})) = ${evidence.appliedAssociationWeight.toFixed(2)}</code>. Stronger association evidence continues to raise the score, but with diminishing returns toward the selected-tag total, so indirect links cannot outweigh direct matches.</p>`
       : '';
     const weights = evidence
       ? [
           ['Shared tags', evidence.directTagWeight],
           ['Associations', evidence.appliedAssociationWeight],
-          ['Direct link', evidence.linkWeight],
-          ['Keywords', evidence.keywordWeight],
+          ['Direct entry link', evidence.entryLinkWeight],
+          ['File link', evidence.fileLinkWeight],
+          ['Lexical similarity', evidence.lexicalWeight],
+          ['Recency tie-breaker', evidence.recencyWeight],
           ['Specificity adjustment', -evidence.specificityPenalty],
         ].filter(([, value]) => value !== 0)
       : [];
     return `<article><h2>${index + 1}. ${escapeHtml(note.title)} <strong>${note.relevanceScore}%</strong></h2>
-<p class="source">${escapeHtml(note.filePath)} / line ${note.sourceLine}</p>
+<p class="source">${escapeHtml(note.filePath)} / line ${note.sourceLine}${note.dailyDate ? ` / daily note ${escapeHtml(note.dailyDate)}` : ''}</p>
+${note.headingPath.length ? `<p class="source">Heading path: ${escapeHtml(note.headingPath.join(' > '))}</p>` : ''}
 <h3>Matched tags</h3>${matchedTagRows
   ? `<table><thead><tr><th title="A tag written on this candidate entry that exactly matches a selected tag.">Candidate tag</th><th title="The selected tag's direct or ancestor-context weight.">Selected weight</th><th title="The fixed strength applied to an exact shared tag.">Direct multiplier</th><th title="Selected weight multiplied by the direct-match multiplier.">Contribution</th></tr></thead><tbody>${matchedTagRows}</tbody></table>`
   : '<p class="lead">No direct tag match; this result is connected by other evidence.</p>'}
 <h3>Association paths</h3>${associationRows
-  ? `<table><thead><tr><th title="The selected entry tag that provides this association path.">Selected tag</th><th title="The candidate entry tag linked to the selected tag by workspace association evidence.">Candidate tag</th><th title="The accumulated workspace evidence that these two tags belong together.">Learned strength</th><th title="The selected tag's direct or ancestor-context weight.">Selected weight</th><th title="Learned strength multiplied by the selected weight before the association cap.">Contribution</th></tr></thead><tbody>${associationRows}</tbody></table>`
+  ? `<table><thead><tr><th>Selected tag</th><th>Candidate tag</th><th title="Distinct headings, tagged lines, tasks, or heading relationships that support this edge.">Support</th><th title="Selected / candidate / total atomic source units.">Tag source units</th><th title="Unchanged co-occurrence and heading-proximity evidence.">Raw evidence</th><th title="Raw evidence reduced when either tag is prevalent and increased with repeated support.">Normalized relevance</th><th>Selected weight</th><th>Contribution</th></tr></thead><tbody>${associationRows}</tbody></table>`
   : '<p class="lead">No tag-association evidence.</p>'}
 ${associationCap}
+<h3>Lexical evidence</h3>${evidence?.lexicalTerms.length ? `<table><thead><tr><th>Shared term</th><th>BM25-style contribution</th></tr></thead><tbody>${evidence.lexicalTerms.map((term) => `<tr><td>${escapeHtml(term.term)}</td><td>${term.contribution.toFixed(2)}</td></tr>`).join('')}</tbody></table>` : '<p class="lead">No section-scoped lexical evidence.</p>'}
 <p><b>Reasons:</b> ${escapeHtml(note.reasons?.join(' | ') || 'None')}</p>
 <table><tbody>${weights.map(([label, value]) => `<tr><td>${escapeHtml(String(label))}</td><td>${Number(value).toFixed(2)}</td></tr>`).join('')}</tbody></table></article>`;
   }).join('');
@@ -61,7 +65,7 @@ ${associationCap}
 <p class="source">${escapeHtml(diagnostic.filePath)} / line ${diagnostic.sourceLine}</p>
 <p class="lead">Tags written on the selected entry have full weight (1.00). Explicit tags on ancestor headings provide context at <code>0.5 / ancestor depth</code>; if a tag appears in both places, the stronger selected-entry weight wins.</p>
 <h2>Selected tag weights</h2><table><thead><tr><th title="A tag used as context for the selected entry.">Tag</th><th title="The tag's relevance weight. Tags written on the selected entry are 1.00; ancestor tags decay by depth.">Weight</th><th title="The source of this weight and, for ancestor tags, the decay formula.">Why</th></tr></thead><tbody>${selectedTags}</tbody></table>
-<h2>How candidate tags are evaluated</h2><p class="lead">Candidate tags do not receive a second ancestor-weighting pass. A candidate contributes only tags indexed on that displayed entry; the selected tag's weight determines the shared-tag contribution. The 2.00 direct multiplier is Deckard's base signal for an exact shared tag: it makes an explicit tag match twice as strong as one unit of contextual evidence before associations, links, and keywords are considered. This keeps the score centered on what you selected while avoiding hidden context from the candidate's outline.</p>
+<h2>How candidate tags are evaluated</h2><p class="lead">Candidate tags do not receive a second ancestor-weighting pass. A candidate contributes only tags indexed on that displayed entry; the selected tag's weight determines the shared-tag contribution. The 2.00 direct multiplier is Deckard's base signal for an exact shared tag. Learned associations retain their raw evidence, then normalize it by support and tag prevalence before saturation. Entry-scoped Wiki links are stronger than file-level links; section-scoped BM25-style lexical similarity remains capped below direct tags.</p>
 <h2>Ranked candidates</h2>${candidates || '<p class="lead">No related entries found.</p>'}</main></body></html>`;
 }
 

@@ -220,14 +220,14 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render one relationship node for the narrow sidebar tree. */
-  function renderSidebarRelationshipTag(tag, count, weight, coOccurrenceCount, headingRelationshipCount, direction, filterTagKey, detail) {
+  function renderSidebarRelationshipTag(tag, count, weight, normalizedWeight, coOccurrenceCount, headingRelationshipCount, direction, filterTagKey, detail) {
     const countHtml = Number(count) > 1
       ? '<span class="sidebar-relationship-count">x' + escapeHtml(count) + '</span>'
       : '';
     const directWeight = Number(coOccurrenceCount);
     const headingWeight = Math.max(0, Number(weight) - directWeight);
-    const percentage = Math.round(Number(weight) * 100);
-    const scoreHtml = '<span class="sidebar-association-score-wrap"><span class="sidebar-association-score" aria-label="Association strength ' + percentage + ' percent">' + percentage + '%</span><span class="sidebar-association-tooltip" role="tooltip"><span class="sidebar-association-tooltip-header"><strong>Association strength</strong><strong>' + percentage + '%</strong></span><p>' + escapeHtml(detail) + '</p><div class="sidebar-association-tooltip-weights"><span>Direct weight</span><strong>' + directWeight.toFixed(2) + '</strong><span>Heading weight</span><strong>' + headingWeight.toFixed(2) + '</strong><span>Total weight</span><strong>' + Number(weight).toFixed(2) + '</strong></div></span></span>';
+    const percentage = Math.round(Number(normalizedWeight) * 100);
+    const scoreHtml = '<span class="sidebar-association-score-wrap"><span class="sidebar-association-score" aria-label="Association strength ' + percentage + ' percent">' + percentage + '%</span><span class="sidebar-association-tooltip" role="tooltip"><span class="sidebar-association-tooltip-header"><strong>Association strength</strong><strong>' + percentage + '%</strong></span><p>' + escapeHtml(detail) + '</p><div class="sidebar-association-tooltip-weights"><span>Raw direct weight</span><strong>' + directWeight.toFixed(2) + '</strong><span>Raw heading weight</span><strong>' + headingWeight.toFixed(2) + '</strong><span>Total weight</span><strong>' + Number(weight).toFixed(2) + '</strong><span>Normalized relevance</span><strong>' + Number(normalizedWeight).toFixed(2) + '</strong></div></span></span>';
     const label = direction === 'parent'
       ? 'Open parent tag '
       : direction === 'child'
@@ -242,12 +242,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Render every association in one strength-sorted list. */
   function renderSidebarAssociations(relationships, filterTagKey) {
     return relationships.slice().sort(function (left, right) {
-      return right.coOccurrenceCount - left.coOccurrenceCount || right.weight - left.weight || left.associatedTag.label.localeCompare(right.associatedTag.label, undefined, { sensitivity: 'base' });
+      return right.normalizedWeight - left.normalizedWeight || right.weight - left.weight || left.associatedTag.label.localeCompare(right.associatedTag.label, undefined, { sensitivity: 'base' });
     }).map(function (relationship) {
       const detail = relationship.coOccurrenceCount
         ? 'Written together ' + relationship.coOccurrenceCount + ' time' + (relationship.coOccurrenceCount === 1 ? '' : 's') + (relationship.headingRelationshipCount ? '; heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's') : '')
         : 'Heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's');
-      return renderSidebarRelationshipTag(relationship.associatedTag, relationship.count, relationship.weight, relationship.coOccurrenceCount, relationship.headingRelationshipCount, 'associated', filterTagKey, detail);
+      return renderSidebarRelationshipTag(relationship.associatedTag, relationship.count, relationship.weight, relationship.normalizedWeight, relationship.coOccurrenceCount, relationship.headingRelationshipCount, 'associated', filterTagKey, detail);
     }).join('');
   }
 
@@ -321,16 +321,22 @@ ${getDeckardThemeCss(getDeckardTheme())}
         const evidence = note.relevanceEvidence || {
           directTagWeight: 0,
           associationWeight: note.associationWeight || 0,
+          normalizedAssociationWeight: note.associationWeight || 0,
           appliedAssociationWeight: note.associationWeight || 0,
-          linkWeight: 0,
-          keywordWeight: 0,
+          entryLinkWeight: 0,
+          fileLinkWeight: 0,
+          lexicalWeight: 0,
+          recencyWeight: 0,
           specificityPenalty: 0,
+          lexicalTerms: [],
         };
         const weights = [
           ['Shared-tag weight', evidence.directTagWeight],
           ['Association weight', evidence.appliedAssociationWeight],
-          ['Link weight', evidence.linkWeight],
-          ['Keyword weight', evidence.keywordWeight],
+          ['Direct entry-link weight', evidence.entryLinkWeight],
+          ['File-link weight', evidence.fileLinkWeight],
+          ['Lexical weight', evidence.lexicalWeight],
+          ['Recency tie-breaker', evidence.recencyWeight],
         ].filter(function (item) { return item[1] > 0; });
         const specificityAdjustment = evidence.specificityPenalty > 0
           ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
@@ -338,7 +344,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
         const relevance = state.tagOverview
           ? ''
           : '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+        const path = note.headingPath && note.headingPath.length
+          ? note.headingPath.join(' > ')
+          : '';
+        const context = (note.dailyDate ? 'Daily note ' + note.dailyDate : '') + (note.dailyDate && path ? ' / ' : '') + path;
+        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>' + (context ? '<div class="source">' + escapeHtml(context) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';

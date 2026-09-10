@@ -94,7 +94,7 @@ Run `Deckard: Move Inline Tags to Front Matter` to collect explicit tags from th
 Run `Deckard: Rename Tag` to search the indexed tag list, choose a replacement, and update every matching source occurrence without changing ordinary prose or fenced code. In the Dashboard, Tag Overview, or Related Notes sidebar, right-click a tag and choose **Rename tag**. In a Markdown editor, hover a tag and choose the clickable **Rename** action. Enter a complete tag such as `#management/new-name`, or enter only a new name to keep the selected tag's marker and namespace.
 
 - Headings use the ATX form `# Heading` through `###### Heading`. Optional closing hashes are removed from the heading title.
-- **Associated tags** are Deckard's practical "these belong together" suggestion. If you write `#project/atlas` and `#risk/vendor` together on one heading, task, or tagged line, Deckard treats that as a strong connection because you explicitly put them together. Tags in a heading and its nested headings get a lighter connection, which helps find useful context without treating the outline as a rigid category tree. The percentage is the strength of that connection: higher means Deckard has seen stronger or more repeated evidence. Front-matter and inherited tags give a note context but never create associations on their own.
+- **Associated tags** are Deckard's practical "these belong together" suggestion. If you write `#project/atlas` and `#risk/vendor` together on one heading, task, or tagged line, Deckard retains that raw evidence. Related Notes normalizes it by the distinct source-unit support and both tags' prevalence, so a common tag is not promoted merely by occurring often. Tags in a heading and its nested headings get a lighter connection. Front-matter and inherited tags give note context but never create associations on their own.
 - Tasks use `-`, `*`, or `+` followed by `[ ]` for open items or `[x]`/`[X]` for completed items.
 - A task inherits tags from its nearest heading and combines them with tags written on the task line.
 - Tag names start with a letter or number and can contain letters, numbers, `_`, `-`, and `/` namespace segments.
@@ -146,19 +146,19 @@ Open **Related Notes** from the Deckard Activity Bar while editing a saved Markd
 | Shared tag | Both entries contain `#project/atlas` | Strongest |
 | Parent-heading context | Your selected task sits under a `#project/atlas` heading | Useful, but lighter |
 | Associated tag | `#project/atlas` and `#risk/vendor` are often written together | Supporting evidence |
-| Wiki link or keywords | Both entries link to `[[Launch plan]]` or share distinctive wording | Small supporting evidence |
+| Entry Wiki link or lexical similarity | An entry links to `[[Launch plan#Decision]]` or shares distinctive section wording | Small supporting evidence |
 
-For example, if you select `#project/atlas #follow-up`, a note with both tags ranks ahead of a note that only contains an associated `#risk/vendor` tag. Repeated association evidence helps, but with diminishing returns, so indirect connections cannot overtake a complete direct match.
+For example, if you select `#project/atlas #follow-up`, a note with both tags ranks ahead of a note that only contains an associated `#risk/vendor` tag. Associations retain their raw source evidence but are normalized for support and tag prevalence before diminishing returns are applied, so generic tags cannot dominate and indirect connections cannot overtake a complete direct match.
 
 ### Focus one note entry
 
 Tagged headings highlight their full section; tagged lines and tasks highlight their line. Hover one to choose **Show related notes for [entry]**. Deckard uses that entry's tags first, then adds tagged parent headings as lighter context. Choose **Show whole document** in the sidebar to return to the normal document view.
 
-When both a broad heading and a nested child use the same tags, the child appears first because it is the more specific match.
+Each result shows its compact heading path. Daily notes also show their inferred `YYYY-MM-DD` date, making a result such as `2026-09-10 > Project Atlas > Check-in` understandable before opening it. When both a broad heading and a nested child use the same tags, the child appears first because it is the more specific match.
 
 ### Understand a score
 
-Hover a card's percentage for a short explanation. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows selected-tag weights, direct matched-tag calculations, association paths, the diminishing-returns calculation, links, keywords, and specificity adjustments.
+Hover a card's percentage for a short explanation. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows heading paths, daily-note context, selected-tag weights, raw and normalized association support/prevalence, entry and file link evidence, lexical terms, optional recency, and specificity adjustments.
 
 Use the sort control to choose **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Select a related note to open its matching line, or select a tag to open its overview.
 
@@ -209,6 +209,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.enableHeadingTagRelationships": true,
 	"deckard.enableTagAutocomplete": true,
 	"deckard.enableKeywordLinks": true,
+	"deckard.relatedNotesAssociationMinimumSupport": 1,
+	"deckard.relatedNotesRecencyHalfLifeDays": 0,
 	"deckard.entityNamespaceAliases": {
 		"org": "organization"
 	},
@@ -227,7 +229,9 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in related-note and tag-overview titles as clickable buttons by default. Set to `separate` to remove tags from titles and show them as separate tag controls. |
 | `deckard.enableHeadingTagRelationships` | `true` | Shows **Associated tags** suggestions in Tag Overview, with Tree and Graph views. Disable it to hide those suggestions without changing indexed tags or note content. |
 | `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |
-| `deckard.enableKeywordLinks` | `true` | Includes significant shared keywords when Related Notes finds matches. Disable it to show shared tags and intentional Wiki links only. |
+| `deckard.enableKeywordLinks` | `true` | Includes capped BM25-style lexical similarity scoped to each section or task. Disable it to show shared tags and intentional Wiki links only. |
+| `deckard.relatedNotesAssociationMinimumSupport` | `1` | Minimum distinct headings, tagged lines, tasks, or heading relationships needed before a learned association affects Related Notes. Raise it to suppress one-off associations; `1` preserves intentional one-offs. |
+| `deckard.relatedNotesRecencyHalfLifeDays` | `0` | Optional low-impact recency tie-breaker; `0` disables it. Deckard prefers front-matter and daily-note dates before filesystem timestamps. |
 | `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps one `#namespace` to another. Targets can be built-in or custom; for example, `{ "proj": "project", "leadership": "management" }` treats `#proj/atlas` as a project and collapses `#leadership/performance` into `#management/performance`. Other namespaced tags become entities automatically without configuration. |
 | `deckard.personMarker` | `@` | Selects the single punctuation character that identifies people. Set it to `~` to use `~mara-vale` for people and reserve `@inbox` for a lightweight tag. |
 

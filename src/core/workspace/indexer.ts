@@ -598,21 +598,46 @@ function buildTagAssociations(
   tagAssociations: Map<string, TagAssociation[]>;
 } {
   const associations = new Map<string, MutableTagAssociation>();
+  const sourceUnits = new Map<string, TagReference[]>();
   sections.forEach((section) => {
-    (section.associationTagGroups ?? []).forEach((tags) =>
-      addAssociationGroup(associations, tags, { sectionId: section.id }),
-    );
-    addHeadingAssociations(associations, section, sections);
+    (section.associationTagGroups ?? []).forEach((tags, index) => {
+      const unitId = `section:${section.id}:group:${index}`;
+      registerSourceUnit(sourceUnits, unitId, tags);
+      addAssociationGroup(associations, tags, { sectionId: section.id, unitId });
+    });
+    addHeadingAssociations(associations, sourceUnits, section, sections);
   });
   tasks.forEach((task) => {
-    (task.associationTagGroups ?? []).forEach((tags) =>
-      addAssociationGroup(associations, tags, { taskId: task.id }),
-    );
+    (task.associationTagGroups ?? []).forEach((tags, index) => {
+      const unitId = `task:${task.id}:group:${index}`;
+      registerSourceUnit(sourceUnits, unitId, tags);
+      addAssociationGroup(associations, tags, { taskId: task.id, unitId });
+    });
   });
 
+  const tagSourceUnitCounts = getTagSourceUnitCounts(sourceUnits);
   const tagAssociations = new Map<string, TagAssociation[]>();
   [...associations.entries()]
-    .map(([key, relationship]) => ({ key, ...relationship }))
+    .map(([key, relationship]) => {
+      const [tagKey] = key.split('\u0000');
+      const tagSourceUnitCount = tagSourceUnitCounts.get(tagKey) ?? 0;
+      const associatedTagSourceUnitCount =
+        tagSourceUnitCounts.get(relationship.associatedTag.key) ?? 0;
+      return {
+        key,
+        ...relationship,
+        count: relationship.sourceUnitIds.size,
+        normalizedWeight: getNormalizedAssociationWeight(
+          relationship.weight,
+          relationship.sourceUnitIds.size,
+          tagSourceUnitCount,
+          associatedTagSourceUnitCount,
+        ),
+        tagSourceUnitCount,
+        associatedTagSourceUnitCount,
+        totalSourceUnitCount: sourceUnits.size,
+      };
+    })
     .sort(
       (left, right) =>
         right.coOccurrenceCount - left.coOccurrenceCount ||
@@ -626,12 +651,19 @@ function buildTagAssociations(
   return { tagAssociations };
 }
 
-interface MutableTagAssociation extends TagAssociation {}
+interface MutableTagAssociation extends Omit<TagAssociation,
+  | 'count'
+  | 'normalizedWeight'
+  | 'tagSourceUnitCount'
+  | 'associatedTagSourceUnitCount'
+  | 'totalSourceUnitCount'> {
+  sourceUnitIds: Set<string>;
+}
 
 function addAssociationGroup(
   associations: Map<string, MutableTagAssociation>,
   tags: TagReference[],
-  source: { sectionId?: string; taskId?: string },
+  source: { sectionId?: string; taskId?: string; unitId: string },
 ): void {
   const uniqueTags = [...new Map(tags.map((tag) => [tag.key, tag])).values()];
   uniqueTags.forEach((tag, index) => {
@@ -644,6 +676,7 @@ function addAssociationGroup(
 
 function addHeadingAssociations(
   associations: Map<string, MutableTagAssociation>,
+  sourceUnits: Map<string, TagReference[]>,
   section: Section,
   sections: Map<string, Section>,
 ): void {
@@ -663,11 +696,13 @@ function addHeadingAssociations(
     }
     (parent.headingTags ?? []).forEach((parentTag) => {
       sourceTags.forEach((childTag) => {
+        const unitId = `heading:${section.id}:${parent.id}`;
+        registerSourceUnit(sourceUnits, unitId, [...sourceTags, ...parent.headingTags ?? []]);
         addAssociationEvidence(
           associations,
           childTag,
           parentTag,
-          { sectionId: section.id },
+          { sectionId: section.id, unitId },
           0.5 / depth,
           false,
         );
@@ -675,7 +710,7 @@ function addHeadingAssociations(
           associations,
           parentTag,
           childTag,
-          { sectionId: section.id },
+          { sectionId: section.id, unitId },
           0.5 / depth,
           false,
         );
@@ -690,7 +725,7 @@ function addAssociationEvidence(
   associations: Map<string, MutableTagAssociation>,
   tag: TagReference,
   associatedTag: TagReference,
-  source: { sectionId?: string; taskId?: string },
+  source: { sectionId?: string; taskId?: string; unitId: string },
   weight: number,
   isCoOccurrence: boolean,
 ): void {
@@ -702,10 +737,10 @@ function addAssociationEvidence(
     associatedTag: { ...associatedTag },
     sectionIds: [],
     taskIds: [],
-    count: 0,
     weight: 0,
     coOccurrenceCount: 0,
     headingRelationshipCount: 0,
+    sourceUnitIds: new Set<string>(),
   };
   if (source.sectionId && !relationship.sectionIds.includes(source.sectionId)) {
     relationship.sectionIds.push(source.sectionId);
@@ -713,14 +748,61 @@ function addAssociationEvidence(
   if (source.taskId && !relationship.taskIds.includes(source.taskId)) {
     relationship.taskIds.push(source.taskId);
   }
+  relationship.sourceUnitIds.add(source.unitId);
   relationship.weight += weight;
   if (isCoOccurrence) {
     relationship.coOccurrenceCount += 1;
   } else {
     relationship.headingRelationshipCount += 1;
   }
-  relationship.count = relationship.sectionIds.length + relationship.taskIds.length;
   associations.set(key, relationship);
+}
+
+function registerSourceUnit(
+  sourceUnits: Map<string, TagReference[]>,
+  unitId: string,
+  tags: TagReference[],
+): void {
+  if (!sourceUnits.has(unitId)) {
+    sourceUnits.set(
+      unitId,
+      [...new Map(tags.map((tag) => [tag.key, tag])).values()],
+    );
+  }
+}
+
+function getTagSourceUnitCounts(
+  sourceUnits: ReadonlyMap<string, TagReference[]>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  sourceUnits.forEach((tags) => {
+    tags.forEach((tag) =>
+      counts.set(tag.key, (counts.get(tag.key) ?? 0) + 1),
+    );
+  });
+  return counts;
+}
+
+/**
+ * Downweights a raw edge when either tag occurs in many authoring units while
+ * retaining a useful score for a one-off, intentional pairing.
+ */
+function getNormalizedAssociationWeight(
+  rawWeight: number,
+  support: number,
+  tagSourceUnitCount: number,
+  associatedTagSourceUnitCount: number,
+): number {
+  if (rawWeight <= 0 || support <= 0) {
+    return 0;
+  }
+  const prevalence = support / Math.max(
+    1,
+    tagSourceUnitCount,
+    associatedTagSourceUnitCount,
+  );
+  const supportConfidence = support / (support + 1);
+  return rawWeight * prevalence * (0.5 + supportConfidence / 2);
 }
 
 function appendAssociation(

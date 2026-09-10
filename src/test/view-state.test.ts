@@ -353,7 +353,7 @@ suite('Dashboard state', () => {
     assert.ok(associatedNote);
     assert.strictEqual(associatedNote.matchCount, 0);
     assert.strictEqual(associatedNote.associationWeight, 1);
-    assert.strictEqual(associatedNote.relevanceScore, 25);
+    assert.strictEqual(associatedNote.relevanceScore, 14);
     assert.deepStrictEqual(associatedNote.reasons, ['Associated: #risk/operations']);
   });
 
@@ -391,6 +391,144 @@ suite('Dashboard state', () => {
     assert.ok(strongNote);
     assert.ok(strongNote.relevanceScore > weakNote.relevanceScore);
     assert.ok(strongNote.relevanceScore < 50);
+  });
+
+  test('normalizes association relevance by support and tag prevalence', () => {
+    const active = createFile('notes/current.md', '# Current #source');
+    const rareBridge = createFile('notes/rare-bridge.md', '# Bridge #source #rare');
+    const commonBridge = createFile('notes/common-bridge.md', '# Bridge #source #common');
+    const rare = createFile('notes/rare.md', '# Rare candidate #rare');
+    const common = createFile('notes/common.md', '# Common candidate #common');
+    const commonOnly = Array.from({ length: 4 }, (_, index) =>
+      createFile(`notes/common-${index}.md`, `# Common ${index} #common`),
+    );
+    const index = createFileIndex([
+      active,
+      rareBridge,
+      commonBridge,
+      rare,
+      common,
+      ...commonOnly,
+    ]);
+    const associations = index.tagAssociations?.get('#source') ?? [];
+    const rareAssociation = associations.find(
+      (association) => association.associatedTag.key === '#rare',
+    );
+    const commonAssociation = associations.find(
+      (association) => association.associatedTag.key === '#common',
+    );
+
+    assert.ok(rareAssociation);
+    assert.ok(commonAssociation);
+    assert.strictEqual(rareAssociation.weight, 1);
+    assert.strictEqual(rareAssociation.count, 1);
+    assert.ok(
+      rareAssociation.normalizedWeight > commonAssociation.normalizedWeight,
+    );
+    assert.ok(
+      rareAssociation.associatedTagSourceUnitCount <
+        commonAssociation.associatedTagSourceUnitCount,
+    );
+
+    const defaultNotes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+    );
+    const minimumSupportNotes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+      'inline',
+      new Map(),
+      { associationMinimumSupport: 2 },
+    );
+    assert.ok(defaultNotes.some((note) => note.filePath === rare.filePath));
+    assert.strictEqual(
+      minimumSupportNotes.some((note) => note.filePath === rare.filePath),
+      false,
+    );
+  });
+
+  test('adds daily date and heading-path context to related entries', () => {
+    const active = createFile('notes/current.md', '# Current #work');
+    const daily = createFile(
+      'notes/2026-09-10.md',
+      '# 2026-09-10\n\n## Project Atlas\n\n### Check-in #work',
+    );
+    const notes = createSidebarSnapshot(
+      createFileIndex([active, daily]),
+      active.filePath,
+      active,
+      false,
+    ).notes;
+    const checkIn = notes.find((note) => note.title.startsWith('Check-in'));
+
+    assert.ok(checkIn);
+    assert.strictEqual(checkIn.dailyDate, '2026-09-10');
+    assert.deepStrictEqual(checkIn.headingPath, [
+      '2026-09-10',
+      'Project Atlas',
+      'Check-in',
+    ]);
+  });
+
+  test('uses entry links and section-scoped lexical evidence separately', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work\n\n[[Related#Target]]\nNeural archive calibration.',
+    );
+    const related = createFile(
+      'notes/related.md',
+      '# Broad #other\n\n## Target #other\nNeural archive calibration.\n\n## Unrelated #other\nOrdinary journal prose.',
+    );
+    const notes = createSidebarSnapshot(
+      createFileIndex([active, related]),
+      active.filePath,
+      active,
+    ).notes;
+    const target = notes.find((note) => note.title.startsWith('Target'));
+    const broad = notes.find((note) => note.title.startsWith('Broad'));
+    const unrelated = notes.find((note) => note.title.startsWith('Unrelated'));
+
+    assert.ok(target);
+    assert.strictEqual(target.relevanceEvidence?.entryLinkWeight, 0.5);
+    assert.ok((target.relevanceEvidence?.lexicalWeight ?? 0) > 0);
+    assert.ok(
+      (target.relevanceEvidence?.entryLinkWeight ?? 0) >
+        (broad?.relevanceEvidence?.fileLinkWeight ?? 0),
+    );
+    assert.strictEqual(unrelated?.relevanceEvidence?.lexicalWeight, 0);
+  });
+
+  test('keeps optional recency disabled unless a half-life is configured', () => {
+    const active = createFile('notes/current.md', '# Current #work');
+    const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');
+    const index = createFileIndex([active, daily]);
+    const disabled = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#work', label: '#work' }],
+      false,
+    );
+    const enabled = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#work', label: '#work' }],
+      false,
+      'inline',
+      new Map(),
+      { recencyHalfLifeDays: 30 },
+    );
+
+    assert.strictEqual(disabled[0].relevanceEvidence?.recencyWeight, 0);
+    assert.strictEqual(enabled[0].relevanceEvidence?.recencyWeight, 0.1);
   });
 
   test('weights selected-entry ancestor tags below direct tags', () => {
@@ -525,6 +663,7 @@ suite('Dashboard state', () => {
         title: 'Lower score',
         fileName: 'lower-score.md',
         sourceLine: 1,
+        headingPath: ['Lower score'],
         titleTags: [],
         matchedTags: [],
         matchCount: 2,
@@ -537,6 +676,7 @@ suite('Dashboard state', () => {
         title: 'Higher score',
         fileName: 'higher-score.md',
         sourceLine: 1,
+        headingPath: ['Higher score'],
         titleTags: [],
         matchedTags: [],
         matchCount: 1,

@@ -23,7 +23,7 @@ import {
   DeckardStatsSnapshot,
 } from '../../core/types';
 
-import { stripTags } from '../../core/markdown/parser';
+import { extractWikiLinks, stripTags } from '../../core/markdown/parser';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 
 /**
@@ -399,6 +399,10 @@ function cloneTagAssociations(
     taskIds: [...relationship.taskIds],
     count: relationship.count,
     weight: relationship.weight,
+    normalizedWeight: relationship.normalizedWeight,
+    tagSourceUnitCount: relationship.tagSourceUnitCount,
+    associatedTagSourceUnitCount: relationship.associatedTagSourceUnitCount,
+    totalSourceUnitCount: relationship.totalSourceUnitCount,
     coOccurrenceCount: relationship.coOccurrenceCount,
     headingRelationshipCount: relationship.headingRelationshipCount,
   }));
@@ -478,6 +482,7 @@ export function createTagOverviewSidebarSnapshot(
     title: section.heading,
     fileName: getFileName(section.filePath) ?? section.filePath,
     sourceLine: section.startLine,
+    headingPath: [stripTags(section.heading)],
     titleTags: section.titleTags,
     matchedTags: [tag],
     matchCount: 1,
@@ -526,6 +531,7 @@ export function createSidebarSnapshot(
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   activeEntryTitle?: string,
   activeTagWeights?: ReadonlyMap<string, number>,
+  rankingOptions?: RelatedNotesRankingOptions,
 ): SidebarNotesSnapshot {
   if (!activeFile) {
     return {
@@ -546,6 +552,7 @@ export function createSidebarSnapshot(
     enableKeywordLinks,
     tagTitleDisplayMode,
     activeTagWeights,
+    rankingOptions,
   );
   return {
     activeFileName: getFileName(activeFilePath),
@@ -607,6 +614,16 @@ function sortTagReferences(tags: TagReference[]): TagReference[] {
  * Ranks other notes by shared tags and exposes matching sections/tasks as source
  * references without duplicating a task already represented by its section.
  */
+export interface RelatedNotesRankingOptions {
+  /**
+   * One preserves intentional one-off associations; higher values suppress
+   * low-support learned edges without discarding their index evidence.
+   */
+  associationMinimumSupport?: number;
+  /** Disabled at zero; a positive value is the recency decay half-life. */
+  recencyHalfLifeDays?: number;
+}
+
 export function rankRelatedNotes(
   index: WorkspaceIndex,
   activeFilePath: string | undefined,
@@ -615,9 +632,17 @@ export function rankRelatedNotes(
   enableKeywordLinks = true,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   activeTagWeights: ReadonlyMap<string, number> = new Map(),
+  options: RelatedNotesRankingOptions = {},
 ): RankedNote[] {
   const activeKeys = new Set(activeTags.map((tag) => tag.key));
   const notes: RankedNote[] = [];
+  const associationMinimumSupport = Math.max(
+    1,
+    Math.floor(options.associationMinimumSupport ?? 1),
+  );
+  const lexicalModel = enableKeywordLinks
+    ? createLexicalModel(index, activeFile)
+    : undefined;
 
   index.files.forEach((file, filePath) => {
     if (filePath === activeFilePath) {
@@ -626,7 +651,7 @@ export function rankRelatedNotes(
 
     const findAssociatedMatches = (
       candidateTags: TagReference[],
-    ): Array<{ tag: TagReference; weight: number }> =>
+    ): Array<{ tag: TagReference; weight: number; rawWeight: number }> =>
       candidateTags.flatMap((candidateTag) => {
         const associations = activeTags
           .map((activeTag) => ({
@@ -641,19 +666,24 @@ export function rankRelatedNotes(
             (match): match is {
               association: TagAssociation;
               activeWeight: number;
-            } => match.association !== undefined,
+            } =>
+              match.association !== undefined &&
+              match.association.count >= associationMinimumSupport,
           );
         const weight = associations.reduce(
+          (total, match) =>
+            total + match.association.normalizedWeight * match.activeWeight,
+          0,
+        );
+        const rawWeight = associations.reduce(
           (total, match) =>
             total + match.association.weight * match.activeWeight,
           0,
         );
-        return weight > 0 ? [{ tag: candidateTag, weight }] : [];
+        return weight > 0
+          ? [{ tag: candidateTag, weight, rawWeight }]
+          : [];
       });
-    const directLink = filesAreLinked(activeFile, file);
-    const sharedKeywords = enableKeywordLinks
-      ? getSharedKeywords(activeFile, file)
-      : [];
     const totalActiveWeight = activeTags.reduce(
       (total, tag) => total + (activeTagWeights.get(tag.key) ?? 1),
       0,
@@ -661,13 +691,26 @@ export function rankRelatedNotes(
     const matchingSections = file.sections.filter((section) => {
       const tags = getTagReferences(section.tags, section.tagLabels);
       const associatedMatches = findAssociatedMatches(tags);
+      const linkEvidence = getLinkEvidence(
+        activeFile,
+        activeFilePath,
+        file,
+        extractWikiLinks(
+          getSectionLexicalContent(section, file.sections),
+        ),
+        section.heading,
+      );
+      const lexicalWeight = getLexicalWeight(
+        lexicalModel,
+        section.heading,
+        getSectionLexicalContent(section, file.sections),
+      ).weight;
       return (
         tags.some((tag) => activeKeys.has(tag.key)) ||
         associatedMatches.length > 0 ||
-        directLink ||
-        sharedKeywords.some((keyword) =>
-          section.rawContent.toLowerCase().includes(keyword),
-        )
+        linkEvidence.entryWeight > 0 ||
+        linkEvidence.fileWeight > 0 ||
+        lexicalWeight > 0
       );
     });
     const matchingSectionIds = new Set(
@@ -684,6 +727,9 @@ export function rankRelatedNotes(
       updatedAt?: number;
       tags: TagReference[];
       rawContent: string;
+      links: string[];
+      headingPath: string[];
+      dailyDate?: string;
     }> = matchingSections.map((section) => ({
       sectionId: section.id,
       title: getNoteTitle(section.heading, tagTitleDisplayMode),
@@ -695,15 +741,35 @@ export function rankRelatedNotes(
       ),
       updatedAt: file.updatedAt ?? section.updatedAt,
       tags: getTagReferences(section.tags, section.tagLabels),
-      rawContent: section.rawContent,
+      rawContent: getSectionLexicalContent(section, file.sections),
+      links: extractWikiLinks(
+        getSectionLexicalContent(section, file.sections),
+      ),
+      headingPath: getHeadingPath(section, sectionsById),
+      dailyDate: getDailyNoteDate(file),
     }));
     // A task under a matching section is already visible through that section;
     // include only standalone matches to keep sidebar entries distinct.
     const matchingTasks = file.tasks.filter((task) => {
       const tags = getTagReferences(task.tags, task.tagLabels);
+      const linkEvidence = getLinkEvidence(
+        activeFile,
+        activeFilePath,
+        file,
+        extractWikiLinks(task.sourceLineText),
+        task.title,
+      );
+      const lexicalWeight = getLexicalWeight(
+        lexicalModel,
+        task.title,
+        task.sourceLineText,
+      ).weight;
       return (
         (tags.some((tag) => activeKeys.has(tag.key)) ||
-          findAssociatedMatches(tags).length > 0) &&
+          findAssociatedMatches(tags).length > 0 ||
+          linkEvidence.entryWeight > 0 ||
+          linkEvidence.fileWeight > 0 ||
+          lexicalWeight > 0) &&
         (!task.sectionId || !matchingSectionIds.has(task.sectionId))
       );
     });
@@ -717,6 +783,9 @@ export function rankRelatedNotes(
         updatedAt: file.updatedAt ?? task.updatedAt,
         tags: getTagReferences(task.tags, task.tagLabels),
         rawContent: task.sourceLineText,
+        links: extractWikiLinks(task.sourceLineText),
+        headingPath: getTaskHeadingPath(task, sectionsById),
+        dailyDate: getDailyNoteDate(file),
       });
     });
 
@@ -733,7 +802,10 @@ export function rankRelatedNotes(
               selectedTag.key,
               candidateTag.key,
             );
-            if (!association) {
+            if (
+              !association ||
+              association.count < associationMinimumSupport
+            ) {
               return [];
             }
             const selectedWeight =
@@ -742,13 +814,23 @@ export function rankRelatedNotes(
               selectedTag,
               candidateTag,
               associationWeight: association.weight,
+              normalizedAssociationWeight: association.normalizedWeight,
+              sourceUnitCount: association.count,
+              selectedTagSourceUnitCount: association.tagSourceUnitCount,
+              candidateTagSourceUnitCount:
+                association.associatedTagSourceUnitCount,
+              totalSourceUnitCount: association.totalSourceUnitCount,
               selectedWeight,
-              contribution: association.weight * selectedWeight,
+              contribution: association.normalizedWeight * selectedWeight,
             }];
           }),
         );
         const associationWeight = associatedMatches.reduce(
-          (total, match) => total + match.weight,
+          (total, match) => total + match.rawWeight,
+          0,
+        );
+        const normalizedAssociationWeight = associationMatches.reduce(
+          (total, match) => total + match.normalizedAssociationWeight,
           0,
         );
         const unionSize = new Set([
@@ -760,21 +842,34 @@ export function rankRelatedNotes(
           0,
         );
         const appliedAssociationWeight = getDiminishingAssociationWeight(
-          associationWeight,
+          normalizedAssociationWeight,
           totalActiveWeight,
         );
-        const linkWeight = directLink ? 0.25 : 0;
-        const hasSharedKeywords = sharedKeywords.some((keyword) =>
-          reference.rawContent.toLowerCase().includes(keyword),
+        const linkEvidence = getLinkEvidence(
+          activeFile,
+          activeFilePath,
+          file,
+          reference.links,
+          reference.title,
         );
-        const keywordWeight = hasSharedKeywords ? 0.1 : 0;
+        const lexicalEvidence = getLexicalWeight(
+          lexicalModel,
+          reference.title,
+          reference.rawContent,
+        );
+        const recencyWeight = getRecencyWeight(
+          getRelevantDate(file),
+          options.recencyHalfLifeDays,
+        );
         const relevanceScore = Math.round(
           Math.min(
             1,
             (directTagWeight +
               appliedAssociationWeight +
-              linkWeight +
-              keywordWeight) /
+              linkEvidence.entryWeight +
+              linkEvidence.fileWeight +
+              lexicalEvidence.weight +
+              recencyWeight) /
               Math.max(1, totalActiveWeight * 2),
           ) * 100,
         );
@@ -799,6 +894,8 @@ export function rankRelatedNotes(
           title: reference.title,
           fileName: getFileName(filePath) ?? filePath,
           sourceLine: reference.sourceLine,
+          headingPath: reference.headingPath,
+          dailyDate: reference.dailyDate,
           titleTags: reference.titleTags,
           updatedAt: reference.updatedAt,
           matchedTags,
@@ -815,10 +912,14 @@ export function rankRelatedNotes(
           relevanceEvidence: {
             directTagWeight,
             associationWeight,
+            normalizedAssociationWeight,
             appliedAssociationWeight,
-            linkWeight,
-            keywordWeight,
+            entryLinkWeight: linkEvidence.entryWeight,
+            fileLinkWeight: linkEvidence.fileWeight,
+            lexicalWeight: lexicalEvidence.weight,
+            recencyWeight,
             specificityPenalty,
+            lexicalTerms: lexicalEvidence.terms,
           },
           reasons: [
             ...(matchedTags.length > 0
@@ -833,9 +934,18 @@ export function rankRelatedNotes(
                     .join(', ')}`,
                 ]
               : []),
-            ...(directLink ? ['Linked note'] : []),
-            ...(hasSharedKeywords
-              ? [`Keywords: ${sharedKeywords.slice(0, 3).join(', ')}`]
+            ...(linkEvidence.entryWeight > 0 ? ['Direct entry link'] : []),
+            ...(linkEvidence.fileWeight > 0 ? ['Linked note'] : []),
+            ...(lexicalEvidence.terms.length > 0
+              ? [
+                  `Similar terms: ${lexicalEvidence.terms
+                    .slice(0, 3)
+                    .map((term) => term.term)
+                    .join(', ')}`,
+                ]
+              : []),
+            ...(recencyWeight > 0
+              ? [`Recent ${getRelevantDate(file)?.source ?? 'note'}`]
               : []),
             ...(specificityPenalty > 0
               ? ['Broader match contains a more specific entry']
@@ -1000,13 +1110,50 @@ export function sortEntities(
   return sorted;
 }
 
+function getLinkEvidence(
+  activeFile: ParsedFile,
+  activeFilePath: string | undefined,
+  candidateFile: ParsedFile,
+  candidateLinks: string[],
+  candidateTitle: string,
+): { entryWeight: number; fileWeight: number } {
+  const activeEntryTitle =
+    activeFile.sections[0]?.heading ?? activeFile.tasks[0]?.title;
+  const candidateMatchesActive = candidateLinks.some((link) =>
+    activeEntryTitle !== undefined &&
+    linkTargetsEntry(link, activeFilePath ?? activeFile.filePath, activeEntryTitle),
+  );
+  const activeMatchesCandidate = activeFile.links.some((link) =>
+    linkTargetsEntry(link, candidateFile.filePath, candidateTitle),
+  );
+  if (candidateMatchesActive || activeMatchesCandidate) {
+    return { entryWeight: 0.5, fileWeight: 0 };
+  }
+  return filesAreLinked(activeFile, candidateFile)
+    ? { entryWeight: 0, fileWeight: 0.1 }
+    : { entryWeight: 0, fileWeight: 0 };
+}
+
 function filesAreLinked(left: ParsedFile, right: ParsedFile): boolean {
   const leftNames = getLinkNames(left.filePath);
   const rightNames = getLinkNames(right.filePath);
   return (
-    left.links.some((link) => rightNames.has(normalizeLink(link))) ||
-    right.links.some((link) => leftNames.has(normalizeLink(link)))
+    left.links.some((link) => rightNames.has(getLinkFileTarget(link))) ||
+    right.links.some((link) => leftNames.has(getLinkFileTarget(link)))
   );
+}
+
+function linkTargetsEntry(
+  link: string,
+  filePath: string,
+  title: string,
+): boolean {
+  const [fileTarget, headingTarget] = link.split('#', 2);
+  if (!getLinkNames(filePath).has(normalizeLink(fileTarget))) {
+    return false;
+  }
+  return !headingTarget || normalizeHeadingTarget(headingTarget) ===
+    normalizeHeadingTarget(title);
 }
 
 function getLinkNames(filePath: string): Set<string> {
@@ -1018,19 +1165,108 @@ function getLinkNames(filePath: string): Set<string> {
   ]);
 }
 
+function getLinkFileTarget(link: string): string {
+  return normalizeLink(link.split('#', 1)[0]);
+}
+
 function normalizeLink(value: string): string {
   return value.trim().replace(/\.md$/i, '').toLocaleLowerCase();
 }
 
-function getSharedKeywords(left: ParsedFile, right: ParsedFile): string[] {
-  const leftKeywords = getKeywords(left.content);
-  const rightKeywords = new Set(getKeywords(right.content));
-  return leftKeywords
-    .filter((keyword) => rightKeywords.has(keyword))
-    .slice(0, 5);
+function normalizeHeadingTarget(value: string): string {
+  return stripTags(value)
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
-function getKeywords(content: string): string[] {
+interface LexicalModel {
+  queryTerms: Set<string>;
+  documentFrequency: Map<string, number>;
+  documentCount: number;
+  averageLength: number;
+}
+
+interface LexicalEvidence {
+  weight: number;
+  terms: Array<{ term: string; contribution: number }>;
+}
+
+function createLexicalModel(
+  index: WorkspaceIndex,
+  activeFile: ParsedFile,
+): LexicalModel {
+  const documents = [
+    ...index.sections.values(),
+  ].map((section) =>
+    getLexicalTerms(
+      section.heading,
+      getSectionLexicalContent(
+        section,
+        index.files.get(section.filePath)?.sections ?? [],
+      ),
+    ),
+  ).concat(
+    [...index.tasks.values()].map((task) =>
+      getLexicalTerms(task.title, task.sourceLineText),
+    ),
+  );
+  const documentFrequency = new Map<string, number>();
+  documents.forEach((terms) => {
+    new Set(terms).forEach((term) =>
+      documentFrequency.set(term, (documentFrequency.get(term) ?? 0) + 1),
+    );
+  });
+  const activeTerms = getLexicalTerms(activeFile.content, activeFile.content);
+  return {
+    queryTerms: new Set(activeTerms),
+    documentFrequency,
+    documentCount: Math.max(1, documents.length),
+    averageLength: Math.max(
+      1,
+      documents.reduce((total, terms) => total + terms.length, 0) /
+        Math.max(1, documents.length),
+    ),
+  };
+}
+
+function getLexicalWeight(
+  model: LexicalModel | undefined,
+  title: string,
+  content: string,
+): LexicalEvidence {
+  if (!model || model.queryTerms.size === 0) {
+    return { weight: 0, terms: [] };
+  }
+  const terms = getLexicalTerms(title, content);
+  const frequencies = new Map<string, number>();
+  terms.forEach((term) => frequencies.set(term, (frequencies.get(term) ?? 0) + 1));
+  const lengthFactor =
+    1.2 * (1 - 0.75 + 0.75 * (terms.length / model.averageLength));
+  const contributions = [...model.queryTerms].flatMap((term) => {
+    const frequency = frequencies.get(term) ?? 0;
+    if (frequency === 0) {
+      return [];
+    }
+    const inverseFrequency = Math.log(
+      1 + (model.documentCount - (model.documentFrequency.get(term) ?? 0) + 0.5) /
+        ((model.documentFrequency.get(term) ?? 0) + 0.5),
+    );
+    const contribution =
+      inverseFrequency * ((frequency * 2.2) / (frequency + lengthFactor));
+    return contribution > 0 ? [{ term, contribution }] : [];
+  });
+  const rawWeight = contributions.reduce(
+    (total, term) => total + term.contribution,
+    0,
+  );
+  return {
+    weight: Math.min(0.3, rawWeight / (rawWeight + 1)),
+    terms: contributions.sort((left, right) => right.contribution - left.contribution),
+  };
+}
+
+function getLexicalTerms(title: string, content: string): string[] {
   const ignored = new Set([
     'about',
     'after',
@@ -1046,14 +1282,117 @@ function getKeywords(content: string): string[] {
     'would',
     'with',
   ]);
+  const clean = `${title}\n${content}`
+    .replace(/^---\s*$[\s\S]*?^---\s*$/m, ' ')
+    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
+    .replace(/\[\[[^\]]+\]\]|https?:\/\/\S+|[#@][\w/-]+/g, ' ');
+  const titleTerms = title
+    .replace(/[#@][\w/-]+/g, ' ')
+    .toLocaleLowerCase()
+    .match(/[a-z][a-z-]{2,}/g) ?? [];
+  const bodyTerms = clean.toLocaleLowerCase().match(/[a-z][a-z-]{2,}/g) ?? [];
   return [
-    ...new Set(
-      content
-        .toLocaleLowerCase()
-        .match(/[a-z][a-z-]{4,}/g)
-        ?.filter((word) => !ignored.has(word)) ?? [],
-    ),
+    ...titleTerms.filter((word) => !ignored.has(word)),
+    ...titleTerms.filter((word) => !ignored.has(word)),
+    ...bodyTerms.filter((word) => !ignored.has(word)),
   ];
+}
+
+function getSectionLexicalContent(
+  section: Section,
+  fileSections: Section[],
+): string {
+  if (section.isInline) {
+    return section.rawContent || section.heading;
+  }
+  const lines = section.rawContent.split(/\r?\n/);
+  const excludedChildren = fileSections
+    .filter(
+      (candidate) =>
+        candidate.id !== section.id &&
+        candidate.startLine > section.startLine &&
+        candidate.endLine <= section.endLine,
+    )
+    .sort((left, right) => right.startLine - left.startLine);
+  excludedChildren.forEach((child) => {
+    const start = child.startLine - section.startLine;
+    const end = child.endLine - section.startLine + 1;
+    lines.splice(start, end - start);
+  });
+  return lines.join('\n');
+}
+
+function getHeadingPath(
+  section: Section,
+  sectionsById: ReadonlyMap<string, Section>,
+): string[] {
+  const path = [stripTags(section.heading)];
+  const visited = new Set<string>([section.id]);
+  let parentId = section.parentSectionId;
+  while (parentId && !visited.has(parentId)) {
+    visited.add(parentId);
+    const parent = sectionsById.get(parentId);
+    if (!parent) {
+      break;
+    }
+    path.unshift(stripTags(parent.heading));
+    parentId = parent.parentSectionId;
+  }
+  return path.filter(Boolean);
+}
+
+function getTaskHeadingPath(
+  task: Task,
+  sectionsById: ReadonlyMap<string, Section>,
+): string[] {
+  const section = task.sectionId ? sectionsById.get(task.sectionId) : undefined;
+  return section
+    ? [...getHeadingPath(section, sectionsById), stripTags(task.title)]
+    : [stripTags(task.title)];
+}
+
+function getDailyNoteDate(file: ParsedFile): string | undefined {
+  const fromPath = file.filePath.match(/(?:^|\/)(\d{4}-\d{2}-\d{2})(?:\.md)?$/);
+  if (fromPath) {
+    return fromPath[1];
+  }
+  return file.sections
+    .filter((section) => section.headingLevel === 1)
+    .map((section) => section.heading.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0])
+    .find((date): date is string => date !== undefined);
+}
+
+function getRelevantDate(
+  file: ParsedFile,
+): { at: number; source: string } | undefined {
+  const frontmatterBlock = file.content.match(
+    /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/,
+  )?.[1];
+  const frontmatter = frontmatterBlock?.match(
+    /^(?:date|created|updated):\s*["']?(\d{4}-\d{2}-\d{2})/im,
+  )?.[1];
+  const dailyDate = getDailyNoteDate(file);
+  const date = frontmatter ?? dailyDate;
+  if (date) {
+    const at = new Date(`${date}T00:00:00`).getTime();
+    if (!Number.isNaN(at)) {
+      return { at, source: frontmatter ? 'dated note' : `daily note ${date}` };
+    }
+  }
+  return file.updatedAt === undefined
+    ? undefined
+    : { at: file.updatedAt, source: 'updated note' };
+}
+
+function getRecencyWeight(
+  date: { at: number } | undefined,
+  halfLifeDays: number | undefined,
+): number {
+  if (!date || !halfLifeDays || halfLifeDays <= 0) {
+    return 0;
+  }
+  const ageDays = Math.max(0, (Date.now() - date.at) / 86_400_000);
+  return 0.1 * 2 ** (-ageDays / halfLifeDays);
 }
 
 /**

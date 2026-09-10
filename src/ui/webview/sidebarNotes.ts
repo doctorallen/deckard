@@ -15,6 +15,7 @@ import {
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
+  RelatedNotesRankingOptions,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
@@ -69,7 +70,11 @@ export class SidebarNotesView
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.enableKeywordLinks')) {
+        if (
+          event.affectsConfiguration('deckard.enableKeywordLinks') ||
+          event.affectsConfiguration('deckard.relatedNotesAssociationMinimumSupport') ||
+          event.affectsConfiguration('deckard.relatedNotesRecencyHalfLifeDays')
+        ) {
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
@@ -193,6 +198,7 @@ export class SidebarNotesView
         this.getTagTitleDisplayMode(),
         getEntryTitle(entryScope.file),
         entryScope.tagWeights,
+        this.getRelatedNotesRankingOptions(),
       ),
     };
   }
@@ -280,6 +286,7 @@ export class SidebarNotesView
       this.getTagTitleDisplayMode(),
       activeEntry ? getEntryTitle(activeEntry.file) : undefined,
       activeEntry?.tagWeights,
+      this.getRelatedNotesRankingOptions(),
     );
   }
 
@@ -363,6 +370,23 @@ export class SidebarNotesView
     return vscode.workspace
       .getConfiguration('deckard')
       .get<boolean>('enableHeadingTagRelationships', true);
+  }
+
+  private getRelatedNotesRankingOptions(): RelatedNotesRankingOptions {
+    const configuration = vscode.workspace.getConfiguration(
+      'deckard',
+      vscode.window.activeTextEditor?.document.uri,
+    );
+    return {
+      associationMinimumSupport: configuration.get<number>(
+        'relatedNotesAssociationMinimumSupport',
+        1,
+      ),
+      recencyHalfLifeDays: configuration.get<number>(
+        'relatedNotesRecencyHalfLifeDays',
+        0,
+      ),
+    };
   }
 
   /**
