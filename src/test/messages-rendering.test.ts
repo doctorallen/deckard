@@ -717,7 +717,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
     assert.strictEqual(html.includes("renderTag(tag, 'inline-tag')"), true);
-    assert.strictEqual(html.includes('>Most tags</option>'), true);
+    assert.strictEqual(html.includes('>Relevance</option>'), true);
     assert.strictEqual(html.includes('>Newest</option>'), true);
     assert.strictEqual(html.includes('>Oldest</option>'), true);
     assert.strictEqual(html.includes('>Most accessed</option>'), true);
