@@ -704,6 +704,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('Association weight'), true);
+    assert.strictEqual(html.includes('Specificity adjustment'), true);
     assert.strictEqual(
       html.includes('.note:hover, .note:focus-within { z-index: 20;'),
       true,

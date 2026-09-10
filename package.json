@@ -67,6 +67,10 @@
       {
         "command": "deckard.renameTag",
         "title": "Deckard: Rename Tag"
+      },
+      {
+        "command": "deckard.showEntryRelatedNotesDebug",
+        "title": "Deckard: Debug Related Notes"
       }
     ],
     "viewsContainers": {

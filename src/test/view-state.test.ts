@@ -9,6 +9,7 @@ import {
   createTagOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
+  rankRelatedNotes,
   sortEntities,
   sortRelatedNotes,
   sortTasks,
@@ -19,6 +20,7 @@ import {
   ParsedFile,
   Entity,
   PersistedPreferences,
+  RankedNote,
   Section,
   TagOverviewCard,
   TagInfo,
@@ -299,7 +301,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.notes[0].totalTagCount, 3);
   });
 
-  test('ranks notes by shared tags across every section in the note', () => {
+  test('scores each related entry from its own shared tags', () => {
     const active = createFile(
       'notes/current.md',
       '# Current #work #urgent #case',
@@ -313,18 +315,13 @@ suite('Dashboard state', () => {
 
     const snapshot = createSidebarSnapshot(index, active.filePath, active);
 
-    assert.deepStrictEqual(
-      snapshot.notes.slice(0, 3).map((note) => note.filePath),
-      [
-        'notes/z-stronger.md',
-        'notes/z-stronger.md',
-        'notes/z-stronger.md',
-      ],
+    const strongerEntries = snapshot.notes.filter(
+      (note) => note.filePath === 'notes/z-stronger.md',
     );
-    assert.strictEqual(snapshot.notes[0].matchCount, 3);
+    assert.strictEqual(strongerEntries.length, 3);
     assert.deepStrictEqual(
-      snapshot.notes[0].matchedTags.map((tag) => tag.key),
-      ['#case', '#urgent', '#work'],
+      strongerEntries.map((note) => note.matchCount),
+      [1, 1, 1],
     );
     const weakerNote = snapshot.notes.find(
       (note) => note.filePath === 'notes/a-weaker.md',
@@ -358,6 +355,72 @@ suite('Dashboard state', () => {
     assert.strictEqual(associatedNote.associationWeight, 1);
     assert.strictEqual(associatedNote.relevanceScore, 50);
     assert.deepStrictEqual(associatedNote.reasons, ['Associated: #risk/operations']);
+  });
+
+  test('weights selected-entry ancestor tags below direct tags', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #project-name #follow-up #management/performance',
+    );
+    const direct = createFile('notes/direct.md', '# Direct #project-name');
+    const ancestor = createFile(
+      'notes/ancestor.md',
+      '# Ancestor #management/performance',
+    );
+    const index = createFileIndex([active, direct, ancestor]);
+    const notes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [
+        { key: '#project-name', label: '#project-name' },
+        { key: '#follow-up', label: '#follow-up' },
+        { key: '#management/performance', label: '#management/performance' },
+      ],
+      false,
+      'inline',
+      new Map([
+        ['#project-name', 1],
+        ['#follow-up', 1],
+        ['#management/performance', 0.5],
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      notes.map((note) => note.filePath),
+      ['notes/direct.md', 'notes/ancestor.md'],
+    );
+    assert.ok(notes[0].relevanceScore > notes[1].relevanceScore);
+    assert.strictEqual(notes[0].matchCount, 1);
+    assert.strictEqual(notes[1].matchCount, 0.5);
+  });
+
+  test('ranks a specific nested tag match above its broad parent section', () => {
+    const active = createFile(
+      'notes/current.md',
+      '## Check-in #project/name #checkin',
+    );
+    const related = createFile(
+      'notes/related.md',
+      '# 2026-09-10 #project/name #checkin\n\n### Project check-in #project/name #checkin',
+    );
+    const index = createFileIndex([active, related]);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.title),
+      [
+        'Project check-in #project/name #checkin',
+        '2026-09-10 #project/name #checkin',
+      ],
+    );
+    assert.strictEqual(snapshot.notes[0].relevanceScore, 100);
+    assert.strictEqual(snapshot.notes[1].relevanceScore, 95);
+    assert.ok(
+      snapshot.notes[1].reasons?.includes(
+        'Broader match contains a more specific entry',
+      ),
+    );
   });
 
   test('can disable keyword-only related-note matches', () => {
@@ -419,6 +482,40 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('sorts Related Notes by displayed relevance before raw match count', () => {
+    const notes: RankedNote[] = [
+      {
+        filePath: 'notes/lower-score.md',
+        title: 'Lower score',
+        fileName: 'lower-score.md',
+        sourceLine: 1,
+        titleTags: [],
+        matchedTags: [],
+        matchCount: 2,
+        totalTagCount: 2,
+        overlap: 0.97,
+        relevanceScore: 97,
+      },
+      {
+        filePath: 'notes/higher-score.md',
+        title: 'Higher score',
+        fileName: 'higher-score.md',
+        sourceLine: 1,
+        titleTags: [],
+        matchedTags: [],
+        matchCount: 1,
+        totalTagCount: 2,
+        overlap: 1,
+        relevanceScore: 100,
+      },
+    ];
+
+    assert.deepStrictEqual(
+      sortRelatedNotes(notes, 'tags').map((note) => note.filePath),
+      ['notes/higher-score.md', 'notes/lower-score.md'],
+    );
+  });
+
   test('sorts the current note tags alphabetically', () => {
     const active = createFile(
       'notes/current.md',
@@ -469,7 +566,7 @@ suite('Dashboard state', () => {
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.title),
-      ['First reference #work', 'Second reference #work'],
+      ['Second reference #work', 'First reference #work'],
     );
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.fileName),
@@ -477,7 +574,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.sourceLine),
-      [1, 3],
+      [3, 1],
     );
 
     const separate = createSidebarSnapshot(
@@ -491,7 +588,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       separate.notes.map((note) => note.title),
-      ['First reference', 'Second reference'],
+      ['Second reference', 'First reference'],
     );
   });
 

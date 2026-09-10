@@ -283,6 +283,17 @@ function createEntryRelatedNotesUri(
   );
 }
 
+function createEntryRelatedNotesDebugUri(
+  documentUri: string,
+  lineNumber: number,
+): vscode.Uri {
+  return vscode.Uri.parse(
+    `command:deckard.showEntryRelatedNotesDebug?${encodeURIComponent(
+      JSON.stringify([documentUri, lineNumber]),
+    )}`,
+  );
+}
+
 function createTagCommandUri(command: string, tagKey: string): vscode.Uri {
   return vscode.Uri.parse(
     `command:${command}?${encodeURIComponent(JSON.stringify([tagKey]))}`,
@@ -308,11 +319,15 @@ export function createEntryRelatedNotesHoverMessage(
   documentUri: string,
   lineNumber: number,
 ): vscode.MarkdownString {
+  const safeTitle = escapeMarkdown(title);
   const hover = new vscode.MarkdownString(
-    `[Show related notes for ${escapeMarkdown(title)}](${createEntryRelatedNotesUri(documentUri, lineNumber)})`,
+    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})  \n[Debug related notes for ${safeTitle}](${createEntryRelatedNotesDebugUri(documentUri, lineNumber)})`,
   );
   hover.isTrusted = {
-    enabledCommands: ['deckard.showEntryRelatedNotes'],
+    enabledCommands: [
+      'deckard.showEntryRelatedNotes',
+      'deckard.showEntryRelatedNotesDebug',
+    ],
   };
   return hover;
 }

@@ -525,6 +525,7 @@ export function createSidebarSnapshot(
   sectionAccessCounts: Record<string, number> = {},
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   activeEntryTitle?: string,
+  activeTagWeights?: ReadonlyMap<string, number>,
 ): SidebarNotesSnapshot {
   if (!activeFile) {
     return {
@@ -544,6 +545,7 @@ export function createSidebarSnapshot(
     activeTags,
     enableKeywordLinks,
     tagTitleDisplayMode,
+    activeTagWeights,
   );
   return {
     activeFileName: getFileName(activeFilePath),
@@ -583,6 +585,13 @@ export function collectFileTags(file: ParsedFile): TagReference[] {
   return [...tags.values()];
 }
 
+function getTagReferences(
+  keys: string[],
+  labels: Record<string, string>,
+): TagReference[] {
+  return keys.map((key) => ({ key, label: labels[key] ?? key }));
+}
+
 /**
  * Uses canonical keys for ordering while retaining labels for display.
  */
@@ -605,6 +614,7 @@ export function rankRelatedNotes(
   activeTags: TagReference[],
   enableKeywordLinks = true,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  activeTagWeights: ReadonlyMap<string, number> = new Map(),
 ): RankedNote[] {
   const activeKeys = new Set(activeTags.map((tag) => tag.key));
   const notes: RankedNote[] = [];
@@ -614,81 +624,67 @@ export function rankRelatedNotes(
       return;
     }
 
-    const candidateTags = collectFileTags(file);
-    const candidateKeys = new Set(candidateTags.map((tag) => tag.key));
-    const matchedTags = activeTags.filter((tag) => candidateKeys.has(tag.key));
-    const associatedMatches = candidateTags.flatMap((candidateTag) => {
-      const associations = activeTags
-        .map((activeTag) =>
-          findTagAssociation(index, activeTag.key, candidateTag.key),
-        )
-        .filter((association): association is TagAssociation => association !== undefined);
-      const weight = associations.reduce(
-        (total, association) => total + association.weight,
-        0,
-      );
-      return weight > 0 ? [{ tag: candidateTag, weight }] : [];
-    });
-    const associationWeight = associatedMatches.reduce(
-      (total, match) => total + match.weight,
-      0,
-    );
+    const findAssociatedMatches = (
+      candidateTags: TagReference[],
+    ): Array<{ tag: TagReference; weight: number }> =>
+      candidateTags.flatMap((candidateTag) => {
+        const associations = activeTags
+          .map((activeTag) => ({
+            association: findTagAssociation(
+              index,
+              activeTag.key,
+              candidateTag.key,
+            ),
+            activeWeight: activeTagWeights.get(activeTag.key) ?? 1,
+          }))
+          .filter(
+            (match): match is {
+              association: TagAssociation;
+              activeWeight: number;
+            } => match.association !== undefined,
+          );
+        const weight = associations.reduce(
+          (total, match) =>
+            total + match.association.weight * match.activeWeight,
+          0,
+        );
+        return weight > 0 ? [{ tag: candidateTag, weight }] : [];
+      });
     const directLink = filesAreLinked(activeFile, file);
     const sharedKeywords = enableKeywordLinks
       ? getSharedKeywords(activeFile, file)
       : [];
-    if (
-      matchedTags.length === 0 &&
-      associationWeight === 0 &&
-      !directLink &&
-      sharedKeywords.length === 0
-    ) {
-      return;
-    }
-
-    const unionSize = new Set([...activeKeys, ...candidateKeys]).size;
-    const directTagWeight = matchedTags.length * 2;
-    const appliedAssociationWeight = Math.min(
-      associationWeight,
-      activeTags.length,
+    const totalActiveWeight = activeTags.reduce(
+      (total, tag) => total + (activeTagWeights.get(tag.key) ?? 1),
+      0,
     );
-    const linkWeight = directLink ? 0.25 : 0;
-    const keywordWeight = sharedKeywords.length > 0 ? 0.1 : 0;
-    const relevanceScore = Math.round(
-      Math.min(
-        1,
-        (directTagWeight +
-          appliedAssociationWeight +
-          linkWeight +
-          keywordWeight) /
-          Math.max(1, activeTags.length * 2),
-      ) * 100,
-    );
-    const matchingSections = file.sections.filter(
-      (section) =>
-        section.tags.some((tagKey) => activeKeys.has(tagKey)) ||
-        section.tags.some((tagKey) =>
-          associatedMatches.some((match) => match.tag.key === tagKey),
-        ) ||
+    const matchingSections = file.sections.filter((section) => {
+      const tags = getTagReferences(section.tags, section.tagLabels);
+      const associatedMatches = findAssociatedMatches(tags);
+      return (
+        tags.some((tag) => activeKeys.has(tag.key)) ||
+        associatedMatches.length > 0 ||
         directLink ||
         sharedKeywords.some((keyword) =>
           section.rawContent.toLowerCase().includes(keyword),
-        ),
-    );
+        )
+      );
+    });
     const matchingSectionIds = new Set(
       matchingSections.map((section) => section.id),
     );
-    const references: Array<
-      Pick<
-        RankedNote,
-        | 'sectionId'
-        | 'title'
-        | 'sourceLine'
-        | 'titleTags'
-        | 'updatedAt'
-        | 'matchedTags'
-      >
-    > = matchingSections.map((section) => ({
+    const sectionsById = new Map(
+      file.sections.map((section) => [section.id, section]),
+    );
+    const references: Array<{
+      sectionId?: string;
+      title: string;
+      sourceLine: number;
+      titleTags: TagReference[];
+      updatedAt?: number;
+      tags: TagReference[];
+      rawContent: string;
+    }> = matchingSections.map((section) => ({
       sectionId: section.id,
       title: getNoteTitle(section.heading, tagTitleDisplayMode),
       sourceLine: section.startLine,
@@ -698,18 +694,19 @@ export function rankRelatedNotes(
         getInlineSource(section),
       ),
       updatedAt: file.updatedAt ?? section.updatedAt,
-      matchedTags,
+      tags: getTagReferences(section.tags, section.tagLabels),
+      rawContent: section.rawContent,
     }));
     // A task under a matching section is already visible through that section;
     // include only standalone matches to keep sidebar entries distinct.
-    const matchingTasks = file.tasks.filter(
-      (task) =>
-        (task.tags.some((tagKey) => activeKeys.has(tagKey)) ||
-          task.tags.some((tagKey) =>
-            associatedMatches.some((match) => match.tag.key === tagKey),
-          )) &&
-        (!task.sectionId || !matchingSectionIds.has(task.sectionId)),
-    );
+    const matchingTasks = file.tasks.filter((task) => {
+      const tags = getTagReferences(task.tags, task.tagLabels);
+      return (
+        (tags.some((tag) => activeKeys.has(tag.key)) ||
+          findAssociatedMatches(tags).length > 0) &&
+        (!task.sectionId || !matchingSectionIds.has(task.sectionId))
+      );
+    });
 
     matchingTasks.forEach((task) => {
       references.push({
@@ -718,56 +715,163 @@ export function rankRelatedNotes(
         sourceLine: task.lineNumber,
         titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
         updatedAt: file.updatedAt ?? task.updatedAt,
-        matchedTags,
+        tags: getTagReferences(task.tags, task.tagLabels),
+        rawContent: task.sourceLineText,
       });
     });
 
     notes.push(
-      ...references.map((reference) => ({
-        sectionId: reference.sectionId,
-        filePath,
-        title: reference.title,
-        fileName: getFileName(filePath) ?? filePath,
-        sourceLine: reference.sourceLine,
-        titleTags: reference.titleTags,
-        updatedAt: reference.updatedAt,
-        matchedTags: reference.matchedTags,
-        matchCount: reference.matchedTags.length,
-        totalTagCount: activeTags.length,
-        overlap:
-          unionSize > 0 ? relevanceScore / 100 : 0,
-        relevanceScore,
-        associationWeight,
-        relevanceEvidence: {
-          directTagWeight,
+      ...references.map((reference) => {
+        const matchedTags = activeTags.filter((tag) =>
+          reference.tags.some((candidateTag) => candidateTag.key === tag.key),
+        );
+        const associatedMatches = findAssociatedMatches(reference.tags);
+        const associationMatches = reference.tags.flatMap((candidateTag) =>
+          activeTags.flatMap((selectedTag) => {
+            const association = findTagAssociation(
+              index,
+              selectedTag.key,
+              candidateTag.key,
+            );
+            if (!association) {
+              return [];
+            }
+            const selectedWeight =
+              activeTagWeights.get(selectedTag.key) ?? 1;
+            return [{
+              selectedTag,
+              candidateTag,
+              associationWeight: association.weight,
+              selectedWeight,
+              contribution: association.weight * selectedWeight,
+            }];
+          }),
+        );
+        const associationWeight = associatedMatches.reduce(
+          (total, match) => total + match.weight,
+          0,
+        );
+        const unionSize = new Set([
+          ...activeKeys,
+          ...reference.tags.map((tag) => tag.key),
+        ]).size;
+        const directTagWeight = matchedTags.reduce(
+          (total, tag) => total + 2 * (activeTagWeights.get(tag.key) ?? 1),
+          0,
+        );
+        const appliedAssociationWeight = Math.min(
           associationWeight,
-          appliedAssociationWeight,
-          linkWeight,
-          keywordWeight,
-        },
-        reasons: [
-          ...(reference.matchedTags.length > 0
-            ? [
-                `Shared: ${reference.matchedTags.map((tag) => tag.label).join(', ')}`,
-              ]
-            : []),
-          ...(associatedMatches.length > 0
-            ? [
-                `Associated: ${associatedMatches
-                  .map((match) => match.tag.label)
-                  .join(', ')}`,
-              ]
-            : []),
-          ...(directLink ? ['Linked note'] : []),
-          ...(sharedKeywords.length > 0
-            ? [`Keywords: ${sharedKeywords.slice(0, 3).join(', ')}`]
-            : []),
-        ],
-      })),
+          totalActiveWeight,
+        );
+        const linkWeight = directLink ? 0.25 : 0;
+        const hasSharedKeywords = sharedKeywords.some((keyword) =>
+          reference.rawContent.toLowerCase().includes(keyword),
+        );
+        const keywordWeight = hasSharedKeywords ? 0.1 : 0;
+        const relevanceScore = Math.round(
+          Math.min(
+            1,
+            (directTagWeight +
+              appliedAssociationWeight +
+              linkWeight +
+              keywordWeight) /
+              Math.max(1, totalActiveWeight * 2),
+          ) * 100,
+        );
+        const specificityPenalty =
+          reference.sectionId &&
+          matchedTags.length > 0 &&
+          hasMoreSpecificMatchingDescendant(
+            reference.sectionId,
+            matchingSections,
+            matchedTags,
+            sectionsById,
+          )
+            ? 0.05
+            : 0;
+        const referenceRelevanceScore = Math.max(
+          0,
+          relevanceScore - Math.round(specificityPenalty * 100),
+        );
+        return {
+          sectionId: reference.sectionId,
+          filePath,
+          title: reference.title,
+          fileName: getFileName(filePath) ?? filePath,
+          sourceLine: reference.sourceLine,
+          titleTags: reference.titleTags,
+          updatedAt: reference.updatedAt,
+          matchedTags,
+          matchCount: matchedTags.reduce(
+            (total, tag) => total + (activeTagWeights.get(tag.key) ?? 1),
+            0,
+          ),
+          totalTagCount: activeTags.length,
+          overlap:
+            unionSize > 0 ? referenceRelevanceScore / 100 : 0,
+          relevanceScore: referenceRelevanceScore,
+          associationWeight,
+          associationMatches,
+          relevanceEvidence: {
+            directTagWeight,
+            associationWeight,
+            appliedAssociationWeight,
+            linkWeight,
+            keywordWeight,
+            specificityPenalty,
+          },
+          reasons: [
+            ...(matchedTags.length > 0
+              ? [
+                  `Shared: ${matchedTags.map((tag) => tag.label).join(', ')}`,
+                ]
+              : []),
+            ...(associatedMatches.length > 0
+              ? [
+                  `Associated: ${associatedMatches
+                    .map((match) => match.tag.label)
+                    .join(', ')}`,
+                ]
+              : []),
+            ...(directLink ? ['Linked note'] : []),
+            ...(hasSharedKeywords
+              ? [`Keywords: ${sharedKeywords.slice(0, 3).join(', ')}`]
+              : []),
+            ...(specificityPenalty > 0
+              ? ['Broader match contains a more specific entry']
+              : []),
+          ],
+        };
+      }),
     );
   });
 
   return notes.sort(compareRelatedNotes);
+}
+
+function hasMoreSpecificMatchingDescendant(
+  sectionId: string,
+  matchingSections: Section[],
+  matchedTags: TagReference[],
+  sectionsById: ReadonlyMap<string, Section>,
+): boolean {
+  return matchingSections.some((candidate) => {
+    if (
+      candidate.id === sectionId ||
+      !matchedTags.every((tag) => candidate.tags.includes(tag.key))
+    ) {
+      return false;
+    }
+
+    let parentId = candidate.parentSectionId;
+    while (parentId) {
+      if (parentId === sectionId) {
+        return true;
+      }
+      parentId = sectionsById.get(parentId)?.parentSectionId;
+    }
+    return false;
+  });
 }
 
 /**
@@ -823,6 +927,7 @@ function compareRelatedNoteDates(
 
 function compareRelatedNotes(left: RankedNote, right: RankedNote): number {
   return (
+    right.relevanceScore - left.relevanceScore ||
     right.matchCount - left.matchCount ||
     (right.associationWeight ?? 0) - (left.associationWeight ?? 0) ||
     right.overlap - left.overlap ||

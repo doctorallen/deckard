@@ -232,12 +232,20 @@ export interface RankedNote {
   overlap: number;
   relevanceScore: number;
   associationWeight?: number;
+  associationMatches?: Array<{
+    selectedTag: TagReference;
+    candidateTag: TagReference;
+    associationWeight: number;
+    selectedWeight: number;
+    contribution: number;
+  }>;
   relevanceEvidence?: {
     directTagWeight: number;
     associationWeight: number;
     appliedAssociationWeight: number;
     linkWeight: number;
     keywordWeight: number;
+    specificityPenalty: number;
   };
   reasons?: string[];
 }
