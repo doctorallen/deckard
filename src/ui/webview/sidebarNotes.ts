@@ -45,6 +45,7 @@ export class SidebarNotesView
     private readonly onOpenTag: (
       tagKey: string,
       filterTagKey?: string,
+      filterTagKeys?: readonly string[],
     ) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
@@ -255,7 +256,7 @@ export class SidebarNotesView
   private createSnapshot() {
     const index = this.indexer.getSnapshot();
     const activeTagKey = this.tagOverview.getActiveTagKey();
-    const activeTagFilterKey = this.tagOverview.getActiveTagFilterKey();
+    const activeTagFilterKeys = this.tagOverview.getActiveTagFilterKeys();
     if (activeTagKey) {
       const overview = createTagOverviewSnapshot(
         index,
@@ -264,7 +265,8 @@ export class SidebarNotesView
         'active',
         this.getTagTitleDisplayMode(),
         this.areHeadingTagRelationshipsEnabled(),
-        activeTagFilterKey,
+        activeTagFilterKeys[0],
+        [...activeTagFilterKeys],
       );
       if (overview) {
         return createTagOverviewSidebarSnapshot(overview);
@@ -436,7 +438,11 @@ export class SidebarNotesView
     if (message.type === 'openTag') {
       const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
       if (tagKey) {
-        await this.onOpenTag(tagKey, message.filterTagKey);
+        await this.onOpenTag(
+          tagKey,
+          message.filterTagKey,
+          message.filterTagKeys,
+        );
       }
       return;
     }
@@ -480,7 +486,7 @@ export class SidebarNotesView
 interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
-  getActiveTagFilterKey(): string | undefined;
+  getActiveTagFilterKeys(): readonly string[];
 }
 
 /**

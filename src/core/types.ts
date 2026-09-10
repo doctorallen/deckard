@@ -195,8 +195,12 @@ export interface DashboardSnapshot {
 export interface TagOverviewSnapshot {
   tag: TagInfo;
   entity?: Entity;
+  /** @deprecated Use filterTags to support every active overview filter. */
   filterTag?: TagReference;
+  filterTags: TagReference[];
   associatedTags: TagAssociation[];
+  /** Tags independently associated with every active tag in a filtered overview. */
+  sharedAssociatedTags: TagAssociation[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
   taskFilter: TaskFilter;
@@ -310,9 +314,12 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  /** @deprecated Use tagOverviewFilters to support every active overview filter. */
   tagOverviewFilter?: TagReference;
+  tagOverviewFilters: TagReference[];
   tagOverviewRelationships?: {
     associatedTags: TagAssociation[];
+    sharedAssociatedTags: TagAssociation[];
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
@@ -385,7 +392,9 @@ export interface ReorderEntitiesMessage {
 export interface OpenTagMessage {
   type: 'openTag';
   tagKey: string;
+  /** @deprecated Use filterTagKeys to support every active overview filter. */
   filterTagKey?: string;
+  filterTagKeys?: string[];
 }
 
 export interface RenameTagMessage {

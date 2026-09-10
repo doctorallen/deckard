@@ -195,7 +195,11 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
 function isOpenTagMessage(value: Record<string, unknown>): boolean {
   return (
     typeof value.tagKey === 'string' &&
-    (value.filterTagKey === undefined || typeof value.filterTagKey === 'string')
+    value.tagKey.length > 0 &&
+    (value.filterTagKey === undefined ||
+      (typeof value.filterTagKey === 'string' &&
+        value.filterTagKey.length > 0)) &&
+    (value.filterTagKeys === undefined || isNonEmptyStringArray(value.filterTagKeys))
   );
 }
 
@@ -209,6 +213,12 @@ function isRenameTagMessage(value: Record<string, unknown>): boolean {
 function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((item) => typeof item === 'string')
+  );
+}
+
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return (
+    isStringArray(value) && value.every((item) => item.length > 0)
   );
 }
 

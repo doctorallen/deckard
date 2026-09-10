@@ -293,15 +293,21 @@ export function createTagOverviewSnapshot(
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   enableHeadingTagRelationships = true,
   filterTagKey?: string,
+  filterTagKeys: string[] = [],
 ): TagOverviewSnapshot | undefined {
   const tag = index.tags.get(tagKey);
   if (!tag) {
     return undefined;
   }
-  const filterTag = filterTagKey ? index.tags.get(filterTagKey) : undefined;
-  const effectiveFilterTagKey = filterTag?.key;
+  const effectiveFilterTags = getOverviewFilterTags(
+    index,
+    tag.key,
+    filterTagKey,
+    filterTagKeys,
+  );
+  const effectiveFilterTagKey = effectiveFilterTags[0]?.key;
   const association =
-    effectiveFilterTagKey === undefined
+    effectiveFilterTags.length !== 1 || effectiveFilterTagKey === undefined
       ? undefined
       : findTagAssociation(index, tag.key, effectiveFilterTagKey);
   const associationSectionIds = association
@@ -321,8 +327,10 @@ export function createTagOverviewSnapshot(
   } else {
     sectionCandidates = [...index.sections.values()].filter(
       (section) =>
-        sectionIncludesTag(index, section, tag.key) &&
-        sectionIncludesTag(index, section, effectiveFilterTagKey),
+        [
+          tag.key,
+          ...effectiveFilterTags.map((filterTag) => filterTag.key),
+        ].every((activeTagKey) => sectionIncludesTag(index, section, activeTagKey)),
     );
   }
   const fileCandidates = (association ? [] : tag.filePaths)
@@ -330,8 +338,9 @@ export function createTagOverviewSnapshot(
     .filter((file): file is ParsedFile => file !== undefined)
     .filter(
       (file) =>
-        effectiveFilterTagKey === undefined ||
-        fileIncludesTag(index, file, effectiveFilterTagKey),
+        effectiveFilterTags.every((filterTag) =>
+          fileIncludesTag(index, file, filterTag.key),
+        ),
     );
 
   const sections = sectionCandidates
@@ -358,8 +367,10 @@ export function createTagOverviewSnapshot(
   } else {
     taskCandidates = [...index.tasks.values()].filter(
       (task) =>
-        taskIncludesTag(index, task, tag.key) &&
-        taskIncludesTag(index, task, effectiveFilterTagKey),
+        [
+          tag.key,
+          ...effectiveFilterTags.map((filterTag) => filterTag.key),
+        ].every((activeTagKey) => taskIncludesTag(index, task, activeTagKey)),
     );
   }
 
@@ -372,12 +383,18 @@ export function createTagOverviewSnapshot(
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
     entity: index.entities.get(tagKey),
-    filterTag: filterTag
-      ? { key: filterTag.key, label: filterTag.label }
-      : undefined,
+    filterTag: effectiveFilterTags[0],
+    filterTags: effectiveFilterTags,
     associatedTags: enableHeadingTagRelationships
       ? cloneTagAssociations(index.tagAssociations?.get(tagKey) ?? [])
       : [],
+    sharedAssociatedTags:
+      enableHeadingTagRelationships && effectiveFilterTags.length > 0
+        ? getSharedTagAssociations(index, [
+            tag.key,
+            ...effectiveFilterTags.map((filterTag) => filterTag.key),
+          ])
+        : [],
     sections,
     tasks: taskCandidates
       .filter((task) => matchesTaskFilter(task, taskFilter))
@@ -388,6 +405,31 @@ export function createTagOverviewSnapshot(
     layout: preferences.tagOverviewLayout,
     tagTitleDisplayMode,
   };
+}
+
+/**
+ * Canonicalizes all usable filters while retaining the legacy single-filter
+ * argument for callers restored from earlier webview state.
+ */
+function getOverviewFilterTags(
+  index: WorkspaceIndex,
+  focusTagKey: string,
+  filterTagKey: string | undefined,
+  filterTagKeys: string[],
+): TagReference[] {
+  const seen = new Set<string>();
+  const focusLabel = index.tags.get(focusTagKey)?.label;
+  return [...filterTagKeys, ...(filterTagKey ? [filterTagKey] : [])]
+    .map((key) => index.tags.get(key))
+    .filter((tag): tag is TagInfo => tag !== undefined)
+    .filter(
+      (tag) =>
+        tag.key !== focusTagKey &&
+        tag.label !== focusLabel &&
+        !seen.has(tag.key) &&
+        (seen.add(tag.key), true),
+    )
+    .map((tag) => ({ key: tag.key, label: tag.label }));
 }
 
 function cloneTagAssociations(
@@ -406,6 +448,92 @@ function cloneTagAssociations(
     coOccurrenceCount: relationship.coOccurrenceCount,
     headingRelationshipCount: relationship.headingRelationshipCount,
   }));
+}
+
+/**
+ * Keeps tags independently associated with every active overview tag. The
+ * lowest relationship strength expresses the limiting side of that context.
+ */
+function getSharedTagAssociations(
+  index: WorkspaceIndex,
+  activeTagKeys: string[],
+): TagAssociation[] {
+  const associationsByTagKey = new Map<string, TagAssociation[]>();
+  activeTagKeys.forEach((activeTagKey) => {
+    (index.tagAssociations?.get(activeTagKey) ?? []).forEach(
+      (association) => {
+        const associatedTagKey = association.associatedTag.key;
+        if (!activeTagKeys.includes(associatedTagKey)) {
+          const matches = associationsByTagKey.get(associatedTagKey) ?? [];
+          matches.push(association);
+          associationsByTagKey.set(associatedTagKey, matches);
+        }
+      },
+    );
+  });
+
+  return [...associationsByTagKey.values()]
+    .filter((associations) => associations.length === activeTagKeys.length)
+    .map((associations) => {
+      const [first, ...rest] = associations;
+      const minimum = (
+        value: (association: TagAssociation) => number,
+      ): number => Math.min(...associations.map(value));
+      return {
+        ...first,
+        associatedTag: { ...first.associatedTag },
+        sectionIds: first.sectionIds.filter((sectionId) =>
+          rest.every((association) => association.sectionIds.includes(sectionId)),
+        ),
+        taskIds: first.taskIds.filter((taskId) =>
+          rest.every((association) => association.taskIds.includes(taskId)),
+        ),
+        count: minimum((association) => association.count),
+        weight: minimum((association) => association.weight),
+        normalizedWeight: minimum(
+          (association) => association.normalizedWeight,
+        ),
+        tagSourceUnitCount: minimum(
+          (association) => association.tagSourceUnitCount,
+        ),
+        associatedTagSourceUnitCount: minimum(
+          (association) => association.associatedTagSourceUnitCount,
+        ),
+        totalSourceUnitCount: minimum(
+          (association) => association.totalSourceUnitCount,
+        ),
+        coOccurrenceCount: minimum(
+          (association) => association.coOccurrenceCount,
+        ),
+        headingRelationshipCount: minimum(
+          (association) => association.headingRelationshipCount,
+        ),
+      };
+    })
+    .filter((association) =>
+      hasAllTagOverviewEntries(
+        index,
+        [...activeTagKeys, association.associatedTag.key],
+      ),
+    );
+}
+
+/**
+ * Offers only association filters that can produce an entry under the same
+ * structural all-tag matching rules used by a multi-tag overview.
+ */
+function hasAllTagOverviewEntries(
+  index: WorkspaceIndex,
+  tagKeys: string[],
+): boolean {
+  return (
+    [...index.sections.values()].some((section) =>
+      tagKeys.every((tagKey) => sectionIncludesTag(index, section, tagKey)),
+    ) ||
+    [...index.tasks.values()].some((task) =>
+      tagKeys.every((tagKey) => taskIncludesTag(index, task, tagKey)),
+    )
+  );
 }
 
 function findTagAssociation(
@@ -498,8 +626,10 @@ export function createTagOverviewSidebarSnapshot(
     tagOverviewFilter: snapshot.filterTag
       ? { ...snapshot.filterTag }
       : undefined,
+    tagOverviewFilters: snapshot.filterTags.map((tag) => ({ ...tag })),
     tagOverviewRelationships: {
       associatedTags: cloneTagAssociations(snapshot.associatedTags),
+      sharedAssociatedTags: cloneTagAssociations(snapshot.sharedAssociatedTags),
     },
     tagTitleDisplayMode: snapshot.tagTitleDisplayMode,
     state: notes.length > 0 ? 'ready' : 'noMatches',
@@ -538,6 +668,7 @@ export function createSidebarSnapshot(
       activeTags: [],
       notes: [],
       relatedNotesSortMode,
+      tagOverviewFilters: [],
       tagTitleDisplayMode,
       state: 'noMarkdown',
     };
@@ -560,6 +691,7 @@ export function createSidebarSnapshot(
     activeTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
+    tagOverviewFilters: [],
     tagTitleDisplayMode,
     state:
       notes.length > 0

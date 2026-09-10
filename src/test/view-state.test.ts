@@ -898,6 +898,62 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('accumulates overview filters and intersects associated sidebar tags', () => {
+    const parsed = createFile(
+      'notes/multi-filtered-relationship.md',
+      [
+        '# All routes #focus #first #second #shared',
+        '- [ ] All routes task #focus #first #second',
+        '# First route #focus #first #shared #first-only',
+        '# Second route #focus #second #shared',
+        '# Filter-only route #first #second #shared',
+        '# Focus-only association #focus #unavailable',
+        '# First-only association #first #unavailable',
+        '# Second-only association #second #unavailable',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#focus',
+      'active',
+      'inline',
+      true,
+      undefined,
+      ['#first', '#second', '#first'],
+    );
+
+    assert.ok(snapshot);
+    assert.deepStrictEqual(snapshot.filterTags, [
+      { key: '#first', label: '#first' },
+      { key: '#second', label: '#second' },
+    ]);
+    assert.deepStrictEqual(
+      snapshot.sections.map((section) => section.heading),
+      ['All routes #focus #first #second #shared'],
+    );
+    assert.deepStrictEqual(
+      snapshot.tasks.map((item) => item.task.title),
+      ['All routes task #focus #first #second'],
+    );
+    assert.deepStrictEqual(
+      snapshot.sharedAssociatedTags.map(
+        (association) => association.associatedTag.key,
+      ),
+      ['#shared'],
+    );
+
+    const sidebar = createTagOverviewSidebarSnapshot(snapshot);
+    assert.deepStrictEqual(sidebar.tagOverviewFilters, snapshot.filterTags);
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.sharedAssociatedTags.map(
+        (association) => association.associatedTag.key,
+      ),
+      ['#shared'],
+    );
+  });
+
   test('projects weighted tag associations into tag overviews', () => {
     const parsed = parseMarkdown(
       'notes/relationship-overview.md',
@@ -1255,6 +1311,9 @@ suite('Dashboard state', () => {
       key: '#task',
       label: '#task',
     });
+    assert.deepStrictEqual(filteredSidebar.tagOverviewFilters, [
+      { key: '#task', label: '#task' },
+    ]);
     assert.deepStrictEqual(
       filteredSidebar.tagOverviewRelationships?.associatedTags.map(
         (association) => association.associatedTag.key,

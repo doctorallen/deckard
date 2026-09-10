@@ -183,7 +183,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .tag-context-menu[hidden] { display: none; }
 .tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .cards { display: grid; gap: 12px; margin-top: 20px; }
-.title-filter-clear { min-height: 24px; margin-top: 8px; padding: 2px 6px; font-size: 10px; }
+.overview-filter-tag { display: inline-flex; align-items: baseline; gap: 5px; }
+.title-filter-remove { min-height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--muted); padding: 0 4px; font-size: 12px; line-height: 16px; vertical-align: middle; }
+.title-filter-remove:hover, .title-filter-remove:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .card { border: 2px solid var(--line); background: var(--panel); padding: 14px; cursor: pointer; }
 .card:hover { border-color: var(--amber); }
 .card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
@@ -256,6 +258,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Render a title or metadata tag as a direct overview link. */
   function renderOverviewTagLink(tag, text) {
     return '<button class="overview-tag-link" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(text) + '</button>';
+  }
+
+  /** Render a combined-overview tag with a control that removes only that tag. */
+  function renderFilteredOverviewTag(tag, text, nextTagKey, nextFilterTagKeys) {
+    return '<span class="overview-filter-tag">' + renderOverviewTagLink(tag, text) + '<button class="title-filter-remove" data-action="open-tag" data-tag-key="' + escapeHtml(nextTagKey) + '" data-filter-tag-keys="' + escapeHtml(JSON.stringify(nextFilterTagKeys)) + '" aria-label="Remove ' + escapeHtml(tag.label) + ' from this overview" title="Remove ' + escapeHtml(tag.label) + '">&#215;</button></span>';
   }
 
   function closeTagContextMenu() {
@@ -483,28 +490,31 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const baseTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : state.tag.label + ' Overview';
-    const filterTitle = state.filterTag
-      ? formatTagReferenceTitle(state.filterTag)
-      : '';
+    const filterTags = state.filterTags || (state.filterTag ? [state.filterTag] : []);
     const focusReference = state.entity
       ? { key: state.entity.key, label: state.entity.label }
       : state.tag;
     const focusTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : state.tag.label;
-    const focusTitleHtml = renderOverviewTagLink(focusReference, focusTitle)
-      + (state.entity ? '' : ' Overview');
-    const titleHtml = filterTitle
-      ? '<span class="overview-title-filter">' + renderOverviewTagLink(state.filterTag, filterTitle) + '</span><span class="overview-title-joiner"> AND </span>' + focusTitleHtml
-      : focusTitleHtml;
-    const titleAriaLabel = filterTitle
-      ? filterTitle + ' and ' + baseTitle
+    const activeTitleTags = filterTags.map(function (tag) {
+      return { tag: tag, text: formatTagReferenceTitle(tag) };
+    }).concat([{ tag: focusReference, text: focusTitle }]);
+    const titleHtml = filterTags.length
+      ? activeTitleTags.map(function (item) {
+        const removingFocus = item.tag.key === focusReference.key;
+        const remainingFilterTags = removingFocus
+          ? filterTags.slice(1)
+          : filterTags.filter(function (tag) { return tag.key !== item.tag.key; });
+        const nextTagKey = removingFocus ? filterTags[0].key : focusReference.key;
+        return renderFilteredOverviewTag(item.tag, item.text, nextTagKey, remainingFilterTags.map(function (tag) { return tag.key; }));
+      }).join('<span class="overview-title-joiner"> AND </span>') + (state.entity ? '' : ' Overview')
+      : renderOverviewTagLink(focusReference, focusTitle) + (state.entity ? '' : ' Overview');
+    const titleAriaLabel = filterTags.length
+      ? activeTitleTags.map(function (item) { return item.text; }).join(' and ') + (state.entity ? '' : ' overview')
       : baseTitle;
     const entityMeta = state.entity
-      ? '<div class="entity-meta">' + (state.filterTag ? renderOverviewTagLink(state.filterTag, state.filterTag.label) + ' · ' : '') + renderOverviewTagLink(focusReference, state.entity.label) + ' · ' + (state.filterTag ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length) + ' note entries · ' + (state.filterTag ? state.tasks.length : state.entity.taskIds.length) + ' tasks</div>'
-      : '';
-    const filterContext = state.filterTag
-      ? '<button class="tag-open title-filter-clear" data-action="open-tag" data-tag-key="' + escapeHtml(state.tag.key) + '" aria-label="Clear relationship filter">Clear filter</button>'
+      ? '<div class="entity-meta">' + (filterTags.length ? filterTags.map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ') + ' · ' : '') + renderOverviewTagLink(focusReference, state.entity.label) + ' · ' + (filterTags.length ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length) + ' note entries · ' + (filterTags.length ? state.tasks.length : state.entity.taskIds.length) + ' tasks</div>'
       : '';
     const cards = state.sections.length ? state.sections.map(function (section) {
       const fileName = section.filePath.split('/').pop() || section.filePath;
@@ -516,7 +526,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
       }).join('') : '';
       return '<article class="card" tabindex="0" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
-    }).join('') : '<div class="empty">' + (state.filterTag ? 'No sections currently carry both tags.' : 'No sections currently carry this tag.') + '</div>';
+    }).join('') : '<div class="empty">' + (filterTags.length ? 'No sections currently carry all selected tags.' : 'No sections currently carry this tag.') + '</div>';
     const tasks = state.tasks.length ? '<div class="task-summary">' + state.tasks.map(function (item) {
       const task = item.task;
       return '<article class="task ' + (task.completed ? 'completed' : '') + '" tabindex="0" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '"><div><div class="task-title">' + item.renderedTitle + '</div><div class="source">' + escapeHtml(item.fileName) + ' / line ' + task.lineNumber + '</div></div></article>';
@@ -533,7 +543,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const relationships = state.entity
       ? ''
       : renderRelationshipViews(state.associatedTags, state.tag);
-    document.getElementById('app').innerHTML = '<header><div><p class="eyebrow">DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW</p><h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + filterContext + '</div><div class="toolbar" role="group" aria-label="Tag entry view controls"><div class="toolbar-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div><select data-action="set-sort" aria-label="Sort tag entries"><option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m6 4-4 4 4 4M10 4l4 4-4 4"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button></div></div></header>' + relationships + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><p class="eyebrow">DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW</p><h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="Tag entry view controls"><div class="toolbar-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div><select data-action="set-sort" aria-label="Sort tag entries"><option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div></div></header>' + relationships + layoutContent;
   }
 
   document.addEventListener('click', function (event) {
@@ -566,6 +576,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (target.dataset.action === 'open-tag') {
         const message = { type: 'openTag', tagKey: target.dataset.tagKey };
         if (target.dataset.filterTagKey) message.filterTagKey = target.dataset.filterTagKey;
+        const filterTagKeys = getFilterTagKeys(target.dataset.filterTagKeys);
+        if (filterTagKeys) message.filterTagKeys = filterTagKeys;
         vscode.postMessage(message);
       }
       return;
@@ -588,6 +600,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
       event.preventDefault();
       const message = { type: 'openTag', tagKey: relationshipNode.dataset.tagKey };
       if (relationshipNode.dataset.filterTagKey) message.filterTagKey = relationshipNode.dataset.filterTagKey;
+      const filterTagKeys = getFilterTagKeys(relationshipNode.dataset.filterTagKeys);
+      if (filterTagKeys) message.filterTagKeys = filterTagKeys;
       vscode.postMessage(message);
       return;
     }
@@ -604,8 +618,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
   });
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') { state = event.data.data; vscode.setState({ tagKey: state.tag.key, filterTagKey: state.filterTag && state.filterTag.key }); render(); }
+    if (event.data && event.data.type === 'state') { state = event.data.data; vscode.setState({ tagKey: state.tag.key, filterTagKey: state.filterTag && state.filterTag.key, filterTagKeys: (state.filterTags || []).map(function (tag) { return tag.key; }) }); render(); }
   });
+
+  function getFilterTagKeys(value) {
+    if (!value) return undefined;
+    try {
+      const filterTagKeys = JSON.parse(value);
+      return Array.isArray(filterTagKeys) && filterTagKeys.every(function (key) {
+        return typeof key === 'string' && key.length > 0;
+      }) ? filterTagKeys : undefined;
+    } catch (_error) {
+      return undefined;
+    }
+  }
 }());
 </script>
 </body>

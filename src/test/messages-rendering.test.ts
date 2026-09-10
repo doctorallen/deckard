@@ -131,11 +131,31 @@ suite('Webview contracts', () => {
       }),
       { type: 'openTag', tagKey: '#child', filterTagKey: '#parent' },
     );
+    assert.deepStrictEqual(
+      parseTagOverviewMessage({
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      }),
+      {
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      },
+    );
     assert.strictEqual(
       parseTagOverviewMessage({
         type: 'openTag',
         tagKey: '#child',
         filterTagKey: 42,
+      }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseTagOverviewMessage({
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', 42],
       }),
       undefined,
     );
@@ -607,7 +627,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="relationship-tree-group"'), true);
     assert.strictEqual(html.includes('class="relationship-node"'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), true);
-    assert.strictEqual(html.includes('const filterTitle = state.filterTag'), true);
+    assert.strictEqual(html.includes('const filterTags = state.filterTags'), true);
     assert.strictEqual(
       html.includes('function renderOverviewTagLink(tag, text)'),
       true,
@@ -630,34 +650,37 @@ suite('Webview contracts', () => {
       html.includes('class="overview-tag-link" data-action="open-tag"'),
       true,
     );
-    assert.strictEqual(html.includes('class="overview-title-filter"'), true);
+    assert.strictEqual(html.includes('class="overview-filter-tag"'), true);
     assert.strictEqual(html.includes('class="overview-title-joiner"> AND </span>'), true);
     assert.strictEqual(html.includes('<h1 aria-label="'), true);
     assert.strictEqual(html.includes('escapeHtml(titleAriaLabel)'), true);
     assert.strictEqual(
       html.includes(
-        "state.filterTag ? renderOverviewTagLink(state.filterTag, state.filterTag.label) + ' · ' : ''",
+        "filterTags.map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ')",
       ),
       true,
     );
     assert.strictEqual(
       html.includes(
-        'state.filterTag ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length',
+        'filterTags.length ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length',
       ),
       true,
     );
     assert.strictEqual(
-      html.includes('state.filterTag ? state.tasks.length : state.entity.taskIds.length'),
+      html.includes('filterTags.length ? state.tasks.length : state.entity.taskIds.length'),
       true,
     );
     assert.strictEqual(
       html.includes('.overview-title-joiner { color: var(--amber);'),
       true,
     );
-    assert.strictEqual(html.includes('title-filter-clear'), true);
+    assert.strictEqual(html.includes('function renderFilteredOverviewTag'), true);
+    assert.strictEqual(html.includes('class="title-filter-remove"'), true);
+    assert.strictEqual(html.includes('nextFilterTagKeys'), true);
+    assert.strictEqual(html.includes('data-filter-tag-keys'), true);
     assert.strictEqual(html.includes('filter-context'), false);
-    assert.strictEqual(html.includes('aria-label="Clear relationship filter"'), true);
-    assert.strictEqual(html.includes('Clear filter'), true);
+    assert.strictEqual(html.includes('Clear relationship filter'), false);
+    assert.strictEqual(html.includes('Clear filter'), false);
     assert.strictEqual(html.includes('class="relationship-count"'), true);
     assert.strictEqual(
       html.includes(
@@ -736,9 +759,12 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('Associated tags'), true);
     assert.strictEqual(
-      html.includes('function renderSidebarAssociations(relationships, filterTagKey)'),
+      html.includes('function renderSidebarAssociations(relationships, overviewTagKey)'),
       true,
     );
+    assert.strictEqual(html.includes('data-action="add-overview-filter"'), true);
+    assert.strictEqual(html.includes('data-add-tag-key'), true);
+    assert.strictEqual(html.includes('class="sidebar-add-filter"'), true);
     assert.strictEqual(html.includes('Open associated tag'), true);
     assert.strictEqual(
       html.includes('class="sidebar-association-tooltip" role="tooltip"'),
@@ -754,7 +780,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="relevance-score"'), true);
     assert.strictEqual(html.includes('const relevance = state.tagOverview'), true);
     assert.strictEqual(html.includes('note.relevanceScore'), true);
-    assert.strictEqual(html.includes('data-filter-tag-key'), true);
+    assert.strictEqual(html.includes('data-filter-tag-key'), false);
     assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
     assert.strictEqual(html.includes('active-filter-label'), false);
     assert.strictEqual(html.includes('active-filter-joiner'), true);
@@ -780,7 +806,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('if (!relationships || snapshot.tagOverviewFilter) return \'\';'),
+      html.includes('const filterTagKeys = snapshot.tagOverviewFilters'),
       true,
     );
     assert.strictEqual(
@@ -908,6 +934,18 @@ suite('Webview contracts', () => {
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
       { type: 'openTag', tagKey: 'work' },
+    );
+    assert.deepStrictEqual(
+      parseSidebarMessage({
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      }),
+      {
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      },
     );
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'renameTag', tagKey: '#work' }),
