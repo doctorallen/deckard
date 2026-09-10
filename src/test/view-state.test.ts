@@ -333,6 +333,33 @@ suite('Dashboard state', () => {
     assert.strictEqual(weakerNote.matchCount, 1);
   });
 
+  test('includes notes through weighted tag associations', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #project/ghostline',
+    );
+    const bridge = createFile(
+      'notes/bridge.md',
+      '# Risk register #project/ghostline #risk/operations',
+    );
+    const associated = createFile(
+      'notes/associated.md',
+      '# Vendor assessment #risk/operations',
+    );
+    const index = createFileIndex([active, bridge, associated]);
+
+    const snapshot = createSidebarSnapshot(index, active.filePath, active, false);
+
+    const associatedNote = snapshot.notes.find(
+      (note) => note.filePath === 'notes/associated.md',
+    );
+    assert.ok(associatedNote);
+    assert.strictEqual(associatedNote.matchCount, 0);
+    assert.strictEqual(associatedNote.associationWeight, 1);
+    assert.strictEqual(associatedNote.relevanceScore, 50);
+    assert.deepStrictEqual(associatedNote.reasons, ['Associated: #risk/operations']);
+  });
+
   test('can disable keyword-only related-note matches', () => {
     const active = createFile(
       'notes/current.md',
@@ -542,9 +569,9 @@ suite('Dashboard state', () => {
     const parsed = createFile(
       'notes/filtered-relationship.md',
       [
-        '# Parent route #parent',
+        '# Parent route #parent #child',
         '## Shared child #child',
-        '- [ ] Both tags',
+        '- [ ] Both tags #parent #child',
         '# Child-only route #child',
         '- [ ] Child only',
       ].join('\n'),
@@ -567,11 +594,11 @@ suite('Dashboard state', () => {
     });
     assert.deepStrictEqual(
       snapshot.sections.map((section) => section.heading),
-      ['Shared child #child'],
+      ['Parent route #parent #child', 'Shared child #child'],
     );
     assert.deepStrictEqual(
       snapshot.tasks.map((item) => item.task.title),
-      ['Both tags'],
+      ['Both tags #parent #child'],
     );
     assert.deepStrictEqual(
       createTagOverviewSidebarSnapshot(snapshot).tagOverviewFilter,
@@ -590,82 +617,57 @@ suite('Dashboard state', () => {
     assert.ok(reverse);
     assert.deepStrictEqual(
       reverse.sections.map((section) => section.heading),
-      ['Shared child #child'],
+      ['Parent route #parent #child', 'Shared child #child'],
     );
     assert.deepStrictEqual(
       reverse.tasks.map((item) => item.task.title),
-      ['Both tags'],
+      ['Both tags #parent #child'],
     );
   });
 
-  test('projects parent and child heading relationships into tag overviews', () => {
+  test('projects weighted tag associations into tag overviews', () => {
     const parsed = parseMarkdown(
       'notes/relationship-overview.md',
       [
-        '# Relay map #parent',
+        '# Relay map #parent #co-occurring',
         '## Un tagged details',
         '### Signal route #child',
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
 
-    const child = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#child',
-    );
-    const parent = createTagOverviewSnapshot(
+    const overview = createTagOverviewSnapshot(
       index,
       defaultPreferences,
       '#parent',
     );
 
-    assert.ok(child);
-    assert.ok(parent);
+    assert.ok(overview);
     assert.deepStrictEqual(
-      child.parentTags.map((relationship) => ({
-        key: relationship.parent.key,
-        label: relationship.parent.label,
-        count: relationship.count,
+      overview.associatedTags.map((association) => ({
+        key: association.associatedTag.key,
+        weight: association.weight,
+        coOccurrenceCount: association.coOccurrenceCount,
+        headingRelationshipCount: association.headingRelationshipCount,
       })),
-      [{ key: '#parent', label: '#parent', count: 1 }],
+      [
+        { key: '#co-occurring', weight: 1, coOccurrenceCount: 1, headingRelationshipCount: 0 },
+        { key: '#child', weight: 0.25, coOccurrenceCount: 0, headingRelationshipCount: 1 },
+      ],
     );
-    assert.deepStrictEqual(
-      parent.childTags.map((relationship) => ({
-        key: relationship.child.key,
-        label: relationship.child.label,
-        count: relationship.count,
-      })),
-      [{ key: '#child', label: '#child', count: 1 }],
-    );
-    assert.deepStrictEqual(parent.parentTags, []);
-    assert.deepStrictEqual(child.childTags, []);
   });
 
-  test('projects and filters sibling heading relationships', () => {
+  test('filters an association to its exact source entries', () => {
     const parsed = parseMarkdown(
       'notes/sibling-overview.md',
       [
-        '# Relay map',
-        '## First route #first',
-        '- [ ] First task',
-        '## Second route #second',
-        '- [ ] Second task',
-        '## Third route #third',
+        '## First route #first #second',
+        '- [ ] First task #first #second',
+        '## Separate route #first',
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
 
-    const first = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#first',
-    );
-    const second = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#second',
-    );
     const filtered = createTagOverviewSnapshot(
       index,
       defaultPreferences,
@@ -676,24 +678,14 @@ suite('Dashboard state', () => {
       '#first',
     );
 
-    assert.ok(first);
-    assert.ok(second);
     assert.ok(filtered);
     assert.deepStrictEqual(
-      first.siblingTags.map((relationship) => relationship.sibling.key),
-      ['#second', '#third'],
-    );
-    assert.deepStrictEqual(
-      second.siblingTags.map((relationship) => relationship.sibling.key),
-      ['#first', '#third'],
-    );
-    assert.deepStrictEqual(
       filtered.sections.map((section) => section.heading),
-      ['Second route #second'],
+      ['First route #first #second'],
     );
     assert.deepStrictEqual(
       filtered.tasks.map((item) => item.task.title),
-      ['Second task'],
+      ['First task #first #second'],
     );
   });
 
@@ -732,11 +724,8 @@ suite('Dashboard state', () => {
 
     assert.ok(enabled);
     assert.ok(disabled);
-    assert.strictEqual(enabled.parentTags.length, 12);
-    assert.strictEqual(enabled.childTags.length, 12);
-    assert.deepStrictEqual(disabled.parentTags, []);
-    assert.deepStrictEqual(disabled.childTags, []);
-    assert.deepStrictEqual(disabled.siblingTags, []);
+    assert.strictEqual(enabled.associatedTags.length, 24);
+    assert.deepStrictEqual(disabled.associatedTags, []);
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -952,14 +941,13 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('projects tag overview relationships into the sidebar tree', () => {
+  test('projects tag associations into the sidebar tree', () => {
     const parsed = createFile(
       'notes/relationship-sidebar.md',
       [
-        '# Parent route #parent',
-        '## Focus route #focus',
-        '### Child route #child',
-        '## Sibling route #sibling',
+        '# Parent route #parent #focus',
+        '## Child route #child',
+        '- [ ] Follow up #focus #task',
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
@@ -973,22 +961,10 @@ suite('Dashboard state', () => {
     const sidebar = createTagOverviewSidebarSnapshot(overview);
 
     assert.deepStrictEqual(
-      sidebar.tagOverviewRelationships?.parentTags.map(
-        (relationship) => relationship.parent.key,
+      sidebar.tagOverviewRelationships?.associatedTags.map(
+        (association) => association.associatedTag.key,
       ),
-      ['#parent'],
-    );
-    assert.deepStrictEqual(
-      sidebar.tagOverviewRelationships?.childTags.map(
-        (relationship) => relationship.child.key,
-      ),
-      ['#child'],
-    );
-    assert.deepStrictEqual(
-      sidebar.tagOverviewRelationships?.siblingTags.map(
-        (relationship) => relationship.sibling.key,
-      ),
-      ['#sibling'],
+      ['#parent', '#task', '#child'],
     );
 
     const filteredOverview = createTagOverviewSnapshot(
@@ -998,19 +974,19 @@ suite('Dashboard state', () => {
       'active',
       'inline',
       true,
-      '#parent',
+      '#task',
     );
     assert.ok(filteredOverview);
     const filteredSidebar = createTagOverviewSidebarSnapshot(filteredOverview);
     assert.deepStrictEqual(filteredSidebar.tagOverviewFilter, {
-      key: '#parent',
-      label: '#parent',
+      key: '#task',
+      label: '#task',
     });
     assert.deepStrictEqual(
-      filteredSidebar.tagOverviewRelationships?.childTags.map(
-        (relationship) => relationship.child.key,
+      filteredSidebar.tagOverviewRelationships?.associatedTags.map(
+        (association) => association.associatedTag.key,
       ),
-      ['#child'],
+      ['#parent', '#task', '#child'],
     );
   });
 });

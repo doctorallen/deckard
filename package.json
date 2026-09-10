@@ -144,7 +144,7 @@
         "deckard.enableHeadingTagRelationships": {
           "type": "boolean",
           "default": true,
-          "description": "Show inferred parent, sibling, and child heading tag relationships in Tag Overviews."
+          "description": "Show weighted tag associations from explicit co-occurrence and heading proximity in Tag Overviews."
         },
         "deckard.enableTagAutocomplete": {
           "type": "boolean",

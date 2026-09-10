@@ -5,10 +5,9 @@ import {
   ParsedFile,
   SearchResult,
   Section,
+  TagAssociation,
   TagInfo,
-  TagRelationship,
   TagReference,
-  TagSiblingRelationship,
   Task,
   WorkspaceIndex,
 } from '../types';
@@ -552,8 +551,7 @@ export function buildWorkspaceIndex(
     });
   });
 
-  const { tagParents, tagChildren, tagSiblings } =
-    buildHeadingTagRelationships(sections);
+  const { tagAssociations } = buildTagAssociations(sections, tasks);
 
   tags.forEach((tag) => {
     // A task inside a tagged section is already represented by that section;
@@ -582,250 +580,160 @@ export function buildWorkspaceIndex(
     tasks,
     tags,
     entities,
-    tagParents,
-    tagChildren,
-    tagSiblings,
+    tagAssociations,
     updatedAt: Date.now(),
   };
 }
 
 /**
- * Infers relationships from explicit heading tags while skipping untagged
- * headings between a tagged child and its nearest tagged ancestor, and groups
- * tagged headings by their structural parent for sibling relationships.
+ * Combines explicit same-source associations with heading proximity.
+ *
+ * Same-source tags are strongest because the author wrote them together. Tags
+ * on ancestor headings provide weaker context that decays by outline depth.
  */
-function buildHeadingTagRelationships(
+function buildTagAssociations(
   sections: Map<string, Section>,
+  tasks: Map<string, Task>,
 ): {
-  tagParents: Map<string, TagRelationship[]>;
-  tagChildren: Map<string, TagRelationship[]>;
-  tagSiblings: Map<string, TagSiblingRelationship[]>;
+  tagAssociations: Map<string, TagAssociation[]>;
 } {
-  const relationships = new Map<string, MutableTagRelationship>();
-  const siblingGroups = new Map<string, Section[]>();
-
+  const associations = new Map<string, MutableTagAssociation>();
   sections.forEach((section) => {
-    const childTags = section.headingTags ?? [];
-    if (childTags.length === 0) {
-      return;
-    }
-
-    const siblingGroupKey = [
-      section.filePath,
-      section.parentSectionId ?? '',
-      section.headingLevel,
-    ].join('\u0000');
-    const group = siblingGroups.get(siblingGroupKey);
-    if (group) {
-      group.push(section);
-    } else {
-      siblingGroups.set(siblingGroupKey, [section]);
-    }
-
-    const parent = findNearestTaggedAncestor(section, sections);
-    if (!parent) {
-      return;
-    }
-
-    const parentTags = parent.headingTags ?? [];
-    parentTags.forEach((parentTag) => {
-      childTags.forEach((childTag) => {
-        if (parentTag.key === childTag.key) {
-          return;
-        }
-        const relationshipKey = `${parentTag.key}\u0000${childTag.key}`;
-        const relationship = relationships.get(relationshipKey) ?? {
-          parent: { ...parentTag },
-          child: { ...childTag },
-          sectionIds: [],
-        };
-        if (!relationship.sectionIds.includes(section.id)) {
-          relationship.sectionIds.push(section.id);
-        }
-        relationships.set(relationshipKey, relationship);
-      });
-    });
-
+    (section.associationTagGroups ?? []).forEach((tags) =>
+      addAssociationGroup(associations, tags, { sectionId: section.id }),
+    );
+    addHeadingAssociations(associations, section, sections);
+  });
+  tasks.forEach((task) => {
+    (task.associationTagGroups ?? []).forEach((tags) =>
+      addAssociationGroup(associations, tags, { taskId: task.id }),
+    );
   });
 
-  const tagParents = new Map<string, TagRelationship[]>();
-  const tagChildren = new Map<string, TagRelationship[]>();
-  [...relationships.values()]
-    .map((relationship) => ({
-      parent: relationship.parent,
-      child: relationship.child,
-      sectionIds: [...relationship.sectionIds].sort(),
-      count: relationship.sectionIds.length,
-    }))
-    .sort(compareTagRelationships)
-    .forEach((relationship) => {
-      appendRelationship(tagParents, relationship.child.key, relationship);
-      appendRelationship(tagChildren, relationship.parent.key, relationship);
-    });
-
-  const tagSiblings = buildSiblingTagRelationships(siblingGroups);
-
-  return { tagParents, tagChildren, tagSiblings };
-}
-
-interface MutableTagRelationship {
-  parent: TagReference;
-  child: TagReference;
-  sectionIds: string[];
-}
-
-interface MutableTagSiblingRelationship {
-  sibling: TagReference;
-  sectionIds: string[];
-  occurrenceIds: string[];
-}
-
-function buildSiblingTagRelationships(
-  siblingGroups: Map<string, Section[]>,
-): Map<string, TagSiblingRelationship[]> {
-  const relationships = new Map<string, MutableTagSiblingRelationship>();
-
-  siblingGroups.forEach((group) => {
-    for (let leftIndex = 0; leftIndex < group.length; leftIndex += 1) {
-      const left = group[leftIndex];
-      const leftTags = left.headingTags ?? [];
-      for (
-        let rightIndex = leftIndex + 1;
-        rightIndex < group.length;
-        rightIndex += 1
-      ) {
-        const right = group[rightIndex];
-        const rightTags = right.headingTags ?? [];
-        leftTags.forEach((leftTag) => {
-          rightTags.forEach((rightTag) => {
-            if (leftTag.key === rightTag.key) {
-              return;
-            }
-            const occurrenceId = `${left.id}\u0000${right.id}`;
-            appendSiblingRelationship(
-              relationships,
-              leftTag,
-              rightTag,
-              left.id,
-              occurrenceId,
-            );
-            appendSiblingRelationship(
-              relationships,
-              rightTag,
-              leftTag,
-              right.id,
-              occurrenceId,
-            );
-          });
-        });
-      }
-    }
-  });
-
-  const tagSiblings = new Map<string, TagSiblingRelationship[]>();
-  [...relationships.entries()]
-    .map(([relationshipKey, relationship]) => ({
-      key: relationshipKey,
-      sibling: relationship.sibling,
-      sectionIds: [...relationship.sectionIds].sort(),
-      count: relationship.occurrenceIds.length,
-    }))
-    .sort((left, right) =>
-      left.sibling.label.localeCompare(right.sibling.label) ||
-      left.sibling.key.localeCompare(right.sibling.key),
+  const tagAssociations = new Map<string, TagAssociation[]>();
+  [...associations.entries()]
+    .map(([key, relationship]) => ({ key, ...relationship }))
+    .sort(
+      (left, right) =>
+        right.coOccurrenceCount - left.coOccurrenceCount ||
+        right.weight - left.weight ||
+        left.associatedTag.label.localeCompare(right.associatedTag.label) ||
+        left.associatedTag.key.localeCompare(right.associatedTag.key),
     )
-    .forEach((relationship) => {
-      const [tagKey] = relationship.key.split('\u0000');
-      appendSiblingRelationshipProjection(
-        tagSiblings,
-        tagKey,
-        {
-          sibling: relationship.sibling,
-          sectionIds: relationship.sectionIds,
-          count: relationship.count,
-        },
-      );
+    .forEach(({ key, ...relationship }) =>
+      appendAssociation(tagAssociations, key.split('\u0000')[0], relationship),
+    );
+  return { tagAssociations };
+}
+
+interface MutableTagAssociation extends TagAssociation {}
+
+function addAssociationGroup(
+  associations: Map<string, MutableTagAssociation>,
+  tags: TagReference[],
+  source: { sectionId?: string; taskId?: string },
+): void {
+  const uniqueTags = [...new Map(tags.map((tag) => [tag.key, tag])).values()];
+  uniqueTags.forEach((tag, index) => {
+    uniqueTags.slice(index + 1).forEach((associatedTag) => {
+      addAssociationEvidence(associations, tag, associatedTag, source, 1, true);
+      addAssociationEvidence(associations, associatedTag, tag, source, 1, true);
     });
-
-  return tagSiblings;
+  });
 }
 
-function appendSiblingRelationship(
-  relationships: Map<string, MutableTagSiblingRelationship>,
-  source: TagReference,
-  sibling: TagReference,
-  sourceSectionId: string,
-  occurrenceId: string,
-): void {
-  const relationshipKey = `${source.key}\u0000${sibling.key}`;
-  const relationship = relationships.get(relationshipKey) ?? {
-    sibling: { ...sibling },
-    sectionIds: [],
-    occurrenceIds: [],
-  };
-  if (!relationship.sectionIds.includes(sourceSectionId)) {
-    relationship.sectionIds.push(sourceSectionId);
-  }
-  relationship.occurrenceIds.push(occurrenceId);
-  relationships.set(relationshipKey, relationship);
-}
-
-function appendSiblingRelationshipProjection(
-  relationships: Map<string, TagSiblingRelationship[]>,
-  tagKey: string,
-  relationship: TagSiblingRelationship,
-): void {
-  const existing = relationships.get(tagKey);
-  if (existing) {
-    existing.push(relationship);
-  } else {
-    relationships.set(tagKey, [relationship]);
-  }
-}
-
-function findNearestTaggedAncestor(
+function addHeadingAssociations(
+  associations: Map<string, MutableTagAssociation>,
   section: Section,
   sections: Map<string, Section>,
-): Section | undefined {
-  const visited = new Set<string>();
+): void {
+  const sourceTags = section.headingTags ?? [];
+  if (sourceTags.length === 0) {
+    return;
+  }
+
   let parentSectionId = section.parentSectionId;
+  let depth = 1;
+  const visited = new Set<string>();
   while (parentSectionId && !visited.has(parentSectionId)) {
     visited.add(parentSectionId);
     const parent = sections.get(parentSectionId);
     if (!parent) {
-      return undefined;
+      break;
     }
-    if ((parent.headingTags?.length ?? 0) > 0) {
-      return parent;
-    }
+    (parent.headingTags ?? []).forEach((parentTag) => {
+      sourceTags.forEach((childTag) => {
+        addAssociationEvidence(
+          associations,
+          childTag,
+          parentTag,
+          { sectionId: section.id },
+          0.5 / depth,
+          false,
+        );
+        addAssociationEvidence(
+          associations,
+          parentTag,
+          childTag,
+          { sectionId: section.id },
+          0.5 / depth,
+          false,
+        );
+      });
+    });
     parentSectionId = parent.parentSectionId;
+    depth += 1;
   }
-  return undefined;
 }
 
-function appendRelationship(
-  relationships: Map<string, TagRelationship[]>,
-  tagKey: string,
-  relationship: TagRelationship,
+function addAssociationEvidence(
+  associations: Map<string, MutableTagAssociation>,
+  tag: TagReference,
+  associatedTag: TagReference,
+  source: { sectionId?: string; taskId?: string },
+  weight: number,
+  isCoOccurrence: boolean,
 ): void {
-  const existing = relationships.get(tagKey);
-  if (existing) {
-    existing.push(relationship);
-  } else {
-    relationships.set(tagKey, [relationship]);
+  if (tag.key === associatedTag.key) {
+    return;
   }
+  const key = `${tag.key}\u0000${associatedTag.key}`;
+  const relationship = associations.get(key) ?? {
+    associatedTag: { ...associatedTag },
+    sectionIds: [],
+    taskIds: [],
+    count: 0,
+    weight: 0,
+    coOccurrenceCount: 0,
+    headingRelationshipCount: 0,
+  };
+  if (source.sectionId && !relationship.sectionIds.includes(source.sectionId)) {
+    relationship.sectionIds.push(source.sectionId);
+  }
+  if (source.taskId && !relationship.taskIds.includes(source.taskId)) {
+    relationship.taskIds.push(source.taskId);
+  }
+  relationship.weight += weight;
+  if (isCoOccurrence) {
+    relationship.coOccurrenceCount += 1;
+  } else {
+    relationship.headingRelationshipCount += 1;
+  }
+  relationship.count = relationship.sectionIds.length + relationship.taskIds.length;
+  associations.set(key, relationship);
 }
 
-function compareTagRelationships(
-  left: TagRelationship,
-  right: TagRelationship,
-): number {
-  return (
-    left.parent.label.localeCompare(right.parent.label) ||
-    left.child.label.localeCompare(right.child.label) ||
-    left.parent.key.localeCompare(right.parent.key) ||
-    left.child.key.localeCompare(right.child.key)
-  );
+function appendAssociation(
+  associations: Map<string, TagAssociation[]>,
+  tagKey: string,
+  association: TagAssociation,
+): void {
+  const existing = associations.get(tagKey);
+  if (existing) {
+    existing.push(association);
+  } else {
+    associations.set(tagKey, [association]);
+  }
 }
 
 /**
