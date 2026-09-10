@@ -31,7 +31,7 @@ export function getRelatedNotesDebugHtml(
       `<tr><td>${escapeHtml(match.selectedTag.label)}</td><td>${escapeHtml(match.candidateTag.label)}</td><td>${match.associationWeight.toFixed(2)}</td><td>${match.selectedWeight.toFixed(2)}</td><td>${match.contribution.toFixed(2)}</td></tr>`,
     ).join('');
     const associationCap = evidence
-      ? `<p class="lead">The selected-tag cap is <code>${selectedWeightCalculation} = ${totalSelectedWeight.toFixed(2)}</code>. Raw association paths total <code>${evidence.associationWeight.toFixed(2)}</code>. Deckard uses <code>min(${evidence.associationWeight.toFixed(2)}, ${totalSelectedWeight.toFixed(2)}) = ${evidence.appliedAssociationWeight.toFixed(2)}</code>, capping association evidence at the selected-tag total so repeated indirect links cannot outweigh direct matches.</p>`
+      ? `<p class="lead">The selected-tag saturation scale is <code>${selectedWeightCalculation} = ${totalSelectedWeight.toFixed(2)}</code>. Raw association paths total <code>${evidence.associationWeight.toFixed(2)}</code>. Deckard uses <code>${totalSelectedWeight.toFixed(2)} x (${evidence.associationWeight.toFixed(2)} / (${evidence.associationWeight.toFixed(2)} + ${totalSelectedWeight.toFixed(2)})) = ${evidence.appliedAssociationWeight.toFixed(2)}</code>. Stronger association evidence continues to raise the score, but with diminishing returns toward the selected-tag total, so indirect links cannot outweigh direct matches.</p>`
       : '';
     const weights = evidence
       ? [

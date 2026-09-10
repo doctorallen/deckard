@@ -353,8 +353,44 @@ suite('Dashboard state', () => {
     assert.ok(associatedNote);
     assert.strictEqual(associatedNote.matchCount, 0);
     assert.strictEqual(associatedNote.associationWeight, 1);
-    assert.strictEqual(associatedNote.relevanceScore, 50);
+    assert.strictEqual(associatedNote.relevanceScore, 25);
     assert.deepStrictEqual(associatedNote.reasons, ['Associated: #risk/operations']);
+  });
+
+  test('uses diminishing returns for stronger association evidence', () => {
+    const active = createFile('notes/current.md', '# Current #source');
+    const weakBridge = createFile(
+      'notes/weak-bridge.md',
+      '# Weak bridge #source #weak',
+    );
+    const strongBridge = createFile(
+      'notes/strong-bridge.md',
+      '# Strong bridge #source #strong\n\n## Repeated evidence #source #strong',
+    );
+    const weak = createFile('notes/weak.md', '# Weak #weak');
+    const strong = createFile('notes/strong.md', '# Strong #strong');
+    const index = createFileIndex([
+      active,
+      weakBridge,
+      strongBridge,
+      weak,
+      strong,
+    ]);
+
+    const notes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+    );
+    const weakNote = notes.find((note) => note.filePath === weak.filePath);
+    const strongNote = notes.find((note) => note.filePath === strong.filePath);
+
+    assert.ok(weakNote);
+    assert.ok(strongNote);
+    assert.ok(strongNote.relevanceScore > weakNote.relevanceScore);
+    assert.ok(strongNote.relevanceScore < 50);
   });
 
   test('weights selected-entry ancestor tags below direct tags', () => {

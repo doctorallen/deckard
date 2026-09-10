@@ -759,7 +759,7 @@ export function rankRelatedNotes(
           (total, tag) => total + 2 * (activeTagWeights.get(tag.key) ?? 1),
           0,
         );
-        const appliedAssociationWeight = Math.min(
+        const appliedAssociationWeight = getDiminishingAssociationWeight(
           associationWeight,
           totalActiveWeight,
         );
@@ -847,6 +847,23 @@ export function rankRelatedNotes(
   });
 
   return notes.sort(compareRelatedNotes);
+}
+
+/**
+ * Lets stronger association evidence keep improving relevance without allowing
+ * repeated indirect evidence to overwhelm a complete direct-tag match.
+ */
+function getDiminishingAssociationWeight(
+  rawAssociationWeight: number,
+  totalActiveWeight: number,
+): number {
+  if (rawAssociationWeight <= 0 || totalActiveWeight <= 0) {
+    return 0;
+  }
+  return (
+    totalActiveWeight *
+    (rawAssociationWeight / (rawAssociationWeight + totalActiveWeight))
+  );
 }
 
 function hasMoreSpecificMatchingDescendant(

@@ -137,9 +137,30 @@ Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, ta
 
 ## Related Notes
 
-The **Related Notes** view appears in the Explorer under the Deckard Activity Bar container. It is a discovery aid: with a saved Markdown note open, Deckard looks for other notes that seem to be about the same work. A note that uses the same tag is the clearest match. It can also surface a note through associated tags, an intentional Wiki link, or meaningful words shared by both notes.
+Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work.
 
-Related entries are ranked by those signals, with shared tags given the most importance. Each card's percentage is a relevance estimate, not a measure of note completeness: a higher number means it has more or stronger reasons to appear. Hover it to see those reasons and the contribution from each one. Hover a tagged entry in Markdown and choose **Debug related notes for [entry]** to open a detailed page that first explains each selected tag's weight—whether it was written on the entry or inherited from an ancestor—then lists every candidate's tags, evidence weights, links, keywords, and specificity adjustment. Candidate tags are evaluated from the displayed entry itself; each candidate has a matched-tag table showing the selected weight, Deckard's `2.00` direct-match multiplier, and the resulting contribution. An association-path table likewise shows every selected-tag-to-candidate-tag connection, its learned strength, and its weighted contribution. It also shows the raw association total and the cap applied at the total selected-tag weight, preventing repeated indirect evidence from overwhelming direct matches. When a broad heading and one of its nested entries match the same tags, Deckard favors the more specific nested entry and labels the broader result's small relevance adjustment. Tagged headings highlight their entire indexed section, while tagged lines and tasks highlight that line; hover the highlighted entry to choose **Show related notes for [entry]** and narrow the sidebar to just that entry instead of the whole document. A selected entry also considers tags on its ancestor headings as lighter context, so its own tags remain most important. Use **Show whole document** in the selected-note header to restore the normal document-wide view. Use the Related Notes sort control to order results by **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
+### What makes a note related?
+
+| Signal | Example | Importance |
+|---|---|---|
+| Shared tag | Both entries contain `#project/atlas` | Strongest |
+| Parent-heading context | Your selected task sits under a `#project/atlas` heading | Useful, but lighter |
+| Associated tag | `#project/atlas` and `#risk/vendor` are often written together | Supporting evidence |
+| Wiki link or keywords | Both entries link to `[[Launch plan]]` or share distinctive wording | Small supporting evidence |
+
+For example, if you select `#project/atlas #follow-up`, a note with both tags ranks ahead of a note that only contains an associated `#risk/vendor` tag. Repeated association evidence helps, but with diminishing returns, so indirect connections cannot overtake a complete direct match.
+
+### Focus one note entry
+
+Tagged headings highlight their full section; tagged lines and tasks highlight their line. Hover one to choose **Show related notes for [entry]**. Deckard uses that entry's tags first, then adds tagged parent headings as lighter context. Choose **Show whole document** in the sidebar to return to the normal document view.
+
+When both a broad heading and a nested child use the same tags, the child appears first because it is the more specific match.
+
+### Understand a score
+
+Hover a card's percentage for a short explanation. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows selected-tag weights, direct matched-tag calculations, association paths, the diminishing-returns calculation, links, keywords, and specificity adjustments.
+
+Use the sort control to choose **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Select a related note to open its matching line, or select a tag to open its overview.
 
 When a Tag Overview is the active editor tab, the sidebar switches from related notes to one compact **Associated tags** list. Associations are sorted by strength and show a percentage; hover one to learn whether the connection came from tags written together or from heading context. Expand the list to navigate without leaving the narrow sidebar. Selecting an association carries the current tag as a second filter and shows the exact headings, tasks, and tagged lines that supplied the connection. The notes in a Tag Overview already match that tag, so they do not show a redundant 100% relevance score. Returning to a Markdown editor restores the related-notes projection.
 
