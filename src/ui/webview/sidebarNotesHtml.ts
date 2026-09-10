@@ -54,6 +54,8 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .active-name { margin-top: 3px; }
+.clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
+.clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .active-filter-tag { color: var(--cyan); font-weight: 700; }
 .active-filter-joiner { color: var(--amber); font-weight: 700; }
 .sidebar-toolbar { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
@@ -340,7 +342,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
         ? renderTag(state.tagOverview, 'active-filter-tag') + '<span class="active-filter-joiner"> AND </span>' + renderTag(state.tagOverviewFilter, 'active-filter-tag')
         : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
-      : (state.activeFileName ? '<div class="active-file"><div class="active-label">Current note</div><div class="active-name">' + escapeHtml(state.activeFileName) + '</div>' + activeTags + '</div>' : '');
+      : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
     const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
@@ -374,6 +376,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });
       if (target.dataset.action === 'create-daily-note') vscode.postMessage({ type: 'createDailyNote' });
+      if (target.dataset.action === 'clear-entry-related-notes') vscode.postMessage({ type: 'clearEntryRelatedNotes' });
       return;
     }
     const note = event.target.closest('.note');

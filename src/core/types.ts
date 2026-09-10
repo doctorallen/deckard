@@ -276,6 +276,7 @@ export interface DeckardStatsSnapshot {
 
 export interface SidebarNotesSnapshot {
   activeFileName?: string;
+  activeEntryTitle?: string;
   activeTags: TagReference[];
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
@@ -399,6 +400,10 @@ export interface SidebarReadyMessage {
   type: 'ready';
 }
 
+export interface ClearEntryRelatedNotesMessage {
+  type: 'clearEntryRelatedNotes';
+}
+
 export type DashboardMessage =
   | OpenSourceMessage
   | ToggleTaskMessage
@@ -433,4 +438,5 @@ export type SidebarMessage =
   | OpenDashboardMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
-  | SetRelatedNotesSortMessage;
+  | SetRelatedNotesSortMessage
+  | ClearEntryRelatedNotesMessage;

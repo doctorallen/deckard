@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import {
+  createEntryRelatedNotesHoverMessage,
   EditorTagDecorations,
   createTagRenameHoverMessage,
   isMarkdownDocument,
@@ -98,6 +99,23 @@ suite('Tag decorations', () => {
     assert.strictEqual(hover.value.includes('command:deckard.showTagOverview'), false);
     assert.deepStrictEqual(hover.isTrusted, {
       enabledCommands: ['deckard.renameTag'],
+    });
+  });
+
+  test('creates a trusted entry-level related-notes hover action', () => {
+    const hover = createEntryRelatedNotesHoverMessage(
+      'Relay checks',
+      'file:///tmp/deckard/relay.md',
+      12,
+    );
+
+    assert.strictEqual(
+      hover.value.includes('command:deckard.showEntryRelatedNotes'),
+      true,
+    );
+    assert.strictEqual(hover.value.includes('Show related notes for Relay checks'), true);
+    assert.deepStrictEqual(hover.isTrusted, {
+      enabledCommands: ['deckard.showEntryRelatedNotes'],
     });
   });
 

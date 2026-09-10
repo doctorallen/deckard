@@ -863,6 +863,8 @@ suite('Webview contracts', () => {
       'deckard.notesFolder',
       'deckard.dailyNoteTemplate',
       'deckard.parseInlineTags',
+      'deckard.highlightNoteSections',
+      'deckard.autoSelectNoteSections',
       'deckard.tagTitleDisplayMode',
       'deckard.enableHeadingTagRelationships',
       'deckard.enableTagAutocomplete',
@@ -935,6 +937,10 @@ suite('Webview contracts', () => {
     assert.deepStrictEqual(parseSidebarMessage({ type: 'openHelp' }), {
       type: 'openHelp',
     });
+    assert.deepStrictEqual(
+      parseSidebarMessage({ type: 'clearEntryRelatedNotes' }),
+      { type: 'clearEntryRelatedNotes' },
+    );
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'setRelatedNotesSort', mode: 'access' }),
       { type: 'setRelatedNotesSort', mode: 'access' },

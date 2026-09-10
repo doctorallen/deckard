@@ -10,7 +10,10 @@ import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { renameIndexedTag } from './ui/commands/renameTag';
-import { EditorTagDecorations } from './ui/commands/tagDecorations';
+import {
+  EditorTagDecorations,
+  isMarkdownDocument,
+} from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
@@ -153,6 +156,24 @@ export function activate(context: vscode.ExtensionContext): void {
           indexer,
           getCommandTagArgument(requestedTagKey),
         ),
+    ),
+    vscode.commands.registerCommand(
+        'deckard.showEntryRelatedNotes',
+        async (documentUri?: unknown, sourceLine?: unknown) => {
+          if (
+            typeof documentUri !== 'string' ||
+            typeof sourceLine !== 'number' ||
+            !Number.isInteger(sourceLine) ||
+            sourceLine < 1
+          ) {
+            return;
+          }
+          const uri = vscode.Uri.parse(documentUri);
+          if (!isMarkdownDocument({ languageId: 'markdown', uri })) {
+            return;
+          }
+          await sidebarNotes.showRelatedNotesForEntry(uri, sourceLine);
+        },
     ),
   );
 

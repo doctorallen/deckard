@@ -139,7 +139,7 @@ Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, ta
 
 The **Related Notes** view appears in the Explorer under the Deckard Activity Bar container. It is a discovery aid: with a saved Markdown note open, Deckard looks for other notes that seem to be about the same work. A note that uses the same tag is the clearest match. It can also surface a note through associated tags, an intentional Wiki link, or meaningful words shared by both notes.
 
-Related entries are ranked by those signals, with shared tags given the most importance. Each card's percentage is a relevance estimate, not a measure of note completeness: a higher number means it has more or stronger reasons to appear. Hover it to see those reasons and the contribution from each one. Use the Related Notes sort control to order results by **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
+Related entries are ranked by those signals, with shared tags given the most importance. Each card's percentage is a relevance estimate, not a measure of note completeness: a higher number means it has more or stronger reasons to appear. Hover it to see those reasons and the contribution from each one. Tagged headings highlight their entire indexed section, while tagged lines and tasks highlight that line; hover the highlighted entry to choose **Show related notes for [entry]** and narrow the sidebar to just that entry instead of the whole document. Use **Show whole document** in the selected-note header to restore the normal document-wide view. Use the Related Notes sort control to order results by **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Newest and Oldest use the source note's modification time, while Most accessed uses Deckard's local entry-view counts. Select a related note to open the matching line, or select a tag/entity to open its overview. Selecting the Deckard Activity Bar icon opens Related Notes. The view also includes shortcuts to the Dashboard and Daily Note commands, and it updates after saved changes.
 
 When a Tag Overview is the active editor tab, the sidebar switches from related notes to one compact **Associated tags** list. Associations are sorted by strength and show a percentage; hover one to learn whether the connection came from tags written together or from heading context. Expand the list to navigate without leaving the narrow sidebar. Selecting an association carries the current tag as a second filter and shows the exact headings, tasks, and tagged lines that supplied the connection. The notes in a Tag Overview already match that tag, so they do not show a redundant 100% relevance score. Returning to a Markdown editor restores the related-notes projection.
 
@@ -183,6 +183,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.notesFolder": "notes",
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
 	"deckard.parseInlineTags": true,
+	"deckard.highlightNoteSections": true,
+	"deckard.autoSelectNoteSections": true,
 	"deckard.enableHeadingTagRelationships": true,
 	"deckard.enableTagAutocomplete": true,
 	"deckard.enableKeywordLinks": true,
@@ -199,6 +201,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.theme` | `replicant` | Selects the Replicant, Oblivion, or LCARS visual style for Deckard webviews. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
 | `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
+| `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
+| `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in related-note and tag-overview titles as clickable buttons by default. Set to `separate` to remove tags from titles and show them as separate tag controls. |
 | `deckard.enableHeadingTagRelationships` | `true` | Shows **Associated tags** suggestions in Tag Overview, with Tree and Graph views. Disable it to hide those suggestions without changing indexed tags or note content. |
 | `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |

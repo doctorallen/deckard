@@ -524,6 +524,7 @@ export function createSidebarSnapshot(
   relatedNotesSortMode: RelatedNotesSortMode = 'tags',
   sectionAccessCounts: Record<string, number> = {},
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  activeEntryTitle?: string,
 ): SidebarNotesSnapshot {
   if (!activeFile) {
     return {
@@ -546,6 +547,7 @@ export function createSidebarSnapshot(
   );
   return {
     activeFileName: getFileName(activeFilePath),
+    activeEntryTitle,
     activeTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
