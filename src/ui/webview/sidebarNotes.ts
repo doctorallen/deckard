@@ -16,6 +16,7 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
+import { renameIndexedTag } from '../commands/renameTag';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
 
@@ -29,6 +30,7 @@ export class SidebarNotesView
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
   private readonly disposables: vscode.Disposable[] = [];
+  private readonly output = vscode.window.createOutputChannel('Deckard');
   private view: vscode.WebviewView | undefined;
   private viewDisposables: vscode.Disposable[] = [];
 
@@ -42,6 +44,7 @@ export class SidebarNotesView
     ) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
+    this.disposables.push(this.output);
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
@@ -75,19 +78,31 @@ export class SidebarNotesView
    * Binds a VS Code webview view and waits for indexed data before first render.
    */
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.log('Resolving Related Notes webview.');
     this.disposeViewListeners();
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
-    this.renderHtml();
     this.viewDisposables = [
       webviewView.onDidDispose(() => {
+        this.log('Related Notes webview disposed.');
         this.view = undefined;
         this.disposeViewListeners();
       }),
+      webviewView.onDidChangeVisibility(() => {
+        this.log(
+          `Related Notes visibility changed: ${webviewView.visible}.`,
+        );
+        if (webviewView.visible) {
+          this.refresh();
+        }
+      }),
       webviewView.webview.onDidReceiveMessage((message) => {
+        this.log(`Received Related Notes webview message: ${describeMessage(message)}.`);
         void this.handleMessage(message);
       }),
     ];
+    this.renderHtml();
+    this.refresh();
     void this.indexer.ready.then(() => this.refresh());
   }
 
@@ -111,6 +126,7 @@ export class SidebarNotesView
 
   private renderHtml(): void {
     if (this.view) {
+      this.log('Rendering Related Notes webview HTML.');
       this.view.webview.html = getSidebarNotesHtml(
         this.view.webview,
         this.extensionVersion,
@@ -123,21 +139,36 @@ export class SidebarNotesView
    */
   private refresh(): void {
     if (!this.view) {
+      this.log('Skipped Related Notes refresh because no webview is attached.');
       return;
     }
 
     const snapshot = this.createSnapshot();
-    void this.view.webview.postMessage({ type: 'state', data: snapshot });
+    this.log(
+      `Sending Related Notes state: ${snapshot.state}${snapshot.tagOverview ? ` (tag overview ${snapshot.tagOverview.key})` : snapshot.activeFileName ? ` (Markdown ${snapshot.activeFileName})` : ''}, ${snapshot.notes.length} note entries.`,
+    );
+    void this.view.webview
+      .postMessage({ type: 'state', data: snapshot })
+      .then(
+        (delivered) =>
+          this.log(
+            `Related Notes state delivery ${delivered ? 'succeeded' : 'was skipped because the webview is not live'}.`,
+          ),
+        (error: unknown) =>
+          this.log(
+            `Related Notes state delivery failed: ${formatError(error)}.`,
+          ),
+      );
   }
 
   /**
-   * Gives an open tag overview priority over the active editor context.
+   * Uses the tag-overview projection only while that panel is the active tab.
    */
   private createSnapshot() {
     const index = this.indexer.getSnapshot();
     const activeTagKey = this.tagOverview.getActiveTagKey();
     const activeTagFilterKey = this.tagOverview.getActiveTagFilterKey();
-    if (activeTagKey) {
+    if (activeTagKey && this.tagOverview.isActive()) {
       const overview = createTagOverviewSnapshot(
         index,
         this.preferences.value,
@@ -224,6 +255,11 @@ export class SidebarNotesView
    */
   private async handleValidMessage(message: SidebarMessage): Promise<void> {
     const index = this.indexer.getSnapshot();
+    if (message.type === 'ready') {
+      this.log('Related Notes webview is ready; refreshing state.');
+      this.refresh();
+      return;
+    }
     if (message.type === 'openDashboard') {
       await vscode.commands.executeCommand('deckard.showDashboard');
       return;
@@ -247,7 +283,20 @@ export class SidebarNotesView
       }
       return;
     }
+    if (message.type === 'renameTag') {
+      const replacement = await renameIndexedTag(
+        this.indexer,
+        message.tagKey,
+      );
+      if (replacement) {
+        await this.onOpenTag(replacement.key);
+      }
+      return;
+    }
 
+    if (message.type !== 'openSource') {
+      return;
+    }
     const active = this.getActiveFile();
     const snapshot = this.createSnapshot();
     const note = snapshot.notes.find(
@@ -262,6 +311,10 @@ export class SidebarNotesView
       await openSourceAt(note.filePath, note.sourceLine);
     }
   }
+
+  private log(message: string): void {
+    this.output.appendLine(`[Related Notes] ${message}`);
+  }
 }
 
 /**
@@ -271,6 +324,7 @@ interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
   getActiveTagFilterKey(): string | undefined;
+  isActive(): boolean;
 }
 
 /**
@@ -286,4 +340,20 @@ interface ActiveFile {
  */
 function isMarkdownDocument(document: vscode.TextDocument): boolean {
   return isMarkdownFile(document.uri);
+}
+
+function describeMessage(message: unknown): string {
+  if (
+    typeof message === 'object' &&
+    message !== null &&
+    'type' in message &&
+    typeof message.type === 'string'
+  ) {
+    return message.type;
+  }
+  return 'invalid payload';
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

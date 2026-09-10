@@ -80,6 +80,10 @@ export function parseDashboardMessage(
       return isOpenTagMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'renameTag':
+      return isRenameTagMessage(value)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
     default:
       return undefined;
   }
@@ -127,6 +131,9 @@ export function parseTagOverviewMessage(
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return value as unknown as TagOverviewMessage;
   }
+  if (value.type === 'renameTag' && isRenameTagMessage(value)) {
+    return value as unknown as TagOverviewMessage;
+  }
   return undefined;
 }
 
@@ -140,12 +147,18 @@ export function parseSidebarMessage(
     return undefined;
   }
 
+  if (value.type === 'ready') {
+    return { type: 'ready' };
+  }
   if (value.type === 'openSource') {
     return isSourceMessage(value)
       ? (value as unknown as SidebarMessage)
       : undefined;
   }
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
+    return value as unknown as SidebarMessage;
+  }
+  if (value.type === 'renameTag' && isRenameTagMessage(value)) {
     return value as unknown as SidebarMessage;
   }
   if (
@@ -181,6 +194,10 @@ function isOpenTagMessage(value: Record<string, unknown>): boolean {
     typeof value.tagKey === 'string' &&
     (value.filterTagKey === undefined || typeof value.filterTagKey === 'string')
   );
+}
+
+function isRenameTagMessage(value: Record<string, unknown>): boolean {
+  return typeof value.tagKey === 'string' && value.tagKey.length > 0;
 }
 
 /**

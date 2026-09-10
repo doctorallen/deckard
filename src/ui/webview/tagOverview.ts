@@ -14,6 +14,7 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
+import { renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
 import { parseTagOverviewMessage } from './messages';
 import { getTagOverviewHtml } from './tagOverviewHtml';
@@ -41,6 +42,13 @@ export class TagOverviewPanels implements vscode.Disposable {
     this.disposables.push(this.changeEmitter);
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (editor && this.activeTagKey) {
+          this.setActiveTagOverview(undefined, undefined);
+        }
+      }),
+    );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.theme')) {
@@ -73,6 +81,16 @@ export class TagOverviewPanels implements vscode.Disposable {
    */
   public getActiveTagFilterKey(): string | undefined {
     return this.activeFilterTagKey;
+  }
+
+  /**
+   * Returns whether the selected editor tab is a Deckard Tag Overview.
+   */
+  public isActive(): boolean {
+    return Boolean(
+      this.activeTagKey &&
+        this.panels.get(this.activeTagKey)?.isActive(),
+    );
   }
 
   /**
@@ -274,6 +292,13 @@ class TagOverviewPanel implements vscode.Disposable {
   }
 
   /**
+   * Reports the panel state maintained by VS Code's webview lifecycle.
+   */
+  public isActive(): boolean {
+    return this.panel?.active === true;
+  }
+
+  /**
    * Creates or reveals the panel, then projects the latest overview state.
    */
   public show(): void {
@@ -420,6 +445,17 @@ class TagOverviewPanel implements vscode.Disposable {
    * Rechecks tag/card membership against the current index before navigation.
    */
   private async handleValidMessage(message: TagOverviewMessage): Promise<void> {
+    if (message.type === 'renameTag') {
+      const replacement = await renameIndexedTag(
+        this.indexer,
+        message.tagKey,
+      );
+      if (replacement) {
+        await this.onOpenTag(replacement.key);
+      }
+      return;
+    }
+
     if (message.type === 'openTag') {
       const tagKey = resolveIndexedTagKey(
         this.indexer.getSnapshot().tags,
@@ -506,8 +542,8 @@ class TagOverviewPanel implements vscode.Disposable {
   }
 }
 
-/**
- * Extracts the serialized tag key while rejecting malformed serializer state.
+ /**
+  * Extracts the serialized tag key while rejecting malformed serializer state.
  */
 function getSerializedTagKey(state: unknown): string | undefined {
   if (typeof state !== 'object' || state === null) {

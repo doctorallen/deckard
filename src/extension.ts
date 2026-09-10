@@ -146,8 +146,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('deckard.moveTagsToFrontmatter', () =>
       moveInlineTagsToFrontmatter(),
     ),
-    vscode.commands.registerCommand('deckard.renameTag', () =>
-      renameIndexedTag(indexer),
+    vscode.commands.registerCommand(
+      'deckard.renameTag',
+      (requestedTagKey?: unknown) =>
+        renameIndexedTag(
+          indexer,
+          getCommandTagArgument(requestedTagKey),
+        ),
     ),
   );
 
@@ -198,6 +203,11 @@ interface ExtensionServices {
   help: HelpPanel;
 }
 
+function getCommandTagArgument(value: unknown): string | undefined {
+  const argument = Array.isArray(value) ? value[0] : value;
+  return typeof argument === 'string' ? argument : undefined;
+}
+
 /**
  * Resolves a command argument or user choice only after the initial index exists.
  *
@@ -211,22 +221,18 @@ async function showTagOverview(
 ): Promise<void> {
   await indexer.ready;
   const tags = [...indexer.getSnapshot().tags.values()];
-  const tagArgument = Array.isArray(requestedTag)
-    ? requestedTag[0]
-    : requestedTag;
   const tagKey =
-    typeof tagArgument === 'string'
-      ? tagArgument
-      : (
-          await vscode.window.showQuickPick(
-            tags.map((tag) => ({
-              label: tag.label,
-              description: `${tag.count} items`,
-              key: tag.key,
-            })),
-            { placeHolder: 'Choose a tag to inspect' },
-          )
-        )?.key;
+    getCommandTagArgument(requestedTag) ??
+    (
+      await vscode.window.showQuickPick(
+        tags.map((tag) => ({
+          label: tag.label,
+          description: `${tag.count} items`,
+          key: tag.key,
+        })),
+        { placeHolder: 'Choose a tag to inspect' },
+      )
+    )?.key;
 
   if (tagKey) {
     await tagPanels.show(tagKey);

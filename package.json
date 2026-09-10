@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.4.0",
+  "version": "1.5.0",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -124,6 +124,7 @@
         },
         "deckard.parseInlineTags": {
           "type": "boolean",
+          "scope": "resource",
           "default": true,
           "description": "Index tags on non-heading Markdown lines as standalone entries."
         },
@@ -143,20 +144,23 @@
         "deckard.enableHeadingTagRelationships": {
           "type": "boolean",
           "default": true,
-          "description": "Show inferred parent and child heading tag relationships in Tag Overviews."
+          "description": "Show inferred parent, sibling, and child heading tag relationships in Tag Overviews."
         },
         "deckard.enableTagAutocomplete": {
           "type": "boolean",
+          "scope": "resource",
           "default": true,
           "description": "Show indexed tag suggestions after a tag or people marker. Disable without affecting tag indexing, highlighting, or navigation."
         },
         "deckard.enableKeywordLinks": {
           "type": "boolean",
+          "scope": "resource",
           "default": true,
           "description": "Include significant shared keywords when finding related notes. Disable to use shared tags and intentional Wiki links only."
         },
         "deckard.entityNamespaceAliases": {
           "type": "object",
+          "scope": "resource",
           "default": {
             "org": "organization"
           },
@@ -168,6 +172,7 @@
         },
         "deckard.personMarker": {
           "type": "string",
+          "scope": "resource",
           "default": "@",
           "pattern": "^[!$%&*+,.?:;=@^|~]$",
           "description": "Single-character marker for people. For example, set this to \"~\" to recognize ~mara-vale as a person."

@@ -17,6 +17,7 @@ import {
   TagOverviewSnapshot,
   TagReference,
   TagRelationship,
+  TagSiblingRelationship,
   TaskSortMode,
   SidebarNotesSnapshot,
   WorkspaceIndex,
@@ -300,20 +301,36 @@ export function createTagOverviewSnapshot(
   }
   const filterTag = filterTagKey ? index.tags.get(filterTagKey) : undefined;
   const effectiveFilterTagKey = filterTag?.key;
+  // The existing filter message carries only the other tag, so preserve
+  // parent/child filtering when the same pair also occurs as siblings.
+  const siblingRelationship =
+    effectiveFilterTagKey &&
+    !hasParentChildRelationship(index, tag.key, effectiveFilterTagKey)
+      ? findSiblingRelationship(index, tag.key, effectiveFilterTagKey)
+      : undefined;
+  const siblingSectionIds = siblingRelationship
+    ? new Set(siblingRelationship.sectionIds)
+    : undefined;
 
   // A relationship filter uses contextual membership so either navigation
   // direction can show the shared child section and its tasks.
-  const sectionCandidates =
-    effectiveFilterTagKey === undefined
-      ? tag.sectionIds
-          .map((sectionId) => index.sections.get(sectionId))
-          .filter((section): section is Section => section !== undefined)
-      : [...index.sections.values()].filter(
-          (section) =>
-            sectionIncludesTag(index, section, tag.key) &&
-            sectionIncludesTag(index, section, effectiveFilterTagKey),
-        );
-  const fileCandidates = tag.filePaths
+  let sectionCandidates: Section[];
+  if (siblingSectionIds) {
+    sectionCandidates = [...siblingSectionIds]
+      .map((sectionId) => index.sections.get(sectionId))
+      .filter((section): section is Section => section !== undefined);
+  } else if (effectiveFilterTagKey === undefined) {
+    sectionCandidates = tag.sectionIds
+      .map((sectionId) => index.sections.get(sectionId))
+      .filter((section): section is Section => section !== undefined);
+  } else {
+    sectionCandidates = [...index.sections.values()].filter(
+      (section) =>
+        sectionIncludesTag(index, section, tag.key) &&
+        sectionIncludesTag(index, section, effectiveFilterTagKey),
+    );
+  }
+  const fileCandidates = (siblingSectionIds ? [] : tag.filePaths)
     .map((filePath) => index.files.get(filePath))
     .filter((file): file is ParsedFile => file !== undefined)
     .filter(
@@ -334,6 +351,23 @@ export function createTagOverviewSnapshot(
     .sort((left, right) =>
       compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
     );
+  let taskCandidates: Task[];
+  if (siblingSectionIds) {
+    taskCandidates = [...index.tasks.values()].filter(
+      (task) =>
+        task.sectionId !== undefined && siblingSectionIds.has(task.sectionId),
+    );
+  } else if (effectiveFilterTagKey === undefined) {
+    taskCandidates = tag.taskIds
+      .map((taskId) => index.tasks.get(taskId))
+      .filter((task): task is Task => task !== undefined);
+  } else {
+    taskCandidates = [...index.tasks.values()].filter(
+      (task) =>
+        taskIncludesTag(index, task, tag.key) &&
+        taskIncludesTag(index, task, effectiveFilterTagKey),
+    );
+  }
 
   return {
     tag: {
@@ -353,18 +387,11 @@ export function createTagOverviewSnapshot(
     childTags: enableHeadingTagRelationships
       ? cloneTagRelationships(index.tagChildren?.get(tagKey) ?? [])
       : [],
+    siblingTags: enableHeadingTagRelationships
+      ? cloneTagSiblingRelationships(index.tagSiblings?.get(tagKey) ?? [])
+      : [],
     sections,
-    tasks: (
-      effectiveFilterTagKey === undefined
-        ? tag.taskIds
-            .map((taskId) => index.tasks.get(taskId))
-            .filter((task): task is Task => task !== undefined)
-        : [...index.tasks.values()].filter(
-            (task) =>
-              taskIncludesTag(index, task, tag.key) &&
-              taskIncludesTag(index, task, effectiveFilterTagKey),
-          )
-    )
+    tasks: taskCandidates
       .filter((task) => matchesTaskFilter(task, taskFilter))
       .map((task) => createDashboardTask(task, index.sections)),
     taskFilter,
@@ -384,6 +411,41 @@ function cloneTagRelationships(
     sectionIds: [...relationship.sectionIds],
     count: relationship.count,
   }));
+}
+
+function cloneTagSiblingRelationships(
+  relationships: TagSiblingRelationship[],
+): TagSiblingRelationship[] {
+  return relationships.map((relationship) => ({
+    sibling: { ...relationship.sibling },
+    sectionIds: [...relationship.sectionIds],
+    count: relationship.count,
+  }));
+}
+
+function findSiblingRelationship(
+  index: WorkspaceIndex,
+  tagKey: string,
+  siblingKey: string,
+): TagSiblingRelationship | undefined {
+  return index.tagSiblings?.get(tagKey)?.find(
+    (relationship) => relationship.sibling.key === siblingKey,
+  );
+}
+
+function hasParentChildRelationship(
+  index: WorkspaceIndex,
+  tagKey: string,
+  otherTagKey: string,
+): boolean {
+  return (
+    index.tagParents?.get(tagKey)?.some(
+      (relationship) => relationship.parent.key === otherTagKey,
+    ) === true ||
+    index.tagChildren?.get(tagKey)?.some(
+      (relationship) => relationship.child.key === otherTagKey,
+    ) === true
+  );
 }
 
 function sectionIncludesTag(
@@ -467,6 +529,7 @@ export function createTagOverviewSidebarSnapshot(
     tagOverviewRelationships: {
       parentTags: cloneTagRelationships(snapshot.parentTags),
       childTags: cloneTagRelationships(snapshot.childTags),
+      siblingTags: cloneTagSiblingRelationships(snapshot.siblingTags),
     },
     tagTitleDisplayMode: snapshot.tagTitleDisplayMode,
     state: notes.length > 0 ? 'ready' : 'noMatches',
@@ -631,7 +694,7 @@ export function rankRelatedNotes(
         getInlineSource(section),
       ),
       updatedAt: file.updatedAt ?? section.updatedAt,
-      matchedTags: activeTags.filter((tag) => section.tags.includes(tag.key)),
+      matchedTags,
     }));
     // A task under a matching section is already visible through that section;
     // include only standalone matches to keep sidebar entries distinct.
@@ -648,7 +711,7 @@ export function rankRelatedNotes(
         sourceLine: task.lineNumber,
         titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
         updatedAt: file.updatedAt ?? task.updatedAt,
-        matchedTags: activeTags.filter((tag) => task.tags.includes(tag.key)),
+        matchedTags,
       });
     });
 

@@ -122,6 +122,12 @@ export interface TagRelationship {
   count: number;
 }
 
+export interface TagSiblingRelationship {
+  sibling: TagReference;
+  sectionIds: string[];
+  count: number;
+}
+
 export interface WorkspaceIndex {
   files: Map<string, ParsedFile>;
   sections: Map<string, Section>;
@@ -132,6 +138,8 @@ export interface WorkspaceIndex {
   tagParents?: Map<string, TagRelationship[]>;
   /** Parent tag key -> relationships whose child is a nested tagged heading. */
   tagChildren?: Map<string, TagRelationship[]>;
+  /** Tag key -> relationships whose sibling shares its structural parent. */
+  tagSiblings?: Map<string, TagSiblingRelationship[]>;
   updatedAt: number;
 }
 
@@ -184,6 +192,7 @@ export interface TagOverviewSnapshot {
   filterTag?: TagReference;
   parentTags: TagRelationship[];
   childTags: TagRelationship[];
+  siblingTags: TagSiblingRelationship[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
   taskFilter: TaskFilter;
@@ -270,6 +279,7 @@ export interface SidebarNotesSnapshot {
   tagOverviewRelationships?: {
     parentTags: TagRelationship[];
     childTags: TagRelationship[];
+    siblingTags: TagSiblingRelationship[];
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
@@ -345,6 +355,11 @@ export interface OpenTagMessage {
   filterTagKey?: string;
 }
 
+export interface RenameTagMessage {
+  type: 'renameTag';
+  tagKey: string;
+}
+
 export interface SetTagOverviewSortMessage {
   type: 'setTagOverviewSort';
   mode: TagOverviewSortMode;
@@ -377,6 +392,10 @@ export interface SetRelatedNotesSortMessage {
   mode: RelatedNotesSortMode;
 }
 
+export interface SidebarReadyMessage {
+  type: 'ready';
+}
+
 export type DashboardMessage =
   | OpenSourceMessage
   | ToggleTaskMessage
@@ -390,7 +409,8 @@ export type DashboardMessage =
   | ReorderTasksMessage
   | ReorderTagsMessage
   | ReorderEntitiesMessage
-  | OpenTagMessage;
+  | OpenTagMessage
+  | RenameTagMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -398,12 +418,15 @@ export type TagOverviewMessage =
   | SetTaskFilterMessage
   | SetRenderModeMessage
   | OpenTagMessage
+  | RenameTagMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage;
 
 export type SidebarMessage =
+  | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage
+  | RenameTagMessage
   | OpenDashboardMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage

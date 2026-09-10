@@ -48,6 +48,14 @@ suite('Webview contracts', () => {
       { type: 'setTaskTags', tagKeys: ['work'] },
     );
     assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
+      { type: 'renameTag', tagKey: '#project/atlas' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'renameTag', tagKey: '' }),
+      undefined,
+    );
+    assert.deepStrictEqual(
       parseDashboardMessage({ type: 'setTaskSort', mode: 'updated' }),
       { type: 'setTaskSort', mode: 'updated' },
     );
@@ -133,6 +141,13 @@ suite('Webview contracts', () => {
     );
     assert.deepStrictEqual(
       parseTagOverviewMessage({
+        type: 'renameTag',
+        tagKey: '#child',
+      }),
+      { type: 'renameTag', tagKey: '#child' },
+    );
+    assert.deepStrictEqual(
+      parseTagOverviewMessage({
         type: 'setTagOverviewSort',
         mode: 'access',
       }),
@@ -171,7 +186,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
   });
 
-  test('renders task-row pointer and hover affordances', () => {
+  test('renders task-row pointer and context-menu affordances', () => {
     const html = getDashboardHtml({ cspSource: 'vscode-webview://deckard' });
 
     assert.strictEqual(html.includes('padding: 10px; cursor: pointer;'), true);
@@ -195,6 +210,12 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
     assert.strictEqual(html.includes("'Active tasks'"), true);
+    assert.strictEqual(html.includes('class="rename-tag"'), false);
+    assert.strictEqual(
+      html.includes('data-context-action="rename-tag"'),
+      true,
+    );
+    assert.strictEqual(html.includes('openRankContextMenu(event, row)'), true);
     assert.strictEqual(
       html.includes(
         '.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }',
@@ -208,6 +229,18 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes('const lightweightTags = entityKindFilter ==='),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("{ value: 'other', label: 'Other tags' }"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("const tagSortControl = entityKindFilter === 'other'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("const entitySortControl = entityKindFilter !== 'other'"),
       true,
     );
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
@@ -302,6 +335,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.inline-tag { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.active-name .active-filter-tag { color: #050505; }',
       ),
       true,
     );
@@ -552,14 +591,16 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
     assert.strictEqual(
-      html.includes('function renderRelationshipTree(parentRelationships, childRelationships, rootTag)'),
+      html.includes('function renderRelationshipTree(parentRelationships, childRelationships, siblingRelationships, rootTag)'),
       true,
     );
     assert.strictEqual(
-      html.includes('function renderRelationshipGraph(parentRelationships, childRelationships, rootTag)'),
+      html.includes('function renderRelationshipGraph(parentRelationships, childRelationships, siblingRelationships, rootTag)'),
       true,
     );
     assert.strictEqual(html.includes('Heading relationships'), true);
+    assert.strictEqual(html.includes('<span>Siblings</span>'), true);
+    assert.strictEqual(html.includes('Open sibling tag'), true);
     assert.strictEqual(html.includes('data-action="set-relationship-view"'), true);
     assert.strictEqual(html.includes('data-view="tree"'), true);
     assert.strictEqual(html.includes('data-view="graph"'), true);
@@ -571,6 +612,20 @@ suite('Webview contracts', () => {
       html.includes('function renderOverviewTagLink(tag, text)'),
       true,
     );
+    assert.strictEqual(
+      html.includes('function renderTagControl(tag, content, extraClass)'),
+      false,
+    );
+    assert.strictEqual(html.includes('data-context-action="rename-tag"'), true);
+    assert.strictEqual(
+      html.includes('function openTagContextMenu(event, target)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("document.addEventListener('contextmenu'"),
+      true,
+    );
+    assert.strictEqual(html.includes("type: 'renameTag'"), true);
     assert.strictEqual(
       html.includes('class="overview-tag-link" data-action="open-tag"'),
       true,
@@ -669,11 +724,33 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('Relationship tree'), true);
+    assert.strictEqual(html.includes("branch(siblings, 'sibling', 'Siblings')"), true);
+    assert.strictEqual(html.includes('Open sibling tag'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), true);
     assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
     assert.strictEqual(html.includes('active-filter-label'), false);
     assert.strictEqual(html.includes('active-filter-joiner'), true);
-    assert.strictEqual(html.includes('class="active-filter-tag"'), true);
+    assert.strictEqual(
+      html.includes("renderTag(state.tagOverview, 'active-filter-tag')"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('const tagOverviewName = state.tagOverviewFilter'),
+      false,
+    );
+    assert.strictEqual(
+      html.includes('function renderTagControl(tag, content, extraClass)'),
+      false,
+    );
+    assert.strictEqual(html.includes('data-context-action="rename-tag"'), true);
+    assert.strictEqual(
+      html.includes('function openTagContextMenu(event, target)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("document.addEventListener('contextmenu'"),
+      true,
+    );
     assert.strictEqual(
       html.includes('if (!relationships || snapshot.tagOverviewFilter) return \'\';'),
       true,
@@ -733,6 +810,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('<section id="advanced">'), true);
     assert.strictEqual(html.includes('Heading relationships'), true);
     assert.strictEqual(html.includes('Parent tags'), true);
+    assert.strictEqual(html.includes('Sibling tags'), true);
     assert.strictEqual(html.includes('Child tags'), true);
 
     for (const command of [
@@ -782,6 +860,9 @@ suite('Webview contracts', () => {
   });
 
   test('accepts only valid sidebar navigation messages', () => {
+    assert.deepStrictEqual(parseSidebarMessage({ type: 'ready' }), {
+      type: 'ready',
+    });
     assert.deepStrictEqual(
       parseSidebarMessage({
         type: 'openSource',
@@ -793,6 +874,10 @@ suite('Webview contracts', () => {
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
       { type: 'openTag', tagKey: 'work' },
+    );
+    assert.deepStrictEqual(
+      parseSidebarMessage({ type: 'renameTag', tagKey: '#work' }),
+      { type: 'renameTag', tagKey: '#work' },
     );
     assert.deepStrictEqual(
       parseSidebarMessage({

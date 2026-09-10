@@ -7,6 +7,7 @@ import { DashboardMessage, DashboardSnapshot } from '../../core/types';
 import { createDashboardSnapshot } from '../state/dashboardState';
 import { toggleTask } from '../commands/taskActions';
 import { openSourceAt } from '../commands/navigation';
+import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
 
@@ -264,6 +265,16 @@ export class DashboardPanel implements vscode.Disposable {
           }
         }
         return;
+      case 'renameTag': {
+        const replacement = await renameIndexedTag(
+          this.indexer,
+          message.tagKey,
+        );
+        if (replacement) {
+          await this.onOpenTag(replacement.key);
+        }
+        return;
+      }
     }
   }
 }

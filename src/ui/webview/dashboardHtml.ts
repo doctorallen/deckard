@@ -213,7 +213,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function openRankContextMenu(event, row) {
     const kind = row.dataset.entityKey ? 'entity' : row.dataset.tagKey ? 'tag' : 'task';
     const key = row.dataset.entityKey || row.dataset.tagKey || row.dataset.taskId;
-    if (!key || !canRank(kind)) return;
+    if (!key || (kind === 'task' && !canRank(kind))) return;
     event.preventDefault();
     closeRankContextMenu();
     if (!rankContextMenu) {
@@ -225,7 +225,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
     rankContextKind = kind;
     rankContextKey = key;
-    rankContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="top">Move to top</button><button type="button" role="menuitem" data-context-action="bottom">Move to bottom</button>';
+    const actions = [];
+    if (kind === 'tag' || kind === 'entity') {
+      actions.push('<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>');
+    }
+    if (canRank(kind)) {
+      actions.push('<button type="button" role="menuitem" data-context-action="top">Move to top</button>');
+      actions.push('<button type="button" role="menuitem" data-context-action="bottom">Move to bottom</button>');
+    }
+    if (!actions.length) return;
+    rankContextMenu.innerHTML = actions.join('');
     rankContextMenu.hidden = false;
     const bounds = rankContextMenu.getBoundingClientRect();
     rankContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
@@ -530,7 +539,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const entityKindOptions = [
       { value: 'all', label: 'All types' },
       ...Object.keys(builtInEntityKindLabels).map(function (kind) { return { value: kind, label: builtInEntityKindLabels[kind] }; }),
-      ...customEntityKinds.map(function (kind) { return { value: kind, label: formatEntityKindLabel(kind) }; })
+      ...customEntityKinds.map(function (kind) { return { value: kind, label: formatEntityKindLabel(kind) }; }),
+      { value: 'other', label: 'Other tags' }
     ].map(function (option) {
       return '<option value="' + escapeHtml(option.value) + '" ' + (entityKindFilter === option.value ? 'selected' : '') + '>' + escapeHtml(option.label) + '</option>';
     }).join('');
@@ -538,7 +548,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       return entityKindFilter === 'all' || entity.kind === entityKindFilter;
     });
     const entityKeys = new Set(state.entities.map(function (entity) { return entity.key; }));
-    const lightweightTags = entityKindFilter === 'all'
+    const lightweightTags = entityKindFilter === 'all' || entityKindFilter === 'other'
       ? state.tags.filter(function (tag) { return !entityKeys.has(tag.key); })
       : [];
     const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
@@ -592,6 +602,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
       : '';
     const selectedTagSummary = state.selectedTaskTags.length ? state.selectedTaskTags.length + ' selected' : 'all tags';
     const taskTagFilter = '<details class="tag-filter" ' + (taskTagFilterOpen || (!hasRenderedTagFilter && state.selectedTaskTags.length) ? 'open' : '') + '><summary>Tags: ' + selectedTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-task-tags" value="' + escapeHtml(taskTagQuery) + '" placeholder="Filter tags" aria-label="Filter task tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options">' + tagOptions + '</div>' + noMatchingTags + '<button class="tag-filter-clear" data-action="clear-task-tags">Clear</button></div></details>';
+    const tagSortControl = entityKindFilter === 'other'
+      ? '<span class="control-icon"><select data-action="set-sort" aria-label="Sort lightweight tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span>'
+      : '';
+    const entitySortControl = entityKindFilter !== 'other'
+      ? '<span class="control-icon"><select data-action="set-entity-sort" aria-label="Sort entity tags"><option value="alphabetical" ' + (state.entitySortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.entitySortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.entitySortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.entitySortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span>'
+      : '';
 
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard</h1></div><div class="metrics" aria-label="Workspace totals">' +
@@ -599,7 +615,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
         '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
       '</div></header>' +
-      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type">' + entityKindOptions + '</select>' + filterIcon + '</span><span class="control-icon"><select data-action="set-entity-sort" aria-label="Sort entity tags"><option value="alphabetical" ' + (state.entitySortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.entitySortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.entitySortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.entitySortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span><span class="control-icon"><select data-action="set-sort" aria-label="Sort lightweight tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></div></div><div class="entity-list">' + tagContent + '</div></section>' +
+      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type">' + entityKindOptions + '</select>' + filterIcon + '</span>' + entitySortControl + tagSortControl + '</div></div><div class="entity-list">' + tagContent + '</div></section>' +
       '<section aria-labelledby="tasks-heading"><div class="section-heading"><h2 id="tasks-heading">Tasks <span class="tag-count">' + state.activeTaskCount + ' active</span></h2><span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></div><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + filters + '</div>' + taskTagFilter + '</div><div class="task-list">' + tasks + '</div></section></div>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
@@ -615,7 +631,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
   document.addEventListener('click', function (event) {
     const contextAction = event.target.closest('#rank-context-menu [data-context-action]');
     if (contextAction) {
-      moveContextItem(contextAction.dataset.contextAction === 'top');
+      if (contextAction.dataset.contextAction === 'rename-tag') {
+        const tagKey = rankContextKind === 'tag' || rankContextKind === 'entity'
+          ? rankContextKey
+          : undefined;
+        closeRankContextMenu();
+        if (tagKey) send({ type: 'renameTag', tagKey: tagKey });
+      } else {
+        moveContextItem(contextAction.dataset.contextAction === 'top');
+      }
       return;
     }
     if (rankContextMenu && !event.target.closest('#rank-context-menu')) closeRankContextMenu();

@@ -299,6 +299,40 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.notes[0].totalTagCount, 3);
   });
 
+  test('ranks notes by shared tags across every section in the note', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work #urgent #case',
+    );
+    const weaker = createFile('notes/a-weaker.md', '# Weaker #work');
+    const stronger = createFile(
+      'notes/z-stronger.md',
+      '# Stronger #work\n\n## Urgent #urgent\n\n## Case #case',
+    );
+    const index = createFileIndex([active, weaker, stronger]);
+
+    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+
+    assert.deepStrictEqual(
+      snapshot.notes.slice(0, 3).map((note) => note.filePath),
+      [
+        'notes/z-stronger.md',
+        'notes/z-stronger.md',
+        'notes/z-stronger.md',
+      ],
+    );
+    assert.strictEqual(snapshot.notes[0].matchCount, 3);
+    assert.deepStrictEqual(
+      snapshot.notes[0].matchedTags.map((tag) => tag.key),
+      ['#case', '#urgent', '#work'],
+    );
+    const weakerNote = snapshot.notes.find(
+      (note) => note.filePath === 'notes/a-weaker.md',
+    );
+    assert.ok(weakerNote);
+    assert.strictEqual(weakerNote.matchCount, 1);
+  });
+
   test('can disable keyword-only related-note matches', () => {
     const active = createFile(
       'notes/current.md',
@@ -371,6 +405,28 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
       ['#alpha', '#middle', '#zeta'],
+    );
+  });
+
+  test('collects active tags from front matter, sections, and tasks', () => {
+    const active = createFile(
+      'notes/current.md',
+      [
+        '---',
+        'tags: [frontmatter]',
+        '---',
+        '# Current #section',
+        '- [ ] Task #task',
+      ].join('\n'),
+    );
+    const related = createFile('notes/related.md', '# Related #frontmatter');
+    const index = createFileIndex([active, related]);
+
+    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+
+    assert.deepStrictEqual(
+      snapshot.activeTags.map((tag) => tag.key),
+      ['#frontmatter', '#section', '#task'],
     );
   });
 
@@ -586,6 +642,61 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(child.childTags, []);
   });
 
+  test('projects and filters sibling heading relationships', () => {
+    const parsed = parseMarkdown(
+      'notes/sibling-overview.md',
+      [
+        '# Relay map',
+        '## First route #first',
+        '- [ ] First task',
+        '## Second route #second',
+        '- [ ] Second task',
+        '## Third route #third',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+
+    const first = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#first',
+    );
+    const second = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#second',
+    );
+    const filtered = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#second',
+      'active',
+      'inline',
+      true,
+      '#first',
+    );
+
+    assert.ok(first);
+    assert.ok(second);
+    assert.ok(filtered);
+    assert.deepStrictEqual(
+      first.siblingTags.map((relationship) => relationship.sibling.key),
+      ['#second', '#third'],
+    );
+    assert.deepStrictEqual(
+      second.siblingTags.map((relationship) => relationship.sibling.key),
+      ['#first', '#third'],
+    );
+    assert.deepStrictEqual(
+      filtered.sections.map((section) => section.heading),
+      ['Second route #second'],
+    );
+    assert.deepStrictEqual(
+      filtered.tasks.map((item) => item.task.title),
+      ['Second task'],
+    );
+  });
+
   test('projects dense relationship groups and supports disabling them', () => {
     const parentTags = Array.from(
       { length: 12 },
@@ -625,6 +736,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(enabled.childTags.length, 12);
     assert.deepStrictEqual(disabled.parentTags, []);
     assert.deepStrictEqual(disabled.childTags, []);
+    assert.deepStrictEqual(disabled.siblingTags, []);
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -847,6 +959,7 @@ suite('Dashboard state', () => {
         '# Parent route #parent',
         '## Focus route #focus',
         '### Child route #child',
+        '## Sibling route #sibling',
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
@@ -867,6 +980,34 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       sidebar.tagOverviewRelationships?.childTags.map(
+        (relationship) => relationship.child.key,
+      ),
+      ['#child'],
+    );
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.siblingTags.map(
+        (relationship) => relationship.sibling.key,
+      ),
+      ['#sibling'],
+    );
+
+    const filteredOverview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#focus',
+      'active',
+      'inline',
+      true,
+      '#parent',
+    );
+    assert.ok(filteredOverview);
+    const filteredSidebar = createTagOverviewSidebarSnapshot(filteredOverview);
+    assert.deepStrictEqual(filteredSidebar.tagOverviewFilter, {
+      key: '#parent',
+      label: '#parent',
+    });
+    assert.deepStrictEqual(
+      filteredSidebar.tagOverviewRelationships?.childTags.map(
         (relationship) => relationship.child.key,
       ),
       ['#child'],
