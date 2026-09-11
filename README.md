@@ -121,12 +121,11 @@ Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed t
 
 ## Dashboard
 
-Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, namespaced entities, lightweight tags, and tasks in one place.
+Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Tasks** and **Tags** tabs. The Dashboard opens on **Tasks**; use Left/Right Arrow while the tab control is focused to switch modes.
 
-- **Tags** lists built-in and automatically created namespaced entities, plus unnamespaced lightweight tags under **Other tags**. Use **All types** to show everything; built-in and user-created namespaces are also available as type filters. Favorite important tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a tag or use its context menu to move it to the top or bottom.
-- **Tasks** lets you switch between all, active, and completed tasks, and sort by rank, creation time, or update time. Rank is the default. Date sorting uses the source file's filesystem timestamps.
-- **Task tags** lets you select one or more tags. A task appears when it matches any selected tag.
-- **Saved filters** lists named multi-tag overviews. In a combined Tag Overview, use **Save filter** to name its active tags; select the saved filter to reopen that exact intersection, or use **Remove** to delete it.
+- **Saved tag views** appear above the Dashboard's Tasks/Tags tabs, so they remain available in either mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
+- **Task controls** provide visible **All**, **Active**, and **Completed** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
+- **Browse** separates namespaced **Entities** from **Other tags**, so their independent sort orders remain predictable. Entity browsing keeps its type filter; both scopes include a label search. Favorite important items, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a row or use its context menu to move it to the top or bottom.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.

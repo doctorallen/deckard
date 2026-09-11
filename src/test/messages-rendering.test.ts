@@ -243,9 +243,21 @@ suite('Webview contracts', () => {
     assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
   });
 
-  test('renders task-row pointer and context-menu affordances', () => {
+  test('renders accessible Tasks and Tags dashboard modes with focused controls', () => {
     const html = getDashboardHtml({ cspSource: 'vscode-webview://deckard' });
 
+    assert.strictEqual(
+      html.includes(
+        'browseScope === \'entities\' ? \'active\' : \'\') + \'" data-action="set-browse-scope"',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        'browseScope === \'tags\' ? \'active\' : \'\') + \'" data-action="set-browse-scope"',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes('padding: 10px; cursor: pointer;'), true);
     assert.strictEqual(
       html.includes('.task-row:hover { border-color: var(--amber-bright); }'),
@@ -261,12 +273,28 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '<div class="task-filter-toggle" role="group" aria-label="Task status filter">',
+        '.saved-filter-row:hover { border-color: var(--amber-bright); background: var(--panel-raised); transform: translateX(3px); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '<div class="task-filter-toggle" role="group" aria-label="Task completion filter">',
       ),
       true,
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
-    assert.strictEqual(html.includes("'Active tasks'"), true);
+    assert.strictEqual(html.includes("const taskCounts = {"), true);
+    assert.strictEqual(html.includes("'<span>' + label + '</span>"), true);
+    assert.strictEqual(html.includes('Sort:<span class="control-icon">'), true);
+    assert.strictEqual(html.includes('class="toolbar-controls"'), true);
+    assert.strictEqual(html.includes('class="browse-toolbar-controls"'), true);
+    assert.strictEqual(html.includes('data-action="search-tasks"'), true);
+    assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
+    assert.strictEqual(html.includes('<span class="control-label">Tags:</span>'), true);
+    assert.strictEqual(html.includes('class="selected-task-tag"'), true);
+    assert.strictEqual(html.includes('data-action="remove-task-tag"'), true);
+    assert.strictEqual(html.includes('Clear filters'), true);
     assert.strictEqual(html.includes('class="rename-tag"'), false);
     assert.strictEqual(
       html.includes('data-context-action="rename-tag"'),
@@ -285,25 +313,40 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('const lightweightTags = entityKindFilter ==='),
+      html.includes('const lightweightTags = state.tags.filter'),
       true,
     );
     assert.strictEqual(
-      html.includes("{ value: 'other', label: 'Other tags' }"),
+      html.includes('data-action="set-browse-scope"'),
       true,
     );
     assert.strictEqual(
-      html.includes("const tagSortControl = entityKindFilter === 'other'"),
+      html.includes('data-browse-scope="entities"'),
       true,
     );
     assert.strictEqual(
-      html.includes("const entitySortControl = entityKindFilter !== 'other'"),
+      html.includes('data-browse-scope="tags"'),
       true,
     );
+    assert.strictEqual(html.includes('data-action="search-browse"'), true);
+    assert.strictEqual(html.includes('aria-label="Tag scope"'), true);
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
-    assert.strictEqual(html.includes('Saved filters'), true);
+    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(
+      html.indexOf('Saved tag views') <
+        html.indexOf('role="tablist" aria-label="Dashboard mode"'),
+      true,
+    );
     assert.strictEqual(html.includes('data-action="remove-saved-filter"'), true);
     assert.strictEqual(html.includes("type: 'openSavedFilter'"), true);
+    assert.strictEqual(html.includes('role="tablist" aria-label="Dashboard mode"'), true);
+    assert.strictEqual(html.includes('role="tab" data-action="set-dashboard-mode"'), true);
+    assert.strictEqual(html.includes('aria-controls="tasks-panel"'), true);
+    assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
+    assert.strictEqual(html.includes('role="tabpanel"'), true);
+    assert.strictEqual(html.includes("vscode.getState()"), true);
+    assert.strictEqual(html.includes("vscode.setState({ dashboardMode: dashboardMode })"), true);
+    assert.strictEqual(html.includes("event.key === 'ArrowLeft'"), true);
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
@@ -395,6 +438,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.inline-tag { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.saved-filter-remove.saved-filter-remove, .task-filter-toggle .filter-count { color: #050505; }',
       ),
       true,
     );
@@ -951,6 +1000,10 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Favorites always appear before'), true);
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
+    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(html.includes('Tasks/Tags tabs'), true);
+    assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
+    assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);
     assert.strictEqual(
       html.includes('When no Markdown editor is active'),
