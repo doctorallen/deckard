@@ -5,9 +5,11 @@ import {
   TagOverviewLayout,
   RelatedNotesSortMode,
   RenderMode,
+  SavedFilter,
   TagOverviewSortMode,
   TagSortMode,
   TaskSortMode,
+  DashboardColumnCount,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -23,11 +25,14 @@ const defaultPreferences: PersistedPreferences = {
   entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank',
+  dashboardTaskColumns: 1,
+  dashboardTagColumns: 2,
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
+  savedFilters: [],
 };
 
 /**
@@ -40,6 +45,7 @@ export class PreferencesStore implements vscode.Disposable {
   private readonly changeEmitter =
     new vscode.EventEmitter<PersistedPreferences>();
   private preferences: PersistedPreferences;
+  private updateQueue: Promise<void> = Promise.resolve();
 
   public constructor(private readonly state: vscode.Memento) {
     this.preferences = normalizePreferences(
@@ -154,6 +160,20 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Persists the independent task and tag grid widths for every Dashboard.
+   */
+  public async setDashboardColumns(
+    section: 'tasks' | 'tags',
+    columns: DashboardColumnCount,
+  ): Promise<void> {
+    await this.update(
+      section === 'tasks'
+        ? { dashboardTaskColumns: columns }
+        : { dashboardTagColumns: columns },
+    );
+  }
+
+  /**
    * Persists whether tag overview bodies should show source or rendered output.
    */
   public async setRenderMode(renderMode: RenderMode): Promise<void> {
@@ -199,6 +219,90 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Saves a named multi-tag filter, replacing the existing filter for its
+   * canonical tag set so the same overview never creates a duplicate.
+   */
+  public async saveSavedFilter(
+    name: string,
+    tagKeys: string[],
+  ): Promise<SavedFilter | undefined> {
+    const normalizedName = name.trim();
+    const normalizedTagKeys = normalizeSavedFilterTagKeys(tagKeys);
+    if (!normalizedName || normalizedTagKeys.length < 2) {
+      return undefined;
+    }
+
+    const existing = this.preferences.savedFilters.find((filter) =>
+      areTagKeyListsEqual(filter.tagKeys, normalizedTagKeys),
+    );
+    const savedFilter: SavedFilter = {
+      id: existing?.id ?? createSavedFilterId(),
+      name: normalizedName,
+      tagKeys: normalizedTagKeys,
+    };
+    await this.update({
+      savedFilters: existing
+        ? this.preferences.savedFilters.map((filter) =>
+            filter.id === existing.id ? savedFilter : filter,
+          )
+        : [...this.preferences.savedFilters, savedFilter],
+    });
+    return cloneSavedFilter(savedFilter);
+  }
+
+  /**
+   * Updates one saved filter when its stable ID still identifies a valid entry.
+   */
+  public async updateSavedFilter(
+    id: string,
+    name: string,
+    tagKeys: string[],
+  ): Promise<SavedFilter | undefined> {
+    const normalizedName = name.trim();
+    const normalizedTagKeys = normalizeSavedFilterTagKeys(tagKeys);
+    if (!id || !normalizedName || normalizedTagKeys.length < 2) {
+      return undefined;
+    }
+    const existing = this.preferences.savedFilters.find(
+      (filter) => filter.id === id,
+    );
+    if (!existing) {
+      return undefined;
+    }
+
+    const matchingFilter = this.preferences.savedFilters.find(
+      (filter) =>
+        filter.id !== id &&
+        areTagKeyListsEqual(filter.tagKeys, normalizedTagKeys),
+    );
+    const savedFilter: SavedFilter = {
+      id,
+      name: normalizedName,
+      tagKeys: normalizedTagKeys,
+    };
+    await this.update({
+      savedFilters: this.preferences.savedFilters
+        .filter((filter) => filter.id !== matchingFilter?.id)
+        .map((filter) => (filter.id === id ? savedFilter : filter)),
+    });
+    return cloneSavedFilter(savedFilter);
+  }
+
+  /**
+   * Removes a saved filter by its opaque stable ID.
+   */
+  public async removeSavedFilter(id: string): Promise<void> {
+    if (!id) {
+      return;
+    }
+    await this.update({
+      savedFilters: this.preferences.savedFilters.filter(
+        (filter) => filter.id !== id,
+      ),
+    });
+  }
+
+  /**
    * Removes state for deleted index entries so preferences do not grow forever.
    */
   public async prune(
@@ -227,6 +331,12 @@ export class PreferencesStore implements vscode.Disposable {
         validTags.has(tagKey),
       ),
     );
+    const savedFilters = this.preferences.savedFilters.flatMap((filter) => {
+      const tagKeys = filter.tagKeys.filter((tagKey) => validTags.has(tagKey));
+      return tagKeys.length >= 2
+        ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
+        : [];
+    });
     await this.update({
       favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
         validTags.has(tagKey),
@@ -250,6 +360,7 @@ export class PreferencesStore implements vscode.Disposable {
           ([entityKey]) => validEntities?.has(entityKey) ?? true,
         ),
       ),
+      savedFilters,
     });
   }
 
@@ -268,8 +379,14 @@ export class PreferencesStore implements vscode.Disposable {
       ...this.preferences,
       ...changes,
     });
-    await this.state.update(preferencesKey, this.preferences);
-    this.changeEmitter.fire(this.value);
+    const nextPreferences = clonePreferences(this.preferences);
+    const persist = async (): Promise<void> => {
+      await this.state.update(preferencesKey, nextPreferences);
+      this.changeEmitter.fire(clonePreferences(nextPreferences));
+    };
+    const queuedUpdate = this.updateQueue.then(persist, persist);
+    this.updateQueue = queuedUpdate;
+    await queuedUpdate;
   }
 }
 
@@ -282,6 +399,8 @@ function normalizePreferences(
   const tagSortMode = value?.tagSortMode;
   const entitySortMode = value?.entitySortMode;
   const taskSortMode = value?.taskSortMode;
+  const dashboardTaskColumns = value?.dashboardTaskColumns;
+  const dashboardTagColumns = value?.dashboardTagColumns;
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
   const tagOverviewLayout = value?.tagOverviewLayout;
@@ -312,6 +431,12 @@ function normalizePreferences(
       taskSortMode === 'created' || taskSortMode === 'updated'
         ? taskSortMode
         : 'rank',
+    dashboardTaskColumns: isDashboardColumnCount(dashboardTaskColumns)
+      ? dashboardTaskColumns
+      : 1,
+    dashboardTagColumns: isDashboardColumnCount(dashboardTagColumns)
+      ? dashboardTagColumns
+      : 2,
     renderMode: renderMode === 'html' ? 'html' : 'markdown',
     tagOverviewSortMode:
       tagOverviewSortMode === 'created' ||
@@ -327,7 +452,14 @@ function normalizePreferences(
         ? relatedNotesSortMode
         : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
+    savedFilters: normalizeSavedFilters(value?.savedFilters),
   };
+}
+
+function isDashboardColumnCount(
+  value: unknown,
+): value is DashboardColumnCount {
+  return value === 1 || value === 2 || value === 3 || value === 4;
 }
 
 /**
@@ -357,6 +489,74 @@ function normalizeAccessCounts(
 }
 
 /**
+ * Ensures filters remain valid version-one preference data, even when read
+ * from an old or manually modified global-state value.
+ */
+function normalizeSavedFilters(values: SavedFilter[] | undefined): SavedFilter[] {
+  const seenTagSets = new Set<string>();
+  const seenIds = new Set<string>();
+  return (values ?? []).flatMap((value) => {
+    if (
+      typeof value !== 'object' ||
+      value === null ||
+      typeof value.id !== 'string' ||
+      !value.id.trim() ||
+      typeof value.name !== 'string'
+    ) {
+      return [];
+    }
+    const name = value.name.trim();
+    const tagKeys = normalizeSavedFilterTagKeys(value.tagKeys);
+    const tagSet = tagKeys.join('\u0000');
+    if (
+      !name ||
+      tagKeys.length < 2 ||
+      seenIds.has(value.id) ||
+      seenTagSets.has(tagSet)
+    ) {
+      return [];
+    }
+    seenIds.add(value.id);
+    seenTagSets.add(tagSet);
+    return [{ id: value.id, name, tagKeys }];
+  });
+}
+
+function normalizeSavedFilterTagKeys(tagKeys: unknown): string[] {
+  if (!Array.isArray(tagKeys)) {
+    return [];
+  }
+  return [
+    ...new Set(
+      tagKeys
+        .filter(
+          (tagKey): tagKey is string =>
+            typeof tagKey === 'string' && tagKey.trim().length > 0,
+        )
+        .map((tagKey) => tagKey.trim()),
+    ),
+  ].sort();
+}
+
+function areTagKeyListsEqual(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((key, index) => key === right[index])
+  );
+}
+
+function createSavedFilterId(): string {
+  return `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function cloneSavedFilter(value: SavedFilter): SavedFilter {
+  return { ...value, tagKeys: [...value.tagKeys] };
+}
+
+/**
  * Clones nested arrays and records so a snapshot cannot mutate stored state.
  */
 function clonePreferences(value: PersistedPreferences): PersistedPreferences {
@@ -370,5 +570,6 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     entityAccessCounts: { ...value.entityAccessCounts },
     taskOrder: [...value.taskOrder],
     sectionAccessCounts: { ...value.sectionAccessCounts },
+    savedFilters: value.savedFilters.map(cloneSavedFilter),
   };
 }

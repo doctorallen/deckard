@@ -109,7 +109,10 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .sidebar-relationship-namespace > summary { padding: 5px 8px 5px 10px; border-left: 3px solid var(--cyan); background: var(--panel-deep); color: var(--cyan); font-size: 10px; font-weight: 650; letter-spacing: .06em; }
 .sidebar-relationship-namespace > summary:hover, .sidebar-relationship-namespace > summary:focus-visible { background: var(--panel-raised); color: var(--cyan-bright); }
 .sidebar-relationship-items { display: grid; gap: 3px; margin: 0 8px 5px; padding: 3px 0 0; }
+.sidebar-associated-tag { display: flex; align-items: stretch; gap: 3px; }
 .sidebar-relationship-items .tag-open { width: 100%; min-width: 0; overflow: visible; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-add-filter { flex: 0 0 27px; min-height: 27px; border: 1px solid var(--line); background: var(--panel); color: var(--green); padding: 2px; font-size: 16px; line-height: 1; }
+.sidebar-add-filter:hover, .sidebar-add-filter:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .sidebar-relationships .tag-open.relationship-tag {
   position: relative;
   display: flex;
@@ -220,42 +223,45 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render one relationship node for the narrow sidebar tree. */
-  function renderSidebarRelationshipTag(tag, count, weight, coOccurrenceCount, headingRelationshipCount, direction, filterTagKey, detail) {
+  function renderSidebarRelationshipTag(tag, count, weight, normalizedWeight, coOccurrenceCount, headingRelationshipCount, direction, overviewTagKey, detail) {
     const countHtml = Number(count) > 1
       ? '<span class="sidebar-relationship-count">x' + escapeHtml(count) + '</span>'
       : '';
     const directWeight = Number(coOccurrenceCount);
     const headingWeight = Math.max(0, Number(weight) - directWeight);
-    const percentage = Math.round(Number(weight) * 100);
-    const scoreHtml = '<span class="sidebar-association-score-wrap"><span class="sidebar-association-score" aria-label="Association strength ' + percentage + ' percent">' + percentage + '%</span><span class="sidebar-association-tooltip" role="tooltip"><span class="sidebar-association-tooltip-header"><strong>Association strength</strong><strong>' + percentage + '%</strong></span><p>' + escapeHtml(detail) + '</p><div class="sidebar-association-tooltip-weights"><span>Direct weight</span><strong>' + directWeight.toFixed(2) + '</strong><span>Heading weight</span><strong>' + headingWeight.toFixed(2) + '</strong><span>Total weight</span><strong>' + Number(weight).toFixed(2) + '</strong></div></span></span>';
+    const percentage = Math.round(Number(normalizedWeight) * 100);
+    const scoreHtml = '<span class="sidebar-association-score-wrap"><span class="sidebar-association-score" aria-label="Association strength ' + percentage + ' percent">' + percentage + '%</span><span class="sidebar-association-tooltip" role="tooltip"><span class="sidebar-association-tooltip-header"><strong>Association strength</strong><strong>' + percentage + '%</strong></span><p>' + escapeHtml(detail) + '</p><div class="sidebar-association-tooltip-weights"><span>Raw direct weight</span><strong>' + directWeight.toFixed(2) + '</strong><span>Raw heading weight</span><strong>' + headingWeight.toFixed(2) + '</strong><span>Total weight</span><strong>' + Number(weight).toFixed(2) + '</strong><span>Normalized relevance</span><strong>' + Number(normalizedWeight).toFixed(2) + '</strong></div></span></span>';
     const label = direction === 'parent'
       ? 'Open parent tag '
       : direction === 'child'
         ? 'Open child tag '
         : 'Open associated tag ';
-    const filterAttribute = filterTagKey
-      ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
+    const overviewAttribute = overviewTagKey
+      ? ' data-overview-tag-key="' + escapeHtml(overviewTagKey) + '"'
       : '';
-    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + ' aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span><span class="sidebar-association-meta">' + scoreHtml + countHtml + '</span></button>';
+    return '<div class="sidebar-associated-tag"><button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span><span class="sidebar-association-meta">' + scoreHtml + countHtml + '</span></button><button class="sidebar-add-filter" data-action="add-overview-filter" data-add-tag-key="' + escapeHtml(tag.key) + '"' + overviewAttribute + ' aria-label="Add ' + escapeHtml(tag.label) + ' to this overview filter" title="Add ' + escapeHtml(tag.label) + ' to filter">+</button></div>';
   }
 
   /** Render every association in one strength-sorted list. */
-  function renderSidebarAssociations(relationships, filterTagKey) {
+  function renderSidebarAssociations(relationships, overviewTagKey) {
     return relationships.slice().sort(function (left, right) {
-      return right.coOccurrenceCount - left.coOccurrenceCount || right.weight - left.weight || left.associatedTag.label.localeCompare(right.associatedTag.label, undefined, { sensitivity: 'base' });
+      return right.normalizedWeight - left.normalizedWeight || right.weight - left.weight || left.associatedTag.label.localeCompare(right.associatedTag.label, undefined, { sensitivity: 'base' });
     }).map(function (relationship) {
       const detail = relationship.coOccurrenceCount
         ? 'Written together ' + relationship.coOccurrenceCount + ' time' + (relationship.coOccurrenceCount === 1 ? '' : 's') + (relationship.headingRelationshipCount ? '; heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's') : '')
         : 'Heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's');
-      return renderSidebarRelationshipTag(relationship.associatedTag, relationship.count, relationship.weight, relationship.coOccurrenceCount, relationship.headingRelationshipCount, 'associated', filterTagKey, detail);
+      return renderSidebarRelationshipTag(relationship.associatedTag, relationship.count, relationship.weight, relationship.normalizedWeight, relationship.coOccurrenceCount, relationship.headingRelationshipCount, 'associated', overviewTagKey, detail);
     }).join('');
   }
 
   /** Render a narrow, nested relationship tree when a tag overview is active. */
   function renderSidebarRelationships(snapshot) {
     const relationships = snapshot.tagOverviewRelationships;
-    if (!relationships || snapshot.tagOverviewFilter) return '';
-    const associations = relationships.associatedTags || [];
+    if (!relationships) return '';
+    const filterTagKeys = snapshot.tagOverviewFilters || (snapshot.tagOverviewFilter ? [snapshot.tagOverviewFilter.key] : []);
+    const associations = filterTagKeys.length
+      ? relationships.sharedAssociatedTags || []
+      : relationships.associatedTags || [];
     if (!associations.length) return '';
     return '<section class="sidebar-relationships" aria-label="Tag associations"><details class="sidebar-relationship-branch"><summary><span>Associated tags</span><span class="sidebar-relationship-count">' + associations.length + '</span></summary><div class="sidebar-relationship-items sidebar-association-items">' + renderSidebarAssociations(associations, snapshot.tagOverview.key) + '</div></details></section>';
   }
@@ -296,6 +302,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function render() {
     if (!state) return;
     closeTagContextMenu();
+    const tagOverviewFilters = state.tagOverviewFilters || (state.tagOverviewFilter ? [state.tagOverviewFilter] : []);
     let content;
     if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
@@ -303,7 +310,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       content = '<div class="empty">This note has no tags yet.</div>';
     } else if (state.state === 'noMatches') {
       content = state.tagOverview
-        ? '<div class="empty">' + (state.tagOverviewFilter ? 'No notes currently carry both tags.' : 'No notes currently carry this tag.') + '</div>'
+        ? '<div class="empty">' + (tagOverviewFilters.length ? 'No notes currently carry all selected tags.' : 'No notes currently carry this tag.') + '</div>'
         : '<div class="empty">No other notes share its tags.</div>';
     } else {
       content = '<div class="note-list">' + state.notes.map(function (note) {
@@ -321,26 +328,40 @@ ${getDeckardThemeCss(getDeckardTheme())}
         const evidence = note.relevanceEvidence || {
           directTagWeight: 0,
           associationWeight: note.associationWeight || 0,
+          normalizedAssociationWeight: note.associationWeight || 0,
           appliedAssociationWeight: note.associationWeight || 0,
-          linkWeight: 0,
-          keywordWeight: 0,
+          entryLinkWeight: 0,
+          fileLinkWeight: 0,
+          lexicalWeight: 0,
+          recencyWeight: 0,
+          specificityPenalty: 0,
+          lexicalTerms: [],
         };
         const weights = [
           ['Shared-tag weight', evidence.directTagWeight],
           ['Association weight', evidence.appliedAssociationWeight],
-          ['Link weight', evidence.linkWeight],
-          ['Keyword weight', evidence.keywordWeight],
+          ['Direct entry-link weight', evidence.entryLinkWeight],
+          ['File-link weight', evidence.fileLinkWeight],
+          ['Lexical weight', evidence.lexicalWeight],
+          ['Recency tie-breaker', evidence.recencyWeight],
         ].filter(function (item) { return item[1] > 0; });
+        const specificityAdjustment = evidence.specificityPenalty > 0
+          ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
+          : '';
         const relevance = state.tagOverview
           ? ''
-          : '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + '</div></span></span>';
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+          : '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        const path = note.headingPath && note.headingPath.length
+          ? note.headingPath.join(' > ')
+          : '';
+        const context = (note.dailyDate ? 'Daily note ' + note.dailyDate : '') + (note.dailyDate && path ? ' / ' : '') + path;
+        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>' + (context ? '<div class="source">' + escapeHtml(context) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
     const context = state.tagOverview
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
-        ? renderTag(state.tagOverview, 'active-filter-tag') + '<span class="active-filter-joiner"> AND </span>' + renderTag(state.tagOverviewFilter, 'active-filter-tag')
+        ? [state.tagOverview].concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('<span class="active-filter-joiner"> AND </span>')
         : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
     const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
@@ -369,9 +390,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'open-tag') {
-        const message = { type: 'openTag', tagKey: target.dataset.tagKey };
+        const message = { type: 'openTag', tagKey: target.dataset.overviewTagKey || target.dataset.tagKey };
         if (target.dataset.filterTagKey) message.filterTagKey = target.dataset.filterTagKey;
+        if (target.dataset.filterTagKeys) {
+          try {
+            const filterTagKeys = JSON.parse(target.dataset.filterTagKeys);
+            if (Array.isArray(filterTagKeys) && filterTagKeys.every(function (key) { return typeof key === 'string'; })) message.filterTagKeys = filterTagKeys;
+          } catch (_error) {}
+        }
         vscode.postMessage(message);
+      }
+      if (target.dataset.action === 'add-overview-filter') {
+        const filterTagKeys = (state.tagOverviewFilters || []).map(
+          function (tag) { return tag.key; },
+        );
+        if (
+          target.dataset.overviewTagKey &&
+          target.dataset.addTagKey &&
+          Array.isArray(filterTagKeys) &&
+          filterTagKeys.every(function (key) { return typeof key === 'string'; })
+        ) {
+          vscode.postMessage({
+            type: 'openTag',
+            tagKey: target.dataset.overviewTagKey,
+            filterTagKeys: filterTagKeys.concat([target.dataset.addTagKey]),
+          });
+        }
       }
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });

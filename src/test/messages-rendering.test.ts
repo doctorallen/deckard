@@ -51,6 +51,32 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
       { type: 'renameTag', tagKey: '#project/atlas' },
     );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'openSavedFilter',
+        filterId: 'atlas-follow-up',
+      }),
+      { type: 'openSavedFilter', filterId: 'atlas-follow-up' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'removeSavedFilter',
+        filterId: 'atlas-follow-up',
+      }),
+      { type: 'removeSavedFilter', filterId: 'atlas-follow-up' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'openSavedFilter', filterId: '' }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseDashboardMessage({
+        type: 'openSavedFilter',
+        filterId: 'atlas-follow-up',
+        tagKeys: ['#untrusted'],
+      }),
+      undefined,
+    );
     assert.strictEqual(
       parseDashboardMessage({ type: 'renameTag', tagKey: '' }),
       undefined,
@@ -61,6 +87,26 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       parseDashboardMessage({ type: 'setTaskSort', mode: 'random' }),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'setDashboardColumns',
+        section: 'tags',
+        columns: 3,
+      }),
+      {
+        type: 'setDashboardColumns',
+        section: 'tags',
+        columns: 3,
+      },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({
+        type: 'setDashboardColumns',
+        section: 'tasks',
+        columns: 5,
+      }),
       undefined,
     );
     assert.deepStrictEqual(
@@ -86,6 +132,17 @@ suite('Webview contracts', () => {
         type: 'setRenderMode',
         mode: 'html',
       },
+    );
+    assert.deepStrictEqual(
+      parseTagOverviewMessage({ type: 'saveTagOverviewFilter' }),
+      { type: 'saveTagOverviewFilter' },
+    );
+    assert.strictEqual(
+      parseTagOverviewMessage({
+        type: 'saveTagOverviewFilter',
+        tagKeys: ['#untrusted', '#browser-data'],
+      }),
+      undefined,
     );
     assert.strictEqual(
       parseTagOverviewMessage({ type: 'setRenderMode', mode: 'unsafe' }),
@@ -131,11 +188,31 @@ suite('Webview contracts', () => {
       }),
       { type: 'openTag', tagKey: '#child', filterTagKey: '#parent' },
     );
+    assert.deepStrictEqual(
+      parseTagOverviewMessage({
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      }),
+      {
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      },
+    );
     assert.strictEqual(
       parseTagOverviewMessage({
         type: 'openTag',
         tagKey: '#child',
         filterTagKey: 42,
+      }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseTagOverviewMessage({
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', 42],
       }),
       undefined,
     );
@@ -186,7 +263,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
   });
 
-  test('renders task-row pointer and context-menu affordances', () => {
+  test('renders accessible Tasks and Tags dashboard modes with focused controls', () => {
     const html = getDashboardHtml({ cspSource: 'vscode-webview://deckard' });
 
     assert.strictEqual(html.includes('padding: 10px; cursor: pointer;'), true);
@@ -204,12 +281,101 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '<div class="task-filter-toggle" role="group" aria-label="Task status filter">',
+        '.saved-filter-row:hover { border-color: var(--amber-bright); background: var(--panel-raised); transform: translateX(3px); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '<div class="task-filter-toggle" role="group" aria-label="Task completion filter">',
       ),
       true,
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
-    assert.strictEqual(html.includes("'Active tasks'"), true);
+    assert.strictEqual(html.includes("const taskCounts = {"), true);
+    assert.strictEqual(
+      html.includes(
+        'all: normalizedTaskSearchQuery ? filteredTasks.length : state.totalTaskCount,',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        'completed: normalizedTaskSearchQuery',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes("'<span>' + label + '</span>"), true);
+    assert.strictEqual(html.includes('Sort:<span class="control-icon">'), true);
+    assert.strictEqual(html.includes('class="toolbar-controls"'), true);
+    assert.strictEqual(html.includes('class="browse-toolbar-controls"'), true);
+    assert.strictEqual(html.includes('data-action="search-tasks"'), true);
+    assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
+    assert.strictEqual(html.includes('class="task-search" type="search"'), true);
+    assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
+    assert.strictEqual(html.includes('<h1>Dashboard: '), true);
+    assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
+    assert.strictEqual(
+      html.indexOf('class="metrics"') <
+        html.indexOf('class="dashboard-view-options"'),
+      true,
+    );
+    assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
+    assert.strictEqual(html.includes('class="dashboard-view-options"'), true);
+    assert.strictEqual(html.includes('data-action="set-columns"'), true);
+    assert.strictEqual(html.includes('Task columns'), true);
+    assert.strictEqual(html.includes('Tag columns'), true);
+    assert.strictEqual(html.includes('saveDashboardViewState()'), true);
+    assert.strictEqual(html.includes('taskColumns: taskColumns'), true);
+    assert.strictEqual(html.includes('tagColumns: tagColumns'), true);
+    assert.strictEqual(
+      html.includes("grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("applyDashboardColumns('tasks', selectedTaskColumns)"),
+      true,
+    );
+    assert.strictEqual(html.includes('style="grid-template-columns: repeat('), true);
+    assert.strictEqual(html.includes('Search:<input class="task-search"'), false);
+    assert.strictEqual(html.includes('.catalog-search, .task-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
+    assert.strictEqual(html.includes('.tag-list, .task-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
+    assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
+    assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
+    assert.strictEqual(html.includes('function formatTagDisplay(tag)'), true);
+    assert.strictEqual(html.includes('const display = formatTagDisplay(tag);'), true);
+    assert.strictEqual(html.includes("escapeHtml(display.name)"), true);
+    assert.strictEqual(
+      html.includes("display.namespace ? '<span class=\"entity-kind\">'"),
+      true,
+    );
+    assert.strictEqual(html.includes('data-browse-scope='), false);
+    assert.strictEqual(
+      html.includes('data-tag-group="favorites"><h3>Favorites <span class="tag-count">('),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('data-tag-group="other"><h3>Other tags <span class="tag-count">('),
+      true,
+    );
+    assert.strictEqual(html.includes('class="section-summary"'), false);
+    assert.strictEqual(html.includes('.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }'), true);
+    assert.strictEqual(
+      html.includes(
+        '.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes('<div class="dashboard-tabs-row"><div class="dashboard-tabs"'), true);
+    assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
+    assert.strictEqual(
+      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; color: var(--panel-deep); background: var(--amber-bright); }'),
+      true,
+    );
+    assert.strictEqual(html.includes('<span class="control-label">Tags:</span>'), true);
+    assert.strictEqual(html.includes('class="selected-task-tag"'), true);
+    assert.strictEqual(html.includes('data-action="remove-task-tag"'), true);
+    assert.strictEqual(html.includes('Clear filters'), true);
     assert.strictEqual(html.includes('class="rename-tag"'), false);
     assert.strictEqual(
       html.includes('data-context-action="rename-tag"'),
@@ -227,23 +393,42 @@ suite('Webview contracts', () => {
       html.includes("const entityRow = event.target.closest('.entity-row');"),
       true,
     );
-    assert.strictEqual(
-      html.includes('const lightweightTags = entityKindFilter ==='),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("{ value: 'other', label: 'Other tags' }"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("const tagSortControl = entityKindFilter === 'other'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("const entitySortControl = entityKindFilter !== 'other'"),
-      true,
-    );
+    assert.strictEqual(html.includes('const filteredTags = state.tags.filter'), true);
+    assert.strictEqual(html.includes('data-action="search-browse"'), true);
+    assert.strictEqual(html.includes('aria-label="Tag scope"'), false);
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
+    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(
+      html.indexOf('Saved tag views') <
+        html.indexOf('role="tablist" aria-label="Dashboard mode"'),
+      true,
+    );
+    assert.strictEqual(html.includes('data-action="remove-saved-filter"'), true);
+    assert.strictEqual(html.includes("type: 'openSavedFilter'"), true);
+    assert.strictEqual(html.includes('role="tablist" aria-label="Dashboard mode"'), true);
+    assert.strictEqual(html.includes('role="tab" data-action="set-dashboard-mode"'), true);
+    assert.strictEqual(html.includes('aria-controls="tasks-panel"'), true);
+    assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
+    assert.strictEqual(html.includes('role="tabpanel"'), true);
+    assert.strictEqual(html.includes("vscode.getState()"), true);
+    assert.strictEqual(
+      html.includes("type: 'setDashboardColumns'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('if (taskColumns === undefined) taskColumns = incomingState.taskColumns ?? 1;'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('incomingState.tagColumns = tagColumns;'),
+      true,
+    );
+    assert.strictEqual(html.includes('bindDashboardColumnControls()'), true);
+    assert.strictEqual(
+      html.includes("event.stopPropagation();"),
+      true,
+    );
+    assert.strictEqual(html.includes("event.key === 'ArrowLeft'"), true);
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
@@ -310,6 +495,18 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
+        '.dashboard-tabs-row { border-bottom-color: var(--line-strong); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.overview-tabs-row { border-bottom-color: var(--line-strong); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
         '.metric::before { border-bottom-color: var(--amber); }',
       ),
       true,
@@ -335,6 +532,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.inline-tag { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.saved-filter-remove.saved-filter-remove, .task-filter-toggle .filter-count { color: #050505; }',
       ),
       true,
     );
@@ -376,7 +579,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.overview-tabs { gap: 2px; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
+        '.overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
@@ -394,6 +597,24 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
+        '.overview-search, .catalog-search, .task-search { border: 2px solid var(--cyan-bright); border-radius: 0 15px 15px 0; background: var(--panel); box-shadow: inset 0 0 0 1px var(--cyan-bright); color: var(--text); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.dashboard-tabs button { border-radius: 0; } .dashboard-tabs button:first-child { border-radius: 15px 0 0 0; } .dashboard-tabs button:last-child { border-radius: 0 0 15px 0; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.save-filter.save-filter { border-color: var(--panel-deep); color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
         '.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover',
       ),
       true,
@@ -401,6 +622,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.task-filter-toggle button { border-radius: 0; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }',
       ),
       true,
     );
@@ -544,8 +771,16 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '<div class="toolbar-toggle-group" role="group" aria-label="Content layout">',
+        '<div class="toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout">',
       ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.layout-toggle-group .toolbar-toggle { border-width: 1px; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.layout-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }'),
       true,
     );
     assert.strictEqual(
@@ -571,7 +806,7 @@ suite('Webview contracts', () => {
       html.includes("formatEntityTitle(state.entity.kind, state.entity.name)"),
       true,
     );
-    assert.strictEqual(html.includes('const relationships = state.entity'), true);
+    assert.strictEqual(html.includes("const relationships = '';"), true);
     assert.strictEqual(
       html.includes('title="Source: show the original Markdown"'),
       true,
@@ -589,6 +824,84 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Source</button>'), false);
     assert.strictEqual(html.includes('>Rendered</button>'), false);
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
+    assert.strictEqual(
+      html.includes('.overview-tabs { display: inline-flex; gap: 0;'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.overview-tabs-row { margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<div class="overview-tabs-row"><div class="overview-tabs"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.overview-tabs button + button { margin-left: -2px; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.overview-tabs button.active { position: relative; z-index: 1; }'),
+      true,
+    );
+    assert.strictEqual(html.includes('data-action="search-notes"'), true);
+    assert.strictEqual(html.includes('data-action="search-tasks"'), true);
+    assert.strictEqual(html.includes('aria-label="Search current notes"'), true);
+    assert.strictEqual(html.includes('aria-label="Search current tasks"'), true);
+    assert.strictEqual(html.includes('function filterOverviewEntries(kind, query, total)'), true);
+    assert.strictEqual(
+      html.includes('.card[hidden], .task[hidden] { display: none; }'),
+      true,
+    );
+    assert.strictEqual(html.includes('function updateTaskFilterCounts(query)'), true);
+    assert.strictEqual(
+      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(normalizedQuery);'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('counts[entry.classList.contains(\'completed\') ? \'completed\' : \'active\'] += 1;'),
+      true,
+    );
+    assert.strictEqual(html.includes('data-search-entry="notes"'), true);
+    assert.strictEqual(html.includes('data-search-entry="tasks"'), true);
+    assert.strictEqual(html.includes('Search:<input class="overview-search"'), false);
+    assert.strictEqual(html.includes('.overview-search { width: min(250px, 44vw); border-color: var(--line-strong); }'), true);
+    assert.strictEqual(
+      html.includes("filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done'"),
+      true,
+    );
+    assert.strictEqual(html.includes('class="view-options"'), true);
+    assert.strictEqual(
+      html.includes(
+        'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<summary aria-label="View options" title="View options">'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("viewOptions && viewOptions.open && !event.target.closest('.view-options')"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("viewOptions.querySelector('summary').focus()"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.toolbar { display: flex; justify-content: flex-end;'),
+      true,
+    );
+    assert.strictEqual(html.includes('note entries'), false);
+    assert.strictEqual(html.includes('data-action="save-filter"'), true);
+    assert.strictEqual(
+      html.includes('aria-label="Save this combined tag filter"'),
+      true,
+    );
+    assert.strictEqual(html.includes("type: 'saveTagOverviewFilter'"), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
     assert.strictEqual(
       html.includes('function renderRelationshipTree(associations, rootTag)'),
@@ -607,7 +920,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="relationship-tree-group"'), true);
     assert.strictEqual(html.includes('class="relationship-node"'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), true);
-    assert.strictEqual(html.includes('const filterTitle = state.filterTag'), true);
+    assert.strictEqual(html.includes('const filterTags = state.filterTags'), true);
     assert.strictEqual(
       html.includes('function renderOverviewTagLink(tag, text)'),
       true,
@@ -630,34 +943,28 @@ suite('Webview contracts', () => {
       html.includes('class="overview-tag-link" data-action="open-tag"'),
       true,
     );
-    assert.strictEqual(html.includes('class="overview-title-filter"'), true);
+    assert.strictEqual(html.includes('class="overview-filter-tag"'), true);
     assert.strictEqual(html.includes('class="overview-title-joiner"> AND </span>'), true);
+    assert.strictEqual(html.includes("state.tag.label + ' Overview'"), false);
     assert.strictEqual(html.includes('<h1 aria-label="'), true);
     assert.strictEqual(html.includes('escapeHtml(titleAriaLabel)'), true);
     assert.strictEqual(
       html.includes(
-        "state.filterTag ? renderOverviewTagLink(state.filterTag, state.filterTag.label) + ' · ' : ''",
+        "filterTags.map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ')",
       ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        'state.filterTag ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('state.filterTag ? state.tasks.length : state.entity.taskIds.length'),
       true,
     );
     assert.strictEqual(
       html.includes('.overview-title-joiner { color: var(--amber);'),
       true,
     );
-    assert.strictEqual(html.includes('title-filter-clear'), true);
+    assert.strictEqual(html.includes('function renderFilteredOverviewTag'), true);
+    assert.strictEqual(html.includes('class="title-filter-remove"'), true);
+    assert.strictEqual(html.includes('nextFilterTagKeys'), true);
+    assert.strictEqual(html.includes('data-filter-tag-keys'), true);
     assert.strictEqual(html.includes('filter-context'), false);
-    assert.strictEqual(html.includes('aria-label="Clear relationship filter"'), true);
-    assert.strictEqual(html.includes('Clear filter'), true);
+    assert.strictEqual(html.includes('Clear relationship filter'), false);
+    assert.strictEqual(html.includes('Clear filter'), false);
     assert.strictEqual(html.includes('class="relationship-count"'), true);
     assert.strictEqual(
       html.includes(
@@ -681,7 +988,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
-    assert.strictEqual(html.includes("'Completed tasks'"), true);
+    assert.strictEqual(html.includes("'Open' : 'Done'"), true);
     assert.strictEqual(
       html.includes(
         '.task.completed .task-title { color: var(--muted); text-decoration: line-through; }',
@@ -704,6 +1011,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('Association weight'), true);
+    assert.strictEqual(html.includes('Specificity adjustment'), true);
     assert.strictEqual(
       html.includes('.note:hover, .note:focus-within { z-index: 20;'),
       true,
@@ -735,9 +1043,12 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('Associated tags'), true);
     assert.strictEqual(
-      html.includes('function renderSidebarAssociations(relationships, filterTagKey)'),
+      html.includes('function renderSidebarAssociations(relationships, overviewTagKey)'),
       true,
     );
+    assert.strictEqual(html.includes('data-action="add-overview-filter"'), true);
+    assert.strictEqual(html.includes('data-add-tag-key'), true);
+    assert.strictEqual(html.includes('class="sidebar-add-filter"'), true);
     assert.strictEqual(html.includes('Open associated tag'), true);
     assert.strictEqual(
       html.includes('class="sidebar-association-tooltip" role="tooltip"'),
@@ -753,7 +1064,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="relevance-score"'), true);
     assert.strictEqual(html.includes('const relevance = state.tagOverview'), true);
     assert.strictEqual(html.includes('note.relevanceScore'), true);
-    assert.strictEqual(html.includes('data-filter-tag-key'), true);
+    assert.strictEqual(html.includes('data-filter-tag-key'), false);
     assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
     assert.strictEqual(html.includes('active-filter-label'), false);
     assert.strictEqual(html.includes('active-filter-joiner'), true);
@@ -779,7 +1090,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('if (!relationships || snapshot.tagOverviewFilter) return \'\';'),
+      html.includes('const filterTagKeys = snapshot.tagOverviewFilters'),
       true,
     );
     assert.strictEqual(
@@ -878,6 +1189,10 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Favorites always appear before'), true);
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
+    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(html.includes('Tasks/Tags tabs'), true);
+    assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
+    assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);
     assert.strictEqual(
       html.includes('When no Markdown editor is active'),
@@ -907,6 +1222,18 @@ suite('Webview contracts', () => {
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
       { type: 'openTag', tagKey: 'work' },
+    );
+    assert.deepStrictEqual(
+      parseSidebarMessage({
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      }),
+      {
+        type: 'openTag',
+        tagKey: '#focus',
+        filterTagKeys: ['#first', '#second'],
+      },
     );
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'renameTag', tagKey: '#work' }),

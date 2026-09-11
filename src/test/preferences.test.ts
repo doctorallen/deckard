@@ -18,6 +18,31 @@ class MemoryMemento {
   }
 }
 
+class DelayedFirstWriteMemento extends MemoryMemento {
+  private writeCount = 0;
+  private releaseFirstWriteCallback: (() => void) | undefined;
+  private readonly firstWriteGate = new Promise<void>((resolve) => {
+    this.releaseFirstWriteCallback = resolve;
+  });
+  private firstWriteStartedCallback: () => void = () => undefined;
+  public readonly firstWriteStarted = new Promise<void>((resolve) => {
+    this.firstWriteStartedCallback = resolve;
+  });
+
+  public releaseFirstWrite(): void {
+    this.releaseFirstWriteCallback?.();
+  }
+
+  public override async update(key: string, value: unknown): Promise<void> {
+    if (this.writeCount === 0) {
+      this.writeCount += 1;
+      this.firstWriteStartedCallback();
+      await this.firstWriteGate;
+    }
+    await super.update(key, value);
+  }
+}
+
 suite('Preferences store', () => {
   test('persists favorites and removes stale content references', async () => {
     const memento = new MemoryMemento();
@@ -35,6 +60,8 @@ suite('Preferences store', () => {
     await store.recordTagAccess('missing');
     await store.setTaskOrder(['task-1', 'missing-task']);
     await store.setTaskSortMode('created');
+    await store.setDashboardColumns('tasks', 3);
+    await store.setDashboardColumns('tags', 4);
     await store.recordSectionAccess('section-1');
     await store.recordSectionAccess('missing-section');
     await store.prune(['case'], ['task-1'], ['section-1']);
@@ -48,6 +75,8 @@ suite('Preferences store', () => {
     assert.deepStrictEqual(store.value.tagAccessCounts, { case: 2 });
     assert.deepStrictEqual(store.value.taskOrder, ['task-1']);
     assert.strictEqual(store.value.taskSortMode, 'created');
+    assert.strictEqual(store.value.dashboardTaskColumns, 3);
+    assert.strictEqual(store.value.dashboardTagColumns, 4);
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
 
@@ -63,6 +92,65 @@ suite('Preferences store', () => {
     assert.deepStrictEqual(store.value.tagAccessOrder, ['other', 'case']);
     assert.deepStrictEqual(store.value.favoriteTags, ['other']);
 
+    store.dispose();
+  });
+
+  test('upserts saved multi-tag filters and prunes missing tags', async () => {
+    const memento = new MemoryMemento();
+    const store = new PreferencesStore(memento);
+
+    const first = await store.saveSavedFilter('Project follow-up', [
+      '#follow-up',
+      '#project/atlas',
+      '#follow-up',
+    ]);
+    const renamed = await store.saveSavedFilter('Atlas work', [
+      '#project/atlas',
+      '#follow-up',
+    ]);
+    const invalid = await store.saveSavedFilter('Incomplete', ['#project/atlas']);
+
+    assert.ok(first);
+    assert.ok(renamed);
+    assert.strictEqual(renamed.id, first.id);
+    assert.strictEqual(invalid, undefined);
+    assert.deepStrictEqual(store.value.savedFilters, [
+      {
+        id: first.id,
+        name: 'Atlas work',
+        tagKeys: ['#follow-up', '#project/atlas'],
+      },
+    ]);
+
+    await store.prune(['#project/atlas'], [], []);
+    assert.deepStrictEqual(store.value.savedFilters, []);
+    store.dispose();
+  });
+
+  test('normalizes only valid saved filters from persisted version-one state', async () => {
+    const memento = new MemoryMemento();
+    await memento.update('deckard.preferences', {
+      version: 1,
+      savedFilters: [
+        {
+          id: 'valid',
+          name: '  Atlas  ',
+          tagKeys: ['#zeta', '#atlas', '#zeta'],
+        },
+        { id: 'one-tag', name: 'Invalid', tagKeys: ['#atlas'] },
+        { id: 'blank', name: '   ', tagKeys: ['#atlas', '#zeta'] },
+        { id: 'duplicate-set', name: 'Duplicate', tagKeys: ['#atlas', '#zeta'] },
+      ],
+    });
+    const store = new PreferencesStore(memento);
+
+    assert.deepStrictEqual(store.value.savedFilters, [
+      {
+        id: 'valid',
+        name: 'Atlas',
+        tagKeys: ['#atlas', '#zeta'],
+      },
+    ]);
     store.dispose();
   });
 
@@ -88,6 +176,22 @@ suite('Preferences store', () => {
       '#project/neon-relay': 2,
     });
 
+    store.dispose();
+  });
+
+  test('serializes concurrent updates so newer columns are not overwritten', async () => {
+    const memento = new DelayedFirstWriteMemento();
+    const store = new PreferencesStore(memento);
+
+    const firstUpdate = store.setDashboardColumns('tasks', 3);
+    await memento.firstWriteStarted;
+    const secondUpdate = store.setDashboardColumns('tags', 4);
+    memento.releaseFirstWrite();
+    await Promise.all([firstUpdate, secondUpdate]);
+
+    assert.strictEqual(store.value.dashboardTaskColumns, 3);
+    assert.strictEqual(store.value.dashboardTagColumns, 4);
+    assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
     store.dispose();
   });
 });

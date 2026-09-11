@@ -9,6 +9,7 @@ import {
   createTagOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
+  rankRelatedNotes,
   sortEntities,
   sortRelatedNotes,
   sortTasks,
@@ -19,6 +20,7 @@ import {
   ParsedFile,
   Entity,
   PersistedPreferences,
+  RankedNote,
   Section,
   TagOverviewCard,
   TagInfo,
@@ -38,11 +40,14 @@ const defaultPreferences: PersistedPreferences = {
   entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank',
+  dashboardTaskColumns: 1,
+  dashboardTagColumns: 2,
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
+  savedFilters: [],
 };
 
 suite('Dashboard state', () => {
@@ -61,6 +66,24 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       sortTags(tags, preferences).map((tag) => tag.key),
       ['alpha', 'beta', 'zeta'],
+    );
+  });
+
+  test('sorts favorite tags by their displayed name', () => {
+    const tags: TagInfo[] = [
+      createTag('zebra/alpha', 1),
+      createTag('alpha/zebra', 1),
+      createTag('other/tag', 1),
+    ];
+    const preferences = {
+      ...defaultPreferences,
+      favoriteTags: ['zebra/alpha', 'alpha/zebra'],
+      tagSortMode: 'alphabetical' as const,
+    };
+
+    assert.deepStrictEqual(
+      sortTags(tags, preferences).map((tag) => tag.key),
+      ['zebra/alpha', 'alpha/zebra', 'other/tag'],
     );
   });
 
@@ -233,6 +256,41 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('projects saved filters only while every saved tag remains indexed', () => {
+    const parsed = createFile(
+      'notes/saved-filter.md',
+      '# Atlas #project/atlas #follow-up #urgent',
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createDashboardSnapshot(index, {
+      ...defaultPreferences,
+      savedFilters: [
+        {
+          id: 'atlas-follow-up',
+          name: 'Atlas follow-up',
+          tagKeys: ['#follow-up', '#project/atlas', '#urgent'],
+        },
+        {
+          id: 'stale',
+          name: 'Stale',
+          tagKeys: ['#follow-up', '#missing'],
+        },
+      ],
+    }, 'active');
+
+    assert.deepStrictEqual(snapshot.savedFilters, [
+      {
+        id: 'atlas-follow-up',
+        name: 'Atlas follow-up',
+        tags: [
+          { key: '#follow-up', label: '#follow-up' },
+          { key: '#project/atlas', label: '#project/atlas' },
+          { key: '#urgent', label: '#urgent' },
+        ],
+      },
+    ]);
+  });
+
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
     const snapshot = createDashboardSnapshot(
@@ -299,7 +357,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.notes[0].totalTagCount, 3);
   });
 
-  test('ranks notes by shared tags across every section in the note', () => {
+  test('scores each related entry from its own shared tags', () => {
     const active = createFile(
       'notes/current.md',
       '# Current #work #urgent #case',
@@ -313,18 +371,13 @@ suite('Dashboard state', () => {
 
     const snapshot = createSidebarSnapshot(index, active.filePath, active);
 
-    assert.deepStrictEqual(
-      snapshot.notes.slice(0, 3).map((note) => note.filePath),
-      [
-        'notes/z-stronger.md',
-        'notes/z-stronger.md',
-        'notes/z-stronger.md',
-      ],
+    const strongerEntries = snapshot.notes.filter(
+      (note) => note.filePath === 'notes/z-stronger.md',
     );
-    assert.strictEqual(snapshot.notes[0].matchCount, 3);
+    assert.strictEqual(strongerEntries.length, 3);
     assert.deepStrictEqual(
-      snapshot.notes[0].matchedTags.map((tag) => tag.key),
-      ['#case', '#urgent', '#work'],
+      strongerEntries.map((note) => note.matchCount),
+      [1, 1, 1],
     );
     const weakerNote = snapshot.notes.find(
       (note) => note.filePath === 'notes/a-weaker.md',
@@ -356,8 +409,248 @@ suite('Dashboard state', () => {
     assert.ok(associatedNote);
     assert.strictEqual(associatedNote.matchCount, 0);
     assert.strictEqual(associatedNote.associationWeight, 1);
-    assert.strictEqual(associatedNote.relevanceScore, 50);
+    assert.strictEqual(associatedNote.relevanceScore, 14);
     assert.deepStrictEqual(associatedNote.reasons, ['Associated: #risk/operations']);
+  });
+
+  test('uses diminishing returns for stronger association evidence', () => {
+    const active = createFile('notes/current.md', '# Current #source');
+    const weakBridge = createFile(
+      'notes/weak-bridge.md',
+      '# Weak bridge #source #weak',
+    );
+    const strongBridge = createFile(
+      'notes/strong-bridge.md',
+      '# Strong bridge #source #strong\n\n## Repeated evidence #source #strong',
+    );
+    const weak = createFile('notes/weak.md', '# Weak #weak');
+    const strong = createFile('notes/strong.md', '# Strong #strong');
+    const index = createFileIndex([
+      active,
+      weakBridge,
+      strongBridge,
+      weak,
+      strong,
+    ]);
+
+    const notes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+    );
+    const weakNote = notes.find((note) => note.filePath === weak.filePath);
+    const strongNote = notes.find((note) => note.filePath === strong.filePath);
+
+    assert.ok(weakNote);
+    assert.ok(strongNote);
+    assert.ok(strongNote.relevanceScore > weakNote.relevanceScore);
+    assert.ok(strongNote.relevanceScore < 50);
+  });
+
+  test('normalizes association relevance by support and tag prevalence', () => {
+    const active = createFile('notes/current.md', '# Current #source');
+    const rareBridge = createFile('notes/rare-bridge.md', '# Bridge #source #rare');
+    const commonBridge = createFile('notes/common-bridge.md', '# Bridge #source #common');
+    const rare = createFile('notes/rare.md', '# Rare candidate #rare');
+    const common = createFile('notes/common.md', '# Common candidate #common');
+    const commonOnly = Array.from({ length: 4 }, (_, index) =>
+      createFile(`notes/common-${index}.md`, `# Common ${index} #common`),
+    );
+    const index = createFileIndex([
+      active,
+      rareBridge,
+      commonBridge,
+      rare,
+      common,
+      ...commonOnly,
+    ]);
+    const associations = index.tagAssociations?.get('#source') ?? [];
+    const rareAssociation = associations.find(
+      (association) => association.associatedTag.key === '#rare',
+    );
+    const commonAssociation = associations.find(
+      (association) => association.associatedTag.key === '#common',
+    );
+
+    assert.ok(rareAssociation);
+    assert.ok(commonAssociation);
+    assert.strictEqual(rareAssociation.weight, 1);
+    assert.strictEqual(rareAssociation.count, 1);
+    assert.ok(
+      rareAssociation.normalizedWeight > commonAssociation.normalizedWeight,
+    );
+    assert.ok(
+      rareAssociation.associatedTagSourceUnitCount <
+        commonAssociation.associatedTagSourceUnitCount,
+    );
+
+    const defaultNotes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+    );
+    const minimumSupportNotes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#source', label: '#source' }],
+      false,
+      'inline',
+      new Map(),
+      { associationMinimumSupport: 2 },
+    );
+    assert.ok(defaultNotes.some((note) => note.filePath === rare.filePath));
+    assert.strictEqual(
+      minimumSupportNotes.some((note) => note.filePath === rare.filePath),
+      false,
+    );
+  });
+
+  test('adds daily date and heading-path context to related entries', () => {
+    const active = createFile('notes/current.md', '# Current #work');
+    const daily = createFile(
+      'notes/2026-09-10.md',
+      '# 2026-09-10\n\n## Project Atlas\n\n### Check-in #work',
+    );
+    const notes = createSidebarSnapshot(
+      createFileIndex([active, daily]),
+      active.filePath,
+      active,
+      false,
+    ).notes;
+    const checkIn = notes.find((note) => note.title.startsWith('Check-in'));
+
+    assert.ok(checkIn);
+    assert.strictEqual(checkIn.dailyDate, '2026-09-10');
+    assert.deepStrictEqual(checkIn.headingPath, [
+      '2026-09-10',
+      'Project Atlas',
+      'Check-in',
+    ]);
+  });
+
+  test('uses entry links and section-scoped lexical evidence separately', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work\n\n[[Related#Target]]\nNeural archive calibration.',
+    );
+    const related = createFile(
+      'notes/related.md',
+      '# Broad #other\n\n## Target #other\nNeural archive calibration.\n\n## Unrelated #other\nOrdinary journal prose.',
+    );
+    const notes = createSidebarSnapshot(
+      createFileIndex([active, related]),
+      active.filePath,
+      active,
+    ).notes;
+    const target = notes.find((note) => note.title.startsWith('Target'));
+    const broad = notes.find((note) => note.title.startsWith('Broad'));
+    const unrelated = notes.find((note) => note.title.startsWith('Unrelated'));
+
+    assert.ok(target);
+    assert.strictEqual(target.relevanceEvidence?.entryLinkWeight, 0.5);
+    assert.ok((target.relevanceEvidence?.lexicalWeight ?? 0) > 0);
+    assert.ok(
+      (target.relevanceEvidence?.entryLinkWeight ?? 0) >
+        (broad?.relevanceEvidence?.fileLinkWeight ?? 0),
+    );
+    assert.strictEqual(unrelated?.relevanceEvidence?.lexicalWeight, 0);
+  });
+
+  test('keeps optional recency disabled unless a half-life is configured', () => {
+    const active = createFile('notes/current.md', '# Current #work');
+    const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');
+    const index = createFileIndex([active, daily]);
+    const disabled = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#work', label: '#work' }],
+      false,
+    );
+    const enabled = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [{ key: '#work', label: '#work' }],
+      false,
+      'inline',
+      new Map(),
+      { recencyHalfLifeDays: 30 },
+    );
+
+    assert.strictEqual(disabled[0].relevanceEvidence?.recencyWeight, 0);
+    assert.strictEqual(enabled[0].relevanceEvidence?.recencyWeight, 0.1);
+  });
+
+  test('weights selected-entry ancestor tags below direct tags', () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #project-name #follow-up #management/performance',
+    );
+    const direct = createFile('notes/direct.md', '# Direct #project-name');
+    const ancestor = createFile(
+      'notes/ancestor.md',
+      '# Ancestor #management/performance',
+    );
+    const index = createFileIndex([active, direct, ancestor]);
+    const notes = rankRelatedNotes(
+      index,
+      active.filePath,
+      active,
+      [
+        { key: '#project-name', label: '#project-name' },
+        { key: '#follow-up', label: '#follow-up' },
+        { key: '#management/performance', label: '#management/performance' },
+      ],
+      false,
+      'inline',
+      new Map([
+        ['#project-name', 1],
+        ['#follow-up', 1],
+        ['#management/performance', 0.5],
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      notes.map((note) => note.filePath),
+      ['notes/direct.md', 'notes/ancestor.md'],
+    );
+    assert.ok(notes[0].relevanceScore > notes[1].relevanceScore);
+    assert.strictEqual(notes[0].matchCount, 1);
+    assert.strictEqual(notes[1].matchCount, 0.5);
+  });
+
+  test('ranks a specific nested tag match above its broad parent section', () => {
+    const active = createFile(
+      'notes/current.md',
+      '## Check-in #project/name #checkin',
+    );
+    const related = createFile(
+      'notes/related.md',
+      '# 2026-09-10 #project/name #checkin\n\n### Project check-in #project/name #checkin',
+    );
+    const index = createFileIndex([active, related]);
+    const snapshot = createSidebarSnapshot(index, active.filePath, active);
+
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.title),
+      [
+        'Project check-in #project/name #checkin',
+        '2026-09-10 #project/name #checkin',
+      ],
+    );
+    assert.strictEqual(snapshot.notes[0].relevanceScore, 100);
+    assert.strictEqual(snapshot.notes[1].relevanceScore, 95);
+    assert.ok(
+      snapshot.notes[1].reasons?.includes(
+        'Broader match contains a more specific entry',
+      ),
+    );
   });
 
   test('can disable keyword-only related-note matches', () => {
@@ -419,6 +712,42 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('sorts Related Notes by displayed relevance before raw match count', () => {
+    const notes: RankedNote[] = [
+      {
+        filePath: 'notes/lower-score.md',
+        title: 'Lower score',
+        fileName: 'lower-score.md',
+        sourceLine: 1,
+        headingPath: ['Lower score'],
+        titleTags: [],
+        matchedTags: [],
+        matchCount: 2,
+        totalTagCount: 2,
+        overlap: 0.97,
+        relevanceScore: 97,
+      },
+      {
+        filePath: 'notes/higher-score.md',
+        title: 'Higher score',
+        fileName: 'higher-score.md',
+        sourceLine: 1,
+        headingPath: ['Higher score'],
+        titleTags: [],
+        matchedTags: [],
+        matchCount: 1,
+        totalTagCount: 2,
+        overlap: 1,
+        relevanceScore: 100,
+      },
+    ];
+
+    assert.deepStrictEqual(
+      sortRelatedNotes(notes, 'tags').map((note) => note.filePath),
+      ['notes/higher-score.md', 'notes/lower-score.md'],
+    );
+  });
+
   test('sorts the current note tags alphabetically', () => {
     const active = createFile(
       'notes/current.md',
@@ -469,7 +798,7 @@ suite('Dashboard state', () => {
 
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.title),
-      ['First reference #work', 'Second reference #work'],
+      ['Second reference #work', 'First reference #work'],
     );
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.fileName),
@@ -477,7 +806,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.sourceLine),
-      [1, 3],
+      [3, 1],
     );
 
     const separate = createSidebarSnapshot(
@@ -491,7 +820,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(
       separate.notes.map((note) => note.title),
-      ['First reference', 'Second reference'],
+      ['Second reference', 'First reference'],
     );
   });
 
@@ -622,6 +951,62 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       reverse.tasks.map((item) => item.task.title),
       ['Both tags #parent #child'],
+    );
+  });
+
+  test('accumulates overview filters and intersects associated sidebar tags', () => {
+    const parsed = createFile(
+      'notes/multi-filtered-relationship.md',
+      [
+        '# All routes #focus #first #second #shared',
+        '- [ ] All routes task #focus #first #second',
+        '# First route #focus #first #shared #first-only',
+        '# Second route #focus #second #shared',
+        '# Filter-only route #first #second #shared',
+        '# Focus-only association #focus #unavailable',
+        '# First-only association #first #unavailable',
+        '# Second-only association #second #unavailable',
+      ].join('\n'),
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#focus',
+      'active',
+      'inline',
+      true,
+      undefined,
+      ['#first', '#second', '#first'],
+    );
+
+    assert.ok(snapshot);
+    assert.deepStrictEqual(snapshot.filterTags, [
+      { key: '#first', label: '#first' },
+      { key: '#second', label: '#second' },
+    ]);
+    assert.deepStrictEqual(
+      snapshot.sections.map((section) => section.heading),
+      ['All routes #focus #first #second #shared'],
+    );
+    assert.deepStrictEqual(
+      snapshot.tasks.map((item) => item.task.title),
+      ['All routes task #focus #first #second'],
+    );
+    assert.deepStrictEqual(
+      snapshot.sharedAssociatedTags.map(
+        (association) => association.associatedTag.key,
+      ),
+      ['#shared'],
+    );
+
+    const sidebar = createTagOverviewSidebarSnapshot(snapshot);
+    assert.deepStrictEqual(sidebar.tagOverviewFilters, snapshot.filterTags);
+    assert.deepStrictEqual(
+      sidebar.tagOverviewRelationships?.sharedAssociatedTags.map(
+        (association) => association.associatedTag.key,
+      ),
+      ['#shared'],
     );
   });
 
@@ -758,6 +1143,11 @@ suite('Dashboard state', () => {
     assert.ok(active);
     assert.ok(completed);
     assert.strictEqual(all.taskFilter, 'all');
+    assert.deepStrictEqual(all.taskCounts, {
+      all: 2,
+      active: 1,
+      completed: 1,
+    });
     assert.strictEqual(
       createTagOverviewSnapshot(index, defaultPreferences, '#work')?.taskFilter,
       'active',
@@ -982,6 +1372,9 @@ suite('Dashboard state', () => {
       key: '#task',
       label: '#task',
     });
+    assert.deepStrictEqual(filteredSidebar.tagOverviewFilters, [
+      { key: '#task', label: '#task' },
+    ]);
     assert.deepStrictEqual(
       filteredSidebar.tagOverviewRelationships?.associatedTags.map(
         (association) => association.associatedTag.key,

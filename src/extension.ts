@@ -19,6 +19,7 @@ import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
+import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
 import { TagOverviewPanels } from './ui/webview/tagOverview';
 
@@ -49,19 +50,24 @@ export function activate(context: vscode.ExtensionContext): void {
     indexer,
     preferences,
     context.extensionUri,
-    async (tagKey) => {
-      await tagPanels.show(tagKey);
+    async (tagKey, filterTagKeys = []) => {
+      await tagPanels.show(tagKey, undefined, filterTagKeys);
     },
   );
   const sidebarNotes = new SidebarNotesView(
     indexer,
     preferences,
     tagPanels,
-    (tagKey, filterTagKey) => tagPanels.show(tagKey, filterTagKey),
+    (tagKey, filterTagKey, filterTagKeys) =>
+      tagPanels.show(tagKey, filterTagKey, filterTagKeys),
     context.extension.packageJSON.version,
   );
   const stats = new StatsPanel(indexer, preferences, context.extensionUri);
   const help = new HelpPanel(context.extensionUri);
+  const relatedNotesDebug = new RelatedNotesDebugPanel(
+    sidebarNotes,
+    context.extensionUri,
+  );
   activeServices = {
     indexer,
     preferences,
@@ -74,6 +80,7 @@ export function activate(context: vscode.ExtensionContext): void {
     dashboard,
     stats,
     help,
+    relatedNotesDebug,
   };
 
   context.subscriptions.push(
@@ -88,6 +95,18 @@ export function activate(context: vscode.ExtensionContext): void {
     dashboard,
     stats,
     help,
+    relatedNotesDebug,
+  );
+  context.subscriptions.push(
+    indexer.onDidUpdate(() => {
+      const index = indexer.getSnapshot();
+      void preferences.prune(
+        index.tags.keys(),
+        index.tasks.keys(),
+        index.sections.keys(),
+        index.entities.keys(),
+      );
+    }),
   );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -175,6 +194,24 @@ export function activate(context: vscode.ExtensionContext): void {
           await sidebarNotes.showRelatedNotesForEntry(uri, sourceLine);
         },
     ),
+    vscode.commands.registerCommand(
+      'deckard.showEntryRelatedNotesDebug',
+      async (documentUri?: unknown, sourceLine?: unknown) => {
+        if (
+          typeof documentUri !== 'string' ||
+          typeof sourceLine !== 'number' ||
+          !Number.isInteger(sourceLine) ||
+          sourceLine < 1
+        ) {
+          return;
+        }
+        const uri = vscode.Uri.parse(documentUri);
+        if (!isMarkdownDocument({ languageId: 'markdown', uri })) {
+          return;
+        }
+        await relatedNotesDebug.show(uri, sourceLine);
+      },
+    ),
   );
 
   void indexer.start().then(async () => {
@@ -204,6 +241,7 @@ export function deactivate(): void {
   activeServices?.dashboard.dispose();
   activeServices?.stats.dispose();
   activeServices?.help.dispose();
+  activeServices?.relatedNotesDebug.dispose();
   activeServices = undefined;
 }
 
@@ -222,6 +260,7 @@ interface ExtensionServices {
   dashboard: DashboardPanel;
   stats: StatsPanel;
   help: HelpPanel;
+  relatedNotesDebug: RelatedNotesDebugPanel;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {

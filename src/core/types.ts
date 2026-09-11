@@ -1,7 +1,6 @@
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
-
 export type TaskSortMode = 'rank' | 'created' | 'updated';
-
+export type DashboardColumnCount = 1 | 2 | 3 | 4;
 export type TagOverviewSortMode =
   | 'alphabetical'
   | 'created'
@@ -126,6 +125,14 @@ export interface TagAssociation {
   count: number;
   /** Total evidence score: co-occurrence is 1; heading proximity decays by depth. */
   weight: number;
+  /** Prevalence- and support-normalized relevance used for Related Notes. */
+  normalizedWeight: number;
+  /** Distinct atomic source units containing the source tag. */
+  tagSourceUnitCount: number;
+  /** Distinct atomic source units containing the associated tag. */
+  associatedTagSourceUnitCount: number;
+  /** Total atomic source units observed while building this relationship. */
+  totalSourceUnitCount: number;
   coOccurrenceCount: number;
   headingRelationshipCount: number;
 }
@@ -153,11 +160,32 @@ export interface PersistedPreferences {
   entityAccessCounts: Record<string, number>;
   taskOrder: string[];
   taskSortMode: TaskSortMode;
+  dashboardTaskColumns: DashboardColumnCount;
+  dashboardTagColumns: DashboardColumnCount;
   renderMode: RenderMode;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
+  savedFilters: SavedFilter[];
+}
+
+/**
+ * A named, reusable intersection of at least two canonical tag keys.
+ */
+export interface SavedFilter {
+  id: string;
+  name: string;
+  tagKeys: string[];
+}
+
+/**
+ * A saved filter after its persisted keys have been resolved against the index.
+ */
+export interface DashboardSavedFilter {
+  id: string;
+  name: string;
+  tags: TagReference[];
 }
 
 export interface DashboardTask {
@@ -177,20 +205,33 @@ export interface DashboardSnapshot {
   activeTaskCount: number;
   taskFilter: TaskFilter;
   taskSortMode: TaskSortMode;
+  taskColumns: DashboardColumnCount;
+  tagColumns: DashboardColumnCount;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   availableTaskTags: TagInfo[];
   selectedTaskTags: string[];
   selectedTag?: string;
+  savedFilters: DashboardSavedFilter[];
 }
 
 export interface TagOverviewSnapshot {
   tag: TagInfo;
   entity?: Entity;
+  /** @deprecated Use filterTags to support every active overview filter. */
   filterTag?: TagReference;
+  filterTags: TagReference[];
   associatedTags: TagAssociation[];
+  /** Tags independently associated with every active tag in a filtered overview. */
+  sharedAssociatedTags: TagAssociation[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
+  /** Counts before the active completion filter is applied. */
+  taskCounts?: {
+    all: number;
+    active: number;
+    completed: number;
+  };
   taskFilter: TaskFilter;
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
@@ -224,6 +265,10 @@ export interface RankedNote {
   title: string;
   fileName: string;
   sourceLine: number;
+  /** Outline context, including the entry title, for disambiguating daily notes. */
+  headingPath: string[];
+  /** Date inferred from a daily-note filename or date heading, when present. */
+  dailyDate?: string;
   titleTags: TagReference[];
   updatedAt?: number;
   matchedTags: TagReference[];
@@ -232,12 +277,29 @@ export interface RankedNote {
   overlap: number;
   relevanceScore: number;
   associationWeight?: number;
+  associationMatches?: Array<{
+    selectedTag: TagReference;
+    candidateTag: TagReference;
+    associationWeight: number;
+    normalizedAssociationWeight: number;
+    sourceUnitCount: number;
+    selectedTagSourceUnitCount: number;
+    candidateTagSourceUnitCount: number;
+    totalSourceUnitCount: number;
+    selectedWeight: number;
+    contribution: number;
+  }>;
   relevanceEvidence?: {
     directTagWeight: number;
     associationWeight: number;
+    normalizedAssociationWeight: number;
     appliedAssociationWeight: number;
-    linkWeight: number;
-    keywordWeight: number;
+    entryLinkWeight: number;
+    fileLinkWeight: number;
+    lexicalWeight: number;
+    recencyWeight: number;
+    specificityPenalty: number;
+    lexicalTerms: Array<{ term: string; contribution: number }>;
   };
   reasons?: string[];
 }
@@ -281,9 +343,12 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  /** @deprecated Use tagOverviewFilters to support every active overview filter. */
   tagOverviewFilter?: TagReference;
+  tagOverviewFilters: TagReference[];
   tagOverviewRelationships?: {
     associatedTags: TagAssociation[];
+    sharedAssociatedTags: TagAssociation[];
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
@@ -341,6 +406,12 @@ export interface SetTaskSortMessage {
   mode: TaskSortMode;
 }
 
+export interface SetDashboardColumnsMessage {
+  type: 'setDashboardColumns';
+  section: 'tasks' | 'tags';
+  columns: DashboardColumnCount;
+}
+
 export interface ReorderTagsMessage {
   type: 'reorderTags';
   tagKeys: string[];
@@ -356,12 +427,28 @@ export interface ReorderEntitiesMessage {
 export interface OpenTagMessage {
   type: 'openTag';
   tagKey: string;
+  /** @deprecated Use filterTagKeys to support every active overview filter. */
   filterTagKey?: string;
+  filterTagKeys?: string[];
 }
 
 export interface RenameTagMessage {
   type: 'renameTag';
   tagKey: string;
+}
+
+export interface OpenSavedFilterMessage {
+  type: 'openSavedFilter';
+  filterId: string;
+}
+
+export interface RemoveSavedFilterMessage {
+  type: 'removeSavedFilter';
+  filterId: string;
+}
+
+export interface SaveTagOverviewFilterMessage {
+  type: 'saveTagOverviewFilter';
 }
 
 export interface SetTagOverviewSortMessage {
@@ -414,11 +501,14 @@ export type DashboardMessage =
   | SetTaskFilterMessage
   | SetTaskTagsMessage
   | SetTaskSortMessage
+  | SetDashboardColumnsMessage
   | ReorderTasksMessage
   | ReorderTagsMessage
   | ReorderEntitiesMessage
   | OpenTagMessage
-  | RenameTagMessage;
+  | RenameTagMessage
+  | OpenSavedFilterMessage
+  | RemoveSavedFilterMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -428,7 +518,8 @@ export type TagOverviewMessage =
   | OpenTagMessage
   | RenameTagMessage
   | SetTagOverviewSortMessage
-  | SetTagOverviewLayoutMessage;
+  | SetTagOverviewLayoutMessage
+  | SaveTagOverviewFilterMessage;
 
 export type SidebarMessage =
   | SidebarReadyMessage

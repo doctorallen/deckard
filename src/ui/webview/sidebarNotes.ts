@@ -6,6 +6,7 @@ import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   ParsedFile,
+  SidebarNotesSnapshot,
   SidebarMessage,
   TagTitleDisplayMode,
 } from '../../core/types';
@@ -14,6 +15,7 @@ import {
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
+  RelatedNotesRankingOptions,
 } from '../state/dashboardState';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
@@ -43,6 +45,7 @@ export class SidebarNotesView
     private readonly onOpenTag: (
       tagKey: string,
       filterTagKey?: string,
+      filterTagKeys?: readonly string[],
     ) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
@@ -68,7 +71,11 @@ export class SidebarNotesView
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.enableKeywordLinks')) {
+        if (
+          event.affectsConfiguration('deckard.enableKeywordLinks') ||
+          event.affectsConfiguration('deckard.relatedNotesAssociationMinimumSupport') ||
+          event.affectsConfiguration('deckard.relatedNotesRecencyHalfLifeDays')
+        ) {
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
@@ -160,6 +167,43 @@ export class SidebarNotesView
     this.refresh();
   }
 
+  public async getEntryDiagnostic(
+    documentUri: vscode.Uri,
+    sourceLine: number,
+  ): Promise<EntryRelatedNotesDiagnostic | undefined> {
+    await this.indexer.ready;
+    const index = this.indexer.getSnapshot();
+    const filePath = this.indexer.getFilePath(documentUri);
+    const file = index.files.get(filePath);
+    const entryScope = file && createEntryScope(file, sourceLine);
+    if (!file || !entryScope) {
+      return undefined;
+    }
+
+    return {
+      filePath,
+      sourceLine,
+      title: getEntryTitle(entryScope.file) ?? 'Selected note',
+      tags: [...entryScope.tagWeights.entries()].map(([key, weight]) => ({
+        key,
+        weight,
+        source: entryScope.tagSources.get(key)?.source ?? 'selected entry',
+      })),
+      snapshot: createSidebarSnapshot(
+        index,
+        filePath,
+        entryScope.file,
+        this.areKeywordLinksEnabled(),
+        'tags',
+        this.preferences.value.sectionAccessCounts,
+        this.getTagTitleDisplayMode(),
+        getEntryTitle(entryScope.file),
+        entryScope.tagWeights,
+        this.getRelatedNotesRankingOptions(),
+      ),
+    };
+  }
+
   /**
    * Removes listeners tied to the current view instance before replacement.
    */
@@ -212,8 +256,8 @@ export class SidebarNotesView
   private createSnapshot() {
     const index = this.indexer.getSnapshot();
     const activeTagKey = this.tagOverview.getActiveTagKey();
-    const activeTagFilterKey = this.tagOverview.getActiveTagFilterKey();
-    if (activeTagKey && this.tagOverview.isActive()) {
+    const activeTagFilterKeys = this.tagOverview.getActiveTagFilterKeys();
+    if (activeTagKey) {
       const overview = createTagOverviewSnapshot(
         index,
         this.preferences.value,
@@ -221,7 +265,8 @@ export class SidebarNotesView
         'active',
         this.getTagTitleDisplayMode(),
         this.areHeadingTagRelationshipsEnabled(),
-        activeTagFilterKey,
+        activeTagFilterKeys[0],
+        [...activeTagFilterKeys],
       );
       if (overview) {
         return createTagOverviewSidebarSnapshot(overview);
@@ -231,17 +276,19 @@ export class SidebarNotesView
     this.updateEntryContextFromActiveEditor();
     const active = this.getActiveFile();
     const activeEntry = active && this.entryContext?.filePath === active.filePath
-      ? createEntryFile(active.file, this.entryContext.sourceLine)
+      ? createEntryScope(active.file, this.entryContext.sourceLine)
       : undefined;
     return createSidebarSnapshot(
       index,
       active?.filePath,
-      activeEntry ?? active?.file,
+      activeEntry?.file ?? active?.file,
       this.areKeywordLinksEnabled(),
       this.preferences.value.relatedNotesSortMode,
       this.preferences.value.sectionAccessCounts,
       this.getTagTitleDisplayMode(),
-      activeEntry ? getEntryTitle(activeEntry) : undefined,
+      activeEntry ? getEntryTitle(activeEntry.file) : undefined,
+      activeEntry?.tagWeights,
+      this.getRelatedNotesRankingOptions(),
     );
   }
 
@@ -327,6 +374,23 @@ export class SidebarNotesView
       .get<boolean>('enableHeadingTagRelationships', true);
   }
 
+  private getRelatedNotesRankingOptions(): RelatedNotesRankingOptions {
+    const configuration = vscode.workspace.getConfiguration(
+      'deckard',
+      vscode.window.activeTextEditor?.document.uri,
+    );
+    return {
+      associationMinimumSupport: configuration.get<number>(
+        'relatedNotesAssociationMinimumSupport',
+        1,
+      ),
+      recencyHalfLifeDays: configuration.get<number>(
+        'relatedNotesRecencyHalfLifeDays',
+        0,
+      ),
+    };
+  }
+
   /**
    * Rejects malformed sidebar messages before invoking navigation or commands.
    */
@@ -374,7 +438,11 @@ export class SidebarNotesView
     if (message.type === 'openTag') {
       const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
       if (tagKey) {
-        await this.onOpenTag(tagKey, message.filterTagKey);
+        await this.onOpenTag(
+          tagKey,
+          message.filterTagKey,
+          message.filterTagKeys,
+        );
       }
       return;
     }
@@ -418,8 +486,7 @@ export class SidebarNotesView
 interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
-  getActiveTagFilterKey(): string | undefined;
-  isActive(): boolean;
+  getActiveTagFilterKeys(): readonly string[];
 }
 
 /**
@@ -467,37 +534,116 @@ function getEntryStartLine(
   return 'heading' in entry ? entry.startLine : entry.lineNumber;
 }
 
-function createEntryFile(
+function createEntryScope(
   file: ParsedFile,
   sourceLine: number,
-): ParsedFile | undefined {
+): EntryScope | undefined {
   const entry = findTaggedEntry(file, sourceLine);
   if (!entry) {
     return undefined;
   }
 
+  const tagLabels = new Map<string, string>();
+  const tagWeights = new Map<string, number>();
+  const tagSources = new Map<string, EntryTagSource>();
+  const addTag = (
+    key: string,
+    label: string,
+    weight: number,
+    source: string,
+  ): void => {
+    tagLabels.set(key, label);
+    if (weight > (tagWeights.get(key) ?? 0)) {
+      tagWeights.set(key, weight);
+      tagSources.set(key, { source });
+    }
+  };
+  const explicitEntryTags =
+    entry.associationTagGroups?.flat() ??
+    ('headingTags' in entry ? (entry.headingTags ?? []) : []);
+  explicitEntryTags.forEach((tag) =>
+    addTag(tag.key, tag.label, 1, 'Written on the selected entry'),
+  );
+
+  const sections = new Map(file.sections.map((section) => [section.id, section]));
+  let parentSectionId =
+    'heading' in entry ? entry.parentSectionId : entry.sectionId;
+  let depth = 1;
+  while (parentSectionId) {
+    const parent = sections.get(parentSectionId);
+    if (!parent) {
+      break;
+    }
+    parent.headingTags?.forEach((tag) =>
+      addTag(
+        tag.key,
+        tag.label,
+        0.5 / depth,
+        `Ancestor heading, ${depth === 1 ? 'one level up' : `${depth} levels up`} (0.5 / ${depth})`,
+      ),
+    );
+    parentSectionId = parent.parentSectionId;
+    depth += 1;
+  }
+
   if ('heading' in entry) {
+    const section = {
+      ...entry,
+      tags: [...tagLabels.keys()],
+      tagLabels: Object.fromEntries(tagLabels),
+    };
     return {
-      ...file,
-      content: entry.rawContent,
-      sections: [entry],
-      tasks: file.tasks.filter((task) => task.sectionId === entry.id),
-      frontmatterTags: [],
-      links: entry.links,
+      file: {
+        ...file,
+        content: entry.rawContent,
+        sections: [section],
+        tasks: file.tasks.filter((task) => task.sectionId === entry.id),
+        frontmatterTags: [],
+        links: entry.links,
+      },
+      tagWeights,
+      tagSources,
     };
   }
+  const task = {
+    ...entry,
+    tags: [...tagLabels.keys()],
+    tagLabels: Object.fromEntries(tagLabels),
+  };
   return {
-    ...file,
-    content: entry.sourceLineText,
-    sections: [],
-    tasks: [entry],
-    frontmatterTags: [],
-    links: [],
+    file: {
+      ...file,
+      content: entry.sourceLineText,
+      sections: [],
+      tasks: [task],
+      frontmatterTags: [],
+      links: [],
+    },
+    tagWeights,
+    tagSources,
   };
 }
 
 function getEntryTitle(file: ParsedFile): string | undefined {
   return file.sections[0]?.heading ?? file.tasks[0]?.title;
+}
+
+interface EntryScope {
+  file: ParsedFile;
+  tagWeights: ReadonlyMap<string, number>;
+  tagSources: ReadonlyMap<string, EntryTagSource>;
+}
+
+interface EntryTagSource {
+  source: string;
+}
+
+export interface EntryRelatedNotesDiagnostic {
+  filePath: string;
+  sourceLine: number;
+  title: string;
+  tags: Array<{ key: string; weight: number; source: string }>;
+  snapshot: SidebarNotesSnapshot;
 }
 
 /**

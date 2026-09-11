@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import { settingsIcon } from './icons';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -62,34 +63,65 @@ h2 { margin: 0 0 4px; color: var(--cyan-bright); font-size: 14px; font-weight: 6
 .telemetry-line { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .telemetry-line span:first-child { color: var(--cyan-bright); }
 .telemetry-line span:last-child { color: var(--toxic-green); }
-.metrics { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 8px; min-width: min(380px, 48%); }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: min(380px, 48%); }
 .metric { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 10px 12px; background: var(--panel-bg); }
 .metric::before { content: attr(data-code); display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: 9px var(--font-mono); text-transform: uppercase; }
 .metric-value { display: block; color: var(--toxic-green); font-size: 20px; }
 .metric-label { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
-.layout { display: grid; grid-template-columns: minmax(220px, .72fr) minmax(0, 1.5fr); gap: 16px; margin-top: 18px; }
+.dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
+.dashboard-view-options { position: relative; flex: 0 0 auto; order: 2; }
+.dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
+.dashboard-view-options summary::-webkit-details-marker { display: none; }
+.dashboard-view-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
+.dashboard-view-options summary:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+.dashboard-view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
+.dashboard-view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.dashboard-column-options { display: inline-flex; }
+.dashboard-column-options button { width: 28px; min-height: 28px; padding: 4px; }
+.dashboard-column-options button + button { margin-left: -1px; }
+.dashboard-column-options button:first-child { border-radius: 2px 0 0 2px; }
+.dashboard-column-options button:last-child { border-radius: 0 2px 2px 0; }
+.dashboard-column-options button.active { position: relative; z-index: 1; }
+.settings-icon { width: 16px; height: 16px; fill: currentColor; stroke: none; }
+.saved-filters { padding-top: 16px; }
+.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
+.dashboard-tabs { display: inline-flex; margin-top: 18px; }
+.dashboard-tabs button + button { margin-left: -1px; }
+.dashboard-tabs button:first-child { border-radius: 2px 0 0 2px; }
+.dashboard-tabs button:last-child { border-radius: 0 2px 2px 0; }
+.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; color: var(--panel-deep); background: var(--amber-bright); }
+.dashboard-panel { min-width: 0; padding-top: 16px; }
+.dashboard-panel[hidden] { display: none; }
 section { min-width: 0; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.control-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.control-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
+.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--amber-bright); }
 .control-icon select { padding-left: 29px; }
-button, select { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 11px var(--font-mono); text-transform: uppercase; }
+button, select, input[type="search"] { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 11px var(--font-mono); text-transform: uppercase; }
 button { cursor: pointer; }
 button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
 button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
-.tag-list, .task-list { display: grid; gap: 7px; }
+.tag-list, .task-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
+.saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
+.saved-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; transition: background-color 120ms ease, transform 120ms ease; }
+.saved-filter-row:hover { border-color: var(--amber-bright); background: var(--panel-raised); transform: translateX(3px); }
+.saved-filter-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+.saved-filter-name { color: var(--cyan-bright); font: 12px var(--font-mono); overflow-wrap: anywhere; }
+.saved-filter-tags { margin-top: 3px; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
+.saved-filter-remove { min-height: 26px; color: var(--muted); text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-row:hover { border-color: var(--amber-bright); }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-row.is-draggable { cursor: grab; touch-action: none; }
 .entity-kind { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; }
-.tag-group + .tag-group { margin-top: 14px; }
+.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }
 .tag-group h3 { margin: 0 0 7px; color: var(--amber-bright); font-size: 11px; font-weight: 500; text-transform: uppercase; }
 .section-readout { color: var(--muted); font-size: 9px; text-transform: uppercase; }
-.tag-row, .task-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); }
+.tag-row, .task-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); cursor: pointer; }
 .tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
 .tag-row.is-draggable { cursor: grab; touch-action: none; }
 .tag-row.is-draggable:active, .entity-row.is-draggable:active, .task-row.is-draggable:active { cursor: grabbing; }
@@ -106,14 +138,30 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .favorite-heart { display: block; width: 16px; height: 14px; }
 .favorite-heart path { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .favorite-toggle.favorite .favorite-heart path { fill: currentColor; }
-.task-toolbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.task-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding-bottom: 2px; margin-bottom: 8px; }
+.task-toolbar > * { flex: 0 0 auto; }
+.toolbar-controls { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
+.toolbar-controls > * { flex: 0 0 auto; }
+.task-tag-filter-control { display: flex; align-items: center; gap: 6px; }
 .task-filter-toggle { display: inline-flex; }
 .task-filter-toggle button + button { margin-left: -1px; }
 .task-filter-toggle button:first-child { border-radius: 2px 0 0 2px; }
 .task-filter-toggle button:last-child { border-radius: 0 2px 2px 0; }
 .task-filter-toggle button.active { position: relative; z-index: 1; }
-.task-filter-toggle button { display: inline-grid; width: 30px; place-items: center; padding: 5px; }
+.task-filter-toggle button { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 5px 8px; }
 .task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.filter-count { color: var(--muted); font-size: 10px; }
+.selected-task-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.selected-task-tag { min-height: 26px; color: var(--cyan-bright); text-transform: none; }
+.selected-task-tag::after { content: " ×"; color: var(--muted); }
+.clear-task-filters { color: var(--amber-bright); }
+.browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
+.browse-toolbar > * { flex: 0 0 auto; }
+.browse-toolbar-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.browse-toolbar-controls > * { flex: 0 0 auto; }
+.browse-scope { display: inline-flex; }
+.browse-scope button + button { margin-left: -1px; }
+.catalog-search, .task-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
 .tag-filter { position: relative; }
 .tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }
 .tag-filter summary .control-icon-svg { color: inherit; }
@@ -146,8 +194,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 @media (max-width: 720px) {
   main { padding: 16px; }
   header { align-items: start; flex-direction: column; }
+  .dashboard-header-actions { width: 100%; flex-direction: column; align-items: stretch; }
+  .dashboard-header-actions .dashboard-view-options { align-self: flex-end; order: -1; }
   .metrics { width: 100%; min-width: 0; }
-  .layout { grid-template-columns: 1fr; }
+  .tag-list, .task-list { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
 ${getDeckardThemeCss(getDeckardTheme())}
@@ -168,8 +218,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
   let dropBefore = true;
   let pointerDrag;
   let suppressDragClick = false;
+  let taskSearchQuery = '';
   let taskTagQuery = '';
   let taskTagFilterOpen = false;
+  const restoredViewState = vscode.getState();
+  let dashboardMode = restoredViewState && restoredViewState.dashboardMode === 'browse'
+    ? 'browse'
+    : 'tasks';
+  let taskColumns = restoredViewState && [1, 2, 3, 4].indexOf(restoredViewState.taskColumns) >= 0
+    ? restoredViewState.taskColumns
+    : undefined;
+  let tagColumns = restoredViewState && [1, 2, 3, 4].indexOf(restoredViewState.tagColumns) >= 0
+    ? restoredViewState.tagColumns
+    : undefined;
+  let browseQuery = '';
   let entityKindFilter = 'all';
   let rankContextMenu;
   let rankContextKind;
@@ -184,6 +246,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return String(value).replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (character) { return character.toUpperCase(); });
   }
 
+  function formatTagDisplay(tag) {
+    const label = String(tag.label || tag.key || '');
+    const labelValue = label.replace(/^[@#]/, '');
+    const name = labelValue.slice(labelValue.lastIndexOf('/') + 1).replace(/[-_]+/g, ' ');
+    const key = String(tag.key || '');
+    const keyValue = key.replace(/^[@#]/, '');
+    const separator = keyValue.indexOf('/');
+    const namespace = key.startsWith('#') && separator > 0 && keyValue.slice(0, separator).toLowerCase() !== 'tag-at'
+      ? keyValue.slice(0, separator).replace(/[-_]+/g, ' ')
+      : '';
+    return { name: name || label, namespace: namespace };
+  }
+
   /** Use familiar list and checkbox icons without losing accessible labels. */
   function taskFilterIcon(filter) {
     if (filter === 'all') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 4h8M5 8h8M5 12h8"/><circle cx="2.5" cy="4" r=".5"/><circle cx="2.5" cy="8" r=".5"/><circle cx="2.5" cy="12" r=".5"/></svg>';
@@ -192,6 +267,47 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   function send(message) { vscode.postMessage(message); }
+
+  /** Store only presentation state locally so data refreshes retain the active mode. */
+  function saveDashboardViewState() {
+    vscode.setState({
+      dashboardMode: dashboardMode,
+      taskColumns: taskColumns,
+      tagColumns: tagColumns,
+    });
+  }
+
+  function setDashboardMode(mode, focusTab) {
+    dashboardMode = mode === 'browse' ? 'browse' : 'tasks';
+    saveDashboardViewState();
+    render();
+    if (focusTab) {
+      const selectedTab = document.querySelector('[data-dashboard-mode="' + dashboardMode + '"]');
+      if (selectedTab) selectedTab.focus();
+    }
+  }
+
+  /** Apply grid changes without replacing the open View options control. */
+  function applyDashboardColumns(section, columns) {
+    if (section === 'tasks') {
+      taskColumns = columns;
+      if (state) state.taskColumns = columns;
+    } else {
+      tagColumns = columns;
+      if (state) state.tagColumns = columns;
+    }
+    const selector = section === 'tasks'
+      ? '.task-list'
+      : '.tag-list';
+    document.querySelectorAll(selector).forEach(function (grid) {
+      grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)';
+    });
+    document.querySelectorAll('[data-action="set-columns"][data-section="' + section + '"]').forEach(function (button) {
+      const selected = Number(button.dataset.columns) === columns;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  }
 
   /** Ranked modes alone have a meaningful user-controlled display order. */
   function canRank(kind) {
@@ -303,6 +419,34 @@ ${getDeckardThemeCss(getDeckardTheme())}
     document.querySelectorAll('.tag-row.is-dragging, .entity-row.is-dragging, .task-row.is-dragging').forEach(function (row) {
       row.classList.remove('is-dragging');
     });
+  }
+
+  /** Bind directly because the controls live inside a native details menu. */
+  function bindDashboardColumnControls() {
+    document
+      .querySelectorAll('[data-action="set-columns"]')
+      .forEach(function (button) {
+        button.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          const section = button.dataset.section;
+          const columns = Number(button.dataset.columns);
+          if (
+            (section !== 'tasks' && section !== 'tags') ||
+            columns < 1 ||
+            columns > 4
+          ) {
+            return;
+          }
+          applyDashboardColumns(section, columns);
+          saveDashboardViewState();
+          send({
+            type: 'setDashboardColumns',
+            section: section,
+            columns: columns,
+          });
+        });
+      });
   }
 
   /** Keep the dragged row's dimensions while the original row is hidden. */
@@ -518,6 +662,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Re-render from a snapshot while preserving scroll and filter affordances. */
   function render() {
     if (!state) return;
+    const selectedTaskColumns = taskColumns ?? state.taskColumns ?? 1;
+    const selectedTagColumns = tagColumns ?? state.tagColumns ?? 2;
+    taskColumns = selectedTaskColumns;
+    tagColumns = selectedTagColumns;
+    state.taskColumns = selectedTaskColumns;
+    state.tagColumns = selectedTagColumns;
     closeRankContextMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
@@ -526,31 +676,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const hasRenderedTagFilter = Boolean(currentTagFilter);
     if (currentTagFilter) taskTagFilterOpen = currentTagFilter.open;
     const tagOptionsScrollTop = currentTagOptions ? currentTagOptions.scrollTop : 0;
-    const builtInEntityKindLabels = {
-      person: 'People',
-      project: 'Projects',
-      topic: 'Topics',
-      organization: 'Organizations',
-      meeting: 'Meetings'
-    };
-    const customEntityKinds = Array.from(new Set(state.entities.map(function (entity) { return entity.kind; })))
-      .filter(function (kind) { return !builtInEntityKindLabels[kind]; })
-      .sort();
-    const entityKindOptions = [
-      { value: 'all', label: 'All types' },
-      ...Object.keys(builtInEntityKindLabels).map(function (kind) { return { value: kind, label: builtInEntityKindLabels[kind] }; }),
-      ...customEntityKinds.map(function (kind) { return { value: kind, label: formatEntityKindLabel(kind) }; }),
-      { value: 'other', label: 'Other tags' }
-    ].map(function (option) {
-      return '<option value="' + escapeHtml(option.value) + '" ' + (entityKindFilter === option.value ? 'selected' : '') + '>' + escapeHtml(option.label) + '</option>';
-    }).join('');
-    const filteredEntities = state.entities.filter(function (entity) {
-      return entityKindFilter === 'all' || entity.kind === entityKindFilter;
+    const normalizedBrowseQuery = browseQuery.trim().toLowerCase();
+    const filteredTags = state.tags.filter(function (tag) {
+      return !normalizedBrowseQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedBrowseQuery) >= 0;
     });
-    const entityKeys = new Set(state.entities.map(function (entity) { return entity.key; }));
-    const lightweightTags = entityKindFilter === 'all' || entityKindFilter === 'other'
-      ? state.tags.filter(function (tag) { return !entityKeys.has(tag.key); })
-      : [];
     const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
     const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
     const renderEntity = function (entity) {
@@ -560,20 +689,34 @@ ${getDeckardThemeCss(getDeckardTheme())}
     };
     const renderTag = function (tag) {
       const draggable = state.tagSortMode === 'custom';
+      const display = formatTagDisplay(tag);
+      const displayLabel = display.namespace ? display.name + ' ' + display.namespace : display.name;
       const favoriteLabel = tag.isFavorite ? 'Unfavorite' : 'Favorite';
-      return '<div class="tag-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-tag-key="' + escapeHtml(tag.key) + '"><div class="tag-main"><span class="tag-name">' + escapeHtml(tag.label) + '</span><span class="tag-count">' + tag.count + '</span></div><div class="tag-actions"><button class="favorite-toggle ' + (tag.isFavorite ? 'favorite' : '') + '" data-action="favorite-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(tag.label) + '"><svg class="favorite-heart" viewBox="-1 -1 18 16" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 1H6V3H10V1H14V3H16V8H14V10H12V12H10V14H6V12H4V10H2V8H0V3H2Z"/></svg></button></div></div>';
+      return '<div class="tag-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-tag-key="' + escapeHtml(tag.key) + '"><div class="tag-main"><span class="tag-name">' + escapeHtml(display.name) + '</span><span class="tag-count">' + tag.count + '</span></div><div class="tag-actions">' + (display.namespace ? '<span class="entity-kind">' + escapeHtml(display.namespace) + '</span>' : '') + '<button class="favorite-toggle ' + (tag.isFavorite ? 'favorite' : '') + '" data-action="favorite-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(displayLabel) + '"><svg class="favorite-heart" viewBox="-1 -1 18 16" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 1H6V3H10V1H14V3H16V8H14V10H12V12H10V14H6V12H4V10H2V8H0V3H2Z"/></svg></button></div></div>';
     };
-    const favoriteEntities = filteredEntities.filter(function (entity) { return entity.isFavorite; }).map(renderEntity).join('');
-    const otherEntities = filteredEntities.filter(function (entity) { return !entity.isFavorite; }).map(renderEntity).join('');
-    const favoriteLightweightTags = lightweightTags.filter(function (tag) { return tag.isFavorite; }).map(renderTag).join('');
-    const otherLightweightTags = lightweightTags.filter(function (tag) { return !tag.isFavorite; }).map(renderTag).join('');
-    const favoriteRows = favoriteEntities + favoriteLightweightTags;
-    const tagContent = filteredEntities.length || lightweightTags.length
-      ? (favoriteRows ? '<div class="tag-group" data-entity-group="favorites" data-tag-group="favorites"><h3>Favorites</h3><div class="entity-list">' + favoriteRows + '</div></div>' : '') +
-        (otherEntities ? '<div class="tag-group" data-entity-group="all"><h3>All tags</h3><div class="entity-list">' + otherEntities + '</div></div>' : '') +
-        (otherLightweightTags ? '<div class="tag-group" data-tag-group="all"><h3>Other tags</h3><div class="tag-list">' + otherLightweightTags + '</div></div>' : '')
-      : '<div class="empty">No tags match this type.</div>';
-    const tasks = state.tasks.length ? state.tasks.map(function (item) {
+    const favoriteTags = filteredTags.filter(function (tag) { return tag.isFavorite; });
+    const otherTags = filteredTags.filter(function (tag) { return !tag.isFavorite; });
+    const tagContent = filteredTags.length
+      ? (favoriteTags.length
+        ? '<div class="tag-group" data-tag-group="favorites"><h3>Favorites <span class="tag-count">(' + favoriteTags.length + ')</span></h3><div class="tag-list" style="grid-template-columns: repeat(' + selectedTagColumns + ', 1fr);">' + favoriteTags.map(renderTag).join('') + '</div></div>'
+        : '') + (otherTags.length ? '<div class="tag-group" data-tag-group="other"><h3>Other tags <span class="tag-count">(' + otherTags.length + ')</span></h3><div class="tag-list" style="grid-template-columns: repeat(' + selectedTagColumns + ', 1fr);">' + otherTags.map(renderTag).join('') + '</div></div>' : '')
+      : '<div class="empty">No tags match your search.</div>';
+    const savedFilters = state.savedFilters.length
+      ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved tag views <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) {
+          const tagCount = filter.tags.length;
+          return '<div class="saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + escapeHtml(filter.tags.map(function (tag) { return tag.label; }).join(' AND ')) + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved tag view ' + escapeHtml(filter.name) + '">Remove</button></div>';
+        }).join('') + '</div></section>'
+      : '';
+    const normalizedTaskSearchQuery = taskSearchQuery.trim().toLowerCase();
+    const filteredTasks = state.tasks.filter(function (item) {
+      const searchableText = [
+        item.task.title,
+        item.fileName,
+        item.sectionHeading || '',
+      ].join(' ').toLowerCase();
+      return !normalizedTaskSearchQuery || searchableText.indexOf(normalizedTaskSearchQuery) >= 0;
+    });
+    const tasks = filteredTasks.length ? filteredTasks.map(function (item) {
       const task = item.task;
       const draggable = state.taskSortMode === 'rank';
       const startOfToday = new Date();
@@ -586,9 +729,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
         '<div><div class="task-title">' + item.renderedTitle + '</div><div class="task-meta">' + dueDate + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
         '</div>';
     }).join('') : '<div class="empty">No tasks match this filter.</div>';
+    const taskCounts = {
+      all: normalizedTaskSearchQuery ? filteredTasks.length : state.totalTaskCount,
+      active: normalizedTaskSearchQuery
+        ? filteredTasks.filter(function (item) { return !item.task.completed; }).length
+        : state.activeTaskCount,
+      completed: normalizedTaskSearchQuery
+        ? filteredTasks.filter(function (item) { return item.task.completed; }).length
+        : state.totalTaskCount - state.activeTaskCount
+    };
     const filters = ['all', 'active', 'completed'].map(function (filter) {
-      const label = filter === 'all' ? 'All tasks' : filter === 'active' ? 'Active tasks' : 'Completed tasks';
-      return '<button class="' + (state.taskFilter === filter ? 'active' : '') + '" data-action="set-filter" data-filter="' + filter + '" aria-label="' + label + '" aria-pressed="' + (state.taskFilter === filter) + '" title="' + label + '">' + taskFilterIcon(filter) + '</button>';
+      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
+      return '<button class="' + (state.taskFilter === filter ? 'active' : '') + '" data-action="set-filter" data-filter="' + filter + '" aria-label="' + label + ' tasks, ' + taskCounts[filter] + '" aria-pressed="' + (state.taskFilter === filter) + '">' + taskFilterIcon(filter) + '<span>' + label + '</span><span class="filter-count">' + taskCounts[filter] + '</span></button>';
     }).join('');
     const normalizedTagQuery = taskTagQuery.trim().toLowerCase();
     const filteredTaskTags = state.availableTaskTags.filter(function (tag) {
@@ -601,22 +753,34 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<span class="tag-filter-no-results"' + (normalizedTagQuery && !filteredTaskTags.length ? '' : ' hidden') + '>No task tags match your search.</span>'
       : '';
     const selectedTagSummary = state.selectedTaskTags.length ? state.selectedTaskTags.length + ' selected' : 'all tags';
-    const taskTagFilter = '<details class="tag-filter" ' + (taskTagFilterOpen || (!hasRenderedTagFilter && state.selectedTaskTags.length) ? 'open' : '') + '><summary>Tags: ' + selectedTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-task-tags" value="' + escapeHtml(taskTagQuery) + '" placeholder="Filter tags" aria-label="Filter task tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options">' + tagOptions + '</div>' + noMatchingTags + '<button class="tag-filter-clear" data-action="clear-task-tags">Clear</button></div></details>';
-    const tagSortControl = entityKindFilter === 'other'
-      ? '<span class="control-icon"><select data-action="set-sort" aria-label="Sort lightweight tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span>'
+    const taskTagFilter = '<span class="control-label">Tags:</span><details class="tag-filter" ' + (taskTagFilterOpen || (!hasRenderedTagFilter && state.selectedTaskTags.length) ? 'open' : '') + '><summary>' + selectedTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-task-tags" value="' + escapeHtml(taskTagQuery) + '" placeholder="Filter tags" aria-label="Filter task tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options">' + tagOptions + '</div>' + noMatchingTags + '</div></details>';
+    const taskSearch = '<input class="task-search" type="search" data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search tasks" autocomplete="off">';
+    const selectedTaskTags = state.selectedTaskTags.map(function (tagKey) {
+      const tag = state.availableTaskTags.find(function (candidate) { return candidate.key === tagKey; });
+      return tag ? '<button class="selected-task-tag" data-action="remove-task-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Remove task tag ' + escapeHtml(tag.label) + '">' + escapeHtml(tag.label) + '</button>' : '';
+    }).join('');
+    const selectedTaskTagControls = selectedTaskTags
+      ? '<div class="selected-task-tags" aria-label="Selected task tags">' + selectedTaskTags + '<button class="clear-task-filters" data-action="clear-task-tags">Clear filters</button></div>'
       : '';
-    const entitySortControl = entityKindFilter !== 'other'
-      ? '<span class="control-icon"><select data-action="set-entity-sort" aria-label="Sort entity tags"><option value="alphabetical" ' + (state.entitySortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.entitySortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.entitySortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.entitySortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span>'
-      : '';
+    const tagSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></label>';
+    const columnControls = function (section, selectedColumns) {
+      return '<div class="dashboard-column-options" role="group" aria-label="' + (section === 'tasks' ? 'Task' : 'Tag') + ' columns">' + [1, 2, 3, 4].map(function (columns) {
+        return '<button class="' + (columns === selectedColumns ? 'active' : '') + '" data-action="set-columns" data-section="' + section + '" data-columns="' + columns + '" aria-label="' + columns + ' columns" aria-pressed="' + (columns === selectedColumns) + '">' + columns + '</button>';
+      }).join('') + '</div>';
+    };
+    const metrics = '<div class="metrics" aria-label="Workspace totals">' +
+      '<div class="metric" data-code="SYS.ENT // 1982-AZ"><span class="metric-value">' + state.entities.length + '</span><span class="metric-label">entities</span></div>' +
+      '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
+      '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
+      '</div>';
+    const dashboardOptions = '<details class="dashboard-view-options"><summary aria-label="View options" title="View options">${settingsIcon}</summary><div class="dashboard-view-options-menu"><div class="dashboard-view-options-group"><span>Task columns</span>' + columnControls('tasks', state.taskColumns) + '</div><div class="dashboard-view-options-group"><span>Tag columns</span>' + columnControls('tags', state.tagColumns) + '</div></div></details>';
 
     document.getElementById('app').innerHTML =
-      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard</h1></div><div class="metrics" aria-label="Workspace totals">' +
-        '<div class="metric" data-code="SYS.ENT // 1982-AZ"><span class="metric-value">' + state.entities.length + '</span><span class="metric-label">entities</span></div>' +
-        '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
-        '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
-      '</div></header>' +
-      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type">' + entityKindOptions + '</select>' + filterIcon + '</span>' + entitySortControl + tagSortControl + '</div></div><div class="entity-list">' + tagContent + '</div></section>' +
-      '<section aria-labelledby="tasks-heading"><div class="section-heading"><h2 id="tasks-heading">Tasks <span class="tag-count">' + state.activeTaskCount + ' active</span></h2><span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></div><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + filters + '</div>' + taskTagFilter + '</div><div class="task-list">' + tasks + '</div></section></div>';
+      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
+      savedFilters +
+      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags</button></div></div>' +
+      '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label><div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + '<div class="task-list" style="grid-template-columns: repeat(' + state.taskColumns + ', 1fr);">' + tasks + '</div></section>' +
+      '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search" data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagSortControl + '</div></div></div>' + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
     if (nextTagFilter) {
@@ -625,6 +789,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
       });
     }
     if (nextTagOptions) nextTagOptions.scrollTop = tagOptionsScrollTop;
+    bindDashboardColumnControls();
+    applyDashboardColumns('tasks', selectedTaskColumns);
+    applyDashboardColumns('tags', selectedTagColumns);
     window.scrollTo(scrollX, scrollY);
   }
 
@@ -655,13 +822,28 @@ ${getDeckardThemeCss(getDeckardTheme())}
       tagFilter.open = false;
       taskTagFilterOpen = false;
     }
+    const dashboardOptions = document.querySelector('.dashboard-view-options');
+    if (dashboardOptions && dashboardOptions.open && !event.target.closest('.dashboard-view-options')) {
+      dashboardOptions.open = false;
+    }
     const target = event.target.closest('[data-action]');
     if (target) {
       const action = target.dataset.action;
+      if (action === 'set-dashboard-mode') {
+        setDashboardMode(
+          target.dataset.dashboardMode,
+          document.activeElement === target,
+        );
+        return;
+      }
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
+      if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
       if (action === 'set-filter') send({ type: 'setTaskFilter', filter: target.dataset.filter });
+      if (action === 'remove-task-tag') {
+        send({ type: 'setTaskTags', tagKeys: state.selectedTaskTags.filter(function (tagKey) { return tagKey !== target.dataset.tagKey; }) });
+      }
       if (action === 'clear-task-tags') {
         taskTagQuery = '';
         taskTagFilterOpen = false;
@@ -682,11 +864,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (tagRow && !event.target.closest('button, input, a')) {
       send({ type: 'openTag', tagKey: tagRow.dataset.tagKey });
     }
+    const savedFilterRow = event.target.closest('.saved-filter-row');
+    if (savedFilterRow && !event.target.closest('button, input, a')) {
+      send({ type: 'openSavedFilter', filterId: savedFilterRow.dataset.savedFilterId });
+    }
   });
 
   document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      const dashboardOptions = document.querySelector('.dashboard-view-options');
+      if (dashboardOptions && dashboardOptions.open) {
+        dashboardOptions.open = false;
+        dashboardOptions.querySelector('summary').focus();
+        return;
+      }
+    }
     if (event.key === 'Escape' && rankContextMenu && !rankContextMenu.hidden) {
       closeRankContextMenu();
+      return;
+    }
+    const dashboardTab = event.target.closest('[role="tab"][data-dashboard-mode]');
+    if (dashboardTab && (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End')) {
+      event.preventDefault();
+      const modes = ['tasks', 'browse'];
+      const currentIndex = modes.indexOf(dashboardMode);
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? modes.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : modes.length - 1)) % modes.length;
+      setDashboardMode(modes[nextIndex], true);
       return;
     }
     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -707,16 +910,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
       event.preventDefault();
       send({ type: 'openTag', tagKey: tagRow.dataset.tagKey });
     }
+    const savedFilterRow = event.target.closest('.saved-filter-row');
+    if (savedFilterRow && !event.target.closest('button, input, a')) {
+      event.preventDefault();
+      send({ type: 'openSavedFilter', filterId: savedFilterRow.dataset.savedFilterId });
+    }
   });
 
   document.addEventListener('change', function (event) {
     const target = event.target;
     if (target.dataset.action === 'set-sort') send({ type: 'setTagSort', mode: target.value });
-    if (target.dataset.action === 'set-entity-sort') send({ type: 'setEntitySort', mode: target.value });
-    if (target.dataset.action === 'set-entity-kind') {
-      entityKindFilter = target.value;
-      render();
-    }
     if (target.dataset.action === 'set-task-sort') send({ type: 'setTaskSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
     if (target.dataset.action === 'set-task-tag') {
@@ -727,6 +930,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
 
   document.addEventListener('input', function (event) {
     const target = event.target;
+    if (target.dataset.action === 'search-browse') {
+      browseQuery = target.value;
+      const restoreSearchFocus = document.activeElement === target;
+      render();
+      if (restoreSearchFocus) requestAnimationFrame(function () {
+        const search = document.querySelector('.catalog-search');
+        if (search) {
+          search.focus();
+          search.setSelectionRange(browseQuery.length, browseQuery.length);
+        }
+      });
+      return;
+    }
+    if (target.dataset.action === 'search-tasks') {
+      taskSearchQuery = target.value;
+      const restoreSearchFocus = document.activeElement === target;
+      render();
+      if (restoreSearchFocus) requestAnimationFrame(function () {
+        const search = document.querySelector('.task-search');
+        if (search) {
+          search.focus();
+          search.setSelectionRange(taskSearchQuery.length, taskSearchQuery.length);
+        }
+      });
+      return;
+    }
     if (target.dataset.action !== 'filter-task-tags') return;
     taskTagQuery = target.value;
     const query = taskTagQuery.trim().toLowerCase();
@@ -785,7 +1014,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
   });
 
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') { state = event.data.data; render(); }
+    if (event.data && event.data.type === 'state') {
+      const incomingState = event.data.data;
+      if (taskColumns === undefined) taskColumns = incomingState.taskColumns ?? 1;
+      if (tagColumns === undefined) tagColumns = incomingState.tagColumns ?? 2;
+      incomingState.taskColumns = taskColumns;
+      incomingState.tagColumns = tagColumns;
+      state = incomingState;
+      render();
+    }
   });
 }());
 </script>

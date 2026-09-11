@@ -40,6 +40,9 @@ export function getTagOverviewHtml(
 body { margin: 0; min-width: 280px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 13px; }
 main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; border-top: 2px solid var(--amber); }
 header { display: flex; justify-content: space-between; align-items: end; gap: 18px; border-bottom: 2px solid var(--line-strong); padding-bottom: 16px; }
+header { position: relative; }
+header > .toolbar { padding-right: 36px; }
+header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 h1, h2, .eyebrow, .source { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; overflow-wrap: anywhere; text-transform: uppercase; }
 .overview-title-filter { color: var(--text); }
@@ -70,25 +73,47 @@ h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; overflow-
   box-shadow: none;
 }
 h2 { margin: 0; font-size: 14px; font-weight: 650; }
-.eyebrow { margin: 0 0 6px; color: var(--amber); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
-.toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
-button, select { min-height: 30px; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: inherit; cursor: pointer; }
-button:hover, button.active, select:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.eyebrow { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
+.toolbar { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.toolbar label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 11px; text-transform: uppercase; }
+.overview-search { width: min(250px, 44vw); border-color: var(--line-strong); }
+.view-options { position: relative; }
+.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
+.view-options summary::-webkit-details-marker { display: none; }
+.view-options summary:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+.view-options summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 230px; padding: 10px; border: 2px solid var(--line); background: var(--panel-raised); }
+.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
+.save-filter { border-color: var(--amber); color: var(--amber); }
+button, select, input[type="search"] { min-height: 30px; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: inherit; }
+button { cursor: pointer; }
+button:hover, button.active, select:hover, input[type="search"]:focus { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+button:focus-visible, select:focus-visible, input[type="search"]:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .toolbar-toggle { display: inline-grid; width: 30px; min-height: 30px; place-items: center; padding: 5px; }
 .toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.settings-icon { fill: currentColor; stroke: none; }
 .toolbar-toggle-group { display: inline-flex; }
 .toolbar-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -2px; }
 .toolbar-toggle-group .toolbar-toggle:first-child { border-radius: 2px 0 0 2px; }
 .toolbar-toggle-group .toolbar-toggle:last-child { border-radius: 0 2px 2px 0; }
 .toolbar-toggle-group .toolbar-toggle.active { position: relative; z-index: 1; }
-.overview-tabs { display: flex; gap: 6px; margin-top: 20px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+.layout-toggle-group .toolbar-toggle { border-width: 1px; }
+.layout-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }
+.overview-tabs-row { margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
+.overview-tabs { display: inline-flex; gap: 0; }
+.overview-tabs button + button { margin-left: -2px; }
+.overview-tabs button:first-child { border-radius: 2px 0 0 2px; }
+.overview-tabs button:last-child { border-radius: 0 2px 2px 0; }
+.overview-tabs button.active { position: relative; z-index: 1; }
 .overview-tabs button { border-bottom-color: var(--line); }
 .overview-tab-panel { margin-top: 12px; }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
 .overview-pane { min-width: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.overview-pane-controls { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.overview-pane-controls .overview-search { min-width: 0; flex: 1 1 160px; }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; text-transform: uppercase; }
 .overview-pane .cards, .overview-pane .task-summary { margin-top: 12px; }
 .task-filter-toggle { display: inline-flex; }
@@ -96,8 +121,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .task-filter-toggle button:first-child { border-radius: 2px 0 0 2px; }
 .task-filter-toggle button:last-child { border-radius: 0 2px 2px 0; }
 .task-filter-toggle button.active { position: relative; z-index: 1; }
-.task-filter-toggle button { display: inline-grid; width: 30px; place-items: center; padding: 5px; }
+.task-filter-toggle button { display: inline-flex; min-width: 30px; align-items: center; gap: 4px; padding: 5px 8px; }
 .task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.filter-count { color: var(--muted); font-size: 10px; }
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
 .inline-tag { min-height: 24px; margin-left: 6px; padding: 2px 6px; font-size: .78em; vertical-align: 1px; }
@@ -183,7 +209,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .tag-context-menu[hidden] { display: none; }
 .tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .cards { display: grid; gap: 12px; margin-top: 20px; }
-.title-filter-clear { min-height: 24px; margin-top: 8px; padding: 2px 6px; font-size: 10px; }
+.overview-filter-tag { display: inline-flex; align-items: baseline; gap: 5px; }
+.title-filter-remove { min-height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--muted); padding: 0 4px; font-size: 12px; line-height: 16px; vertical-align: middle; }
+.title-filter-remove:hover, .title-filter-remove:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+.card[hidden], .task[hidden] { display: none; }
 .card { border: 2px solid var(--line); background: var(--panel); padding: 14px; cursor: pointer; }
 .card:hover { border-color: var(--amber); }
 .card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
@@ -207,7 +236,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); out
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .empty { border: 2px dashed var(--line); padding: 20px; color: var(--muted); background: var(--panel-deep); margin-top: 20px; }
 @media (max-width: 900px) { .relationship-tree-columns { grid-template-columns: 1fr; } }
-@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } .overview-split { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; } .overview-split { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
@@ -220,6 +249,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
   let state;
   let activeTab = 'notes';
   let relationshipView = 'tree';
+  let noteSearchQuery = '';
+  let taskSearchQuery = '';
   let tagContextMenu;
   let tagContextKey;
 
@@ -256,6 +287,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Render a title or metadata tag as a direct overview link. */
   function renderOverviewTagLink(tag, text) {
     return '<button class="overview-tag-link" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(text) + '</button>';
+  }
+
+  /** Render a combined-overview tag with a control that removes only that tag. */
+  function renderFilteredOverviewTag(tag, text, nextTagKey, nextFilterTagKeys) {
+    return '<span class="overview-filter-tag">' + renderOverviewTagLink(tag, text) + '<button class="title-filter-remove" data-action="open-tag" data-tag-key="' + escapeHtml(nextTagKey) + '" data-filter-tag-keys="' + escapeHtml(JSON.stringify(nextFilterTagKeys)) + '" aria-label="Remove ' + escapeHtml(tag.label) + ' from this overview" title="Remove ' + escapeHtml(tag.label) + '">&#215;</button></span>';
   }
 
   function closeTagContextMenu() {
@@ -476,35 +512,80 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<section class="relationship-workspace" aria-labelledby="relationships-heading"><div class="relationship-workspace-header"><div class="relationship-workspace-title"><h2 id="relationships-heading" class="relationship-heading">Tag associations</h2><span class="relationship-summary">' + associations.length + ' related tags</span></div><div class="relationship-view-switch" role="tablist" aria-label="Relationship view"><button class="' + (treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="tree" role="tab" aria-selected="' + treeActive + '">Tree</button><button class="' + (!treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="graph" role="tab" aria-selected="' + (!treeActive) + '">Graph</button></div></div><div class="relationship-view-panel"' + (treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipTree(associations, rootTag) + '</div><div class="relationship-view-panel"' + (!treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipGraph(associations, rootTag) + '</div></section>';
   }
 
+  function filterOverviewEntries(kind, query, total) {
+    const normalizedQuery = query.trim().toLowerCase();
+    let visibleCount = 0;
+    document.querySelectorAll('[data-search-entry="' + kind + '"]').forEach(function (entry) {
+      const visible = !normalizedQuery || entry.dataset.searchText.indexOf(normalizedQuery) >= 0;
+      entry.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+    document.querySelectorAll('[data-search-count="' + kind + '"]').forEach(function (count) {
+      count.textContent = visibleCount + (normalizedQuery ? ' / ' + total : '');
+    });
+    const empty = document.querySelector('[data-search-empty="' + kind + '"]');
+    if (empty) empty.hidden = !normalizedQuery || visibleCount > 0;
+    if (kind === 'tasks') updateTaskFilterCounts(normalizedQuery);
+  }
+
+  function updateTaskFilterCounts(query) {
+    const counts = query
+      ? { all: 0, active: 0, completed: 0 }
+      : (state && state.taskCounts
+        ? state.taskCounts
+        : { all: 0, active: 0, completed: 0 });
+    if (query) {
+      document.querySelectorAll('[data-search-entry="tasks"]').forEach(function (entry) {
+        if (entry.hidden) return;
+        counts.all += 1;
+        counts[entry.classList.contains('completed') ? 'completed' : 'active'] += 1;
+      });
+    }
+    document.querySelectorAll('.task-filter-toggle button[data-filter]').forEach(function (button) {
+      const filter = button.dataset.filter;
+      if (!filter || counts[filter] === undefined) return;
+      const count = counts[filter];
+      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
+      const description = label + ' tasks, ' + count;
+      const countElement = button.querySelector('.filter-count');
+      if (countElement) countElement.textContent = String(count);
+      button.setAttribute('aria-label', description);
+      button.title = description;
+    });
+  }
+
   /** Rebuild the cards from the latest host snapshot without local duplication. */
   function render() {
     if (!state) return;
     closeTagContextMenu();
     const baseTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
-      : state.tag.label + ' Overview';
-    const filterTitle = state.filterTag
-      ? formatTagReferenceTitle(state.filterTag)
-      : '';
+      : state.tag.label;
+    const filterTags = state.filterTags || (state.filterTag ? [state.filterTag] : []);
     const focusReference = state.entity
       ? { key: state.entity.key, label: state.entity.label }
       : state.tag;
     const focusTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : state.tag.label;
-    const focusTitleHtml = renderOverviewTagLink(focusReference, focusTitle)
-      + (state.entity ? '' : ' Overview');
-    const titleHtml = filterTitle
-      ? '<span class="overview-title-filter">' + renderOverviewTagLink(state.filterTag, filterTitle) + '</span><span class="overview-title-joiner"> AND </span>' + focusTitleHtml
-      : focusTitleHtml;
-    const titleAriaLabel = filterTitle
-      ? filterTitle + ' and ' + baseTitle
+    const activeTitleTags = filterTags.map(function (tag) {
+      return { tag: tag, text: formatTagReferenceTitle(tag) };
+    }).concat([{ tag: focusReference, text: focusTitle }]);
+    const titleHtml = filterTags.length
+      ? activeTitleTags.map(function (item) {
+        const removingFocus = item.tag.key === focusReference.key;
+        const remainingFilterTags = removingFocus
+          ? filterTags.slice(1)
+          : filterTags.filter(function (tag) { return tag.key !== item.tag.key; });
+        const nextTagKey = removingFocus ? filterTags[0].key : focusReference.key;
+        return renderFilteredOverviewTag(item.tag, item.text, nextTagKey, remainingFilterTags.map(function (tag) { return tag.key; }));
+      }).join('<span class="overview-title-joiner"> AND </span>')
+      : renderOverviewTagLink(focusReference, focusTitle);
+    const titleAriaLabel = filterTags.length
+      ? activeTitleTags.map(function (item) { return item.text; }).join(' and ') + (state.entity ? '' : ' overview')
       : baseTitle;
     const entityMeta = state.entity
-      ? '<div class="entity-meta">' + (state.filterTag ? renderOverviewTagLink(state.filterTag, state.filterTag.label) + ' · ' : '') + renderOverviewTagLink(focusReference, state.entity.label) + ' · ' + (state.filterTag ? state.sections.length : state.entity.sectionIds.length + state.entity.filePaths.length) + ' note entries · ' + (state.filterTag ? state.tasks.length : state.entity.taskIds.length) + ' tasks</div>'
-      : '';
-    const filterContext = state.filterTag
-      ? '<button class="tag-open title-filter-clear" data-action="open-tag" data-tag-key="' + escapeHtml(state.tag.key) + '" aria-label="Clear relationship filter">Clear filter</button>'
+      ? '<div class="entity-meta">' + (filterTags.length ? filterTags.map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ') + ' · ' : '') + renderOverviewTagLink(focusReference, state.entity.label) + '</div>'
       : '';
     const cards = state.sections.length ? state.sections.map(function (section) {
       const fileName = section.filePath.split('/').pop() || section.filePath;
@@ -515,25 +596,42 @@ ${getDeckardThemeCss(getDeckardTheme())}
       const tags = state.tagTitleDisplayMode === 'separate' ? section.tags.map(function (tag) {
         return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
       }).join('') : '';
-      return '<article class="card" tabindex="0" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
-    }).join('') : '<div class="empty">' + (state.filterTag ? 'No sections currently carry both tags.' : 'No sections currently carry this tag.') + '</div>';
+      const searchText = [section.heading, section.filePath, section.rawContent].join(' ').toLowerCase();
+      return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
+    }).join('') : '<div class="empty">' + (filterTags.length ? 'No sections currently carry all selected tags.' : 'No sections currently carry this tag.') + '</div>';
     const tasks = state.tasks.length ? '<div class="task-summary">' + state.tasks.map(function (item) {
       const task = item.task;
-      return '<article class="task ' + (task.completed ? 'completed' : '') + '" tabindex="0" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '"><div><div class="task-title">' + item.renderedTitle + '</div><div class="source">' + escapeHtml(item.fileName) + ' / line ' + task.lineNumber + '</div></div></article>';
+      const searchText = [task.title, item.fileName, item.sectionHeading || ''].join(' ').toLowerCase();
+      return '<article class="task ' + (task.completed ? 'completed' : '') + '" tabindex="0" data-search-entry="tasks" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '"><div><div class="task-title">' + item.renderedTitle + '</div><div class="source">' + escapeHtml(item.fileName) + ' / line ' + task.lineNumber + '</div></div></article>';
     }).join('') + '</div>' : '<div class="empty">No tasks match this filter.</div>';
+    const taskCounts = state.taskCounts || {
+      all: state.tasks.length,
+      active: state.tasks.filter(function (item) { return !item.task.completed; }).length,
+      completed: state.tasks.filter(function (item) { return item.task.completed; }).length,
+    };
     const taskFilters = ['all', 'active', 'completed'].map(function (filter) {
-      const label = filter === 'all' ? 'All tasks' : filter === 'active' ? 'Active tasks' : 'Completed tasks';
-      return '<button class="' + (state.taskFilter === filter ? 'active' : '') + '" data-action="set-task-filter" data-filter="' + filter + '" aria-label="' + label + '" aria-pressed="' + (state.taskFilter === filter) + '" title="' + label + '">' + taskFilterIcon(filter) + '</button>';
+      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
+      const description = label + ' tasks, ' + taskCounts[filter];
+      return '<button class="' + (state.taskFilter === filter ? 'active' : '') + '" data-action="set-task-filter" data-filter="' + filter + '" aria-label="' + description + '" aria-pressed="' + (state.taskFilter === filter) + '" title="' + description + '">' + taskFilterIcon(filter) + '<span>' + label + '</span><span class="filter-count">' + taskCounts[filter] + '</span></button>';
     }).join('');
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><h2 id="notes-heading" class="overview-pane-heading">Notes (' + state.sections.length + ')</h2><div class="cards">' + cards + '</div></section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (' + state.tasks.length + ')</h2><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + taskFilters + '</div></div>' + tasks + '</section>';
+    const notesCount = state.sections.length;
+    const tasksCount = state.tasks.length;
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2><div class="overview-pane-controls"><input class="overview-search" type="search" data-action="search-notes" value="' + escapeHtml(noteSearchQuery) + '" placeholder="Search notes" aria-label="Search current notes" autocomplete="off"></div></div><div class="cards">' + cards + '<div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></div></section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls"><input class="overview-search" type="search" data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search current tasks" autocomplete="off"><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + taskFilters + '</div></div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
-      : '<div class="overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (' + state.sections.length + ')</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (' + state.tasks.length + ')</button></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
-    const relationships = state.entity
-      ? ''
-      : renderRelationshipViews(state.associatedTags, state.tag);
-    document.getElementById('app').innerHTML = '<header><div><p class="eyebrow">DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW</p><h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + filterContext + '</div><div class="toolbar" role="group" aria-label="Tag entry view controls"><div class="toolbar-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div><select data-action="set-sort" aria-label="Sort tag entries"><option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m6 4-4 4 4 4M10 4l4 4-4 4"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button></div></div></header>' + relationships + layoutContent;
+      : '<div class="overview-tabs-row"><div class="overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (<span data-search-count="notes">' + notesCount + '</span>)</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</button></div></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
+    const relationships = '';
+    const saveFilterControl = filterTags.length
+      ? '<button class="save-filter" data-action="save-filter" aria-label="Save this combined tag filter" title="Save filter">Save filter</button>'
+      : '';
+    const layoutControls = '<div class="toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
+    const formatControls = '<div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
+    const viewOptions = '<details class="view-options"><summary aria-label="View options" title="View options"><svg class="toolbar-icon settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"/></svg></summary><div class="view-options-menu"><div class="view-options-group"><span>Layout</span>' + layoutControls + '</div><div class="view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
+    const headerControls = '<div class="toolbar" role="group" aria-label="Tag entry view controls"><label>Sort:<select data-action="set-sort" aria-label="Sort tag entries"><option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select></label>' + viewOptions + '</div>';
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW</p>' + saveFilterControl + '</div><h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + '</div>' + headerControls + '</header>' + relationships + layoutContent;
+    filterOverviewEntries('notes', noteSearchQuery, state.sections.length);
+    filterOverviewEntries('tasks', taskSearchQuery, state.tasks.length);
   }
 
   document.addEventListener('click', function (event) {
@@ -549,6 +647,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (tagContextMenu && !event.target.closest('#tag-context-menu')) {
       closeTagContextMenu();
     }
+    const viewOptions = document.querySelector('.view-options');
+    if (viewOptions && viewOptions.open && !event.target.closest('.view-options')) {
+      viewOptions.open = false;
+    }
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
@@ -562,10 +664,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
         activeTab = target.dataset.tab;
         render();
       }
+      if (target.dataset.action === 'save-filter') {
+        vscode.postMessage({ type: 'saveTagOverviewFilter' });
+      }
       if (target.dataset.action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
       if (target.dataset.action === 'open-tag') {
         const message = { type: 'openTag', tagKey: target.dataset.tagKey };
         if (target.dataset.filterTagKey) message.filterTagKey = target.dataset.filterTagKey;
+        const filterTagKeys = getFilterTagKeys(target.dataset.filterTagKeys);
+        if (filterTagKeys) message.filterTagKeys = filterTagKeys;
         vscode.postMessage(message);
       }
       return;
@@ -578,6 +685,14 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (target) openTagContextMenu(event, target);
   });
   document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      const viewOptions = document.querySelector('.view-options');
+      if (viewOptions && viewOptions.open) {
+        viewOptions.open = false;
+        viewOptions.querySelector('summary').focus();
+        return;
+      }
+    }
     if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
       closeTagContextMenu();
       return;
@@ -588,6 +703,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
       event.preventDefault();
       const message = { type: 'openTag', tagKey: relationshipNode.dataset.tagKey };
       if (relationshipNode.dataset.filterTagKey) message.filterTagKey = relationshipNode.dataset.filterTagKey;
+      const filterTagKeys = getFilterTagKeys(relationshipNode.dataset.filterTagKeys);
+      if (filterTagKeys) message.filterTagKeys = filterTagKeys;
       vscode.postMessage(message);
       return;
     }
@@ -603,9 +720,35 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
   });
-  window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') { state = event.data.data; vscode.setState({ tagKey: state.tag.key, filterTagKey: state.filterTag && state.filterTag.key }); render(); }
+  document.addEventListener('input', function (event) {
+    const target = event.target;
+    if (target.dataset.action !== 'search-notes' && target.dataset.action !== 'search-tasks') return;
+    if (target.dataset.action === 'search-notes') {
+      noteSearchQuery = target.value;
+    } else {
+      taskSearchQuery = target.value;
+    }
+    filterOverviewEntries(
+      target.dataset.action === 'search-notes' ? 'notes' : 'tasks',
+      target.dataset.action === 'search-notes' ? noteSearchQuery : taskSearchQuery,
+      target.dataset.action === 'search-notes' ? state.sections.length : state.tasks.length,
+    );
   });
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'state') { state = event.data.data; vscode.setState({ tagKey: state.tag.key, filterTagKey: state.filterTag && state.filterTag.key, filterTagKeys: (state.filterTags || []).map(function (tag) { return tag.key; }) }); render(); }
+  });
+
+  function getFilterTagKeys(value) {
+    if (!value) return undefined;
+    try {
+      const filterTagKeys = JSON.parse(value);
+      return Array.isArray(filterTagKeys) && filterTagKeys.every(function (key) {
+        return typeof key === 'string' && key.length > 0;
+      }) ? filterTagKeys : undefined;
+    } catch (_error) {
+      return undefined;
+    }
+  }
 }());
 </script>
 </body>

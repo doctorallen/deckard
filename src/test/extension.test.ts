@@ -28,6 +28,7 @@ suite('Extension Test Suite', () => {
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
         'deckard.renameTag',
+        'deckard.showEntryRelatedNotesDebug',
       ],
     );
     assert.strictEqual(

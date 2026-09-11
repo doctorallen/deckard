@@ -114,8 +114,12 @@ suite('Tag decorations', () => {
       true,
     );
     assert.strictEqual(hover.value.includes('Show related notes for Relay checks'), true);
+    assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), true);
     assert.deepStrictEqual(hover.isTrusted, {
-      enabledCommands: ['deckard.showEntryRelatedNotes'],
+      enabledCommands: [
+        'deckard.showEntryRelatedNotes',
+        'deckard.showEntryRelatedNotesDebug',
+      ],
     });
   });
 
