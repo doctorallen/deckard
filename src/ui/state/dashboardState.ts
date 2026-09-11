@@ -708,7 +708,19 @@ export function createSidebarSnapshot(
     };
   }
 
-  const activeTags = sortTagReferences(collectFileTags(activeFile));
+  const sortedActiveTags = sortTagReferences(collectFileTags(activeFile));
+  const activeTags =
+    activeTagWeights && activeTagWeights.size > 0
+      ? sortedActiveTags
+          .map((tag, index) => ({ tag, index }))
+          .sort(
+            (left, right) =>
+              (activeTagWeights.get(right.tag.key) ?? 1) -
+                (activeTagWeights.get(left.tag.key) ?? 1) ||
+              left.index - right.index,
+          )
+          .map(({ tag }) => tag)
+      : sortedActiveTags;
   const notes = rankRelatedNotes(
     index,
     activeFilePath,

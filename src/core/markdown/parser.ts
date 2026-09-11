@@ -161,6 +161,7 @@ export function parseMarkdown(
           filePath,
           lines,
           fencedLines,
+          headingSections,
           metadata,
           frontmatter.tags,
           personMarker,
@@ -906,6 +907,7 @@ function findInlineSections(
   filePath: string,
   lines: string[],
   fencedLines: Set<number>,
+  headingSections: Section[],
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   frontmatterTags: TagReference[] = [],
   personMarker?: string,
@@ -944,6 +946,7 @@ function findInlineSections(
             rawContent,
             [localTags],
             frontmatterTags,
+            findNearestSection(headingSections, lineNumber)?.id,
             metadata,
           ),
         );
@@ -990,6 +993,7 @@ function findInlineSections(
           extractTags(paragraphLine, undefined, personMarker),
         ),
         frontmatterTags,
+        findNearestSection(headingSections, lineNumber)?.id,
         metadata,
       ),
     );
@@ -1006,6 +1010,7 @@ function createInlineSection(
   rawContent: string,
   associationTagGroups: TagReference[][],
   frontmatterTags: TagReference[],
+  parentSectionId: string | undefined,
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
 ): Section {
   const localTags = associationTagGroups.flat();
@@ -1018,6 +1023,7 @@ function createInlineSection(
     isInline: true,
     headingTags: [],
     associationTagGroups,
+    parentSectionId,
     tags: inlineTags.map((tag) => tag.key),
     tagLabels: Object.fromEntries(
       inlineTags.map((tag) => [tag.key, tag.label]),

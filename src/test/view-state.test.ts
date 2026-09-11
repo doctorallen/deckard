@@ -764,6 +764,48 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('sorts selected-note tags by weight before their existing order', () => {
+    const active = createFile(
+      'notes/current.md',
+      [
+        '# Harbor check-in #team/harbor',
+        '## Sable Ortiz #person/sable-ortiz',
+        '### Clinic-source protection #project/vesper-nine',
+        'Clinic windows use #contact/miko-tern and #feature/source-protection.',
+      ].join('\n'),
+    );
+    const index = createFileIndex([active]);
+
+    const snapshot = createSidebarSnapshot(
+      index,
+      active.filePath,
+      active,
+      false,
+      'tags',
+      {},
+      'inline',
+      'Selected note',
+      new Map([
+        ['#contact/miko-tern', 1],
+        ['#feature/source-protection', 1],
+        ['#project/vesper-nine', 0.5],
+        ['#person/sable-ortiz', 0.25],
+        ['#team/harbor', 0.1667],
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      snapshot.activeTags.map((tag) => tag.key),
+      [
+        '#contact/miko-tern',
+        '#feature/source-protection',
+        '#project/vesper-nine',
+        '#person/sable-ortiz',
+        '#team/harbor',
+      ],
+    );
+  });
+
   test('collects active tags from front matter, sections, and tasks', () => {
     const active = createFile(
       'notes/current.md',
