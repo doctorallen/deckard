@@ -45,6 +45,7 @@ export class PreferencesStore implements vscode.Disposable {
   private readonly changeEmitter =
     new vscode.EventEmitter<PersistedPreferences>();
   private preferences: PersistedPreferences;
+  private updateQueue: Promise<void> = Promise.resolve();
 
   public constructor(private readonly state: vscode.Memento) {
     this.preferences = normalizePreferences(
@@ -378,8 +379,14 @@ export class PreferencesStore implements vscode.Disposable {
       ...this.preferences,
       ...changes,
     });
-    await this.state.update(preferencesKey, this.preferences);
-    this.changeEmitter.fire(this.value);
+    const nextPreferences = clonePreferences(this.preferences);
+    const persist = async (): Promise<void> => {
+      await this.state.update(preferencesKey, nextPreferences);
+      this.changeEmitter.fire(clonePreferences(nextPreferences));
+    };
+    const queuedUpdate = this.updateQueue.then(persist, persist);
+    this.updateQueue = queuedUpdate;
+    await queuedUpdate;
   }
 }
 

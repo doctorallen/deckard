@@ -293,6 +293,18 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
     assert.strictEqual(html.includes("const taskCounts = {"), true);
+    assert.strictEqual(
+      html.includes(
+        'all: normalizedTaskSearchQuery ? filteredTasks.length : state.totalTaskCount,',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        'completed: normalizedTaskSearchQuery',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes("'<span>' + label + '</span>"), true);
     assert.strictEqual(html.includes('Sort:<span class="control-icon">'), true);
     assert.strictEqual(html.includes('class="toolbar-controls"'), true);
@@ -302,20 +314,59 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="task-search" type="search"'), true);
     assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
+    assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
+    assert.strictEqual(
+      html.indexOf('class="metrics"') <
+        html.indexOf('class="dashboard-view-options"'),
+      true,
+    );
+    assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
     assert.strictEqual(html.includes('class="dashboard-view-options"'), true);
     assert.strictEqual(html.includes('data-action="set-columns"'), true);
     assert.strictEqual(html.includes('Task columns'), true);
     assert.strictEqual(html.includes('Tag columns'), true);
     assert.strictEqual(html.includes('saveDashboardViewState()'), true);
+    assert.strictEqual(html.includes('taskColumns: taskColumns'), true);
+    assert.strictEqual(html.includes('tagColumns: tagColumns'), true);
+    assert.strictEqual(
+      html.includes("grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("applyDashboardColumns('tasks', selectedTaskColumns)"),
+      true,
+    );
     assert.strictEqual(html.includes('style="grid-template-columns: repeat('), true);
     assert.strictEqual(html.includes('Search:<input class="task-search"'), false);
     assert.strictEqual(html.includes('.catalog-search, .task-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
-    assert.strictEqual(html.includes('.tag-list, .task-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), minmax(0, 1fr)); gap: 7px; }'), true);
+    assert.strictEqual(html.includes('.tag-list, .task-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
     assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
     assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
+    assert.strictEqual(html.includes('function formatTagDisplay(tag)'), true);
+    assert.strictEqual(html.includes('const display = formatTagDisplay(tag);'), true);
+    assert.strictEqual(html.includes("escapeHtml(display.name)"), true);
+    assert.strictEqual(
+      html.includes("display.namespace ? '<span class=\"entity-kind\">'"),
+      true,
+    );
     assert.strictEqual(html.includes('data-browse-scope='), false);
-    assert.strictEqual(html.includes('data-tag-group="favorites"><h3>Favorites</h3>'), true);
+    assert.strictEqual(
+      html.includes('data-tag-group="favorites"><h3>Favorites <span class="tag-count">('),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('data-tag-group="other"><h3>Other tags <span class="tag-count">('),
+      true,
+    );
+    assert.strictEqual(html.includes('class="section-summary"'), false);
     assert.strictEqual(html.includes('.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }'), true);
+    assert.strictEqual(
+      html.includes(
+        '.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes('<div class="dashboard-tabs-row"><div class="dashboard-tabs"'), true);
     assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
     assert.strictEqual(
       html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; color: var(--panel-deep); background: var(--amber-bright); }'),
@@ -362,6 +413,14 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("vscode.getState()"), true);
     assert.strictEqual(
       html.includes("type: 'setDashboardColumns'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('if (taskColumns === undefined) taskColumns = incomingState.taskColumns ?? 1;'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('incomingState.tagColumns = tagColumns;'),
       true,
     );
     assert.strictEqual(html.includes('bindDashboardColumnControls()'), true);
@@ -432,6 +491,18 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes('.metrics { gap: 0; }'),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.dashboard-tabs-row { border-bottom-color: var(--line-strong); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.overview-tabs-row { border-bottom-color: var(--line-strong); }',
+      ),
       true,
     );
     assert.strictEqual(
@@ -508,7 +579,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.overview-tabs { gap: 2px; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
+        '.overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
       ),
       true,
     );
@@ -551,6 +622,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.task-filter-toggle button { border-radius: 0; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }',
       ),
       true,
     );
@@ -694,8 +771,16 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '<div class="toolbar-toggle-group" role="group" aria-label="Content layout">',
+        '<div class="toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout">',
       ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.layout-toggle-group .toolbar-toggle { border-width: 1px; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.layout-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }'),
       true,
     );
     assert.strictEqual(
@@ -739,11 +824,46 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Source</button>'), false);
     assert.strictEqual(html.includes('>Rendered</button>'), false);
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
+    assert.strictEqual(
+      html.includes('.overview-tabs { display: inline-flex; gap: 0;'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.overview-tabs-row { margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<div class="overview-tabs-row"><div class="overview-tabs"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.overview-tabs button + button { margin-left: -2px; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.overview-tabs button.active { position: relative; z-index: 1; }'),
+      true,
+    );
     assert.strictEqual(html.includes('data-action="search-notes"'), true);
     assert.strictEqual(html.includes('data-action="search-tasks"'), true);
     assert.strictEqual(html.includes('aria-label="Search current notes"'), true);
     assert.strictEqual(html.includes('aria-label="Search current tasks"'), true);
     assert.strictEqual(html.includes('function filterOverviewEntries(kind, query, total)'), true);
+    assert.strictEqual(
+      html.includes('.card[hidden], .task[hidden] { display: none; }'),
+      true,
+    );
+    assert.strictEqual(html.includes('function updateTaskFilterCounts(query)'), true);
+    assert.strictEqual(
+      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(normalizedQuery);'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('counts[entry.classList.contains(\'completed\') ? \'completed\' : \'active\'] += 1;'),
+      true,
+    );
     assert.strictEqual(html.includes('data-search-entry="notes"'), true);
     assert.strictEqual(html.includes('data-search-entry="tasks"'), true);
     assert.strictEqual(html.includes('Search:<input class="overview-search"'), false);
@@ -753,6 +873,12 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('class="view-options"'), true);
+    assert.strictEqual(
+      html.includes(
+        'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
+      ),
+      true,
+    );
     assert.strictEqual(
       html.includes('<summary aria-label="View options" title="View options">'),
       true,

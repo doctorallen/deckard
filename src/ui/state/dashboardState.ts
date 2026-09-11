@@ -210,12 +210,29 @@ export function sortTags(
       }
     }
 
-    return left.label.localeCompare(right.label, undefined, {
-      sensitivity: 'base',
-    });
+    return compareTagLabels(left, right);
   });
 
   return sorted;
+}
+
+function compareTagLabels(left: TagInfo, right: TagInfo): number {
+  const labelComparison = getTagDisplayName(left).localeCompare(
+    getTagDisplayName(right),
+    undefined,
+    { sensitivity: 'base' },
+  );
+  return (
+    labelComparison ||
+    left.label.localeCompare(right.label, undefined, {
+      sensitivity: 'base',
+    })
+  );
+}
+
+function getTagDisplayName(tag: TagInfo): string {
+  const label = String(tag.label || tag.key).replace(/^[@#]/, '');
+  return label.slice(label.lastIndexOf('/') + 1).replace(/[-_]+/g, ' ');
 }
 
 /**

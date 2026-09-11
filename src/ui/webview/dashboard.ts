@@ -3,7 +3,11 @@ import * as vscode from 'vscode';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
-import { DashboardMessage, DashboardSnapshot } from '../../core/types';
+import {
+  DashboardColumnCount,
+  DashboardMessage,
+  DashboardSnapshot,
+} from '../../core/types';
 import { createDashboardSnapshot } from '../state/dashboardState';
 import { toggleTask } from '../commands/taskActions';
 import { openSourceAt } from '../commands/navigation';
@@ -21,6 +25,8 @@ export class DashboardPanel implements vscode.Disposable {
   private panelDisposables: vscode.Disposable[] = [];
   private taskFilter: DashboardSnapshot['taskFilter'] = 'active';
   private selectedTaskTags: string[] = [];
+  private dashboardTaskColumns: DashboardColumnCount;
+  private dashboardTagColumns: DashboardColumnCount;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -31,8 +37,17 @@ export class DashboardPanel implements vscode.Disposable {
       filterTagKeys?: readonly string[],
     ) => void | Promise<void>,
   ) {
+    const initialPreferences = preferences.value;
+    this.dashboardTaskColumns = initialPreferences.dashboardTaskColumns;
+    this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
-    this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(
+      preferences.onDidChange((nextPreferences) => {
+        this.dashboardTaskColumns = nextPreferences.dashboardTaskColumns;
+        this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
+        this.refresh();
+      }),
+    );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.theme')) {
@@ -142,9 +157,14 @@ export class DashboardPanel implements vscode.Disposable {
       return;
     }
 
+    const preferences = this.preferences.value;
     const snapshot = createDashboardSnapshot(
       this.indexer.getSnapshot(),
-      this.preferences.value,
+      {
+        ...preferences,
+        dashboardTaskColumns: this.dashboardTaskColumns,
+        dashboardTagColumns: this.dashboardTagColumns,
+      },
       this.taskFilter,
       this.selectedTaskTags,
     );
@@ -230,6 +250,12 @@ export class DashboardPanel implements vscode.Disposable {
         await this.preferences.setTaskSortMode(message.mode);
         return;
       case 'setDashboardColumns':
+        if (message.section === 'tasks') {
+          this.dashboardTaskColumns = message.columns;
+        } else {
+          this.dashboardTagColumns = message.columns;
+        }
+        this.refresh();
         await this.preferences.setDashboardColumns(
           message.section,
           message.columns,

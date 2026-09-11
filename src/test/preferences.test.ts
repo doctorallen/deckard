@@ -18,6 +18,31 @@ class MemoryMemento {
   }
 }
 
+class DelayedFirstWriteMemento extends MemoryMemento {
+  private writeCount = 0;
+  private releaseFirstWriteCallback: (() => void) | undefined;
+  private readonly firstWriteGate = new Promise<void>((resolve) => {
+    this.releaseFirstWriteCallback = resolve;
+  });
+  private firstWriteStartedCallback: () => void = () => undefined;
+  public readonly firstWriteStarted = new Promise<void>((resolve) => {
+    this.firstWriteStartedCallback = resolve;
+  });
+
+  public releaseFirstWrite(): void {
+    this.releaseFirstWriteCallback?.();
+  }
+
+  public override async update(key: string, value: unknown): Promise<void> {
+    if (this.writeCount === 0) {
+      this.writeCount += 1;
+      this.firstWriteStartedCallback();
+      await this.firstWriteGate;
+    }
+    await super.update(key, value);
+  }
+}
+
 suite('Preferences store', () => {
   test('persists favorites and removes stale content references', async () => {
     const memento = new MemoryMemento();
@@ -151,6 +176,22 @@ suite('Preferences store', () => {
       '#project/neon-relay': 2,
     });
 
+    store.dispose();
+  });
+
+  test('serializes concurrent updates so newer columns are not overwritten', async () => {
+    const memento = new DelayedFirstWriteMemento();
+    const store = new PreferencesStore(memento);
+
+    const firstUpdate = store.setDashboardColumns('tasks', 3);
+    await memento.firstWriteStarted;
+    const secondUpdate = store.setDashboardColumns('tags', 4);
+    memento.releaseFirstWrite();
+    await Promise.all([firstUpdate, secondUpdate]);
+
+    assert.strictEqual(store.value.dashboardTaskColumns, 3);
+    assert.strictEqual(store.value.dashboardTagColumns, 4);
+    assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
     store.dispose();
   });
 });

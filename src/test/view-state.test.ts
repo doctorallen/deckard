@@ -69,6 +69,24 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('sorts favorite tags by their displayed name', () => {
+    const tags: TagInfo[] = [
+      createTag('zebra/alpha', 1),
+      createTag('alpha/zebra', 1),
+      createTag('other/tag', 1),
+    ];
+    const preferences = {
+      ...defaultPreferences,
+      favoriteTags: ['zebra/alpha', 'alpha/zebra'],
+      tagSortMode: 'alphabetical' as const,
+    };
+
+    assert.deepStrictEqual(
+      sortTags(tags, preferences).map((tag) => tag.key),
+      ['zebra/alpha', 'alpha/zebra', 'other/tag'],
+    );
+  });
+
   test('uses the persisted order for custom tag sorting', () => {
     const tags: TagInfo[] = [
       createTag('alpha', 1),
