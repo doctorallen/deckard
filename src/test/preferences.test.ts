@@ -35,6 +35,8 @@ suite('Preferences store', () => {
     await store.recordTagAccess('missing');
     await store.setTaskOrder(['task-1', 'missing-task']);
     await store.setTaskSortMode('created');
+    await store.setDashboardColumns('tasks', 3);
+    await store.setDashboardColumns('tags', 4);
     await store.recordSectionAccess('section-1');
     await store.recordSectionAccess('missing-section');
     await store.prune(['case'], ['task-1'], ['section-1']);
@@ -48,6 +50,8 @@ suite('Preferences store', () => {
     assert.deepStrictEqual(store.value.tagAccessCounts, { case: 2 });
     assert.deepStrictEqual(store.value.taskOrder, ['task-1']);
     assert.strictEqual(store.value.taskSortMode, 'created');
+    assert.strictEqual(store.value.dashboardTaskColumns, 3);
+    assert.strictEqual(store.value.dashboardTagColumns, 4);
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
 

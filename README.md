@@ -74,7 +74,7 @@ Met with @alex-smith about [[Q3 planning]].
 - [ ] Send the proposal by 2026-09-12 #project/atlas
 ```
 
-`#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs. Any other namespaced tag, such as `#management/performance`, creates a new namespace automatically and appears as `Management: Performance` in its overview. Simple unnamespaced `#follow-up` tags remain supported and appear in the Dashboard under **Other tags**. Deckard distinguishes `@alex` from `#alex`. You can configure namespace aliases to map a custom namespace to any built-in or custom target namespace, and you can move the people marker; when the people marker is changed from `@`, `@name` becomes a lightweight tag.
+`#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs. Any other namespaced tag, such as `#management/performance`, creates a new namespace automatically and appears as `Management: Performance` in its overview. Simple unnamespaced `#follow-up` tags remain supported; all tags appear together in the Dashboard's **Tags** catalog. Deckard distinguishes `@alex` from `#alex`. You can configure namespace aliases to map a custom namespace to any built-in or custom target namespace, and you can move the people marker; when the people marker is changed from `@`, `@name` becomes a lightweight tag.
 
 Frontmatter can add portable entity context to every heading and task in a note:
 
@@ -124,8 +124,9 @@ Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed t
 Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Tasks** and **Tags** tabs. The Dashboard opens on **Tasks**; use Left/Right Arrow while the tab control is focused to switch modes.
 
 - **Saved tag views** appear above the Dashboard's Tasks/Tags tabs, so they remain available in either mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
-- **Task controls** provide visible **All**, **Active**, and **Completed** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
-- **Browse** separates namespaced **Entities** from **Other tags**, so their independent sort orders remain predictable. Entity browsing keeps its type filter; both scopes include a label search. Favorite important items, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a row or use its context menu to move it to the top or bottom.
+- The Dashboard title identifies the active mode as **Dashboard: Tasks** or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task and tag cards; Deckard saves both choices for future Dashboard sessions.
+- **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
+- **Tags** shows namespaced and unnamespaced tags together. Search tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.
@@ -172,10 +173,11 @@ Open an entity or tag overview by selecting it in the editor, Dashboard, Related
 
 Each overview collects the matching sections from your notes. You can:
 
+- see the active tag intersection, each removable tag condition, and the matching note and task totals at a glance;
 - sort entries alphabetically, by creation date, by update date, or by most accessed;
-- switch between the original Markdown source and a rendered view; and
-- choose **Tabs** to switch between Notes and Tasks, or **Side by side** to show Notes at 60% width and Tasks at 40%; and
-- filter overview tasks with the grouped **All**, **Active**, and **Completed** controls (which default to **Active**), then use a checkbox to safely update the original Markdown task; and
+- search Notes and Tasks independently within the active tag intersection;
+- use **Save filter** beside the Tag Overview label to name a combined view, then open the **View options** gear to switch between the original Markdown source and a rendered view or choose **Tabs** or **Side by side**; and
+- filter overview tasks with the grouped **All**, **Open**, and **Done** controls (which default to **Open**), then use a checkbox to safely update the original Markdown task; and
 - switch **Associated tags** between a namespace-collapsible **Tree** view and a layered **Graph** view on lightweight tag overviews; all remain clickable, show their connection percentage, and repeated source references show a compact count; and
 - follow an association into the target overview with the current tag applied as a second filter, so only the exact sources that supplied the association are shown; active relationship filters are folded into the page title as **[filter tag] AND [focus tag]**; remove individual tags or reopen the focus tag to return to the full overview; and
 - save any combined overview with two or more active tags as a named filter, then reopen or remove it from the Dashboard; and

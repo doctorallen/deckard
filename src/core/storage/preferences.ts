@@ -9,6 +9,7 @@ import {
   TagOverviewSortMode,
   TagSortMode,
   TaskSortMode,
+  DashboardColumnCount,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -24,6 +25,8 @@ const defaultPreferences: PersistedPreferences = {
   entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank',
+  dashboardTaskColumns: 1,
+  dashboardTagColumns: 2,
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -153,6 +156,20 @@ export class PreferencesStore implements vscode.Disposable {
    */
   public async setTaskSortMode(taskSortMode: TaskSortMode): Promise<void> {
     await this.update({ taskSortMode });
+  }
+
+  /**
+   * Persists the independent task and tag grid widths for every Dashboard.
+   */
+  public async setDashboardColumns(
+    section: 'tasks' | 'tags',
+    columns: DashboardColumnCount,
+  ): Promise<void> {
+    await this.update(
+      section === 'tasks'
+        ? { dashboardTaskColumns: columns }
+        : { dashboardTagColumns: columns },
+    );
   }
 
   /**
@@ -375,6 +392,8 @@ function normalizePreferences(
   const tagSortMode = value?.tagSortMode;
   const entitySortMode = value?.entitySortMode;
   const taskSortMode = value?.taskSortMode;
+  const dashboardTaskColumns = value?.dashboardTaskColumns;
+  const dashboardTagColumns = value?.dashboardTagColumns;
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
   const tagOverviewLayout = value?.tagOverviewLayout;
@@ -405,6 +424,12 @@ function normalizePreferences(
       taskSortMode === 'created' || taskSortMode === 'updated'
         ? taskSortMode
         : 'rank',
+    dashboardTaskColumns: isDashboardColumnCount(dashboardTaskColumns)
+      ? dashboardTaskColumns
+      : 1,
+    dashboardTagColumns: isDashboardColumnCount(dashboardTagColumns)
+      ? dashboardTagColumns
+      : 2,
     renderMode: renderMode === 'html' ? 'html' : 'markdown',
     tagOverviewSortMode:
       tagOverviewSortMode === 'created' ||
@@ -422,6 +447,12 @@ function normalizePreferences(
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
   };
+}
+
+function isDashboardColumnCount(
+  value: unknown,
+): value is DashboardColumnCount {
+  return value === 1 || value === 2 || value === 3 || value === 4;
 }
 
 /**

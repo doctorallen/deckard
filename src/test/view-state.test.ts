@@ -40,6 +40,8 @@ const defaultPreferences: PersistedPreferences = {
   entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank',
+  dashboardTaskColumns: 1,
+  dashboardTagColumns: 2,
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -1123,6 +1125,11 @@ suite('Dashboard state', () => {
     assert.ok(active);
     assert.ok(completed);
     assert.strictEqual(all.taskFilter, 'all');
+    assert.deepStrictEqual(all.taskCounts, {
+      all: 2,
+      active: 1,
+      completed: 1,
+    });
     assert.strictEqual(
       createTagOverviewSnapshot(index, defaultPreferences, '#work')?.taskFilter,
       'active',

@@ -229,6 +229,12 @@ export class DashboardPanel implements vscode.Disposable {
       case 'setTaskSort':
         await this.preferences.setTaskSortMode(message.mode);
         return;
+      case 'setDashboardColumns':
+        await this.preferences.setDashboardColumns(
+          message.section,
+          message.columns,
+        );
+        return;
       case 'reorderTasks':
         if (this.preferences.value.taskSortMode === 'rank') {
           await this.preferences.setTaskOrder(

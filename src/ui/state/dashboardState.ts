@@ -68,6 +68,8 @@ export function createDashboardSnapshot(
       .length,
     taskFilter,
     taskSortMode: preferences.taskSortMode,
+    taskColumns: preferences.dashboardTaskColumns,
+    tagColumns: preferences.dashboardTagColumns,
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
     availableTaskTags,
@@ -382,6 +384,11 @@ export function createTagOverviewSnapshot(
         ].every((activeTagKey) => taskIncludesTag(index, task, activeTagKey)),
     );
   }
+  const taskCounts = {
+    all: taskCandidates.length,
+    active: taskCandidates.filter((task) => !task.completed).length,
+    completed: taskCandidates.filter((task) => task.completed).length,
+  };
 
   return {
     tag: {
@@ -408,6 +415,7 @@ export function createTagOverviewSnapshot(
     tasks: taskCandidates
       .filter((task) => matchesTaskFilter(task, taskFilter))
       .map((task) => createDashboardTask(task, index.sections)),
+    taskCounts,
     taskFilter,
     renderMode: preferences.renderMode,
     sortMode: preferences.tagOverviewSortMode,

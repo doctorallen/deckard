@@ -24,6 +24,8 @@ const defaultPreferences = {
   entityAccessCounts: {},
   taskOrder: [],
   taskSortMode: 'rank' as const,
+  dashboardTaskColumns: 1 as const,
+  dashboardTagColumns: 2 as const,
   renderMode: 'markdown' as const,
   tagOverviewSortMode: 'alphabetical' as const,
   tagOverviewLayout: 'tabs' as const,

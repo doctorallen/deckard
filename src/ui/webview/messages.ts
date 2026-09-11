@@ -62,6 +62,11 @@ export function parseDashboardMessage(
       return isTaskSortMode(value.mode)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'setDashboardColumns':
+      return (value.section === 'tasks' || value.section === 'tags') &&
+        isDashboardColumnCount(value.columns)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
     case 'reorderTasks':
       return isStringArray(value.taskIds)
         ? (value as unknown as DashboardMessage)
@@ -258,6 +263,10 @@ function isTagSortMode(value: unknown): value is TagSortMode {
  */
 function isTaskFilter(value: unknown): value is TaskFilter {
   return value === 'all' || value === 'active' || value === 'completed';
+}
+
+function isDashboardColumnCount(value: unknown): boolean {
+  return value === 1 || value === 2 || value === 3 || value === 4;
 }
 
 /**

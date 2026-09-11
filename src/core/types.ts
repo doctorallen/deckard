@@ -1,7 +1,6 @@
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
-
 export type TaskSortMode = 'rank' | 'created' | 'updated';
-
+export type DashboardColumnCount = 1 | 2 | 3 | 4;
 export type TagOverviewSortMode =
   | 'alphabetical'
   | 'created'
@@ -161,6 +160,8 @@ export interface PersistedPreferences {
   entityAccessCounts: Record<string, number>;
   taskOrder: string[];
   taskSortMode: TaskSortMode;
+  dashboardTaskColumns: DashboardColumnCount;
+  dashboardTagColumns: DashboardColumnCount;
   renderMode: RenderMode;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
@@ -204,6 +205,8 @@ export interface DashboardSnapshot {
   activeTaskCount: number;
   taskFilter: TaskFilter;
   taskSortMode: TaskSortMode;
+  taskColumns: DashboardColumnCount;
+  tagColumns: DashboardColumnCount;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   availableTaskTags: TagInfo[];
@@ -223,6 +226,12 @@ export interface TagOverviewSnapshot {
   sharedAssociatedTags: TagAssociation[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
+  /** Counts before the active completion filter is applied. */
+  taskCounts?: {
+    all: number;
+    active: number;
+    completed: number;
+  };
   taskFilter: TaskFilter;
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
@@ -397,6 +406,12 @@ export interface SetTaskSortMessage {
   mode: TaskSortMode;
 }
 
+export interface SetDashboardColumnsMessage {
+  type: 'setDashboardColumns';
+  section: 'tasks' | 'tags';
+  columns: DashboardColumnCount;
+}
+
 export interface ReorderTagsMessage {
   type: 'reorderTags';
   tagKeys: string[];
@@ -486,6 +501,7 @@ export type DashboardMessage =
   | SetTaskFilterMessage
   | SetTaskTagsMessage
   | SetTaskSortMessage
+  | SetDashboardColumnsMessage
   | ReorderTasksMessage
   | ReorderTagsMessage
   | ReorderEntitiesMessage
