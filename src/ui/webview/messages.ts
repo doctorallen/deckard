@@ -84,6 +84,11 @@ export function parseDashboardMessage(
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'openSavedFilter':
+    case 'removeSavedFilter':
+      return isSavedFilterMessage(value)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
     default:
       return undefined;
   }
@@ -133,6 +138,12 @@ export function parseTagOverviewMessage(
   }
   if (value.type === 'renameTag' && isRenameTagMessage(value)) {
     return value as unknown as TagOverviewMessage;
+  }
+  if (
+    value.type === 'saveTagOverviewFilter' &&
+    Object.keys(value).length === 1
+  ) {
+    return { type: 'saveTagOverviewFilter' };
   }
   return undefined;
 }
@@ -205,6 +216,14 @@ function isOpenTagMessage(value: Record<string, unknown>): boolean {
 
 function isRenameTagMessage(value: Record<string, unknown>): boolean {
   return typeof value.tagKey === 'string' && value.tagKey.length > 0;
+}
+
+function isSavedFilterMessage(value: Record<string, unknown>): boolean {
+  return (
+    Object.keys(value).length === 2 &&
+    typeof value.filterId === 'string' &&
+    value.filterId.length > 0
+  );
 }
 
 /**

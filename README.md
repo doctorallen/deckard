@@ -126,6 +126,7 @@ Run `Deckard: Open Dashboard` to see total sections, total tasks, active tasks, 
 - **Tags** lists built-in and automatically created namespaced entities, plus unnamespaced lightweight tags under **Other tags**. Use **All types** to show everything; built-in and user-created namespaces are also available as type filters. Favorite important tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a tag or use its context menu to move it to the top or bottom.
 - **Tasks** lets you switch between all, active, and completed tasks, and sort by rank, creation time, or update time. Rank is the default. Date sorting uses the source file's filesystem timestamps.
 - **Task tags** lets you select one or more tags. A task appears when it matches any selected tag.
+- **Saved filters** lists named multi-tag overviews. In a combined Tag Overview, use **Save filter** to name its active tags; select the saved filter to reopen that exact intersection, or use **Remove** to delete it.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.
@@ -177,7 +178,8 @@ Each overview collects the matching sections from your notes. You can:
 - choose **Tabs** to switch between Notes and Tasks, or **Side by side** to show Notes at 60% width and Tasks at 40%; and
 - filter overview tasks with the grouped **All**, **Active**, and **Completed** controls (which default to **Active**), then use a checkbox to safely update the original Markdown task; and
 - switch **Associated tags** between a namespace-collapsible **Tree** view and a layered **Graph** view on lightweight tag overviews; all remain clickable, show their connection percentage, and repeated source references show a compact count; and
-- follow an association into the target overview with the current tag applied as a second filter, so only the exact sources that supplied the association are shown; active relationship filters are folded into the page title as **[filter tag] AND [focus tag]**; use **Clear filter** or reopen the focus tag to return to the full overview; and
+- follow an association into the target overview with the current tag applied as a second filter, so only the exact sources that supplied the association are shown; active relationship filters are folded into the page title as **[filter tag] AND [focus tag]**; remove individual tags or reopen the focus tag to return to the full overview; and
+- save any combined overview with two or more active tags as a named filter, then reopen or remove it from the Dashboard; and
 - select a section to jump to its heading in the source note.
 
 Opening a tag overview records tag access. Opening a section records section access, which powers the access sort. Tag links inside an overview open the next overview without leaving the workflow.

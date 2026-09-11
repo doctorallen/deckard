@@ -29,6 +29,7 @@ const defaultPreferences = {
   tagOverviewLayout: 'tabs' as const,
   relatedNotesSortMode: 'tags' as const,
   sectionAccessCounts: {},
+  savedFilters: [],
 };
 
 suite('Workspace scanner and index', () => {

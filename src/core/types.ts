@@ -166,6 +166,25 @@ export interface PersistedPreferences {
   tagOverviewLayout: TagOverviewLayout;
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
+  savedFilters: SavedFilter[];
+}
+
+/**
+ * A named, reusable intersection of at least two canonical tag keys.
+ */
+export interface SavedFilter {
+  id: string;
+  name: string;
+  tagKeys: string[];
+}
+
+/**
+ * A saved filter after its persisted keys have been resolved against the index.
+ */
+export interface DashboardSavedFilter {
+  id: string;
+  name: string;
+  tags: TagReference[];
 }
 
 export interface DashboardTask {
@@ -190,6 +209,7 @@ export interface DashboardSnapshot {
   availableTaskTags: TagInfo[];
   selectedTaskTags: string[];
   selectedTag?: string;
+  savedFilters: DashboardSavedFilter[];
 }
 
 export interface TagOverviewSnapshot {
@@ -402,6 +422,20 @@ export interface RenameTagMessage {
   tagKey: string;
 }
 
+export interface OpenSavedFilterMessage {
+  type: 'openSavedFilter';
+  filterId: string;
+}
+
+export interface RemoveSavedFilterMessage {
+  type: 'removeSavedFilter';
+  filterId: string;
+}
+
+export interface SaveTagOverviewFilterMessage {
+  type: 'saveTagOverviewFilter';
+}
+
 export interface SetTagOverviewSortMessage {
   type: 'setTagOverviewSort';
   mode: TagOverviewSortMode;
@@ -456,7 +490,9 @@ export type DashboardMessage =
   | ReorderTagsMessage
   | ReorderEntitiesMessage
   | OpenTagMessage
-  | RenameTagMessage;
+  | RenameTagMessage
+  | OpenSavedFilterMessage
+  | RemoveSavedFilterMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -466,7 +502,8 @@ export type TagOverviewMessage =
   | OpenTagMessage
   | RenameTagMessage
   | SetTagOverviewSortMessage
-  | SetTagOverviewLayoutMessage;
+  | SetTagOverviewLayoutMessage
+  | SaveTagOverviewFilterMessage;
 
 export type SidebarMessage =
   | SidebarReadyMessage

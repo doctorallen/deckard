@@ -45,6 +45,7 @@ const defaultPreferences: PersistedPreferences = {
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
+  savedFilters: [],
 };
 
 suite('Dashboard state', () => {
@@ -233,6 +234,41 @@ suite('Dashboard state', () => {
       )?.entity?.name,
       'performance',
     );
+  });
+
+  test('projects saved filters only while every saved tag remains indexed', () => {
+    const parsed = createFile(
+      'notes/saved-filter.md',
+      '# Atlas #project/atlas #follow-up #urgent',
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createDashboardSnapshot(index, {
+      ...defaultPreferences,
+      savedFilters: [
+        {
+          id: 'atlas-follow-up',
+          name: 'Atlas follow-up',
+          tagKeys: ['#follow-up', '#project/atlas', '#urgent'],
+        },
+        {
+          id: 'stale',
+          name: 'Stale',
+          tagKeys: ['#follow-up', '#missing'],
+        },
+      ],
+    }, 'active');
+
+    assert.deepStrictEqual(snapshot.savedFilters, [
+      {
+        id: 'atlas-follow-up',
+        name: 'Atlas follow-up',
+        tags: [
+          { key: '#follow-up', label: '#follow-up' },
+          { key: '#project/atlas', label: '#project/atlas' },
+          { key: '#urgent', label: '#urgent' },
+        ],
+      },
+    ]);
   });
 
   test('renders task titles as inline Markdown', () => {

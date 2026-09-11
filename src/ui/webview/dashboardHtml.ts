@@ -81,6 +81,13 @@ button:hover, button.active, select:hover { border-color: var(--amber-bright); c
 button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .tag-list, .task-list { display: grid; gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
+.saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
+.saved-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
+.saved-filter-row:hover { border-color: var(--amber-bright); }
+.saved-filter-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+.saved-filter-name { color: var(--cyan-bright); font: 12px var(--font-mono); overflow-wrap: anywhere; }
+.saved-filter-tags { margin-top: 3px; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
+.saved-filter-remove { min-height: 26px; color: var(--muted); text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-row:hover { border-color: var(--amber-bright); }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
@@ -573,6 +580,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
         (otherEntities ? '<div class="tag-group" data-entity-group="all"><h3>All tags</h3><div class="entity-list">' + otherEntities + '</div></div>' : '') +
         (otherLightweightTags ? '<div class="tag-group" data-tag-group="all"><h3>Other tags</h3><div class="tag-list">' + otherLightweightTags + '</div></div>' : '')
       : '<div class="empty">No tags match this type.</div>';
+    const savedFilters = state.savedFilters.length
+      ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved filters <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) {
+          const tagCount = filter.tags.length;
+          return '<div class="saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + escapeHtml(filter.tags.map(function (tag) { return tag.label; }).join(' AND ')) + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved filter ' + escapeHtml(filter.name) + '">Remove</button></div>';
+        }).join('') + '</div></section>'
+      : '';
     const tasks = state.tasks.length ? state.tasks.map(function (item) {
       const task = item.task;
       const draggable = state.taskSortMode === 'rank';
@@ -615,7 +628,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
         '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
       '</div></header>' +
-      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type">' + entityKindOptions + '</select>' + filterIcon + '</span>' + entitySortControl + tagSortControl + '</div></div><div class="entity-list">' + tagContent + '</div></section>' +
+      '<div class="layout"><section aria-labelledby="tags-heading"><div class="section-heading"><h2 id="tags-heading">Tags</h2><div class="control-row"><span class="control-icon"><select data-action="set-entity-kind" aria-label="Filter tag type">' + entityKindOptions + '</select>' + filterIcon + '</span>' + entitySortControl + tagSortControl + '</div></div><div class="entity-list">' + tagContent + '</div>' + savedFilters + '</section>' +
       '<section aria-labelledby="tasks-heading"><div class="section-heading"><h2 id="tasks-heading">Tasks <span class="tag-count">' + state.activeTaskCount + ' active</span></h2><span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></div><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + filters + '</div>' + taskTagFilter + '</div><div class="task-list">' + tasks + '</div></section></div>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
@@ -659,6 +672,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (target) {
       const action = target.dataset.action;
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
+      if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
       if (action === 'set-filter') send({ type: 'setTaskFilter', filter: target.dataset.filter });
@@ -681,6 +695,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const tagRow = event.target.closest('.tag-row');
     if (tagRow && !event.target.closest('button, input, a')) {
       send({ type: 'openTag', tagKey: tagRow.dataset.tagKey });
+    }
+    const savedFilterRow = event.target.closest('.saved-filter-row');
+    if (savedFilterRow && !event.target.closest('button, input, a')) {
+      send({ type: 'openSavedFilter', filterId: savedFilterRow.dataset.savedFilterId });
     }
   });
 
@@ -706,6 +724,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (tagRow && !event.target.closest('button, input, a')) {
       event.preventDefault();
       send({ type: 'openTag', tagKey: tagRow.dataset.tagKey });
+    }
+    const savedFilterRow = event.target.closest('.saved-filter-row');
+    if (savedFilterRow && !event.target.closest('button, input, a')) {
+      event.preventDefault();
+      send({ type: 'openSavedFilter', filterId: savedFilterRow.dataset.savedFilterId });
     }
   });
 

@@ -26,7 +26,10 @@ export class DashboardPanel implements vscode.Disposable {
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
-    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
+    private readonly onOpenTag: (
+      tagKey: string,
+      filterTagKeys?: readonly string[],
+    ) => void | Promise<void>,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
@@ -275,6 +278,24 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       }
+      case 'openSavedFilter': {
+        const savedFilter = this.preferences.value.savedFilters.find(
+          (filter) => filter.id === message.filterId,
+        );
+        if (!savedFilter) {
+          return;
+        }
+        const tagKeys = savedFilter.tagKeys.filter((tagKey) =>
+          index.tags.has(tagKey),
+        );
+        if (tagKeys.length >= 2) {
+          await this.onOpenTag(tagKeys[0], tagKeys.slice(1));
+        }
+        return;
+      }
+      case 'removeSavedFilter':
+        await this.preferences.removeSavedFilter(message.filterId);
+        return;
     }
   }
 }

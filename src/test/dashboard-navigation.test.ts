@@ -25,6 +25,7 @@ const defaultPreferences: PersistedPreferences = {
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
+  savedFilters: [],
 };
 
 suite('Dashboard navigation', () => {
@@ -65,6 +66,63 @@ suite('Dashboard navigation', () => {
       });
 
       assert.deepStrictEqual(opened, ['#project/neon-relay']);
+    } finally {
+      dashboard.dispose();
+    }
+  });
+
+  test('reopens a saved three-tag filter using host-side preferences', async () => {
+    const parsed = parseMarkdown(
+      'notes/filter.md',
+      '# Atlas #project/atlas #follow-up #urgent',
+    );
+    const workspaceIndex = buildWorkspaceIndex(
+      new Map([[parsed.filePath, parsed]]),
+    );
+    const index = {
+      onDidUpdate: () => ({ dispose: () => undefined }),
+      getSnapshot: () => workspaceIndex,
+    } as unknown as WorkspaceIndexer;
+    const preferences = {
+      onDidChange: () => ({ dispose: () => undefined }),
+      value: {
+        ...defaultPreferences,
+        savedFilters: [
+          {
+            id: 'atlas-follow-up',
+            name: 'Atlas follow-up',
+            tagKeys: ['#follow-up', '#project/atlas', '#urgent'],
+          },
+        ],
+      },
+      removeSavedFilter: async () => undefined,
+    } as unknown as PreferencesStore;
+    const opened: Array<{ tagKey: string; filterTagKeys?: readonly string[] }> =
+      [];
+    const dashboard = new DashboardPanel(
+      index,
+      preferences,
+      vscode.Uri.file(process.cwd()),
+      async (tagKey, filterTagKeys) => {
+        opened.push({ tagKey, filterTagKeys });
+      },
+    );
+
+    try {
+      const controller = dashboard as unknown as {
+        handleValidMessage(message: DashboardMessage): Promise<void>;
+      };
+      await controller.handleValidMessage({
+        type: 'openSavedFilter',
+        filterId: 'atlas-follow-up',
+      });
+
+      assert.deepStrictEqual(opened, [
+        {
+          tagKey: '#follow-up',
+          filterTagKeys: ['#project/atlas', '#urgent'],
+        },
+      ]);
     } finally {
       dashboard.dispose();
     }

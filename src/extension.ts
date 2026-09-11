@@ -50,8 +50,8 @@ export function activate(context: vscode.ExtensionContext): void {
     indexer,
     preferences,
     context.extensionUri,
-    async (tagKey) => {
-      await tagPanels.show(tagKey);
+    async (tagKey, filterTagKeys = []) => {
+      await tagPanels.show(tagKey, undefined, filterTagKeys);
     },
   );
   const sidebarNotes = new SidebarNotesView(
@@ -96,6 +96,17 @@ export function activate(context: vscode.ExtensionContext): void {
     stats,
     help,
     relatedNotesDebug,
+  );
+  context.subscriptions.push(
+    indexer.onDidUpdate(() => {
+      const index = indexer.getSnapshot();
+      void preferences.prune(
+        index.tags.keys(),
+        index.tasks.keys(),
+        index.sections.keys(),
+        index.entities.keys(),
+      );
+    }),
   );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(

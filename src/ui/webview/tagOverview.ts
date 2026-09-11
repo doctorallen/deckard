@@ -497,6 +497,10 @@ class TagOverviewPanel implements vscode.Disposable {
       await this.preferences.setTagOverviewLayout(message.layout);
       return;
     }
+    if (message.type === 'saveTagOverviewFilter') {
+      await this.saveCurrentFilter();
+      return;
+    }
     if (message.type === 'toggleTask') {
       const task = createTagOverviewSnapshot(
         this.indexer.getSnapshot(),
@@ -544,6 +548,39 @@ class TagOverviewPanel implements vscode.Disposable {
     );
     if (task) {
       await openSourceAt(task.task.filePath, task.task.lineNumber);
+    }
+  }
+
+  /**
+   * Names the current host-owned tag intersection without trusting webview data.
+   */
+  private async saveCurrentFilter(): Promise<void> {
+    const index = this.indexer.getSnapshot();
+    const tagKeys = [this.tagKey, ...this.filterTagKeys].filter((tagKey) =>
+      index.tags.has(tagKey),
+    );
+    if (new Set(tagKeys).size < 2) {
+      return;
+    }
+    const defaultName = tagKeys
+      .map((tagKey) => index.tags.get(tagKey)?.label ?? tagKey)
+      .join(' + ');
+    const name = await vscode.window.showInputBox({
+      title: 'Save Deckard filter',
+      prompt: 'Name this tag filter',
+      value: defaultName,
+      validateInput: (value) =>
+        value.trim() ? undefined : 'A saved filter needs a name.',
+    });
+    if (name === undefined) {
+      return;
+    }
+
+    const savedFilter = await this.preferences.saveSavedFilter(name, tagKeys);
+    if (savedFilter) {
+      void vscode.window.showInformationMessage(
+        `Saved Deckard filter: ${savedFilter.name}`,
+      );
     }
   }
 }

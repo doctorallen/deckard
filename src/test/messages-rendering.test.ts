@@ -51,6 +51,32 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
       { type: 'renameTag', tagKey: '#project/atlas' },
     );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'openSavedFilter',
+        filterId: 'atlas-follow-up',
+      }),
+      { type: 'openSavedFilter', filterId: 'atlas-follow-up' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'removeSavedFilter',
+        filterId: 'atlas-follow-up',
+      }),
+      { type: 'removeSavedFilter', filterId: 'atlas-follow-up' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'openSavedFilter', filterId: '' }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseDashboardMessage({
+        type: 'openSavedFilter',
+        filterId: 'atlas-follow-up',
+        tagKeys: ['#untrusted'],
+      }),
+      undefined,
+    );
     assert.strictEqual(
       parseDashboardMessage({ type: 'renameTag', tagKey: '' }),
       undefined,
@@ -86,6 +112,17 @@ suite('Webview contracts', () => {
         type: 'setRenderMode',
         mode: 'html',
       },
+    );
+    assert.deepStrictEqual(
+      parseTagOverviewMessage({ type: 'saveTagOverviewFilter' }),
+      { type: 'saveTagOverviewFilter' },
+    );
+    assert.strictEqual(
+      parseTagOverviewMessage({
+        type: 'saveTagOverviewFilter',
+        tagKeys: ['#untrusted', '#browser-data'],
+      }),
+      undefined,
     );
     assert.strictEqual(
       parseTagOverviewMessage({ type: 'setRenderMode', mode: 'unsafe' }),
@@ -264,6 +301,9 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
+    assert.strictEqual(html.includes('Saved filters'), true);
+    assert.strictEqual(html.includes('data-action="remove-saved-filter"'), true);
+    assert.strictEqual(html.includes("type: 'openSavedFilter'"), true);
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
@@ -591,7 +631,7 @@ suite('Webview contracts', () => {
       html.includes("formatEntityTitle(state.entity.kind, state.entity.name)"),
       true,
     );
-    assert.strictEqual(html.includes('const relationships = state.entity'), true);
+    assert.strictEqual(html.includes("const relationships = '';"), true);
     assert.strictEqual(
       html.includes('title="Source: show the original Markdown"'),
       true,
@@ -609,6 +649,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Source</button>'), false);
     assert.strictEqual(html.includes('>Rendered</button>'), false);
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
+    assert.strictEqual(html.includes('data-action="save-filter"'), true);
+    assert.strictEqual(
+      html.includes('aria-label="Save this combined tag filter"'),
+      true,
+    );
+    assert.strictEqual(html.includes("type: 'saveTagOverviewFilter'"), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
     assert.strictEqual(
       html.includes('function renderRelationshipTree(associations, rootTag)'),

@@ -73,6 +73,15 @@ export function createDashboardSnapshot(
     availableTaskTags,
     selectedTaskTags: normalizedTaskTags,
     selectedTag,
+    savedFilters: preferences.savedFilters.flatMap((filter) => {
+      const tags = filter.tagKeys
+        .map((tagKey) => index.tags.get(tagKey))
+        .filter((tag): tag is TagInfo => tag !== undefined)
+        .map((tag) => ({ key: tag.key, label: tag.label }));
+      return tags.length >= 2
+        ? [{ id: filter.id, name: filter.name, tags }]
+        : [];
+    }),
   };
 }
 
