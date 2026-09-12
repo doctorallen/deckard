@@ -10,6 +10,10 @@ import {
   TagSortMode,
   TaskSortMode,
   DashboardColumnCount,
+  DashboardMode,
+  DashboardSearchField,
+  DashboardViewState,
+  TaskFilter,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -26,7 +30,20 @@ const defaultPreferences: PersistedPreferences = {
   taskOrder: [],
   taskSortMode: 'rank',
   dashboardTaskColumns: 1,
+  dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
+  dashboardNoteSortMode: 'alphabetical',
+  dashboardViewState: {
+    mode: 'tasks',
+    taskFilter: 'active',
+    selectedTaskTags: [],
+    selectedNoteTags: [],
+    taskSearchQuery: '',
+    noteSearchQuery: '',
+    tagSearchQuery: '',
+    taskTagQuery: '',
+    noteTagQuery: '',
+  },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -163,14 +180,63 @@ export class PreferencesStore implements vscode.Disposable {
    * Persists the independent task and tag grid widths for every Dashboard.
    */
   public async setDashboardColumns(
-    section: 'tasks' | 'tags',
+    section: 'tasks' | 'notes' | 'tags',
     columns: DashboardColumnCount,
   ): Promise<void> {
     await this.update(
       section === 'tasks'
         ? { dashboardTaskColumns: columns }
-        : { dashboardTagColumns: columns },
+        : section === 'notes'
+          ? { dashboardNoteColumns: columns }
+          : { dashboardTagColumns: columns },
     );
+  }
+
+  public async setDashboardNoteSortMode(
+    dashboardNoteSortMode: TagOverviewSortMode,
+  ): Promise<void> {
+    await this.update({ dashboardNoteSortMode });
+  }
+
+  public async setDashboardMode(mode: DashboardMode): Promise<void> {
+    await this.updateDashboardViewState({ mode });
+  }
+
+  public async setDashboardTaskFilter(taskFilter: TaskFilter): Promise<void> {
+    await this.updateDashboardViewState({ taskFilter });
+  }
+
+  public async setDashboardTaskTags(selectedTaskTags: string[]): Promise<void> {
+    await this.updateDashboardViewState({ selectedTaskTags });
+  }
+
+  public async setDashboardNoteTags(selectedNoteTags: string[]): Promise<void> {
+    await this.updateDashboardViewState({ selectedNoteTags });
+  }
+
+  public async setDashboardSearch(
+    field: DashboardSearchField,
+    query: string,
+  ): Promise<void> {
+    const fieldMap: Record<DashboardSearchField, keyof DashboardViewState> = {
+      tasks: 'taskSearchQuery',
+      notes: 'noteSearchQuery',
+      tags: 'tagSearchQuery',
+      taskTags: 'taskTagQuery',
+      noteTags: 'noteTagQuery',
+    };
+    await this.updateDashboardViewState({ [fieldMap[field]]: query });
+  }
+
+  private async updateDashboardViewState(
+    changes: Partial<DashboardViewState>,
+  ): Promise<void> {
+    await this.update({
+      dashboardViewState: normalizeDashboardViewState({
+        ...this.preferences.dashboardViewState,
+        ...changes,
+      }),
+    });
   }
 
   /**
@@ -400,7 +466,10 @@ function normalizePreferences(
   const entitySortMode = value?.entitySortMode;
   const taskSortMode = value?.taskSortMode;
   const dashboardTaskColumns = value?.dashboardTaskColumns;
+  const dashboardNoteColumns = value?.dashboardNoteColumns;
   const dashboardTagColumns = value?.dashboardTagColumns;
+  const dashboardNoteSortMode = value?.dashboardNoteSortMode;
+  const dashboardViewState = value?.dashboardViewState;
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
   const tagOverviewLayout = value?.tagOverviewLayout;
@@ -434,9 +503,19 @@ function normalizePreferences(
     dashboardTaskColumns: isDashboardColumnCount(dashboardTaskColumns)
       ? dashboardTaskColumns
       : 1,
+    dashboardNoteColumns: isDashboardColumnCount(dashboardNoteColumns)
+      ? dashboardNoteColumns
+      : 1,
     dashboardTagColumns: isDashboardColumnCount(dashboardTagColumns)
       ? dashboardTagColumns
       : 2,
+    dashboardNoteSortMode:
+      dashboardNoteSortMode === 'created' ||
+      dashboardNoteSortMode === 'updated' ||
+      dashboardNoteSortMode === 'access'
+        ? dashboardNoteSortMode
+        : 'alphabetical',
+    dashboardViewState: normalizeDashboardViewState(dashboardViewState),
     renderMode: renderMode === 'html' ? 'html' : 'markdown',
     tagOverviewSortMode:
       tagOverviewSortMode === 'created' ||
@@ -462,14 +541,44 @@ function isDashboardColumnCount(
   return value === 1 || value === 2 || value === 3 || value === 4;
 }
 
+function normalizeDashboardViewState(
+  value: Partial<DashboardViewState> | undefined,
+): DashboardViewState {
+  const mode = value?.mode;
+  const taskFilter = value?.taskFilter;
+  return {
+    mode:
+      mode === 'notes' || mode === 'browse'
+        ? mode
+        : 'tasks',
+    taskFilter:
+      taskFilter === 'all' ||
+      taskFilter === 'completed'
+        ? taskFilter
+        : 'active',
+    selectedTaskTags: uniqueStrings(value?.selectedTaskTags),
+    selectedNoteTags: uniqueStrings(value?.selectedNoteTags),
+    taskSearchQuery: normalizeSearchQuery(value?.taskSearchQuery),
+    noteSearchQuery: normalizeSearchQuery(value?.noteSearchQuery),
+    tagSearchQuery: normalizeSearchQuery(value?.tagSearchQuery),
+    taskTagQuery: normalizeSearchQuery(value?.taskTagQuery),
+    noteTagQuery: normalizeSearchQuery(value?.noteTagQuery),
+  };
+}
+
+function normalizeSearchQuery(value: string | undefined): string {
+  return typeof value === 'string' ? value : '';
+}
+
 /**
  * Removes duplicate and empty identifiers before they reach ordering logic.
  */
-function uniqueStrings(values: string[] | undefined): string[] {
+function uniqueStrings(values: readonly unknown[] | undefined): string[] {
   return [
     ...new Set(
-      (values ?? []).filter(
-        (value) => typeof value === 'string' && value.length > 0,
+      (Array.isArray(values) ? values : []).filter(
+        (value): value is string =>
+          typeof value === 'string' && value.length > 0,
       ),
     ),
   ];
@@ -569,6 +678,11 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     entityAccessOrder: [...value.entityAccessOrder],
     entityAccessCounts: { ...value.entityAccessCounts },
     taskOrder: [...value.taskOrder],
+    dashboardViewState: {
+      ...value.dashboardViewState,
+      selectedTaskTags: [...value.dashboardViewState.selectedTaskTags],
+      selectedNoteTags: [...value.dashboardViewState.selectedNoteTags],
+    },
     sectionAccessCounts: { ...value.sectionAccessCounts },
     savedFilters: value.savedFilters.map(cloneSavedFilter),
   };

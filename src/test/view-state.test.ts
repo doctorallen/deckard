@@ -10,12 +10,14 @@ import {
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
   rankRelatedNotes,
+  sortDashboardNotes,
   sortEntities,
   sortRelatedNotes,
   sortTasks,
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
+import { createEntryScope } from '../ui/webview/sidebarNotes';
 import {
   ParsedFile,
   Entity,
@@ -41,7 +43,20 @@ const defaultPreferences: PersistedPreferences = {
   taskOrder: [],
   taskSortMode: 'rank',
   dashboardTaskColumns: 1,
+  dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
+  dashboardNoteSortMode: 'alphabetical',
+  dashboardViewState: {
+    mode: 'tasks',
+    taskFilter: 'active',
+    selectedTaskTags: [],
+    selectedNoteTags: [],
+    taskSearchQuery: '',
+    noteSearchQuery: '',
+    tagSearchQuery: '',
+    taskTagQuery: '',
+    noteTagQuery: '',
+  },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -220,6 +235,85 @@ suite('Dashboard state', () => {
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
+  test('filters and sorts dashboard notes with their own tag state', () => {
+    const first = parseMarkdown(
+      'notes/first.md',
+      '# First note #work\n\nFirst body',
+      { createdAt: 10, updatedAt: 20 },
+    );
+    const second = parseMarkdown(
+      'notes/second.md',
+      '# Second note #home\n\nSecond body',
+      { createdAt: 30, updatedAt: 40 },
+    );
+    const index = createFileIndex([first, second]);
+    const preferences = {
+      ...defaultPreferences,
+      dashboardNoteColumns: 3 as const,
+      dashboardNoteSortMode: 'updated' as const,
+      sectionAccessCounts: { [first.sections[0].id]: 2 },
+    };
+    const snapshot = createDashboardSnapshot(
+      index,
+      preferences,
+      'active',
+      [],
+      undefined,
+      ['#work'],
+    );
+
+    assert.strictEqual(snapshot.totalNoteCount, 2);
+    assert.strictEqual(snapshot.noteColumns, 3);
+    assert.strictEqual(snapshot.renderMode, 'markdown');
+    assert.strictEqual(snapshot.tagTitleDisplayMode, 'inline');
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.heading),
+      ['First note #work'],
+    );
+    assert.deepStrictEqual(snapshot.selectedNoteTags, ['#work']);
+    assert.strictEqual(snapshot.availableNoteTags.length, 2);
+    assert.deepStrictEqual(
+      sortDashboardNotes(
+        [
+          ...[first.sections[0], second.sections[0]].map((section) => ({
+            id: section.id,
+            filePath: section.filePath,
+            heading: section.heading,
+            titleTags: [],
+            tags: [],
+            rawContent: '',
+            renderedHtml: '',
+            startLine: section.startLine,
+            createdAt: section.createdAt,
+            updatedAt: section.updatedAt,
+            accessCount: 0,
+            fileName: section.filePath,
+          })),
+        ],
+        'updated',
+      ).map((note) => note.heading),
+      ['Second note #home', 'First note #work'],
+    );
+
+    const separateTitleSnapshot = createDashboardSnapshot(
+      index,
+      { ...preferences, renderMode: 'html' },
+      'active',
+      [],
+      undefined,
+      [],
+      'separate',
+    );
+    assert.strictEqual(separateTitleSnapshot.renderMode, 'html');
+    assert.strictEqual(separateTitleSnapshot.tagTitleDisplayMode, 'separate');
+    const separateTitleNote = separateTitleSnapshot.notes.find(
+      (note) => note.filePath === first.filePath,
+    );
+    assert.ok(separateTitleNote);
+    assert.strictEqual(separateTitleNote.heading, 'First note');
+    assert.strictEqual(separateTitleNote.titleTags[0].label, '#work');
+  });
+
   test('keeps lightweight tags alongside canonical entities in the dashboard', () => {
     const parsed = createFile(
       'notes/project.md',
@@ -291,6 +385,35 @@ suite('Dashboard state', () => {
     ]);
   });
 
+  test('names a tag overview when its active tags match a saved view', () => {
+    const parsed = createFile(
+      'notes/saved-view.md',
+      '# Atlas #project/atlas #follow-up',
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      {
+        ...defaultPreferences,
+        savedFilters: [
+          {
+            id: 'atlas-follow-up',
+            name: 'Atlas follow-up',
+            tagKeys: ['#follow-up', '#project/atlas'],
+          },
+        ],
+      },
+      '#project/atlas',
+      'active',
+      'inline',
+      true,
+      undefined,
+      ['#follow-up'],
+    );
+
+    assert.strictEqual(snapshot?.savedViewName, 'Atlas follow-up');
+  });
+
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
     const snapshot = createDashboardSnapshot(
@@ -306,6 +429,25 @@ suite('Dashboard state', () => {
     );
     assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
     assert.strictEqual(snapshot.tasks[0].renderedTitle.includes(title), false);
+  });
+
+  test('projects task title tags alongside rendered Markdown', () => {
+    const title = '[Review the plan](https://example.com/plan) #project/atlas **now**';
+    const snapshot = createDashboardSnapshot(
+      createIndex([createTask(title, false, 1, ['project/atlas'])]),
+      defaultPreferences,
+      'active',
+    );
+
+    assert.deepStrictEqual(snapshot.tasks[0].titleTags, [
+      { key: 'project/atlas', label: '#project/atlas' },
+    ]);
+    assert.ok(
+      snapshot.tasks[0].renderedTitle.includes(
+        '<a href="https://example.com/plan">Review the plan</a>',
+      ),
+    );
+    assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
   });
 
   test('sorts tasks by rank, creation date, and update date', () => {
@@ -625,6 +767,130 @@ suite('Dashboard state', () => {
     assert.strictEqual(notes[1].matchCount, 0.5);
   });
 
+  test('weights descendant heading tags by depth for a selected entry', () => {
+    const active = parseMarkdown(
+      'notes/current.md',
+      [
+        '# Workspace #parent/context #shared/context',
+        '## Selected #selected #shared/context',
+        '### Child route #child/near #shared/context',
+        '#### Untagged intermediate',
+        '##### Deep route #child/deep #shared/context',
+        '## Separate branch #other',
+      ].join('\n'),
+    );
+    const scope = createEntryScope(active, 2);
+
+    assert.ok(scope);
+    assert.strictEqual(scope.tagWeights.get('#selected'), 1);
+    assert.strictEqual(scope.tagWeights.get('#parent/context'), 0.5);
+    assert.strictEqual(scope.tagWeights.get('#child/near'), 0.5);
+    assert.strictEqual(scope.tagWeights.get('#child/deep'), 0.5 / 3);
+    assert.strictEqual(scope.tagWeights.get('#shared/context'), 1);
+    assert.strictEqual(
+      scope.tagSources.get('#parent/context')?.source,
+      'Parent ancestry: one level up (0.5 / 1)',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#child/near')?.source,
+      'Child heading: one level down (0.5 / 1)',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#child/deep')?.source,
+      'Child heading: 3 levels down (0.5 / 3)',
+    );
+    assert.strictEqual(scope.tagSources.get('#parent/context')?.context, 'parent');
+    assert.strictEqual(scope.tagSources.get('#child/near')?.context, 'child');
+    assert.strictEqual(scope.tagSources.get('#selected')?.context, 'selected');
+    assert.strictEqual(scope.tagSources.get('#shared/context')?.context, 'selected');
+    assert.deepStrictEqual(scope.file.sections[0].tags, [
+      '#selected',
+      '#shared/context',
+      '#parent/context',
+      '#child/near',
+      '#child/deep',
+    ]);
+  });
+
+  test('uses descendant heading context when ranking selected-entry notes', () => {
+    const active = parseMarkdown(
+      'notes/current.md',
+      [
+        '# Workspace #parent/context',
+        '## Selected #selected',
+        '### Child route #child/context',
+      ].join('\n'),
+    );
+    const childMatch = parseMarkdown(
+      'notes/child-match.md',
+      '# Child match #child/context',
+    );
+    const unrelated = parseMarkdown(
+      'notes/unrelated.md',
+      '# Unrelated #unrelated',
+    );
+    const index = buildWorkspaceIndex(
+      new Map([
+        [active.filePath, active],
+        [childMatch.filePath, childMatch],
+        [unrelated.filePath, unrelated],
+      ]),
+    );
+    const scope = createEntryScope(active, 2);
+
+    assert.ok(scope);
+    const snapshot = createSidebarSnapshot(
+      index,
+      active.filePath,
+      scope.file,
+      false,
+      'tags',
+      {},
+      'inline',
+      scope.file.sections[0].heading,
+      scope.tagWeights,
+    );
+
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.filePath),
+      ['notes/child-match.md'],
+    );
+    assert.strictEqual(snapshot.notes[0].matchedTags.length, 1);
+    assert.strictEqual(snapshot.notes[0].matchCount, 0.5);
+    assert.ok(snapshot.notes[0].relevanceScore > 25);
+  });
+
+  test('weights tagged child items two levels below a selected heading', () => {
+    const active = parseMarkdown(
+      'notes/current.md',
+      [
+        '# Workspace #parent/context',
+        '## Selected #selected',
+        'Inline child #feature/supply-continuity #risk/trafficking-assumption',
+        '- [ ] Child task #task/child',
+        '## Separate branch #other',
+      ].join('\n'),
+    );
+    const scope = createEntryScope(active, 2);
+
+    assert.ok(scope);
+    assert.strictEqual(scope.tagWeights.get('#feature/supply-continuity'), 0.25);
+    assert.strictEqual(scope.tagWeights.get('#risk/trafficking-assumption'), 0.25);
+    assert.strictEqual(scope.tagWeights.get('#task/child'), 0.25);
+    assert.strictEqual(
+      scope.tagSources.get('#feature/supply-continuity')?.context,
+      'childItem',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#feature/supply-continuity')?.source,
+      'Child item: 2 levels down (0.5 / 2)',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#risk/trafficking-assumption')?.source,
+      'Child item: 2 levels down (0.5 / 2)',
+    );
+  });
+
   test('ranks a specific nested tag match above its broad parent section', () => {
     const active = createFile(
       'notes/current.md',
@@ -761,6 +1027,56 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       snapshot.activeTags.map((tag) => tag.key),
       ['#alpha', '#middle', '#zeta'],
+    );
+    assert.deepStrictEqual(
+      snapshot.activeTags.map((tag) => tag.weight),
+      [1, 1, 1],
+    );
+  });
+
+  test('sorts selected-note tags by weight before their existing order', () => {
+    const active = createFile(
+      'notes/current.md',
+      [
+        '# Harbor check-in #team/harbor',
+        '## Sable Ortiz #person/sable-ortiz',
+        '### Clinic-source protection #project/vesper-nine',
+        'Clinic windows use #contact/miko-tern and #feature/source-protection.',
+      ].join('\n'),
+    );
+    const index = createFileIndex([active]);
+
+    const snapshot = createSidebarSnapshot(
+      index,
+      active.filePath,
+      active,
+      false,
+      'tags',
+      {},
+      'inline',
+      'Selected note',
+      new Map([
+        ['#contact/miko-tern', 1],
+        ['#feature/source-protection', 1],
+        ['#project/vesper-nine', 0.5],
+        ['#person/sable-ortiz', 0.25],
+        ['#team/harbor', 0.1667],
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      snapshot.activeTags.map((tag) => tag.key),
+      [
+        '#contact/miko-tern',
+        '#feature/source-protection',
+        '#project/vesper-nine',
+        '#person/sable-ortiz',
+        '#team/harbor',
+      ],
+    );
+    assert.deepStrictEqual(
+      snapshot.activeTags.map((tag) => tag.weight),
+      [1, 1, 0.5, 0.25, 0.1667],
     );
   });
 

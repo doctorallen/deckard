@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.7.0",
+  "version": "1.8.0",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -86,7 +86,7 @@
       "deckard": [
         {
           "id": "deckard.relatedNotes",
-          "name": "Related Notes",
+          "name": "Deckard",
           "icon": "resources/deckard.svg",
           "type": "webview"
         }

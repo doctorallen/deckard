@@ -6,8 +6,10 @@ import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   ParsedFile,
+  Section,
   SidebarNotesSnapshot,
   SidebarMessage,
+  TagReference,
   TagTitleDisplayMode,
 } from '../../core/types';
 import {
@@ -52,7 +54,6 @@ export class SidebarNotesView
     this.disposables.push(this.output);
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
-    this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => {
         this.suppressAutomaticEntrySelection = false;
@@ -187,6 +188,7 @@ export class SidebarNotesView
       tags: [...entryScope.tagWeights.entries()].map(([key, weight]) => ({
         key,
         weight,
+        context: entryScope.tagSources.get(key)?.context ?? 'selected',
         source: entryScope.tagSources.get(key)?.source ?? 'selected entry',
       })),
       snapshot: createSidebarSnapshot(
@@ -534,7 +536,7 @@ function getEntryStartLine(
   return 'heading' in entry ? entry.startLine : entry.lineNumber;
 }
 
-function createEntryScope(
+export function createEntryScope(
   file: ParsedFile,
   sourceLine: number,
 ): EntryScope | undefined {
@@ -551,18 +553,26 @@ function createEntryScope(
     label: string,
     weight: number,
     source: string,
+    context: EntryTagContext,
   ): void => {
-    tagLabels.set(key, label);
-    if (weight > (tagWeights.get(key) ?? 0)) {
+    const currentWeight = tagWeights.get(key);
+    if (currentWeight === undefined || weight > currentWeight) {
+      tagLabels.set(key, label);
       tagWeights.set(key, weight);
-      tagSources.set(key, { source });
+      tagSources.set(key, { context, source });
     }
   };
   const explicitEntryTags =
     entry.associationTagGroups?.flat() ??
     ('headingTags' in entry ? (entry.headingTags ?? []) : []);
   explicitEntryTags.forEach((tag) =>
-    addTag(tag.key, tag.label, 1, 'Written on the selected entry'),
+    addTag(
+      tag.key,
+      tag.label,
+      1,
+      'Written on the selected entry',
+      'selected',
+    ),
   );
 
   const sections = new Map(file.sections.map((section) => [section.id, section]));
@@ -579,7 +589,8 @@ function createEntryScope(
         tag.key,
         tag.label,
         0.5 / depth,
-        `Ancestor heading, ${depth === 1 ? 'one level up' : `${depth} levels up`} (0.5 / ${depth})`,
+        `Parent ancestry: ${depth === 1 ? 'one level up' : `${depth} levels up`} (0.5 / ${depth})`,
+        'parent',
       ),
     );
     parentSectionId = parent.parentSectionId;
@@ -587,6 +598,91 @@ function createEntryScope(
   }
 
   if ('heading' in entry) {
+    const childrenByParent = new Map<string, Section[]>();
+    const childItemsByParent = new Map<string, Section[]>();
+    file.sections.forEach((section) => {
+      if (!section.parentSectionId) {
+        return;
+      }
+      if (section.isInline) {
+        const childItems = childItemsByParent.get(section.parentSectionId) ?? [];
+        childItems.push(section);
+        childItemsByParent.set(section.parentSectionId, childItems);
+        return;
+      }
+      const children = childrenByParent.get(section.parentSectionId) ?? [];
+      children.push(section);
+      childrenByParent.set(section.parentSectionId, children);
+    });
+    const childTasksByParent = new Map<string, typeof file.tasks>();
+    file.tasks.forEach((task) => {
+      if (!task.sectionId) {
+        return;
+      }
+      const childTasks = childTasksByParent.get(task.sectionId) ?? [];
+      childTasks.push(task);
+      childTasksByParent.set(task.sectionId, childTasks);
+    });
+    const visitedChildren = new Set<string>();
+    const visitedChildItems = new Set<string>();
+    const addChildItemTags = (
+      tags: TagReference[],
+      itemDepth: number,
+    ): void => {
+      const distance =
+        itemDepth === 1
+          ? 'one level down'
+          : `${itemDepth} levels down`;
+      tags.forEach((tag) =>
+        addTag(
+          tag.key,
+          tag.label,
+          0.5 / itemDepth,
+          `Child item: ${distance} (0.5 / ${itemDepth})`,
+          'childItem',
+        ),
+      );
+    };
+    const addChildItemContext = (
+      parentId: string,
+      itemDepth: number,
+    ): void => {
+      (childItemsByParent.get(parentId) ?? []).forEach((child) => {
+        if (visitedChildItems.has(child.id)) {
+          return;
+        }
+        visitedChildItems.add(child.id);
+        addChildItemTags((child.associationTagGroups ?? []).flat(), itemDepth);
+      });
+      (childTasksByParent.get(parentId) ?? []).forEach((child) => {
+        if (visitedChildItems.has(child.id)) {
+          return;
+        }
+        visitedChildItems.add(child.id);
+        addChildItemTags((child.associationTagGroups ?? []).flat(), itemDepth);
+      });
+    };
+    const addChildContext = (parentId: string, childDepth: number): void => {
+      addChildItemContext(parentId, childDepth + 1);
+      (childrenByParent.get(parentId) ?? []).forEach((child) => {
+        if (visitedChildren.has(child.id)) {
+          return;
+        }
+        visitedChildren.add(child.id);
+        (child.headingTags ?? []).forEach((tag) =>
+          addTag(
+            tag.key,
+            tag.label,
+            0.5 / childDepth,
+            `Child heading: ${childDepth === 1 ? 'one level down' : `${childDepth} levels down`} (0.5 / ${childDepth})`,
+            'child',
+          ),
+        );
+        addChildContext(child.id, childDepth + 1);
+      });
+    };
+    addChildContext(entry.id, 1);
+
     const section = {
       ...entry,
       tags: [...tagLabels.keys()],
@@ -628,13 +724,20 @@ function getEntryTitle(file: ParsedFile): string | undefined {
   return file.sections[0]?.heading ?? file.tasks[0]?.title;
 }
 
-interface EntryScope {
+export interface EntryScope {
   file: ParsedFile;
   tagWeights: ReadonlyMap<string, number>;
   tagSources: ReadonlyMap<string, EntryTagSource>;
 }
 
-interface EntryTagSource {
+export type EntryTagContext =
+  | 'selected'
+  | 'parent'
+  | 'child'
+  | 'childItem';
+
+export interface EntryTagSource {
+  context: EntryTagContext;
   source: string;
 }
 
@@ -642,7 +745,12 @@ export interface EntryRelatedNotesDiagnostic {
   filePath: string;
   sourceLine: number;
   title: string;
-  tags: Array<{ key: string; weight: number; source: string }>;
+  tags: Array<{
+    key: string;
+    weight: number;
+    context: EntryTagContext;
+    source: string;
+  }>;
   snapshot: SidebarNotesSnapshot;
 }
 

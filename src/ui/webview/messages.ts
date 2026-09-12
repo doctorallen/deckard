@@ -9,6 +9,8 @@ import {
   TagSortMode,
   TaskSortMode,
   TaskFilter,
+  DashboardMode,
+  DashboardSearchField,
 } from '../../core/types';
 
 /**
@@ -58,13 +60,38 @@ export function parseDashboardMessage(
       return isStringArray(value.tagKeys)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'setNoteTags':
+      return isStringArray(value.tagKeys)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
     case 'setTaskSort':
       return isTaskSortMode(value.mode)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'setRenderMode':
+      return isRenderMode(value.mode)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
+    case 'setNoteSort':
+      return isTagOverviewSortMode(value.mode)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
+    case 'setDashboardMode':
+      return isDashboardMode(value.mode)
+        ? (value as unknown as DashboardMessage)
+        : undefined;
+    case 'setDashboardSearch':
+      return isDashboardSearchField(value.field) &&
+        typeof value.query === 'string'
+        ? (value as unknown as DashboardMessage)
+        : undefined;
     case 'setDashboardColumns':
-      return (value.section === 'tasks' || value.section === 'tags') &&
+      return (
+        (value.section === 'tasks' ||
+          value.section === 'notes' ||
+          value.section === 'tags') &&
         isDashboardColumnCount(value.columns)
+      )
         ? (value as unknown as DashboardMessage)
         : undefined;
     case 'reorderTasks':
@@ -267,6 +294,22 @@ function isTaskFilter(value: unknown): value is TaskFilter {
 
 function isDashboardColumnCount(value: unknown): boolean {
   return value === 1 || value === 2 || value === 3 || value === 4;
+}
+
+function isDashboardMode(value: unknown): value is DashboardMode {
+  return value === 'tasks' || value === 'notes' || value === 'browse';
+}
+
+function isDashboardSearchField(
+  value: unknown,
+): value is DashboardSearchField {
+  return (
+    value === 'tasks' ||
+    value === 'notes' ||
+    value === 'tags' ||
+    value === 'taskTags' ||
+    value === 'noteTags'
+  );
 }
 
 /**

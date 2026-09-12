@@ -166,6 +166,37 @@ suite('Markdown parser', () => {
     assert.strictEqual(sibling.parentSectionId, parent.id);
   });
 
+  test('links inline tagged entries to their containing heading ancestry', () => {
+    const parsed = parseMarkdown(
+      'inline-ancestry.md',
+      [
+        '## Harbor check-in #team/harbor',
+        '### Sable Ortiz #person/sable-ortiz',
+        '#### Clinic-source protection #project/vesper-nine',
+        'Sable will keep #contact/miko-tern separate from #feature/source-protection.',
+      ].join('\n'),
+    );
+
+    const harbor = parsed.sections.find((section) =>
+      section.heading.startsWith('Harbor check-in'),
+    );
+    const sable = parsed.sections.find((section) =>
+      section.heading.startsWith('Sable Ortiz'),
+    );
+    const clinic = parsed.sections.find((section) =>
+      section.heading.startsWith('Clinic-source protection'),
+    );
+    const inline = parsed.sections.find((section) => section.isInline);
+
+    assert.ok(harbor);
+    assert.ok(sable);
+    assert.ok(clinic);
+    assert.ok(inline);
+    assert.strictEqual(inline.parentSectionId, clinic.id);
+    assert.strictEqual(clinic.parentSectionId, sable.id);
+    assert.strictEqual(sable.parentSectionId, harbor.id);
+  });
+
   test('normalizes configured entity namespace aliases', () => {
     const aliases = getEntityNamespaceAliases({
       proj: 'project',

@@ -99,8 +99,10 @@ suite('Extension Test Suite', () => {
     );
     assert.ok(
       extension.packageJSON.contributes?.views?.deckard?.some(
-        (view: { id: string; type: string }) =>
-          view.id === 'deckard.relatedNotes' && view.type === 'webview',
+        (view: { id: string; name: string; type: string }) =>
+          view.id === 'deckard.relatedNotes' &&
+          view.name === 'Deckard' &&
+          view.type === 'webview',
       ),
     );
     assert.ok(

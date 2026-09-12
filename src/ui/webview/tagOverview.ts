@@ -31,6 +31,8 @@ export class TagOverviewPanels implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   private activeTagKey: string | undefined;
   private activeFilterTagKeys: string[] = [];
+  private changeNotificationDepth = 0;
+  private changeNotificationPending = false;
 
   public readonly onDidChange = this.changeEmitter.event;
 
@@ -98,34 +100,45 @@ export class TagOverviewPanels implements vscode.Disposable {
     filterTagKey?: string,
     filterTagKeys: readonly string[] = [],
   ): Promise<void> {
-    await this.indexer.ready;
-    const index = this.indexer.getSnapshot();
-    const canonicalTagKey = resolveIndexedTagKey(index.tags, tagKey);
-    if (!canonicalTagKey) {
-      void vscode.window.showWarningMessage(
-        `Deckard could not find the tag: ${tagKey}`,
+    this.changeNotificationDepth += 1;
+    try {
+      await this.indexer.ready;
+      const index = this.indexer.getSnapshot();
+      const canonicalTagKey = resolveIndexedTagKey(index.tags, tagKey);
+      if (!canonicalTagKey) {
+        void vscode.window.showWarningMessage(
+          `Deckard could not find the tag: ${tagKey}`,
+        );
+        return;
+      }
+      const effectiveFilterTagKeys = resolveFilterTagKeys(
+        index.tags,
+        canonicalTagKey,
+        filterTagKey,
+        filterTagKeys,
       );
-      return;
-    }
-    const effectiveFilterTagKeys = resolveFilterTagKeys(
-      index.tags,
-      canonicalTagKey,
-      filterTagKey,
-      filterTagKeys,
-    );
-    await this.preferences.recordTagAccess(canonicalTagKey);
-    if (index.entities.has(canonicalTagKey)) {
-      await this.preferences.recordEntityAccess(canonicalTagKey);
-    }
+      await this.preferences.recordTagAccess(canonicalTagKey);
+      if (index.entities.has(canonicalTagKey)) {
+        await this.preferences.recordEntityAccess(canonicalTagKey);
+      }
 
-    let panel = this.panels.get(canonicalTagKey);
-    if (!panel) {
-      panel = this.createPanel(canonicalTagKey);
+      let panel = this.panels.get(canonicalTagKey);
+      if (!panel) {
+        panel = this.createPanel(canonicalTagKey);
+      }
+      panel.setFilterTagKeys(effectiveFilterTagKeys);
+      panel.show();
+      this.setActiveTagOverview(canonicalTagKey, effectiveFilterTagKeys);
+    } finally {
+      this.changeNotificationDepth -= 1;
+      if (
+        this.changeNotificationDepth === 0 &&
+        this.changeNotificationPending
+      ) {
+        this.changeNotificationPending = false;
+        this.changeEmitter.fire();
+      }
     }
-    panel.setFilterTagKeys(effectiveFilterTagKeys);
-    panel.show();
-    this.setActiveTagOverview(canonicalTagKey, effectiveFilterTagKeys);
-    this.changeEmitter.fire();
   }
 
   /**
@@ -198,7 +211,7 @@ export class TagOverviewPanels implements vscode.Disposable {
         this.removePanel(tagKey);
       }
     });
-    this.changeEmitter.fire();
+    this.notifyChange();
   }
 
   /**
@@ -241,7 +254,6 @@ export class TagOverviewPanels implements vscode.Disposable {
     } else if (this.activeTagKey === tagKey) {
       this.setActiveTagOverview(undefined, []);
     }
-    this.changeEmitter.fire();
   }
 
   /**
@@ -259,6 +271,14 @@ export class TagOverviewPanels implements vscode.Disposable {
     }
     this.activeTagKey = tagKey;
     this.activeFilterTagKeys = [...filterTagKeys];
+    this.notifyChange();
+  }
+
+  private notifyChange(): void {
+    if (this.changeNotificationDepth > 0) {
+      this.changeNotificationPending = true;
+      return;
+    }
     this.changeEmitter.fire();
   }
 }

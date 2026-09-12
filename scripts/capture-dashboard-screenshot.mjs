@@ -22,26 +22,36 @@ const viewConfiguration = {
     command: 'deckard.showDashboard',
     output: 'docs/images/dashboard.png',
     title: 'Dashboard',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Dashboard' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
   },
   'related-notes': {
     command: 'workbench.view.extension.deckard',
     output: 'docs/images/related-notes.png',
     title: 'Related Notes',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Related Notes' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app .sidebar-header'))",
   },
   'tag-overview': {
     command: 'deckard.showTagOverview',
     output: 'docs/images/tag-overview.png',
     title: 'Tag Overview',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Tag Overview' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
   },
   help: {
     command: 'deckard.showHelp',
     output: 'docs/images/help.png',
     title: 'Help',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Help' && document.querySelector('iframe')?.contentDocument?.querySelector('main > article > header h1')?.textContent === 'Help'",
   },
   stats: {
     command: 'deckard.showStats',
     output: 'docs/images/stats.png',
     title: 'Stats',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Stats' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
   },
 };
 const selectedView = viewConfiguration[view];
@@ -217,11 +227,20 @@ async function activate() {
     if (view === 'related-notes') {
       const workspace = vscode.workspace.workspaceFolders?.[0];
       if (!workspace) throw new Error('Screenshot workspace is unavailable');
-      await vscode.commands.executeCommand('vscode.open', vscode.Uri.joinPath(workspace.uri, 'Project Neon Relay.md'));
+      const editor = await vscode.window.showTextDocument(
+        vscode.Uri.joinPath(workspace.uri, '2026-08-28.md'),
+        { preview: false },
+      );
+      const position = new vscode.Position(14, 0);
+      editor.selection = new vscode.Selection(position, position);
+      editor.revealRange(
+        new vscode.Range(position, position),
+        vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+      );
       await run('workbench.view.extension.deckard');
       await run('deckard.relatedNotes.focus');
     } else if (view === 'tag-overview') {
-      await run('deckard.showTagOverview', '#project/neon-relay');
+      await run('deckard.showTagOverview', '#project/ghostline-relay');
     } else {
       await run(${JSON.stringify(selectedView.command)});
     }
@@ -336,7 +355,7 @@ async function capture(client) {
           target.type === 'page' &&
           (target.url ?? '').endsWith('/workbench/workbench.html'),
       );
-      const webviewExists = targets.some(
+      const webview = targets.find(
         (target) =>
           target.type === 'iframe' &&
           target.url.includes('extensionId=esperinnovations.deckard-notes') &&
@@ -347,7 +366,27 @@ async function capture(client) {
       if (existsSync(errorPath)) {
         throw new Error(readFileSync(errorPath, 'utf8'));
       }
-      if (workbench && webviewExists && ready) {
+      if (workbench && webview && ready) {
+        const { sessionId: webviewSessionId } = await client.call(
+          'Target.attachToTarget',
+          { targetId: webview.targetId, flatten: true },
+        );
+        const assertion = await client.call(
+          'Runtime.evaluate',
+          {
+            expression: selectedView.renderedAssertion,
+            returnByValue: true,
+          },
+          webviewSessionId,
+        );
+        const rendered = Boolean(assertion.result?.value);
+        await client.call('Target.detachFromTarget', {
+          sessionId: webviewSessionId,
+        });
+        if (!rendered) {
+          await delay(1000);
+          continue;
+        }
         const { sessionId } = await client.call('Target.attachToTarget', {
           targetId: workbench.targetId,
           flatten: true,
@@ -379,7 +418,7 @@ async function capture(client) {
           throw new Error('Candidate is not a 1920x1080 PNG');
         }
         console.log(
-          `Captured candidate ${candidate} from verified Deckard ${selectedView.title}.`,
+          `Captured candidate ${candidate} from verified Deckard ${selectedView.title} webview.`,
         );
         if (promote) {
           mkdirSync(resolve(output, '..'), { recursive: true });

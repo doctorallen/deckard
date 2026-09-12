@@ -121,12 +121,13 @@ Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed t
 
 ## Dashboard
 
-Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Tasks** and **Tags** tabs. The Dashboard opens on **Tasks**; use Left/Right Arrow while the tab control is focused to switch modes.
+Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Tasks**, **Notes**, and **Tags** tabs. The Dashboard opens on **Tasks**; use Left/Right Arrow while the tab control is focused to switch modes. Dashboard tab, search, status, and tag-filter choices are restored when you close and reopen the Dashboard.
 
-- **Saved tag views** appear above the Dashboard's Tasks/Tags tabs, so they remain available in either mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
-- The Dashboard title identifies the active mode as **Dashboard: Tasks** or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task and tag cards; Deckard saves both choices for future Dashboard sessions.
+- **Saved tag views** appear above the Dashboard's Tasks/Notes/Tags tabs, so they remain available in any mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
+- The Dashboard title identifies the active mode as **Dashboard: Tasks**, **Dashboard: Notes**, or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task, note, and tag cards; Deckard saves all three choices for future Dashboard sessions.
 - **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
-- **Tags** shows namespaced and unnamespaced tags together. Search tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom.
+- **Notes** lists indexed note entries with a searchable multi-tag picker, text search, and **Sort: A-Z/Newest created/Recently updated/Most accessed**, matching the Notes tab in a tag overview. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. A note appears when it matches any selected tag; select a note entry to jump to its source line.
+- **Tags** shows namespaced and unnamespaced tags together. Search tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.
@@ -145,25 +146,29 @@ Open **Related Notes** from the Deckard Activity Bar while editing a saved Markd
 | Signal | Example | Importance |
 |---|---|---|
 | Shared tag | Both entries contain `#project/atlas` | Strongest |
-| Parent-heading context | Your selected task sits under a `#project/atlas` heading | Useful, but lighter |
+| Parent or child-heading context | Your selected entry sits under a `#project/atlas` parent heading, or a selected heading contains one | Useful, but lighter |
 | Associated tag | `#project/atlas` and `#risk/vendor` are often written together | Supporting evidence |
 | Entry Wiki link or lexical similarity | An entry links to `[[Launch plan#Decision]]` or shares distinctive section wording | Small supporting evidence |
 
 For example, if you select `#project/atlas #follow-up`, a note with both tags ranks ahead of a note that only contains an associated `#risk/vendor` tag. Associations retain their raw source evidence but are normalized for support and tag prevalence before diminishing returns are applied, so generic tags cannot dominate and indirect connections cannot overtake a complete direct match.
 
+On the **Debug related notes** page, a **source unit** is one distinct tagged heading, tagged line, task, or heading relationship where Deckard can observe a tag; it is not necessarily a whole file. **Raw evidence** is the starting strength of an association, while **normalized relevance** adjusts that strength for repeated support and how common each tag is. **BM25 lexical similarity** (also written **BM-25**) is a capped search-style text match that gives more weight to distinctive shared words than to common words.
+
+For the complete source-unit model, formulas, worked examples, configuration details, and external references, see the [Related Notes association and ranking reference](docs/related-notes-associations.md).
+
 ### Focus one note entry
 
-Tagged headings highlight their full section; tagged lines and tasks highlight their line. Hover one to choose **Show related notes for [entry]**. Deckard uses that entry's tags first, then adds tagged parent headings as lighter context. Choose **Show whole document** in the sidebar to return to the normal document view.
+Tagged headings highlight their full section; tagged lines and tasks highlight their line. Hover one to choose **Show related notes for [entry]**. The sidebar identifies the scope as a **Selected entry**, shows the source note, and uses that entry's tags first before adding tagged parent headings as lighter context. When the selected entry is a heading, tagged descendant child headings and tagged child items are also added as lighter context. Parent and child heading context decay by distance; child items use an additional level of decay, and the strongest occurrence wins when a tag appears more than once. The active tag list shows each contribution with a segmented **Rail** marker; hover or focus a tag to see its exact Related Notes weight. Choose **Show whole document** in the sidebar to return to the normal document view.
 
-Each result shows its compact heading path. Daily notes also show their inferred `YYYY-MM-DD` date, making a result such as `2026-09-10 > Project Atlas > Check-in` understandable before opening it. When both a broad heading and a nested child use the same tags, the child appears first because it is the more specific match.
+Each result shows its compact heading path and a concise primary reason for the match. Daily notes also show their inferred `YYYY-MM-DD` date, making a result such as `2026-09-10 > Project Atlas > Check-in` understandable before opening it. When both a broad heading and a nested child use the same tags, the child appears first because it is the more specific match. The Related Notes list includes its result count, and the **Sort by** control keeps the selected ordering visible.
 
 ### Understand a score
 
-Hover a card's percentage for a short explanation. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows heading paths, daily-note context, selected-tag weights, raw and normalized association support/prevalence, entry and file link evidence, lexical terms, optional recency, and specificity adjustments.
+Select a result percentage to open its explanation with the matching signals and weights; it also works from the keyboard. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows whether each selected tag came from the entry, parent ancestry, a child heading, or a child item, along with heading paths, daily-note context, raw and normalized association support/prevalence, entry and file link evidence, lexical terms, optional recency, and specificity adjustments.
 
 Use the sort control to choose **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Select a related note to open its matching line, or select a tag to open its overview.
 
-When a Tag Overview is the active editor tab, the sidebar switches from related notes to one compact **Associated tags** list. Associations are sorted by strength and show a percentage; hover one to learn whether the connection came from tags written together or from heading context. Expand the list to navigate without leaving the narrow sidebar. Selecting an association carries the current tag as a second filter and shows the exact headings, tasks, and tagged lines that supplied the connection. The notes in a Tag Overview already match that tag, so they do not show a redundant 100% relevance score. Returning to a Markdown editor restores the related-notes projection.
+When a Tag Overview is the active editor tab, the sidebar identifies itself as **Tag Overview**, shows the focus tag and matching-note count, and switches from related notes to one compact **Associated tags** list. Associations are sorted by strength and show a percentage; hover or focus one to learn whether the connection came from tags written together or from heading context. Expand the list to navigate without leaving the narrow sidebar. Selecting an association carries the current tag as a second filter. Active filters appear as removable chips with **Clear filters**, and the matching notes remain visible below. The notes in a Tag Overview already match that tag, so they do not show a redundant 100% relevance score. Returning to a Markdown editor restores the related-notes projection.
 
 Select the question-mark button in the Related Notes toolbar to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.
 
@@ -176,7 +181,8 @@ Each overview collects the matching sections from your notes. You can:
 - see the active tag intersection, each removable tag condition, and the matching note and task totals at a glance;
 - sort entries alphabetically, by creation date, by update date, or by most accessed;
 - search Notes and Tasks independently within the active tag intersection;
-- use **Save filter** beside the Tag Overview label to name a combined view, then open the **View options** gear to switch between the original Markdown source and a rendered view or choose **Tabs** or **Side by side**; and
+- use **Save filter** beside the Tag Overview label to name a combined view, then open the **View options** gear to switch between the original Markdown source and a rendered view or choose **Tabs** or **Side by side**;
+- see the matching saved view name above the entity title whenever the active tag intersection corresponds to a saved view; and
 - filter overview tasks with the grouped **All**, **Open**, and **Done** controls (which default to **Open**), then use a checkbox to safely update the original Markdown task; and
 - switch **Associated tags** between a namespace-collapsible **Tree** view and a layered **Graph** view on lightweight tag overviews; all remain clickable, show their connection percentage, and repeated source references show a compact count; and
 - follow an association into the target overview with the current tag applied as a second filter, so only the exact sources that supplied the association are shown; active relationship filters are folded into the page title as **[filter tag] AND [focus tag]**; remove individual tags or reopen the focus tag to return to the full overview; and
@@ -229,7 +235,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
 | `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
 | `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
-| `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in related-note and tag-overview titles as clickable buttons by default. Set to `separate` to remove tags from titles and show them as separate tag controls. |
+| `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, Tag Overview, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove overview tags from titles and show them as separate tag controls. |
 | `deckard.enableHeadingTagRelationships` | `true` | Shows **Associated tags** suggestions in Tag Overview, with Tree and Graph views. Disable it to hide those suggestions without changing indexed tags or note content. |
 | `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |
 | `deckard.enableKeywordLinks` | `true` | Includes capped BM25-style lexical similarity scoped to each section or task. Disable it to show shared tags and intentional Wiki links only. |

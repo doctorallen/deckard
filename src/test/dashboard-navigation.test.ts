@@ -21,7 +21,20 @@ const defaultPreferences: PersistedPreferences = {
   taskOrder: [],
   taskSortMode: 'rank',
   dashboardTaskColumns: 1,
+  dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
+  dashboardNoteSortMode: 'alphabetical',
+  dashboardViewState: {
+    mode: 'tasks',
+    taskFilter: 'active',
+    selectedTaskTags: [],
+    selectedNoteTags: [],
+    taskSearchQuery: '',
+    noteSearchQuery: '',
+    tagSearchQuery: '',
+    taskTagQuery: '',
+    noteTagQuery: '',
+  },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -136,12 +149,12 @@ suite('Dashboard navigation', () => {
       onDidUpdate: () => ({ dispose: () => undefined }),
       getSnapshot: () => workspaceIndex,
     } as unknown as WorkspaceIndexer;
-    const columnUpdates: Array<{ section: 'tasks' | 'tags'; columns: 1 | 2 | 3 | 4 }> = [];
+    const columnUpdates: Array<{ section: 'tasks' | 'notes' | 'tags'; columns: 1 | 2 | 3 | 4 }> = [];
     const preferences = {
       onDidChange: () => ({ dispose: () => undefined }),
       value: defaultPreferences,
       setDashboardColumns: async (
-        section: 'tasks' | 'tags',
+        section: 'tasks' | 'notes' | 'tags',
         columns: 1 | 2 | 3 | 4,
       ) => {
         columnUpdates.push({ section, columns });
@@ -165,12 +178,18 @@ suite('Dashboard navigation', () => {
       });
       await controller.handleValidMessage({
         type: 'setDashboardColumns',
+        section: 'notes',
+        columns: 2,
+      });
+      await controller.handleValidMessage({
+        type: 'setDashboardColumns',
         section: 'tags',
         columns: 4,
       });
 
       assert.deepStrictEqual(columnUpdates, [
         { section: 'tasks', columns: 3 },
+        { section: 'notes', columns: 2 },
         { section: 'tags', columns: 4 },
       ]);
     } finally {
