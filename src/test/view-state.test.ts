@@ -17,6 +17,7 @@ import {
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
+import { createEntryScope } from '../ui/webview/sidebarNotes';
 import {
   ParsedFile,
   Entity,
@@ -764,6 +765,130 @@ suite('Dashboard state', () => {
     assert.ok(notes[0].relevanceScore > notes[1].relevanceScore);
     assert.strictEqual(notes[0].matchCount, 1);
     assert.strictEqual(notes[1].matchCount, 0.5);
+  });
+
+  test('weights descendant heading tags by depth for a selected entry', () => {
+    const active = parseMarkdown(
+      'notes/current.md',
+      [
+        '# Workspace #parent/context #shared/context',
+        '## Selected #selected #shared/context',
+        '### Child route #child/near #shared/context',
+        '#### Untagged intermediate',
+        '##### Deep route #child/deep #shared/context',
+        '## Separate branch #other',
+      ].join('\n'),
+    );
+    const scope = createEntryScope(active, 2);
+
+    assert.ok(scope);
+    assert.strictEqual(scope.tagWeights.get('#selected'), 1);
+    assert.strictEqual(scope.tagWeights.get('#parent/context'), 0.5);
+    assert.strictEqual(scope.tagWeights.get('#child/near'), 0.5);
+    assert.strictEqual(scope.tagWeights.get('#child/deep'), 0.5 / 3);
+    assert.strictEqual(scope.tagWeights.get('#shared/context'), 1);
+    assert.strictEqual(
+      scope.tagSources.get('#parent/context')?.source,
+      'Parent ancestry: one level up (0.5 / 1)',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#child/near')?.source,
+      'Child heading: one level down (0.5 / 1)',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#child/deep')?.source,
+      'Child heading: 3 levels down (0.5 / 3)',
+    );
+    assert.strictEqual(scope.tagSources.get('#parent/context')?.context, 'parent');
+    assert.strictEqual(scope.tagSources.get('#child/near')?.context, 'child');
+    assert.strictEqual(scope.tagSources.get('#selected')?.context, 'selected');
+    assert.strictEqual(scope.tagSources.get('#shared/context')?.context, 'selected');
+    assert.deepStrictEqual(scope.file.sections[0].tags, [
+      '#selected',
+      '#shared/context',
+      '#parent/context',
+      '#child/near',
+      '#child/deep',
+    ]);
+  });
+
+  test('uses descendant heading context when ranking selected-entry notes', () => {
+    const active = parseMarkdown(
+      'notes/current.md',
+      [
+        '# Workspace #parent/context',
+        '## Selected #selected',
+        '### Child route #child/context',
+      ].join('\n'),
+    );
+    const childMatch = parseMarkdown(
+      'notes/child-match.md',
+      '# Child match #child/context',
+    );
+    const unrelated = parseMarkdown(
+      'notes/unrelated.md',
+      '# Unrelated #unrelated',
+    );
+    const index = buildWorkspaceIndex(
+      new Map([
+        [active.filePath, active],
+        [childMatch.filePath, childMatch],
+        [unrelated.filePath, unrelated],
+      ]),
+    );
+    const scope = createEntryScope(active, 2);
+
+    assert.ok(scope);
+    const snapshot = createSidebarSnapshot(
+      index,
+      active.filePath,
+      scope.file,
+      false,
+      'tags',
+      {},
+      'inline',
+      scope.file.sections[0].heading,
+      scope.tagWeights,
+    );
+
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.filePath),
+      ['notes/child-match.md'],
+    );
+    assert.strictEqual(snapshot.notes[0].matchedTags.length, 1);
+    assert.strictEqual(snapshot.notes[0].matchCount, 0.5);
+    assert.ok(snapshot.notes[0].relevanceScore > 25);
+  });
+
+  test('weights tagged child items two levels below a selected heading', () => {
+    const active = parseMarkdown(
+      'notes/current.md',
+      [
+        '# Workspace #parent/context',
+        '## Selected #selected',
+        'Inline child #feature/supply-continuity #risk/trafficking-assumption',
+        '- [ ] Child task #task/child',
+        '## Separate branch #other',
+      ].join('\n'),
+    );
+    const scope = createEntryScope(active, 2);
+
+    assert.ok(scope);
+    assert.strictEqual(scope.tagWeights.get('#feature/supply-continuity'), 0.25);
+    assert.strictEqual(scope.tagWeights.get('#risk/trafficking-assumption'), 0.25);
+    assert.strictEqual(scope.tagWeights.get('#task/child'), 0.25);
+    assert.strictEqual(
+      scope.tagSources.get('#feature/supply-continuity')?.context,
+      'childItem',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#feature/supply-continuity')?.source,
+      'Child item: 2 levels down (0.5 / 2)',
+    );
+    assert.strictEqual(
+      scope.tagSources.get('#risk/trafficking-assumption')?.source,
+      'Child item: 2 levels down (0.5 / 2)',
+    );
   });
 
   test('ranks a specific nested tag match above its broad parent section', () => {

@@ -8,6 +8,7 @@ import {
 } from '../ui/webview/messages';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml } from '../ui/webview/helpHtml';
+import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getTagOverviewHtml } from '../ui/webview/tagOverviewHtml';
@@ -20,6 +21,61 @@ function assertWebviewScriptParses(html: string): void {
 }
 
 suite('Webview contracts', () => {
+  test('distinguishes selected, parent, and child tag context in diagnostics', () => {
+    const html = getRelatedNotesDebugHtml(
+      { cspSource: 'test-csp' },
+      {
+        filePath: 'notes/current.md',
+        sourceLine: 2,
+        title: 'Selected',
+        tags: [
+          {
+            key: '#selected',
+            weight: 1,
+            context: 'selected',
+            source: 'Written on the selected entry',
+          },
+          {
+            key: '#parent/context',
+            weight: 0.5,
+            context: 'parent',
+            source: 'Parent ancestry: one level up (0.5 / 1)',
+          },
+          {
+            key: '#child/context',
+            weight: 0.25,
+            context: 'child',
+            source: 'Child heading: 2 levels down (0.5 / 2)',
+          },
+          {
+            key: '#child/item',
+            weight: 0.25,
+            context: 'childItem',
+            source: 'Child item: 2 levels down (0.5 / 2)',
+          },
+        ],
+        snapshot: {
+          activeTags: [],
+          notes: [],
+          tagOverviewFilters: [],
+          tagTitleDisplayMode: 'inline',
+          state: 'noMatches',
+        },
+      },
+    );
+
+    assert.strictEqual(html.includes('>Context</th>'), true);
+    assert.strictEqual(html.includes('Selected entry'), true);
+    assert.strictEqual(html.includes('Parent ancestry'), true);
+    assert.strictEqual(html.includes('Child heading'), true);
+    assert.strictEqual(html.includes('Child item'), true);
+    assert.strictEqual(
+      html.includes('parent and child headings provide context'),
+      true,
+    );
+    assert.strictEqual(html.includes('child items start at two levels'), true);
+  });
+
   test('accepts valid dashboard messages and rejects malformed payloads', () => {
     assert.deepStrictEqual(
       parseDashboardMessage({ type: 'setTaskFilter', filter: 'active' }),
