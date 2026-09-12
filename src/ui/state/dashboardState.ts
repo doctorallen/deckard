@@ -1,5 +1,6 @@
 import {
   DashboardSnapshot,
+  DashboardNote,
   DashboardTask,
   Entity,
   ParsedFile,
@@ -38,6 +39,8 @@ export function createDashboardSnapshot(
   taskFilter: TaskFilter,
   selectedTaskTags: string[] = [],
   selectedTag?: string,
+  selectedNoteTags: string[] = [],
+  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): DashboardSnapshot {
   const tags = sortTags(index.tags.values(), preferences);
   const entities = sortEntities(index.entities.values(), preferences);
@@ -49,6 +52,35 @@ export function createDashboardSnapshot(
     selectedTaskTags,
     availableTaskTags,
   );
+  const availableNoteTags = sortTags(
+    [...index.tags.values()].filter(
+      (tag) => tag.sectionIds.length > 0 || tag.filePaths.length > 0,
+    ),
+    preferences,
+  );
+  const normalizedNoteTags = normalizeTaskTags(
+    selectedNoteTags,
+    availableNoteTags,
+  );
+  const notes = sortDashboardNotes(
+    [
+      ...[...index.sections.values()].map((section) =>
+        createDashboardNote(
+          section,
+          preferences.sectionAccessCounts,
+          tagTitleDisplayMode,
+        ),
+      ),
+      ...[...index.files.values()]
+        .filter(
+          (file) =>
+            file.sections.length === 0 &&
+            file.frontmatterTags.length > 0,
+        )
+        .map((file) => createDashboardFileNote(file)),
+    ],
+    preferences.dashboardNoteSortMode,
+  ).filter((note) => matchesNoteFilter(note, normalizedNoteTags));
   const tasks = sortTasks(
     [...index.tasks.values()],
     preferences.taskOrder,
@@ -61,20 +93,39 @@ export function createDashboardSnapshot(
     sections: [...index.sections.values()],
     tags,
     entities,
+    notes,
     tasks,
     totalSectionCount: index.sections.size,
+    totalNoteCount:
+      index.sections.size +
+      [...index.files.values()].filter(
+        (file) =>
+          file.sections.length === 0 && file.frontmatterTags.length > 0,
+      ).length,
     totalTaskCount: index.tasks.size,
     activeTaskCount: [...index.tasks.values()].filter((task) => !task.completed)
       .length,
     taskFilter,
     taskSortMode: preferences.taskSortMode,
     taskColumns: preferences.dashboardTaskColumns,
+    noteColumns: preferences.dashboardNoteColumns,
     tagColumns: preferences.dashboardTagColumns,
+    noteSortMode: preferences.dashboardNoteSortMode,
+    renderMode: preferences.renderMode,
+    tagTitleDisplayMode,
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
     availableTaskTags,
+    availableNoteTags,
     selectedTaskTags: normalizedTaskTags,
+    selectedNoteTags: normalizedNoteTags,
     selectedTag,
+    viewState: {
+      ...preferences.dashboardViewState,
+      taskFilter,
+      selectedTaskTags: normalizedTaskTags,
+      selectedNoteTags: normalizedNoteTags,
+    },
     savedFilters: preferences.savedFilters.flatMap((filter) => {
       const tags = filter.tagKeys
         .map((tagKey) => index.tags.get(tagKey))
@@ -84,6 +135,28 @@ export function createDashboardSnapshot(
         ? [{ id: filter.id, name: filter.name, tags }]
         : [];
     }),
+  };
+}
+
+function createDashboardNote(
+  section: Section,
+  sectionAccessCounts: Record<string, number>,
+  tagTitleDisplayMode: TagTitleDisplayMode,
+): DashboardNote {
+  return {
+    ...createTagOverviewCard(
+      section,
+      sectionAccessCounts,
+      tagTitleDisplayMode,
+    ),
+    fileName: section.filePath.split('/').pop() ?? section.filePath,
+  };
+}
+
+function createDashboardFileNote(file: ParsedFile): DashboardNote {
+  return {
+    ...createFileOverviewCard(file),
+    fileName: file.filePath.split('/').pop() ?? file.filePath,
   };
 }
 
@@ -227,6 +300,18 @@ function compareTagLabels(left: TagInfo, right: TagInfo): number {
     left.label.localeCompare(right.label, undefined, {
       sensitivity: 'base',
     })
+  );
+}
+
+function matchesNoteFilter(
+  note: DashboardNote,
+  selectedNoteTags: string[],
+): boolean {
+  return (
+    selectedNoteTags.length === 0 ||
+    selectedNoteTags.some((tagKey) =>
+      note.tags.some((tag) => tag.key === tagKey),
+    )
   );
 }
 
@@ -699,6 +784,18 @@ export function sortTagOverviewCards(
   sortMode: TagOverviewSortMode,
 ): TagOverviewCard[] {
   return [...cards].sort((left, right) =>
+    compareTagOverviewCards(left, right, sortMode),
+  );
+}
+
+/**
+ * Sorts dashboard note entries without mutating the index projection.
+ */
+export function sortDashboardNotes(
+  notes: DashboardNote[],
+  sortMode: TagOverviewSortMode,
+): DashboardNote[] {
+  return [...notes].sort((left, right) =>
     compareTagOverviewCards(left, right, sortMode),
   );
 }

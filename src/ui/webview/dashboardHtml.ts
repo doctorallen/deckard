@@ -72,10 +72,10 @@ h2 { margin: 0 0 4px; color: var(--cyan-bright); font-size: 14px; font-weight: 6
 .metric-label { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
 .dashboard-view-options { position: relative; flex: 0 0 auto; order: 2; }
-.dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
+.dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .dashboard-view-options summary::-webkit-details-marker { display: none; }
 .dashboard-view-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
-.dashboard-view-options summary:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+.dashboard-view-options summary:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 2px; }
 .dashboard-view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
 .dashboard-view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
 .dashboard-column-options { display: inline-flex; }
@@ -107,7 +107,14 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 button { cursor: pointer; }
 button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
 button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
-.tag-list, .task-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
+.toolbar-toggle { display: inline-grid; width: 30px; min-height: 30px; place-items: center; padding: 5px; }
+.toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.toolbar-toggle-group { display: inline-flex; }
+.toolbar-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }
+.toolbar-toggle-group .toolbar-toggle:first-child { border-radius: 2px 0 0 2px; }
+.toolbar-toggle-group .toolbar-toggle:last-child { border-radius: 0 2px 2px 0; }
+.toolbar-toggle-group .toolbar-toggle.active { position: relative; z-index: 1; }
+.tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; transition: background-color 120ms ease, transform 120ms ease; }
@@ -163,7 +170,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .browse-toolbar-controls > * { flex: 0 0 auto; }
 .browse-scope { display: inline-flex; }
 .browse-scope button + button { margin-left: -1px; }
-.catalog-search, .task-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
+.catalog-search, .task-search, .note-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
 .tag-filter { position: relative; }
 .tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }
 .tag-filter summary .control-icon-svg { color: inherit; }
@@ -183,6 +190,20 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
 .task-row:hover { border-color: var(--amber-bright); }
 .task-row.is-draggable { cursor: grab; touch-action: none; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
+.note-row { min-width: 0; border: 2px solid var(--slate-border); padding: 14px; background: var(--panel-bg); cursor: pointer; }
+.note-row:hover { border-color: var(--amber-bright); }
+.note-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+.note-row .card-header { display: block; }
+.note-row .card-title { margin: 0; color: var(--cyan-bright); font-size: 16px; overflow-wrap: anywhere; }
+.note-row .source { color: var(--muted); font-size: 11px; margin-top: 5px; overflow-wrap: anywhere; }
+.note-row .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
+.note-row .markdown { margin: 14px 0 0; padding: 12px; overflow-x: auto; border: 2px solid var(--slate-border); border-left: 4px solid var(--amber-bright); background: var(--panel-deep); color: var(--text); white-space: pre-wrap; font: 12px/1.55 var(--vscode-editor-font-family, ui-monospace, monospace); }
+.note-row .rendered { margin-top: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.note-row .rendered :first-child { margin-top: 0; }
+.note-row .rendered :last-child { margin-bottom: 0; }
+.note-row .rendered code, .note-row .rendered pre { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.note-row .rendered pre { overflow-x: auto; padding: 10px; border: 2px solid var(--slate-border); background: var(--panel-deep); }
+.note-row .rendered a { color: var(--cyan-bright); }
 .task-title { overflow-wrap: anywhere; line-height: 1.45; }
 .task-title a { color: var(--cyan-bright); }
 .inline-tag { min-height: 0; margin-left: 3px; padding: 1px 4px; font-size: .85em; line-height: 1.3; text-transform: none; vertical-align: 1px; }
@@ -203,7 +224,7 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
   .dashboard-header-actions { width: 100%; flex-direction: column; align-items: stretch; }
   .dashboard-header-actions .dashboard-view-options { align-self: flex-end; order: -1; }
   .metrics { width: 100%; min-width: 0; }
-  .tag-list, .task-list { grid-template-columns: 1fr; }
+  .tag-list, .task-list, .note-list { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
 ${getDeckardThemeCss(getDeckardTheme())}
@@ -227,15 +248,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
   let taskSearchQuery = '';
   let taskTagQuery = '';
   let taskTagFilterOpen = false;
+  let noteSearchQuery = '';
+  let noteTagQuery = '';
+  let noteTagFilterOpen = false;
+  const noteSearchDebounceDelay = 350;
+  const tagSearchDebounceDelay = 180;
+  let noteSearchTimer;
+  let pendingNoteSearchQuery;
+  let taskTagSearchTimer;
+  let noteTagSearchTimer;
+  let pendingTaskTagQuery;
+  let pendingNoteTagQuery;
   const restoredViewState = vscode.getState();
-  let dashboardMode = restoredViewState && restoredViewState.dashboardMode === 'browse'
-    ? 'browse'
+  let dashboardMode = restoredViewState && (
+    restoredViewState.dashboardMode === 'notes' ||
+    restoredViewState.dashboardMode === 'browse'
+  )
+    ? restoredViewState.dashboardMode
     : 'tasks';
   let taskColumns = restoredViewState && [1, 2, 3, 4].indexOf(restoredViewState.taskColumns) >= 0
     ? restoredViewState.taskColumns
     : undefined;
   let tagColumns = restoredViewState && [1, 2, 3, 4].indexOf(restoredViewState.tagColumns) >= 0
     ? restoredViewState.tagColumns
+    : undefined;
+  let noteColumns = restoredViewState && [1, 2, 3, 4].indexOf(restoredViewState.noteColumns) >= 0
+    ? restoredViewState.noteColumns
     : undefined;
   let browseQuery = '';
   let entityKindFilter = 'all';
@@ -346,12 +384,77 @@ ${getDeckardThemeCss(getDeckardTheme())}
       dashboardMode: dashboardMode,
       taskColumns: taskColumns,
       tagColumns: tagColumns,
+      noteColumns: noteColumns,
+      taskSearchQuery: taskSearchQuery,
+      noteSearchQuery: noteSearchQuery,
+      browseQuery: browseQuery,
+      taskTagQuery: taskTagQuery,
+      noteTagQuery: noteTagQuery,
+      selectedTaskTags: state ? state.selectedTaskTags : [],
+      selectedNoteTags: state ? state.selectedNoteTags : [],
     });
   }
 
+  /** Batch local note filtering and preference writes while the user types. */
+  function scheduleNoteSearch(target) {
+    if (noteSearchTimer) clearTimeout(noteSearchTimer);
+    pendingNoteSearchQuery = noteSearchQuery;
+    noteSearchTimer = setTimeout(function () {
+      noteSearchTimer = undefined;
+      if (pendingNoteSearchQuery === undefined) return;
+      send({ type: 'setDashboardSearch', field: 'notes', query: noteSearchQuery });
+      const restoreSearchFocus = document.activeElement === target;
+      render();
+      if (restoreSearchFocus) requestAnimationFrame(function () {
+        const search = document.querySelector('.note-search');
+        if (search) {
+          search.focus();
+          search.setSelectionRange(noteSearchQuery.length, noteSearchQuery.length);
+        }
+      });
+    }, noteSearchDebounceDelay);
+  }
+
+  /** Keep tag-picker filtering local, then persist it after typing settles. */
+  function scheduleTagFilterSearch(kind) {
+    const isNoteFilter = kind === 'note';
+    const timer = isNoteFilter ? noteTagSearchTimer : taskTagSearchTimer;
+    if (timer) clearTimeout(timer);
+    if (isNoteFilter) {
+      pendingNoteTagQuery = noteTagQuery;
+    } else {
+      pendingTaskTagQuery = taskTagQuery;
+    }
+    const nextTimer = setTimeout(function () {
+      if (isNoteFilter) {
+        noteTagSearchTimer = undefined;
+        if (pendingNoteTagQuery === undefined) return;
+        send({
+          type: 'setDashboardSearch',
+          field: 'noteTags',
+          query: noteTagQuery,
+        });
+      } else {
+        taskTagSearchTimer = undefined;
+        if (pendingTaskTagQuery === undefined) return;
+        send({
+          type: 'setDashboardSearch',
+          field: 'taskTags',
+          query: taskTagQuery,
+        });
+      }
+    }, tagSearchDebounceDelay);
+    if (isNoteFilter) {
+      noteTagSearchTimer = nextTimer;
+    } else {
+      taskTagSearchTimer = nextTimer;
+    }
+  }
+
   function setDashboardMode(mode, focusTab) {
-    dashboardMode = mode === 'browse' ? 'browse' : 'tasks';
+    dashboardMode = mode === 'notes' || mode === 'browse' ? mode : 'tasks';
     saveDashboardViewState();
+    send({ type: 'setDashboardMode', mode: dashboardMode });
     render();
     if (focusTab) {
       const selectedTab = document.querySelector('[data-dashboard-mode="' + dashboardMode + '"]');
@@ -364,13 +467,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (section === 'tasks') {
       taskColumns = columns;
       if (state) state.taskColumns = columns;
+    } else if (section === 'notes') {
+      noteColumns = columns;
+      if (state) state.noteColumns = columns;
     } else {
       tagColumns = columns;
       if (state) state.tagColumns = columns;
     }
     const selector = section === 'tasks'
       ? '.task-list'
-      : '.tag-list';
+      : section === 'notes'
+        ? '.note-list'
+        : '.tag-list';
     document.querySelectorAll(selector).forEach(function (grid) {
       grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)';
     });
@@ -504,7 +612,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
           const section = button.dataset.section;
           const columns = Number(button.dataset.columns);
           if (
-            (section !== 'tasks' && section !== 'tags') ||
+            (section !== 'tasks' && section !== 'notes' && section !== 'tags') ||
             columns < 1 ||
             columns > 4
           ) {
@@ -735,10 +843,13 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function render() {
     if (!state) return;
     const selectedTaskColumns = taskColumns ?? state.taskColumns ?? 1;
+    const selectedNoteColumns = noteColumns ?? state.noteColumns ?? 1;
     const selectedTagColumns = tagColumns ?? state.tagColumns ?? 2;
     taskColumns = selectedTaskColumns;
+    noteColumns = selectedNoteColumns;
     tagColumns = selectedTagColumns;
     state.taskColumns = selectedTaskColumns;
+    state.noteColumns = selectedNoteColumns;
     state.tagColumns = selectedTagColumns;
     closeRankContextMenu();
     const scrollX = window.scrollX;
@@ -748,6 +859,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const hasRenderedTagFilter = Boolean(currentTagFilter);
     if (currentTagFilter) taskTagFilterOpen = currentTagFilter.open;
     const tagOptionsScrollTop = currentTagOptions ? currentTagOptions.scrollTop : 0;
+    const currentNoteTagFilter = document.querySelector('.note-tag-filter');
+    const currentNoteTagOptions = document.querySelector('.note-tag-filter-options');
+    const hasRenderedNoteTagFilter = Boolean(currentNoteTagFilter);
+    if (currentNoteTagFilter) noteTagFilterOpen = currentNoteTagFilter.open;
+    const noteTagOptionsScrollTop = currentNoteTagOptions ? currentNoteTagOptions.scrollTop : 0;
     const normalizedBrowseQuery = browseQuery.trim().toLowerCase();
     const filteredTags = state.tags.filter(function (tag) {
       return !normalizedBrowseQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedBrowseQuery) >= 0;
@@ -798,9 +914,36 @@ ${getDeckardThemeCss(getDeckardTheme())}
         : '';
       return '<div class="task-row ' + (task.completed ? 'completed ' : '') + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">' +
         '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">' +
-        '<div><div class="task-title">' + renderTaskTitle(item.renderedTitle, item.titleTags) + '</div><div class="task-meta">' + dueDate + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
+        '<div><div class="task-title">' + (state.tagTitleDisplayMode === 'inline' ? renderTaskTitle(item.renderedTitle, item.titleTags) : item.renderedTitle) + '</div><div class="task-meta">' + dueDate + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
         '</div>';
     }).join('') : '<div class="empty">No tasks match this filter.</div>';
+    const normalizedNoteSearchQuery = noteSearchQuery.trim().toLowerCase();
+    const filteredNotes = state.notes.filter(function (note) {
+      const searchableText = [
+        note.heading,
+        note.fileName,
+        note.rawContent || '',
+        note.tags.map(function (tag) { return tag.label; }).join(' '),
+      ].join(' ').toLowerCase();
+      return !normalizedNoteSearchQuery || searchableText.indexOf(normalizedNoteSearchQuery) >= 0;
+    });
+    const notes = filteredNotes.length ? filteredNotes.map(function (note) {
+      const titleHtml = state.tagTitleDisplayMode === 'inline'
+        ? renderInlineTitle(note.heading, note.titleTags)
+        : escapeHtml(note.heading);
+      const tags = state.tagTitleDisplayMode === 'separate' ? note.tags.map(function (tag) {
+        return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
+      }).join('') : '';
+      const content = note.rawContent
+        ? (state.renderMode === 'html'
+          ? '<div class="rendered">' + note.renderedHtml + '</div>'
+          : '<pre class="markdown">' + escapeHtml(note.rawContent) + '</pre>')
+        : '';
+      return '<article class="card note-row" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.startLine + '">' +
+        '<div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(note.fileName) + ' / line ' + note.startLine + '</div></div>' +
+        content +
+        '</article>';
+    }).join('') : '<div class="empty">No notes match this filter.</div>';
     const taskCounts = {
       all: normalizedTaskSearchQuery ? filteredTasks.length : state.totalTaskCount,
       active: normalizedTaskSearchQuery
@@ -834,9 +977,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const selectedTaskTagControls = selectedTaskTags
       ? '<div class="selected-task-tags" aria-label="Selected task tags">' + selectedTaskTags + '<button class="clear-task-filters" data-action="clear-task-tags">Clear filters</button></div>'
       : '';
+    const normalizedNoteTagQuery = noteTagQuery.trim().toLowerCase();
+    const filteredNoteTags = state.availableNoteTags.filter(function (tag) {
+      return !normalizedNoteTagQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedNoteTagQuery) >= 0;
+    });
+    const noteTagOptions = state.availableNoteTags.length ? filteredNoteTags.map(function (tag) {
+      return '<label class="tag-filter-option note-tag-filter-option" data-filter-text="' + escapeHtml((tag.label + ' ' + tag.key).toLowerCase()) + '"><input type="checkbox" data-action="set-note-tag" data-tag-key="' + escapeHtml(tag.key) + '" ' + (state.selectedNoteTags.indexOf(tag.key) >= 0 ? 'checked' : '') + '>' + renderTagLabel(tag.label) + '</label>';
+    }).join('') : '<span class="empty">No note tags.</span>';
+    const noMatchingNoteTags = state.availableNoteTags.length
+      ? '<span class="tag-filter-no-results note-tag-filter-no-results"' + (normalizedNoteTagQuery && !filteredNoteTags.length ? '' : ' hidden') + '>No note tags match your search.</span>'
+      : '';
+    const selectedNoteTagSummary = state.selectedNoteTags.length ? state.selectedNoteTags.length + ' selected' : 'all tags';
+    const noteTagFilter = '<span class="control-label">Tags:</span><details class="tag-filter note-tag-filter" ' + (noteTagFilterOpen || (!hasRenderedNoteTagFilter && state.selectedNoteTags.length) ? 'open' : '') + '><summary>' + selectedNoteTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-note-tags" value="' + escapeHtml(noteTagQuery) + '" placeholder="Filter tags" aria-label="Filter note tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options note-tag-filter-options">' + noteTagOptions + '</div>' + noMatchingNoteTags + '</div></details>';
+    const noteSearch = '<input class="note-search" type="search" data-action="search-notes" value="' + escapeHtml(noteSearchQuery) + '" placeholder="Search notes" aria-label="Search notes" autocomplete="off">';
+    const selectedNoteTags = state.selectedNoteTags.map(function (tagKey) {
+      const tag = state.availableNoteTags.find(function (candidate) { return candidate.key === tagKey; });
+      return tag ? '<button class="selected-task-tag" data-action="remove-note-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Remove note tag ' + escapeHtml(tag.label) + '">' + renderTagLabel(tag.label) + '</button>' : '';
+    }).join('');
+    const selectedNoteTagControls = selectedNoteTags
+      ? '<div class="selected-task-tags" aria-label="Selected note tags">' + selectedNoteTags + '<button class="clear-task-filters" data-action="clear-note-tags">Clear filters</button></div>'
+      : '';
+    const noteSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-note-sort" aria-label="Sort notes"><option value="alphabetical" ' + (state.noteSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.noteSortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.noteSortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.noteSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>' + sortIcon + '</span></label>';
+    const formatControls = '<div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const tagSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></label>';
     const columnControls = function (section, selectedColumns) {
-      return '<div class="dashboard-column-options" role="group" aria-label="' + (section === 'tasks' ? 'Task' : 'Tag') + ' columns">' + [1, 2, 3, 4].map(function (columns) {
+      const label = section === 'tasks' ? 'Task' : section === 'notes' ? 'Note' : 'Tag';
+      return '<div class="dashboard-column-options" role="group" aria-label="' + label + ' columns">' + [1, 2, 3, 4].map(function (columns) {
         return '<button class="' + (columns === selectedColumns ? 'active' : '') + '" data-action="set-columns" data-section="' + section + '" data-columns="' + columns + '" aria-label="' + columns + ' columns" aria-pressed="' + (columns === selectedColumns) + '">' + columns + '</button>';
       }).join('') + '</div>';
     };
@@ -845,13 +1011,14 @@ ${getDeckardThemeCss(getDeckardTheme())}
       '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
       '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
       '</div>';
-    const dashboardOptions = '<details class="dashboard-view-options"><summary aria-label="View options" title="View options">${settingsIcon}</summary><div class="dashboard-view-options-menu"><div class="dashboard-view-options-group"><span>Task columns</span>' + columnControls('tasks', state.taskColumns) + '</div><div class="dashboard-view-options-group"><span>Tag columns</span>' + columnControls('tags', state.tagColumns) + '</div></div></details>';
+    const dashboardOptions = '<details class="dashboard-view-options"><summary aria-label="View options" title="View options">${settingsIcon}</summary><div class="dashboard-view-options-menu"><div class="dashboard-view-options-group"><span>Task columns</span>' + columnControls('tasks', state.taskColumns) + '</div><div class="dashboard-view-options-group"><span>Note columns</span>' + columnControls('notes', state.noteColumns) + '</div><div class="dashboard-view-options-group"><span>Tag columns</span>' + columnControls('tags', state.tagColumns) + '</div><div class="dashboard-view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
 
     document.getElementById('app').innerHTML =
-      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
+      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : dashboardMode === 'notes' ? 'Notes' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
       savedFilters +
-      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags</button></div></div>' +
+      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Notes</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags</button></div></div>' +
       '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label><div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + '<div class="task-list" style="grid-template-columns: repeat(' + state.taskColumns + ', 1fr);">' + tasks + '</div></section>' +
+      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="task-toolbar"><div class="toolbar-controls">' + noteSearch + noteSortControl + '<div class="task-tag-filter-control">' + noteTagFilter + '</div></div></div>' + selectedNoteTagControls + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div></section>' +
       '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search" data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagSortControl + '</div></div></div>' + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
@@ -861,10 +1028,32 @@ ${getDeckardThemeCss(getDeckardTheme())}
       });
     }
     if (nextTagOptions) nextTagOptions.scrollTop = tagOptionsScrollTop;
+    const nextNoteTagFilter = document.querySelector('.note-tag-filter');
+    const nextNoteTagOptions = document.querySelector('.note-tag-filter-options');
+    if (nextNoteTagFilter) {
+      nextNoteTagFilter.addEventListener('toggle', function () {
+        noteTagFilterOpen = nextNoteTagFilter.open;
+      });
+    }
+    if (nextNoteTagOptions) nextNoteTagOptions.scrollTop = noteTagOptionsScrollTop;
     bindDashboardColumnControls();
     applyDashboardColumns('tasks', selectedTaskColumns);
+    applyDashboardColumns('notes', selectedNoteColumns);
     applyDashboardColumns('tags', selectedTagColumns);
     window.scrollTo(scrollX, scrollY);
+  }
+
+  function filterTagOptions(optionSelector, rawQuery, noResultsSelector) {
+    const query = rawQuery.trim().toLowerCase();
+    let visibleCount = 0;
+    document.querySelectorAll(optionSelector).forEach(function (option) {
+      const visible = !query || option.dataset.filterText.indexOf(query) >= 0;
+      option.hidden = !visible;
+      option.style.display = visible ? 'flex' : 'none';
+      if (visible) visibleCount += 1;
+    });
+    const noResults = document.querySelector(noResultsSelector);
+    if (noResults) noResults.hidden = visibleCount > 0 || !query;
   }
 
   document.addEventListener('click', function (event) {
@@ -889,11 +1078,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
         return;
       }
     }
-    const tagFilter = document.querySelector('.tag-filter');
-    if (tagFilter && tagFilter.open && !event.target.closest('.tag-filter')) {
-      tagFilter.open = false;
-      taskTagFilterOpen = false;
-    }
+    document.querySelectorAll('.tag-filter').forEach(function (tagFilter) {
+      if (tagFilter.open && !event.target.closest('.tag-filter')) {
+        tagFilter.open = false;
+        if (tagFilter.classList.contains('note-tag-filter')) {
+          noteTagFilterOpen = false;
+        } else {
+          taskTagFilterOpen = false;
+        }
+      }
+    });
     const dashboardOptions = document.querySelector('.dashboard-view-options');
     if (dashboardOptions && dashboardOptions.open && !event.target.closest('.dashboard-view-options')) {
       dashboardOptions.open = false;
@@ -908,6 +1102,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
         );
         return;
       }
+      if (action === 'set-mode') {
+        send({ type: 'setRenderMode', mode: target.dataset.mode });
+        return;
+      }
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
@@ -916,18 +1114,30 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (action === 'remove-task-tag') {
         send({ type: 'setTaskTags', tagKeys: state.selectedTaskTags.filter(function (tagKey) { return tagKey !== target.dataset.tagKey; }) });
       }
+      if (action === 'remove-note-tag') {
+        send({ type: 'setNoteTags', tagKeys: state.selectedNoteTags.filter(function (tagKey) { return tagKey !== target.dataset.tagKey; }) });
+      }
       if (action === 'clear-task-tags') {
         taskTagQuery = '';
         taskTagFilterOpen = false;
-        const tagFilter = document.querySelector('.tag-filter');
+        const tagFilter = document.querySelector('.tag-filter:not(.note-tag-filter)');
         if (tagFilter) tagFilter.open = false;
         send({ type: 'setTaskTags', tagKeys: [] });
+      }
+      if (action === 'clear-note-tags') {
+        noteTagQuery = '';
+        noteTagFilterOpen = false;
+        const tagFilter = document.querySelector('.note-tag-filter');
+        if (tagFilter) tagFilter.open = false;
+        send({ type: 'setNoteTags', tagKeys: [] });
       }
       if (action === 'open-source') send({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
       return;
     }
     const taskRow = event.target.closest('.task-row');
     if (taskRow && !event.target.closest('button, input, a')) send({ type: 'openSource', filePath: taskRow.dataset.filePath, line: Number(taskRow.dataset.line) });
+    const noteRow = event.target.closest('.note-row');
+    if (noteRow && !event.target.closest('button, input, a')) send({ type: 'openSource', filePath: noteRow.dataset.filePath, line: Number(noteRow.dataset.line) });
     const entityRow = event.target.closest('.entity-row');
     if (entityRow && !event.target.closest('button, input, a')) {
       send({ type: 'openTag', tagKey: entityRow.dataset.entityKey });
@@ -958,7 +1168,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const dashboardTab = event.target.closest('[role="tab"][data-dashboard-mode]');
     if (dashboardTab && (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End')) {
       event.preventDefault();
-      const modes = ['tasks', 'browse'];
+      const modes = ['tasks', 'notes', 'browse'];
       const currentIndex = modes.indexOf(dashboardMode);
       const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? modes.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : modes.length - 1)) % modes.length;
       setDashboardMode(modes[nextIndex], true);
@@ -969,6 +1179,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (taskRow && !event.target.closest('button, input, a')) {
       event.preventDefault();
       send({ type: 'openSource', filePath: taskRow.dataset.filePath, line: Number(taskRow.dataset.line) });
+      return;
+    }
+    const noteRow = event.target.closest('.note-row');
+    if (noteRow && !event.target.closest('button, input, a')) {
+      event.preventDefault();
+      send({ type: 'openSource', filePath: noteRow.dataset.filePath, line: Number(noteRow.dataset.line) });
       return;
     }
     const entityRow = event.target.closest('.entity-row');
@@ -993,10 +1209,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const target = event.target;
     if (target.dataset.action === 'set-sort') send({ type: 'setTagSort', mode: target.value });
     if (target.dataset.action === 'set-task-sort') send({ type: 'setTaskSort', mode: target.value });
+    if (target.dataset.action === 'set-note-sort') send({ type: 'setNoteSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
     if (target.dataset.action === 'set-task-tag') {
       const selectedTags = Array.from(document.querySelectorAll('input[data-action="set-task-tag"]:checked')).map(function (input) { return input.dataset.tagKey; });
+      state.selectedTaskTags = selectedTags;
+      saveDashboardViewState();
       send({ type: 'setTaskTags', tagKeys: selectedTags });
+    }
+    if (target.dataset.action === 'set-note-tag') {
+      const selectedTags = Array.from(document.querySelectorAll('input[data-action="set-note-tag"]:checked')).map(function (input) { return input.dataset.tagKey; });
+      state.selectedNoteTags = selectedTags;
+      saveDashboardViewState();
+      send({ type: 'setNoteTags', tagKeys: selectedTags });
     }
   });
 
@@ -1004,6 +1229,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const target = event.target;
     if (target.dataset.action === 'search-browse') {
       browseQuery = target.value;
+      saveDashboardViewState();
+      send({ type: 'setDashboardSearch', field: 'tags', query: browseQuery });
       const restoreSearchFocus = document.activeElement === target;
       render();
       if (restoreSearchFocus) requestAnimationFrame(function () {
@@ -1017,6 +1244,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
     if (target.dataset.action === 'search-tasks') {
       taskSearchQuery = target.value;
+      saveDashboardViewState();
+      send({ type: 'setDashboardSearch', field: 'tasks', query: taskSearchQuery });
       const restoreSearchFocus = document.activeElement === target;
       render();
       if (restoreSearchFocus) requestAnimationFrame(function () {
@@ -1028,18 +1257,24 @@ ${getDeckardThemeCss(getDeckardTheme())}
       });
       return;
     }
-    if (target.dataset.action !== 'filter-task-tags') return;
-    taskTagQuery = target.value;
-    const query = taskTagQuery.trim().toLowerCase();
-    let visibleCount = 0;
-    document.querySelectorAll('.tag-filter-option').forEach(function (option) {
-      const visible = !query || option.dataset.filterText.indexOf(query) >= 0;
-      option.hidden = !visible;
-      option.style.display = visible ? 'flex' : 'none';
-      if (visible) visibleCount += 1;
-    });
-    const noResults = document.querySelector('.tag-filter-no-results');
-    if (noResults) noResults.hidden = visibleCount > 0 || !query;
+    if (target.dataset.action === 'search-notes') {
+      noteSearchQuery = target.value;
+      saveDashboardViewState();
+      scheduleNoteSearch(target);
+      return;
+    }
+    if (target.dataset.action === 'filter-task-tags') {
+      taskTagQuery = target.value;
+      saveDashboardViewState();
+      scheduleTagFilterSearch('task');
+      filterTagOptions('.tag-filter-option:not(.note-tag-filter-option)', taskTagQuery, '.tag-filter-no-results:not(.note-tag-filter-no-results)');
+      return;
+    }
+    if (target.dataset.action !== 'filter-note-tags') return;
+    noteTagQuery = target.value;
+    saveDashboardViewState();
+    scheduleTagFilterSearch('note');
+    filterTagOptions('.note-tag-filter-option', noteTagQuery, '.note-tag-filter-no-results');
   });
 
   document.addEventListener('contextmenu', function (event) {
@@ -1088,12 +1323,66 @@ ${getDeckardThemeCss(getDeckardTheme())}
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
       const incomingState = event.data.data;
-      if (taskColumns === undefined) taskColumns = incomingState.taskColumns ?? 1;
-      if (tagColumns === undefined) tagColumns = incomingState.tagColumns ?? 2;
+      const activeElement = document.activeElement;
+      const focusedSearchAction = activeElement && activeElement.dataset.action;
+      taskColumns = incomingState.taskColumns ?? taskColumns ?? 1;
+      noteColumns = incomingState.noteColumns ?? noteColumns ?? 1;
+      tagColumns = incomingState.tagColumns ?? tagColumns ?? 2;
+      if (incomingState.viewState) {
+        dashboardMode = incomingState.viewState.mode;
+        taskSearchQuery = incomingState.viewState.taskSearchQuery;
+        if (
+          pendingNoteSearchQuery === undefined ||
+          (
+            noteSearchTimer === undefined &&
+            incomingState.viewState.noteSearchQuery === pendingNoteSearchQuery
+          )
+        ) {
+          noteSearchQuery = incomingState.viewState.noteSearchQuery;
+          pendingNoteSearchQuery = undefined;
+        }
+        if (
+          pendingTaskTagQuery === undefined ||
+          (
+            taskTagSearchTimer === undefined &&
+            incomingState.viewState.taskTagQuery === pendingTaskTagQuery
+          )
+        ) {
+          taskTagQuery = incomingState.viewState.taskTagQuery;
+          pendingTaskTagQuery = undefined;
+        }
+        if (
+          pendingNoteTagQuery === undefined ||
+          (
+            noteTagSearchTimer === undefined &&
+            incomingState.viewState.noteTagQuery === pendingNoteTagQuery
+          )
+        ) {
+          noteTagQuery = incomingState.viewState.noteTagQuery;
+          pendingNoteTagQuery = undefined;
+        }
+        browseQuery = incomingState.viewState.tagSearchQuery;
+      }
       incomingState.taskColumns = taskColumns;
+      incomingState.noteColumns = noteColumns;
       incomingState.tagColumns = tagColumns;
       state = incomingState;
       render();
+      if (
+        focusedSearchAction === 'search-notes' ||
+        focusedSearchAction === 'filter-task-tags' ||
+        focusedSearchAction === 'filter-note-tags'
+      ) {
+        requestAnimationFrame(function () {
+          const search = document.querySelector(
+            '[data-action="' + focusedSearchAction + '"]',
+          );
+          if (search) {
+            search.focus();
+            search.setSelectionRange(search.value.length, search.value.length);
+          }
+        });
+      }
     }
   });
 }());

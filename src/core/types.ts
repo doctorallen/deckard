@@ -13,6 +13,27 @@ export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
 
+export type DashboardMode = 'tasks' | 'notes' | 'browse';
+
+export type DashboardSearchField =
+  | 'tasks'
+  | 'notes'
+  | 'tags'
+  | 'taskTags'
+  | 'noteTags';
+
+export interface DashboardViewState {
+  mode: DashboardMode;
+  taskFilter: TaskFilter;
+  selectedTaskTags: string[];
+  selectedNoteTags: string[];
+  taskSearchQuery: string;
+  noteSearchQuery: string;
+  tagSearchQuery: string;
+  taskTagQuery: string;
+  noteTagQuery: string;
+}
+
 export type TagTitleDisplayMode = 'inline' | 'separate';
 
 export type RenderMode = 'markdown' | 'html';
@@ -161,7 +182,10 @@ export interface PersistedPreferences {
   taskOrder: string[];
   taskSortMode: TaskSortMode;
   dashboardTaskColumns: DashboardColumnCount;
+  dashboardNoteColumns: DashboardColumnCount;
   dashboardTagColumns: DashboardColumnCount;
+  dashboardNoteSortMode: TagOverviewSortMode;
+  dashboardViewState: DashboardViewState;
   renderMode: RenderMode;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
@@ -196,23 +220,36 @@ export interface DashboardTask {
   fileName: string;
 }
 
+export interface DashboardNote extends TagOverviewCard {
+  fileName: string;
+}
+
 export interface DashboardSnapshot {
   sections: Section[];
   tags: TagInfo[];
   entities: Entity[];
+  notes: DashboardNote[];
   tasks: DashboardTask[];
   totalSectionCount: number;
+  totalNoteCount: number;
   totalTaskCount: number;
   activeTaskCount: number;
   taskFilter: TaskFilter;
   taskSortMode: TaskSortMode;
   taskColumns: DashboardColumnCount;
+  noteColumns: DashboardColumnCount;
   tagColumns: DashboardColumnCount;
+  noteSortMode: TagOverviewSortMode;
+  renderMode: RenderMode;
+  tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   availableTaskTags: TagInfo[];
+  availableNoteTags: TagInfo[];
   selectedTaskTags: string[];
+  selectedNoteTags: string[];
   selectedTag?: string;
+  viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
 }
 
@@ -398,6 +435,11 @@ export interface SetTaskTagsMessage {
   tagKeys: string[];
 }
 
+export interface SetNoteTagsMessage {
+  type: 'setNoteTags';
+  tagKeys: string[];
+}
+
 export interface ReorderTasksMessage {
   type: 'reorderTasks';
   taskIds: string[];
@@ -408,9 +450,25 @@ export interface SetTaskSortMessage {
   mode: TaskSortMode;
 }
 
+export interface SetNoteSortMessage {
+  type: 'setNoteSort';
+  mode: TagOverviewSortMode;
+}
+
+export interface SetDashboardModeMessage {
+  type: 'setDashboardMode';
+  mode: DashboardMode;
+}
+
+export interface SetDashboardSearchMessage {
+  type: 'setDashboardSearch';
+  field: DashboardSearchField;
+  query: string;
+}
+
 export interface SetDashboardColumnsMessage {
   type: 'setDashboardColumns';
-  section: 'tasks' | 'tags';
+  section: 'tasks' | 'notes' | 'tags';
   columns: DashboardColumnCount;
 }
 
@@ -502,7 +560,12 @@ export type DashboardMessage =
   | SetEntitySortMessage
   | SetTaskFilterMessage
   | SetTaskTagsMessage
+  | SetNoteTagsMessage
   | SetTaskSortMessage
+  | SetRenderModeMessage
+  | SetNoteSortMessage
+  | SetDashboardModeMessage
+  | SetDashboardSearchMessage
   | SetDashboardColumnsMessage
   | ReorderTasksMessage
   | ReorderTagsMessage

@@ -54,6 +54,10 @@ suite('Webview contracts', () => {
       { type: 'setTaskTags', tagKeys: ['work'] },
     );
     assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'setNoteTags', tagKeys: ['work'] }),
+      { type: 'setNoteTags', tagKeys: ['work'] },
+    );
+    assert.deepStrictEqual(
       parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
       { type: 'renameTag', tagKey: '#project/atlas' },
     );
@@ -91,6 +95,18 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'setTaskSort', mode: 'updated' }),
       { type: 'setTaskSort', mode: 'updated' },
     );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'setNoteSort', mode: 'access' }),
+      { type: 'setNoteSort', mode: 'access' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'setRenderMode', mode: 'html' }),
+      { type: 'setRenderMode', mode: 'html' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'setRenderMode', mode: 'source' }),
+      undefined,
+    );
     assert.strictEqual(
       parseDashboardMessage({ type: 'setTaskSort', mode: 'random' }),
       undefined,
@@ -114,6 +130,33 @@ suite('Webview contracts', () => {
         columns: 5,
       }),
       undefined,
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'setDashboardColumns',
+        section: 'notes',
+        columns: 2,
+      }),
+      {
+        type: 'setDashboardColumns',
+        section: 'notes',
+        columns: 2,
+      },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'setDashboardMode',
+        mode: 'notes',
+      }),
+      { type: 'setDashboardMode', mode: 'notes' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'setDashboardSearch',
+        field: 'notes',
+        query: 'atlas',
+      }),
+      { type: 'setDashboardSearch', field: 'notes', query: 'atlas' },
     );
     assert.deepStrictEqual(
       parseDashboardMessage({
@@ -365,6 +408,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-tasks"'), true);
     assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
     assert.strictEqual(html.includes('class="task-search" type="search"'), true);
+    assert.strictEqual(html.includes('class="note-search" type="search"'), true);
     assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
@@ -375,8 +419,15 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
     assert.strictEqual(html.includes('class="dashboard-view-options"'), true);
+    assert.strictEqual(
+      html.includes(
+        '.dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border);',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes('data-action="set-columns"'), true);
     assert.strictEqual(html.includes('Task columns'), true);
+    assert.strictEqual(html.includes('Note columns'), true);
     assert.strictEqual(html.includes('Tag columns'), true);
     assert.strictEqual(html.includes('saveDashboardViewState()'), true);
     assert.strictEqual(html.includes('taskColumns: taskColumns'), true);
@@ -391,8 +442,8 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('style="grid-template-columns: repeat('), true);
     assert.strictEqual(html.includes('Search:<input class="task-search"'), false);
-    assert.strictEqual(html.includes('.catalog-search, .task-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
-    assert.strictEqual(html.includes('.tag-list, .task-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
+    assert.strictEqual(html.includes('.catalog-search, .task-search, .note-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
+    assert.strictEqual(html.includes('.tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
     assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
     assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
     assert.strictEqual(html.includes('function formatTagDisplay(tag)'), true);
@@ -445,7 +496,7 @@ suite('Webview contracts', () => {
       html.includes('input.tag-filter-search { padding: 5px 7px 5px 29px; }'),
       true,
     );
-    assert.strictEqual(html.includes('class="tag-open"'), false);
+    assert.strictEqual(html.includes('class="tag-open"'), true);
     assert.strictEqual(
       html.includes("const entityRow = event.target.closest('.entity-row');"),
       true,
@@ -465,7 +516,46 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('role="tablist" aria-label="Dashboard mode"'), true);
     assert.strictEqual(html.includes('role="tab" data-action="set-dashboard-mode"'), true);
     assert.strictEqual(html.includes('aria-controls="tasks-panel"'), true);
+    assert.strictEqual(html.includes('aria-controls="notes-panel"'), true);
     assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
+    assert.strictEqual(html.includes('id="notes-panel"'), true);
+    assert.strictEqual(html.includes('data-action="set-note-sort"'), true);
+    assert.strictEqual(html.includes('data-action="set-note-tag"'), true);
+    assert.strictEqual(html.includes('data-action="filter-note-tags"'), true);
+    assert.strictEqual(html.includes('data-action="search-notes"'), true);
+    assert.strictEqual(html.includes('const noteSearchDebounceDelay = 350;'), true);
+    assert.strictEqual(html.includes('const tagSearchDebounceDelay = 180;'), true);
+    assert.strictEqual(html.includes('clearTimeout(noteSearchTimer)'), true);
+    assert.strictEqual(html.includes('noteSearchTimer = setTimeout'), true);
+    assert.strictEqual(html.includes('pendingNoteSearchQuery'), true);
+    assert.strictEqual(html.includes('function scheduleTagFilterSearch(kind)'), true);
+    assert.strictEqual(html.includes('taskTagSearchTimer'), true);
+    assert.strictEqual(html.includes('noteTagSearchTimer'), true);
+    assert.strictEqual(html.includes('pendingTaskTagQuery'), true);
+    assert.strictEqual(html.includes('pendingNoteTagQuery'), true);
+    assert.strictEqual(
+      html.includes("focusedSearchAction === 'search-notes'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("focusedSearchAction === 'filter-task-tags'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("focusedSearchAction === 'filter-note-tags'"),
+      true,
+    );
+    assert.strictEqual(html.includes('class="card note-row"'), true);
+    assert.strictEqual(html.includes('class="markdown"'), true);
+    assert.strictEqual(html.includes('class="rendered"'), true);
+    assert.strictEqual(html.includes('data-action="set-mode"'), true);
+    assert.strictEqual(html.includes('aria-label="Source view"'), true);
+    assert.strictEqual(html.includes('aria-label="Rendered view"'), true);
+    assert.strictEqual(html.includes('Content format'), true);
+    assert.strictEqual(html.includes('data-mode="markdown"'), true);
+    assert.strictEqual(html.includes('data-mode="html"'), true);
+    assert.strictEqual(html.includes("state.renderMode === 'html'"), true);
+    assert.strictEqual(html.includes("'<div class=\"rendered\">'"), true);
     assert.strictEqual(html.includes('role="tabpanel"'), true);
     assert.strictEqual(html.includes("vscode.getState()"), true);
     assert.strictEqual(
@@ -473,13 +563,19 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('if (taskColumns === undefined) taskColumns = incomingState.taskColumns ?? 1;'),
+      html.includes('taskColumns = incomingState.taskColumns ?? taskColumns ?? 1;'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('noteColumns = incomingState.noteColumns ?? noteColumns ?? 1;'),
       true,
     );
     assert.strictEqual(
       html.includes('incomingState.tagColumns = tagColumns;'),
       true,
     );
+    assert.strictEqual(html.includes("type: 'setDashboardMode'"), true);
+    assert.strictEqual(html.includes("type: 'setDashboardSearch'"), true);
     assert.strictEqual(html.includes('bindDashboardColumnControls()'), true);
     assert.strictEqual(
       html.includes("event.stopPropagation();"),
@@ -505,7 +601,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
-        '.note:hover { border-color: var(--amber); }',
+        '.note:hover, .note-row:hover { border-color: var(--amber); }',
       ),
       true,
     );
@@ -517,7 +613,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
-        '.card .tag-open { color: var(--text); }',
+        '.card .tag-open, .note-row .tag-open { color: var(--text); }',
       ),
       true,
     );
@@ -533,7 +629,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('oblivion').includes(
-        '.card .tag-open { color: var(--text); }',
+        '.card .tag-open, .note-row .tag-open { color: var(--text); }',
       ),
       true,
     );
@@ -642,7 +738,13 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.task-row .task-title, .task .task-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }',
+        '.task-row .task-title, .task .task-title, .note-row .card-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source, .note-row .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; }',
       ),
       true,
     );
@@ -672,7 +774,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.overview-search, .catalog-search, .task-search { border: 2px solid var(--cyan-bright); border-radius: 0 15px 15px 0; background: var(--panel); box-shadow: inset 0 0 0 1px var(--cyan-bright); color: var(--text); }',
+        '.overview-search, .catalog-search, .task-search, .note-search { border: 2px solid var(--cyan-bright); border-radius: 0 15px 15px 0; background: var(--panel); box-shadow: inset 0 0 0 1px var(--cyan-bright); color: var(--text); }',
       ),
       true,
     );
@@ -1374,7 +1476,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
     assert.strictEqual(html.includes('Saved tag views'), true);
-    assert.strictEqual(html.includes('Tasks/Tags tabs'), true);
+    assert.strictEqual(html.includes('Tasks/Notes/Tags tabs'), true);
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);

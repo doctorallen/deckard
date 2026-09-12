@@ -10,6 +10,7 @@ import {
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
   rankRelatedNotes,
+  sortDashboardNotes,
   sortEntities,
   sortRelatedNotes,
   sortTasks,
@@ -41,7 +42,20 @@ const defaultPreferences: PersistedPreferences = {
   taskOrder: [],
   taskSortMode: 'rank',
   dashboardTaskColumns: 1,
+  dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
+  dashboardNoteSortMode: 'alphabetical',
+  dashboardViewState: {
+    mode: 'tasks',
+    taskFilter: 'active',
+    selectedTaskTags: [],
+    selectedNoteTags: [],
+    taskSearchQuery: '',
+    noteSearchQuery: '',
+    tagSearchQuery: '',
+    taskTagQuery: '',
+    noteTagQuery: '',
+  },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -218,6 +232,85 @@ suite('Dashboard state', () => {
     assert.strictEqual(matchesTaskFilter(tasks[1], 'active'), false);
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['#work']), true);
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
+  });
+
+  test('filters and sorts dashboard notes with their own tag state', () => {
+    const first = parseMarkdown(
+      'notes/first.md',
+      '# First note #work\n\nFirst body',
+      { createdAt: 10, updatedAt: 20 },
+    );
+    const second = parseMarkdown(
+      'notes/second.md',
+      '# Second note #home\n\nSecond body',
+      { createdAt: 30, updatedAt: 40 },
+    );
+    const index = createFileIndex([first, second]);
+    const preferences = {
+      ...defaultPreferences,
+      dashboardNoteColumns: 3 as const,
+      dashboardNoteSortMode: 'updated' as const,
+      sectionAccessCounts: { [first.sections[0].id]: 2 },
+    };
+    const snapshot = createDashboardSnapshot(
+      index,
+      preferences,
+      'active',
+      [],
+      undefined,
+      ['#work'],
+    );
+
+    assert.strictEqual(snapshot.totalNoteCount, 2);
+    assert.strictEqual(snapshot.noteColumns, 3);
+    assert.strictEqual(snapshot.renderMode, 'markdown');
+    assert.strictEqual(snapshot.tagTitleDisplayMode, 'inline');
+    assert.deepStrictEqual(
+      snapshot.notes.map((note) => note.heading),
+      ['First note #work'],
+    );
+    assert.deepStrictEqual(snapshot.selectedNoteTags, ['#work']);
+    assert.strictEqual(snapshot.availableNoteTags.length, 2);
+    assert.deepStrictEqual(
+      sortDashboardNotes(
+        [
+          ...[first.sections[0], second.sections[0]].map((section) => ({
+            id: section.id,
+            filePath: section.filePath,
+            heading: section.heading,
+            titleTags: [],
+            tags: [],
+            rawContent: '',
+            renderedHtml: '',
+            startLine: section.startLine,
+            createdAt: section.createdAt,
+            updatedAt: section.updatedAt,
+            accessCount: 0,
+            fileName: section.filePath,
+          })),
+        ],
+        'updated',
+      ).map((note) => note.heading),
+      ['Second note #home', 'First note #work'],
+    );
+
+    const separateTitleSnapshot = createDashboardSnapshot(
+      index,
+      { ...preferences, renderMode: 'html' },
+      'active',
+      [],
+      undefined,
+      [],
+      'separate',
+    );
+    assert.strictEqual(separateTitleSnapshot.renderMode, 'html');
+    assert.strictEqual(separateTitleSnapshot.tagTitleDisplayMode, 'separate');
+    const separateTitleNote = separateTitleSnapshot.notes.find(
+      (note) => note.filePath === first.filePath,
+    );
+    assert.ok(separateTitleNote);
+    assert.strictEqual(separateTitleNote.heading, 'First note');
+    assert.strictEqual(separateTitleNote.titleTags[0].label, '#work');
   });
 
   test('keeps lightweight tags alongside canonical entities in the dashboard', () => {
