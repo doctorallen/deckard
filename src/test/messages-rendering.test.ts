@@ -1304,6 +1304,9 @@ suite('Webview contracts', () => {
     );
 
     assertWebviewScriptParses(html);
+    assert.strictEqual(html.includes('<p class="eyebrow">DECKARD</p>'), true);
+    assert.strictEqual(html.includes('<span class="version">v1.0.0</span>'), true);
+    assert.strictEqual(html.includes('DECKARD / RELATED NOTES'), false);
     assert.strictEqual(html.includes('class="reason"'), false);
     assert.strictEqual(html.includes('note.reasons'), true);
     assert.strictEqual(html.includes('const relevanceReasons = note.reasons'), true);

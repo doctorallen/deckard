@@ -86,7 +86,7 @@
       "deckard": [
         {
           "id": "deckard.relatedNotes",
-          "name": "Related Notes",
+          "name": "Deckard",
           "icon": "resources/deckard.svg",
           "type": "webview"
         }
