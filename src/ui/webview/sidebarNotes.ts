@@ -52,7 +52,6 @@ export class SidebarNotesView
     this.disposables.push(this.output);
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
-    this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => {
         this.suppressAutomaticEntrySelection = false;
