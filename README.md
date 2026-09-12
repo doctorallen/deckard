@@ -176,7 +176,8 @@ Each overview collects the matching sections from your notes. You can:
 - see the active tag intersection, each removable tag condition, and the matching note and task totals at a glance;
 - sort entries alphabetically, by creation date, by update date, or by most accessed;
 - search Notes and Tasks independently within the active tag intersection;
-- use **Save filter** beside the Tag Overview label to name a combined view, then open the **View options** gear to switch between the original Markdown source and a rendered view or choose **Tabs** or **Side by side**; and
+- use **Save filter** beside the Tag Overview label to name a combined view, then open the **View options** gear to switch between the original Markdown source and a rendered view or choose **Tabs** or **Side by side**;
+- see the matching saved view name above the entity title whenever the active tag intersection corresponds to a saved view; and
 - filter overview tasks with the grouped **All**, **Open**, and **Done** controls (which default to **Open**), then use a checkbox to safely update the original Markdown task; and
 - switch **Associated tags** between a namespace-collapsible **Tree** view and a layered **Graph** view on lightweight tag overviews; all remain clickable, show their connection percentage, and repeated source references show a compact count; and
 - follow an association into the target overview with the current tag applied as a second filter, so only the exact sources that supplied the association are shown; active relationship filters are folded into the page title as **[filter tag] AND [focus tag]**; remove individual tags or reopen the focus tag to return to the full overview; and

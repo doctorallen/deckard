@@ -1074,6 +1074,9 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('class="overview-filter-tag"'), true);
     assert.strictEqual(html.includes('class="overview-title-joiner"> AND </span>'), true);
+    assert.strictEqual(html.includes('class="saved-view-name"'), true);
+    assert.strictEqual(html.includes('state.savedViewName'), true);
+    assert.strictEqual(html.includes('escapeHtml(state.savedViewName)'), true);
     assert.strictEqual(html.includes("state.tag.label + ' Overview'"), false);
     assert.strictEqual(html.includes('<h1 aria-label="'), true);
     assert.strictEqual(html.includes('escapeHtml(titleAriaLabel)'), true);

@@ -333,6 +333,10 @@ export function createTagOverviewSnapshot(
     filterTagKey,
     filterTagKeys,
   );
+  const savedViewName = findMatchingSavedViewName(preferences.savedFilters, [
+    tag.key,
+    ...effectiveFilterTags.map((filterTag) => filterTag.key),
+  ]);
   const effectiveFilterTagKey = effectiveFilterTags[0]?.key;
   const association =
     effectiveFilterTags.length !== 1 || effectiveFilterTagKey === undefined
@@ -418,6 +422,7 @@ export function createTagOverviewSnapshot(
     entity: index.entities.get(tagKey),
     filterTag: effectiveFilterTags[0],
     filterTags: effectiveFilterTags,
+    savedViewName,
     associatedTags: enableHeadingTagRelationships
       ? cloneTagAssociations(index.tagAssociations?.get(tagKey) ?? [])
       : [],
@@ -464,6 +469,22 @@ function getOverviewFilterTags(
         (seen.add(tag.key), true),
     )
     .map((tag) => ({ key: tag.key, label: tag.label }));
+}
+
+function findMatchingSavedViewName(
+  savedFilters: PersistedPreferences['savedFilters'],
+  activeTagKeys: readonly string[],
+): string | undefined {
+  const normalizedActiveTagKeys = [...new Set(activeTagKeys)].sort();
+  return savedFilters.find((filter) => {
+    const normalizedFilterTagKeys = [...new Set(filter.tagKeys)].sort();
+    return (
+      normalizedFilterTagKeys.length === normalizedActiveTagKeys.length &&
+      normalizedFilterTagKeys.every(
+        (tagKey, index) => tagKey === normalizedActiveTagKeys[index],
+      )
+    );
+  })?.name;
 }
 
 function cloneTagAssociations(

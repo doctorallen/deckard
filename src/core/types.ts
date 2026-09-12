@@ -222,6 +222,7 @@ export interface TagOverviewSnapshot {
   /** @deprecated Use filterTags to support every active overview filter. */
   filterTag?: TagReference;
   filterTags: TagReference[];
+  savedViewName?: string;
   associatedTags: TagAssociation[];
   /** Tags independently associated with every active tag in a filtered overview. */
   sharedAssociatedTags: TagAssociation[];

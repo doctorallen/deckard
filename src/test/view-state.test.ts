@@ -291,6 +291,35 @@ suite('Dashboard state', () => {
     ]);
   });
 
+  test('names a tag overview when its active tags match a saved view', () => {
+    const parsed = createFile(
+      'notes/saved-view.md',
+      '# Atlas #project/atlas #follow-up',
+    );
+    const index = createFileIndex([parsed]);
+    const snapshot = createTagOverviewSnapshot(
+      index,
+      {
+        ...defaultPreferences,
+        savedFilters: [
+          {
+            id: 'atlas-follow-up',
+            name: 'Atlas follow-up',
+            tagKeys: ['#follow-up', '#project/atlas'],
+          },
+        ],
+      },
+      '#project/atlas',
+      'active',
+      'inline',
+      true,
+      undefined,
+      ['#follow-up'],
+    );
+
+    assert.strictEqual(snapshot?.savedViewName, 'Atlas follow-up');
+  });
+
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
     const snapshot = createDashboardSnapshot(
