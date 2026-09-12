@@ -1583,6 +1583,7 @@ function createDashboardTask(
   return {
     task,
     renderedTitle: renderMarkdownInline(task.title),
+    titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
     sectionHeading: task.sectionId
       ? sections.get(task.sectionId)?.heading
       : undefined,

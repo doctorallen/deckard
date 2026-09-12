@@ -1,3 +1,31 @@
+import * as vscode from 'vscode';
+
+export function getFavoriteHeartAssetUris(
+  webview: Pick<vscode.Webview, 'asWebviewUri'>,
+  extensionUri: vscode.Uri,
+): { outline: string; filled: string } {
+  return {
+    outline: webview
+      .asWebviewUri(
+        vscode.Uri.joinPath(
+          extensionUri,
+          'resources',
+          'favorite-heart-outline.svg',
+        ),
+      )
+      .toString(),
+    filled: webview
+      .asWebviewUri(
+        vscode.Uri.joinPath(
+          extensionUri,
+          'resources',
+          'favorite-heart-filled.svg',
+        ),
+      )
+      .toString(),
+  };
+}
+
 export const settingsIcon =
   '<svg class="toolbar-icon settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
   '<path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"/>' +

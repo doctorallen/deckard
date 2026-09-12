@@ -13,6 +13,12 @@ import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getTagOverviewHtml } from '../ui/webview/tagOverviewHtml';
 import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
 
+function assertWebviewScriptParses(html: string): void {
+  const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(() => new Function(script));
+}
+
 suite('Webview contracts', () => {
   test('accepts valid dashboard messages and rejects malformed payloads', () => {
     assert.deepStrictEqual(
@@ -264,8 +270,24 @@ suite('Webview contracts', () => {
   });
 
   test('renders accessible Tasks and Tags dashboard modes with focused controls', () => {
-    const html = getDashboardHtml({ cspSource: 'vscode-webview://deckard' });
+    const html = getDashboardHtml(
+      {
+        cspSource: 'vscode-webview://deckard',
+        asWebviewUri: (resource) => resource,
+      },
+      vscode.Uri.file('/deckard'),
+    );
 
+    assert.strictEqual(html.includes('img-src vscode-webview://deckard;'), true);
+    assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
+    assert.strictEqual(html.includes('favorite-heart-filled.svg'), true);
+    assert.strictEqual(html.includes('class="favorite-heart"'), true);
+    assert.strictEqual(
+      html.includes(
+        'input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes('padding: 10px; cursor: pointer;'), true);
     assert.strictEqual(
       html.includes('.task-row:hover { border-color: var(--amber-bright); }'),
@@ -292,6 +314,37 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
+    assert.strictEqual(
+      html.includes('function renderTaskTitle(renderedTitle, references)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('function renderTagLabel(label)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.tag-namespace { opacity: .62; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="tag-namespace"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="tag-value"'),
+      true,
+    );
+    assertWebviewScriptParses(html);
+    assert.strictEqual(
+      html.includes('renderTaskTitle(item.renderedTitle, item.titleTags)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }',
+      ),
+      true,
+    );
     assert.strictEqual(html.includes("const taskCounts = {"), true);
     assert.strictEqual(
       html.includes(
@@ -388,6 +441,10 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    assert.strictEqual(
+      html.includes('input.tag-filter-search { padding: 5px 7px 5px 29px; }'),
+      true,
+    );
     assert.strictEqual(html.includes('class="tag-open"'), false);
     assert.strictEqual(
       html.includes("const entityRow = event.target.closest('.entity-row');"),
@@ -449,6 +506,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
         '.note:hover { border-color: var(--amber); }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('replicant').includes(
+        '.inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }',
       ),
       true,
     );
@@ -531,7 +594,13 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.inline-tag { color: #050505; }',
+        '.active-file .tag-list button { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        '.inline-tag, .note-title .inline-tag, .task-title .inline-tag { color: #050505; }',
       ),
       true,
     );
@@ -592,6 +661,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.tag-filter summary, .tag-filter-search { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; } .tag-filter-search::placeholder { color: #050505; opacity: 1; } .tag-filter summary .control-icon-svg, .tag-filter-search-control .control-icon-svg, .tag-filter-clear { color: #050505; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      getDeckardThemeCss('lcars').includes(
+        'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover, button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
       ),
       true,
     );
@@ -728,9 +803,13 @@ suite('Webview contracts', () => {
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {
-    const html = getDashboardHtml({
-      cspSource: 'vscode-webview://deckard',
-    });
+    const html = getDashboardHtml(
+      {
+        cspSource: 'vscode-webview://deckard',
+        asWebviewUri: (resource) => resource,
+      },
+      vscode.Uri.file('/deckard'),
+    );
 
     assert.strictEqual(
       html.includes(
@@ -745,6 +824,7 @@ suite('Webview contracts', () => {
       cspSource: 'vscode-webview://deckard',
     });
 
+    assertWebviewScriptParses(html);
     assert.strictEqual(
       html.includes('grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);'),
       true,
@@ -784,10 +864,43 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      html.includes(
+        '.inline-tag { min-height: 24px; margin-left: 3px; padding: 2px 4px; font-size: .78em; vertical-align: 1px; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
       html.includes("state.tagTitleDisplayMode === 'separate'"),
       true,
     );
-    assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
+    assert.strictEqual(
+      html.includes('function renderInlineTitle(title, tags, appendMissing)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('function renderTagLabel(label, svg)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<tspan class="tag-namespace">'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<span class="tag-namespace">'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<span class="tag-value">'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('function renderTaskTitle(renderedTitle, references)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('renderTaskTitle(item.renderedTitle, item.titleTags)'),
+      true,
+    );
     assert.strictEqual(html.includes('class="tag-open inline-tag"'), true);
     assert.strictEqual(
       html.includes('.overview-tabs button.active { border-bottom-color:'),
@@ -880,6 +993,18 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
+      html.includes(
+        'header > .toolbar { width: 100%; padding-right: 0; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        'input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
       html.includes('<summary aria-label="View options" title="View options">'),
       true,
     );
@@ -923,6 +1048,10 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('const filterTags = state.filterTags'), true);
     assert.strictEqual(
       html.includes('function renderOverviewTagLink(tag, text)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('renderTagLabel(tag.label)'),
       true,
     );
     assert.strictEqual(
@@ -1003,6 +1132,7 @@ suite('Webview contracts', () => {
       '1.0.0',
     );
 
+    assertWebviewScriptParses(html);
     assert.strictEqual(html.includes('class="reason"'), false);
     assert.strictEqual(html.includes('note.reasons'), true);
     assert.strictEqual(html.includes('const relevanceReasons = note.reasons'), true);
@@ -1016,6 +1146,57 @@ suite('Webview contracts', () => {
       html.includes('.note:hover, .note:focus-within { z-index: 20;'),
       true,
     );
+    assert.strictEqual(
+      html.includes('.note-title .inline-tag { color: var(--text); }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.active-filter-tag { color: var(--text); font-weight: 700; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.active-file .tag-list button { color: var(--text); }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('<span class="section-label">Related notes</span>'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('function renderTagLabel(label)'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.tag-namespace { opacity: .62; }'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="tag-namespace"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('class="tag-value"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.inline-tag { display: inline-block; margin-left: 3px; padding: 1px 4px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        'note.headingPath.map(function (part) { return escapeHtml(part); }).join(\'<span class="heading-path-joiner"> &gt; </span>\')',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes("note.dailyDate ? 'Daily note '"), false);
     assert.strictEqual(html.includes('set-related-notes-sort'), true);
     assert.strictEqual(html.includes('related-notes-sort-control'), true);
     assert.strictEqual(html.includes('related-notes-sort-icon'), true);
@@ -1194,17 +1375,14 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);
+    assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
+    assert.strictEqual(html.includes('favorite-heart-filled.svg'), true);
     assert.strictEqual(
       html.includes('When no Markdown editor is active'),
       false,
     );
     assert.strictEqual(html.includes('M2 2h5v5H2zm7 0h5v3H9'), true);
-    assert.strictEqual(
-      html.includes(
-        'M2 1H6V3H10V1H14V3H16V8H14V10H12V12H10V14H6V12H4V10H2V8H0V3H2Z',
-      ),
-      true,
-    );
+    assert.strictEqual(html.includes('class="favorite-heart filled"'), true);
   });
 
   test('accepts only valid sidebar navigation messages', () => {

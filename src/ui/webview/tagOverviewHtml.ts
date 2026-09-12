@@ -87,6 +87,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 650; }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
 .save-filter { border-color: var(--amber); color: var(--amber); }
 button, select, input[type="search"] { min-height: 30px; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: inherit; }
+input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 button { cursor: pointer; }
 button:hover, button.active, select:hover, input[type="search"]:focus { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, select:focus-visible, input[type="search"]:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
@@ -126,7 +127,9 @@ button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
 .filter-count { color: var(--muted); font-size: 10px; }
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
-.inline-tag { min-height: 24px; margin-left: 6px; padding: 2px 6px; font-size: .78em; vertical-align: 1px; }
+.inline-tag { min-height: 24px; margin-left: 3px; padding: 2px 4px; font-size: .78em; vertical-align: 1px; }
+.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
+.tag-namespace { opacity: .62; }
 .relationship-workspace { margin-top: 16px; overflow: hidden; border: 2px solid var(--line); background: var(--panel-deep); }
 .relationship-workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px; border-bottom: 2px solid var(--line); }
 .relationship-workspace-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -236,7 +239,7 @@ button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .empty { border: 2px dashed var(--line); padding: 20px; color: var(--muted); background: var(--panel-deep); margin-top: 20px; }
 @media (max-width: 900px) { .relationship-tree-columns { grid-template-columns: 1fr; } }
-@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; } .overview-split { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; padding-right: 0; } .overview-split { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
@@ -257,6 +260,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Escape headings and source paths before inserting snapshot data as HTML. */
   function escapeHtml(value) {
     return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function renderTagLabel(label, svg) {
+    const value = String(label);
+    const match = value.match(/^([#@][^/]+\\/)(.*)$/);
+    if (svg) {
+      return match
+        ? '<tspan class="tag-namespace">' + escapeHtml(match[1]) + '</tspan><tspan class="tag-value">' + escapeHtml(match[2]) + '</tspan>'
+        : '<tspan class="tag-value">' + escapeHtml(value) + '</tspan>';
+    }
+    return match
+      ? '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
+      : '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
   }
 
   /** Use familiar list and checkbox icons without losing accessible labels. */
@@ -286,7 +302,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
 
   /** Render a title or metadata tag as a direct overview link. */
   function renderOverviewTagLink(tag, text) {
-    return '<button class="overview-tag-link" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(text) + '</button>';
+    return '<button class="overview-tag-link" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(text) + '</button>';
   }
 
   /** Render a combined-overview tag with a control that removes only that tag. */
@@ -321,7 +337,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Replace source tag tokens with buttons while preserving their position. */
-  function renderInlineTitle(title, tags) {
+  function renderInlineTitle(title, tags, appendMissing) {
     const references = tags || [];
     const labels = references.map(function (tag) { return tag.label; }).filter(Boolean).sort(function (left, right) { return right.length - left.length; });
     if (!labels.length) return escapeHtml(title);
@@ -342,18 +358,40 @@ ${getDeckardThemeCss(getDeckardTheme())}
         matchedKeys.add(tag.key);
       }
       rendered += tag
-        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>'
+        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>'
         : escapeHtml(match);
       offset = matchOffset + match.length;
       return match;
     });
-    const trailingTags = references
+    const trailingTags = appendMissing === false ? '' : references
       .filter(function (tag) { return !matchedKeys.has(tag.key); })
       .map(function (tag) {
-        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
+        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
       })
       .join('');
     return rendered + escapeHtml(title.slice(offset)) + trailingTags;
+  }
+
+  /** Decorate task tag text without replacing the task's rendered Markdown. */
+  function renderTaskTitle(renderedTitle, references) {
+    references = references || [];
+    if (!references.length) return renderedTitle;
+
+    const template = document.createElement('template');
+    template.innerHTML = renderedTitle;
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach(function (node) {
+      if (node.parentElement && node.parentElement.closest('a, button')) return;
+      const source = node.nodeValue || '';
+      const replacementHtml = renderInlineTitle(source, references, false);
+      if (replacementHtml === escapeHtml(source)) return;
+      const replacement = document.createElement('template');
+      replacement.innerHTML = replacementHtml;
+      node.parentNode.replaceChild(replacement.content, node);
+    });
+    return template.innerHTML;
   }
 
   /** Render one relationship as a keyboard-accessible tag navigation control. */
@@ -375,7 +413,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
     const title = detail ? ' title="' + escapeHtml(detail) + '"' : '';
-    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + title + ' aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span>' + scoreHtml + countHtml + '</button>';
+    return '<button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '"' + filterAttribute + title + ' aria-label="' + escapeHtml(label + tag.label) + '">' + renderTagLabel(tag.label) + scoreHtml + countHtml + '</button>';
   }
 
   /** Group relationship nodes by namespace so large trees remain scannable. */
@@ -453,7 +491,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const edgeY = direction === 'associated' ? y : centerY;
     const edge = '<line class="relationship-edge" x1="' + rootEdgeX + '" y1="' + rootEdgeY + '" x2="' + edgeX + '" y2="' + edgeY + '"></line>';
     const count = Number(item.count) > 1 ? ' x' + item.count : '';
-    const label = shortenGraphLabel(node.label) + count;
+    const label = shortenGraphLabel(node.label);
     const ariaLabel = (direction === 'parent'
       ? 'Open parent tag '
       : direction === 'child'
@@ -462,7 +500,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const filterAttribute = filterTagKey
       ? ' data-filter-tag-key="' + escapeHtml(filterTagKey) + '"'
       : '';
-    const graphNode = '<g class="relationship-node" data-action="open-tag" data-tag-key="' + escapeHtml(node.key) + '"' + filterAttribute + ' role="button" tabindex="0" aria-label="' + escapeHtml(ariaLabel) + '"><title>' + escapeHtml(ariaLabel) + '</title><rect x="' + x + '" y="' + y + '" width="' + nodeWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + centerX + '" y="' + (centerY + 4) + '" text-anchor="middle">' + escapeHtml(label) + '</text></g>';
+    const graphNode = '<g class="relationship-node" data-action="open-tag" data-tag-key="' + escapeHtml(node.key) + '"' + filterAttribute + ' role="button" tabindex="0" aria-label="' + escapeHtml(ariaLabel) + '"><title>' + escapeHtml(ariaLabel) + '</title><rect x="' + x + '" y="' + y + '" width="' + nodeWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + centerX + '" y="' + (centerY + 4) + '" text-anchor="middle">' + renderTagLabel(label, true) + escapeHtml(count) + '</text></g>';
     return { edge: edge, node: graphNode };
   }
 
@@ -502,7 +540,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const nodes = siblings.map(function (item) { return item.node; }).join('');
     const rootLeft = rootX - rootWidth / 2;
     const rootTop = rootY - nodeHeight / 2;
-    return '<div class="relationship-graph-shell"><svg class="relationship-graph" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" role="img" aria-label="Tag association graph for ' + escapeHtml(rootTag.label) + '"><text class="relationship-graph-label" x="' + rootX + '" y="24" text-anchor="middle">Focus</text>' + (associations.length ? '<text class="relationship-graph-label" x="' + (siblingStartX + siblingWidth / 2) + '" y="' + (siblingStartY - 28) + '" text-anchor="middle">Associated tags</text>' : '') + edges + '<g class="relationship-root-node" data-tag-key="' + escapeHtml(rootTag.key) + '"><rect x="' + rootLeft + '" y="' + rootTop + '" width="' + rootWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + rootX + '" y="' + (rootY + 4) + '" text-anchor="middle">' + escapeHtml(shortenGraphLabel(rootTag.label)) + '</text></g>' + nodes + '</svg></div><p class="relationship-graph-caption">Select a node to open its overview. Scroll horizontally when there are many associations.</p>';
+    return '<div class="relationship-graph-shell"><svg class="relationship-graph" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" role="img" aria-label="Tag association graph for ' + escapeHtml(rootTag.label) + '"><text class="relationship-graph-label" x="' + rootX + '" y="24" text-anchor="middle">Focus</text>' + (associations.length ? '<text class="relationship-graph-label" x="' + (siblingStartX + siblingWidth / 2) + '" y="' + (siblingStartY - 28) + '" text-anchor="middle">Associated tags</text>' : '') + edges + '<g class="relationship-root-node" data-tag-key="' + escapeHtml(rootTag.key) + '"><rect x="' + rootLeft + '" y="' + rootTop + '" width="' + rootWidth + '" height="' + nodeHeight + '" rx="2"></rect><text x="' + rootX + '" y="' + (rootY + 4) + '" text-anchor="middle">' + renderTagLabel(shortenGraphLabel(rootTag.label), true) + '</text></g>' + nodes + '</svg></div><p class="relationship-graph-caption">Select a node to open its overview. Scroll horizontally when there are many associations.</p>';
   }
 
   /** Render both relationship modes behind a local view switch. */
@@ -594,7 +632,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         ? renderInlineTitle(section.heading, section.titleTags)
         : escapeHtml(section.heading);
       const tags = state.tagTitleDisplayMode === 'separate' ? section.tags.map(function (tag) {
-        return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
+        return '<button class="tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
       }).join('') : '';
       const searchText = [section.heading, section.filePath, section.rawContent].join(' ').toLowerCase();
       return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
@@ -602,7 +640,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const tasks = state.tasks.length ? '<div class="task-summary">' + state.tasks.map(function (item) {
       const task = item.task;
       const searchText = [task.title, item.fileName, item.sectionHeading || ''].join(' ').toLowerCase();
-      return '<article class="task ' + (task.completed ? 'completed' : '') + '" tabindex="0" data-search-entry="tasks" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '"><div><div class="task-title">' + item.renderedTitle + '</div><div class="source">' + escapeHtml(item.fileName) + ' / line ' + task.lineNumber + '</div></div></article>';
+      return '<article class="task ' + (task.completed ? 'completed' : '') + '" tabindex="0" data-search-entry="tasks" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '"><div><div class="task-title">' + (state.tagTitleDisplayMode === 'inline' ? renderTaskTitle(item.renderedTitle, item.titleTags) : item.renderedTitle) + '</div><div class="source">' + escapeHtml(item.fileName) + ' / line ' + task.lineNumber + '</div></div></article>';
     }).join('') + '</div>' : '<div class="empty">No tasks match this filter.</div>';
     const taskCounts = state.taskCounts || {
       all: state.tasks.length,

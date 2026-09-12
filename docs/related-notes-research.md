@@ -239,3 +239,53 @@ exact selected-entry tags
 Every score should remain inspectable. The current debug page is the right
 foundation: add richer evidence and normalization details as the retrieval
 model evolves.
+
+## 5. Sidebar UX research
+
+The sidebar has two different jobs and should make the active job obvious:
+
+```text
+Tag Overview
+  focus tag and active filters
+  associated tags (collapsed by default)
+  matching notes and count
+
+Related Notes
+  current document or selected entry
+  active tags and scope action
+  sort control
+  related entries and count
+```
+
+This hierarchy follows the VS Code sidebar guidance to keep a view focused,
+descriptive, and compact, while using progressive disclosure for secondary
+navigation. It also follows backlinks patterns in Obsidian and linked-reference
+filters in Logseq: context and reversible filters stay beside the result list
+instead of being hidden in a separate settings surface.
+
+The audit identified four high-value safeguards:
+
+1. Name the active mode in both the native view title and the webview header.
+2. Show result counts and one concise matching reason before requiring users to
+   inspect scoring details.
+3. Make combined Tag Overview filters removable from the sidebar and provide a
+   clear-all action.
+4. Keep score explanations available to keyboard users through a focusable
+   control rather than relying only on hover.
+
+These changes preserve Deckard's existing ranking, association disclosure, and
+source navigation while making scope, filtering, and relevance easier to
+recognize in a narrow panel.
+
+**Sources**
+
+- [VS Code Sidebars UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/sidebars)
+- [VS Code Views UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/views)
+- [VS Code Webview UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/webviews)
+- [WAI-ARIA Button Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+- [WAI-ARIA Tooltip Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/)
+- [WCAG 2.2 Target Size Minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+- [Nielsen Norman Group: Recognition Rather Than Recall](https://www.nngroup.com/articles/recognition-and-recall/)
+- [Obsidian Sidebar and Pinned Panes](https://github.com/obsidianmd/obsidian-help/blob/master/en/User%20interface/Sidebar.md)
+- [Obsidian Backlinks](https://github.com/obsidianmd/obsidian-help/blob/master/en/Plugins/Backlinks.md)
+- [Logseq: How to Filter Linked References](https://github.com/logseq/docs/blob/master/pages/How%20to%20filter%20linked%20references.md)

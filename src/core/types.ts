@@ -191,6 +191,7 @@ export interface DashboardSavedFilter {
 export interface DashboardTask {
   task: Task;
   renderedTitle: string;
+  titleTags: TagReference[];
   sectionHeading?: string;
   fileName: string;
 }

@@ -145,7 +145,10 @@ export class DashboardPanel implements vscode.Disposable {
 
   private renderHtml(): void {
     if (this.panel) {
-      this.panel.webview.html = getDashboardHtml(this.panel.webview);
+      this.panel.webview.html = getDashboardHtml(
+        this.panel.webview,
+        this.extensionUri,
+      );
     }
   }
 

@@ -308,6 +308,25 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.tasks[0].renderedTitle.includes(title), false);
   });
 
+  test('projects task title tags alongside rendered Markdown', () => {
+    const title = '[Review the plan](https://example.com/plan) #project/atlas **now**';
+    const snapshot = createDashboardSnapshot(
+      createIndex([createTask(title, false, 1, ['project/atlas'])]),
+      defaultPreferences,
+      'active',
+    );
+
+    assert.deepStrictEqual(snapshot.tasks[0].titleTags, [
+      { key: 'project/atlas', label: '#project/atlas' },
+    ]);
+    assert.ok(
+      snapshot.tasks[0].renderedTitle.includes(
+        '<a href="https://example.com/plan">Review the plan</a>',
+      ),
+    );
+    assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
+  });
+
   test('sorts tasks by rank, creation date, and update date', () => {
     const first = createTask('first', false, 1, [], 10, 30);
     const second = createTask('second', false, 2, [], 30, 10);

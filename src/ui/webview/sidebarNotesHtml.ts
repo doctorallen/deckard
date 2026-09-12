@@ -56,7 +56,7 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.active-filter-tag { color: var(--cyan); font-weight: 700; }
+.active-filter-tag { color: var(--text); font-weight: 700; }
 .active-filter-joiner { color: var(--amber); font-weight: 700; }
 .sidebar-toolbar { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
@@ -78,7 +78,9 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note:hover, .note:focus-within { z-index: 20; border-color: var(--line-strong); }
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
-.inline-tag { display: inline-block; margin-left: 5px; padding: 1px 5px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }
+.inline-tag { display: inline-block; margin-left: 3px; padding: 1px 4px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }
+.note-title .inline-tag { color: var(--text); }
+.tag-namespace { opacity: .62; }
 .relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
 .relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
@@ -91,6 +93,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .source { margin-top: 4px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button { color: var(--text); }
+.active-file .tag-list button { color: var(--text); }
 .sidebar-relationships { margin-top: 8px; overflow: visible; border: 2px solid var(--line); background: var(--panel-deep); }
 .sidebar-relationships-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 8px; border-bottom: 2px solid var(--line); }
 .sidebar-relationships-title { color: var(--amber); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
@@ -164,6 +167,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .sidebar-association-tooltip-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
 .sidebar-association-tooltip-weights strong { color: var(--green); font-weight: 600; }
 .empty { margin-top: 12px; border: 2px dashed var(--line); padding: 14px 10px; color: var(--muted); background: var(--panel-deep); line-height: 1.45; }
+.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 .tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .tag-context-menu[hidden] { display: none; }
 .tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; color: var(--text); text-align: left; text-transform: none; }
@@ -212,8 +216,17 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   /** Render tag links through one delegated action shape for every sidebar state. */
+  function renderTagLabel(label) {
+    const value = String(label);
+    const match = value.match(/^([#@][^/]+\\/)(.*)$/);
+    if (!match) {
+      return '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
+    }
+    return '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>';
+  }
+
   function renderTag(tag, extraClass) {
-    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + escapeHtml(tag.label) + '</button>';
+    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
   }
 
   function renderTags(tags, extraClass) {
@@ -239,7 +252,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const overviewAttribute = overviewTagKey
       ? ' data-overview-tag-key="' + escapeHtml(overviewTagKey) + '"'
       : '';
-    return '<div class="sidebar-associated-tag"><button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + escapeHtml(label + tag.label) + '"><span>' + escapeHtml(tag.label) + '</span><span class="sidebar-association-meta">' + scoreHtml + countHtml + '</span></button><button class="sidebar-add-filter" data-action="add-overview-filter" data-add-tag-key="' + escapeHtml(tag.key) + '"' + overviewAttribute + ' aria-label="Add ' + escapeHtml(tag.label) + ' to this overview filter" title="Add ' + escapeHtml(tag.label) + ' to filter">+</button></div>';
+    return '<div class="sidebar-associated-tag"><button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + escapeHtml(label + tag.label) + '">' + renderTagLabel(tag.label) + '<span class="sidebar-association-meta">' + scoreHtml + countHtml + '</span></button><button class="sidebar-add-filter" data-action="add-overview-filter" data-add-tag-key="' + escapeHtml(tag.key) + '"' + overviewAttribute + ' aria-label="Add ' + escapeHtml(tag.label) + ' to this overview filter" title="Add ' + escapeHtml(tag.label) + ' to filter">+</button></div>';
   }
 
   /** Render every association in one strength-sorted list. */
@@ -351,11 +364,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
         const relevance = state.tagOverview
           ? ''
           : '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
-        const path = note.headingPath && note.headingPath.length
-          ? note.headingPath.join(' > ')
+        const pathHtml = note.headingPath && note.headingPath.length
+          ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
-        const context = (note.dailyDate ? 'Daily note ' + note.dailyDate : '') + (note.dailyDate && path ? ' / ' : '') + path;
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>' + (context ? '<div class="source">' + escapeHtml(context) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
@@ -369,7 +381,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       : '';
     const sectionLabel = state.tagOverview
       ? '<span class="section-label">Current notes</span>'
-      : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Shared tags</span>' : '');
+      : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
     const relationshipTree = state.tagOverview ? renderSidebarRelationships(state) : '';
     document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD / RELATED NOTES</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
   }
