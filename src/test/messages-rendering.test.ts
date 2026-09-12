@@ -69,6 +69,16 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Parent ancestry'), true);
     assert.strictEqual(html.includes('Child heading'), true);
     assert.strictEqual(html.includes('Child item'), true);
+    assert.strictEqual(html.includes('How to read this page'), true);
+    assert.strictEqual(html.includes('Source unit'), true);
+    assert.strictEqual(html.includes('Raw evidence'), true);
+    assert.strictEqual(html.includes('Normalized relevance'), true);
+    assert.strictEqual(html.includes('BM25 lexical similarity'), true);
+    assert.strictEqual(html.includes('Shared source units'), true);
+    assert.strictEqual(html.includes('Tag appearances'), true);
+    assert.strictEqual(html.includes('Raw connection'), true);
+    assert.strictEqual(html.includes('Adjusted connection'), true);
+    assert.strictEqual(html.includes('Text match (BM25)'), true);
     assert.strictEqual(
       html.includes('parent and child headings provide context'),
       true,
