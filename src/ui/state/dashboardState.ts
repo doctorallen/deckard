@@ -19,6 +19,7 @@ import {
   TagReference,
   TagAssociation,
   TaskSortMode,
+  SidebarTag,
   SidebarNotesSnapshot,
   WorkspaceIndex,
   DeckardStatsSnapshot,
@@ -839,6 +840,10 @@ export function createSidebarSnapshot(
           )
           .map(({ tag }) => tag)
       : sortedActiveTags;
+  const weightedActiveTags: SidebarTag[] = activeTags.map((tag) => ({
+    ...tag,
+    weight: activeTagWeights?.get(tag.key) ?? 1,
+  }));
   const notes = rankRelatedNotes(
     index,
     activeFilePath,
@@ -852,7 +857,7 @@ export function createSidebarSnapshot(
   return {
     activeFileName: getFileName(activeFilePath),
     activeEntryTitle,
-    activeTags,
+    activeTags: weightedActiveTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
     tagOverviewFilters: [],

@@ -67,6 +67,11 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 .related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
 .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.active-tag.weighted-tag { display: inline-flex; align-items: center; gap: 5px; }
+.tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .65; }
+.tag-weight-rail-segment.filled { background: var(--cyan); opacity: .95; }
+.active-tag.weighted-tag:hover .tag-weight-rail-segment.filled, .active-tag.weighted-tag:focus-visible .tag-weight-rail-segment.filled { background: currentColor; }
 button { border: 2px solid var(--line); background: var(--panel-deep); color: var(--cyan); padding: 4px 6px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
@@ -225,8 +230,33 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>';
   }
 
+  function getWeightLevel(weight) {
+    const value = Number(weight);
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    if (value >= 0.75) return 3;
+    if (value >= 0.375) return 2;
+    return 1;
+  }
+
+  function renderWeightRail(level, title) {
+    let html = '<span class="tag-weight-rail" title="' + escapeHtml(title) + '" aria-hidden="true">';
+    for (let index = 0; index < 3; index += 1) {
+      html += '<span class="tag-weight-rail-segment' + (index < level ? ' filled' : '') + '"></span>';
+    }
+    return html + '</span>';
+  }
+
   function renderTag(tag, extraClass) {
-    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
+    const isActiveTag = (' ' + (extraClass || '') + ' ').indexOf(' active-tag ') !== -1;
+    const weight = Number(tag.weight);
+    const hasWeight = isActiveTag && Number.isFinite(weight) && weight > 0;
+    const className = (extraClass || '') + (hasWeight ? ' weighted-tag' : '');
+    const weightLabel = hasWeight ? ' (Related Notes weight ' + weight.toFixed(2) + ')' : '';
+    const weightTitle = hasWeight ? ' title="Related Notes weight ' + weight.toFixed(2) + '"' : '';
+    const weightMarker = hasWeight
+      ? renderWeightRail(getWeightLevel(weight), 'Segmented rail, Related Notes weight ' + weight.toFixed(2))
+      : '';
+    return '<button class="' + className + '"' + weightTitle + ' data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview' + weightLabel + '">' + weightMarker + renderTagLabel(tag.label) + '</button>';
   }
 
   function renderTags(tags, extraClass) {
@@ -370,7 +400,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
         return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
       }).join('') + '</div>';
     }
-    const activeTags = state.activeTags.length ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>' : '';
+    const activeTags = state.activeTags.length
+      ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>'
+      : '';
     const context = state.tagOverview
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
         ? [state.tagOverview].concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('<span class="active-filter-joiner"> AND </span>')

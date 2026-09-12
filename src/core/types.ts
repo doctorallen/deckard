@@ -378,7 +378,7 @@ export interface DeckardStatsSnapshot {
 export interface SidebarNotesSnapshot {
   activeFileName?: string;
   activeEntryTitle?: string;
-  activeTags: TagReference[];
+  activeTags: SidebarTag[];
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
@@ -391,6 +391,11 @@ export interface SidebarNotesSnapshot {
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
   state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
+}
+
+export interface SidebarTag extends TagReference {
+  /** Relative contribution used when ranking Related Notes. */
+  weight: number;
 }
 
 export interface OpenSourceMessage {

@@ -1331,6 +1331,18 @@ suite('Webview contracts', () => {
       html.includes('.tag-namespace { opacity: .62; }'),
       true,
     );
+    assert.strictEqual(html.includes('.tag-weight-rail {'), true);
+    assert.strictEqual(
+      html.includes(
+        '.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .65; }',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes('function renderWeightRail(level, title)'), true);
+    assert.strictEqual(html.includes('Related Notes weight'), true);
+    assert.strictEqual(html.includes('tag-weight-pips'), false);
+    assert.strictEqual(html.includes('tag-weight-pip'), false);
+    assert.strictEqual(html.includes('tag-weight-legend'), false);
     assert.strictEqual(
       html.includes('class="tag-namespace"'),
       true,
