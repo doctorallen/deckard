@@ -229,4 +229,31 @@ suite('Extension Test Suite', () => {
     assert.strictEqual(html.split('class="deckard-query-header"').length, 2);
     assert.ok(html.includes('answer'));
   });
+
+  test('answers AI assistants through language model tools', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    assert.deepStrictEqual(
+      (extension.packageJSON.contributes?.languageModelTools ?? []).map(
+        (tool: { name: string }) => tool.name,
+      ),
+      ['deckard_query', 'deckard_list_tags'],
+    );
+    await extension.activate();
+
+    // The tools are called the way an assistant calls them, outside any chat.
+    const result = await vscode.lm.invokeTool('deckard_query', {
+      input: { query: 'task = open' },
+      toolInvocationToken: undefined,
+    });
+    const text = result.content
+      .map((part) =>
+        part instanceof vscode.LanguageModelTextPart ? part.value : '',
+      )
+      .join('');
+    assert.match(text, /^Deckard query: task = open/);
+    assert.match(text, /Found \d+ notes? and \d+ tasks?/);
+  });
 });

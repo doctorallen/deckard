@@ -4,6 +4,15 @@
 
 ### Added
 
+- **AI assistant tools**: Deckard registers two read-only language model
+  tools, so AI assistants in VS Code, such as GitHub Copilot in agent mode,
+  can answer questions about your notes. `deckard_query` runs a Deckard query
+  and returns matching note sections and tasks with their paths, lines,
+  headings, dates, and priorities; `deckard_list_tags` lists tags, most used
+  first, so an assistant can find the exact tag to query. A query that does
+  not parse returns its error with a guide to the syntax. Deckard sends
+  nothing anywhere itself, and `deckard.assistantTools` hides both tools.
+
 - **Timing log**: `Deckard: Show Log` opens Deckard's log, which records how
   long scanning, building the index, ranking Related Notes, drawing panels,
   and each editor feature take, with how many notes or lines each covered.

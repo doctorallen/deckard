@@ -21,7 +21,9 @@
     "onWebviewPanel:deckard.help",
     "onWebviewPanel:deckard.notesGraph",
     "onWebviewPanel:deckard.taskBoard",
-    "onStartupFinished"
+    "onStartupFinished",
+    "onLanguageModelTool:deckard_query",
+    "onLanguageModelTool:deckard_list_tags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -198,6 +200,80 @@
     "markdown.previewStyles": [
       "./resources/query-block.css"
     ],
+    "languageModelTools": [
+      {
+        "name": "deckard_query",
+        "displayName": "Search Deckard notes and tasks",
+        "toolReferenceName": "deckardQuery",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(search)",
+        "tags": [
+          "deckard",
+          "notes",
+          "tasks"
+        ],
+        "userDescription": "Search the workspace's Markdown notes and tasks with a Deckard query.",
+        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates or windows such as 30d). Operators are = != ~ !~ > >= < <=. If you do not know a tag's exact name, call deckard_list_tags first.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "A Deckard query, such as tag = #project/atlas AND task = open."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "The most notes, and the most tasks, to return. Defaults to 25; totals always count every match."
+            },
+            "sort": {
+              "type": "string",
+              "enum": [
+                "title",
+                "created",
+                "updated"
+              ],
+              "description": "Order by title, or newest created or updated first. Otherwise tasks are listed open first and soonest due first."
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_list_tags",
+        "displayName": "List Deckard tags",
+        "toolReferenceName": "deckardTags",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(tag)",
+        "tags": [
+          "deckard",
+          "notes",
+          "tags"
+        ],
+        "userDescription": "List the tags used in the workspace's Markdown notes, most used first.",
+        "modelDescription": "Lists the tags in the user's local Markdown notes, as indexed by the Deckard extension, most used first, with how many entries use each. Tags look like #project/atlas, #topic/leadership, or @person-name. Use it to find the exact tag to pass to deckard_query, optionally narrowed by a search such as 'atlas' or 'project/'.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Only tags whose name contains this text, such as atlas or project/."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "The most tags to return. Defaults to 50."
+            }
+          }
+        },
+        "when": "config.deckard.assistantTools"
+      }
+    ],
     "configuration": {
       "title": "Deckard",
       "properties": {
@@ -339,6 +415,11 @@
           "scope": "resource",
           "default": true,
           "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag."
+        },
+        "deckard.assistantTools": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that called it, which may send it to its own model service."
         },
         "deckard.tagTitleDisplayMode": {
           "type": "string",

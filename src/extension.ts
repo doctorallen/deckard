@@ -18,6 +18,7 @@ import {
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
 import { EditorReferences } from './ui/commands/editorReferences';
+import { AssistantTools } from './ui/commands/assistantTools';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
@@ -80,6 +81,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagSuggestions = new TagCompletionProvider(indexer);
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const editorReferences = new EditorReferences(indexer);
+  const assistantTools = new AssistantTools(indexer);
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const dashboard = new DashboardPanel(
@@ -173,6 +175,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskMetadataSuggestions,
     taskBoard,
     editorReferences,
+    assistantTools,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {

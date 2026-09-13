@@ -149,7 +149,10 @@ Two of the top 15 plugins embed AI coding agents in the vault (Claudian, #13,
 and Copilot, #15), and Local REST API with MCP has 723k downloads. VS Code's
 language model tool API could let Claude Code or Copilot ask Deckard for
 "open tasks for #project/atlas" while Deckard itself still sends nothing to
-an external service.
+an external service. **Shipped** as the `deckard_query` and
+`deckard_list_tags` language model tools; see the README's AI assistants
+section. Assistants that reach tools only over MCP, rather than through VS
+Code, would need a separate local MCP server.
 
 ## Intentionally skipped
 
