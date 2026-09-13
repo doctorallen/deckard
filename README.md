@@ -43,16 +43,6 @@ Deckard scans every `*.md` file in each workspace folder by default. Set a notes
 
 Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code.
 
-## Screenshots
-
-| **Dashboard** | **Related Notes** |
-|---|---|
-| <img src="docs/images/dashboard.png" alt="Deckard Dashboard showing workspace totals, tags, favorites, and active tasks." width="460"> | <img src="docs/images/related-notes.png" alt="Deckard Related Notes sidebar showing ranked note entries and matching tags." width="460"> |
-| **Tag Overview** | **Help** |
-| <img src="docs/images/tag-overview.png" alt="Deckard Tag Overview showing matching notes, active tasks, and display controls." width="460"> | <img src="docs/images/help.png" alt="Deckard Help webview with quick-start instructions and feature navigation." width="460"> |
-| **Node Graph** | |
-| <img src="docs/images/notes-graph.png" alt="eckard Notes Graph showing clustered note, task, and tag connections." width="460"> |  |
-
 ## Themes
 
 Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `replicant`.
@@ -72,6 +62,10 @@ Set `deckard.theme` to choose the visual style used by Deckard webviews. The def
 
 Deckard scans the workspace Markdown scope automatically and refreshes when saved notes are added, edited, or deleted.
 Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan manually.
+
+Run `Deckard: Open Help`, or select the question-mark button in the Related Notes toolbar, to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.
+
+![Deckard Help page with quick-start instructions and feature navigation.](docs/images/help.png)
 
 ## Commands
 
@@ -204,9 +198,13 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - **Hovering a `[[Wiki link]]`** previews the note, or the section its `#Heading` names, and says how many other notes link to it. A link to a note that does not exist yet, or to a name several notes share, says so instead.
 - **Hovering a tag** shows how many notes and tasks use it, its [hub note](#hub-notes) when it has one, and its five most recently updated entries, each a link to its line, with **Open overview**. Set `deckard.editor.hoverPreviews` to `false` to turn previews off. The tag's **Rename** action stays in the same hover.
 
+![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and related entries.](docs/images/editor-assistance.png)
+
 ## Dashboard
 
 Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Tasks**, **Notes**, and **Tags** tabs. The Dashboard opens on **Tasks**; use Left/Right Arrow while the tab control is focused to switch modes. Dashboard tab, search, status, and tag-filter choices are restored when you close and reopen the Dashboard.
+
+![Deckard Dashboard showing workspace totals, saved views, and active tasks.](docs/images/dashboard.png)
 
 - **Saved tag views** appear above the Dashboard's Tasks/Notes/Tags tabs, so they remain available in any mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
 - The Dashboard title identifies the active mode as **Dashboard: Tasks**, **Dashboard: Notes**, or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task, note, and tag cards; Deckard saves all three choices for future Dashboard sessions.
@@ -223,9 +221,13 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
 
+![Deckard Stats showing index totals and the most-viewed tags, entities, and note entries.](docs/images/stats.png)
+
 ## Notes Graph
 
 Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in Related Notes, to see the whole workspace as a zoomable force-directed map. Notes and tasks appear as dots sized by connection count. The visual layout detects weighted communities from structural links and prevalence-adjusted tag evidence, then positions each community around a virtual anchor; hidden tag nodes no longer act as high-mass particles. Secondary tags and associations still provide lighter bridges without drawing a dense web between every pair of notes. The view starts zoomed out over the full graph and stays smooth with thousands of nodes.
+
+![Deckard Notes Graph showing clustered note, task, and tag connections.](docs/images/notes-graph.png)
 
 - Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
 - Hover a dot to highlight its direct graph neighbors and see its source location. Select any note, task, or tag dot to list those connected nodes in the sidebar using the same note-card and tag styling as the rest of Deckard. Select the current node at the top of the sidebar to open its note/task source or tag overview. Select a connected sidebar item to move the graph selection; Cmd/Ctrl-click it to open that item instead. Cmd/Ctrl-clicking a graph dot opens the same destination, and selecting empty space clears the selection.
@@ -238,6 +240,8 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 ## Outline
 
 Open **Outline** from the Deckard Activity Bar to see the active Markdown file's headings as a tree. It is a view like any other, so it can be dragged into either the primary or the secondary sidebar and VS Code remembers where you put it.
+
+![Deckard Outline listing a note's headings, with each heading's tags beside it.](docs/images/outline.png)
 
 - Heading markers and tags are taken out of each title, and the heading's own tags are shown beside it, so structure and labels read as two columns.
 - Untagged headings are kept as structure, so a tagged heading stays where you wrote it. A heading written as nothing but tags shows those tags as its title.
@@ -252,6 +256,8 @@ Headings written in the underlined `Title`/`===` style are not shown, matching h
 
 Open **Agenda** from the Deckard Activity Bar to see the open tasks that need attention soon. Like the Outline, it can be dragged into either sidebar.
 
+![Deckard Agenda grouping open tasks into Overdue, Today, and Upcoming beside a note with dated tasks.](docs/images/agenda.png)
+
 - **Overdue** lists tasks whose due date has passed, oldest first.
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
 - **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead.
@@ -262,6 +268,8 @@ Open **Agenda** from the Deckard Activity Bar to see the open tasks that need at
 ## Task board
 
 Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Agenda's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard.
+
+![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 
 - **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
 - **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
@@ -274,6 +282,8 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 ## Related Notes
 
 Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work.
+
+![Deckard Related Notes sidebar showing ranked note entries and matching tags.](docs/images/related-notes.png)
 
 ### What makes a note related?
 
@@ -304,11 +314,11 @@ Use the sort control to choose **Relevance**, **Newest**, **Oldest**, or **Most 
 
 When a Tag Overview is the active editor tab, the sidebar identifies itself as **Tag Overview**, shows the focus tag and matching-note count, and switches from related notes to one compact **Associated tags** list. Associations are sorted by strength and show a percentage; hover or focus one to learn whether the connection came from tags written together or from heading context. Expand the list to navigate without leaving the narrow sidebar. Selecting an association carries the current tag as a second filter. Active filters appear as removable chips with **Clear filters**, and the matching notes remain visible below. The notes in a Tag Overview already match that tag, so they do not show a redundant 100% relevance score. Returning to a Markdown editor restores the related-notes projection.
 
-Select the question-mark button in the Related Notes toolbar to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.
-
 ## Tag overviews
 
 Open an entity or tag overview by selecting it in the editor, Dashboard, Related Notes, or by running `Deckard: Show Tag Overview` from the Command Palette.
+
+![Deckard Tag Overview showing matching notes, active tasks, and display controls.](docs/images/tag-overview.png)
 
 Each overview collects the matching sections from your notes. You can:
 
@@ -399,6 +409,8 @@ Put a Deckard query in a `deckard` code fence to keep a live list inside a note:
 tag = #project/atlas AND task = open
 ```
 ````
+
+![A note's deckard query blocks beside the Markdown preview, which lists the tasks each query matches.](docs/images/query-blocks.png)
 
 - The Markdown preview replaces the fence with what the query matches, notes first and then tasks. Each result is its own row: a title that links to its source line, and beneath it the headings above it and its file name. The file name is left out when the first heading already names it, as a daily note's date heading does. Tags written after a title are removed from it, while tags inside the sentence, such as the people in a task, are kept. Following a link behaves like any other link to a note, so `markdown.preview.openMarkdownLinks` decides whether it opens in the preview or the editor.
 - Notes are listed alphabetically. Tasks are listed open first, soonest due date first, then in source order; completed tasks are struck through and overdue due dates are highlighted.

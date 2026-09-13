@@ -17,6 +17,23 @@ const requestedPort = process.env.DECKARD_CDP_PORT;
 let port;
 const theme = process.env.DECKARD_SCREENSHOT_THEME ?? 'replicant';
 const view = process.env.DECKARD_SCREENSHOT_VIEW ?? 'dashboard';
+
+// A side bar pane, such as a tree view, that is expanded and lists rows.
+function expandedPaneWithRows(title) {
+  return `[...document.querySelectorAll('.pane')].some((pane) => { const header = pane.querySelector('.pane-header'); return header?.getAttribute('aria-expanded') === 'true' && header.querySelector('.title')?.textContent?.trim() === ${JSON.stringify(title)} && pane.querySelectorAll('.pane-body .monaco-list-row').length > 2; })`;
+}
+
+/**
+ * What each screenshot shows and how to tell it has rendered.
+ *
+ * The companion runs `command`, or `scene` when a view needs more than one
+ * step, then closes the side bars and other editors unless `keepLayout` is
+ * set. A scene runs in the capture host with `run`, `openNote`, and `delay`
+ * in scope. `renderedAssertion` is checked inside the view's webview, from
+ * `webviewExtension` when that is not Deckard, or in the workbench itself for
+ * `target: 'workbench'` views that are not webviews. `collapsePanes` closes
+ * side bar panes by title before the capture, so one view has the room.
+ */
 const viewConfiguration = {
   dashboard: {
     command: 'deckard.showDashboard',
@@ -33,14 +50,17 @@ const viewConfiguration = {
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Notes Graph' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#graph')) && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.overlay'))",
   },
   'related-notes': {
-    command: 'workbench.view.extension.deckard',
+    scene: `await openNote('2026-08-28.md', 'Sable will retain');
+    await run('workbench.view.extension.deckard');
+    await run('deckard.relatedNotes.focus');`,
+    keepLayout: true,
     output: 'docs/images/related-notes.png',
     title: 'Related Notes',
     renderedAssertion:
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Related Notes' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app .sidebar-header'))",
   },
   'tag-overview': {
-    command: 'deckard.showTagOverview',
+    scene: `await run('deckard.showTagOverview', '#project/ghostline-relay');`,
     output: 'docs/images/tag-overview.png',
     title: 'Tag Overview',
     renderedAssertion:
@@ -54,11 +74,67 @@ const viewConfiguration = {
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Help' && document.querySelector('iframe')?.contentDocument?.querySelector('main > article > header h1')?.textContent === 'Help'",
   },
   stats: {
-    command: 'deckard.showStats',
+    // A fresh profile has no view history, so open some overviews first.
+    scene: `for (const tag of ['#project/meridian-vault', '#project/meridian-vault', '#project/meridian-vault', '#person/sable-ortiz', '#person/sable-ortiz', '#team/harbor', '#risk/ethics', '#planning']) {
+      await run('deckard.showTagOverview', tag);
+    }
+    await run('deckard.showStats');`,
     output: 'docs/images/stats.png',
     title: 'Stats',
     renderedAssertion:
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Stats' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
+  },
+  'task-board': {
+    command: 'deckard.showTaskBoard',
+    output: 'docs/images/task-board.png',
+    title: 'Task Board',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Task Board' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.board-column'))",
+  },
+  'query-blocks': {
+    scene: `await openNote('2026-09-09.md', '## Task review', 0, 'AtTop');
+    await run('markdown.showPreviewToSide');`,
+    keepLayout: true,
+    webviewExtension: 'vscode.markdown-language-features',
+    output: 'docs/images/query-blocks.png',
+    title: 'query block preview',
+    renderedAssertion:
+      "Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.deckard-query-header'))",
+  },
+  'editor-assistance': {
+    // Hover previews are left out: the editor dismisses its hover while the
+    // screenshot is taken, so one never appears in the image even when the
+    // page reports it shown.
+    scene: `await openNote('2026-08-28.md', '## Meridian entry');`,
+    keepLayout: true,
+    target: 'workbench',
+    output: 'docs/images/editor-assistance.png',
+    title: 'editor reference counts',
+    // Related-entry counts resolve last, after the backlink count.
+    renderedAssertion:
+      "[...document.querySelectorAll('.codelens-decoration')].some((lens) => lens.textContent.includes('Linked from')) && [...document.querySelectorAll('.codelens-decoration')].some((lens) => lens.textContent.includes('related entr'))",
+  },
+  outline: {
+    scene: `await openNote('2026-08-26.md', '## Meridian requirements');
+    await run('workbench.view.extension.deckard');
+    await run('deckard.outline.focus');`,
+    keepLayout: true,
+    target: 'workbench',
+    collapsePanes: ['Deckard', 'Agenda'],
+    output: 'docs/images/outline.png',
+    title: 'Outline',
+    renderedAssertion: expandedPaneWithRows('Outline'),
+  },
+  agenda: {
+    scene: `await openNote('2026-08-26.md', '## Meridian requirements');
+    await run('workbench.view.extension.deckard');
+    await run('deckard.agenda.focus');`,
+    keepLayout: true,
+    target: 'workbench',
+    collapsePanes: ['Deckard', 'Outline'],
+    output: 'docs/images/agenda.png',
+    title: 'Agenda',
+    renderedAssertion: expandedPaneWithRows('Agenda'),
   },
 };
 const selectedView = viewConfiguration[view];
@@ -209,14 +285,37 @@ function writeCompanionExtension() {
       main: './extension.js',
     }),
   );
+  const scene =
+    selectedView.scene ?? `await run(${JSON.stringify(selectedView.command)});`;
   writeFileSync(
     join(companion, 'extension.js'),
     `const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
-  const view = ${JSON.stringify(view)};
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 async function run(command, ...args) {
   await vscode.commands.executeCommand(command, ...args);
+}
+// Opens a sample note with the cursor in the first line containing text.
+async function openNote(fileName, text, offset = 0, reveal = 'InCenterIfOutsideViewport') {
+  const workspace = vscode.workspace.workspaceFolders?.[0];
+  if (!workspace) throw new Error('Screenshot workspace is unavailable');
+  const editor = await vscode.window.showTextDocument(
+    vscode.Uri.joinPath(workspace.uri, fileName),
+    { preview: false },
+  );
+  const lines = editor.document.getText().split(/\\r?\\n/);
+  const line = lines.findIndex((candidate) => candidate.includes(text));
+  if (line < 0) throw new Error(fileName + ' has no line containing ' + text);
+  const position = new vscode.Position(line, lines[line].indexOf(text) + offset);
+  editor.selection = new vscode.Selection(position, position);
+  editor.revealRange(
+    new vscode.Range(position, position),
+    vscode.TextEditorRevealType[reveal],
+  );
+  return editor;
 }
 async function activate() {
   try {
@@ -225,39 +324,29 @@ async function activate() {
       if (commands.includes('deckard.showDashboard')) {
         break;
       }
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await delay(500);
+    }
+    // The capture sizes the window first, so the scene is laid out at the
+    // size it is captured at and a hover is not dismissed by a resize.
+    for (
+      let attempt = 0;
+      attempt < 120 && !fs.existsSync(path.join(__dirname, 'sized'));
+      attempt += 1
+    ) {
+      await delay(500);
     }
     await run('deckard.reindexWorkspace');
     await run('workbench.action.closeAllEditors');
     await run('workbench.action.closeSidebar');
     await run('workbench.action.closeAuxiliaryBar');
-    if (view === 'related-notes') {
-      const workspace = vscode.workspace.workspaceFolders?.[0];
-      if (!workspace) throw new Error('Screenshot workspace is unavailable');
-      const editor = await vscode.window.showTextDocument(
-        vscode.Uri.joinPath(workspace.uri, '2026-08-28.md'),
-        { preview: false },
-      );
-      const position = new vscode.Position(14, 0);
-      editor.selection = new vscode.Selection(position, position);
-      editor.revealRange(
-        new vscode.Range(position, position),
-        vscode.TextEditorRevealType.InCenterIfOutsideViewport,
-      );
-      await run('workbench.view.extension.deckard');
-      await run('deckard.relatedNotes.focus');
-    } else if (view === 'tag-overview') {
-      await run('deckard.showTagOverview', '#project/ghostline-relay');
-    } else {
-      await run(${JSON.stringify(selectedView.command)});
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    if (view !== 'related-notes') {
+    ${scene}
+    await delay(1500);
+    if (!${Boolean(selectedView.keepLayout)}) {
       await run('workbench.action.closeOtherEditors');
       for (let attempt = 0; attempt < 4; attempt += 1) {
         await run('workbench.action.closeSidebar');
         await run('workbench.action.closeAuxiliaryBar');
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await delay(300);
       }
     }
     fs.writeFileSync(path.join(__dirname, 'ready'), 'ok');
@@ -352,7 +441,47 @@ async function stopWorkbench() {
   throw new Error(`Capture host did not release CDP port ${port}`);
 }
 
+async function evaluate(client, expression, sessionId) {
+  const result = await client.call(
+    'Runtime.evaluate',
+    { expression, returnByValue: true },
+    sessionId,
+  );
+  return result.result?.value;
+}
+
+async function isRendered(client, targets, workbenchSessionId) {
+  if (selectedView.target === 'workbench') {
+    return Boolean(
+      await evaluate(client, selectedView.renderedAssertion, workbenchSessionId),
+    );
+  }
+  const extensionId = selectedView.webviewExtension ?? 'esperinnovations.deckard-notes';
+  const webviews = targets.filter(
+    (target) =>
+      target.type === 'iframe' &&
+      target.url.includes(`extensionId=${extensionId}`) &&
+      target.url.includes('vscode-webview://'),
+  );
+  for (const webview of webviews) {
+    const { sessionId } = await client.call('Target.attachToTarget', {
+      targetId: webview.targetId,
+      flatten: true,
+    });
+    const rendered = Boolean(
+      await evaluate(client, selectedView.renderedAssertion, sessionId),
+    );
+    await client.call('Target.detachFromTarget', { sessionId });
+    if (rendered) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function capture(client) {
+  let workbenchSessionId;
+  let panesCollapsed = !selectedView.collapsePanes;
   try {
     for (let attempt = 0; attempt < 90; attempt += 1) {
       const targets =
@@ -362,42 +491,11 @@ async function capture(client) {
           target.type === 'page' &&
           (target.url ?? '').endsWith('/workbench/workbench.html'),
       );
-      const webview = targets.find(
-        (target) =>
-          target.type === 'iframe' &&
-          target.url.includes('extensionId=esperinnovations.deckard-notes') &&
-          target.url.includes('vscode-webview://'),
-      );
-      const ready = existsSync(join(companion, 'ready'));
-      const errorPath = join(companion, 'error');
-      if (existsSync(errorPath)) {
-        throw new Error(readFileSync(errorPath, 'utf8'));
-      }
-      if (workbench && webview && ready) {
-        const { sessionId: webviewSessionId } = await client.call(
+      if (workbench && !workbenchSessionId) {
+        ({ sessionId: workbenchSessionId } = await client.call(
           'Target.attachToTarget',
-          { targetId: webview.targetId, flatten: true },
-        );
-        const assertion = await client.call(
-          'Runtime.evaluate',
-          {
-            expression: selectedView.renderedAssertion,
-            returnByValue: true,
-          },
-          webviewSessionId,
-        );
-        const rendered = Boolean(assertion.result?.value);
-        await client.call('Target.detachFromTarget', {
-          sessionId: webviewSessionId,
-        });
-        if (!rendered) {
-          await delay(1000);
-          continue;
-        }
-        const { sessionId } = await client.call('Target.attachToTarget', {
-          targetId: workbench.targetId,
-          flatten: true,
-        });
+          { targetId: workbench.targetId, flatten: true },
+        ));
         await client.call(
           'Emulation.setDeviceMetricsOverride',
           {
@@ -406,12 +504,34 @@ async function capture(client) {
             deviceScaleFactor: 1,
             mobile: false,
           },
-          sessionId,
+          workbenchSessionId,
         );
+        writeFileSync(join(companion, 'sized'), 'ok');
+      }
+      const ready = existsSync(join(companion, 'ready'));
+      const errorPath = join(companion, 'error');
+      if (existsSync(errorPath)) {
+        throw new Error(readFileSync(errorPath, 'utf8'));
+      }
+      if (workbenchSessionId && ready && !panesCollapsed) {
+        await evaluate(
+          client,
+          `for (const header of document.querySelectorAll('.pane-header[aria-expanded="true"]')) { if (${JSON.stringify(selectedView.collapsePanes)}.includes(header.querySelector('.title')?.textContent?.trim())) header.click(); }`,
+          workbenchSessionId,
+        );
+        panesCollapsed = true;
+        await delay(1000);
+        continue;
+      }
+      if (
+        workbenchSessionId &&
+        ready &&
+        (await isRendered(client, targets, workbenchSessionId))
+      ) {
         const screenshot = await client.call(
           'Page.captureScreenshot',
           { format: 'png', fromSurface: true },
-          sessionId,
+          workbenchSessionId,
         );
         writeFileSync(candidate, Buffer.from(screenshot.data, 'base64'));
         const png = readFileSync(candidate);
@@ -425,7 +545,7 @@ async function capture(client) {
           throw new Error('Candidate is not a 1920x1080 PNG');
         }
         console.log(
-          `Captured candidate ${candidate} from verified Deckard ${selectedView.title} webview.`,
+          `Captured candidate ${candidate} from verified Deckard ${selectedView.title} view.`,
         );
         if (promote) {
           mkdirSync(resolve(output, '..'), { recursive: true });
@@ -441,7 +561,7 @@ async function capture(client) {
       await delay(1000);
     }
     throw new Error(
-      `Deckard ${selectedView.title} webview did not render within 90 seconds`,
+      `Deckard ${selectedView.title} view did not render within 90 seconds`,
     );
   } finally {
     client.close();
@@ -459,7 +579,9 @@ try {
   await capture(client);
   succeeded = true;
 } finally {
-  if (succeeded) {
+  // DECKARD_SCREENSHOT_KEEP_HOST=1 leaves a successful capture's host open,
+  // as a failed one is, so its page can be inspected over the same port.
+  if (succeeded && process.env.DECKARD_SCREENSHOT_KEEP_HOST !== '1') {
     await stopWorkbench();
     rmSync(workspace, { recursive: true, force: true });
     rmSync(profile, { recursive: true, force: true });
@@ -467,7 +589,7 @@ try {
     rmSync(companion, { recursive: true, force: true });
   } else {
     console.error(
-      `Capture diagnostics retained:\nworkspace=${workspace}\nprofile=${profile}\nextensions=${extensions}\ncompanion=${companion}\nport=${port}`,
+      `Capture diagnostics retained:\nworkspace=${workspace}\nprofile=${profile}\nextensions=${extensions}\ncompanion=${companion}\nport=${port}\npid=${portOwner}`,
     );
   }
 }
