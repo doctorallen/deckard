@@ -1245,10 +1245,12 @@ suite('Dashboard state', () => {
       snapshot.tasks.map((item) => item.task.title),
       ['Both tags #parent #child'],
     );
-    assert.deepStrictEqual(
-      createTagOverviewSidebarSnapshot(snapshot).tagOverviewFilter,
-      { key: '#parent', label: '#parent' },
-    );
+    const parentSidebar = createTagOverviewSidebarSnapshot(snapshot);
+    assert.ok(parentSidebar);
+    assert.deepStrictEqual(parentSidebar.tagOverviewFilter, {
+      key: '#parent',
+      label: '#parent',
+    });
 
     const reverse = createTagOverviewSnapshot(
       index,
@@ -1317,6 +1319,7 @@ suite('Dashboard state', () => {
     );
 
     const sidebar = createTagOverviewSidebarSnapshot(snapshot);
+    assert.ok(sidebar);
     assert.deepStrictEqual(sidebar.tagOverviewFilters, snapshot.filterTags);
     assert.deepStrictEqual(
       sidebar.tagOverviewRelationships?.sharedAssociatedTags.map(
@@ -1610,6 +1613,7 @@ suite('Dashboard state', () => {
 
     assert.ok(overview);
     const sidebar = createTagOverviewSidebarSnapshot(overview);
+    assert.ok(sidebar);
 
     assert.deepStrictEqual(
       sidebar.notes.map((note) => note.filePath),
@@ -1641,6 +1645,7 @@ suite('Dashboard state', () => {
     );
     assert.ok(separateOverview);
     const separateSidebar = createTagOverviewSidebarSnapshot(separateOverview);
+    assert.ok(separateSidebar);
     assert.deepStrictEqual(
       separateSidebar.notes.map((note) => note.title),
       ['Alpha', 'Beta', 'Zeta'],
@@ -1665,6 +1670,7 @@ suite('Dashboard state', () => {
 
     assert.ok(overview);
     const sidebar = createTagOverviewSidebarSnapshot(overview);
+    assert.ok(sidebar);
 
     assert.deepStrictEqual(
       sidebar.tagOverviewRelationships?.associatedTags.map(
@@ -1684,6 +1690,7 @@ suite('Dashboard state', () => {
     );
     assert.ok(filteredOverview);
     const filteredSidebar = createTagOverviewSidebarSnapshot(filteredOverview);
+    assert.ok(filteredSidebar);
     assert.deepStrictEqual(filteredSidebar.tagOverviewFilter, {
       key: '#task',
       label: '#task',

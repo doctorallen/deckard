@@ -69,6 +69,7 @@ suite('Dashboard navigation', () => {
       async (tagKey) => {
         opened.push(tagKey);
       },
+      async () => undefined,
     );
 
     try {
@@ -121,6 +122,7 @@ suite('Dashboard navigation', () => {
       async (tagKey, filterTagKeys) => {
         opened.push({ tagKey, filterTagKeys });
       },
+      async () => undefined,
     );
 
     try {
@@ -164,6 +166,7 @@ suite('Dashboard navigation', () => {
       index,
       preferences,
       vscode.Uri.file(process.cwd()),
+      async () => undefined,
       async () => undefined,
     );
 
