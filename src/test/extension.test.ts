@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import * as os from 'os';
+import * as path from 'path';
 
 import * as vscode from 'vscode';
 
@@ -155,6 +157,37 @@ suite('Extension Test Suite', () => {
         'deckard.showEntryRelatedNotes',
       ),
     );
+  });
+
+  test('counts the open tasks under a heading above it in the editor', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    await extension.activate();
+
+    const fileUri = vscode.Uri.file(
+      path.join(os.tmpdir(), `deckard-references-${Date.now()}.md`),
+    );
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from('# Plan #project/atlas\n- [ ] Ship it\n- [x] Draft it\n', 'utf8'),
+    );
+    try {
+      // The command asks the editor for lenses, so the document must be loaded.
+      await vscode.workspace.openTextDocument(fileUri);
+      const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+        'vscode.executeCodeLensProvider',
+        fileUri,
+        10,
+      );
+      const titles = lenses.map((lens) => lens.command?.title);
+      assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
+      // A tagged heading also counts its Related Notes; this workspace has none.
+      assert.ok(titles.includes('No related entries'), JSON.stringify(titles));
+    } finally {
+      await vscode.workspace.fs.delete(fileUri);
+    }
   });
 
   test('draws deckard query blocks in the Markdown preview engine', async () => {

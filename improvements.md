@@ -14,7 +14,7 @@ against the current source so that nothing here duplicates a shipped feature.
 | Saved queries and collection views | Mostly shipped. The query language, visual builder, saved queries, query blocks in notes, and the task board exist. Table and calendar views remain. | Dataview (#3, 5.0M), Bases (core), Kanban (#9, 2.7M) |
 | Typed front matter schemas and explicit relations | Open | Breadcrumbs, Metadata Menu, Supercharged Links |
 | Task scheduling and planning | Mostly shipped as Obsidian Tasks metadata and the Agenda. Calendar projections remain. | Tasks (#4, 4.2M), TaskNotes (1.5M) |
-| Backlinks and note-link graphs | Notes Graph shipped; backlinks open, see suggestion 5 | Obsidian core Backlinks and Graph |
+| Backlinks and note-link graphs | Shipped: the Notes Graph, and backlink counts and previews in the editor | Obsidian core Backlinks and Graph |
 | Section and block references | Open | Obsidian block references |
 | Canvas or whiteboard | Open, low priority | Excalidraw (#1, 7.9M), Advanced Canvas |
 | Git-aware collaboration | Open, keep light since VS Code has SCM built in | Obsidian Git (#6, 3.1M) |
@@ -94,6 +94,7 @@ behavior.
 ### 5. Reference counts and previews in the editor
 
 Inspired by Strange New Worlds, Hover Editor, and Obsidian's Page Preview.
+**Shipped**; see the README's Editor assistance section.
 
 - A CodeLens above each heading, such as `4 references · 2 open tasks`.
 - Hovering a `[[link]]` previews the target section.
@@ -162,7 +163,7 @@ an external service.
 2. ~~Queries inside notes.~~ Shipped as query blocks.
 3. Quick capture and templates.
 4. Link health and aliases.
-5. Reference counts, previews, and backlinks.
+5. ~~Reference counts, previews, and backlinks.~~ Shipped.
 6. Periodic notes, calendar, and tag hub pages.
 
 Typed schemas, block references, canvas, and Git-aware collaboration from the

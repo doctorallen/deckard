@@ -1,12 +1,20 @@
 import * as vscode from 'vscode';
 
 import { WorkspaceIndex } from '../../core/types';
+import {
+  createNoteTitleMap,
+  findLinkedSection,
+  parseWikiTarget,
+  resolveWikiTarget,
+} from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
 
 interface IndexSource {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
+  /** The document's index key, which `[[#Heading]]` links point into. */
+  getFilePath?(uri: vscode.Uri): string;
 }
 
 /**
@@ -97,7 +105,11 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     }
 
     await this.indexer.ready;
-    const links = findWikiLinkTargets(document.getText(), this.indexer.getSnapshot());
+    const links = findWikiLinkTargets(
+      document.getText(),
+      this.indexer.getSnapshot(),
+      this.indexer.getFilePath?.(document.uri),
+    );
     const resolved = await Promise.all(
       links.map(async (link) => ({
         link,
@@ -114,7 +126,11 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
         document.positionAt(link.startOffset),
         document.positionAt(link.endOffset),
       );
-      const documentLink = new vscode.DocumentLink(range, target);
+      // A `#L12` fragment opens the note at the heading the link names.
+      const documentLink = new vscode.DocumentLink(
+        range,
+        link.line ? target.with({ fragment: `L${link.line}` }) : target,
+      );
       documentLink.tooltip = `Open ${link.title}`;
       return [documentLink];
     });
@@ -147,39 +163,45 @@ interface WikiLinkTarget {
   readonly filePath: string;
   readonly startOffset: number;
   readonly endOffset: number;
+  /** One-based line of the heading a `#Heading` names, when the note has it. */
+  readonly line?: number;
 }
 
 /**
  * Resolves only exact, case-insensitive title matches so duplicate note names
- * cannot make an editor link point at the wrong file.
+ * cannot make an editor link point at the wrong file. The rule is the one the
+ * editor's reference counts and previews use, so all three agree.
+ *
+ * `sourcePath` is the note the links are written in, which `[[#Heading]]`
+ * points into.
  */
 export function findWikiLinkTargets(
   content: string,
   index: WorkspaceIndex,
+  sourcePath?: string,
 ): WikiLinkTarget[] {
-  const notesByTitle = new Map<string, string[]>();
-
-  index.files.forEach((_file, filePath) => {
-    const title = getNoteTitle(filePath).toLocaleLowerCase();
-    const files = notesByTitle.get(title) ?? [];
-    files.push(filePath);
-    notesByTitle.set(title, files);
-  });
-
+  const titles = createNoteTitleMap(index);
   const links: WikiLinkTarget[] = [];
   const pattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
   for (const match of content.matchAll(pattern)) {
-    const title = match[1].trim();
-    const matches = notesByTitle.get(title.toLocaleLowerCase()) ?? [];
-    if (matches.length !== 1 || match.index === undefined) {
+    const target = parseWikiTarget(match[1]);
+    const filePath =
+      target.note || sourcePath
+        ? resolveWikiTarget(titles, target.note, sourcePath ?? '')
+        : undefined;
+    if (!filePath || match.index === undefined) {
       continue;
     }
 
+    const file = index.files.get(filePath);
+    const section =
+      target.heading && file ? findLinkedSection(file, target.heading) : undefined;
     links.push({
-      title,
-      filePath: matches[0],
+      title: match[1].trim(),
+      filePath,
       startOffset: match.index,
       endOffset: match.index + match[0].length,
+      ...(section ? { line: section.startLine } : {}),
     });
   }
 

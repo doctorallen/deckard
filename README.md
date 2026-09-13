@@ -22,7 +22,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
 | [Task board](#task-board) | A Kanban board of tasks by status, priority, or due date, where dragging a card rewrites the task in its note. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, and dependencies, written in either Obsidian Tasks format. |
-| [Editor assistance](#editor-assistance) | Clickable tags, tag completion after `#` or `@`, and task metadata suggestions after `/`. |
+| [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and open the note they name. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
@@ -199,6 +199,9 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its tag overview, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
 - Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).
+- **Reference counts** sit above a note's lines. The first line says **Linked from N notes** when other notes link to it, and each heading shows **N references** for links that name it, such as `[[Launch plan#Decision]]` or `[[#Decision]]`, and **N open tasks** for the open tasks beneath it. Select a count to list those links or tasks in VS Code's references peek. A tagged heading also shows **N related entries**, the number of results [Related Notes](#related-notes) ranks for that heading; select it to open Related Notes focused on the heading. The related count is worked out when its heading scrolls into view and kept until a note is saved or the heading's tags change, so ordinary typing does not re-run the ranking. Set `deckard.editor.referenceCounts` to `false` to hide them.
+- **Hovering a `[[Wiki link]]`** previews the note, or the section its `#Heading` names, and says how many other notes link to it. A link to a note that does not exist yet, or to a name several notes share, says so instead.
+- **Hovering a tag** shows how many notes and tasks use it and its five most recently updated entries, each a link to its line, with **Open overview**. Set `deckard.editor.hoverPreviews` to `false` to turn previews off. The tag's **Rename** action stays in the same hover.
 
 ## Dashboard
 
@@ -404,6 +407,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tasks.metadataSuggestions": true,
 	"deckard.board.statusNamespace": "status",
 	"deckard.board.statuses": ["todo", "doing", "waiting"],
+	"deckard.editor.referenceCounts": true,
+	"deckard.editor.hoverPreviews": true,
 	"deckard.highlightNoteSections": true,
 	"deckard.autoSelectNoteSections": true,
 	"deckard.enableHeadingTagRelationships": true,
@@ -433,6 +438,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
 | `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |
 | `deckard.board.statuses` | `["todo", "doing", "waiting"]` | The task board's status columns, in order. A status found on a task but not listed gets a column after them. |
+| `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
+| `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
 | `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
 | `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, Tag Overview, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove overview tags from titles and show them as separate tag controls. |

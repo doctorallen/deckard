@@ -310,6 +310,18 @@
           ],
           "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them."
         },
+        "deckard.editor.referenceCounts": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Show, above the lines of a Markdown note, how many notes link to it, how many links name each heading, how many open tasks sit under each heading, and how many related entries Related Notes finds for each tagged heading."
+        },
+        "deckard.editor.hoverPreviews": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag."
+        },
         "deckard.tagTitleDisplayMode": {
           "type": "string",
           "enum": [

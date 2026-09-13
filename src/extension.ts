@@ -16,6 +16,7 @@ import {
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
+import { EditorReferences } from './ui/commands/editorReferences';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
@@ -65,6 +66,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
+  const editorReferences = new EditorReferences(indexer);
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const dashboard = new DashboardPanel(
@@ -128,6 +130,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     agenda,
     taskMetadataSuggestions,
     taskBoard,
+    editorReferences,
   };
 
   context.subscriptions.push(
@@ -149,6 +152,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     agenda,
     taskMetadataSuggestions,
     taskBoard,
+    editorReferences,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -391,6 +395,7 @@ export function deactivate(): void {
   activeServices?.agenda.dispose();
   activeServices?.taskMetadataSuggestions.dispose();
   activeServices?.taskBoard.dispose();
+  activeServices?.editorReferences.dispose();
   activeServices = undefined;
 }
 
@@ -416,6 +421,7 @@ interface ExtensionServices {
   agenda: AgendaTreeProvider;
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
   taskBoard: TaskBoardPanel;
+  editorReferences: EditorReferences;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {

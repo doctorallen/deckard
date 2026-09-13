@@ -60,6 +60,34 @@ suite('Wiki link suggestions', () => {
   });
 });
 
+suite('Wiki links to headings', () => {
+  test('land on the heading, including [[#Heading]] in the same note', () => {
+    const atlas = parseMarkdown('notes/Atlas.md', '# Atlas\n## Decision #project/atlas');
+    const index: WorkspaceIndex = {
+      files: new Map([[atlas.filePath, atlas]]),
+      sections: new Map(),
+      tasks: new Map(),
+      tags: new Map(),
+      entities: new Map(),
+      updatedAt: Date.now(),
+    };
+
+    assert.deepStrictEqual(
+      findWikiLinkTargets(
+        '[[atlas#decision]] [[#Decision]] [[Atlas#Nowhere]]',
+        index,
+        'notes/Atlas.md',
+      ).map((link) => [link.filePath, link.line]),
+      [
+        ['notes/Atlas.md', 2],
+        ['notes/Atlas.md', 2],
+        // A heading the note lacks still opens the note.
+        ['notes/Atlas.md', undefined],
+      ],
+    );
+  });
+});
+
 function createIndex(paths: string[]): WorkspaceIndex {
   return {
     files: new Map(paths.map((path) => [path, parseMarkdown(path, '')])),
