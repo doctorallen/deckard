@@ -43,7 +43,30 @@
 - Release preparation now derives semantic versions from Conventional Commit
   messages.
 
+### Changed
+
+- Webview styling and page-script helpers are now shared from
+  `src/ui/webview/components.ts` instead of being repeated per page, so one
+  change reaches every panel. See [components.md](components.md). Pages
+  previously carried their own copies that had drifted apart: the eyebrow
+  label had five different treatments, borders were 1px on some pages and 2px
+  on others, and half the pages declared only part of the design-token set.
+  They now share one palette, one type scale, one set of controls, and one
+  `.segmented` primitive for joined buttons.
+
 ### Fixed
+
+- The Dashboard's index metrics are a horizontal three-up strip again, and its
+  chamfered tiles, 1180px width and dashed header rule are back. Sharing the
+  webview styles had replaced page layout wherever a page's selector matched a
+  base one, which also flattened Help's two-column layout and widened the
+  sidebar's padding. Each page now restates its own layout, and
+  `npm run test:ui` checks those survive the cascade.
+
+- Tag rows in the Dashboard's Tags tab now highlight their border on hover,
+  matching notes, tasks, entities and saved views. They were the only row type
+  without the treatment. Every openable row now shares one `.row` component,
+  and `npm run test:ui` fails if a new one ships without it.
 
 - The Related Notes sidebar now follows an advanced query. It previously kept
   projecting the tag the page was opened on, so applying a query left the

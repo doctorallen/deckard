@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 
+import {
+  createNonce,
+  getBaseCss,
+} from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { getFavoriteHeartAssetUris } from './icons';
 
@@ -24,32 +28,21 @@ export function getHelpHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Deckard Help</title>
-<style nonce="${nonce}">
-:root { color-scheme: dark; --bg: #050608; --panel: #0D1017; --panel-raised: #121620; --text: #D9E0E4; --muted: #7D8792; --line: #212936; --cyan: #00E5FF; --amber: #FFB000; --green: #33FF33; --favorite-red: #D23C28; }
-* { box-sizing: border-box; }
+<style nonce="${nonce}">${getBaseCss()}
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 280px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font: 14px/1.55 var(--vscode-font-family, ui-sans-serif, sans-serif); }
-main { display: grid; grid-template-columns: minmax(180px, 230px) minmax(0, 800px); gap: 32px; max-width: 1120px; margin: 0 auto; padding: 30px 24px 48px; }
 nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--line); background: var(--panel); padding: 12px; }
-.nav-title, .eyebrow, code, .step-number { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.nav-title, .step-number { font-family: var(--font-mono); }
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
 article { min-width: 0; }
-header { padding-bottom: 20px; border-bottom: 2px solid var(--line); }
-.eyebrow { margin: 0 0 6px; color: var(--green); font-size: 11px; letter-spacing: .14em; }
 h1, h2, h3 { line-height: 1.2; }
-h1 { margin: 0; font-size: 28px; text-transform: uppercase; }
-h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; }
-h3 { margin: 0 0 6px; color: var(--text); font-size: 14px; }
 p { margin: 0 0 12px; }
-.lead { margin: 10px 0 0; max-width: 680px; color: var(--muted); }
 .steps, .cards { display: grid; gap: 10px; }
 .steps { counter-reset: quick-start; }
 .step, .card { min-width: 0; border: 1px solid var(--line); background: var(--panel); padding: 14px; }
 .step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
 .step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: 11px; }
-.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card p:last-child, .step p:last-child { margin-bottom: 0; }
 code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--green); font-size: .9em; }
 .inline-icon, .deckard-logo { display: inline-block; width: 16px; height: 16px; margin: 0 2px; vertical-align: -3px; }
@@ -62,6 +55,27 @@ ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
+
+/* Help is a two-column reference: navigation beside the article. */
+main {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(0, 800px);
+  gap: 32px;
+  max-width: 1120px;
+  padding: 30px 24px 48px;
+}
+header { padding-bottom: 20px; border-bottom: 2px solid var(--line); }
+h1 { font-size: 28px; line-height: 1.2; }
+h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; line-height: 1.2; }
+h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.2; }
+.eyebrow { margin: 0 0 6px; }
+.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { cursor: default; }
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
+  h1 { font-size: 24px; }
+  .cards { grid-template-columns: 1fr; }
+}
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
@@ -189,12 +203,3 @@ topics: [signal-integrity]
 </html>`;
 }
 
-function createNonce(): string {
-  const alphabet =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let nonce = '';
-  for (let index = 0; index < 32; index += 1) {
-    nonce += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-  }
-  return nonce;
-}

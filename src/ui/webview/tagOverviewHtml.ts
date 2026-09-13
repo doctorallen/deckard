@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
 
+import {
+  createNonce,
+  getBaseCss,
+  getComponentScript,
+} from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
@@ -21,30 +26,9 @@ export function getTagOverviewHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Deckard Tag Overview</title>
-<style nonce="${nonce}">
-:root {
-  color-scheme: dark;
-  --bg: #050608;
-  --panel: #0D1017;
-  --panel-raised: #121620;
-  --panel-deep: #050608;
-  --text: #D9E0E4;
-  --muted: #7D8792;
-  --line: #212936;
-  --line-strong: #34445A;
-  --cyan: #00E5FF;
-  --green: #33FF33;
-  --amber: #FFB000;
-}
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 280px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 13px; }
-main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; border-top: 2px solid var(--amber); }
-header { display: flex; justify-content: space-between; align-items: end; gap: 18px; border-bottom: 2px solid var(--line-strong); padding-bottom: 16px; }
-header { position: relative; }
+<style nonce="${nonce}">${getBaseCss()}
 header > .toolbar { padding-right: 36px; }
 header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
-h1, h2, .eyebrow, .source { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
-h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; overflow-wrap: anywhere; text-transform: uppercase; }
 .overview-title-filter { color: var(--text); }
 .overview-title-joiner { color: var(--amber); font-size: .72em; font-weight: 400; }
 .overview-tag-link.overview-tag-link {
@@ -72,43 +56,12 @@ h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; overflow-
   transform: none;
   box-shadow: none;
 }
-h2 { margin: 0; font-size: 14px; font-weight: 650; }
 .overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.eyebrow { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
 .saved-view-name { margin: 0 0 8px; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .saved-view-name-label { color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
-.toolbar { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; margin-left: auto; }
-.toolbar label { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 11px; text-transform: uppercase; }
 .overview-search { width: min(250px, 44vw); border-color: var(--line-strong); }
-.view-options { position: relative; }
-.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
-.view-options summary::-webkit-details-marker { display: none; }
-.view-options summary:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.view-options summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-.view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 230px; padding: 10px; border: 2px solid var(--line); background: var(--panel-raised); }
-.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
 .save-filter { border-color: var(--amber); color: var(--amber); }
-button, select, input[type="search"] { min-height: 30px; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: inherit; }
-input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
-button { cursor: pointer; }
-button:hover, button.active, select:hover, input[type="search"]:focus { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-button:focus-visible, select:focus-visible, input[type="search"]:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-.toolbar-toggle { display: inline-grid; width: 30px; min-height: 30px; place-items: center; padding: 5px; }
-.toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.settings-icon { fill: currentColor; stroke: none; }
-.toolbar-toggle-group { display: inline-flex; }
-.toolbar-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -2px; }
-.toolbar-toggle-group .toolbar-toggle:first-child { border-radius: 2px 0 0 2px; }
-.toolbar-toggle-group .toolbar-toggle:last-child { border-radius: 0 2px 2px 0; }
-.toolbar-toggle-group .toolbar-toggle.active { position: relative; z-index: 1; }
-.layout-toggle-group .toolbar-toggle { border-width: 1px; }
-.layout-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }
 .overview-tabs-row { margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
-.overview-tabs { display: inline-flex; gap: 0; }
-.overview-tabs button + button { margin-left: -2px; }
-.overview-tabs button:first-child { border-radius: 2px 0 0 2px; }
-.overview-tabs button:last-child { border-radius: 0 2px 2px 0; }
-.overview-tabs button.active { position: relative; z-index: 1; }
 .overview-tabs button { border-bottom-color: var(--line); }
 .overview-tab-panel { margin-top: 12px; }
 .overview-tab-panel[hidden] { display: none; }
@@ -119,29 +72,11 @@ button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
 .overview-pane-controls .overview-search { min-width: 0; flex: 1 1 160px; }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; text-transform: uppercase; }
 .overview-pane .cards, .overview-pane .task-summary { margin-top: 12px; }
-.task-filter-toggle { display: inline-flex; }
-.task-filter-toggle button + button { margin-left: -2px; }
-.task-filter-toggle button:first-child { border-radius: 2px 0 0 2px; }
-.task-filter-toggle button:last-child { border-radius: 0 2px 2px 0; }
-.task-filter-toggle button.active { position: relative; z-index: 1; }
-.task-filter-toggle button { display: inline-flex; min-width: 30px; align-items: center; gap: 4px; padding: 5px 8px; }
-.task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.filter-count { color: var(--muted); font-size: 10px; }
-.tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
-.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
-.inline-tag { min-height: 24px; margin-left: 3px; padding: 2px 4px; font-size: .78em; vertical-align: 1px; }
-.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
-.tag-namespace { opacity: .62; }
 .relationship-workspace { margin-top: 16px; overflow: hidden; border: 2px solid var(--line); background: var(--panel-deep); }
 .relationship-workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px; border-bottom: 2px solid var(--line); }
 .relationship-workspace-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .relationship-heading { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 .relationship-summary { color: var(--muted); font-size: 11px; }
-.relationship-view-switch { display: inline-flex; }
-.relationship-view-switch button + button { margin-left: -2px; }
-.relationship-view-switch button:first-child { border-radius: 2px 0 0 2px; }
-.relationship-view-switch button:last-child { border-radius: 0 2px 2px 0; }
-.relationship-view-switch button.active { position: relative; z-index: 1; }
 .relationship-view-panel { padding: 12px; }
 .relationship-view-panel[hidden] { display: none; }
 .relationship-tree { display: grid; gap: 12px; }
@@ -210,9 +145,6 @@ button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
 .relationship-tag { display: inline-flex; align-items: center; gap: 6px; }
 .tag-open.relationship-tag, .tag-open.relationship-tag:hover, .tag-open.relationship-tag:focus-visible { color: var(--text); }
 .relationship-count { color: var(--muted); font-size: 10px; }
-.tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
-.tag-context-menu[hidden] { display: none; }
-.tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .query-workspace { margin-top: 16px; border: 2px solid var(--line); background: var(--panel-deep); }
 .query-workspace[hidden] { display: none; }
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; padding: 10px; }
@@ -247,36 +179,19 @@ button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
 .query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
 .query-summary { color: var(--cyan); font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
-.cards { display: grid; gap: 12px; margin-top: 20px; }
 .overview-filter-tag { display: inline-flex; align-items: baseline; gap: 5px; }
 .title-filter-remove { min-height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--muted); padding: 0 4px; font-size: 12px; line-height: 16px; vertical-align: middle; }
 .title-filter-remove:hover, .title-filter-remove:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.card[hidden], .task[hidden] { display: none; }
-.card { border: 2px solid var(--line); background: var(--panel); padding: 14px; cursor: pointer; }
-.card:hover { border-color: var(--amber); }
-.card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
 .card-header { display: block; }
-.card-title { margin: 0; color: var(--cyan); font-size: 16px; overflow-wrap: anywhere; }
-.source { color: var(--muted); font-size: 11px; margin-top: 5px; overflow-wrap: anywhere; }
-.markdown { margin: 14px 0 0; padding: 12px; overflow-x: auto; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel-deep); color: var(--text); white-space: pre-wrap; font: 12px/1.55 var(--vscode-editor-font-family, ui-monospace, monospace); }
-.rendered { margin-top: 14px; line-height: 1.55; overflow-wrap: anywhere; }
-.rendered :first-child { margin-top: 0; }
-.rendered :last-child { margin-bottom: 0; }
-.rendered code, .rendered pre { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
-.rendered pre { overflow-x: auto; padding: 10px; border: 2px solid var(--line); background: var(--panel-deep); }
-.rendered a { color: var(--cyan); }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
-.task-summary { display: grid; gap: 7px; }
-.task { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; border: 2px solid var(--line); background: var(--panel); padding: 10px; cursor: pointer; }
-.task:hover { border-color: var(--amber); }
-.task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--green); }
-.task-title { color: var(--cyan); overflow-wrap: anywhere; }
-.task-title a { color: var(--cyan); }
-.task.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.empty { border: 2px dashed var(--line); padding: 20px; color: var(--muted); background: var(--panel-deep); margin-top: 20px; }
 @media (max-width: 900px) { .relationship-tree-columns { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; padding-right: 0; } .overview-split { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+/* The amber rule above the page, and the containing block the gear is
+   positioned against. */
+main { border-top: 2px solid var(--amber); }
+header { position: relative; }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
@@ -285,13 +200,12 @@ ${getDeckardThemeCss(getDeckardTheme())}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
+${getComponentScript()}
   let state;
   let activeTab = 'notes';
   let relationshipView = 'tree';
   let noteSearchQuery = '';
   let taskSearchQuery = '';
-  let tagContextMenu;
-  let tagContextKey;
   /** Local edit buffer for the query bar; the host owns the applied query. */
   let queryDraft;
   let queryPanelOpen = false;
@@ -365,38 +279,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
     updated: '30d',
   };
 
-  /** Escape headings and source paths before inserting snapshot data as HTML. */
-  function escapeHtml(value) {
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
 
-  function renderTagLabel(label, svg) {
-    const value = String(label);
-    const match = value.match(/^([#@][^/]+\\/)(.*)$/);
-    if (svg) {
-      return match
-        ? '<tspan class="tag-namespace">' + escapeHtml(match[1]) + '</tspan><tspan class="tag-value">' + escapeHtml(match[2]) + '</tspan>'
-        : '<tspan class="tag-value">' + escapeHtml(value) + '</tspan>';
-    }
-    return match
-      ? '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
-      : '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
-  }
 
-  /** Use familiar list and checkbox icons without losing accessible labels. */
-  function taskFilterIcon(filter) {
-    if (filter === 'all') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 4h8M5 8h8M5 12h8"/><circle cx="2.5" cy="4" r=".5"/><circle cx="2.5" cy="8" r=".5"/><circle cx="2.5" cy="12" r=".5"/></svg>';
-    if (filter === 'active') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>';
-    return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="m5.5 8 1.7 1.7 3.3-3.3"/></svg>';
-  }
 
-  /** Give built-in and user-created namespaces the same readable title form. */
-  function formatEntityTitle(kind, name) {
-    function formatPart(value) {
-      return String(value).replace(/[-_]+/g, ' ').replace(/\\b[a-z]/g, function (character) { return character.toUpperCase(); });
-    }
-    return formatPart(kind) + ': ' + formatPart(name);
-  }
 
   /** Formats a filtered tag like the entity title shown beside it. */
   function formatTagReferenceTitle(tag) {
@@ -418,89 +303,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<span class="overview-filter-tag">' + renderOverviewTagLink(tag, text) + '<button class="title-filter-remove" data-action="open-tag" data-tag-key="' + escapeHtml(nextTagKey) + '" data-filter-tag-keys="' + escapeHtml(JSON.stringify(nextFilterTagKeys)) + '" aria-label="Remove ' + escapeHtml(tag.label) + ' from this overview" title="Remove ' + escapeHtml(tag.label) + '">&#215;</button></span>';
   }
 
-  function closeTagContextMenu() {
-    if (tagContextMenu) tagContextMenu.hidden = true;
-    tagContextKey = undefined;
-  }
 
-  function openTagContextMenu(event, target) {
-    const tagKey = target.dataset.tagKey;
-    if (!tagKey) return;
-    event.preventDefault();
-    closeTagContextMenu();
-    if (!tagContextMenu) {
-      tagContextMenu = document.createElement('div');
-      tagContextMenu.id = 'tag-context-menu';
-      tagContextMenu.className = 'tag-context-menu';
-      tagContextMenu.setAttribute('role', 'menu');
-      document.body.appendChild(tagContextMenu);
-    }
-    tagContextKey = tagKey;
-    tagContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>';
-    tagContextMenu.hidden = false;
-    const bounds = tagContextMenu.getBoundingClientRect();
-    tagContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
-    tagContextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
-    tagContextMenu.querySelector('button').focus();
-  }
 
-  /** Replace source tag tokens with buttons while preserving their position. */
-  function renderInlineTitle(title, tags, appendMissing) {
-    const references = tags || [];
-    const labels = references.map(function (tag) { return tag.label; }).filter(Boolean).sort(function (left, right) { return right.length - left.length; });
-    if (!labels.length) return escapeHtml(title);
-    const pattern = new RegExp(labels.map(function (label) {
-      return String(label).split('').map(function (character) {
-        return '[]{}()|^$+*?.-'.indexOf(character) >= 0 || character === String.fromCharCode(92)
-          ? String.fromCharCode(92) + character
-          : character;
-      }).join('');
-    }).join('|'), 'g');
-    let rendered = '';
-    let offset = 0;
-    const matchedKeys = new Set();
-    title.replace(pattern, function (match, matchOffset) {
-      rendered += escapeHtml(title.slice(offset, matchOffset));
-      const tag = references.find(function (candidate) { return candidate.label === match; });
-      if (tag) {
-        matchedKeys.add(tag.key);
-      }
-      rendered += tag
-        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>'
-        : escapeHtml(match);
-      offset = matchOffset + match.length;
-      return match;
-    });
-    const trailingTags = appendMissing === false ? '' : references
-      .filter(function (tag) { return !matchedKeys.has(tag.key); })
-      .map(function (tag) {
-        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
-      })
-      .join('');
-    return rendered + escapeHtml(title.slice(offset)) + trailingTags;
-  }
 
-  /** Decorate task tag text without replacing the task's rendered Markdown. */
-  function renderTaskTitle(renderedTitle, references) {
-    references = references || [];
-    if (!references.length) return renderedTitle;
-
-    const template = document.createElement('template');
-    template.innerHTML = renderedTitle;
-    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
-    const textNodes = [];
-    while (walker.nextNode()) textNodes.push(walker.currentNode);
-    textNodes.forEach(function (node) {
-      if (node.parentElement && node.parentElement.closest('a, button')) return;
-      const source = node.nodeValue || '';
-      const replacementHtml = renderInlineTitle(source, references, false);
-      if (replacementHtml === escapeHtml(source)) return;
-      const replacement = document.createElement('template');
-      replacement.innerHTML = replacementHtml;
-      node.parentNode.replaceChild(replacement.content, node);
-    });
-    return template.innerHTML;
-  }
 
   /** Render one relationship as a keyboard-accessible tag navigation control. */
   function renderRelationshipTag(tag, count, weight, direction, filterTagKey, detail) {
@@ -655,7 +460,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function renderRelationshipViews(associations, rootTag) {
     if (!associations.length) return '';
     const treeActive = relationshipView === 'tree';
-    return '<section class="relationship-workspace" aria-labelledby="relationships-heading"><div class="relationship-workspace-header"><div class="relationship-workspace-title"><h2 id="relationships-heading" class="relationship-heading">Tag associations</h2><span class="relationship-summary">' + associations.length + ' related tags</span></div><div class="relationship-view-switch" role="tablist" aria-label="Relationship view"><button class="' + (treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="tree" role="tab" aria-selected="' + treeActive + '">Tree</button><button class="' + (!treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="graph" role="tab" aria-selected="' + (!treeActive) + '">Graph</button></div></div><div class="relationship-view-panel"' + (treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipTree(associations, rootTag) + '</div><div class="relationship-view-panel"' + (!treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipGraph(associations, rootTag) + '</div></section>';
+    return '<section class="relationship-workspace" aria-labelledby="relationships-heading"><div class="relationship-workspace-header"><div class="relationship-workspace-title"><h2 id="relationships-heading" class="relationship-heading">Tag associations</h2><span class="relationship-summary">' + associations.length + ' related tags</span></div><div class="segmented relationship-view-switch" role="tablist" aria-label="Relationship view"><button class="' + (treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="tree" role="tab" aria-selected="' + treeActive + '">Tree</button><button class="' + (!treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="graph" role="tab" aria-selected="' + (!treeActive) + '">Graph</button></div></div><div class="relationship-view-panel"' + (treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipTree(associations, rootTag) + '</div><div class="relationship-view-panel"' + (!treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipGraph(associations, rootTag) + '</div></section>';
   }
 
   /** Read the query the host most recently applied. */
@@ -1087,18 +892,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const notesCount = state.sections.length;
     const tasksCount = state.tasks.length;
     const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2><div class="overview-pane-controls"><input class="overview-search" type="search" data-action="search-notes" value="' + escapeHtml(noteSearchQuery) + '" placeholder="Search notes" aria-label="Search current notes" autocomplete="off"></div></div><div class="cards">' + cards + '<div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></div></section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls"><input class="overview-search" type="search" data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search current tasks" autocomplete="off"><div class="task-filter-toggle" role="group" aria-label="Task status filter">' + taskFilters + '</div></div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls"><input class="overview-search" type="search" data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search current tasks" autocomplete="off"><div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">' + taskFilters + '</div></div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
-      : '<div class="overview-tabs-row"><div class="overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (<span data-search-count="notes">' + notesCount + '</span>)</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</button></div></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
+      : '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (<span data-search-count="notes">' + notesCount + '</span>)</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</button></div></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const relationships = '';
     const saveFilterControl = filterTags.length || isQueryView
       ? '<button class="save-filter" data-action="save-filter" aria-label="Save this view" title="Save filter">Save filter</button>'
       : '';
     // The visible text is the accessible name, so the two cannot drift apart.
     const queryToggle = '<button data-action="toggle-query" aria-expanded="' + queryPanelOpen + '" title="Search with a query: combine tags, text, tasks and dates using AND, OR and NOT">' + (queryPanelOpen ? 'Hide advanced search' : 'Advanced search') + '</button>';
-    const layoutControls = '<div class="toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
-    const formatControls = '<div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
+    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
+    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const viewOptions = '<details class="view-options"><summary aria-label="View options" title="View options"><svg class="toolbar-icon settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"/></svg></summary><div class="view-options-menu"><div class="view-options-group"><span>Layout</span>' + layoutControls + '</div><div class="view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
     const headerControls = '<div class="toolbar" role="group" aria-label="Tag entry view controls"><label>Sort:<select data-action="set-sort" aria-label="Sort tag entries"><option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select></label>' + viewOptions + '</div>';
     const savedViewName = state.savedViewName
@@ -1409,15 +1214,3 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </html>`;
 }
 
-/**
- * Creates a per-webview CSP nonce for the overview's inline style and script.
- */
-function createNonce(): string {
-  const alphabet =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let nonce = '';
-  for (let index = 0; index < 32; index += 1) {
-    nonce += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-  }
-  return nonce;
-}

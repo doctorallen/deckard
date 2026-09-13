@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
 
+import {
+  createNonce,
+  getBaseCss,
+  getComponentScript,
+} from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { getFavoriteHeartAssetUris, settingsIcon } from './icons';
 
@@ -24,52 +29,12 @@ export function getDashboardHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Deckard Dashboard</title>
-<style nonce="${nonce}">
-:root {
-  color-scheme: dark;
-  --bg-dark: #050608;
-  --panel-bg: #0D1017;
-  --panel-raised: #121620;
-  --panel-deep: #080A0E;
-  --amber-bright: #FFB000;
-  --amber-dim: #7A5400;
-  --favorite-red: #D23C28;
-  --toxic-green: #33FF33;
-  --cyan-bright: #00E5FF;
-  --slate-border: #212936;
-  --slate-olive: #3E4A42;
-  --warning-orange: #FF5500;
-  --text: #D9E0E4;
-  --muted: #7D8792;
-  --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', 'IBM Plex Mono', 'Courier New', monospace);
-  --font-display: var(--vscode-font-family, 'DIN Alternate', 'Arial Narrow', sans-serif);
-  --grid-line: rgba(255, 176, 0, 0.075);
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  min-width: 280px;
-  background-color: var(--bg-dark);
-  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 24px 24px;
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: 13px;
-}
-main { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px; border: 0; }
-header { display: flex; justify-content: space-between; gap: 20px; align-items: end; border-bottom: 1px dashed var(--slate-border); padding-bottom: 16px; }
-h1, h2, h3, .eyebrow, .metric-value, .tag-name, .task-meta, .telemetry-line, .section-readout { font-family: var(--font-mono); }
-h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; text-transform: uppercase; }
-h2 { margin: 0 0 4px; color: var(--cyan-bright); font-size: 14px; font-weight: 650; text-transform: uppercase; }
-.eyebrow { margin: 0 0 6px; color: var(--amber-bright); font-size: 11px; }
+<style nonce="${nonce}">${getBaseCss()}
+.tag-name, .task-meta, .telemetry-line, .section-readout { font-family: var(--font-mono); }
 .telemetry-line { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .telemetry-line span:first-child { color: var(--cyan-bright); }
 .telemetry-line span:last-child { color: var(--toxic-green); }
-.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: min(380px, 48%); }
-.metric { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 10px 12px; background: var(--panel-bg); }
 .metric::before { content: attr(data-code); display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: 9px var(--font-mono); text-transform: uppercase; }
-.metric-value { display: block; color: var(--toxic-green); font-size: 20px; }
-.metric-label { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
 .dashboard-view-options { position: relative; flex: 0 0 auto; order: 2; }
 .dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
@@ -84,7 +49,6 @@ h2 { margin: 0 0 4px; color: var(--cyan-bright); font-size: 14px; font-weight: 6
 .dashboard-column-options button:first-child { border-radius: 2px 0 0 2px; }
 .dashboard-column-options button:last-child { border-radius: 0 2px 2px 0; }
 .dashboard-column-options button.active { position: relative; z-index: 1; }
-.settings-icon { width: 16px; height: 16px; fill: currentColor; stroke: none; }
 .saved-filters { padding-top: 16px; }
 .dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
@@ -102,29 +66,18 @@ section { min-width: 0; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--amber-bright); }
 .control-icon select { padding-left: 29px; }
-button, select, input[type="search"] { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 11px var(--font-mono); text-transform: uppercase; }
-input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
-button { cursor: pointer; }
 button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
 button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
-.toolbar-toggle { display: inline-grid; width: 30px; min-height: 30px; place-items: center; padding: 5px; }
-.toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.toolbar-toggle-group { display: inline-flex; }
-.toolbar-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }
-.toolbar-toggle-group .toolbar-toggle:first-child { border-radius: 2px 0 0 2px; }
-.toolbar-toggle-group .toolbar-toggle:last-child { border-radius: 0 2px 2px 0; }
-.toolbar-toggle-group .toolbar-toggle.active { position: relative; z-index: 1; }
 .tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; transition: background-color 120ms ease, transform 120ms ease; }
-.saved-filter-row:hover { border-color: var(--amber-bright); background: var(--panel-raised); transform: translateX(3px); }
+.saved-filter-row:hover { background: var(--panel-raised); transform: translateX(3px); }
 .saved-filter-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .saved-filter-name { color: var(--cyan-bright); font: 12px var(--font-mono); overflow-wrap: anywhere; }
 .saved-filter-tags { margin-top: 3px; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
 .saved-filter-remove { min-height: 26px; color: var(--muted); text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
-.entity-row:hover { border-color: var(--amber-bright); }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-row.is-draggable { cursor: grab; touch-action: none; }
 .entity-kind { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; }
@@ -152,14 +105,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .toolbar-controls { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .toolbar-controls > * { flex: 0 0 auto; }
 .task-tag-filter-control { display: flex; align-items: center; gap: 6px; }
-.task-filter-toggle { display: inline-flex; }
-.task-filter-toggle button + button { margin-left: -1px; }
-.task-filter-toggle button:first-child { border-radius: 2px 0 0 2px; }
-.task-filter-toggle button:last-child { border-radius: 0 2px 2px 0; }
-.task-filter-toggle button.active { position: relative; z-index: 1; }
 .task-filter-toggle button { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 5px 8px; }
-.task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.filter-count { color: var(--muted); font-size: 10px; }
 .selected-task-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .selected-task-tag { min-height: 26px; color: var(--cyan-bright); text-transform: none; }
 .selected-task-tag::after { content: " ×"; color: var(--muted); }
@@ -187,11 +133,9 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
 .tag-filter-no-results[hidden] { display: none; }
 .tag-filter-clear { margin-top: 9px; color: var(--amber-bright); }
 .task-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; padding: 10px; cursor: pointer; }
-.task-row:hover { border-color: var(--amber-bright); }
 .task-row.is-draggable { cursor: grab; touch-action: none; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
 .note-row { min-width: 0; border: 2px solid var(--slate-border); padding: 14px; background: var(--panel-bg); cursor: pointer; }
-.note-row:hover { border-color: var(--amber-bright); }
 .note-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .note-row .card-header { display: block; }
 .note-row .card-title { margin: 0; color: var(--cyan-bright); font-size: 16px; overflow-wrap: anywhere; }
@@ -204,11 +148,6 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
 .note-row .rendered code, .note-row .rendered pre { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .note-row .rendered pre { overflow-x: auto; padding: 10px; border: 2px solid var(--slate-border); background: var(--panel-deep); }
 .note-row .rendered a { color: var(--cyan-bright); }
-.task-title { overflow-wrap: anywhere; line-height: 1.45; }
-.task-title a { color: var(--cyan-bright); }
-.inline-tag { min-height: 0; margin-left: 3px; padding: 1px 4px; font-size: .85em; line-height: 1.3; text-transform: none; vertical-align: 1px; }
-.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
-.tag-namespace { opacity: .62; }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #3d4145; font-size: 11px; margin-top: 5px; }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
@@ -216,7 +155,6 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
 .rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .rank-context-menu[hidden] { display: none; }
 .rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
-.empty { border: 1px dashed var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 18px; color: var(--muted); background: var(--panel-deep); }
 .error { color: var(--warning-orange); }
 @media (max-width: 720px) {
   main { padding: 16px; }
@@ -227,6 +165,22 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
   .tag-list, .task-list, .note-list { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+/* Page layout. The base sheet supplies the look; these keep the Dashboard's
+   own proportions and its chamfered HUD shapes. */
+main { width: 100%; max-width: 1180px; }
+header { gap: 20px; border-bottom: 1px dashed var(--slate-border); }
+h2 { margin: 0 0 4px; }
+.eyebrow { margin: 0 0 6px; }
+.metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: min(380px, 48%); margin-top: 0; }
+.metric { position: relative; clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 10px 12px; }
+.metric-label { margin-top: 3px; }
+.metric-value { font-size: 20px; margin-top: 0; }
+.settings-icon { width: 16px; height: 16px; }
+.empty { clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 18px; }
+@media (max-width: 700px) {
+  .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
+}
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
@@ -235,6 +189,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
+${getComponentScript()}
   let state;
   let draggedTask;
   let draggedTag;
@@ -281,76 +236,13 @@ ${getDeckardThemeCss(getDeckardTheme())}
   let rankContextKind;
   let rankContextKey;
 
-  /** Escape state values before inserting them into the generated DOM. */
-  function escapeHtml(value) {
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
+  
 
-  function renderTagLabel(label) {
-    const value = String(label);
-    const match = value.match(/^([#@][^/]+\\/)(.*)$/);
-    return match
-      ? '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
-      : '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
-  }
+  
 
-  /** Replace source tag tokens with buttons while preserving their position. */
-  function renderInlineTitle(title, tags, appendMissing) {
-    const references = tags || [];
-    const labels = references.map(function (tag) { return tag.label; }).filter(Boolean).sort(function (left, right) { return right.length - left.length; });
-    if (!labels.length) return escapeHtml(title);
-    const pattern = new RegExp(labels.map(function (label) {
-      return String(label).split('').map(function (character) {
-        return '[]{}()|^$+*?.-'.indexOf(character) >= 0 || character === String.fromCharCode(92)
-          ? String.fromCharCode(92) + character
-          : character;
-      }).join('');
-    }).join('|'), 'g');
-    let rendered = '';
-    let offset = 0;
-    const matchedKeys = new Set();
-    title.replace(pattern, function (match, matchOffset) {
-      rendered += escapeHtml(title.slice(offset, matchOffset));
-      const tag = references.find(function (candidate) { return candidate.label === match; });
-      if (tag) {
-        matchedKeys.add(tag.key);
-      }
-      rendered += tag
-        ? '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>'
-        : escapeHtml(match);
-      offset = matchOffset + match.length;
-      return match;
-    });
-    const trailingTags = appendMissing === false ? '' : references
-      .filter(function (tag) { return !matchedKeys.has(tag.key); })
-      .map(function (tag) {
-        return '<button class="tag-open inline-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
-      })
-      .join('');
-    return rendered + escapeHtml(title.slice(offset)) + trailingTags;
-  }
+  
 
-  /** Decorate task tag text without replacing the task's rendered Markdown. */
-  function renderTaskTitle(renderedTitle, references) {
-    references = references || [];
-    if (!references.length) return renderedTitle;
-
-    const template = document.createElement('template');
-    template.innerHTML = renderedTitle;
-    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
-    const textNodes = [];
-    while (walker.nextNode()) textNodes.push(walker.currentNode);
-    textNodes.forEach(function (node) {
-      if (node.parentElement && node.parentElement.closest('a, button')) return;
-      const source = node.nodeValue || '';
-      const replacementHtml = renderInlineTitle(source, references, false);
-      if (replacementHtml === escapeHtml(source)) return;
-      const replacement = document.createElement('template');
-      replacement.innerHTML = replacementHtml;
-      node.parentNode.replaceChild(replacement.content, node);
-    });
-    return template.innerHTML;
-  }
+  
 
   function formatEntityKindLabel(value) {
     return String(value).replace(/[-_]+/g, ' ').replace(/\\b[a-z]/g, function (character) { return character.toUpperCase(); });
@@ -369,12 +261,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return { name: name || label, namespace: namespace };
   }
 
-  /** Use familiar list and checkbox icons without losing accessible labels. */
-  function taskFilterIcon(filter) {
-    if (filter === 'all') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 4h8M5 8h8M5 12h8"/><circle cx="2.5" cy="4" r=".5"/><circle cx="2.5" cy="8" r=".5"/><circle cx="2.5" cy="12" r=".5"/></svg>';
-    if (filter === 'active') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>';
-    return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="m5.5 8 1.7 1.7 3.3-3.3"/></svg>';
-  }
+  
 
   function send(message) { vscode.postMessage(message); }
 
@@ -873,14 +760,14 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const renderEntity = function (entity) {
       const draggable = state.entitySortMode === 'custom';
       const favoriteLabel = entity.isFavorite ? 'Unfavorite' : 'Favorite';
-      return '<div class="entity-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-entity-key="' + escapeHtml(entity.key) + '"><div class="entity-main"><span class="tag-name">' + escapeHtml(entity.name) + '</span><span class="tag-count">' + entity.count + '</span></div><div class="tag-actions"><span class="entity-kind">' + escapeHtml(entity.kind) + '</span><button class="favorite-toggle ' + (entity.isFavorite ? 'favorite' : '') + '" data-action="favorite-entity" data-entity-key="' + escapeHtml(entity.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(entity.name) + '"><span class="favorite-heart" aria-hidden="true"></span></button></div></div>';
+      return '<div class="row entity-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-entity-key="' + escapeHtml(entity.key) + '"><div class="entity-main"><span class="tag-name">' + escapeHtml(entity.name) + '</span><span class="tag-count">' + entity.count + '</span></div><div class="tag-actions"><span class="entity-kind">' + escapeHtml(entity.kind) + '</span><button class="favorite-toggle ' + (entity.isFavorite ? 'favorite' : '') + '" data-action="favorite-entity" data-entity-key="' + escapeHtml(entity.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(entity.name) + '"><span class="favorite-heart" aria-hidden="true"></span></button></div></div>';
     };
     const renderTag = function (tag) {
       const draggable = state.tagSortMode === 'custom';
       const display = formatTagDisplay(tag);
       const displayLabel = display.namespace ? display.name + ' ' + display.namespace : display.name;
       const favoriteLabel = tag.isFavorite ? 'Unfavorite' : 'Favorite';
-      return '<div class="tag-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-tag-key="' + escapeHtml(tag.key) + '"><div class="tag-main"><span class="tag-name">' + escapeHtml(display.name) + '</span><span class="tag-count">' + tag.count + '</span></div><div class="tag-actions">' + (display.namespace ? '<span class="entity-kind">' + escapeHtml(display.namespace) + '</span>' : '') + '<button class="favorite-toggle ' + (tag.isFavorite ? 'favorite' : '') + '" data-action="favorite-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(displayLabel) + '"><span class="favorite-heart" aria-hidden="true"></span></button></div></div>';
+      return '<div class="row tag-row ' + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-tag-key="' + escapeHtml(tag.key) + '"><div class="tag-main"><span class="tag-name">' + escapeHtml(display.name) + '</span><span class="tag-count">' + tag.count + '</span></div><div class="tag-actions">' + (display.namespace ? '<span class="entity-kind">' + escapeHtml(display.namespace) + '</span>' : '') + '<button class="favorite-toggle ' + (tag.isFavorite ? 'favorite' : '') + '" data-action="favorite-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + favoriteLabel + ' ' + escapeHtml(displayLabel) + '"><span class="favorite-heart" aria-hidden="true"></span></button></div></div>';
     };
     const favoriteTags = filteredTags.filter(function (tag) { return tag.isFavorite; });
     const otherTags = filteredTags.filter(function (tag) { return !tag.isFavorite; });
@@ -892,7 +779,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const savedFilters = state.savedFilters.length
       ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved tag views <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) {
           const tagCount = filter.tags.length;
-          return '<div class="saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved tag view ' + escapeHtml(filter.name) + '">Remove</button></div>';
+          return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved tag view ' + escapeHtml(filter.name) + '">Remove</button></div>';
         }).join('') + '</div></section>'
       : '';
     const normalizedTaskSearchQuery = taskSearchQuery.trim().toLowerCase();
@@ -912,7 +799,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       const dueDate = task.dueText
         ? '<span class="due-date ' + (task.dueAt !== undefined && task.dueAt < startOfToday.getTime() ? 'overdue' : '') + '">DUE ' + escapeHtml(task.dueText) + '</span>'
         : '';
-      return '<div class="task-row ' + (task.completed ? 'completed ' : '') + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">' +
+      return '<div class="row task-row ' + (task.completed ? 'completed ' : '') + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">' +
         '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">' +
         '<div><div class="task-title">' + (state.tagTitleDisplayMode === 'inline' ? renderTaskTitle(item.renderedTitle, item.titleTags) : item.renderedTitle) + '</div><div class="task-meta">' + dueDate + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
         '</div>';
@@ -998,7 +885,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<div class="selected-task-tags" aria-label="Selected note tags">' + selectedNoteTags + '<button class="clear-task-filters" data-action="clear-note-tags">Clear filters</button></div>'
       : '';
     const noteSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-note-sort" aria-label="Sort notes"><option value="alphabetical" ' + (state.noteSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.noteSortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.noteSortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.noteSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>' + sortIcon + '</span></label>';
-    const formatControls = '<div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
+    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const tagSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></label>';
     const columnControls = function (section, selectedColumns) {
       const label = section === 'tasks' ? 'Task' : section === 'notes' ? 'Note' : 'Tag';
@@ -1017,7 +904,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : dashboardMode === 'notes' ? 'Notes' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
       savedFilters +
       '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Notes</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags</button></div></div>' +
-      '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label><div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + '<div class="task-list" style="grid-template-columns: repeat(' + state.taskColumns + ', 1fr);">' + tasks + '</div></section>' +
+      '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label><div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + '<div class="task-list" style="grid-template-columns: repeat(' + state.taskColumns + ', 1fr);">' + tasks + '</div></section>' +
       '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="task-toolbar"><div class="toolbar-controls">' + noteSearch + noteSortControl + '<div class="task-tag-filter-control">' + noteTagFilter + '</div></div></div>' + selectedNoteTagControls + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div></section>' +
       '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search" data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagSortControl + '</div></div></div>' + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
@@ -1395,12 +1282,3 @@ ${getDeckardThemeCss(getDeckardTheme())}
  * Creates a per-webview CSP nonce so inline styles/scripts are allowed only for
  * this generated document.
  */
-function createNonce(): string {
-  const alphabet =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let nonce = '';
-  for (let index = 0; index < 32; index += 1) {
-    nonce += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-  }
-  return nonce;
-}
