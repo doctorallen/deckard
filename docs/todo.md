@@ -1,9 +1,6 @@
 # Fixes
 
 # Improvements
-- need to do a style consistency pass, there are small inconsistencies all over
-- componentize UI elements
-- DQL (deckard query language). A more advanced filtering that allows for AND/OR operators, paranthesis, etc.
 - Move each webview's page script out of template strings into a TypeScript file bundled by esbuild, so it is type-checked and linted. `notesGraphHtml.ts` (1,934 lines), `dashboardHtml.ts` (1,334), and `tagOverviewHtml.ts` (1,286) are mostly inline script, and a `\b` swallowed by a template string has already shipped as a bug.
 - Split `src/ui/state/dashboardState.ts` (2,446 lines): move the Related Notes ranking and the word-similarity model out of the Dashboard and Tag Overview projections.
 - Test the sidebar skipping a re-rank while the cursor stays in one entry (the e2e stub needs a selection event), hidden panels catching up when shown, and the tag decoration debounce.
