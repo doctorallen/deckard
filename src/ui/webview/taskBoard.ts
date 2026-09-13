@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { parseQuery } from '../../core/query/queryParser';
+import { measure } from '../../core/timing';
 import { TaskBoardGroupBy } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openSourceAt } from '../commands/navigation';
@@ -28,6 +29,8 @@ export class TaskBoardPanel implements vscode.Disposable {
   private groupBy: TaskBoardGroupBy = 'status';
   private query = '';
   private queryError: string | undefined;
+  /** Whether the index changed while the panel was hidden. */
+  private isStale = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -117,6 +120,11 @@ export class TaskBoardPanel implements vscode.Disposable {
       panel.webview.onDidReceiveMessage((message) =>
         this.handleMessage(message),
       ),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+      }),
     ];
   }
 
@@ -136,14 +144,22 @@ export class TaskBoardPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden board keeps its cards and catches up when shown again.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
+    this.isStale = false;
     void this.panel.webview.postMessage({
       type: 'state',
-      data: createTaskBoard(
-        this.indexer.getSnapshot(),
-        this.groupBy,
-        this.query,
-        readTaskBoardOptions(),
-        this.queryError,
+      data: measure('Task board', () =>
+        createTaskBoard(
+          this.indexer.getSnapshot(),
+          this.groupBy,
+          this.query,
+          readTaskBoardOptions(),
+          this.queryError,
+        ),
       ),
     });
   }

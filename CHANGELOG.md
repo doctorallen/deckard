@@ -4,6 +4,15 @@
 
 ### Added
 
+- **Timing log**: `Deckard: Show Log` opens Deckard's log, which records how
+  long scanning, building the index, ranking Related Notes, drawing panels,
+  and each editor feature take, with how many notes or lines each covered.
+  Anything that takes 100 ms or longer is written as `Slow:` at the default
+  level; set the log to Debug in the Output panel to see every timing. It
+  works in an installed extension, so a slow machine can be diagnosed without
+  a debugger. The Related Notes sidebar's own messages moved into it at Trace
+  level.
+
 - **Hub notes**: a note whose front matter says `describes: project/atlas`
   leads that tag's overview, with its other front-matter fields shown as
   properties whose tag values open their own overviews. An overview without
@@ -148,6 +157,18 @@
   `.segmented` primitive for joined buttons.
 
 ### Fixed
+
+- Typing in a note no longer slows down in a large workspace. Every cursor
+  move rebuilt the whole index several times and ranked Related Notes again,
+  about a second of work per keystroke with 940 notes, even with the sidebar
+  closed. The index is now built once per change to the notes and shared; the
+  sidebar ranks again only when the cursor reaches a different tagged entry,
+  and not while it is hidden; tag decorations wait for typing to pause; query
+  block results are kept until the index changes; and ranking tokenizes the
+  workspace once per index instead of on every call. After a save, hidden
+  panels wait until they are shown, preference pruning no longer makes every
+  panel draw twice, and the Dashboard sorts its cards without building a
+  collator per comparison.
 
 - Renaming a tag now moves its favorites, access counts, Dashboard tag
   selections, and saved views to the new name instead of leaving them on the

@@ -24,6 +24,7 @@ suite('Extension Test Suite', () => {
         'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
+        'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createDailyNote',
         'deckard.extractHeading',

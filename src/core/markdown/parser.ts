@@ -797,7 +797,7 @@ function normalizeTagKey(
 export function stripTags(text: string, personMarker?: string): string {
   return text
     .replace(
-      createTagPattern(getPersonMarker(personMarker)),
+      getTagPattern(getPersonMarker(personMarker)),
       (fullMatch, prefix: string, marker: string, rawName: string) =>
         isNumericHashTag(marker, rawName) ? fullMatch : prefix,
     )
@@ -822,7 +822,7 @@ function findTagMatches(
   personMarker?: string,
 ): TagMatch[] {
   const activePersonMarker = getPersonMarker(personMarker);
-  return [...text.matchAll(createTagPattern(activePersonMarker))].flatMap((match) => {
+  return [...text.matchAll(getTagPattern(activePersonMarker))].flatMap((match) => {
     const marker = match[2];
     const rawName = match[3];
     if (isNumericHashTag(marker, rawName)) {
@@ -849,12 +849,25 @@ function findTagMatches(
   });
 }
 
-function createTagPattern(personMarker: string): RegExp {
-  const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
-  return new RegExp(
-    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
-    'g',
-  );
+/**
+ * One compiled pattern per people marker. Building a RegExp is costly and
+ * `stripTags` runs for every heading ranking shows. Sharing a global pattern
+ * is safe here because `replace` and `matchAll`, its only users, never carry
+ * `lastIndex` from one call to the next.
+ */
+const tagPatterns = new Map<string, RegExp>();
+
+function getTagPattern(personMarker: string): RegExp {
+  let pattern = tagPatterns.get(personMarker);
+  if (!pattern) {
+    const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+    pattern = new RegExp(
+      `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
+      'g',
+    );
+    tagPatterns.set(personMarker, pattern);
+  }
+  return pattern;
 }
 
 /**

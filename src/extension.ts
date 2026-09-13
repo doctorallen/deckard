@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
+import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { createDailyNote } from './ui/commands/dailyNote';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
@@ -53,6 +54,18 @@ export interface DeckardExports {
  * decorations, and completion all observe the same index and preference store.
  */
 export function activate(context: vscode.ExtensionContext): DeckardExports {
+  // One log for the whole extension. Its level, set from the Output panel,
+  // decides how much of Deckard's timing it keeps.
+  const log = vscode.window.createOutputChannel('Deckard', { log: true });
+  setTimingLog(log);
+  context.subscriptions.push(
+    log,
+    { dispose: () => setTimingLog(undefined) },
+    vscode.commands.registerCommand('deckard.showLog', () => log.show()),
+  );
+  log.info(
+    `Deckard ${String(context.extension.packageJSON.version)} activated.`,
+  );
   const indexer = new WorkspaceIndexer(
     undefined,
     new SearchStore(context.storageUri),

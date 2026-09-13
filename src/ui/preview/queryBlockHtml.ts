@@ -3,7 +3,7 @@ import MarkdownIt = require('markdown-it');
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { WorkspaceIndex } from '../../core/types';
 import {
-  createQueryBlockSnapshot,
+  getQueryBlockSnapshot,
   describeQueryBlockCounts,
   parseQueryBlockInfo,
   QueryBlockItem,
@@ -81,7 +81,7 @@ export function renderQueryBlockHtml(
     ].join('');
   }
 
-  const snapshot = createQueryBlockSnapshot(index, queryText, options);
+  const snapshot = getQueryBlockSnapshot(index, queryText, options);
   return [
     open,
     renderHeader(

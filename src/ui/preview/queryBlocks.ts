@@ -1,12 +1,13 @@
 import MarkdownIt = require('markdown-it');
 import * as vscode from 'vscode';
 
+import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
-  createQueryBlockSnapshot,
   describeQueryBlockCounts,
   findQueryBlocks,
+  getQueryBlockSnapshot,
   QueryBlockSource,
 } from '../state/queryBlockState';
 import { addQueryBlockRenderer } from './queryBlockHtml';
@@ -22,6 +23,8 @@ interface IndexSource {
  * Both surfaces read the snapshot the indexer last published rather than
  * building one per block, and both refresh when it changes, so a block keeps
  * up with edits made anywhere in the workspace, not only in its own note.
+ * A block's query runs once per index update, however often the lenses and
+ * the preview ask for it while its note is being edited.
  */
 export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
   private index: WorkspaceIndex | undefined;
@@ -63,8 +66,13 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     if (!isMarkdownFile(document.uri)) {
       return [];
     }
-    return findQueryBlocks(document.getText()).flatMap((block) =>
-      this.createCodeLenses(block),
+    return measure(
+      'Query block lenses',
+      () =>
+        findQueryBlocks(document.getText()).flatMap((block) =>
+          this.createCodeLenses(block),
+        ),
+      (lenses) => `${lenses.length} lenses`,
     );
   }
 
@@ -81,7 +89,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       return [label('Deckard is indexing the workspace…')];
     }
 
-    const snapshot = createQueryBlockSnapshot(
+    const snapshot = getQueryBlockSnapshot(
       this.index,
       block.query,
       block.options,

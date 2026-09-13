@@ -331,16 +331,13 @@ export function sortTags(
 }
 
 function compareTagLabels(left: TagInfo, right: TagInfo): number {
-  const labelComparison = getTagDisplayName(left).localeCompare(
+  const labelComparison = baseCollator.compare(
+    getTagDisplayName(left),
     getTagDisplayName(right),
-    undefined,
-    { sensitivity: 'base' },
   );
   return (
     labelComparison ||
-    left.label.localeCompare(right.label, undefined, {
-      sensitivity: 'base',
-    })
+    baseCollator.compare(left.label, right.label)
   );
 }
 
@@ -1101,6 +1098,7 @@ export function rankRelatedNotes(
         lexicalModel,
         section.heading,
         getSectionLexicalContent(section, file.sections),
+        lexicalModel && getSectionTerms(section, file.sections),
       ).weight;
       return (
         tags.some((tag) => activeKeys.has(tag.key)) ||
@@ -1160,6 +1158,7 @@ export function rankRelatedNotes(
         lexicalModel,
         task.title,
         task.sourceLineText,
+        lexicalModel && getTaskTerms(task),
       ).weight;
       return (
         (tags.some((tag) => activeKeys.has(tag.key)) ||
@@ -1253,6 +1252,8 @@ export function rankRelatedNotes(
           lexicalModel,
           reference.title,
           reference.rawContent,
+          lexicalModel &&
+            getCachedLexicalTerms(index, reference.title, reference.rawContent),
         );
         const recencyWeight = getRecencyWeight(
           getRelevantDate(file),
@@ -1553,13 +1554,28 @@ function linkTargetsEntry(
     normalizeHeadingTarget(title);
 }
 
+/**
+ * The names a link can use for a note, by path. Ranking asks for them for
+ * every entry it scores, so each path's names are worked out once.
+ */
+const linkNamesByPath = new Map<string, Set<string>>();
+
 function getLinkNames(filePath: string): Set<string> {
-  const fileName = filePath.split('/').pop() ?? filePath;
-  return new Set([
-    normalizeLink(filePath),
-    normalizeLink(fileName),
-    normalizeLink(fileName.replace(/\.md$/i, '')),
-  ]);
+  let names = linkNamesByPath.get(filePath);
+  if (!names) {
+    const fileName = filePath.split('/').pop() ?? filePath;
+    names = new Set([
+      normalizeLink(filePath),
+      normalizeLink(fileName),
+      normalizeLink(fileName.replace(/\.md$/i, '')),
+    ]);
+    // Paths only accumulate through renames; a bound keeps that in check.
+    if (linkNamesByPath.size > 50_000) {
+      linkNamesByPath.clear();
+    }
+    linkNamesByPath.set(filePath, names);
+  }
+  return names;
 }
 
 function getLinkFileTarget(link: string): string {
@@ -1579,6 +1595,8 @@ function normalizeHeadingTarget(value: string): string {
 
 interface LexicalModel {
   queryTerms: Set<string>;
+  /** Each query term's position, which orders an entry's shared terms. */
+  queryOrder: Map<string, number>;
   documentFrequency: Map<string, number>;
   documentCount: number;
   averageLength: number;
@@ -1589,34 +1607,56 @@ interface LexicalEvidence {
   terms: Array<{ term: string; contribution: number }>;
 }
 
-function createLexicalModel(
-  index: WorkspaceIndex,
-  activeFile: ParsedFile,
-): LexicalModel {
-  const documents = [
-    ...index.sections.values(),
-  ].map((section) =>
-    getLexicalTerms(
+type LexicalCorpus = Omit<LexicalModel, 'queryTerms' | 'queryOrder'>;
+
+/**
+ * Tokenizing every entry is most of what ranking costs, and it depends only on
+ * the index, so it is done once per index rather than per ranking. Entries and
+ * indexes are replaced, never changed, when a note is edited, so these caches
+ * stay correct and let go of old entries on their own.
+ */
+const lexicalCorpora = new WeakMap<WorkspaceIndex, LexicalCorpus>();
+const lexicalTerms = new WeakMap<Section | Task, string[]>();
+const sectionLexicalContents = new WeakMap<Section, string>();
+
+function getSectionTerms(section: Section, fileSections: Section[]): string[] {
+  let terms = lexicalTerms.get(section);
+  if (!terms) {
+    terms = getLexicalTerms(
       section.heading,
-      getSectionLexicalContent(
-        section,
-        index.files.get(section.filePath)?.sections ?? [],
-      ),
-    ),
-  ).concat(
-    [...index.tasks.values()].map((task) =>
-      getLexicalTerms(task.title, task.sourceLineText),
-    ),
-  );
+      getSectionLexicalContent(section, fileSections),
+    );
+    lexicalTerms.set(section, terms);
+  }
+  return terms;
+}
+
+function getTaskTerms(task: Task): string[] {
+  let terms = lexicalTerms.get(task);
+  if (!terms) {
+    terms = getLexicalTerms(task.title, task.sourceLineText);
+    lexicalTerms.set(task, terms);
+  }
+  return terms;
+}
+
+function getLexicalCorpus(index: WorkspaceIndex): LexicalCorpus {
+  const cached = lexicalCorpora.get(index);
+  if (cached) {
+    return cached;
+  }
+  const documents = [...index.sections.values()]
+    .map((section) =>
+      getSectionTerms(section, index.files.get(section.filePath)?.sections ?? []),
+    )
+    .concat([...index.tasks.values()].map(getTaskTerms));
   const documentFrequency = new Map<string, number>();
   documents.forEach((terms) => {
     new Set(terms).forEach((term) =>
       documentFrequency.set(term, (documentFrequency.get(term) ?? 0) + 1),
     );
   });
-  const activeTerms = getLexicalTerms(activeFile.content, activeFile.content);
-  return {
-    queryTerms: new Set(activeTerms),
+  const corpus = {
     documentFrequency,
     documentCount: Math.max(1, documents.length),
     averageLength: Math.max(
@@ -1625,22 +1665,96 @@ function createLexicalModel(
         Math.max(1, documents.length),
     ),
   };
+  lexicalCorpora.set(index, corpus);
+  return corpus;
 }
 
+function createLexicalModel(
+  index: WorkspaceIndex,
+  activeFile: ParsedFile,
+): LexicalModel {
+  const queryTerms = new Set(
+    getLexicalTerms(activeFile.content, activeFile.content),
+  );
+  return {
+    ...getLexicalCorpus(index),
+    queryTerms,
+    queryOrder: new Map([...queryTerms].map((term, order) => [term, order])),
+  };
+}
+
+/** Terms by title and text for one index, for results that are not entries. */
+const lexicalTermsByText = new WeakMap<WorkspaceIndex, Map<string, string[]>>();
+
+function getCachedLexicalTerms(
+  index: WorkspaceIndex,
+  title: string,
+  content: string,
+): string[] {
+  let byText = lexicalTermsByText.get(index);
+  if (!byText) {
+    byText = new Map();
+    lexicalTermsByText.set(index, byText);
+  }
+  const key = `${title} ${content}`;
+  let terms = byText.get(key);
+  if (!terms) {
+    terms = getLexicalTerms(title, content);
+    byText.set(key, terms);
+  }
+  return terms;
+}
+
+/** How often each term occurs, by term list. Cached lists keep theirs. */
+const termFrequencies = new WeakMap<string[], Map<string, number>>();
+
+function getTermFrequencies(terms: string[]): Map<string, number> {
+  let frequencies = termFrequencies.get(terms);
+  if (!frequencies) {
+    frequencies = new Map<string, number>();
+    for (const term of terms) {
+      frequencies.set(term, (frequencies.get(term) ?? 0) + 1);
+    }
+    termFrequencies.set(terms, frequencies);
+  }
+  return frequencies;
+}
+
+/**
+ * The query terms an entry contains, in query order. It walks whichever set
+ * is smaller, since the active note can hold hundreds of distinct terms and
+ * an entry a few dozen; query order keeps tied contributions in place.
+ */
+function getSharedTerms(
+  model: LexicalModel,
+  frequencies: Map<string, number>,
+): string[] {
+  if (model.queryTerms.size <= frequencies.size) {
+    return [...model.queryTerms].filter((term) => frequencies.has(term));
+  }
+  return [...frequencies.keys()]
+    .filter((term) => model.queryTerms.has(term))
+    .sort(
+      (left, right) =>
+        (model.queryOrder.get(left) ?? 0) - (model.queryOrder.get(right) ?? 0),
+    );
+}
+
+/** `knownTerms` skips tokenizing an entry whose terms are already cached. */
 function getLexicalWeight(
   model: LexicalModel | undefined,
   title: string,
   content: string,
+  knownTerms?: string[],
 ): LexicalEvidence {
   if (!model || model.queryTerms.size === 0) {
     return { weight: 0, terms: [] };
   }
-  const terms = getLexicalTerms(title, content);
-  const frequencies = new Map<string, number>();
-  terms.forEach((term) => frequencies.set(term, (frequencies.get(term) ?? 0) + 1));
+  const terms = knownTerms ?? getLexicalTerms(title, content);
+  const frequencies = getTermFrequencies(terms);
   const lengthFactor =
     1.2 * (1 - 0.75 + 0.75 * (terms.length / model.averageLength));
-  const contributions = [...model.queryTerms].flatMap((term) => {
+  const contributions = getSharedTerms(model, frequencies).flatMap((term) => {
     const frequency = frequencies.get(term) ?? 0;
     if (frequency === 0) {
       return [];
@@ -1696,6 +1810,19 @@ function getLexicalTerms(title: string, content: string): string[] {
 }
 
 function getSectionLexicalContent(
+  section: Section,
+  fileSections: Section[],
+): string {
+  let content = sectionLexicalContents.get(section);
+  if (content === undefined) {
+    content = readSectionLexicalContent(section, fileSections);
+    sectionLexicalContents.set(section, content);
+  }
+  return content;
+}
+
+/** A section's own text, without the text of the headings nested in it. */
+function readSectionLexicalContent(
   section: Section,
   fileSections: Section[],
 ): string {
@@ -1804,7 +1931,7 @@ function createDashboardTask(
 ): DashboardTask {
   return {
     task,
-    renderedTitle: renderMarkdownInline(task.title),
+    renderedTitle: renderTaskTitle(task),
     titleTags: getTitleTags(task.tags, task.tagLabels, task.title),
     sectionHeading: task.sectionId
       ? sections.get(task.sectionId)?.heading
@@ -1835,7 +1962,7 @@ function createTagOverviewCard(
       label: section.tagLabels[key] ?? `#${key}`,
     })),
     rawContent: getSectionBody(section.rawContent),
-    renderedHtml: renderMarkdown(getSectionBody(section.rawContent)),
+    renderedHtml: renderSectionBody(section),
     startLine: section.startLine,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
@@ -1930,6 +2057,15 @@ function normalizeTaskTags(
 /**
  * Applies the requested overview mode and a stable heading/path/line fallback.
  */
+/**
+ * `localeCompare` with options builds a collator on every call, which made
+ * sorting thousands of cards the slowest part of the Dashboard. These compare
+ * in exactly the same order as `localeCompare` with and without
+ * `{ sensitivity: 'base' }`.
+ */
+const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+const defaultCollator = new Intl.Collator();
+
 function compareTagOverviewCards(
   left: TagOverviewCard,
   right: TagOverviewCard,
@@ -1954,10 +2090,8 @@ function compareTagOverviewCards(
   }
 
   return (
-    left.heading.localeCompare(right.heading, undefined, {
-      sensitivity: 'base',
-    }) ||
-    left.filePath.localeCompare(right.filePath) ||
+    baseCollator.compare(left.heading, right.heading) ||
+    defaultCollator.compare(left.filePath, right.filePath) ||
     left.startLine - right.startLine
   );
 }
@@ -1984,6 +2118,32 @@ function compareDatesDescending(
 /**
  * Keeps overview cards focused on body content instead of repeating their title.
  */
+/**
+ * Sanitized HTML is the costliest part of a card, and an entry's text never
+ * changes after it is parsed, so each body and title is rendered once. A
+ * reparsed note brings new entries, and the old ones are let go with them.
+ */
+const renderedSectionBodies = new WeakMap<Section, string>();
+const renderedTaskTitles = new WeakMap<Task, string>();
+
+function renderSectionBody(section: Section): string {
+  let html = renderedSectionBodies.get(section);
+  if (html === undefined) {
+    html = renderMarkdown(getSectionBody(section.rawContent));
+    renderedSectionBodies.set(section, html);
+  }
+  return html;
+}
+
+function renderTaskTitle(task: Task): string {
+  let html = renderedTaskTitles.get(task);
+  if (html === undefined) {
+    html = renderMarkdownInline(task.title);
+    renderedTaskTitles.set(task, html);
+  }
+  return html;
+}
+
 function getSectionBody(rawContent: string): string {
   const lines = rawContent.split(/\r?\n/);
   return lines.length > 1 ? lines.slice(1).join('\n').replace(/^\n/, '') : '';

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { measureAsync } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -23,6 +24,15 @@ interface IndexSource {
  */
 export class WikiLinkCompletionProvider implements vscode.Disposable {
   private readonly registrations: vscode.Disposable[];
+  /**
+   * Link targets resolved against one index. Resolving checks the file
+   * system, and VS Code asks for links after every edit, so each note is
+   * resolved once until the index changes.
+   */
+  private readonly resolvedTargets = new WeakMap<
+    WorkspaceIndex,
+    Map<string, Promise<vscode.Uri | undefined>>
+  >();
 
   public constructor(private readonly indexer: IndexSource) {
     this.registrations = [
@@ -105,15 +115,43 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     }
 
     await this.indexer.ready;
+    return measureAsync(
+      'Wiki links',
+      () => this.createDocumentLinks(document),
+      (links) => `${links.length} links, ${document.lineCount} lines`,
+    );
+  }
+
+  private resolveTarget(
+    index: WorkspaceIndex,
+    filePath: string,
+  ): Promise<vscode.Uri | undefined> {
+    let targets = this.resolvedTargets.get(index);
+    if (!targets) {
+      targets = new Map();
+      this.resolvedTargets.set(index, targets);
+    }
+    let target = targets.get(filePath);
+    if (!target) {
+      target = resolveSourceUri(filePath);
+      targets.set(filePath, target);
+    }
+    return target;
+  }
+
+  private async createDocumentLinks(
+    document: vscode.TextDocument,
+  ): Promise<vscode.DocumentLink[]> {
+    const index = this.indexer.getSnapshot();
     const links = findWikiLinkTargets(
       document.getText(),
-      this.indexer.getSnapshot(),
+      index,
       this.indexer.getFilePath?.(document.uri),
     );
     const resolved = await Promise.all(
       links.map(async (link) => ({
         link,
-        target: await resolveSourceUri(link.filePath),
+        target: await this.resolveTarget(index, link.filePath),
       })),
     );
 

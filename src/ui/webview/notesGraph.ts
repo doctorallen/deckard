@@ -6,6 +6,7 @@ import {
   NotesGraphSnapshot,
   SidebarGraphContext,
 } from '../../core/types';
+import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openSourceAt } from '../commands/navigation';
 import {
@@ -25,6 +26,8 @@ export class NotesGraphPanel implements vscode.Disposable {
   private panelDisposables: vscode.Disposable[] = [];
   private selectedNodeId: string | undefined;
   private snapshot: NotesGraphSnapshot | undefined;
+  /** Whether the index changed while the panel was hidden. */
+  private isStale = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -138,6 +141,9 @@ export class NotesGraphPanel implements vscode.Disposable {
         this.disposePanelListeners();
       }),
       panel.onDidChangeViewState((event) => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
         if (event.webviewPanel.active) {
           void this.publishGraphContext(false);
         } else {
@@ -166,8 +172,18 @@ export class NotesGraphPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden graph keeps its layout and catches up when shown again.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
-    const snapshot = this.getSnapshot();
+    this.isStale = false;
+    const snapshot = measure(
+      'Notes Graph',
+      () => this.getSnapshot(),
+      (graph) => `${graph.nodes.length} nodes`,
+    );
     if (
       this.selectedNodeId &&
       !snapshot.nodes.some((node) => node.id === this.selectedNodeId)

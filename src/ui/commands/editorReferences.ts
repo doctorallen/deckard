@@ -6,6 +6,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
 } from '../../core/markdown/parser';
+import { measure } from '../../core/timing';
 import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 import {
   BacklinkIndex,
@@ -106,6 +107,14 @@ export class EditorReferences
     ) {
       return [];
     }
+    return measure(
+      'Reference lenses',
+      () => this.createCodeLenses(document),
+      (lenses) => `${lenses.length} lenses, ${document.lineCount} lines`,
+    );
+  }
+
+  private createCodeLenses(document: vscode.TextDocument): DeckardLens[] {
     const file = this.indexer.parse(document.uri, document.getText());
     const summary = createReferenceSummary(file, this.getBacklinks());
     const lenses: DeckardLens[] = [];
@@ -292,27 +301,32 @@ export class EditorReferences
       'deckard',
       document.uri,
     );
-    const count = createSidebarSnapshot(
-      this.getIndex(),
-      file.filePath,
-      scope.file,
-      configuration.get<boolean>('enableKeywordLinks', true),
-      'tags',
-      {},
-      'inline',
-      undefined,
-      scope.tagWeights,
-      {
-        associationMinimumSupport: configuration.get<number>(
-          'relatedNotesAssociationMinimumSupport',
-          1,
-        ),
-        recencyHalfLifeDays: configuration.get<number>(
-          'relatedNotesRecencyHalfLifeDays',
-          0,
-        ),
-      },
-    ).notes.length;
+    const count = measure(
+      'Related entry count',
+      () =>
+        createSidebarSnapshot(
+          this.getIndex(),
+          file.filePath,
+          scope.file,
+          configuration.get<boolean>('enableKeywordLinks', true),
+          'tags',
+          {},
+          'inline',
+          undefined,
+          scope.tagWeights,
+          {
+            associationMinimumSupport: configuration.get<number>(
+              'relatedNotesAssociationMinimumSupport',
+              1,
+            ),
+            recencyHalfLifeDays: configuration.get<number>(
+              'relatedNotesRecencyHalfLifeDays',
+              0,
+            ),
+          },
+        ).notes.length,
+      (result) => `${result} entries for ${section.heading}`,
+    );
     this.relatedCounts.set(key, count);
     return count;
   }

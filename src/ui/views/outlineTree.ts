@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   buildOutline,
@@ -219,13 +220,17 @@ export class OutlineTreeProvider
     }
 
     try {
-      const file = this.indexer.parse(document.uri, document.getText());
-      const roots = buildOutline(file, {
-        personMarker: vscode.workspace
-          .getConfiguration('deckard', document.uri)
-          .get<string>('personMarker'),
-        inheritedTags: this.areInheritedTagsShown(document.uri),
-      });
+      const roots = measure(
+        'Outline',
+        () =>
+          buildOutline(this.indexer.parse(document.uri, document.getText()), {
+            personMarker: vscode.workspace
+              .getConfiguration('deckard', document.uri)
+              .get<string>('personMarker'),
+            inheritedTags: this.areInheritedTagsShown(document.uri),
+          }),
+        () => `${document.lineCount} lines`,
+      );
       this.publish(
         roots,
         document.uri,

@@ -48,6 +48,10 @@
         "title": "Deckard: Open Help"
       },
       {
+        "command": "deckard.showLog",
+        "title": "Deckard: Show Log"
+      },
+      {
         "command": "deckard.reindexWorkspace",
         "title": "Deckard: Reindex Workspace"
       },

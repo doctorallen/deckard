@@ -509,7 +509,7 @@ export class PreferencesStore implements vscode.Disposable {
         ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
         : [];
     });
-    await this.update({
+    const changes: Partial<PersistedPreferences> = {
       favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -533,7 +533,21 @@ export class PreferencesStore implements vscode.Disposable {
         ),
       ),
       savedFilters,
-    });
+    };
+    // Every index update prunes, and it rarely removes anything. Writing
+    // anyway would make every view that follows preferences refresh twice.
+    if (this.hasChanges(changes)) {
+      await this.update(changes);
+    }
+  }
+
+  private hasChanges(changes: Partial<PersistedPreferences>): boolean {
+    return (
+      Object.keys(changes) as Array<keyof PersistedPreferences>
+    ).some(
+      (key) =>
+        JSON.stringify(changes[key]) !== JSON.stringify(this.preferences[key]),
+    );
   }
 
   /**

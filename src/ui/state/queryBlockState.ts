@@ -220,6 +220,37 @@ export function isQueryBlockLine(
 /**
  * Runs a block's query against the index and orders what it matched.
  */
+/**
+ * Results by index, then by day and block. The lenses above a block are asked
+ * for after every edit, and the preview renders as the note is typed, so a
+ * block's query runs once per index instead. The day is part of the key
+ * because `today` and `7d` move at midnight.
+ */
+const snapshotCache = new WeakMap<
+  WorkspaceIndex,
+  Map<string, QueryBlockSnapshot>
+>();
+
+/** `createQueryBlockSnapshot`, run once per index, day, query, and options. */
+export function getQueryBlockSnapshot(
+  index: WorkspaceIndex,
+  queryText: string,
+  options: QueryBlockOptions,
+): QueryBlockSnapshot {
+  let snapshots = snapshotCache.get(index);
+  if (!snapshots) {
+    snapshots = new Map();
+    snapshotCache.set(index, snapshots);
+  }
+  const key = JSON.stringify([new Date().toDateString(), queryText, options]);
+  let snapshot = snapshots.get(key);
+  if (!snapshot) {
+    snapshot = createQueryBlockSnapshot(index, queryText, options);
+    snapshots.set(key, snapshot);
+  }
+  return snapshot;
+}
+
 export function createQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,

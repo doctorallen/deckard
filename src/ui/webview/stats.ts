@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { PreferencesStore } from '../../core/storage/preferences';
+import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { openSourceAt } from '../commands/navigation';
@@ -16,6 +17,8 @@ export class StatsPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
+  /** Whether the index changed while the panel was hidden. */
+  private isStale = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -93,6 +96,11 @@ export class StatsPanel implements vscode.Disposable {
       panel.webview.onDidReceiveMessage((message: unknown) =>
         this.handleMessage(message),
       ),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+      }),
     ];
   }
 
@@ -142,12 +150,20 @@ export class StatsPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden page keeps what it shows and catches up when shown again.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
+    this.isStale = false;
     void this.panel.webview.postMessage({
       type: 'state',
-      data: createDeckardStatsSnapshot(
-        this.indexer.getSnapshot(),
-        this.preferences.value,
+      data: measure('Stats', () =>
+        createDeckardStatsSnapshot(
+          this.indexer.getSnapshot(),
+          this.preferences.value,
+        ),
       ),
     });
   }

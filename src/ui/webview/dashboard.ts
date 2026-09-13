@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
+import { measure } from '../../core/timing';
 import {
   DashboardMode,
   DashboardColumnCount,
@@ -32,6 +33,8 @@ export class DashboardPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
+  /** Whether something changed while the panel was hidden. */
+  private isStale = false;
   private taskFilter: DashboardSnapshot['taskFilter'] = 'active';
   private selectedTaskTags: string[] = [];
   private selectedNoteTags: string[] = [];
@@ -187,6 +190,11 @@ export class DashboardPanel implements vscode.Disposable {
       panel.webview.onDidReceiveMessage((message) => {
         void this.handleMessage(message);
       }),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+      }),
     ];
   }
 
@@ -215,7 +223,21 @@ export class DashboardPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden page keeps what it shows and catches up when shown again, so
+    // saving a note while the Dashboard is in the background costs nothing.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
+    this.isStale = false;
+    measure('Dashboard', () => this.publish());
+  }
+
+  private publish(): void {
+    if (!this.panel) {
+      return;
+    }
     const preferences = this.preferences.value;
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
       vscode.workspace

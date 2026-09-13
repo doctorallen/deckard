@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { formatEntityTitle } from '../../core/markdown/parser';
 import { getQueryTagIntersection } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
+import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
@@ -449,6 +450,8 @@ class TagOverviewPanel implements vscode.Disposable {
    * the last query that did parse.
    */
   private invalidQueryText: string | undefined;
+  /** Whether the index changed while the panel was hidden. */
+  private isStale = false;
 
   public constructor(
     private readonly tagKey: string | undefined,
@@ -560,8 +563,14 @@ class TagOverviewPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden overview keeps its page and catches up when shown again.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
-    const snapshot = this.createSnapshot();
+    this.isStale = false;
+    const snapshot = measure('Tag overview', () => this.createSnapshot());
     if (snapshot) {
       void this.panel.webview.postMessage({ type: 'state', data: snapshot });
     }
@@ -661,7 +670,12 @@ class TagOverviewPanel implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      panel.onDidChangeViewState(() => this.onViewStateChange(panel.active)),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+        this.onViewStateChange(panel.active);
+      }),
     );
     this.disposables.push(
       panel.webview.onDidReceiveMessage((message) => {

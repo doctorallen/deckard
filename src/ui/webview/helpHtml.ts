@@ -115,6 +115,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         <li><code>Deckard: Open Dashboard</code> opens workspace totals and the Tasks, Notes, and Tags Dashboard modes.</li>
         <li><code>Deckard: Open Notes Graph</code> opens an interactive map of every indexed note, task, and tag connection.</li>
         <li><code>Deckard: Show Stats</code> shows index totals and local view counts.</li>
+        <li><code>Deckard: Show Log</code> opens Deckard's log. Anything that takes 100 ms or longer is listed as <code>Slow:</code>; set the log's level to Debug in the Output panel to see every timing.</li>
         <li><code>Deckard: Open Help</code> opens this guide.</li>
         <li><code>Deckard: Reindex Workspace</code> performs a full scan of the workspace Markdown scope.</li>
         <li><code>Deckard: Create Daily Note</code> creates or opens today&apos;s note.</li>

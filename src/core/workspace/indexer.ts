@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { getEntityKind } from '../markdown/parser';
 import { SearchStore } from '../storage/searchStore';
+import { measure, measureAsync } from '../timing';
 import { ScanProgress, WorkspaceScanner } from './scanner';
 
 /**
@@ -30,6 +31,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private readyPromise: Promise<void> = Promise.resolve();
   private disposed = false;
+  /** The derived index, kept until the notes next change. */
+  private snapshot: WorkspaceIndex | undefined;
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
@@ -58,10 +61,20 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   /**
-   * Rebuilds a detached index so consumers cannot mutate the cache indirectly.
+   * Returns the derived index, built once per change to the notes and shared
+   * by every caller until the next one, so callers treat it as read-only.
+   *
+   * Building it walks every note, and editor features ask for it on every
+   * keystroke and cursor move, so rebuilding per call was the main cost of
+   * typing in a large workspace.
    */
   public getSnapshot(): WorkspaceIndex {
-    return buildWorkspaceIndex(new Map(this.files));
+    this.snapshot ??= measure(
+      'Build index',
+      () => buildWorkspaceIndex(new Map(this.files)),
+      (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+    );
+    return this.snapshot;
   }
 
   /**
@@ -187,16 +200,19 @@ export class WorkspaceIndexer implements vscode.Disposable {
         cancellable: false,
       },
       async (progress) => {
-        const parsedFiles = await this.scanner.scan(
-          (completed, total): void => {
-            progress.report({
-              message:
-                total > 0
-                  ? `${completed}/${total} Markdown files`
-                  : 'No Markdown files',
-              increment: total > 0 ? 100 / total : 0,
-            });
-          },
+        const parsedFiles = await measureAsync(
+          'Scan workspace',
+          () =>
+            this.scanner.scan((completed, total): void => {
+              progress.report({
+                message:
+                  total > 0
+                    ? `${completed}/${total} Markdown files`
+                    : 'No Markdown files',
+                increment: total > 0 ? 100 / total : 0,
+              });
+            }),
+          (files) => `${files.length} notes`,
         );
         if (this.disposed) {
           return;
@@ -204,7 +220,12 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
         this.files.clear();
         parsedFiles.forEach((file) => this.files.set(file.filePath, file));
-        this.searchStore?.replace(this.files.values());
+        this.snapshot = undefined;
+        measure(
+          'Rebuild search index',
+          () => this.searchStore?.replace(this.files.values()),
+          () => `${this.files.size} notes`,
+        );
         this.emitUpdate();
       },
     );
@@ -335,7 +356,16 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private async flushPending(): Promise<void> {
     const updates = [...this.pending.values()];
     this.pending.clear();
+    await measureAsync(
+      'Read changed notes',
+      () => this.applyUpdates(updates),
+      () => `${updates.length} ${updates.length === 1 ? 'note' : 'notes'}`,
+    );
+    this.snapshot = undefined;
+    this.emitUpdate();
+  }
 
+  private async applyUpdates(updates: PendingUpdate[]): Promise<void> {
     for (const update of updates) {
       const filePath = this.scanner.getFilePath(update.uri);
       if (update.deleted) {
@@ -355,17 +385,17 @@ export class WorkspaceIndexer implements vscode.Disposable {
       } catch (error) {
         console.error(`Deckard could not update ${filePath}`, error);
       }
-
     }
-
-    this.emitUpdate();
   }
 
   /**
    * Publishes a newly derived snapshot after the cache is internally consistent.
+   * The measurement covers every listener, so it is what one save costs.
    */
   private emitUpdate(): void {
-    this.updateEmitter.fire(this.getSnapshot());
+    measure('Refresh views after an index update', () =>
+      this.updateEmitter.fire(this.getSnapshot()),
+    );
   }
 }
 

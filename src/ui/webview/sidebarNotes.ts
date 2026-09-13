@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { PreferencesStore } from '../../core/storage/preferences';
+import { logTrace, measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -26,6 +27,9 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
 
+/** How long cursor moves must pause before the sidebar ranks a new entry. */
+const selectionRefreshDelayMs = 120;
+
 /**
  * Provides active-note context or active-tag-overview context in the sidebar.
  *
@@ -36,12 +40,12 @@ export class SidebarNotesView
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
   private readonly disposables: vscode.Disposable[] = [];
-  private readonly output = vscode.window.createOutputChannel('Deckard');
   private view: vscode.WebviewView | undefined;
   private viewDisposables: vscode.Disposable[] = [];
   private entryContext: EntryContext | undefined;
   private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
+  private refreshHandle: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -54,7 +58,6 @@ export class SidebarNotesView
     ) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
-    this.disposables.push(this.output);
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
     this.disposables.push(
@@ -66,10 +69,17 @@ export class SidebarNotesView
     );
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection((event) => {
-        if (event.textEditor === vscode.window.activeTextEditor) {
-          this.suppressAutomaticEntrySelection = false;
-          this.updateEntryContextFromActiveEditor(true);
-          this.refresh();
+        if (event.textEditor !== vscode.window.activeTextEditor) {
+          return;
+        }
+        // Typing moves the cursor on every keystroke, and ranking reads the
+        // whole workspace, so the sidebar only refreshes when the cursor
+        // reaches a different tagged entry.
+        const previous = this.entryContext;
+        this.suppressAutomaticEntrySelection = false;
+        this.updateEntryContextFromActiveEditor(true);
+        if (!isSameEntryContext(previous, this.entryContext)) {
+          this.scheduleRefresh();
         }
       }),
     );
@@ -140,6 +150,7 @@ export class SidebarNotesView
    * Releases view listeners and shared subscriptions.
    */
   public dispose(): void {
+    clearTimeout(this.refreshHandle);
     this.disposeViewListeners();
     this.view = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
@@ -253,12 +264,25 @@ export class SidebarNotesView
    * Sends the current sidebar projection only when the view is attached.
    */
   private refresh(snapshot?: SidebarNotesSnapshot): void {
+    clearTimeout(this.refreshHandle);
+    this.refreshHandle = undefined;
     if (!this.view) {
       this.log('Skipped Related Notes refresh because no webview is attached.');
       return;
     }
+    // A hidden sidebar is refreshed when it is shown again.
+    if (!this.view.visible) {
+      this.log('Skipped Related Notes refresh because the view is hidden.');
+      return;
+    }
 
-    const currentSnapshot = snapshot ?? this.createSnapshot();
+    const currentSnapshot =
+      snapshot ??
+      measure(
+        'Related Notes',
+        () => this.createSnapshot(),
+        (result) => `${result.notes.length} results`,
+      );
     this.log(
       `Sending Related Notes state: ${currentSnapshot.state}${currentSnapshot.tagOverview ? ` (tag overview ${currentSnapshot.tagOverview.key})` : currentSnapshot.activeFileName ? ` (Markdown ${currentSnapshot.activeFileName})` : ''}, ${currentSnapshot.notes.length} note entries.`,
     );
@@ -274,6 +298,15 @@ export class SidebarNotesView
             `Related Notes state delivery failed: ${formatError(error)}.`,
           ),
       );
+  }
+
+  /** Refreshes once a burst of cursor moves, such as a held arrow key, ends. */
+  private scheduleRefresh(): void {
+    clearTimeout(this.refreshHandle);
+    this.refreshHandle = setTimeout(() => {
+      this.refreshHandle = undefined;
+      this.refresh();
+    }, selectionRefreshDelayMs);
   }
 
   /**
@@ -562,8 +595,20 @@ export class SidebarNotesView
   }
 
   private log(message: string): void {
-    this.output.appendLine(`[Related Notes] ${message}`);
+    logTrace(() => `[Related Notes] ${message}`);
   }
+}
+
+/** Whether two cursor or manual contexts name the same entry. */
+function isSameEntryContext(
+  left: EntryContext | undefined,
+  right: EntryContext | undefined,
+): boolean {
+  return (
+    left?.filePath === right?.filePath &&
+    left?.sourceLine === right?.sourceLine &&
+    left?.source === right?.source
+  );
 }
 
 /**

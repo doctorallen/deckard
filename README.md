@@ -76,6 +76,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, or due date. |
 | **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
+| **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
@@ -513,5 +514,6 @@ Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-
 - **Content in a code block appears ignored:** this is intentional. Fenced code is excluded from indexing, tag links, and completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are intentionally not tags. Use an `@` marker or include a non-numeric character.
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.
+- **Deckard feels slow:** run `Deckard: Show Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown.
 
 Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and it scans only Markdown files within the configured workspace scope.
