@@ -64,6 +64,8 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
+| **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
+| **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
 
 ## Markdown format
 
@@ -152,6 +154,19 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 - **Forces** tunes the layout with cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance; changes re-run the simulation live. The graph's default layout uses a prevalence-aware local backbone: direct Wiki links and headings seed visual communities, tag memberships are scored against a target community size, and each node retains only its strongest connections. The underlying Connected Nodes sidebar still uses every indexed relationship.
 - The graph is read-only: it never changes tags, associations, or your Markdown sources, and control choices persist per panel.
 - The sidebar switches to **Connected nodes** only while the Notes Graph tab is active. Returning to a Markdown editor restores the normal Related Notes ranking.
+
+## Outline
+
+Open **Outline** from the Deckard Activity Bar to see the active Markdown file's headings as a tree. It is a view like any other, so it can be dragged into either the primary or the secondary sidebar and VS Code remembers where you put it.
+
+- Heading markers and tags are taken out of each title, and the heading's own tags are shown beside it, so structure and labels read as two columns.
+- Untagged headings are kept as structure, so a tagged heading stays where you wrote it. A heading written as nothing but tags shows those tags as its title.
+- Headings inside fenced code blocks are ignored, and a numeric hash such as `Sprint #3` stays in the title because it is not a tag.
+- The tree is built from editor text, so it follows the file as you type rather than waiting for a save.
+- Select a heading to jump to its line. Right-click a heading that carries tags for **Open Tag Overview** and **Rename Tag**.
+- The eye control in the view title switches whether the Outline follows the cursor, and **Collapse all** is beside it.
+
+Headings written in the underlined `Title`/`===` style are not shown, matching how Deckard indexes notes everywhere else.
 
 ## Related Notes
 
@@ -259,6 +274,9 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.notesFolder": "notes",
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
 	"deckard.parseInlineTags": true,
+	"deckard.outline.showTags": true,
+	"deckard.outline.followCursor": true,
+	"deckard.outline.inheritedTags": false,
 	"deckard.highlightNoteSections": true,
 	"deckard.autoSelectNoteSections": true,
 	"deckard.enableHeadingTagRelationships": true,
@@ -279,6 +297,9 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.theme` | `replicant` | Selects the Replicant, Oblivion, or LCARS visual style for Deckard webviews. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
 | `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
+| `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |
+| `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
+| `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
 | `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
 | `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, Tag Overview, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove overview tags from titles and show them as separate tag controls. |
@@ -301,6 +322,7 @@ Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
+- **A heading is missing from the Outline:** the Outline shows ATX headings only, so an underlined `Title`/`===` heading does not appear. Headings inside fenced code blocks are excluded on purpose.
 - **Content in a code block appears ignored:** this is intentional. Fenced code is excluded from indexing, tag links, and completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are intentionally not tags. Use an `@` marker or include a non-numeric character.
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.

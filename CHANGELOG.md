@@ -4,6 +4,21 @@
 
 ### Added
 
+- **Outline**: a new **Outline** view beside Related Notes lists the active
+  Markdown file's headings as a tree, and can be dragged into either the
+  primary or the secondary sidebar like VS Code's own Outline. Heading markers
+  and tags are removed from each title and the heading's own tags are shown
+  beside it, so structure and labels read as two columns. Untagged headings are
+  kept as structure, a heading written as nothing but tags shows those tags as
+  its title, headings inside fenced code blocks are ignored, and a numeric hash
+  such as `Sprint #3` stays in the title. The tree is built from editor text,
+  so it follows the file as you type rather than waiting for a save. Selecting
+  a heading jumps to its line, right-clicking a tagged heading offers **Open
+  Tag Overview** and **Rename Tag**, and the eye control in the view title
+  switches whether the Outline follows the cursor. `deckard.outline.showTags`,
+  `deckard.outline.followCursor`, and `deckard.outline.inheritedTags` control
+  what it shows.
+
 - **Advanced filtering in Entity Overview**: the overview page now carries a
   Deckard query behind an **Advanced search** control, so a view is no longer limited to
   one intersection of tags. A query combines conditions with `AND`, `OR`,

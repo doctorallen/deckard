@@ -72,17 +72,7 @@ export async function openSourceAt(
     const editor = await vscode.window.showTextDocument(document, {
       preview: false,
     });
-    const lineIndex = Math.min(
-      Math.max(line - 1, 0),
-      Math.max(document.lineCount - 1, 0),
-    );
-    const position = new vscode.Position(lineIndex, 0);
-    const range = new vscode.Range(position, position);
-    editor.selection = new vscode.Selection(position, position);
-    editor.revealRange(
-      range,
-      vscode.TextEditorRevealType.InCenterIfOutsideViewport,
-    );
+    revealLine(editor, line);
     return editor;
   } catch (error) {
     void vscode.window.showErrorMessage(
@@ -90,6 +80,26 @@ export async function openSourceAt(
     );
     return undefined;
   }
+}
+
+/**
+ * Centers a one-based line in an editor that is already open.
+ *
+ * Callers that resolve their own document, such as the outline view, share
+ * this so every Deckard jump lands on the line the same way.
+ */
+export function revealLine(editor: vscode.TextEditor, line: number): void {
+  const lineIndex = Math.min(
+    Math.max(line - 1, 0),
+    Math.max(editor.document.lineCount - 1, 0),
+  );
+  const position = new vscode.Position(lineIndex, 0);
+  const range = new vscode.Range(position, position);
+  editor.selection = new vscode.Selection(position, position);
+  editor.revealRange(
+    range,
+    vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+  );
 }
 
 /**

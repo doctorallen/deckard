@@ -80,8 +80,70 @@
       {
         "command": "deckard.showEntryRelatedNotesDebug",
         "title": "Deckard: Debug Related Notes"
+      },
+      {
+        "command": "deckard.outline.revealSection",
+        "title": "Deckard: Reveal Outline Heading"
+      },
+      {
+        "command": "deckard.outline.openTagOverview",
+        "title": "Open Tag Overview…"
+      },
+      {
+        "command": "deckard.outline.renameTag",
+        "title": "Rename Tag…"
+      },
+      {
+        "command": "deckard.outline.enableFollowCursor",
+        "title": "Deckard: Follow Cursor in Outline",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "deckard.outline.disableFollowCursor",
+        "title": "Deckard: Stop Following Cursor in Outline",
+        "icon": "$(eye)"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "deckard.outline.revealSection",
+          "when": "false"
+        },
+        {
+          "command": "deckard.outline.openTagOverview",
+          "when": "false"
+        },
+        {
+          "command": "deckard.outline.renameTag",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "deckard.outline.enableFollowCursor",
+          "when": "view == deckard.outline && !deckard.outlineFollowCursor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.outline.disableFollowCursor",
+          "when": "view == deckard.outline && deckard.outlineFollowCursor",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "deckard.outline.openTagOverview",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.outline.renameTag",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@2"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -98,6 +160,12 @@
           "name": "Deckard",
           "icon": "resources/deckard.svg",
           "type": "webview"
+        },
+        {
+          "id": "deckard.outline",
+          "name": "Outline",
+          "icon": "resources/deckard.svg",
+          "contextualTitle": "Deckard Outline"
         }
       ]
     },
@@ -152,6 +220,22 @@
           "scope": "resource",
           "default": true,
           "description": "Automatically show Related Notes for the tagged note section containing the cursor."
+        },
+        "deckard.outline.showTags": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show each heading's tags beside it in the Deckard Outline."
+        },
+        "deckard.outline.followCursor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Select the Deckard Outline heading that contains the editor cursor."
+        },
+        "deckard.outline.inheritedTags": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": false,
+          "description": "Also show front-matter tags that every heading in the file inherits."
         },
         "deckard.tagTitleDisplayMode": {
           "type": "string",

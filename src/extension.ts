@@ -23,6 +23,13 @@ import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
 import { TagOverviewPanels } from './ui/webview/tagOverview';
+import {
+  OutlineTreeProvider,
+  pickOutlineTag,
+  setOutlineFollowCursor,
+  syncOutlineFollowCursorContext,
+} from './ui/views/outlineTree';
+import { OutlineNode } from './ui/state/outlineState';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -83,6 +90,7 @@ export function activate(context: vscode.ExtensionContext): void {
     sidebarNotes,
     context.extensionUri,
   );
+  const outline = new OutlineTreeProvider(indexer);
   activeServices = {
     indexer,
     preferences,
@@ -97,6 +105,7 @@ export function activate(context: vscode.ExtensionContext): void {
     help,
     notesGraph,
     relatedNotesDebug,
+    outline,
   };
 
   context.subscriptions.push(
@@ -113,6 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     help,
     notesGraph,
     relatedNotesDebug,
+    outline,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -130,6 +140,52 @@ export function activate(context: vscode.ExtensionContext): void {
       'deckard.relatedNotes',
       sidebarNotes,
       { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
+  const outlineView = vscode.window.createTreeView('deckard.outline', {
+    treeDataProvider: outline,
+    showCollapseAll: true,
+  });
+  outline.attach(outlineView);
+  context.subscriptions.push(outlineView);
+  void syncOutlineFollowCursorContext();
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'deckard.outline.revealSection',
+      (node?: unknown) => {
+        const outlineNode = asOutlineNode(node);
+        return outlineNode ? outline.revealSection(outlineNode) : undefined;
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.outline.openTagOverview',
+      async (node?: unknown) => {
+        const tagKey = await pickOutlineTag(
+          asOutlineNode(node),
+          'Choose a tag from this heading',
+        );
+        if (tagKey) {
+          await tagPanels.show(tagKey);
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.outline.renameTag',
+      async (node?: unknown) => {
+        const tagKey = await pickOutlineTag(
+          asOutlineNode(node),
+          'Choose a tag to rename',
+        );
+        if (tagKey) {
+          await renameIndexedTag(indexer, tagKey);
+        }
+      },
+    ),
+    vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
+      setOutlineFollowCursor(true),
+    ),
+    vscode.commands.registerCommand('deckard.outline.disableFollowCursor', () =>
+      setOutlineFollowCursor(false),
     ),
   );
   context.subscriptions.push(
@@ -287,6 +343,7 @@ export function deactivate(): void {
   activeServices?.stats.dispose();
   activeServices?.help.dispose();
   activeServices?.relatedNotesDebug.dispose();
+  activeServices?.outline.dispose();
   activeServices = undefined;
 }
 
@@ -307,11 +364,26 @@ interface ExtensionServices {
   help: HelpPanel;
   notesGraph: NotesGraphPanel;
   relatedNotesDebug: RelatedNotesDebugPanel;
+  outline: OutlineTreeProvider;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {
   const argument = Array.isArray(value) ? value[0] : value;
   return typeof argument === 'string' ? argument : undefined;
+}
+
+/**
+ * Validates the tree argument because these commands are also reachable from
+ * keybindings and other extensions, which can pass anything.
+ */
+function asOutlineNode(value: unknown): OutlineNode | undefined {
+  return typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'line' in value &&
+    'tags' in value
+    ? (value as OutlineNode)
+    : undefined;
 }
 
 /**
