@@ -1,5 +1,4 @@
 # Fixes
-- Related Notes treats almost every entry as related (356–423 of 482 in the sample notes), because word similarity alone qualifies a result, and the sidebar sends and draws them all. Require a shared tag or link, or a minimum relevance, and cap the list at about 50 with Show more. The heading count already counts only entries that share a tag.
 - CI runs only `npm test` and the VSIX build. Add `npm run test:ui` and `npm run test:e2e` to `.github/workflows/ci.yml`; neither needs a display.
 - Add a license. There is no LICENSE file or `license` field in `package.json`, and `package:vsix` passes `--skip-license`.
 - Selecting a heading's "entries share a tag" count opens Related Notes from the saved index, so in an unsaved note whose lines moved it asks to save first. Look the heading up in the live text, as the count does.

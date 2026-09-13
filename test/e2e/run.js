@@ -14,7 +14,12 @@ const path = require('node:path');
 const { existsSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
-const suites = ['overviewQuery.e2e.js', 'dashboardSearch.e2e.js', 'stats.e2e.js'];
+const suites = [
+  'overviewQuery.e2e.js',
+  'dashboardSearch.e2e.js',
+  'stats.e2e.js',
+  'sidebarNotes.e2e.js',
+];
 
 const compiled = path.join(__dirname, '..', '..', 'out');
 if (!existsSync(compiled)) {

@@ -449,7 +449,7 @@
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Include capped, section-scoped lexical similarity when finding related notes. Disable to use shared tags and intentional Wiki links only."
+          "description": "Let capped, section-scoped similarity of wording adjust the score of a related note that already shares a tag, association, or Wiki link. Shared wording never makes a note related on its own. Disable to rank by tags and links alone."
         },
         "deckard.relatedNotesAssociationMinimumSupport": {
           "type": "number",

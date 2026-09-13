@@ -929,7 +929,7 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('can disable keyword-only related-note matches', () => {
+  test('never lists an entry that only shares wording with the note', () => {
     const active = createFile(
       'notes/current.md',
       '# Current #work\nSee [[Linked]].\nSignal integrity protocol.',
@@ -941,17 +941,21 @@ suite('Dashboard state', () => {
     const linked = createFile('notes/linked.md', '# Linked #other');
     const index = createFileIndex([active, keywordOnly, linked]);
 
-    const snapshot = createSidebarSnapshot(
-      index,
-      active.filePath,
-      active,
-      false,
-    );
-
-    assert.deepStrictEqual(
-      snapshot.notes.map((note) => note.filePath),
-      ['notes/linked.md'],
-    );
+    // Shared wording adjusts scores, but a shared tag, association, or link
+    // is what makes an entry related, whether keyword links are on or off.
+    for (const enableKeywordLinks of [true, false]) {
+      const snapshot = createSidebarSnapshot(
+        index,
+        active.filePath,
+        active,
+        enableKeywordLinks,
+      );
+      assert.deepStrictEqual(
+        snapshot.notes.map((note) => note.filePath),
+        ['notes/linked.md'],
+        `enableKeywordLinks: ${enableKeywordLinks}`,
+      );
+    }
   });
 
   test('sorts related notes by date, matching tags, and local access', () => {

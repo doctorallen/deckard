@@ -1098,18 +1098,14 @@ export function rankRelatedNotes(
         ),
         section.heading,
       );
-      const lexicalWeight = getLexicalWeight(
-        lexicalModel,
-        section.heading,
-        getSectionLexicalContent(section, file.sections),
-        lexicalModel && getSectionTerms(section, file.sections),
-      ).weight;
+      // Shared wording only adjusts the score of an entry that shares a tag,
+      // an association, or a link. On its own it would make nearly every
+      // entry in the workspace "related".
       return (
         tags.some((tag) => activeKeys.has(tag.key)) ||
         associatedMatches.length > 0 ||
         linkEvidence.entryWeight > 0 ||
-        linkEvidence.fileWeight > 0 ||
-        lexicalWeight > 0
+        linkEvidence.fileWeight > 0
       );
     });
     const matchingSectionIds = new Set(
@@ -1158,18 +1154,11 @@ export function rankRelatedNotes(
         extractWikiLinks(task.sourceLineText),
         task.title,
       );
-      const lexicalWeight = getLexicalWeight(
-        lexicalModel,
-        task.title,
-        task.sourceLineText,
-        lexicalModel && getTaskTerms(task),
-      ).weight;
       return (
         (tags.some((tag) => activeKeys.has(tag.key)) ||
           findAssociatedMatches(tags).length > 0 ||
           linkEvidence.entryWeight > 0 ||
-          linkEvidence.fileWeight > 0 ||
-          lexicalWeight > 0) &&
+          linkEvidence.fileWeight > 0) &&
         (!task.sectionId || !matchingSectionIds.has(task.sectionId))
       );
     });

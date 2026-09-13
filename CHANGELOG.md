@@ -148,6 +148,13 @@
 
 ### Changed
 
+- **Related Notes** lists only entries that share a tag, an associated tag,
+  or a Wiki link with the note. Shared wording still ranks those entries, but
+  it no longer makes an entry related on its own, which had listed nearly
+  every entry in a workspace, such as 356 of the sample notes' 482. The list
+  shows 50 results at a time, with **Show more** for the rest, and ranking no
+  longer scores the wording of every entry to decide what qualifies.
+
 - The Stats page's most-viewed tags, canonical tags, and note entries now
   open when selected, with the mouse or with Enter or Space: a tag opens its
   overview, and a note entry opens its note at that line. Tags are drawn with

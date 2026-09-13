@@ -314,6 +314,23 @@ ${getComponentScript()}
     return '<button type="button" class="active-file graph-selected-node" data-action="open-selected-graph-node" data-node-id="' + escapeHtml(node.id) + '" aria-label="Open selected ' + escapeHtml(node.kind) + ': ' + escapeHtml(node.title) + '"><span class="active-label">Selected graph node · open</span><span class="active-name">' + title + '</span></button>';
   }
 
+  // A long list is drawn a page at a time; Show more adds the next page. The
+  // count starts over whenever the sidebar shows a different list.
+  const NOTE_PAGE_SIZE = 50;
+  let visibleNoteLimit = NOTE_PAGE_SIZE;
+  let visibleNoteListKey = '';
+
+  function getNoteListKey() {
+    return JSON.stringify([
+      state.state,
+      state.activeFileName,
+      state.activeEntryTitle,
+      state.tagOverview && state.tagOverview.key,
+      state.tagOverviewQuery,
+      state.relatedNotesSortMode,
+    ]);
+  }
+
   /** Render explicit empty states so the sidebar explains why no notes appear. */
   function render() {
     if (!state) return;
@@ -333,7 +350,17 @@ ${getComponentScript()}
         ? '<div class="empty">' + (tagOverviewFilters.length ? 'No notes currently carry all selected tags.' : 'No notes currently carry this tag.') + '</div>'
         : '<div class="empty">No other notes share its tags.</div>';
     } else {
-      content = '<div class="note-list">' + state.notes.map(function (note) {
+      const noteListKey = getNoteListKey();
+      if (noteListKey !== visibleNoteListKey) {
+        visibleNoteListKey = noteListKey;
+        visibleNoteLimit = NOTE_PAGE_SIZE;
+      }
+      const shownNotes = state.notes.slice(0, visibleNoteLimit);
+      const hiddenNoteCount = state.notes.length - shownNotes.length;
+      const showMore = hiddenNoteCount > 0
+        ? '<button type="button" class="show-more-notes" data-action="show-more-notes">' + (hiddenNoteCount > NOTE_PAGE_SIZE ? 'Show ' + NOTE_PAGE_SIZE + ' more of ' + hiddenNoteCount : 'Show ' + hiddenNoteCount + ' more') + '</button>'
+        : '';
+      content = '<div class="note-list">' + shownNotes.map(function (note) {
         const title = note.title || note.fileName || note.filePath;
         const titleHtml = state.tagTitleDisplayMode === 'inline'
           ? renderInlineTitle(title, note.titleTags)
@@ -382,7 +409,7 @@ ${getComponentScript()}
           '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
           (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
-      }).join('') + '</div>';
+      }).join('') + '</div>' + showMore;
     }
     const activeTags = state.activeTags.length
       ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>'
@@ -411,6 +438,16 @@ ${getComponentScript()}
   }
 
   document.addEventListener('click', function (event) {
+    if (event.target.closest('[data-action="show-more-notes"]')) {
+      const firstNewNote = visibleNoteLimit;
+      visibleNoteLimit += NOTE_PAGE_SIZE;
+      render();
+      // Keyboard readers continue from the first card the button revealed.
+      const list = document.querySelector('.note-list');
+      const next = list && list.children[firstNewNote];
+      if (next && next.focus) next.focus();
+      return;
+    }
     const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
     if (contextAction) {
       const tagKey = tagContextKey;
