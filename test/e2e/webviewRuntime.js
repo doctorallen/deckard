@@ -35,7 +35,13 @@ class Element {
       contains: (name) => classes.includes(name),
       add: () => undefined,
       remove: () => undefined,
+      toggle: () => undefined,
     };
+  }
+
+  /** Pages attach per-element listeners the tests never need to fire. */
+  addEventListener() {
+    return undefined;
   }
 
   setAttribute(name, value) {
@@ -284,6 +290,9 @@ function mountWebview(html, panel) {
     listeners: {},
     innerWidth: 1200,
     innerHeight: 800,
+    scrollX: 0,
+    scrollY: 0,
+    scrollTo: () => undefined,
     addEventListener(type, handler) {
       (this.listeners[type] = this.listeners[type] ?? []).push(handler);
     },

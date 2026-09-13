@@ -34,6 +34,7 @@ const pages = [
   ['notesGraph', () => require('../../out/ui/webview/notesGraphHtml.js').getNotesGraphHtml(webview)],
   ['help', () => require('../../out/ui/webview/helpHtml.js').getHelpHtml(webview, { fsPath: '/ext' })],
   ['stats', () => require('../../out/ui/webview/statsHtml.js').getStatsHtml(webview)],
+  ['taskBoard', () => require('../../out/ui/webview/taskBoardHtml.js').getTaskBoardHtml(webview)],
   ['relatedNotesDebug', () => require('../../out/ui/webview/relatedNotesDebugHtml.js')
       .getRelatedNotesDebugHtml(webview, {
         filePath: 'notes/a.md', sourceLine: 1, title: 'Entry', tags: [],
@@ -75,6 +76,11 @@ const LAYOUT_CONTRACTS = {
     ['main', 'max-width', '1100px'],
     ['main', 'border-top', 'var(--green)'],
   ],
+  taskBoard: [
+    ['main', 'max-width', 'none'],
+    ['main', 'border-top', 'var(--cyan)'],
+    ['.board', 'grid-auto-flow', 'column'],
+  ],
 };
 
 /**
@@ -104,11 +110,14 @@ function effectiveValue(css, selector, property) {
 // Classes that render a row a reader can open.
 const CONTENT_ROWS = [
   'tag-row', 'entity-row', 'note-row', 'task-row', 'saved-filter-row',
+  'board-card',
 ];
 const SHARED_HELPERS = [
   'escapeHtml', 'renderTagLabel', 'renderTagButton', 'renderInlineTitle',
   'renderTaskTitle', 'taskFilterIcon', 'formatEntityTitle',
   'closeTagContextMenu', 'openTagContextMenu', 'installTagContextMenu',
+  'renderTaskBoard', 'renderTaskBoardCard', 'renderTaskBoardGroupSwitch',
+  'installTaskBoard',
 ];
 let fail = 0;
 for (const [name, render] of pages) {

@@ -9,18 +9,23 @@ import {
 import { Task } from '../../core/types';
 import { openSourceAt, resolveSourceUri } from './navigation';
 
+/** What an edit to a task line may need to know about its document. */
+export interface TaskLineContext {
+  uri: vscode.Uri;
+  /** The document's line ending, for an edit that adds a line. */
+  eol: string;
+}
+
 /**
- * Completes or reopens a task after proving the indexed source is unchanged.
+ * Rewrites a task's line after proving the indexed source is unchanged.
  *
  * The line comparison prevents a delayed webview action from overwriting edits
- * made after the task was indexed. Besides the checkbox, the edit keeps the
- * Obsidian Tasks metadata in step: a ✅ date is added on completion and
- * removed on reopening, and completing a task with a 🔁 rule writes its next
- * occurrence on the line above, where Tasks puts it.
+ * made after the task was indexed. Every edit Deckard makes to a task, from
+ * its checkbox to a task-board move, goes through here.
  */
-export async function toggleTask(
+export async function updateTaskLine(
   task: Task,
-  completed: boolean,
+  transform: (line: string, context: TaskLineContext) => string,
 ): Promise<boolean> {
   const uri = await resolveSourceUri(task.filePath);
   if (!uri) {
@@ -35,10 +40,9 @@ export async function toggleTask(
 
     const sourceLine = document.lineAt(task.lineNumber - 1);
     const line = sourceLine.text;
-    const currentValue = line[task.checkboxColumn];
     if (
       line !== task.sourceLineText ||
-      currentValue !== task.checkboxValue ||
+      line[task.checkboxColumn] !== task.checkboxValue ||
       line[task.checkboxColumn - 1] !== '[' ||
       line[task.checkboxColumn + 1] !== ']'
     ) {
@@ -48,31 +52,12 @@ export async function toggleTask(
       return false;
     }
 
-    const now = Date.now();
-    const configuration = vscode.workspace.getConfiguration('deckard', uri);
-    const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
-    let replacement = setTaskLineCompletion(
-      line,
-      task.checkboxColumn,
-      completed,
-      addDoneDate ? formatIsoDate(now) : undefined,
-      readTaskMetadataFormat(configuration),
-    );
-
-    if (completed && !task.completed) {
-      const nextOccurrence = createNextOccurrence(
-        line,
-        task.checkboxColumn,
-        now,
-      );
-      if (nextOccurrence !== undefined) {
-        const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-        replacement = `${nextOccurrence}${eol}${replacement}`;
-      } else if (task.recurrence) {
-        void vscode.window.showWarningMessage(
-          `Deckard completed the task but could not read its repeat rule "${task.recurrence}", so it did not add the next occurrence.`,
-        );
-      }
+    const replacement = transform(line, {
+      uri,
+      eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+    });
+    if (replacement === line) {
+      return true;
     }
 
     const edit = new vscode.WorkspaceEdit();
@@ -94,6 +79,46 @@ export async function toggleTask(
     );
     return false;
   }
+}
+
+/**
+ * Completes or reopens a task.
+ *
+ * Besides the checkbox, the edit keeps the Obsidian Tasks metadata in step: a
+ * done date is added on completion and removed on reopening, and completing a
+ * task with a repeat rule writes its next occurrence on the line above, where
+ * Tasks puts it.
+ */
+export async function toggleTask(
+  task: Task,
+  completed: boolean,
+): Promise<boolean> {
+  return updateTaskLine(task, (line, { uri, eol }) => {
+    const now = Date.now();
+    const configuration = vscode.workspace.getConfiguration('deckard', uri);
+    const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
+    const replacement = setTaskLineCompletion(
+      line,
+      task.checkboxColumn,
+      completed,
+      addDoneDate ? formatIsoDate(now) : undefined,
+      readTaskMetadataFormat(configuration),
+    );
+    if (!completed || task.completed) {
+      return replacement;
+    }
+
+    const nextOccurrence = createNextOccurrence(line, task.checkboxColumn, now);
+    if (nextOccurrence !== undefined) {
+      return `${nextOccurrence}${eol}${replacement}`;
+    }
+    if (task.recurrence) {
+      void vscode.window.showWarningMessage(
+        `Deckard completed the task but could not read its repeat rule "${task.recurrence}", so it did not add the next occurrence.`,
+      );
+    }
+    return replacement;
+  });
 }
 
 /**

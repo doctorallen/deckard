@@ -193,6 +193,24 @@ the tag-association view switch.
 | `.markdown` | Raw Markdown source, amber left rule. |
 | `.rendered` | Rendered Markdown body. |
 
+### Task board
+
+`getTaskBoardCss()` and four script helpers draw the Kanban board on both the
+Task Board page and the Dashboard's board layout, so the two cannot drift.
+
+| Piece | What it is |
+| --- | --- |
+| `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. |
+| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. |
+| `renderTaskBoard(board, isVisible)` | Draws the host's `TaskBoardLayout`. `isVisible` hides cards a page filters locally. |
+| `renderTaskBoardCard(card, columnId, columns)` | One card. |
+| `renderTaskBoardGroupSwitch(groupBy)` | The Status / Priority / Due date `.segmented` switch. |
+| `installTaskBoard(post)` | Wires drag and drop, the move menu, checkboxes, card opening, and the group switch, once per page. It posts `openSource`, `toggleTask`, `moveTask`, and `setBoardGroup`. |
+
+The board's controls use their own `data-action` names (`board-toggle-task`,
+`board-move`, `set-board-group`), so a page's handlers for its other rows never
+act on a board card as well.
+
 ### `.row`
 
 Every openable row uses this, so none of them can quietly ship without the
@@ -265,7 +283,7 @@ strip, Help's two-column `main`, the sidebar's 12px padding — and checks the
 value each one ends up with after the whole cascade. Add a contract when a
 page depends on layout that a base rule could plausibly override.
 
-`test/ui/verifyWebviews.js` renders all seven pages and fails if any page:
+`test/ui/verifyWebviews.js` renders all eight pages and fails if any page:
 stops rendering, emits a script that does not parse, is missing the design
 tokens, carries more than one nonce, declares more than one `:root`,
 redeclares a helper the shared script already owns, renders a content row

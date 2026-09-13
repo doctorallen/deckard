@@ -12,6 +12,8 @@ import {
   TaskFilter,
   DashboardMode,
   DashboardSearchField,
+  TaskBoardGroupBy,
+  TaskBoardMessage,
 } from '../../core/types';
 
 /**
@@ -116,6 +118,20 @@ export function parseDashboardMessage(
     case 'renameTag':
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
+        : undefined;
+    case 'setDashboardTaskLayout':
+      return value.layout === 'list' || value.layout === 'board'
+        ? { type: 'setDashboardTaskLayout', layout: value.layout }
+        : undefined;
+    case 'setBoardGroup':
+      return isTaskBoardGroupBy(value.groupBy)
+        ? { type: 'setBoardGroup', groupBy: value.groupBy }
+        : undefined;
+    case 'moveTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.column === 'string' &&
+        value.column.length > 0
+        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
         : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
@@ -294,12 +310,67 @@ export function parseSidebarMessage(
   if (
     value.type === 'openDashboard' ||
     value.type === 'openNotesGraph' ||
+    value.type === 'openTaskBoard' ||
     value.type === 'createDailyNote' ||
     value.type === 'openHelp'
   ) {
     return value as unknown as SidebarMessage;
   }
   return undefined;
+}
+
+/**
+ * Validates the task board's messages. A column id is only a string here;
+ * the host decides what, if anything, a move to it may write.
+ */
+export function parseTaskBoardMessage(
+  value: unknown,
+): TaskBoardMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+
+  switch (value.type) {
+    case 'ready':
+      return { type: 'ready' };
+    case 'openSource':
+      return isSourceMessage(value)
+        ? (value as unknown as TaskBoardMessage)
+        : undefined;
+    case 'openTag':
+      return isOpenTagMessage(value)
+        ? { type: 'openTag', tagKey: value.tagKey as string }
+        : undefined;
+    case 'toggleTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.completed === 'boolean'
+        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
+        : undefined;
+    case 'moveTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.column === 'string' &&
+        value.column.length > 0
+        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
+        : undefined;
+    case 'setBoardGroup':
+      return isTaskBoardGroupBy(value.groupBy)
+        ? { type: 'setBoardGroup', groupBy: value.groupBy }
+        : undefined;
+    case 'setBoardQuery':
+      return typeof value.query === 'string' &&
+        value.query.length <= MAX_QUERY_LENGTH
+        ? { type: 'setBoardQuery', query: value.query }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Keeps the task board's grouping to the three it can lay out.
+ */
+export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
+  return value === 'status' || value === 'priority' || value === 'due';
 }
 
 /**

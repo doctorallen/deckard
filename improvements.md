@@ -11,7 +11,7 @@ against the current source so that nothing here duplicates a shipped feature.
 
 | Earlier priority | Status | Supporting plugins |
 | --- | --- | --- |
-| Saved queries and collection views | Mostly shipped. The query language, visual builder, saved queries, and query blocks in notes exist. Non-list views (board, table, calendar) remain. | Dataview (#3, 5.0M), Bases (core), Kanban (#9, 2.7M) |
+| Saved queries and collection views | Mostly shipped. The query language, visual builder, saved queries, query blocks in notes, and the task board exist. Table and calendar views remain. | Dataview (#3, 5.0M), Bases (core), Kanban (#9, 2.7M) |
 | Typed front matter schemas and explicit relations | Open | Breadcrumbs, Metadata Menu, Supercharged Links |
 | Task scheduling and planning | Mostly shipped as Obsidian Tasks metadata and the Agenda. Calendar projections remain. | Tasks (#4, 4.2M), TaskNotes (1.5M) |
 | Backlinks and note-link graphs | Notes Graph shipped; backlinks open, see suggestion 5 | Obsidian core Backlinks and Graph |
@@ -131,8 +131,9 @@ Inspired by Tag Wrangler (#24, 1.1M).
 - **Extract Tagged Heading leaves a link behind.** It currently removes the
   section with nothing in its place; Note Refactor leaves a `[[link]]` to the
   new note.
-- **Board layout for task results**, grouped by a namespace such as
-  `#status/*`. Kanban's popularity makes this the natural first non-list view.
+- ~~**Board layout for task results**, grouped by a namespace such as
+  `#status/*`.~~ Shipped as the task board, grouped by status, priority, or
+  due date.
 - **Open the Dashboard on startup** setting, as Homepage (1.3M) does.
 - **Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
   as Omnisearch (1.9M) does.

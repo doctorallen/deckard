@@ -335,6 +335,74 @@ export function getSurfaceCss(): string {
 }
 
 /**
+ * The task board: columns of task cards that move between columns. The Task
+ * Board page and the Dashboard's board layout both draw it.
+ */
+export function getTaskBoardCss(): string {
+  return `
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(250px, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding-bottom: 12px;
+  overflow-x: auto;
+}
+.board-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  border: var(--edge) solid var(--line);
+  background: var(--panel-deep);
+  padding: 10px;
+}
+.board-column.drop-target { border-color: var(--amber); }
+.board-column-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: var(--cyan);
+  font: 12px var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.board-column.is-overdue .board-column-title { color: var(--favorite-red); }
+.board-count { color: var(--muted); }
+.board-cards { display: grid; gap: 8px; min-height: 48px; }
+.board-card { position: relative; }
+.board-card.dragging { opacity: .45; }
+.board-card .task-title { padding-right: 26px; }
+.board-details { margin: 0; }
+/* Each detail stays whole; the line wraps between them. */
+.board-details span { white-space: nowrap; }
+.board-details .overdue { color: var(--favorite-red); }
+/* The move menu sits in the corner so it never adds a row to the card. */
+.board-move {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  appearance: none;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--amber); }
+.board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
+.board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
+}
+
+/**
  * The complete base sheet, in cascade order.
  *
  * A page includes this first, then its own rules, then the theme sheet.
@@ -347,6 +415,7 @@ export function getBaseCss(): string {
     getControlCss(),
     getTagCss(),
     getSurfaceCss(),
+    getTaskBoardCss(),
   ].join('\n');
 }
 
@@ -519,6 +588,146 @@ export function getComponentScript(): string {
     });
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) closeTagContextMenu();
+    });
+  }
+
+  /** The Status, Priority, and Due date switch above a task board. */
+  function renderTaskBoardGroupSwitch(groupBy) {
+    return '<div class="segmented task-board-group" role="group" aria-label="Group tasks by">'
+      + [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date']].map(function (option) {
+        const active = option[0] === groupBy;
+        return '<button type="button" class="' + (active ? 'active' : '') + '" data-action="set-board-group" data-group="' + option[0] + '" aria-pressed="' + active + '">' + option[1] + '</button>';
+      }).join('') + '</div>';
+  }
+
+  /** One task card, with its checkbox and the menu that moves it to another column. */
+  function renderTaskBoardCard(card, columnId, columns) {
+    const moves = columns.filter(function (column) {
+      return column.droppable && column.id !== columnId;
+    }).map(function (column) {
+      return '<option value="' + escapeHtml(column.id) + '">' + escapeHtml(column.label) + '</option>';
+    }).join('');
+    const details = card.details.map(function (detail) {
+      const overdue = card.overdue && detail.indexOf('due ') === 0;
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
+    }).join(' · ');
+    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
+      + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
+      + '<input type="checkbox" data-action="board-toggle-task" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
+      + '<div class="task-summary"><div class="task-title">' + renderInlineTitle(card.title, card.titleTags, false) + '</div>'
+      + '<p class="source board-details">' + details + '</p>'
+      + '<select class="board-move" data-action="board-move" title="Move to another column" aria-label="Move this task to another column"><option value="" selected hidden>⋯</option>' + moves + '</select>'
+      + '</div></article>';
+  }
+
+  /**
+   * Draw a task board from the host's columns. isVisible, when given, hides
+   * cards a page filters locally, such as by a search.
+   */
+  function renderTaskBoard(board, isVisible) {
+    return '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
+      const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
+      const count = cards.length + column.hiddenCount;
+      const body = cards.length
+        ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns); }).join('')
+        : '<p class="board-empty">' + (column.droppable ? 'Drop a task here' : 'No tasks') + '</p>';
+      return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + '"'
+        + ' data-column-id="' + escapeHtml(column.id) + '" data-droppable="' + column.droppable + '"'
+        + ' aria-label="' + escapeHtml(column.label + ', ' + count + (count === 1 ? ' task' : ' tasks')) + '">'
+        + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + count + '</span></h2>'
+        + '<div class="board-cards">' + body + '</div>'
+        + (column.hiddenCount ? '<p class="board-more">and ' + column.hiddenCount + ' more</p>' : '')
+        + '</section>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * Wire every task board on the page, once. Listeners sit on the document,
+   * so a page may redraw its boards freely. post receives openSource,
+   * toggleTask, moveTask, and setBoardGroup messages. A dropped card moves at
+   * once; the host's next state confirms it or puts it back.
+   */
+  let taskBoardDragId;
+
+  function installTaskBoard(post) {
+    function boardCard(target) {
+      return target && target.closest ? target.closest('.task-board .board-card') : undefined;
+    }
+    function dropColumn(event) {
+      const column = event.target && event.target.closest ? event.target.closest('.task-board .board-column') : undefined;
+      return column && taskBoardDragId && column.dataset.droppable === 'true' ? column : undefined;
+    }
+    function clearDropTargets() {
+      document.querySelectorAll('.board-column.drop-target').forEach(function (column) { column.classList.remove('drop-target'); });
+    }
+    function openCard(card) {
+      post({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
+    }
+
+    document.addEventListener('click', function (event) {
+      const group = event.target.closest('[data-action="set-board-group"]');
+      if (group) {
+        post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      if (event.target.closest('input, select, button, a')) return;
+      const card = boardCard(event.target);
+      if (card) openCard(card);
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && event.target.matches && event.target.matches('.task-board .board-card')) openCard(event.target);
+    });
+    document.addEventListener('change', function (event) {
+      const card = boardCard(event.target);
+      if (!card) return;
+      if (event.target.dataset.action === 'board-toggle-task') {
+        post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: event.target.checked });
+      }
+      if (event.target.dataset.action === 'board-move' && event.target.value) {
+        post({ type: 'moveTask', taskId: card.dataset.taskId, column: event.target.value });
+      }
+    });
+    document.addEventListener('dragstart', function (event) {
+      const card = boardCard(event.target);
+      if (!card) return;
+      taskBoardDragId = card.dataset.taskId;
+      card.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', taskBoardDragId);
+    });
+    document.addEventListener('dragend', function (event) {
+      const card = boardCard(event.target);
+      if (card) card.classList.remove('dragging');
+      clearDropTargets();
+      taskBoardDragId = undefined;
+    });
+    document.addEventListener('dragover', function (event) {
+      const column = dropColumn(event);
+      if (!column) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      if (!column.classList.contains('drop-target')) {
+        clearDropTargets();
+        column.classList.add('drop-target');
+      }
+    });
+    document.addEventListener('dragleave', function (event) {
+      const column = event.target && event.target.closest ? event.target.closest('.board-column') : undefined;
+      if (column && !column.contains(event.relatedTarget)) column.classList.remove('drop-target');
+    });
+    document.addEventListener('drop', function (event) {
+      const column = dropColumn(event);
+      if (!column) return;
+      event.preventDefault();
+      const card = document.querySelector('.task-board .board-card[data-task-id="' + CSS.escape(taskBoardDragId) + '"]');
+      if (card && card.closest('.board-column') !== column) {
+        const cards = column.querySelector('.board-cards');
+        const empty = cards.querySelector('.board-empty');
+        if (empty) empty.remove();
+        cards.prepend(card);
+        post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId });
+      }
+      clearDropTargets();
     });
   }
 `;

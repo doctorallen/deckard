@@ -20,6 +20,7 @@
     "onWebviewPanel:deckard.stats",
     "onWebviewPanel:deckard.help",
     "onWebviewPanel:deckard.notesGraph",
+    "onWebviewPanel:deckard.taskBoard",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -32,6 +33,11 @@
       {
         "command": "deckard.showNotesGraph",
         "title": "Deckard: Open Notes Graph"
+      },
+      {
+        "command": "deckard.showTaskBoard",
+        "title": "Deckard: Open Task Board",
+        "icon": "$(project)"
       },
       {
         "command": "deckard.showStats",
@@ -120,6 +126,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "deckard.showTaskBoard",
+          "when": "view == deckard.agenda",
+          "group": "navigation@1"
+        },
         {
           "command": "deckard.outline.enableFollowCursor",
           "when": "view == deckard.outline && !deckard.outlineFollowCursor",
@@ -279,6 +290,25 @@
           "scope": "resource",
           "default": true,
           "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task."
+        },
+        "deckard.board.statusNamespace": {
+          "type": "string",
+          "default": "status",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+          "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing."
+        },
+        "deckard.board.statuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "default": [
+            "todo",
+            "doing",
+            "waiting"
+          ],
+          "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them."
         },
         "deckard.tagTitleDisplayMode": {
           "type": "string",

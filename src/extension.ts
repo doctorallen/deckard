@@ -23,6 +23,7 @@ import { NotesGraphPanel } from './ui/webview/notesGraph';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
+import { TaskBoardPanel } from './ui/webview/taskBoard';
 import { TagOverviewPanels } from './ui/webview/tagOverview';
 import {
   OutlineTreeProvider,
@@ -86,6 +87,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     context.extension.packageJSON.version,
   );
   const stats = new StatsPanel(indexer, preferences, context.extensionUri);
+  const taskBoard = new TaskBoardPanel(indexer, context.extensionUri, (tagKey) =>
+    tagPanels.show(tagKey),
+  );
   const help = new HelpPanel(context.extensionUri);
   const notesGraph = new NotesGraphPanel(
     indexer,
@@ -123,6 +127,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     queryBlocks,
     agenda,
     taskMetadataSuggestions,
+    taskBoard,
   };
 
   context.subscriptions.push(
@@ -143,6 +148,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     queryBlocks,
     agenda,
     taskMetadataSuggestions,
+    taskBoard,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -229,6 +235,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       deserializeWebviewPanel: (webviewPanel) =>
         notesGraph.restore(webviewPanel),
     }),
+    vscode.window.registerWebviewPanelSerializer('deckard.taskBoard', {
+      deserializeWebviewPanel: (webviewPanel, state) =>
+        taskBoard.restore(webviewPanel, state),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
       deserializeWebviewPanel: (webviewPanel, state) =>
         tagPanels.restore(webviewPanel, state),
@@ -242,6 +252,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
     vscode.commands.registerCommand('deckard.showNotesGraph', () =>
       notesGraph.show(),
+    ),
+    vscode.commands.registerCommand('deckard.showTaskBoard', () =>
+      taskBoard.show(),
     ),
     vscode.commands.registerCommand(
       'deckard.activateNotesGraphNode',
@@ -377,6 +390,7 @@ export function deactivate(): void {
   activeServices?.queryBlocks.dispose();
   activeServices?.agenda.dispose();
   activeServices?.taskMetadataSuggestions.dispose();
+  activeServices?.taskBoard.dispose();
   activeServices = undefined;
 }
 
@@ -401,6 +415,7 @@ interface ExtensionServices {
   queryBlocks: QueryBlocks;
   agenda: AgendaTreeProvider;
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
+  taskBoard: TaskBoardPanel;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {

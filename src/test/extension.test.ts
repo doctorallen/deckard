@@ -19,6 +19,7 @@ suite('Extension Test Suite', () => {
       [
         'deckard.showDashboard',
         'deckard.showNotesGraph',
+        'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
         'deckard.reindexWorkspace',

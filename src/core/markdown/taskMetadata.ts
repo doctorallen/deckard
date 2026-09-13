@@ -272,7 +272,58 @@ export function setTaskLineCompletion(
     return prefix + text;
   }
   const format = parseTaskMetadata(text).format ?? preferredFormat;
-  return prefix + appendMetadata(text, formatTaskMetadata('done', doneDate, format));
+  return prefix + appendToTaskText(text, formatTaskMetadata('done', doneDate, format));
+}
+
+/**
+ * Sets or clears a task's priority, replacing whichever marker or field it
+ * had. A new priority is written in the line's format.
+ */
+export function setTaskPriority(
+  line: string,
+  checkboxColumn: number,
+  priority: TaskPriority | undefined,
+  preferredFormat: TaskMetadataFormat = 'emoji',
+): string {
+  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
+  const format = parseTaskMetadata(text).format ?? preferredFormat;
+  const cleared = text
+    .replace(/[ \t]*(?:🔺|⏫|🔼|🔽|⏬)\uFE0F?/gu, '')
+    .replace(
+      /[ \t]*(?:\[[ \t]*priority[ \t]*::[^\]]*\]|\([ \t]*priority[ \t]*::[^)]*\))/giu,
+      '',
+    );
+  return (
+    prefix +
+    (priority
+      ? appendToTaskText(cleared, formatTaskMetadata('priority', priority, format))
+      : cleared)
+  );
+}
+
+/**
+ * Sets or clears one of a task's dates. An existing date changes where it is
+ * written; a new one is added in the line's format.
+ */
+export function setTaskDate(
+  line: string,
+  checkboxColumn: number,
+  field: TaskDateField,
+  date: string | undefined,
+  preferredFormat: TaskMetadataFormat = 'emoji',
+): string {
+  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
+  if (date === undefined) {
+    return prefix + removeDates(text, field);
+  }
+  const written = datePatterns(field).some((pattern) =>
+    new RegExp(pattern.source, pattern.flags.replace('g', '')).test(text),
+  );
+  if (written) {
+    return prefix + replaceDates(text, field, () => date);
+  }
+  const format = parseTaskMetadata(text).format ?? preferredFormat;
+  return prefix + appendToTaskText(text, formatTaskMetadata(field, date, format));
 }
 
 /**
@@ -583,7 +634,7 @@ function splitTaskLine(
  * Adds metadata at the end of a task line, ahead of a trailing block id such
  * as `^a1b2`, as Tasks does.
  */
-function appendMetadata(text: string, token: string): string {
+export function appendToTaskText(text: string, token: string): string {
   const blockId = BLOCK_ID_PATTERN.exec(text);
   const body = (blockId ? text.slice(0, blockId.index) : text).trimEnd();
   return `${body} ${token}${blockId ? blockId[0].trimEnd() : ''}`;

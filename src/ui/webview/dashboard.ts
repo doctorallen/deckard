@@ -14,6 +14,11 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { toggleTask } from '../commands/taskActions';
+import {
+  moveTaskToColumn,
+  readTaskBoardOptions,
+} from '../commands/taskBoardActions';
+import { layoutTaskBoard } from '../state/taskBoardState';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
@@ -83,7 +88,12 @@ export class DashboardPanel implements vscode.Disposable {
         if (themeChanged) {
           this.renderHtml();
         }
-        if (themeChanged || titleDisplayChanged) {
+        if (
+          themeChanged ||
+          titleDisplayChanged ||
+          event.affectsConfiguration('deckard.board') ||
+          event.affectsConfiguration('deckard.tasks')
+        ) {
           this.refresh();
         }
       }),
@@ -198,8 +208,9 @@ export class DashboardPanel implements vscode.Disposable {
         .getConfiguration('deckard')
         .get<unknown>('tagTitleDisplayMode', 'inline'),
     );
+    const index = this.indexer.getSnapshot();
     const snapshot = createDashboardSnapshot(
-      this.indexer.getSnapshot(),
+      index,
       {
         ...preferences,
         dashboardTaskColumns: this.dashboardTaskColumns,
@@ -219,7 +230,22 @@ export class DashboardPanel implements vscode.Disposable {
       this.selectedNoteTags,
       tagTitleDisplayMode,
     );
-    void this.panel.webview.postMessage({ type: 'state', data: snapshot });
+    // The board lays out the same filtered tasks the list would show.
+    const taskLayout = preferences.dashboardTaskLayout ?? 'list';
+    const data: DashboardSnapshot = {
+      ...snapshot,
+      taskLayout,
+      taskBoard:
+        taskLayout === 'board'
+          ? layoutTaskBoard(
+              index,
+              snapshot.tasks.map((item) => item.task),
+              preferences.dashboardBoardGroup ?? 'status',
+              readTaskBoardOptions(),
+            )
+          : undefined,
+    };
+    void this.panel.webview.postMessage({ type: 'state', data });
   }
 
   /**
@@ -364,6 +390,19 @@ export class DashboardPanel implements vscode.Disposable {
           message.columns,
         );
         return;
+      case 'setDashboardTaskLayout':
+        await this.preferences.setDashboardTaskLayout(message.layout);
+        return;
+      case 'setBoardGroup':
+        await this.preferences.setDashboardBoardGroup(message.groupBy);
+        return;
+      case 'moveTask': {
+        const task = index.tasks.get(message.taskId);
+        if (!task || !(await moveTaskToColumn(task, message.column))) {
+          this.refresh();
+        }
+        return;
+      }
       case 'reorderTasks':
         if (this.preferences.value.taskSortMode === 'rank') {
           await this.preferences.setTaskOrder(

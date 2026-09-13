@@ -6,7 +6,9 @@ import {
   formatIsoDate,
   parseRecurrence,
   parseTaskMetadata,
+  setTaskDate,
   setTaskLineCompletion,
+  setTaskPriority,
 } from '../core/markdown/taskMetadata';
 
 const at = (year: number, month: number, day: number): number =>
@@ -184,6 +186,33 @@ suite('Obsidian Tasks metadata', () => {
     assert.strictEqual(
       setTaskLineCompletion('- [x] Ship (completion:: 2026-09-10)', 3, false),
       '- [ ] Ship',
+    );
+  });
+
+  test('changes a priority or date in the format the task uses', () => {
+    assert.strictEqual(
+      setTaskPriority('- [ ] Plan 🔽 📅 2026-09-20', 3, 'high'),
+      '- [ ] Plan 📅 2026-09-20 ⏫',
+    );
+    assert.strictEqual(
+      setTaskPriority('- [ ] Plan [priority:: low]', 3, undefined),
+      '- [ ] Plan',
+    );
+    assert.strictEqual(
+      setTaskPriority('- [ ] Plan [due:: 2026-09-20]', 3, 'highest'),
+      '- [ ] Plan [due:: 2026-09-20] [priority:: highest]',
+    );
+    assert.strictEqual(
+      setTaskDate('- [ ] Plan 📅 2026-09-20 ⏫', 3, 'due', '2026-09-14'),
+      '- [ ] Plan 📅 2026-09-14 ⏫',
+    );
+    assert.strictEqual(
+      setTaskDate('- [ ] Plan', 3, 'due', '2026-09-14', 'dataview'),
+      '- [ ] Plan [due:: 2026-09-14]',
+    );
+    assert.strictEqual(
+      setTaskDate('- [ ] Plan (due:: 2026-09-20)', 3, 'due', undefined),
+      '- [ ] Plan',
     );
   });
 

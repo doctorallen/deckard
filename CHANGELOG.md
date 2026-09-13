@@ -4,6 +4,18 @@
 
 ### Added
 
+- **Task board**: `Deckard: Open Task Board`, also a board icon in the
+  Deckard sidebar's toolbar and in the Agenda's title, shows tasks as a Kanban board grouped by status tag (such
+  as `#status/doing`), priority, or due date, always ending with Done.
+  Dragging a card to another column, or choosing one from its **⋯** menu,
+  rewrites the task line: its status tag, its priority in the task's
+  own format, or its due date for Today, Tomorrow, and No due date. Dropping
+  a card on Done completes it and dragging it out reopens it. A Deckard query
+  narrows the board, and `deckard.board.statuses` and
+  `deckard.board.statusNamespace` choose the status columns. The Dashboard's
+  **View options** can show its Tasks tab as the same board, drawn by one
+  shared component and filtered by the tab's own filters and search.
+
 - **Obsidian Tasks metadata**: tasks written in the Obsidian Tasks emoji
   format keep their due (📅), scheduled (⏳), start (🛫), and done (✅) dates,
   priorities (🔺 ⏫ 🔼 🔽 ⏬), repeat rules (🔁), and dependencies (🆔 ⛔).
@@ -102,6 +114,13 @@
   `.segmented` primitive for joined buttons.
 
 ### Fixed
+
+- The Dashboard's task and tag searches no longer lose focus or drop letters
+  while you type, in the list and board layouts alike. Every keystroke used
+  to be stored at once, and the state that came back redrew the page: focus
+  left the field, and a query a few letters old could replace newer typing.
+  The page now filters as you type, stores the query once typing pauses, and
+  keeps the field's focus and caret through every redraw.
 
 - A relative date window compared with `>`, `>=`, `<`, or `<=` now uses the
   window's far end. `updated > 7d` previously matched nothing, because it was

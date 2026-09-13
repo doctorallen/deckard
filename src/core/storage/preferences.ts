@@ -12,7 +12,9 @@ import {
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
+  DashboardTaskLayout,
   DashboardViewState,
+  TaskBoardGroupBy,
   TaskFilter,
 } from '../types';
 
@@ -50,6 +52,8 @@ const defaultPreferences: PersistedPreferences = {
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
+  dashboardTaskLayout: 'list',
+  dashboardBoardGroup: 'status',
 };
 
 /**
@@ -190,6 +194,21 @@ export class PreferencesStore implements vscode.Disposable {
           ? { dashboardNoteColumns: columns }
           : { dashboardTagColumns: columns },
     );
+  }
+
+  /**
+   * Shows the Dashboard's Tasks tab as a list or as the task board.
+   */
+  public async setDashboardTaskLayout(
+    dashboardTaskLayout: DashboardTaskLayout,
+  ): Promise<void> {
+    await this.update({ dashboardTaskLayout });
+  }
+
+  public async setDashboardBoardGroup(
+    dashboardBoardGroup: TaskBoardGroupBy,
+  ): Promise<void> {
+    await this.update({ dashboardBoardGroup });
   }
 
   public async setDashboardNoteSortMode(
@@ -570,6 +589,13 @@ function normalizePreferences(
         : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
+    dashboardTaskLayout:
+      value?.dashboardTaskLayout === 'board' ? 'board' : 'list',
+    dashboardBoardGroup:
+      value?.dashboardBoardGroup === 'priority' ||
+      value?.dashboardBoardGroup === 'due'
+        ? value.dashboardBoardGroup
+        : 'status',
   };
 }
 

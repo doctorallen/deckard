@@ -20,6 +20,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace. |
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
 | [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
+| [Task board](#task-board) | A Kanban board of tasks by status, priority, or due date, where dragging a card rewrites the task in its note. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, and dependencies, written in either Obsidian Tasks format. |
 | [Editor assistance](#editor-assistance) | Clickable tags, tag completion after `#` or `@`, and task metadata suggestions after `/`. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
@@ -78,6 +79,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | --- | --- |
 | **Deckard: Open Dashboard** | Opens workspace totals, tags, and tasks. |
 | **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
+| **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, or due date. |
 | **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
@@ -204,6 +206,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 - **Saved tag views** appear above the Dashboard's Tasks/Notes/Tags tabs, so they remain available in any mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
 - The Dashboard title identifies the active mode as **Dashboard: Tasks**, **Dashboard: Notes**, or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task, note, and tag cards; Deckard saves all three choices for future Dashboard sessions.
+- **Tasks as a board**: open **View options** and set **Tasks** to **Board** to show the Tasks tab as the same Kanban board the [Task board](#task-board) uses, grouped by status, priority, or due date. The tab's **All**, **Open**, and **Done** filter, tag picker, and search still choose which tasks appear, and Deckard remembers the layout and grouping.
 - **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
 - **Notes** lists indexed note entries with a searchable multi-tag picker, text search, and **Sort: A-Z/Newest created/Recently updated/Most accessed**, matching the Notes tab in a tag overview. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. A note appears when it matches any selected tag; select a note entry to jump to its source line.
 - **Tags** shows namespaced and unnamespaced tags together. Search tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
@@ -251,6 +254,18 @@ Open **Agenda** from the Deckard Activity Bar to see the open tasks that need at
 - Each task shows why it is listed, its priority, and its file, plus `blocked by …` while a task it waits for with ⛔ is still open. Select a task to open its line.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - The Agenda's badge counts the tasks that are overdue or due today.
+
+## Task board
+
+Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Agenda's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard.
+
+- **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
+- **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
+- **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
+- Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
+- Filter the board with a Deckard query, such as `tag = #project/atlas` or `priority >= high`.
+- Select a card to open its line, or one of its tags to open that tag's overview. Only a status written on the task line counts, not one inherited from a heading, because moving the card could not change it.
+- Every move is checked against the indexed line first, like a checkbox, so an edit made since the board last refreshed is never overwritten.
 
 ## Related Notes
 
@@ -387,6 +402,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.metadataSuggestions": true,
+	"deckard.board.statusNamespace": "status",
+	"deckard.board.statuses": ["todo", "doing", "waiting"],
 	"deckard.highlightNoteSections": true,
 	"deckard.autoSelectNoteSections": true,
 	"deckard.enableHeadingTagRelationships": true,
@@ -414,6 +431,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
+| `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |
+| `deckard.board.statuses` | `["todo", "doing", "waiting"]` | The task board's status columns, in order. A status found on a task but not listed gets a column after them. |
 | `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
 | `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, Tag Overview, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove overview tags from titles and show them as separate tag controls. |

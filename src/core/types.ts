@@ -210,6 +210,9 @@ export interface PersistedPreferences {
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
+  /** Absent in preferences saved before the Dashboard had a board layout. */
+  dashboardTaskLayout?: DashboardTaskLayout;
+  dashboardBoardGroup?: TaskBoardGroupBy;
 }
 
 /**
@@ -274,6 +277,10 @@ export interface DashboardSnapshot {
   selectedTag?: string;
   viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
+  /** List when absent. */
+  taskLayout?: DashboardTaskLayout;
+  /** The filtered tasks as a board, present when `taskLayout` is `board`. */
+  taskBoard?: TaskBoardLayout;
 }
 
 export interface TagOverviewSnapshot {
@@ -681,6 +688,10 @@ export interface OpenNotesGraphMessage {
   type: 'openNotesGraph';
 }
 
+export interface OpenTaskBoardMessage {
+  type: 'openTaskBoard';
+}
+
 export interface ActivateNotesGraphNodeMessage {
   type: 'activateNotesGraphNode';
   nodeId: string;
@@ -735,7 +746,10 @@ export type DashboardMessage =
   | OpenTagMessage
   | RenameTagMessage
   | OpenSavedFilterMessage
-  | RemoveSavedFilterMessage;
+  | RemoveSavedFilterMessage
+  | SetDashboardTaskLayoutMessage
+  | SetBoardGroupMessage
+  | MoveTaskMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -757,9 +771,85 @@ export type SidebarMessage =
   | RenameTagMessage
   | OpenDashboardMessage
   | OpenNotesGraphMessage
+  | OpenTaskBoardMessage
   | ActivateNotesGraphNodeMessage
   | HoverNotesGraphNodeMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
   | SetRelatedNotesSortMessage
   | ClearEntryRelatedNotesMessage;
+
+/** How the task board arranges its columns. */
+export type TaskBoardGroupBy = 'status' | 'priority' | 'due';
+
+export interface TaskBoardCard {
+  taskId: string;
+  title: string;
+  /** Tags written inside the title, rendered as controls where they appear. */
+  titleTags: TagReference[];
+  completed: boolean;
+  filePath: string;
+  line: number;
+  /** Short facts under the title, such as "due 2026-09-14". */
+  details: string[];
+  overdue: boolean;
+}
+
+export interface TaskBoardColumn {
+  /** What dropping a task here writes, such as `status:doing` or `done`. */
+  id: string;
+  label: string;
+  /** False for a column that no single edit can move a task into. */
+  droppable: boolean;
+  cards: TaskBoardCard[];
+  /** Completed tasks left out of a long Done column. */
+  hiddenCount: number;
+}
+
+/** A task board's columns, whichever page chose its tasks. */
+export interface TaskBoardLayout {
+  groupBy: TaskBoardGroupBy;
+  columns: TaskBoardColumn[];
+  taskCount: number;
+}
+
+/** The Task Board page, which chooses its tasks with a query. */
+export interface TaskBoardSnapshot extends TaskBoardLayout {
+  /** The query narrowing the board, or empty for every task. */
+  query: string;
+  /** Why the last query typed could not be applied. */
+  queryError?: string;
+}
+
+/** How the Dashboard's Tasks tab lays out its tasks. */
+export type DashboardTaskLayout = 'list' | 'board';
+
+export interface SetDashboardTaskLayoutMessage {
+  type: 'setDashboardTaskLayout';
+  layout: DashboardTaskLayout;
+}
+
+export interface MoveTaskMessage {
+  type: 'moveTask';
+  taskId: string;
+  column: string;
+}
+
+export interface SetBoardGroupMessage {
+  type: 'setBoardGroup';
+  groupBy: TaskBoardGroupBy;
+}
+
+export interface SetBoardQueryMessage {
+  type: 'setBoardQuery';
+  query: string;
+}
+
+export type TaskBoardMessage =
+  | SidebarReadyMessage
+  | OpenSourceMessage
+  | OpenTagMessage
+  | ToggleTaskMessage
+  | MoveTaskMessage
+  | SetBoardGroupMessage
+  | SetBoardQueryMessage;

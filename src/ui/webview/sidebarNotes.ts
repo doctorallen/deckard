@@ -489,6 +489,10 @@ export class SidebarNotesView
       await vscode.commands.executeCommand('deckard.showNotesGraph');
       return;
     }
+    if (message.type === 'openTaskBoard') {
+      await vscode.commands.executeCommand('deckard.showTaskBoard');
+      return;
+    }
     if (message.type === 'activateNotesGraphNode') {
       await vscode.commands.executeCommand(
         'deckard.activateNotesGraphNode',
