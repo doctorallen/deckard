@@ -166,6 +166,12 @@
           "name": "Outline",
           "icon": "resources/deckard.svg",
           "contextualTitle": "Deckard Outline"
+        },
+        {
+          "id": "deckard.agenda",
+          "name": "Agenda",
+          "icon": "resources/deckard.svg",
+          "contextualTitle": "Deckard Agenda"
         }
       ]
     },
@@ -240,6 +246,39 @@
           "scope": "resource",
           "default": false,
           "description": "Also show front-matter tags that every heading in the file inherits."
+        },
+        "deckard.agenda.upcomingDays": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 90,
+          "default": 7,
+          "description": "How many days ahead the Agenda's Upcoming group looks for due, scheduled, and start dates."
+        },
+        "deckard.tasks.addDoneDate": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Add a completion date (✅ or [completion:: …]) when Deckard completes a task. Reopening the task removes it."
+        },
+        "deckard.tasks.metadataFormat": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "emoji",
+            "dataview"
+          ],
+          "enumDescriptions": [
+            "Obsidian Tasks emoji format, such as 📅 2026-09-20 ⏫ 🔁 every week.",
+            "Obsidian Tasks Dataview format, such as [due:: 2026-09-20] [priority:: high] [repeat:: every week]."
+          ],
+          "default": "emoji",
+          "description": "Format Deckard writes for a task that has no metadata yet, in / suggestions and completion dates. A task that already uses one format keeps it, and Deckard reads both."
+        },
+        "deckard.tasks.metadataSuggestions": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task."
         },
         "deckard.tagTitleDisplayMode": {
           "type": "string",

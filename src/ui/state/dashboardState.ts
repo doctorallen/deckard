@@ -39,6 +39,7 @@ import {
   QuerySuggestions,
   QueryViewState,
   QUERY_FIELDS,
+  QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
@@ -2140,6 +2141,22 @@ function createQuerySuggestions(index: WorkspaceIndex): QuerySuggestions {
     { value: '30d', label: '30d', detail: 'the last thirty days' },
     { value: '90d', label: '90d', detail: 'the last ninety days' },
   ];
+  const noDate: QuerySuggestion = {
+    value: 'none',
+    label: 'none',
+    detail: 'no date written',
+  };
+  const taskDates: QuerySuggestion[] = [
+    { value: 'today', label: 'today' },
+    { value: 'tomorrow', label: 'tomorrow' },
+    { value: '7d', label: '7d', detail: 'today and the next six days' },
+    { value: '30d', label: '30d', detail: 'the next thirty days' },
+    noDate,
+  ];
+  const priorities: QuerySuggestion[] = QUERY_PRIORITY_VALUES.map((value) => ({
+    value,
+    label: value,
+  }));
 
   return {
     fields,
@@ -2154,6 +2171,11 @@ function createQuerySuggestions(index: WorkspaceIndex): QuerySuggestions {
       ],
       file: files,
       path: paths,
+      due: taskDates,
+      scheduled: taskDates,
+      start: taskDates,
+      done: [...dates, noDate],
+      priority: priorities,
       created: dates,
       updated: dates,
     },
@@ -2171,6 +2193,16 @@ export function describeQueryField(field: string): string {
       return 'Words in the note, task, or file body';
     case 'task':
       return 'open, done, or any';
+    case 'due':
+      return 'A task due date (📅): 2026-09-13, today, 7d ahead, or none';
+    case 'scheduled':
+      return 'A task scheduled date (⏳): 2026-09-13, today, 7d ahead, or none';
+    case 'start':
+      return 'A task start date (🛫): 2026-09-13, today, 7d ahead, or none';
+    case 'done':
+      return 'A task completion date (✅): 2026-09-13, today, 7d back, or none';
+    case 'priority':
+      return 'highest, high, medium, none, low, or lowest';
     case 'kind':
       return 'An entity namespace such as project or person';
     case 'file':

@@ -152,6 +152,8 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #3d4145; font-size: 11px; margin-top: 5px; }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--favorite-red); }
+.task-detail { letter-spacing: .03em; }
+.task-detail.priority-highest, .task-detail.priority-high { color: var(--favorite-red); font-weight: 700; }
 .rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .rank-context-menu[hidden] { display: none; }
 .rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
@@ -782,6 +784,11 @@ ${getComponentScript()}
           return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved tag view ' + escapeHtml(filter.name) + '">Remove</button></div>';
         }).join('') + '</div></section>'
       : '';
+    /** Writes a task timestamp as the YYYY-MM-DD form the note uses. */
+    function formatTaskDate(timestamp) {
+      const date = new Date(timestamp);
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
     const normalizedTaskSearchQuery = taskSearchQuery.trim().toLowerCase();
     const filteredTasks = state.tasks.filter(function (item) {
       const searchableText = [
@@ -799,9 +806,18 @@ ${getComponentScript()}
       const dueDate = task.dueText
         ? '<span class="due-date ' + (task.dueAt !== undefined && task.dueAt < startOfToday.getTime() ? 'overdue' : '') + '">DUE ' + escapeHtml(task.dueText) + '</span>'
         : '';
+      const scheduled = task.scheduledAt !== undefined
+        ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
+        : '';
+      const priority = task.priority
+        ? '<span class="task-detail priority-' + escapeHtml(task.priority) + '">' + escapeHtml(task.priority.toUpperCase()) + ' PRIORITY</span>'
+        : '';
+      const recurrence = task.recurrence
+        ? '<span class="task-detail">REPEATS ' + escapeHtml(task.recurrence.toUpperCase()) + '</span>'
+        : '';
       return '<div class="row task-row ' + (task.completed ? 'completed ' : '') + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">' +
         '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">' +
-        '<div><div class="task-title">' + (state.tagTitleDisplayMode === 'inline' ? renderTaskTitle(item.renderedTitle, item.titleTags) : item.renderedTitle) + '</div><div class="task-meta">' + dueDate + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
+        '<div><div class="task-title">' + (state.tagTitleDisplayMode === 'inline' ? renderTaskTitle(item.renderedTitle, item.titleTags) : item.renderedTitle) + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
         '</div>';
     }).join('') : '<div class="empty">No tasks match this filter.</div>';
     const normalizedNoteSearchQuery = noteSearchQuery.trim().toLowerCase();

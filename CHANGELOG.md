@@ -4,6 +4,28 @@
 
 ### Added
 
+- **Obsidian Tasks metadata**: tasks written in the Obsidian Tasks emoji
+  format keep their due (📅), scheduled (⏳), start (🛫), and done (✅) dates,
+  priorities (🔺 ⏫ 🔼 🔽 ⏬), repeat rules (🔁), and dependencies (🆔 ⛔).
+  The markers leave task titles and appear as details on Dashboard cards and
+  in query blocks, and a ✅ date is no longer mistaken for a due date.
+  Completing a task adds its ✅ date and reopening removes it, which
+  `deckard.tasks.addDoneDate` can turn off. Completing a repeating task writes
+  its next occurrence on the line above. Queries gain `due`, `scheduled`,
+  `start`, `done`, and `priority` fields, with `none` for a missing date.
+  Tasks written in the plugin's text-only Dataview format, such as
+  `[due:: 2026-09-20] [priority:: high]`, are read the same way, and Deckard
+  writes dates in whichever format a task already uses;
+  `deckard.tasks.metadataFormat` picks one for tasks without metadata.
+  Typing `/` in a task suggests dates, priorities, repeat rules, and
+  dependencies to insert, which `deckard.tasks.metadataSuggestions` can turn
+  off.
+
+- **Agenda**: a new **Agenda** view in the Deckard sidebar groups open tasks
+  into Overdue, Today, and Upcoming, badges the count of tasks overdue or due
+  today, and completes a task from its checkbox.
+  `deckard.agenda.upcomingDays` sets how far ahead Upcoming looks.
+
 - **Query blocks**: a `deckard` code fence holding a Deckard query now shows
   its results in the Markdown preview, so a note can keep a live list of the
   notes and tasks it cares about. Each result links to its source line, tasks
@@ -80,6 +102,10 @@
   `.segmented` primitive for joined buttons.
 
 ### Fixed
+
+- A relative date window compared with `>`, `>=`, `<`, or `<=` now uses the
+  window's far end. `updated > 7d` previously matched nothing, because it was
+  compared with the end of today instead of the start of the seven days.
 
 - The Dashboard's index metrics are a horizontal three-up strip again, and its
   chamfered tiles, 1180px width and dashed header rule are back. Sharing the

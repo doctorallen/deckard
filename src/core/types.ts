@@ -15,6 +15,9 @@ export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
 
+/** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
+export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
+
 export type DashboardMode = 'tasks' | 'notes' | 'browse';
 
 export type DashboardSearchField =
@@ -112,6 +115,19 @@ export interface Task {
   associationTagGroups?: TagReference[][];
   dueAt?: number;
   dueText?: string;
+  /** ⏳ scheduled date: the day the author plans to work on the task. */
+  scheduledAt?: number;
+  /** 🛫 start date: the task is not actionable before this day. */
+  startAt?: number;
+  /** ✅ date the task was completed. */
+  doneAt?: number;
+  priority?: TaskPriority;
+  /** 🔁 repeat rule as written, such as "every week". */
+  recurrence?: string;
+  /** 🆔 name other tasks use in ⛔ to depend on this one. */
+  dependencyId?: string;
+  /** ⛔ names of the tasks that must be done first. */
+  dependsOn?: string[];
   lineNumber: number;
   checkboxColumn: number;
   checkboxValue: ' ' | 'x' | 'X';

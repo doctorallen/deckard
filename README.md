@@ -6,6 +6,31 @@
 
 Deckard is a local-first second brain for Markdown notes in your VS Code workspace. It connects people, projects, topics, organizations, meetings, links, and checklist tasks while keeping your notes readable and portable.
 
+## Features
+
+| Feature | What it does |
+| --- | --- |
+| [Tags and entities](#markdown-format) | `#tags`, `@people`, and namespaced entities such as `#project/atlas` on headings, tasks, and lines become one workspace-wide index. |
+| [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
+| [Dashboard](#dashboard) | One page for workspace totals and every task, note, and tag, with filters, sorting, favorites, and saved views. |
+| [Tag overviews](#tag-overviews) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. |
+| [Advanced search](#advanced-filtering) | A small query language with a visual builder combines tags, text, task state, dates, and priorities using `AND`, `OR`, and `NOT`. |
+| [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
+| [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
+| [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace. |
+| [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
+| [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
+| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, and dependencies, written in either Obsidian Tasks format. |
+| [Editor assistance](#editor-assistance) | Clickable tags, tag completion after `#` or `@`, and task metadata suggestions after `/`. |
+| [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
+| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and open the note they name. |
+| [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
+| [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
+| [Workspace search](#commands) | Full-text search across saved notes, entities, and tasks from the Command Palette. |
+| [Stats](#stats) | Index totals and your most-viewed tags, entities, and notes. |
+| [Themes](#themes) | Six visual styles for Deckard's pages, from the default Replicant to LCARS and Synthwave. |
+| [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine. |
+
 ## Requirements
 
 - VS Code 1.134.0 or newer.
@@ -120,10 +145,58 @@ For example:
 
 Use `- [ ]`, `* [ ]`, or `+ [ ]` for an open task. Use `- [x]` for a completed task. A task inherits tags from its heading and can also have its own tags.
 
+## Task metadata
+
+Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/tasks/) plugin, so tasks written for Obsidian keep their dates, priorities, and repeat rules. The emoji format looks like this, and the [Dataview format](#dataview-format) spells the same fields out in brackets:
+
+```markdown
+- [ ] Send the proposal 📅 2026-09-20 ⏳ 2026-09-18 ⏫ 🔁 every week
+```
+
+| Marker | Meaning |
+| --- | --- |
+| 📅 | Due date. 📆 and 🗓 also work. |
+| ⏳ | Scheduled date: the day you plan to work on the task. ⌛ also works. |
+| 🛫 | Start date: the task is not actionable before this day. |
+| ✅ | Completion date. |
+| ➕ ❌ | Created and cancelled dates. They are removed from titles and kept in the note. |
+| 🔺 ⏫ 🔼 🔽 ⏬ | Priority, from highest to lowest. |
+| 🔁 | Repeat rule, such as `every week`. |
+| 🆔 ⛔ | A task's id, and the ids of the tasks it waits for. |
+
+- Markers are removed from task titles wherever Deckard shows them, and appear as details instead. A trailing Obsidian block id such as `^a1b2` is left out of the title too. Deckard reads a marker anywhere on the line, while Tasks expects them at the end.
+- A 📅 date wins over a date written in the sentence. Without one, Deckard still reads `2026-09-12`, `Sep 12`, or `next Friday` from the task text. A ✅ date is never taken for a due date.
+- Completing a task from Deckard adds ✅ with today's date, and reopening it removes the date. Set `deckard.tasks.addDoneDate` to `false` to change only the checkbox.
+- Completing a task with a 🔁 rule writes its next occurrence on the line above, as Tasks does. The due date, or else the scheduled or start date, moves forward by the rule, and the other dates keep their distance from it; a rule ending in `when done` counts from today instead. The new task drops the ✅ date, the 🆔, and any block id.
+- Deckard understands `every day`, `every 3 weeks`, `every month`, `every year`, `every weekday`, `every Monday`, `every week on Tuesday, Friday`, `every month on the 15th`, and `every month on the last`, each optionally followed by `when done`. For any other rule it completes the task, adds no next occurrence, and tells you so.
+- Only `[ ]`, `[x]`, and `[X]` checkboxes are tasks, so a Tasks `[-]` cancelled task is not indexed.
+
+### Dataview format
+
+Tasks can also be written in the plugin's text-only Dataview format, and Deckard reads it the same way:
+
+```markdown
+- [ ] Send the proposal [due:: 2026-09-20] [scheduled:: 2026-09-18] [priority:: high] [repeat:: every week]
+```
+
+The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`, `priority`, `repeat`, `id`, and `dependsOn`, in square or round brackets. Other Dataview fields, such as `[owner:: Ren]`, stay part of the title. When Deckard writes a date, such as a completion date or a repeating task's next dates, it uses the format the task already uses. For a task with no metadata yet, `deckard.tasks.metadataFormat` chooses.
+
+### Typing metadata
+
+Type `/` after a space in a task to pick metadata instead of typing it:
+
+- **due today**, **due tomorrow**, **due in a week**, and **due on a date**, with the same choices for scheduled and start dates;
+- the five priorities, from **highest priority** to **lowest priority**;
+- common repeat rules, or **repeats on a rule** to write your own;
+- **task id**, and **depends on** each open task's id.
+
+Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the format the task already uses, or `deckard.tasks.metadataFormat` for a task without metadata. Set `deckard.tasks.metadataSuggestions` to `false` to turn them off.
+
 ## Editor assistance
 
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its tag overview, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
+- Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).
 
 ## Dashboard
 
@@ -167,6 +240,17 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 - The eye control in the view title switches whether the Outline follows the cursor, and **Collapse all** is beside it.
 
 Headings written in the underlined `Title`/`===` style are not shown, matching how Deckard indexes notes everywhere else.
+
+## Agenda
+
+Open **Agenda** from the Deckard Activity Bar to see the open tasks that need attention soon. Like the Outline, it can be dragged into either sidebar.
+
+- **Overdue** lists tasks whose due date has passed, oldest first.
+- **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
+- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead.
+- Each task shows why it is listed, its priority, and its file, plus `blocked by …` while a task it waits for with ⛔ is still open. Select a task to open its line.
+- Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
+- The Agenda's badge counts the tasks that are overdue or due today.
 
 ## Related Notes
 
@@ -237,12 +321,15 @@ Terms combine with `AND`, `OR`, `NOT`, and parentheses. `AND` binds tighter than
 | `tag` | A tag, including tags a section inherits from a parent heading and tags a note carries in its front matter. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
 | `text` | Words in a note body, a task line, or a front-matter-only file. `:` and `~` match a substring; `=` and `!=` match a whole word. | `text ~ elevator`, `text = plan` |
 | `task` | `open`, `done`, or `any`. Only tasks can satisfy it, so a query using it returns no notes. | `task = open` |
+| `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `scheduled <= today`, `due = none` |
+| `done` | A task's ✅ date, with windows counted back from today. | `done = 7d` |
+| `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. A task without a priority counts as `none`, which ranks between `medium` and `low`. | `priority >= high` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
 | `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, or `today`. A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13` |
 
-Operators are `=` for is, `!=` for is not, `~` for contains, `!~` for does not contain, and `>`, `>=`, `<`, `<=` for dates. `:` is accepted everywhere `=` is, so queries written with `tag:#atlas` keep working, but Deckard writes `=` when it formats a query back. A comparison can follow the operator, so `updated:>2026-01-01` and `updated > 2026-01-01` mean the same thing. Every operator has an opposite, so any single condition can be negated without `NOT`; `NOT` is for negating a whole parenthesized group.
+Operators are `=` for is, `!=` for is not, `~` for contains, `!~` for does not contain, and `>`, `>=`, `<`, `<=` for dates and priorities. A window such as `7d` is compared by its far end: `updated > 7d` means updated within the last seven days, and `due < 7d` means due within the next seven days, overdue tasks included. `:` is accepted everywhere `=` is, so queries written with `tag:#atlas` keep working, but Deckard writes `=` when it formats a query back. A comparison can follow the operator, so `updated:>2026-01-01` and `updated > 2026-01-01` mean the same thing. Every operator has an opposite, so any single condition can be negated without `NOT`; `NOT` is for negating a whole parenthesized group.
 
 - The query bar completes field names and, once it can see which field the caret is in, that field's values — indexed tags, task states, entity namespaces, file names, and date shorthands. Nothing is preselected, so Enter always runs the query you typed; Tab completes, arrow keys move through the list, and Escape abandons the edit.
 - A builder row's value field offers the same completions for its own field, so a tag row completes tags and a task row offers `open`, `done`, and `any`. Choosing one applies the query immediately.
@@ -296,6 +383,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.showTags": true,
 	"deckard.outline.followCursor": true,
 	"deckard.outline.inheritedTags": false,
+	"deckard.agenda.upcomingDays": 7,
+	"deckard.tasks.addDoneDate": true,
+	"deckard.tasks.metadataFormat": "emoji",
+	"deckard.tasks.metadataSuggestions": true,
 	"deckard.highlightNoteSections": true,
 	"deckard.autoSelectNoteSections": true,
 	"deckard.enableHeadingTagRelationships": true,
@@ -319,6 +410,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
+| `deckard.agenda.upcomingDays` | `7` | How many days ahead the Agenda's **Upcoming** group looks for due, scheduled, and start dates. |
+| `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
+| `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
+| `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
 | `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
 | `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, Tag Overview, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove overview tags from titles and show them as separate tag controls. |
@@ -332,7 +427,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ## Source safety and persistence
 
-Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, or approve an entity tag from `Deckard: Link Current Heading to Entity`. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
+Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, or approve an entity tag from `Deckard: Link Current Heading to Entity`. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
 
 Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-note search. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 

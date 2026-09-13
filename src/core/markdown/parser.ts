@@ -7,6 +7,7 @@ import {
   TagReference,
   Task,
 } from '../types';
+import { parseIsoDate, parseTaskMetadata } from './taskMetadata';
 
 interface HeadingMatch {
   lineNumber: number;
@@ -1075,20 +1076,35 @@ function findTasks(
     const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
     const checkboxColumn = match[1].length + match[2].length + 2;
     const checkboxValue = match[3] as ' ' | 'x' | 'X';
-    const dueDate = findTaskDate(match[4], metadata?.updatedAt);
+    // Obsidian Tasks markers become fields and leave the title, so a ✅ date
+    // is never read as a due date and titles read the way Tasks shows them.
+    const { metadata: fields, title } = parseTaskMetadata(match[4]);
+    const dueDate =
+      fields.due !== undefined
+        ? toTaskDate(fields.due)
+        : findTaskDate(title, metadata?.updatedAt);
 
     return [
       {
         id: createId('task', `${filePath}:${lineNumber}:${match[4]}`),
         filePath,
         sectionId: section?.id,
-        title: match[4],
+        title: title || match[4],
         completed: checkboxValue !== ' ',
         tags,
         tagLabels,
         associationTagGroups: [inlineTags],
         dueAt: dueDate?.at,
         dueText: dueDate?.text,
+        ...omitUndefined({
+          scheduledAt: parseIsoDate(fields.scheduled),
+          startAt: parseIsoDate(fields.start),
+          doneAt: parseIsoDate(fields.done),
+          priority: fields.priority,
+          recurrence: fields.recurrence,
+          dependencyId: fields.id,
+          dependsOn: fields.dependsOn.length > 0 ? fields.dependsOn : undefined,
+        }),
         lineNumber,
         checkboxColumn,
         checkboxValue,
@@ -1103,6 +1119,21 @@ function findTasks(
 interface TaskDate {
   at: number;
   text: string;
+}
+
+function toTaskDate(value: string): TaskDate | undefined {
+  const at = parseIsoDate(value);
+  return at === undefined ? undefined : { at, text: value };
+}
+
+/**
+ * Drops absent optional fields, so a task without Tasks metadata keeps the
+ * shape it always had.
+ */
+function omitUndefined<T extends object>(value: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined),
+  ) as Partial<T>;
 }
 
 /**

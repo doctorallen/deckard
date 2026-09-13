@@ -13,7 +13,7 @@ against the current source so that nothing here duplicates a shipped feature.
 | --- | --- | --- |
 | Saved queries and collection views | Mostly shipped. The query language, visual builder, saved queries, and query blocks in notes exist. Non-list views (board, table, calendar) remain. | Dataview (#3, 5.0M), Bases (core), Kanban (#9, 2.7M) |
 | Typed front matter schemas and explicit relations | Open | Breadcrumbs, Metadata Menu, Supercharged Links |
-| Task scheduling and planning | Open, made concrete by suggestion 2 below | Tasks (#4, 4.2M), TaskNotes (1.5M) |
+| Task scheduling and planning | Mostly shipped as Obsidian Tasks metadata and the Agenda. Calendar projections remain. | Tasks (#4, 4.2M), TaskNotes (1.5M) |
 | Backlinks and note-link graphs | Notes Graph shipped; backlinks open, see suggestion 5 | Obsidian core Backlinks and Graph |
 | Section and block references | Open | Obsidian block references |
 | Canvas or whiteboard | Open, low priority | Excalidraw (#1, 7.9M), Advanced Canvas |
@@ -34,7 +34,10 @@ README.
 
 ### 2. Obsidian-compatible task metadata
 
-Inspired by Tasks and TaskNotes.
+Inspired by Tasks and TaskNotes. **Shipped**, with the Agenda view; see the
+README. Both the emoji and Dataview formats are read, and typing `/` in a
+task suggests metadata to insert. Dependencies are read and shown as
+"blocked by" in the Agenda, but not yet queryable.
 
 `findTaskDate` in `src/core/markdown/parser.ts` already reads one loose due
 date, and the Dashboard already marks overdue tasks. Rather than inventing a
@@ -153,8 +156,8 @@ an external service.
 
 ## Recommended sequencing
 
-1. Obsidian-compatible task metadata. It extends the existing parser and
-   unblocks the agenda, calendar, and board views.
+1. ~~Obsidian-compatible task metadata.~~ Shipped with the Agenda, which
+   unblocks the calendar and board views.
 2. ~~Queries inside notes.~~ Shipped as query blocks.
 3. Quick capture and templates.
 4. Link health and aliases.

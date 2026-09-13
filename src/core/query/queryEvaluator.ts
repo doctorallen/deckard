@@ -1,7 +1,9 @@
+import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import {
   ParsedFile,
   Section,
   Task,
+  TaskPriority,
   WorkspaceIndex,
 } from '../types';
 import { resolveIndexedTagKey } from '../workspace/tagNavigation';
@@ -66,6 +68,11 @@ interface QueryUnit {
   completed?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  dueAt?: number;
+  scheduledAt?: number;
+  startAt?: number;
+  doneAt?: number;
+  priority?: TaskPriority;
 }
 
 function buildTagMembership(index: WorkspaceIndex): TagMembership {
@@ -163,6 +170,11 @@ function createTaskUnit(
     completed: task.completed,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
+    dueAt: task.dueAt,
+    scheduledAt: task.scheduledAt,
+    startAt: task.startAt,
+    doneAt: task.doneAt,
+    priority: task.priority,
   };
 }
 
@@ -213,9 +225,19 @@ function matchesCondition(
     case 'path':
       return matchesPathValue(condition, unit.filePath);
     case 'created':
-      return matchesDate(condition, unit.createdAt);
+      return matchesDate(condition, unit.createdAt, 'past');
     case 'updated':
-      return matchesDate(condition, unit.updatedAt);
+      return matchesDate(condition, unit.updatedAt, 'past');
+    case 'due':
+      return matchesTaskDate(condition, unit, unit.dueAt, 'future');
+    case 'scheduled':
+      return matchesTaskDate(condition, unit, unit.scheduledAt, 'future');
+    case 'start':
+      return matchesTaskDate(condition, unit, unit.startAt, 'future');
+    case 'done':
+      return matchesTaskDate(condition, unit, unit.doneAt, 'past');
+    case 'priority':
+      return matchesPriority(condition, unit);
   }
 }
 
@@ -311,23 +333,96 @@ function matchesPathValue(
 }
 
 /**
+ * Whether a relative window such as `7d` looks back from today, as `created`
+ * and `updated` do, or ahead, as a due date does.
+ */
+export type DateDirection = 'past' | 'future';
+
+/**
+ * Task dates answer only for tasks, so `due != today` never lists notes.
+ * `none` asks whether the date is written at all.
+ */
+function matchesTaskDate(
+  condition: QueryConditionNode,
+  unit: QueryUnit,
+  timestamp: number | undefined,
+  direction: DateDirection,
+): boolean {
+  if (unit.kind !== 'task') {
+    return false;
+  }
+  if (condition.value === 'none') {
+    return condition.operator === 'neq'
+      ? timestamp !== undefined
+      : timestamp === undefined;
+  }
+  return matchesDate(condition, timestamp, direction);
+}
+
+/**
+ * Compares a task's priority. A task without one ranks between medium and
+ * low, as it does in Obsidian Tasks, so `priority > medium` finds high and
+ * highest.
+ */
+function matchesPriority(
+  condition: QueryConditionNode,
+  unit: QueryUnit,
+): boolean {
+  if (unit.kind !== 'task') {
+    return false;
+  }
+  const actual = TASK_PRIORITY_RANKS[unit.priority ?? 'none'];
+  const wanted = TASK_PRIORITY_RANKS[condition.value as TaskPriority | 'none'];
+  switch (condition.operator) {
+    case 'eq':
+      return actual === wanted;
+    case 'neq':
+      return actual !== wanted;
+    case 'gt':
+      return actual > wanted;
+    case 'gte':
+      return actual >= wanted;
+    case 'lt':
+      return actual < wanted;
+    case 'lte':
+      return actual <= wanted;
+    default:
+      return false;
+  }
+}
+
+/**
  * Compares a unit timestamp against an absolute date, a relative window such
- * as `30d`, or `today`.
+ * as `30d`, or a named day such as `today`.
  *
  * A plain `created = 2026-09-13` means "on that day", so a bare date does not
- * require an exact millisecond match no author could reproduce.
+ * require an exact millisecond match no author could reproduce. A window is
+ * compared by its far end: `updated > 7d` means more recently than seven days
+ * ago, and `due < 7d` means sooner than seven days from now.
  */
 function matchesDate(
   condition: QueryConditionNode,
   timestamp: number | undefined,
+  direction: DateDirection,
   now: number = Date.now(),
 ): boolean {
   if (timestamp === undefined) {
     return false;
   }
-  const range = resolveDateRange(condition.value, now);
+  const range = resolveDateRange(condition.value, now, direction);
   if (!range) {
     return false;
+  }
+
+  if (
+    range.isWindow &&
+    condition.operator !== 'eq' &&
+    condition.operator !== 'neq'
+  ) {
+    const boundary = direction === 'past' ? range.start : range.end;
+    return condition.operator === 'gt' || condition.operator === 'gte'
+      ? timestamp >= boundary
+      : timestamp < boundary;
   }
 
   switch (condition.operator) {
@@ -351,6 +446,8 @@ function matchesDate(
 interface DateRange {
   start: number;
   end: number;
+  /** True for a relative window such as 7d, rather than one named day. */
+  isWindow: boolean;
 }
 
 /**
@@ -359,12 +456,18 @@ interface DateRange {
 export function resolveDateRange(
   value: string,
   now: number = Date.now(),
+  direction: DateDirection = 'past',
 ): DateRange | undefined {
   const normalized = value.trim().toLowerCase();
 
-  if (normalized === 'today' || normalized === 'yesterday') {
-    const start = startOfDay(now) - (normalized === 'yesterday' ? DAY : 0);
-    return { start, end: start + DAY };
+  const namedDayOffsets: Record<string, number> = {
+    yesterday: -1,
+    today: 0,
+    tomorrow: 1,
+  };
+  if (Object.hasOwn(namedDayOffsets, normalized)) {
+    const start = startOfDay(now) + namedDayOffsets[normalized] * DAY;
+    return { start, end: start + DAY, isWindow: false };
   }
 
   const relative = /^(\d+)([dwmy])$/.exec(normalized);
@@ -379,9 +482,19 @@ export function resolveDateRange(
           : unit === 'm'
             ? amount * 30
             : amount * 365;
-    // `updated > 7d` reads as "in the last seven days", so the window starts
-    // in the past and runs to the end of today.
-    return { start: startOfDay(now) - (days - 1) * DAY, end: startOfDay(now) + DAY };
+    // A window counts today as its first day: `updated = 7d` is the last seven
+    // days including today, and `due = 7d` is today and the six after it.
+    return direction === 'past'
+      ? {
+          start: startOfDay(now) - (days - 1) * DAY,
+          end: startOfDay(now) + DAY,
+          isWindow: true,
+        }
+      : {
+          start: startOfDay(now),
+          end: startOfDay(now) + days * DAY,
+          isWindow: true,
+        };
   }
 
   const absolute = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
@@ -394,7 +507,7 @@ export function resolveDateRange(
     if (Number.isNaN(start)) {
       return undefined;
     }
-    return { start, end: start + DAY };
+    return { start, end: start + DAY, isWindow: false };
   }
 
   return undefined;

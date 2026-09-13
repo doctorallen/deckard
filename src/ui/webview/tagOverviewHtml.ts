@@ -235,6 +235,11 @@ ${getComponentScript()}
     tag: ['eq', 'neq'],
     text: ['contains', 'notContains', 'eq', 'neq'],
     task: ['eq', 'neq'],
+    due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+    scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+    start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+    done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+    priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
     kind: ['eq', 'neq'],
     file: ['eq', 'neq', 'contains', 'notContains'],
     path: ['eq', 'neq', 'contains', 'notContains'],
@@ -268,10 +273,22 @@ ${getComponentScript()}
     eq: 'is the whole word',
     neq: 'does not have the whole word',
   };
+  /** Priority compares rank, not time. */
+  const PRIORITY_OPERATOR_DESCRIPTIONS = {
+    gt: 'above',
+    gte: 'at or above',
+    lt: 'below',
+    lte: 'at or below',
+  };
   const FIELD_PLACEHOLDERS = {
     tag: '#project/atlas',
     text: 'vendor review',
     task: 'open',
+    due: 'today',
+    scheduled: 'today',
+    start: 'today',
+    done: '7d',
+    priority: 'high',
     kind: 'project',
     file: '2026-09-*.md',
     path: 'notes/*',
@@ -539,7 +556,9 @@ ${getComponentScript()}
     }).join('');
     const descriptions = row.field === 'text'
       ? Object.assign({}, OPERATOR_DESCRIPTIONS, TEXT_OPERATOR_DESCRIPTIONS)
-      : OPERATOR_DESCRIPTIONS;
+      : row.field === 'priority'
+        ? Object.assign({}, OPERATOR_DESCRIPTIONS, PRIORITY_OPERATOR_DESCRIPTIONS)
+        : OPERATOR_DESCRIPTIONS;
     const operators = (QUERY_FIELD_OPERATORS[row.field] || ['eq']).map(function (operator) {
       return '<option value="' + operator + '" title="' + escapeHtml(descriptions[operator] || '') + '"' + (operator === row.operator ? ' selected' : '') + '>' + escapeHtml(OPERATOR_LABELS[operator] || operator) + '</option>';
     }).join('');

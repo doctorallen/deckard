@@ -1,5 +1,6 @@
 import MarkdownIt = require('markdown-it');
 
+import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createQueryBlockSnapshot,
@@ -180,15 +181,24 @@ function renderTask(item: QueryBlockItem, now: number): string {
   const done = item.completed === true;
   const overdue =
     !done && item.dueAt !== undefined && item.dueAt < startOfDay(now);
-  const due = item.dueText
-    ? `<span class="deckard-query-due${overdue ? ' is-overdue' : ''}">due ${escapeHtml(item.dueText)}</span>`
-    : '';
+  const details = [
+    item.dueText
+      ? `<span class="deckard-query-due${overdue ? ' is-overdue' : ''}">due ${escapeHtml(item.dueText)}</span>`
+      : '',
+    item.scheduledAt !== undefined
+      ? `scheduled ${formatIsoDate(item.scheduledAt)}`
+      : '',
+    item.priority ? `${item.priority} priority` : '',
+    item.recurrence ? `repeats ${escapeHtml(item.recurrence)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return [
     `<li class="deckard-query-item deckard-query-task${done ? ' is-done' : ''}">`,
     `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${done ? '☑' : '☐'}</span>`,
     '<div class="deckard-query-body">',
     renderLink(item),
-    renderMeta(item, due),
+    renderMeta(item, details),
     '</div>',
     '</li>',
   ].join('');

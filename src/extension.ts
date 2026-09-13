@@ -15,6 +15,7 @@ import {
   isMarkdownDocument,
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
+import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
@@ -31,6 +32,7 @@ import {
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
+import { AgendaTreeProvider } from './ui/views/agendaTree';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -61,6 +63,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
+  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const dashboard = new DashboardPanel(
@@ -101,6 +104,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
+  const agenda = new AgendaTreeProvider(indexer);
   activeServices = {
     indexer,
     preferences,
@@ -117,6 +121,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     relatedNotesDebug,
     outline,
     queryBlocks,
+    agenda,
+    taskMetadataSuggestions,
   };
 
   context.subscriptions.push(
@@ -135,6 +141,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     relatedNotesDebug,
     outline,
     queryBlocks,
+    agenda,
+    taskMetadataSuggestions,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -160,6 +168,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   outline.attach(outlineView);
   context.subscriptions.push(outlineView);
+  const agendaView = vscode.window.createTreeView('deckard.agenda', {
+    treeDataProvider: agenda,
+    manageCheckboxStateManually: true,
+  });
+  agenda.attach(agendaView);
+  context.subscriptions.push(agendaView);
   void syncOutlineFollowCursorContext();
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -361,6 +375,8 @@ export function deactivate(): void {
   activeServices?.relatedNotesDebug.dispose();
   activeServices?.outline.dispose();
   activeServices?.queryBlocks.dispose();
+  activeServices?.agenda.dispose();
+  activeServices?.taskMetadataSuggestions.dispose();
   activeServices = undefined;
 }
 
@@ -383,6 +399,8 @@ interface ExtensionServices {
   relatedNotesDebug: RelatedNotesDebugPanel;
   outline: OutlineTreeProvider;
   queryBlocks: QueryBlocks;
+  agenda: AgendaTreeProvider;
+  taskMetadataSuggestions: TaskMetadataCompletionProvider;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {

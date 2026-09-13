@@ -1,7 +1,14 @@
 import { stripTags } from '../../core/markdown/parser';
+import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
-import { ParsedFile, Section, Task, WorkspaceIndex } from '../../core/types';
+import {
+  ParsedFile,
+  Section,
+  Task,
+  TaskPriority,
+  WorkspaceIndex,
+} from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 
 /**
@@ -67,6 +74,9 @@ export interface QueryBlockItem {
   completed?: boolean;
   dueAt?: number;
   dueText?: string;
+  scheduledAt?: number;
+  priority?: TaskPriority;
+  recurrence?: string;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -348,6 +358,9 @@ function createTaskItem(task: Task, index: WorkspaceIndex): QueryBlockItem {
     completed: task.completed,
     dueAt: task.dueAt,
     dueText: task.dueText,
+    scheduledAt: task.scheduledAt,
+    priority: task.priority,
+    recurrence: task.recurrence,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   };
@@ -358,7 +371,7 @@ function createTaskItem(task: Task, index: WorkspaceIndex): QueryBlockItem {
  * tags inside the sentence, which are part of what it says. Removing every
  * tag would turn "Pair @ren with @dax." into "Pair with .".
  */
-function stripTrailingTags(text: string): string {
+export function stripTrailingTags(text: string): string {
   const words = text.trim().split(/\s+/);
   while (words.length > 0 && stripTags(words[words.length - 1]) === '') {
     words.pop();
@@ -378,7 +391,8 @@ function createNoteComparator(
 
 /**
  * Keeps open tasks ahead of done ones. Within each group the natural order is
- * soonest due date first, then source order, which reads like an agenda.
+ * soonest due date first, then highest priority, then source order, which
+ * reads like an agenda.
  */
 function createTaskComparator(
   sort: QueryBlockSort | undefined,
@@ -387,6 +401,7 @@ function createTaskComparator(
     (left.completed ? 1 : 0) - (right.completed ? 1 : 0) ||
     (sort === undefined
       ? compareAscending(left.dueAt, right.dueAt) ||
+        comparePriority(left, right) ||
         compareSource(left, right)
       : sort === 'title'
         ? compareTitles(left, right)
@@ -416,6 +431,14 @@ function compareTitles(left: QueryBlockItem, right: QueryBlockItem): number {
 
 function compareSource(left: QueryBlockItem, right: QueryBlockItem): number {
   return left.filePath.localeCompare(right.filePath) || left.line - right.line;
+}
+
+/** Puts the higher priority first. */
+function comparePriority(left: QueryBlockItem, right: QueryBlockItem): number {
+  return (
+    TASK_PRIORITY_RANKS[right.priority ?? 'none'] -
+    TASK_PRIORITY_RANKS[left.priority ?? 'none']
+  );
 }
 
 /** Sorts undated items last so a missing date never looks like the oldest. */

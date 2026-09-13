@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
+import { formatIsoDate } from '../core/markdown/taskMetadata';
 import { createDailyNote } from '../ui/commands/dailyNote';
 import {
   extractHeadingNote,
@@ -16,7 +17,7 @@ import { parseRenameTag, replaceIndexedTag } from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
 
 suite('Source commands', () => {
-  test('toggles a checklist character without changing the rest of the source line', async () => {
+  test('toggles a checklist character and adds only its completion date', async () => {
     const temporaryRoot = await createTemporaryRoot();
     const fileUri = vscode.Uri.joinPath(temporaryRoot, 'notes.md');
     const originalContent = '# Today\n\n- [ ] Follow the lead\n';
@@ -32,7 +33,46 @@ suite('Source commands', () => {
     ).toString('utf8');
 
     assert.strictEqual(updated, true);
-    assert.strictEqual(content, '# Today\n\n- [x] Follow the lead\n');
+    assert.strictEqual(
+      content,
+      `# Today\n\n- [x] Follow the lead ✅ ${formatIsoDate(Date.now())}\n`,
+    );
+    await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('writes the next occurrence above a completed recurring task', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const fileUri = vscode.Uri.joinPath(temporaryRoot, 'weekly.md');
+    const originalContent = '- [ ] Review 📅 2026-09-10 🔁 every week\n';
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from(originalContent, 'utf8'),
+    );
+    const readContent = async (): Promise<string> =>
+      Buffer.from(await vscode.workspace.fs.readFile(fileUri)).toString('utf8');
+    const today = formatIsoDate(Date.now());
+
+    const completed = await toggleTask(
+      parseMarkdown(fileUri.fsPath, originalContent).tasks[0],
+      true,
+    );
+    const afterCompleting = await readContent();
+    assert.strictEqual(completed, true);
+    assert.strictEqual(
+      afterCompleting,
+      `- [ ] Review 📅 2026-09-17 🔁 every week\n- [x] Review 📅 2026-09-10 🔁 every week ✅ ${today}\n`,
+    );
+
+    // Reopening removes the done date but leaves the next occurrence alone.
+    const reopened = await toggleTask(
+      parseMarkdown(fileUri.fsPath, afterCompleting).tasks[1],
+      false,
+    );
+    assert.strictEqual(reopened, true);
+    assert.strictEqual(
+      await readContent(),
+      '- [ ] Review 📅 2026-09-17 🔁 every week\n- [ ] Review 📅 2026-09-10 🔁 every week\n',
+    );
     await deleteTemporaryRoot(temporaryRoot);
   });
 
