@@ -113,6 +113,21 @@ suite('Editor references', () => {
     );
     assert.strictEqual(createTagSummary(index, '#nowhere'), undefined);
   });
+
+  test('names the hub note in a tag summary', () => {
+    const files = [
+      parseMarkdown('notes/Atlas.md', '---\ndescribes: project/atlas\n---\n# Atlas'),
+      parseMarkdown('notes/Plan.md', '# Plan #project/atlas'),
+    ];
+    const hubIndex = buildWorkspaceIndex(
+      new Map(files.map((file) => [file.filePath, file])),
+    );
+    assert.strictEqual(
+      createTagSummary(hubIndex, '#project/atlas')?.hubFilePath,
+      'notes/Atlas.md',
+    );
+    assert.strictEqual(createTagSummary(index, '#project/atlas')?.hubFilePath, undefined);
+  });
 });
 
 function createIndex(): WorkspaceIndex {

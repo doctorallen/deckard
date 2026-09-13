@@ -88,8 +88,8 @@ behavior.
   fix.
 - List orphan notes, with no incoming links, in Stats.
 - Honor `aliases:` front matter when resolving links. Obsidian vaults use it
-  heavily, and the parser currently reads only `tags` and entity fields such
-  as `people` and `projects`.
+  heavily, and the parser currently reads only `tags`, `describes`, and
+  entity fields such as `people` and `projects`.
 
 ### 5. Reference counts and previews in the editor
 
@@ -114,7 +114,9 @@ Inspired by Calendar (#7, 3.1M) and Periodic Notes (757k).
 
 ### 7. Tag hub pages and merge
 
-Inspired by Tag Wrangler (#24, 1.1M).
+Inspired by Tag Wrangler (#24, 1.1M). **Shipped** as hub notes and tag
+merging; see the README's Tag overviews section and
+`docs/tag-hubs-and-merge-plan.md`.
 
 - Entities are virtual today: an overview collects matching sections but no
   note describes the entity itself. Let a note declare that it describes
@@ -129,13 +131,15 @@ Inspired by Tag Wrangler (#24, 1.1M).
 
 - **Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
   cursor. Smart Connections supports drag-to-link.
-- **Extract Tagged Heading leaves a link behind.** It currently removes the
+- ~~**Extract Tagged Heading leaves a link behind.** It currently removes the
   section with nothing in its place; Note Refactor leaves a `[[link]]` to the
-  new note.
+  new note.~~ Shipped: the section is replaced by a `[[link]]` to the new
+  note.
 - ~~**Board layout for task results**, grouped by a namespace such as
   `#status/*`.~~ Shipped as the task board, grouped by status, priority, or
   due date.
-- **Open the Dashboard on startup** setting, as Homepage (1.3M) does.
+- ~~**Open the Dashboard on startup** setting, as Homepage (1.3M) does.~~
+  Shipped as `deckard.dashboard.openOnStartup`.
 - **Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
   as Omnisearch (1.9M) does.
 
@@ -164,7 +168,7 @@ an external service.
 3. Quick capture and templates.
 4. Link health and aliases.
 5. ~~Reference counts, previews, and backlinks.~~ Shipped.
-6. Periodic notes, calendar, and tag hub pages.
+6. Periodic notes and calendar. ~~Tag hub pages~~ shipped, with tag merging.
 
 Typed schemas, block references, canvas, and Git-aware collaboration from the
 earlier roadmap follow once these are in place.

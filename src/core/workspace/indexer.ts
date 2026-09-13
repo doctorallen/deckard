@@ -496,8 +496,15 @@ export function buildWorkspaceIndex(
   const tasks = new Map<string, Task>();
   const tags = new Map<string, TagInfo>();
   const entities = new Map<string, Entity>();
+  const hubFilePaths = new Map<string, string[]>();
 
   files.forEach((file) => {
+    file.hub?.describes.forEach((tagReference) => {
+      hubFilePaths.set(tagReference.key, [
+        ...(hubFilePaths.get(tagReference.key) ?? []),
+        file.filePath,
+      ]);
+    });
     file.sections.forEach((section) => {
       sections.set(section.id, section);
       section.tags.forEach((tagKey) => {
@@ -563,6 +570,15 @@ export function buildWorkspaceIndex(
     });
     tag.count =
       taggedSections.size + standaloneTasks.length + tag.filePaths.length;
+  });
+  // The first note by path is the tag's hub; any others are shown as conflicts.
+  hubFilePaths.forEach((filePaths, tagKey) => {
+    const tag = tags.get(tagKey);
+    if (tag) {
+      tag.hubFilePaths = [...filePaths].sort((left, right) =>
+        left.localeCompare(right),
+      );
+    }
   });
   entities.forEach((entity) => {
     const entitySections = new Set(entity.sectionIds);

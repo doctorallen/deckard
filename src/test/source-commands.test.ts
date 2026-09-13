@@ -13,7 +13,13 @@ import {
   getExtractedNoteFileName,
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
-import { parseRenameTag, replaceIndexedTag } from '../ui/commands/renameTag';
+import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { createHubNoteContent, getHubNoteName } from '../ui/commands/hubNote';
+import {
+  parseRenameTag,
+  replaceIndexedTag,
+  summarizeTagMerge,
+} from '../ui/commands/renameTag';
 import { toggleTask } from '../ui/commands/taskActions';
 
 suite('Source commands', () => {
@@ -166,6 +172,128 @@ suite('Source commands', () => {
     );
   });
 
+  test('merges into an existing tag without repeating it in tag runs or lists', () => {
+    const result = replaceIndexedTag(
+      [
+        '---',
+        'tags: [atlas, apollo]',
+        '---',
+        '# Plan #atlas #apollo',
+        '- [ ] Ship #apollo #atlas',
+        'Talked to #atlas about #apollo.',
+      ].join('\n'),
+      '#apollo',
+      { key: '#atlas', label: '#atlas' },
+    );
+
+    assert.strictEqual(result.occurrenceCount, 4);
+    assert.strictEqual(
+      result.content,
+      [
+        '---',
+        'tags: [atlas]',
+        '---',
+        '# Plan #atlas',
+        '- [ ] Ship #atlas',
+        'Talked to #atlas about #atlas.',
+      ].join('\n'),
+    );
+  });
+
+  test('removes merged front-matter list items but keeps a rename’s own repeats', () => {
+    const atlas = { key: '#atlas', label: '#atlas' };
+    assert.strictEqual(
+      replaceIndexedTag(
+        ['---', 'tags:', '  - atlas', '  - "apollo"', '---', '# Note'].join('\n'),
+        '#apollo',
+        atlas,
+      ).content,
+      ['---', 'tags:', '  - atlas', '---', '# Note'].join('\n'),
+    );
+    assert.strictEqual(
+      replaceIndexedTag(
+        ['---', 'tags: ["apollo", "atlas"]', '---'].join('\n'),
+        '#apollo',
+        atlas,
+      ).content,
+      ['---', 'tags: ["atlas"]', '---'].join('\n'),
+    );
+    assert.strictEqual(
+      replaceIndexedTag('# Plan #apollo #apollo #atlas', '#apollo', atlas)
+        .content,
+      '# Plan #atlas',
+    );
+    // Without the new tag already there, a rename replaces every copy.
+    assert.strictEqual(
+      replaceIndexedTag('# Today #old #old', '#old', {
+        key: '#new',
+        label: '#new',
+      }).content,
+      '# Today #new #new',
+    );
+  });
+
+  test('counts the entries a merge keeps', () => {
+    const index = buildWorkspaceIndex(
+      new Map([
+        [
+          'notes/a.md',
+          parseMarkdown(
+            'notes/a.md',
+            '# One #apollo\n\n# Two #apollo #atlas\n\n# Three #atlas',
+          ),
+        ],
+      ]),
+    );
+    const summary = summarizeTagMerge(index, '#apollo', '#atlas');
+    assert.strictEqual(summary?.source.count, 2);
+    assert.strictEqual(summary?.target.count, 2);
+    assert.strictEqual(summary?.mergedCount, 3);
+    assert.strictEqual(summary?.sharedCount, 1);
+    assert.strictEqual(summarizeTagMerge(index, '#apollo', '#nowhere'), undefined);
+  });
+
+  test('renames hub note describes values in their written form', () => {
+    const apollo = { key: '#project/apollo', label: '#project/apollo' };
+    assert.strictEqual(
+      replaceIndexedTag(
+        ['---', 'describes: project/atlas', '---', '# Atlas'].join('\n'),
+        '#project/atlas',
+        apollo,
+      ).content,
+      ['---', 'describes: project/apollo', '---', '# Atlas'].join('\n'),
+    );
+    assert.strictEqual(
+      replaceIndexedTag(
+        ['---', 'describes: "#project/atlas"', '---'].join('\n'),
+        '#project/atlas',
+        apollo,
+      ).content,
+      ['---', 'describes: "#project/apollo"', '---'].join('\n'),
+    );
+  });
+
+  test('names and writes a hub note the parser reads back', () => {
+    const project = {
+      key: '#project/skybridge-signal',
+      label: '#project/skybridge-signal',
+    };
+    const person = { key: '@dana', label: '@dana' };
+    assert.strictEqual(getHubNoteName(project), 'Skybridge Signal');
+    assert.strictEqual(getHubNoteName(person), 'Dana');
+    assert.strictEqual(
+      createHubNoteContent(project, 'Skybridge Signal'),
+      '---\ndescribes: project/skybridge-signal\n---\n# Skybridge Signal\n\n',
+    );
+    for (const tag of [project, person]) {
+      assert.deepStrictEqual(
+        parseMarkdown('notes/hub.md', createHubNoteContent(tag, 'Hub')).hub
+          ?.describes,
+        [tag],
+      );
+    }
+  });
+
   test('opens a source document at the requested one-based line', async () => {
     const temporaryRoot = await createTemporaryRoot();
     const fileUri = vscode.Uri.joinPath(temporaryRoot, 'navigation.md');
@@ -221,7 +349,7 @@ suite('Source commands', () => {
     await deleteTemporaryRoot(temporaryRoot);
   });
 
-  test('moves a tagged heading section and removes it from its source', async () => {
+  test('moves a tagged heading section and leaves a link in its place', async () => {
     const temporaryRoot = await createTemporaryRoot();
     const notesUri = vscode.Uri.joinPath(temporaryRoot, 'notes');
     const sourceUri = vscode.Uri.joinPath(notesUri, 'source.md');
@@ -273,9 +401,46 @@ suite('Source commands', () => {
       Buffer.from(await vscode.workspace.fs.readFile(sourceUri)).toString(
         'utf8',
       ),
-      ['# Case #case', 'Introduction.', '', '## Next', 'Next section.'].join(
-        '\n',
+      [
+        '# Case #case',
+        'Introduction.',
+        '',
+        '[[lead-note]]',
+        '',
+        '## Next',
+        'Next section.',
+      ].join('\n'),
+    );
+
+    await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('leaves a link when extracting the last section of a note', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const notesUri = vscode.Uri.joinPath(temporaryRoot, 'notes');
+    const sourceUri = vscode.Uri.joinPath(notesUri, 'source.md');
+    const sourceContent = [
+      '# Case #case',
+      'Introduction.',
+      '',
+      '## Lead #clue',
+      'Lead details.',
+    ].join('\n');
+    await vscode.workspace.fs.createDirectory(notesUri);
+    await vscode.workspace.fs.writeFile(
+      sourceUri,
+      Buffer.from(sourceContent, 'utf8'),
+    );
+
+    const parsed = parseMarkdown('notes/source.md', sourceContent);
+    assert.ok(
+      await extractHeadingNote(parsed.sections[1], sourceUri, notesUri, 'lead'),
+    );
+    assert.strictEqual(
+      Buffer.from(await vscode.workspace.fs.readFile(sourceUri)).toString(
+        'utf8',
       ),
+      ['# Case #case', 'Introduction.', '', '[[lead]]'].join('\n'),
     );
 
     await deleteTemporaryRoot(temporaryRoot);

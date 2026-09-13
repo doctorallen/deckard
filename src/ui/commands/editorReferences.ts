@@ -437,6 +437,14 @@ async function renderTagSummary(
     `**${escapeMarkdown(summary.label)}** · ${counts.join(" · ")}`,
     "",
   ];
+  if (summary.hubFilePath) {
+    const hubFileName =
+      summary.hubFilePath.split("/").pop() ?? summary.hubFilePath;
+    lines.push(
+      `Hub: ${await linkToLine(hubFileName, summary.hubFilePath, 1)}`,
+      "",
+    );
+  }
   for (const entry of summary.entries) {
     const box = entry.task ? (entry.completed ? "☑ " : "☐ ") : "";
     lines.push(

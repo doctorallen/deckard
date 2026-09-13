@@ -4,6 +4,22 @@
 
 ### Added
 
+- **Hub notes**: a note whose front matter says `describes: project/atlas`
+  leads that tag's overview, with its other front-matter fields shown as
+  properties whose tag values open their own overviews. An overview without
+  one offers **Create hub note**, and hovering the tag names its hub. The hub
+  collapses to its title row, and `deckard.tagOverview.hubNoteExpanded` sets
+  whether it starts open.
+
+- **Merge tags**: renaming a tag to one that already exists, or running
+  `Deckard: Merge Tag…`, now asks first, showing each tag's entries, how many
+  carry both, and the merged total. Where the kept tag already sits beside the
+  old one on a line or in the same front-matter list, the old tag is removed
+  rather than repeated.
+
+- **Open the Dashboard on startup**: `deckard.dashboard.openOnStartup` opens
+  the Dashboard when VS Code starts in a workspace with indexed notes.
+
 - **References and previews in the editor**: counts above a note's lines say
   how many notes link to it, how many links name each heading, and how many
   open tasks sit under each heading; selecting one lists them in VS Code's
@@ -114,6 +130,9 @@
 
 ### Changed
 
+- **Extract Tagged Heading** now leaves a `[[link]]` to the new note where the
+  section was, instead of removing the section without a trace.
+
 - Webview styling and page-script helpers are now shared from
   `src/ui/webview/components.ts` instead of being repeated per page, so one
   change reaches every panel. See [components.md](components.md). Pages
@@ -124,6 +143,10 @@
   `.segmented` primitive for joined buttons.
 
 ### Fixed
+
+- Renaming a tag now moves its favorites, access counts, Dashboard tag
+  selections, and saved views to the new name instead of leaving them on the
+  old one.
 
 - The Dashboard's task and tag searches no longer lose focus or drop letters
   while you type, in the list and board layouts alike. Every keystroke used

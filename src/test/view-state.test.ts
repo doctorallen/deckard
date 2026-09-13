@@ -1705,6 +1705,58 @@ suite('Dashboard state', () => {
       ['#parent', '#task', '#child'],
     );
   });
+
+  test('leads a plain tag overview with its hub note', () => {
+    const files = [
+      parseMarkdown(
+        'notes/atlas.md',
+        [
+          '---',
+          'describes: project/atlas',
+          'status: active',
+          '---',
+          '# Atlas',
+          'Retire the old ledger.',
+        ].join('\n'),
+      ),
+      parseMarkdown('notes/plan.md', '# Plan #project/atlas #meeting'),
+    ];
+    const index = buildWorkspaceIndex(
+      new Map(files.map((file) => [file.filePath, file])),
+    );
+
+    const overview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/atlas',
+    );
+    assert.ok(overview);
+    assert.ok(overview.hub);
+    assert.strictEqual(overview.hub.filePath, 'notes/atlas.md');
+    assert.strictEqual(overview.hub.rawContent, '# Atlas\nRetire the old ledger.');
+    assert.deepStrictEqual(overview.hub.properties, [
+      { name: 'status', values: [{ text: 'active' }] },
+    ]);
+    assert.deepStrictEqual(overview.hub.otherFilePaths, []);
+    // The hub's own sections are on screen already, so they are not listed.
+    assert.deepStrictEqual(
+      overview.sections.map((section) => section.filePath),
+      ['notes/plan.md'],
+    );
+
+    const filtered = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/atlas',
+      'active',
+      'inline',
+      true,
+      undefined,
+      ['#meeting'],
+    );
+    assert.ok(filtered);
+    assert.strictEqual(filtered.hub, undefined);
+  });
 });
 
 function createTag(key: string, count: number): TagInfo {

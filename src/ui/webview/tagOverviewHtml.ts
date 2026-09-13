@@ -184,6 +184,21 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .title-filter-remove:hover, .title-filter-remove:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
+.hub-header, .hub-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hub > summary { cursor: pointer; list-style: none; }
+.hub > summary::-webkit-details-marker { display: none; }
+.hub > summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.hub-title { display: inline-flex; align-items: center; gap: 8px; }
+.hub-toggle { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--amber); transition: transform 120ms ease; }
+.hub[open] .hub-toggle { transform: rotate(90deg); }
+.hub-empty { color: var(--muted); }
+.hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
+.hub-properties div { display: flex; align-items: baseline; gap: 6px; }
+.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; }
+.hub-properties dd { margin: 0; }
+.hub .markdown, .hub .rendered { margin: 12px 0 0; }
+.hub-note { margin: 10px 0 0; color: var(--muted); }
 @media (max-width: 900px) { .relationship-tree-columns { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; padding-right: 0; } .overview-split { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
@@ -836,6 +851,39 @@ ${getComponentScript()}
     });
   }
 
+  /** Set once the reader opens or closes the hub, which then outlasts refreshes. */
+  let hubOpen;
+  document.addEventListener('toggle', function (event) {
+    if (event.target.classList && event.target.classList.contains('hub')) hubOpen = event.target.open;
+  }, true);
+
+  /** The note that describes this tag, or an offer to create one. */
+  function renderHub(isQueryView, filterTags) {
+    if (isQueryView || filterTags.length || !state.tag) return '';
+    const hub = state.hub;
+    if (!hub) {
+      return '<section class="hub hub-empty" aria-label="Hub note"><span>No note describes ' + escapeHtml(state.tag.label) + ' yet.</span><button data-action="create-hub" title="Create a note whose describes: front matter names this tag">Create hub note</button></section>';
+    }
+    const properties = hub.properties.length
+      ? '<dl class="hub-properties">' + hub.properties.map(function (property) {
+        return '<div><dt>' + escapeHtml(property.name) + '</dt><dd>' + property.values.map(function (value) {
+          return value.tag ? renderTagButton(value.tag, 'inline-tag') : escapeHtml(value.text);
+        }).join(', ') + '</dd></div>';
+      }).join('') + '</dl>'
+      : '';
+    const body = hub.rawContent.trim()
+      ? (state.renderMode === 'html' ? '<div class="rendered">' + hub.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(hub.rawContent) + '</pre>')
+      : '';
+    const others = hub.otherFilePaths.length
+      ? '<p class="hub-note">Also described by ' + hub.otherFilePaths.map(function (filePath) {
+        return '<button data-action="open-source" data-file-path="' + escapeHtml(filePath) + '" data-line="1">' + escapeHtml(filePath.split('/').pop() || filePath) + '</button>';
+      }).join(' ') + '. The first by path is shown.</p>'
+      : '';
+    // deckard.tagOverview.hubNoteExpanded sets how the hub starts.
+    const open = hubOpen === undefined ? hub.expanded !== false : hubOpen;
+    return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" title="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
+  }
+
   /** Rebuild the cards from the latest host snapshot without local duplication. */
   function render() {
     if (!state) return;
@@ -915,7 +963,7 @@ ${getComponentScript()}
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       : '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (<span data-search-count="notes">' + notesCount + '</span>)</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</button></div></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
-    const relationships = '';
+    const hub = renderHub(isQueryView, filterTags);
     const saveFilterControl = filterTags.length || isQueryView
       ? '<button class="save-filter" data-action="save-filter" aria-label="Save this view" title="Save filter">Save filter</button>'
       : '';
@@ -931,7 +979,7 @@ ${getComponentScript()}
     const eyebrow = isQueryView || !state.tag
       ? 'DECKARD / SEARCH'
       : 'DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p>' + queryToggle + saveFilterControl + '</div>' + savedViewName + '<h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + '</div>' + headerControls + '</header>' + renderQueryWorkspace() + relationships + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p>' + queryToggle + saveFilterControl + '</div>' + savedViewName + '<h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + '</div>' + headerControls + '</header>' + renderQueryWorkspace() + hub + layoutContent;
     filterOverviewEntries('notes', noteSearchQuery, state.sections.length);
     filterOverviewEntries('tasks', taskSearchQuery, state.tasks.length);
     if (restoreQueryFocus) {
@@ -993,6 +1041,9 @@ ${getComponentScript()}
       }
       if (target.dataset.action === 'save-filter') {
         vscode.postMessage({ type: 'saveTagOverviewFilter' });
+      }
+      if (target.dataset.action === 'create-hub') {
+        vscode.postMessage({ type: 'createHubNote' });
       }
       if (target.dataset.action === 'toggle-query') {
         queryPanelOpen = !queryPanelOpen;

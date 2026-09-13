@@ -2,6 +2,7 @@ import {
   BuiltInEntityKind,
   EntityKind,
   HeadingTagSpan,
+  NoteHub,
   ParsedFile,
   Section,
   TagReference,
@@ -24,6 +25,15 @@ interface Frontmatter {
   links: string[];
   tagSpans: HeadingTagSpan[];
   endLine?: number;
+  hub?: NoteHub;
+}
+
+/** Front-matter fields a hub note's property list leaves out. */
+const hubPropertyExclusions = new Set(['describes', 'tag', 'tags']);
+
+/** `describes:` names tags exactly as `tags:` does, so both parse the same. */
+function getTagField(field: string): string {
+  return field === 'describes' ? 'tags' : field;
 }
 
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
@@ -187,6 +197,7 @@ export function parseMarkdown(
     tasks,
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
+    ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
   }, options.entityNamespaceAliases);
@@ -377,7 +388,7 @@ function formatTitlePart(value: string): string {
       }
       fieldValues.forEach((value) => {
         const tag = frontmatterValueToTag(
-          key,
+          getTagField(key),
           value,
           entityNamespaceAliases,
           personMarker,
@@ -393,6 +404,51 @@ function formatTitlePart(value: string): string {
       links: [...new Set(links)],
       tagSpans,
       endLine: end,
+      ...createHub(values, entityNamespaceAliases, personMarker),
+    };
+  }
+
+  /**
+   * Reads a hub note: the tags its `describes:` names, and the rest of its
+   * front matter as properties whose values may themselves be tags.
+   */
+  function createHub(
+    values: Map<string, string[]>,
+    entityNamespaceAliases?: EntityNamespaceAliases,
+    personMarker?: string,
+  ): { hub?: NoteHub } {
+    const describes = (values.get('describes') ?? [])
+      .map((value) =>
+        frontmatterValueToTag(
+          'tags',
+          value,
+          entityNamespaceAliases,
+          personMarker,
+        ),
+      )
+      .filter((tag): tag is TagReference => tag !== undefined);
+    if (describes.length === 0) {
+      return {};
+    }
+
+    return {
+      hub: {
+        describes: deduplicateTagReferences(describes),
+        properties: [...values]
+          .filter(([name]) => !hubPropertyExclusions.has(name))
+          .map(([name, fieldValues]) => ({
+            name,
+            values: fieldValues.map((text) => {
+              const tag = frontmatterValueToTag(
+                name,
+                text,
+                entityNamespaceAliases,
+                personMarker,
+              );
+              return tag ? { text, tag } : { text };
+            }),
+          })),
+      },
     };
   }
 
@@ -501,7 +557,7 @@ function formatTitlePart(value: string): string {
       const sourceValue = item.trim();
       const value = unquote(sourceValue);
       const tag = frontmatterValueToTag(
-        field,
+        getTagField(field),
         value,
         entityNamespaceAliases,
         personMarker,
@@ -657,6 +713,22 @@ function normalizeParsedTagReferences(
     parsed.frontmatterTags,
     entityNamespaceAliases,
   );
+  if (parsed.hub) {
+    parsed.hub.describes = normalizeTagReferences(
+      parsed.hub.describes,
+      entityNamespaceAliases,
+    );
+    parsed.hub.properties.forEach((property) => {
+      property.values.forEach((value) => {
+        if (value.tag) {
+          value.tag = normalizeTagReferences(
+            [value.tag],
+            entityNamespaceAliases,
+          )[0];
+        }
+      });
+    });
+  }
   [...parsed.sections, ...parsed.tasks].forEach((item) => {
     if ('headingTags' in item) {
       item.headingTags = normalizeTagReferences(

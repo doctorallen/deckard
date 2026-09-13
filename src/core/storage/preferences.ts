@@ -336,6 +336,55 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Moves everything held under a renamed or merged tag to its new key, so
+   * favorites, ranking, Dashboard selections, and saved views follow the tag.
+   */
+  public async replaceTagKey(
+    sourceKey: string,
+    targetKey: string,
+  ): Promise<void> {
+    if (!sourceKey || !targetKey || sourceKey === targetKey) {
+      return;
+    }
+    const replaceKeys = (keys: readonly string[]): string[] => [
+      ...new Set(keys.map((key) => (key === sourceKey ? targetKey : key))),
+    ];
+    const moveCount = (
+      counts: Record<string, number>,
+    ): Record<string, number> => {
+      const { [sourceKey]: moved, ...rest } = counts;
+      return moved === undefined
+        ? rest
+        : { ...rest, [targetKey]: (rest[targetKey] ?? 0) + moved };
+    };
+    const viewState = this.preferences.dashboardViewState;
+
+    await this.update({
+      favoriteTags: replaceKeys(this.preferences.favoriteTags),
+      favoriteEntities: replaceKeys(this.preferences.favoriteEntities),
+      tagAccessOrder: replaceKeys(this.preferences.tagAccessOrder),
+      entityAccessOrder: replaceKeys(this.preferences.entityAccessOrder),
+      tagAccessCounts: moveCount(this.preferences.tagAccessCounts),
+      entityAccessCounts: moveCount(this.preferences.entityAccessCounts),
+      dashboardViewState: {
+        ...viewState,
+        selectedTaskTags: replaceKeys(viewState.selectedTaskTags),
+        selectedNoteTags: replaceKeys(viewState.selectedNoteTags),
+      },
+      // A tag-set view needs two tags; a query view keeps its own text.
+      savedFilters: this.preferences.savedFilters.flatMap((filter) => {
+        if (filter.query || !filter.tagKeys.includes(sourceKey)) {
+          return [filter];
+        }
+        const tagKeys = normalizeSavedFilterTagKeys(
+          replaceKeys(filter.tagKeys),
+        );
+        return tagKeys.length >= 2 ? [{ ...filter, tagKeys }] : [];
+      }),
+    });
+  }
+
+  /**
    * Saves a named advanced query, replacing the existing filter that already
    * stores the same query text.
    */

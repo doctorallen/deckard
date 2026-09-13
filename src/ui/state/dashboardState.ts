@@ -14,6 +14,7 @@ import {
   TaskFilter,
   TagTitleDisplayMode,
   TagOverviewCard,
+  TagOverviewHub,
   TagOverviewSortMode,
   TagOverviewSnapshot,
   TagReference,
@@ -489,7 +490,14 @@ export function createTagOverviewSnapshot(
         ),
     );
 
+  // A plain overview leads with the tag's hub note, so the hub's own entries
+  // are not listed again below it.
+  const hubFile =
+    effectiveFilterTags.length === 0 && tag.hubFilePaths?.length
+      ? index.files.get(tag.hubFilePaths[0])
+      : undefined;
   const sections = sectionCandidates
+    .filter((section) => section.filePath !== hubFile?.filePath)
     .map((section) =>
       createTagOverviewCard(
         section,
@@ -497,7 +505,11 @@ export function createTagOverviewSnapshot(
         tagTitleDisplayMode,
       ),
     )
-    .concat(fileCandidates.map((file) => createFileOverviewCard(file)))
+    .concat(
+      fileCandidates
+        .filter((file) => file.filePath !== hubFile?.filePath)
+        .map((file) => createFileOverviewCard(file)),
+    )
     .sort((left, right) =>
       compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
     );
@@ -549,6 +561,14 @@ export function createTagOverviewSnapshot(
       false,
     ),
     entity: index.entities.get(tagKey),
+    ...(hubFile
+      ? {
+          hub: createTagOverviewHub(
+            hubFile,
+            tag.hubFilePaths?.slice(1) ?? [],
+          ),
+        }
+      : {}),
     filterTag: effectiveFilterTags[0],
     filterTags: effectiveFilterTags,
     savedViewName,
@@ -1827,6 +1847,27 @@ function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
     accessCount: 0,
+  };
+}
+
+/**
+ * The note that describes a tag, shown above the tag's overview entries.
+ */
+function createTagOverviewHub(
+  file: ParsedFile,
+  otherFilePaths: string[],
+): TagOverviewHub {
+  const rawContent = getFrontmatterBody(file.content);
+  return {
+    filePath: file.filePath,
+    fileName: getFileName(file.filePath) ?? file.filePath,
+    rawContent,
+    renderedHtml: renderMarkdown(rawContent),
+    properties: (file.hub?.properties ?? []).map((property) => ({
+      name: property.name,
+      values: property.values.map((value) => ({ ...value })),
+    })),
+    otherFilePaths,
   };
 }
 

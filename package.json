@@ -84,6 +84,10 @@
         "title": "Deckard: Rename Tag"
       },
       {
+        "command": "deckard.mergeTag",
+        "title": "Deckard: Merge Tag…"
+      },
+      {
         "command": "deckard.showEntryRelatedNotesDebug",
         "title": "Deckard: Debug Related Notes"
       },
@@ -213,6 +217,16 @@
           ],
           "default": "replicant",
           "description": "Visual theme used by Deckard webviews."
+        },
+        "deckard.dashboard.openOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the Deckard Dashboard when VS Code starts in a workspace with indexed notes."
+        },
+        "deckard.tagOverview.hubNoteExpanded": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a tag's hub note open at the top of its Tag Overview. When off, the hub starts collapsed to its title row; select the title to open it."
         },
         "deckard.notesFolder": {
           "type": "string",

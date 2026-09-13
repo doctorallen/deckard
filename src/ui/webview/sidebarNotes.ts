@@ -535,6 +535,7 @@ export class SidebarNotesView
       const replacement = await renameIndexedTag(
         this.indexer,
         message.tagKey,
+        this.preferences,
       );
       if (replacement) {
         await this.onOpenTag(replacement.key);

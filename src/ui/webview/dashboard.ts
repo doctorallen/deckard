@@ -114,6 +114,20 @@ export class DashboardPanel implements vscode.Disposable {
   }
 
   /**
+   * Opens the dashboard for `deckard.dashboard.openOnStartup`.
+   *
+   * Waiting for the first index gives VS Code time to restore a dashboard from
+   * the last session, which is left as it is rather than opened twice, and
+   * shows whether the workspace has any notes worth opening it for.
+   */
+  public async showOnStartup(): Promise<void> {
+    await this.indexer.ready;
+    if (!this.panel && this.indexer.getSnapshot().files.size > 0) {
+      await this.show();
+    }
+  }
+
+  /**
    * Reattaches a serialized panel without creating a duplicate dashboard.
    */
   public async restore(panel: vscode.WebviewPanel): Promise<void> {
@@ -446,6 +460,7 @@ export class DashboardPanel implements vscode.Disposable {
         const replacement = await renameIndexedTag(
           this.indexer,
           message.tagKey,
+          this.preferences,
         );
         if (replacement) {
           await this.onOpenTag(replacement.key);

@@ -194,6 +194,9 @@ export function parseTagOverviewMessage(
   ) {
     return { type: 'saveTagOverviewFilter' };
   }
+  if (value.type === 'createHubNote' && Object.keys(value).length === 1) {
+    return { type: 'createHubNote' };
+  }
   if (value.type === 'setOverviewQuery' && isOverviewQueryMessage(value)) {
     return { type: 'setOverviewQuery', query: value.query as string };
   }

@@ -18,6 +18,7 @@ import {
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
+import { createHubNote } from '../commands/hubNote';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
@@ -63,7 +64,10 @@ export class TagOverviewPanels implements vscode.Disposable {
           this.panels.forEach((panel) => panel.renderHtml());
           this.refresh();
         }
-        if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
+        if (
+          event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
+          event.affectsConfiguration('deckard.tagOverview.hubNoteExpanded')
+        ) {
           this.refresh();
         }
         if (
@@ -604,7 +608,7 @@ class TagOverviewPanel implements vscode.Disposable {
     if (!this.tagKey) {
       return undefined;
     }
-    return createTagOverviewSnapshot(
+    const snapshot = createTagOverviewSnapshot(
       this.indexer.getSnapshot(),
       this.preferences.value,
       this.tagKey,
@@ -614,6 +618,18 @@ class TagOverviewPanel implements vscode.Disposable {
       this.filterTagKeys[0],
       this.filterTagKeys,
     );
+    return snapshot?.hub
+      ? {
+          ...snapshot,
+          hub: { ...snapshot.hub, expanded: this.isHubNoteExpanded() },
+        }
+      : snapshot;
+  }
+
+  private isHubNoteExpanded(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('tagOverview.hubNoteExpanded', true);
   }
 
   /**
@@ -695,6 +711,7 @@ class TagOverviewPanel implements vscode.Disposable {
       const replacement = await renameIndexedTag(
         this.indexer,
         message.tagKey,
+        this.preferences,
       );
       if (replacement) {
         await this.onOpenTag(replacement.key);
@@ -738,6 +755,12 @@ class TagOverviewPanel implements vscode.Disposable {
       await this.saveCurrentFilter();
       return;
     }
+    if (message.type === 'createHubNote') {
+      if (this.tagKey) {
+        await createHubNote(this.indexer, this.tagKey);
+      }
+      return;
+    }
     if (message.type === 'setOverviewQuery') {
       await this.applyQuery(message.query);
       return;
@@ -775,6 +798,15 @@ class TagOverviewPanel implements vscode.Disposable {
     }
 
     const snapshot = this.createSnapshot();
+    const hub = snapshot?.hub;
+    if (
+      hub &&
+      (message.filePath === hub.filePath ||
+        hub.otherFilePaths.includes(message.filePath))
+    ) {
+      await openSourceAt(message.filePath, message.line);
+      return;
+    }
     const card = snapshot?.sections.find(
       (section) =>
         section.filePath === message.filePath &&

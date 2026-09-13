@@ -70,6 +70,8 @@ export interface TagSummary {
   noteCount: number;
   taskCount: number;
   openTaskCount: number;
+  /** The note that describes the tag, when one does. */
+  hubFilePath?: string;
   /** The most recently updated entries. */
   entries: TagSummaryEntry[];
 }
@@ -191,6 +193,7 @@ export function createTagSummary(
 
   return {
     label: tag.label,
+    ...(tag.hubFilePaths?.length ? { hubFilePath: tag.hubFilePaths[0] } : {}),
     noteCount: sections.length + tag.filePaths.length,
     taskCount: tasks.length,
     openTaskCount: tasks.filter((task) => !task.completed).length,

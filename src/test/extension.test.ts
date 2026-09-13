@@ -33,7 +33,13 @@ suite('Extension Test Suite', () => {
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
         'deckard.renameTag',
+        'deckard.mergeTag',
         'deckard.showEntryRelatedNotesDebug',
+        'deckard.outline.revealSection',
+        'deckard.outline.openTagOverview',
+        'deckard.outline.renameTag',
+        'deckard.outline.enableFollowCursor',
+        'deckard.outline.disableFollowCursor',
       ],
     );
     assert.strictEqual(
@@ -101,6 +107,18 @@ suite('Extension Test Suite', () => {
         'deckard.personMarker'
       ].default,
       '@',
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.dashboard.openOnStartup'
+      ].default,
+      false,
+    );
+    assert.strictEqual(
+      extension.packageJSON.contributes?.configuration?.properties[
+        'deckard.tagOverview.hubNoteExpanded'
+      ].default,
+      true,
     );
     assert.ok(
       extension.packageJSON.contributes?.views?.deckard?.some(

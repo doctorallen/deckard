@@ -9,7 +9,7 @@ import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
-import { renameIndexedTag } from './ui/commands/renameTag';
+import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
   EditorTagDecorations,
   isMarkdownDocument,
@@ -213,7 +213,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           'Choose a tag to rename',
         );
         if (tagKey) {
-          await renameIndexedTag(indexer, tagKey);
+          await renameIndexedTag(indexer, tagKey, preferences);
         }
       },
     ),
@@ -318,6 +318,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         renameIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
+          preferences,
+        ),
+    ),
+    vscode.commands.registerCommand(
+      'deckard.mergeTag',
+      (requestedTagKey?: unknown) =>
+        mergeIndexedTag(
+          indexer,
+          getCommandTagArgument(requestedTagKey),
+          preferences,
         ),
     ),
     vscode.commands.registerCommand(
@@ -357,6 +367,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       },
     ),
   );
+
+  if (
+    vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('dashboard.openOnStartup', false)
+  ) {
+    void dashboard.showOnStartup();
+  }
 
   void indexer.start().then(async () => {
     const index = indexer.getSnapshot();

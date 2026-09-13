@@ -614,4 +614,39 @@ suite('Markdown parser', () => {
       },
     ]);
   });
+
+  test('reads a hub note from describes front matter', () => {
+    const parsed = parseMarkdown(
+      'notes/atlas.md',
+      [
+        '---',
+        'describes: [project/atlas, "@dana"]',
+        'status: active',
+        'owner: "@dana"',
+        'tags: [planning]',
+        '---',
+        '# Atlas',
+      ].join('\n'),
+    );
+
+    assert.deepStrictEqual(parsed.hub, {
+      describes: [
+        { key: '#project/atlas', label: '#project/atlas' },
+        { key: '@dana', label: '@dana' },
+      ],
+      properties: [
+        { name: 'status', values: [{ text: 'active' }] },
+        {
+          name: 'owner',
+          values: [{ text: '@dana', tag: { key: '@dana', label: '@dana' } }],
+        },
+      ],
+    });
+    // The hub carries what it describes, so it belongs to that overview.
+    assert.ok(parsed.sections[0].tags.includes('#project/atlas'));
+    assert.strictEqual(
+      parseMarkdown('notes/plain.md', '---\ntags: [atlas]\n---\n# Plain').hub,
+      undefined,
+    );
+  });
 });

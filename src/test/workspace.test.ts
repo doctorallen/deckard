@@ -280,4 +280,20 @@ suite('Workspace scanner and index', () => {
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');
   });
+
+  test('collects the notes that describe a tag, first by path', () => {
+    const files = [
+      ['notes/b.md', '---\ndescribes: project/atlas\n---\n# B'],
+      ['notes/a.md', '---\ndescribes: project/atlas\n---\n# A'],
+      ['notes/c.md', '# C #project/atlas'],
+    ].map(([filePath, content]) => parseMarkdown(filePath, content));
+    const index = buildWorkspaceIndex(
+      new Map(files.map((file) => [file.filePath, file])),
+    );
+
+    assert.deepStrictEqual(index.tags.get('#project/atlas')?.hubFilePaths, [
+      'notes/a.md',
+      'notes/b.md',
+    ]);
+  });
 });

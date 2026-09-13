@@ -143,8 +143,30 @@ export interface ParsedFile {
   tasks: Task[];
   frontmatterTags: TagReference[];
   links: string[];
+  /** Present when the note's `describes:` front matter names tags. */
+  hub?: NoteHub;
   createdAt?: number;
   updatedAt?: number;
+}
+
+/**
+ * A note that describes tags, so it can lead their overviews.
+ */
+export interface NoteHub {
+  describes: TagReference[];
+  /** The rest of the note's front matter, in source order. */
+  properties: FrontmatterProperty[];
+}
+
+export interface FrontmatterProperty {
+  name: string;
+  values: FrontmatterValue[];
+}
+
+export interface FrontmatterValue {
+  text: string;
+  /** Set when the value names a tag, such as `owner: "@dana"`. */
+  tag?: TagReference;
 }
 
 export interface TagInfo {
@@ -155,6 +177,8 @@ export interface TagInfo {
   filePaths: string[];
   count: number;
   isFavorite: boolean;
+  /** Notes whose `describes:` names this tag, by path; the first is its hub. */
+  hubFilePaths?: string[];
 }
 
 export interface TagAssociation {
@@ -292,6 +316,8 @@ export interface TagOverviewSnapshot {
    */
   tag?: TagInfo;
   entity?: Entity;
+  /** The note that describes the tag; only on an overview with no filters. */
+  hub?: TagOverviewHub;
   /**
    * The advanced filter behind this view.
    *
@@ -319,6 +345,19 @@ export interface TagOverviewSnapshot {
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
   tagTitleDisplayMode: TagTitleDisplayMode;
+}
+
+export interface TagOverviewHub {
+  filePath: string;
+  fileName: string;
+  /** The note's body after its front matter. */
+  rawContent: string;
+  renderedHtml: string;
+  properties: FrontmatterProperty[];
+  /** Other notes that also describe the tag. */
+  otherFilePaths: string[];
+  /** Whether the hub starts open, from `deckard.tagOverview.hubNoteExpanded`. */
+  expanded?: boolean;
 }
 
 export interface TagOverviewCard {
@@ -601,6 +640,10 @@ export interface SetDashboardSearchMessage {
   query: string;
 }
 
+export interface CreateHubNoteMessage {
+  type: 'createHubNote';
+}
+
 export interface SetDashboardColumnsMessage {
   type: 'setDashboardColumns';
   section: 'tasks' | 'notes' | 'tags';
@@ -762,7 +805,8 @@ export type TagOverviewMessage =
   | SetTagOverviewLayoutMessage
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
-  | ClearOverviewQueryMessage;
+  | ClearOverviewQueryMessage
+  | CreateHubNoteMessage;
 
 export type SidebarMessage =
   | SidebarReadyMessage

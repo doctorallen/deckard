@@ -523,27 +523,27 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes('padding: 10px; cursor: pointer;'), true);
+    // Rows take their hover border from the shared .row surface.
     assert.strictEqual(
-      html.includes('.task-row:hover { border-color: var(--amber-bright); }'),
+      html.includes('.row:hover, .card:hover, .task:hover { border-color: var(--amber); }'),
       true,
     );
+    assert.strictEqual(html.includes('class="row task-row '), true);
     assert.strictEqual(
       html.includes('.task-row.is-draggable { cursor: grab;'),
       true,
     );
-    assert.strictEqual(
-      html.includes('.entity-row:hover { border-color: var(--amber-bright); }'),
-      true,
-    );
+    assert.strictEqual(html.includes('class="row entity-row '), true);
+    assert.strictEqual(html.includes('class="row saved-filter-row"'), true);
     assert.strictEqual(
       html.includes(
-        '.saved-filter-row:hover { border-color: var(--amber-bright); background: var(--panel-raised); transform: translateX(3px); }',
+        '.saved-filter-row:hover { background: var(--panel-raised); transform: translateX(3px); }',
       ),
       true,
     );
     assert.strictEqual(
       html.includes(
-        '<div class="task-filter-toggle" role="group" aria-label="Task completion filter">',
+        '<div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">',
       ),
       true,
     );
@@ -553,7 +553,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('function renderTagLabel(label)'),
+      html.includes('function renderTagLabel(label, svg)'),
       true,
     );
     assert.strictEqual(
@@ -724,16 +724,13 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('noteTagSearchTimer'), true);
     assert.strictEqual(html.includes('pendingTaskTagQuery'), true);
     assert.strictEqual(html.includes('pendingNoteTagQuery'), true);
+    // Every search and tag-filter field keeps its focus through a redraw by
+    // its action, rather than each field being listed by name.
+    assert.strictEqual(html.includes('function renderKeepingFocus()'), true);
     assert.strictEqual(
-      html.includes("focusedSearchAction === 'search-notes'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("focusedSearchAction === 'filter-task-tags'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("focusedSearchAction === 'filter-note-tags'"),
+      html.includes(
+        'active.matches(\'input[type="search"], input[type="text"]\')',
+      ),
       true,
     );
     assert.strictEqual(html.includes('class="card note-row"'), true);
@@ -1104,11 +1101,20 @@ suite('Webview contracts', () => {
       vscode.Uri.file('/deckard'),
     );
 
+    // The shared shell centres main without a frame; the Dashboard widens it.
     assert.strictEqual(
       html.includes(
-        'main { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px; border: 0; }',
+        'main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }',
       ),
       true,
+    );
+    assert.strictEqual(
+      html.includes('main { width: 100%; max-width: 1180px; }'),
+      true,
+    );
+    assert.strictEqual(
+      /(^|[\s}])main\s*\{[^}]*\bborder(-[a-z]+)?\s*:/.test(html),
+      false,
     );
   });
 
@@ -1144,21 +1150,17 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '<div class="toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout">',
+        '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout">',
       ),
       true,
     );
     assert.strictEqual(
-      html.includes('.layout-toggle-group .toolbar-toggle { border-width: 1px; }'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('.layout-toggle-group .toolbar-toggle + .toolbar-toggle { margin-left: -1px; }'),
+      html.includes('.segmented > * + * { margin-left: calc(var(--edge) * -1); }'),
       true,
     );
     assert.strictEqual(
       html.includes(
-        '.inline-tag { min-height: 24px; margin-left: 3px; padding: 2px 4px; font-size: .78em; vertical-align: 1px; }',
+        '.inline-tag {\n  min-height: 24px;\n  margin-left: 3px;\n  padding: 2px 4px;\n  font-size: .78em;\n  vertical-align: 1px;\n}',
       ),
       true,
     );
@@ -1194,7 +1196,7 @@ suite('Webview contracts', () => {
       html.includes('renderTaskTitle(item.renderedTitle, item.titleTags)'),
       true,
     );
-    assert.strictEqual(html.includes('class="tag-open inline-tag"'), true);
+    assert.strictEqual(html.includes("renderTagButton(tag, 'inline-tag')"), true);
     assert.strictEqual(
       html.includes('.overview-tabs button.active { border-bottom-color:'),
       false,
@@ -1212,7 +1214,25 @@ suite('Webview contracts', () => {
       html.includes("formatEntityTitle(state.entity.kind, state.entity.name)"),
       true,
     );
-    assert.strictEqual(html.includes("const relationships = '';"), true);
+    assert.strictEqual(
+      html.includes('function renderHub(isQueryView, filterTags)'),
+      true,
+    );
+    assert.strictEqual(html.includes('\'<details class="hub"\''), true);
+    assert.strictEqual(html.includes('hub.expanded !== false'), true);
+    assert.strictEqual(html.includes("document.addEventListener('toggle'"), true);
+    assert.strictEqual(html.includes('data-action="create-hub"'), true);
+    assert.strictEqual(
+      html.includes("vscode.postMessage({ type: 'createHubNote' })"),
+      true,
+    );
+    assert.deepStrictEqual(parseTagOverviewMessage({ type: 'createHubNote' }), {
+      type: 'createHubNote',
+    });
+    assert.strictEqual(
+      parseTagOverviewMessage({ type: 'createHubNote', tagKey: '#other' }),
+      undefined,
+    );
     assert.strictEqual(
       html.includes('title="Source: show the original Markdown"'),
       true,
@@ -1223,7 +1243,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '<div class="toolbar-toggle-group" role="group" aria-label="Content format">',
+        '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format">',
       ),
       true,
     );
@@ -1231,7 +1251,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Rendered</button>'), false);
     assert.strictEqual(html.includes('data-action="set-tab"'), true);
     assert.strictEqual(
-      html.includes('.overview-tabs { display: inline-flex; gap: 0;'),
+      html.includes('.segmented { display: inline-flex; }'),
       true,
     );
     assert.strictEqual(
@@ -1241,15 +1261,11 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('<div class="overview-tabs-row"><div class="overview-tabs"'),
+      html.includes('<div class="overview-tabs-row"><div class="segmented overview-tabs"'),
       true,
     );
     assert.strictEqual(
-      html.includes('.overview-tabs button + button { margin-left: -2px; }'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('.overview-tabs button.active { position: relative; z-index: 1; }'),
+      html.includes('.segmented > .active { position: relative; z-index: 1; }'),
       true,
     );
     assert.strictEqual(html.includes('data-action="search-notes"'), true);
@@ -1413,7 +1429,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-task-filter"'), true);
     assert.strictEqual(
       html.includes(
-        '<div class="task-filter-toggle" role="group" aria-label="Task status filter">',
+        '<div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">',
       ),
       true,
     );
@@ -1478,7 +1494,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Connected nodes'), true);
     assert.strictEqual(html.includes('class="graph-kind '), true);
     assert.strictEqual(
-      html.includes('function renderTagLabel(label)'),
+      html.includes('function renderTagLabel(label, svg)'),
       true,
     );
     assert.strictEqual(
@@ -1505,9 +1521,23 @@ suite('Webview contracts', () => {
       html.includes('class="tag-value"'),
       true,
     );
+    // Inline tags keep the sidebar's compact size; colour, margin and
+    // alignment come from the shared .tag-open and .inline-tag rules.
     assert.strictEqual(
       html.includes(
-        '.inline-tag { display: inline-block; margin-left: 3px; padding: 1px 4px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }',
+        '.inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      html.includes(
+        '.inline-tag {\n  min-height: 24px;\n  margin-left: 3px;\n  padding: 2px 4px;\n  font-size: .78em;\n  vertical-align: 1px;\n}',
       ),
       true,
     );
@@ -1531,8 +1561,8 @@ suite('Webview contracts', () => {
       html.includes("state.tagTitleDisplayMode === 'separate'"),
       true,
     );
-    assert.strictEqual(html.includes('function renderInlineTitle(title, tags)'), true);
-    assert.strictEqual(html.includes("renderTag(tag, 'inline-tag')"), true);
+    assert.strictEqual(html.includes('function renderInlineTitle(title, tags, appendMissing)'), true);
+    assert.strictEqual(html.includes("renderTagButton(tag, 'inline-tag')"), true);
     assert.strictEqual(html.includes('>Relevance</option>'), true);
     assert.strictEqual(html.includes('>Newest</option>'), true);
     assert.strictEqual(html.includes('>Oldest</option>'), true);
