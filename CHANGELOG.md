@@ -4,6 +4,16 @@
 
 ### Added
 
+- **Query blocks**: a `deckard` code fence holding a Deckard query now shows
+  its results in the Markdown preview, so a note can keep a live list of the
+  notes and tasks it cares about. Each result links to its source line, tasks
+  are listed open first and soonest due first, and `sort=` and `limit=` after
+  the fence language order and shorten the lists. Above the fence in the
+  editor, Deckard shows the totals and an **Open in overview** action. Results
+  refresh when any note changes, and a query that does not parse reports its
+  error in place of results. Typing `#` or `@` inside the block suggests
+  indexed tags, although Deckard otherwise ignores fenced code.
+
 - **Outline**: a new **Outline** view beside Related Notes lists the active
   Markdown file's headings as a tree, and can be dragged into either the
   primary or the secondary sidebar like VS Code's own Outline. Heading markers

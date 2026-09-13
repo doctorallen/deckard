@@ -169,6 +169,10 @@
         }
       ]
     },
+    "markdown.markdownItPlugins": true,
+    "markdown.previewStyles": [
+      "./resources/query-block.css"
+    ],
     "configuration": {
       "title": "Deckard",
       "properties": {

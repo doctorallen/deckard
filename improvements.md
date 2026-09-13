@@ -1,75 +1,178 @@
 # Deckard improvements
 
-## Assessment
+## Method
 
-Deckard is a strong local-first Markdown knowledge index inside VS Code. Its
-current strengths are workspace-wide tag and entity indexing, aliases,
-source-safe tag renaming, related-note ranking, task extraction, Wiki links,
-local search, and heading-derived tag relationships.
+All 7,591 Obsidian community plugins were ranked by download count from the
+official plugin stats, then filtered to the ones that fit Deckard: a
+local-first Markdown knowledge index inside VS Code. Each idea was checked
+against the current source so that nothing here duplicates a shipped feature.
 
-The highest-value opportunities should extend Deckard's existing Markdown
-source of truth and local index rather than turn notes into a proprietary
-database or duplicate VS Code's built-in Markdown tooling.
+## Status of the earlier roadmap
 
-## Prioritized opportunities
+| Earlier priority | Status | Supporting plugins |
+| --- | --- | --- |
+| Saved queries and collection views | Mostly shipped. The query language, visual builder, saved queries, and query blocks in notes exist. Non-list views (board, table, calendar) remain. | Dataview (#3, 5.0M), Bases (core), Kanban (#9, 2.7M) |
+| Typed front matter schemas and explicit relations | Open | Breadcrumbs, Metadata Menu, Supercharged Links |
+| Task scheduling and planning | Open, made concrete by suggestion 2 below | Tasks (#4, 4.2M), TaskNotes (1.5M) |
+| Backlinks and note-link graphs | Notes Graph shipped; backlinks open, see suggestion 5 | Obsidian core Backlinks and Graph |
+| Section and block references | Open | Obsidian block references |
+| Canvas or whiteboard | Open, low priority | Excalidraw (#1, 7.9M), Advanced Canvas |
+| Git-aware collaboration | Open, keep light since VS Code has SCM built in | Obsidian Git (#6, 3.1M) |
 
-| Priority | Capability | Benefit | Comparable tools |
-| --- | --- | --- | --- |
-| 1 | Saved queries and collection views | Let users define reusable searches over tags, front matter, tasks, dates, and entities, then show results as tables, boards, calendars, or grouped lists. Keep query definitions portable, such as in a Markdown fence or sidecar file. | Obsidian Bases, Notion databases, Capacities queries |
-| 2 | Typed front matter schemas and explicit relations | Support configurable fields such as status, date, priority, URL, and intentional Project-to-Task, Person-to-Meeting, or Organization-to-Project relations. This complements inferred tag hierarchy with authored semantic links. | Notion properties and relations, Capacities object types |
-| 3 | Task scheduling and planning | Add a documented syntax for scheduled and due dates, recurring tasks, dependencies, blockers, and agenda/calendar projections. Deckard's existing task extraction and sorting are a useful foundation. | Notion task dependencies, Capacities calendar integrations, Logseq |
-| 4 | Backlinks and note-link graphs | Show incoming Wiki links, optionally unlinked mentions, and global/local note graphs. Keep this separate from Deckard's tag relationship graph. | Obsidian Backlinks and Graph view, Capacities backlinks |
-| 5 | Section and block references | Allow durable links to a heading, list item, or task. This supports precise research citations, decision records, and meeting follow-ups. | Capacities block-based linking, Logseq's block workflow |
-| 6 | Canvas or whiteboard | Provide an optional spatial planning surface for note sections, tasks, files, URLs, and their connections, while Markdown stays canonical. | Obsidian Canvas, Logseq Whiteboards |
-| 7 | Git-aware collaboration | Add local collaboration affordances first: changed-note status, conflict awareness, and reviewable knowledge updates. Keep cloud sync and shared comments optional to preserve local-first privacy. | Notion comments and mentions, Capacities collaboration |
+## New suggestions
+
+### 1. Queries inside notes
+
+Inspired by Dataview, Tasks, and Bases. **Shipped** as query blocks; see the
+README.
+
+- A ` ```deckard ` block containing a query, rendered as live results in VS
+  Code's Markdown preview through `extendMarkdownIt`.
+- A CodeLens above the block to open it as an overview.
+- The parser and evaluator in `src/core/query/` already exist, so this is
+  mostly rendering. Query definitions stay portable in the note itself.
+
+### 2. Obsidian-compatible task metadata
+
+Inspired by Tasks and TaskNotes.
+
+`findTaskDate` in `src/core/markdown/parser.ts` already reads one loose due
+date, and the Dashboard already marks overdue tasks. Rather than inventing a
+syntax, read the Tasks emoji format that most Obsidian vaults already use:
+
+```markdown
+- [ ] Send proposal 📅 2026-09-20 ⏳ 2026-09-18 🔁 every week ⏫ 🆔 a1 ⛔ b2
+```
+
+| Marker | Meaning |
+| --- | --- |
+| 📅 | Due date |
+| ⏳ | Scheduled date |
+| 🛫 | Start date |
+| ✅ | Done date |
+| 🔁 | Recurrence |
+| 🔺 ⏫ 🔼 🔽 ⏬ | Priority, highest to lowest |
+| 🆔 / ⛔ | Task ID / depends on |
+
+Then build on it:
+
+- Stamp a ✅ date when Deckard toggles a checkbox.
+- Create the next instance when a recurring task is completed.
+- Add `due`, `scheduled`, and `priority` fields to the query language.
+- Add a Today / Overdue / Upcoming agenda view.
+
+### 3. Quick capture and templates
+
+Inspired by Templater (#2, 5.6M) and QuickAdd (#12, 2.1M).
+
+- The only template today is `deckard.dailyNoteTemplate`.
+- `Deckard: Capture` — a quick input with tag completion that appends
+  `- [ ] … #tags` to today's daily note, or under a chosen heading in a chosen
+  note, without leaving the current editor.
+- A templates folder with variables such as `{date}` and `{title}` and
+  prompted values.
+- Per-namespace templates, so a new `#person/…` hub note uses a person
+  template. This feeds typed schemas.
+
+### 4. Link health and aliases
+
+Inspired by Find orphaned files and broken links, and Obsidian's core link
+behavior.
+
+- Wiki links resolve only on an exact, case-insensitive title match
+  (`src/ui/commands/linkSuggestions.ts`), and an unresolved link does nothing.
+- Report unresolved `[[links]]` as diagnostics with a **Create note** quick
+  fix.
+- List orphan notes, with no incoming links, in Stats.
+- Honor `aliases:` front matter when resolving links. Obsidian vaults use it
+  heavily, and the parser currently reads only `tags` and entity fields such
+  as `people` and `projects`.
+
+### 5. Reference counts and previews in the editor
+
+Inspired by Strange New Worlds, Hover Editor, and Obsidian's Page Preview.
+
+- A CodeLens above each heading, such as `4 references · 2 open tasks`.
+- Hovering a `[[link]]` previews the target section.
+- Hovering a tag shows its entry count and top entries. Today the tag hover
+  offers only **Rename**.
+- This delivers backlinks through standard VS Code surfaces rather than a
+  separate panel.
+
+### 6. Periodic notes and a calendar
+
+Inspired by Calendar (#7, 3.1M) and Periodic Notes (757k).
+
+- Weekly and monthly notes with their own templates.
+- Previous and next daily-note commands.
+- A sidebar calendar with markers for days that have notes or due tasks.
+  Deckard already infers daily-note dates for Related Notes.
+
+### 7. Tag hub pages and merge
+
+Inspired by Tag Wrangler (#24, 1.1M).
+
+- Entities are virtual today: an overview collects matching sections but no
+  note describes the entity itself. Let a note declare that it describes
+  `#project/atlas` and show its body at the top of that Tag Overview. It is
+  also the natural home for typed properties.
+- Rename Tag refuses only a rename to the same tag
+  (`src/ui/commands/renameTag.ts`). Make renaming into an existing tag an
+  explicit merge, showing combined counts and warning that it cannot be
+  undone.
+
+## Quick wins
+
+- **Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
+  cursor. Smart Connections supports drag-to-link.
+- **Extract Tagged Heading leaves a link behind.** It currently removes the
+  section with nothing in its place; Note Refactor leaves a `[[link]]` to the
+  new note.
+- **Board layout for task results**, grouped by a namespace such as
+  `#status/*`. Kanban's popularity makes this the natural first non-list view.
+- **Open the Dashboard on startup** setting, as Homepage (1.3M) does.
+- **Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
+  as Omnisearch (1.9M) does.
+
+## Worth considering
+
+Two of the top 15 plugins embed AI coding agents in the vault (Claudian, #13,
+and Copilot, #15), and Local REST API with MCP has 723k downloads. VS Code's
+language model tool API could let Claude Code or Copilot ask Deckard for
+"open tasks for #project/atlas" while Deckard itself still sends nothing to
+an external service.
+
+## Intentionally skipped
+
+| Plugin category | Reason |
+| --- | --- |
+| Excalidraw, Advanced Tables, Linter, Pandoc, Git | VS Code or existing VS Code extensions already cover these. |
+| Remotely Save, Self-hosted LiveSync | Sync conflicts with Deckard's local-first design. |
+| Smart Connections embeddings | Tag and BM25 ranking in Related Notes already covers most of the value at far lower cost. Revisit later. |
+| Spaced Repetition | A different product. |
 
 ## Recommended sequencing
 
-1. Build saved local queries and collection views.
-2. Add typed schemas and explicit relations.
-3. Extend tasks with scheduling and dependencies.
-4. Add backlinks and note-link graphs.
-5. Evaluate canvas and optional collaboration only after the index and query
-   model can support them cleanly.
+1. Obsidian-compatible task metadata. It extends the existing parser and
+   unblocks the agenda, calendar, and board views.
+2. ~~Queries inside notes.~~ Shipped as query blocks.
+3. Quick capture and templates.
+4. Link health and aliases.
+5. Reference counts, previews, and backlinks.
+6. Periodic notes, calendar, and tag hub pages.
 
-The first three items compound Deckard's existing workspace index, typed
-entity tags, task model, and Markdown-first design. Graph and canvas features
-are higher UI investment and should follow a stable query and relationship
-model.
-
-## Intentionally avoid duplicating VS Code
-
-Deckard should integrate with VS Code's Markdown capabilities instead of
-reimplementing them. VS Code already provides synchronized preview, Mermaid,
-KaTeX, workspace/file-path completion, local-link validation, Find References,
-symbol rename for Markdown links, and automatic link updates after file moves
-or renames.
-
-The useful Deckard-specific work is interoperability: expose Deckard entities,
-sections, tasks, backlinks, and query results through standard VS Code
-navigation where possible.
+Typed schemas, block references, canvas, and Git-aware collaboration from the
+earlier roadmap follow once these are in place.
 
 ## Research sources
 
-- [Deckard README](README.md)
-- [Obsidian Bases](https://help.obsidian.md/bases)
-- [Obsidian Backlinks](https://help.obsidian.md/plugins/backlinks)
-- [Obsidian Graph view](https://help.obsidian.md/plugins/graph)
-- [Obsidian Canvas](https://help.obsidian.md/plugins/canvas)
-- [Notion views, filters, and sorts](https://www.notion.com/help/views-filters-and-sorts)
-- [Notion database properties](https://www.notion.com/help/database-properties)
-- [Notion relations and rollups](https://www.notion.com/help/relations-and-rollups)
-- [Notion tasks and dependencies](https://www.notion.com/help/tasks-and-dependencies)
-- [Notion comments, mentions, and reminders](https://www.notion.com/help/comments-mentions-and-reminders)
-- [Capacities queries](https://docs.capacities.io/reference/queries)
-- [Capacities tables](https://docs.capacities.io/reference/tables)
-- [Capacities object types](https://docs.capacities.io/reference/content-types)
-- [Capacities object properties](https://docs.capacities.io/reference/object-properties)
-- [Capacities calendar integrations](https://docs.capacities.io/reference/calendar-integrations)
-- [Capacities block-based linking](https://docs.capacities.io/reference/block-based-linking)
-- [Capacities backlinks](https://docs.capacities.io/reference/backlinks)
-- [Capacities Graph view](https://docs.capacities.io/reference/graph-view)
-- [Capacities collaboration](https://docs.capacities.io/more/collaboration)
-- [Logseq features](https://logseq.com/features)
-- [Logseq Whiteboards](https://docs.logseq.com/#/page/whiteboards)
-- [VS Code Markdown](https://code.visualstudio.com/docs/languages/markdown)
+- [Obsidian plugin download stats](https://github.com/obsidianmd/obsidian-releases)
+- [Tasks emoji format](https://publish.obsidian.md/tasks/Reference/Task+Formats/Tasks+Emoji+Format)
+- [TaskNotes](https://github.com/callumalpass/tasknotes)
+- [Breadcrumbs](https://github.com/SkepticMystic/breadcrumbs)
+- [Smart Connections](https://github.com/brianpetro/obsidian-smart-connections)
+- [Tag Wrangler](https://github.com/pjeby/tag-wrangler)
+- [Strange New Worlds](https://github.com/TfTHacker/obsidian42-strange-new-worlds)
+- [Omnisearch](https://github.com/scambier/obsidian-omnisearch)
+- [Sébastien Dubois: best Obsidian plugins for 2026](https://www.dsebastien.net/the-must-have-obsidian-plugins-for-2026/)
+- [Dataview vs Datacore vs Bases](https://abdulkadersafi.com/blog/dataview-vs-datacore-vs-bases)

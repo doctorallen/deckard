@@ -155,4 +155,25 @@ suite('Extension Test Suite', () => {
       ),
     );
   });
+
+  test('draws deckard query blocks in the Markdown preview engine', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    assert.strictEqual(
+      extension.packageJSON.contributes?.['markdown.markdownItPlugins'],
+      true,
+    );
+    await extension.activate();
+
+    // The built-in Markdown extension renders with every contributed plugin,
+    // so this checks the export VS Code actually loads, not just the plugin.
+    const html = await vscode.commands.executeCommand<string>(
+      'markdown.api.render',
+      '```deckard\ntag = #project/atlas\n```\n\n```js\nconst answer = 42;\n```\n',
+    );
+    assert.strictEqual(html.split('class="deckard-query-header"').length, 2);
+    assert.ok(html.includes('answer'));
+  });
 });

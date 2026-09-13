@@ -1687,7 +1687,10 @@ function getSectionLexicalContent(
   return lines.join('\n');
 }
 
-function getHeadingPath(
+/**
+ * Lists a section's heading and its ancestors, outermost first, without tags.
+ */
+export function getHeadingPath(
   section: Section,
   sectionsById: ReadonlyMap<string, Section>,
 ): string[] {

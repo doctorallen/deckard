@@ -30,8 +30,17 @@ import {
   syncOutlineFollowCursorContext,
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
+import { QueryBlocks } from './ui/preview/queryBlocks';
 
 let activeServices: ExtensionServices | undefined;
+
+/**
+ * What the extension exports. VS Code's Markdown preview calls
+ * `extendMarkdownIt` to draw ```deckard query blocks.
+ */
+export interface DeckardExports {
+  extendMarkdownIt: QueryBlocks['extendMarkdownIt'];
+}
 
 /**
  * Creates the extension's service graph and registers every VS Code entrypoint.
@@ -39,7 +48,7 @@ let activeServices: ExtensionServices | undefined;
  * Keeping services alive from one activation boundary lets panels, the sidebar,
  * decorations, and completion all observe the same index and preference store.
  */
-export function activate(context: vscode.ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): DeckardExports {
   const indexer = new WorkspaceIndexer(
     undefined,
     new SearchStore(context.storageUri),
@@ -91,6 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri,
   );
   const outline = new OutlineTreeProvider(indexer);
+  const queryBlocks = new QueryBlocks(indexer);
   activeServices = {
     indexer,
     preferences,
@@ -106,6 +116,7 @@ export function activate(context: vscode.ExtensionContext): void {
     notesGraph,
     relatedNotesDebug,
     outline,
+    queryBlocks,
   };
 
   context.subscriptions.push(
@@ -123,6 +134,7 @@ export function activate(context: vscode.ExtensionContext): void {
     notesGraph,
     relatedNotesDebug,
     outline,
+    queryBlocks,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -324,6 +336,10 @@ export function activate(context: vscode.ExtensionContext): void {
       index.entities.keys(),
     );
   });
+
+  return {
+    extendMarkdownIt: (md) => queryBlocks.extendMarkdownIt(md),
+  };
 }
 
 /**
@@ -344,6 +360,7 @@ export function deactivate(): void {
   activeServices?.help.dispose();
   activeServices?.relatedNotesDebug.dispose();
   activeServices?.outline.dispose();
+  activeServices?.queryBlocks.dispose();
   activeServices = undefined;
 }
 
@@ -365,6 +382,7 @@ interface ExtensionServices {
   notesGraph: NotesGraphPanel;
   relatedNotesDebug: RelatedNotesDebugPanel;
   outline: OutlineTreeProvider;
+  queryBlocks: QueryBlocks;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {

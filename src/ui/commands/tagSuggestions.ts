@@ -7,6 +7,7 @@ import {
 } from '../../core/markdown/parser';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 
 interface TagIndexSource {
   readonly ready: Promise<void>;
@@ -89,8 +90,14 @@ export class TagCompletionProvider implements vscode.Disposable {
       return [];
     }
 
-    const fencedLines = findFencedLines(document.getText().split(/\r?\n/));
-    if (fencedLines.has(position.line)) {
+    const text = document.getText();
+    const fencedLines = findFencedLines(text.split(/\r?\n/));
+    // Fenced code is ignored, except a query block, where tags are exactly
+    // what the author is writing.
+    if (
+      fencedLines.has(position.line) &&
+      !isQueryBlockLine(findQueryBlocks(text), position.line)
+    ) {
       return [];
     }
 

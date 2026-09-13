@@ -1,0 +1,118 @@
+/*
+ * Styles for ```deckard query blocks in VS Code's Markdown preview.
+ *
+ * The preview is not a Deckard webview, so these follow the editor theme
+ * through VS Code's own variables rather than Deckard's theme palette.
+ */
+
+.deckard-query {
+  --deckard-query-rule: var(--vscode-textSeparator-foreground, rgba(127, 127, 127, 0.25));
+
+  margin: 1em 0;
+  padding: 0.6em 0.9em 0.7em;
+  border: 1px solid var(--vscode-textBlockQuote-border, rgba(127, 127, 127, 0.35));
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.08));
+}
+
+.deckard-query-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid var(--deckard-query-rule);
+  font-size: 0.9em;
+}
+
+.deckard-query-label,
+.deckard-query-group-title {
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.deckard-query-text {
+  overflow-wrap: anywhere;
+}
+
+.deckard-query-count {
+  margin-left: auto;
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-query-group {
+  margin-top: 0.8em;
+}
+
+.deckard-query-group-title {
+  margin-bottom: 0.15em;
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-query-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One row per result, separated by a rule, so where one ends is obvious. */
+.deckard-query-item {
+  display: grid;
+  row-gap: 0.1em;
+  margin: 0 -0.5em;
+  padding: 0.45em 0.5em;
+  line-height: 1.4;
+}
+
+.deckard-query-item + .deckard-query-item {
+  border-top: 1px solid var(--deckard-query-rule);
+}
+
+.deckard-query-item:hover {
+  background: var(--vscode-list-hoverBackground, rgba(127, 127, 127, 0.1));
+}
+
+.deckard-query-title {
+  justify-self: start;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.deckard-query-meta {
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-query-task {
+  grid-template-columns: 1.4em minmax(0, 1fr);
+  column-gap: 0.2em;
+  align-items: baseline;
+}
+
+.deckard-query-body {
+  display: grid;
+  row-gap: 0.1em;
+  min-width: 0;
+}
+
+.deckard-query-task.is-done .deckard-query-title {
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
+.deckard-query-due.is-overdue {
+  color: var(--vscode-errorForeground, #e51400);
+}
+
+.deckard-query-message {
+  margin: 0.5em 0 0;
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-query-message.is-error {
+  color: var(--vscode-errorForeground, #e51400);
+}
