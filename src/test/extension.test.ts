@@ -18,6 +18,7 @@ suite('Extension Test Suite', () => {
       commands.map((command: { command: string }) => command.command),
       [
         'deckard.showDashboard',
+        'deckard.showNotesGraph',
         'deckard.showStats',
         'deckard.showHelp',
         'deckard.reindexWorkspace',

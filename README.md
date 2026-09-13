@@ -50,6 +50,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | Command | Description |
 | --- | --- |
 | **Deckard: Open Dashboard** | Opens workspace totals, tags, and tasks. |
+| **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
 | **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
@@ -136,6 +137,17 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 ## Stats
 
 Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
+
+## Notes Graph
+
+Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in Related Notes, to see the whole workspace as a zoomable force-directed map. Notes and tasks appear as dots sized by connection count. Specific tags act as stronger hidden gravity anchors than common tags, while related tag anchors attract one another, producing visible communities without drawing a dense web between every pair of notes. The view starts zoomed out over the full graph and stays smooth with thousands of nodes.
+
+- Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
+- Hover a dot to highlight its structural neighbors and see its source location. Select a note or task dot to overlay the exact top results from Deckard's Related Notes ranking and show them in the sidebar. This includes shared and associated tags, Wiki links, section-scoped lexical similarity, and optional recency; hovering a sidebar result highlights its corresponding graph node. Cmd/Ctrl-click a graph dot to jump to its exact source line, or Cmd/Ctrl-click a tag dot to open that tag's overview. Select empty space to clear the selection.
+- **Filters** searches titles and paths, restricts the view to selected tags, and toggles tasks, tag nodes (off by default), and orphan nodes.
+- **Display** adjusts node size, link thickness, and the zoom level at which labels appear.
+- **Forces** tunes the layout with cluster centering, repel strength, link strength, and link distance; changes re-run the simulation live.
+- The graph is read-only: it never changes tags, associations, or your Markdown sources, and control choices persist per panel.
 
 ## Related Notes
 

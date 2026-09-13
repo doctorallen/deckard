@@ -1,5 +1,6 @@
 import {
   DashboardMessage,
+  NotesGraphMessage,
   RenderMode,
   SidebarMessage,
   TagOverviewMessage,
@@ -181,6 +182,31 @@ export function parseTagOverviewMessage(
 }
 
 /**
+ * Validates the notes graph's navigation messages before dispatch.
+ */
+export function parseNotesGraphMessage(
+  value: unknown,
+): NotesGraphMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+
+  if (value.type === 'openSource' || value.type === 'showConnections') {
+    return isSourceMessage(value)
+      ? (value as unknown as NotesGraphMessage)
+      : undefined;
+  }
+  if (
+    value.type === 'openTag' &&
+    typeof value.tagKey === 'string' &&
+    value.tagKey.length > 0
+  ) {
+    return { type: 'openTag', tagKey: value.tagKey };
+  }
+  return undefined;
+}
+
+/**
  * Validates the sidebar's navigation and shortcut messages independently.
  */
 export function parseSidebarMessage(
@@ -201,6 +227,14 @@ export function parseSidebarMessage(
       ? (value as unknown as SidebarMessage)
       : undefined;
   }
+  if (value.type === 'hoverNotesGraphSource') {
+    return isSourceMessage(value)
+      ? (value as unknown as SidebarMessage)
+      : undefined;
+  }
+  if (value.type === 'clearNotesGraphSourceHover') {
+    return { type: 'clearNotesGraphSourceHover' };
+  }
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return value as unknown as SidebarMessage;
   }
@@ -215,6 +249,7 @@ export function parseSidebarMessage(
   }
   if (
     value.type === 'openDashboard' ||
+    value.type === 'openNotesGraph' ||
     value.type === 'createDailyNote' ||
     value.type === 'openHelp'
   ) {

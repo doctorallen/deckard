@@ -19,6 +19,7 @@
     "onWebviewPanel:deckard.tagOverview",
     "onWebviewPanel:deckard.stats",
     "onWebviewPanel:deckard.help",
+    "onWebviewPanel:deckard.notesGraph",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -27,6 +28,10 @@
       {
         "command": "deckard.showDashboard",
         "title": "Deckard: Open Dashboard"
+      },
+      {
+        "command": "deckard.showNotesGraph",
+        "title": "Deckard: Open Notes Graph"
       },
       {
         "command": "deckard.showStats",

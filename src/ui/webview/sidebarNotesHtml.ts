@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import { notesGraphIcon } from './icons';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -415,7 +416,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<span class="section-label">Current notes</span>'
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
     const relationshipTree = state.tagOverview ? renderSidebarRelationships(state) : '';
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
   }
 
   document.addEventListener('click', function (event) {
@@ -463,12 +464,27 @@ ${getDeckardThemeCss(getDeckardTheme())}
       }
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });
+      if (target.dataset.action === 'open-notes-graph') vscode.postMessage({ type: 'openNotesGraph' });
       if (target.dataset.action === 'create-daily-note') vscode.postMessage({ type: 'createDailyNote' });
       if (target.dataset.action === 'clear-entry-related-notes') vscode.postMessage({ type: 'clearEntryRelatedNotes' });
       return;
     }
     const note = event.target.closest('.note');
     if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
+  });
+  document.addEventListener('pointerover', function (event) {
+    const note = event.target.closest('.note');
+    if (!note || note.contains(event.relatedTarget)) return;
+    vscode.postMessage({
+      type: 'hoverNotesGraphSource',
+      filePath: note.dataset.filePath,
+      line: Number(note.dataset.line)
+    });
+  });
+  document.addEventListener('pointerout', function (event) {
+    const note = event.target.closest('.note');
+    if (!note || note.contains(event.relatedTarget)) return;
+    vscode.postMessage({ type: 'clearNotesGraphSourceHover' });
   });
   document.addEventListener('contextmenu', function (event) {
     const target = event.target.closest('[data-action="open-tag"][data-tag-key]');

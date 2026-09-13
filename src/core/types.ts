@@ -398,6 +398,70 @@ export interface SidebarTag extends TagReference {
   weight: number;
 }
 
+export type NotesGraphNodeKind = 'note' | 'task' | 'tag';
+
+export type NotesGraphEdgeType =
+  | 'wiki-link'
+  | 'heading'
+  | 'associated-tag'
+  | 'tag-membership';
+
+export interface NotesGraphNode {
+  /** 'section:<id>' | 'task:<id>' | 'file:<path>' | 'tag:<key>' */
+  id: string;
+  kind: NotesGraphNodeKind;
+  /** Heading or task text with tags stripped, or the tag label. */
+  title: string;
+  filePath?: string;
+  line?: number;
+  /** Canonical tag keys carried by this node; empty for tag nodes. */
+  tagKeys: string[];
+  /** Precomputed edge count; drives node radius in the webview. */
+  degree: number;
+}
+
+export interface NotesGraphEdge {
+  /** '<sourceId>::<targetId>' with the two ids sorted. */
+  id: string;
+  source: string;
+  target: string;
+  /** Combined evidence weight, used for spring strength. */
+  weight: number;
+  types: NotesGraphEdgeType[];
+}
+
+export interface NotesGraphSnapshot {
+  updatedAt: number;
+  nodes: NotesGraphNode[];
+  edges: NotesGraphEdge[];
+  /** All indexed tags for the filter list: [key, label, count]. */
+  tags: [string, string, number][];
+  totalNoteCount: number;
+  totalTaskCount: number;
+}
+
+export interface NotesGraphOpenSourceMessage {
+  type: 'openSource';
+  filePath: string;
+  line: number;
+}
+
+export interface NotesGraphOpenTagMessage {
+  type: 'openTag';
+  tagKey: string;
+}
+
+export interface NotesGraphShowConnectionsMessage {
+  type: 'showConnections';
+  filePath: string;
+  line: number;
+}
+
+export type NotesGraphMessage =
+  | NotesGraphOpenSourceMessage
+  | NotesGraphOpenTagMessage
+  | NotesGraphShowConnectionsMessage;
+
 export interface OpenSourceMessage {
   type: 'openSource';
   filePath: string;
@@ -535,6 +599,20 @@ export interface OpenDashboardMessage {
   type: 'openDashboard';
 }
 
+export interface OpenNotesGraphMessage {
+  type: 'openNotesGraph';
+}
+
+export interface HoverNotesGraphSourceMessage {
+  type: 'hoverNotesGraphSource';
+  filePath: string;
+  line: number;
+}
+
+export interface ClearNotesGraphSourceHoverMessage {
+  type: 'clearNotesGraphSourceHover';
+}
+
 export interface CreateDailyNoteMessage {
   type: 'createDailyNote';
 }
@@ -597,6 +675,9 @@ export type SidebarMessage =
   | OpenTagMessage
   | RenameTagMessage
   | OpenDashboardMessage
+  | OpenNotesGraphMessage
+  | HoverNotesGraphSourceMessage
+  | ClearNotesGraphSourceHoverMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
   | SetRelatedNotesSortMessage

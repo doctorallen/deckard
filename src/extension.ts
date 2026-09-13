@@ -18,6 +18,7 @@ import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
+import { NotesGraphPanel } from './ui/webview/notesGraph';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
@@ -64,6 +65,13 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   const stats = new StatsPanel(indexer, preferences, context.extensionUri);
   const help = new HelpPanel(context.extensionUri);
+  const notesGraph = new NotesGraphPanel(
+    indexer,
+    context.extensionUri,
+    async (filePath, line) => {
+      return sidebarNotes.showRelatedNotesForIndexedSource(filePath, line);
+    },
+  );
   const relatedNotesDebug = new RelatedNotesDebugPanel(
     sidebarNotes,
     context.extensionUri,
@@ -80,6 +88,7 @@ export function activate(context: vscode.ExtensionContext): void {
     dashboard,
     stats,
     help,
+    notesGraph,
     relatedNotesDebug,
   };
 
@@ -95,6 +104,7 @@ export function activate(context: vscode.ExtensionContext): void {
     dashboard,
     stats,
     help,
+    notesGraph,
     relatedNotesDebug,
   );
   context.subscriptions.push(
@@ -126,6 +136,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewPanelSerializer('deckard.help', {
       deserializeWebviewPanel: (webviewPanel) => help.restore(webviewPanel),
     }),
+    vscode.window.registerWebviewPanelSerializer('deckard.notesGraph', {
+      deserializeWebviewPanel: (webviewPanel) =>
+        notesGraph.restore(webviewPanel),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
       deserializeWebviewPanel: (webviewPanel, state) =>
         tagPanels.restore(webviewPanel, state),
@@ -137,6 +151,20 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('deckard.showStats', () => stats.show()),
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
+    vscode.commands.registerCommand('deckard.showNotesGraph', () =>
+      notesGraph.show(),
+    ),
+    vscode.commands.registerCommand(
+      'deckard.highlightNotesGraphSource',
+      (filePath?: unknown, line?: unknown) => {
+        notesGraph.highlightSource(
+          typeof filePath === 'string' ? filePath : undefined,
+          typeof line === 'number' && Number.isInteger(line) && line > 0
+            ? line
+            : undefined,
+        );
+      },
+    ),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.reindexWorkspace', async () => {
@@ -260,6 +288,7 @@ interface ExtensionServices {
   dashboard: DashboardPanel;
   stats: StatsPanel;
   help: HelpPanel;
+  notesGraph: NotesGraphPanel;
   relatedNotesDebug: RelatedNotesDebugPanel;
 }
 

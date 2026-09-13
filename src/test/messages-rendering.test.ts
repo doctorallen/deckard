@@ -8,6 +8,7 @@ import {
 } from '../ui/webview/messages';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml } from '../ui/webview/helpHtml';
+import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
 import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
@@ -21,6 +22,21 @@ function assertWebviewScriptParses(html: string): void {
 }
 
 suite('Webview contracts', () => {
+  test('renders tag-clustered graph relationships', () => {
+    const html = getNotesGraphHtml({
+      cspSource: 'vscode-webview://deckard',
+    });
+
+    assertWebviewScriptParses(html);
+    assert.strictEqual(html.includes('Specific tags act as stronger gravity wells'), true);
+    assert.strictEqual(
+      html.includes("Math.sqrt(degrees[index]) * 0.5"),
+      true,
+    );
+    assert.strictEqual(html.includes("message.type === 'relatedSources'"), true);
+    assert.strictEqual(html.includes('selectedRelated[index]'), true);
+  });
+
   test('distinguishes selected, parent, and child tag context in diagnostics', () => {
     const html = getRelatedNotesDebugHtml(
       { cspSource: 'test-csp' },
@@ -1334,6 +1350,14 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes('<span class="section-label">Related notes</span>'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("type: 'hoverNotesGraphSource'"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("type: 'clearNotesGraphSourceHover'"),
       true,
     );
     assert.strictEqual(
