@@ -208,6 +208,51 @@ export function createTagSummary(
   };
 }
 
+/**
+ * Counts the entries in other notes that carry any of the given tags, the way
+ * the index counts a tag's own entries: each section once, a task only when
+ * its section is not already counted, and a note tagged only in its front
+ * matter once. The note at `filePath` is left out, as Related Notes leaves out
+ * the note being edited.
+ */
+export function countSharedTagEntries(
+  index: WorkspaceIndex,
+  filePath: string,
+  tagKeys: Iterable<string>,
+): number {
+  const sectionIds = new Set<string>();
+  const taskIds = new Set<string>();
+  const filePaths = new Set<string>();
+  for (const tagKey of tagKeys) {
+    const tag = index.tags.get(tagKey);
+    if (!tag) {
+      continue;
+    }
+    tag.sectionIds.forEach((id) => {
+      const section = index.sections.get(id);
+      if (section && section.filePath !== filePath) {
+        sectionIds.add(id);
+      }
+    });
+    tag.taskIds.forEach((id) => {
+      const task = index.tasks.get(id);
+      if (task && task.filePath !== filePath) {
+        taskIds.add(id);
+      }
+    });
+    tag.filePaths.forEach((path) => {
+      if (path !== filePath) {
+        filePaths.add(path);
+      }
+    });
+  }
+  const standaloneTasks = [...taskIds].filter((id) => {
+    const sectionId = index.tasks.get(id)?.sectionId;
+    return !sectionId || !sectionIds.has(sectionId);
+  });
+  return sectionIds.size + standaloneTasks.length + filePaths.size;
+}
+
 function isWithin(
   sectionId: string | undefined,
   ancestorId: string,

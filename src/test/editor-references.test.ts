@@ -8,6 +8,7 @@ import {
 } from '../core/workspace/backlinks';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
+  countSharedTagEntries,
   createLinkPreview,
   createReferenceSummary,
   createTagSummary,
@@ -127,6 +128,51 @@ suite('Editor references', () => {
       'notes/Atlas.md',
     );
     assert.strictEqual(createTagSummary(index, '#project/atlas')?.hubFilePath, undefined);
+  });
+
+  test('counts entries in other notes that share a tag', () => {
+    // Atlas's own Decision section and its tasks are left out; Log's task is
+    // the one entry elsewhere that carries the tag.
+    assert.strictEqual(
+      countSharedTagEntries(index, atlas, ['#project/atlas']),
+      1,
+    );
+    // Seen from Log, Atlas's tasks sit inside its tagged section, so the
+    // section counts and they do not count again.
+    assert.strictEqual(
+      countSharedTagEntries(index, 'notes/Log.md', ['#project/atlas']),
+      1,
+    );
+    assert.strictEqual(countSharedTagEntries(index, atlas, ['#nowhere']), 0);
+  });
+
+  test('counts an entry sharing several tags once', () => {
+    const files = [
+      parseMarkdown('notes/A.md', '# Heading #alpha #beta'),
+      parseMarkdown(
+        'notes/B.md',
+        [
+          '# Both #alpha #beta',
+          '- [ ] Inside #beta',
+          '# Untagged',
+          '- [ ] Loose #beta',
+        ].join('\n'),
+      ),
+      parseMarkdown('notes/C.md', '---\ntags: [alpha]\n---\nNo headings here.'),
+    ];
+    const tagged = buildWorkspaceIndex(
+      new Map(files.map((file) => [file.filePath, file])),
+    );
+    // B's Both section, B's loose task, and C's front matter.
+    assert.strictEqual(
+      countSharedTagEntries(tagged, 'notes/A.md', ['#alpha', '#beta']),
+      3,
+    );
+    // From B, A's heading and C's front matter.
+    assert.strictEqual(
+      countSharedTagEntries(tagged, 'notes/B.md', ['#alpha']),
+      2,
+    );
   });
 });
 

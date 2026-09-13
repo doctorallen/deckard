@@ -15,8 +15,8 @@ import {
   WikiLinkOccurrence,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { createSidebarSnapshot } from '../state/dashboardState';
 import {
+  countSharedTagEntries,
   createLinkPreview,
   createReferenceSummary,
   createTagSummary,
@@ -65,12 +65,6 @@ export class EditorReferences
 {
   private index: WorkspaceIndex | undefined;
   private backlinks: BacklinkIndex | undefined;
-  /**
-   * Related-entry counts by note, heading, and tags. Ranking reads the whole
-   * workspace, so a count is kept until the index or a setting changes rather
-   * than recomputed on every keystroke.
-   */
-  private readonly relatedCounts = new Map<string, number>();
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   private readonly disposables: vscode.Disposable[];
 
@@ -82,12 +76,10 @@ export class EditorReferences
       indexer.onDidUpdate((index) => {
         this.index = index;
         this.backlinks = undefined;
-        this.relatedCounts.clear();
         this.changeEmitter.fire();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard')) {
-          this.relatedCounts.clear();
           this.changeEmitter.fire();
         }
       }),
@@ -256,79 +248,44 @@ export class EditorReferences
   }
 
   /**
-   * Counts what Related Notes lists for a heading, ranking it exactly as the
-   * sidebar does, and opens the sidebar on that heading.
+   * Counts the entries in other notes that share a tag written on the
+   * heading, and opens Related Notes on the heading, which lists them along
+   * with its weaker matches.
    */
   private createRelatedCommand(
     document: vscode.TextDocument,
     file: ParsedFile,
     section: Section,
   ): vscode.Command {
-    const count = this.countRelatedEntries(document, file, section);
+    const count = this.countSharedTagEntries(file, section);
     if (count === 0) {
-      return { title: 'No related entries', command: '' };
+      return { title: 'No entries share a tag', command: '' };
     }
     return {
-      title: count === 1 ? '1 related entry' : `${count} related entries`,
-      tooltip: 'Show them in Related Notes',
+      title:
+        count === 1 ? '1 entry shares a tag' : `${count} entries share a tag`,
+      tooltip:
+        'Show in Related Notes: entries sharing a tag, then weaker matches',
       command: 'deckard.showEntryRelatedNotes',
       arguments: [document.uri.toString(), section.startLine],
     };
   }
 
-  private countRelatedEntries(
-    document: vscode.TextDocument,
-    file: ParsedFile,
-    section: Section,
-  ): number {
+  /**
+   * Only tags written on the heading count. A parent heading's tags, or front
+   * matter every heading inherits, would give every heading in a note the same
+   * large count. The count reads the index directly rather than ranking the
+   * workspace, so it is cheap enough to redo after every save.
+   */
+  private countSharedTagEntries(file: ParsedFile, section: Section): number {
     const scope = createEntryScope(file, section.startLine);
     if (!scope) {
       return 0;
     }
-    // Keyed by what ranking reads rather than by line, so typing above a
-    // heading does not rank it again.
-    const key = JSON.stringify([
-      file.filePath,
-      section.heading,
-      [...scope.tagWeights],
-    ]);
-    const cached = this.relatedCounts.get(key);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const configuration = vscode.workspace.getConfiguration(
-      'deckard',
-      document.uri,
-    );
-    const count = measure(
-      'Related entry count',
-      () =>
-        createSidebarSnapshot(
-          this.getIndex(),
-          file.filePath,
-          scope.file,
-          configuration.get<boolean>('enableKeywordLinks', true),
-          'tags',
-          {},
-          'inline',
-          undefined,
-          scope.tagWeights,
-          {
-            associationMinimumSupport: configuration.get<number>(
-              'relatedNotesAssociationMinimumSupport',
-              1,
-            ),
-            recencyHalfLifeDays: configuration.get<number>(
-              'relatedNotesRecencyHalfLifeDays',
-              0,
-            ),
-          },
-        ).notes.length,
-      (result) => `${result} entries for ${section.heading}`,
-    );
-    this.relatedCounts.set(key, count);
-    return count;
+    const ownTags = [...scope.tagSources]
+      .filter(([, source]) => source.context === 'selected')
+      .map(([tagKey]) => tagKey);
+    return countSharedTagEntries(this.getIndex(), file.filePath, ownTags);
   }
 
   private getIndex(): WorkspaceIndex {

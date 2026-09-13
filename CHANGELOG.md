@@ -41,9 +41,9 @@
 - **References and previews in the editor**: counts above a note's lines say
   how many notes link to it, how many links name each heading, and how many
   open tasks sit under each heading; selecting one lists them in VS Code's
-  references peek. A tagged heading also shows how many related entries
-  Related Notes ranks for it, and selecting that count opens Related Notes on
-  the heading. Hovering a `[[Wiki link]]` previews the note or section it
+  references peek. A tagged heading also shows how many entries in other
+  notes share one of the tags written on it, and selecting that count opens
+  Related Notes on the heading. Hovering a `[[Wiki link]]` previews the note or section it
   points at, and hovering a tag shows its note and task counts and its most
   recent entries. `deckard.editor.referenceCounts` and
   `deckard.editor.hoverPreviews` turn them off.

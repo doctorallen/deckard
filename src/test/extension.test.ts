@@ -202,8 +202,9 @@ suite('Extension Test Suite', () => {
       );
       const titles = lenses.map((lens) => lens.command?.title);
       assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
-      // A tagged heading also counts its Related Notes; this workspace has none.
-      assert.ok(titles.includes('No related entries'), JSON.stringify(titles));
+      // A tagged heading also counts the entries elsewhere that share one of
+      // its tags; no other note here carries #project/atlas.
+      assert.ok(titles.includes('No entries share a tag'), JSON.stringify(titles));
     } finally {
       await vscode.workspace.fs.delete(fileUri);
     }
