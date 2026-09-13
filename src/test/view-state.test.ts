@@ -3,20 +3,22 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
-  createSidebarSnapshot,
   createDeckardStatsSnapshot,
   createDashboardSnapshot,
   createTagOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
-  rankRelatedNotes,
   sortDashboardNotes,
   sortEntities,
-  sortRelatedNotes,
   sortTasks,
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
+import {
+  createSidebarSnapshot,
+  rankRelatedNotes,
+  sortRelatedNotes,
+} from '../ui/state/relatedNotesRanking';
 import { createEntryScope } from '../ui/webview/sidebarNotes';
 import {
   ParsedFile,

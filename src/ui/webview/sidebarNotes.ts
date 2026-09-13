@@ -15,13 +15,15 @@ import {
   TagTitleDisplayMode,
 } from '../../core/types';
 import {
-  createSidebarSnapshot,
   createQueryOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
-  RelatedNotesRankingOptions,
 } from '../state/dashboardState';
+import {
+  createSidebarSnapshot,
+  RelatedNotesRankingOptions,
+} from '../state/relatedNotesRanking';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';

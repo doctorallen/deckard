@@ -2,7 +2,6 @@
 
 # Improvements
 - Later: move each webview's page script into TypeScript modules bundled by esbuild, with typed state and messages, so the pages are type-checked like the rest of the source. For now `npm run test:ui` type-checks and lints the generated scripts instead, which catches unknown names, redeclarations, syntax errors, and wrong argument counts but not type errors. The pages hold about 4,800 lines of script (the Notes Graph 1,771, the Dashboard 1,133, the Tag Overview 1,067), and about 400 checks in `src/test/messages-rendering.test.ts` match script source text, so they would need rewriting as behavior tests first.
-- Split `src/ui/state/dashboardState.ts` (2,446 lines): move the Related Notes ranking and the word-similarity model out of the Dashboard and Tag Overview projections.
 - Test the sidebar skipping a re-rank while the cursor stays in one entry (the e2e stub needs a selection event), hidden panels catching up when shown, and the tag decoration debounce.
 - Rename the sidebar view from "Deckard" to "Related Notes"; inside the Deckard container its pane header repeats "Deckard".
 - A visible Dashboard takes about 0.7 s to redraw after each save at 940 notes. Update it in place, or virtualize its lists.
