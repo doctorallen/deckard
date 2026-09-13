@@ -167,6 +167,11 @@
 
 ### Fixed
 
+- The packaged extension holds only what it runs: the bundle, its resources,
+  the README, and the changelog. It no longer carries the screenshots and
+  planning docs, the test and script folders, or local folders such as
+  `.claude/`, which had made a local package 250 files instead of 13.
+
 - Typing in a note no longer slows down in a large workspace. Every cursor
   move rebuilt the whole index several times and ranked Related Notes again,
   about a second of work per keystroke with 940 notes, even with the sidebar
