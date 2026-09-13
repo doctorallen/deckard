@@ -886,7 +886,10 @@ ${getComponentScript()}
       ].join(' ').toLowerCase();
       return !normalizedNoteSearchQuery || searchableText.indexOf(normalizedNoteSearchQuery) >= 0;
     });
-    const notes = filteredNotes.length ? filteredNotes.map(function (note) {
+    // Notes arrive only once the Notes tab asks the host for them.
+    const notes = state.notesOmitted
+      ? '<div class="empty">Loading notes…</div>'
+      : filteredNotes.length ? filteredNotes.map(function (note) {
       const titleHtml = state.tagTitleDisplayMode === 'inline'
         ? renderInlineTitle(note.heading, note.titleTags)
         : escapeHtml(note.heading);

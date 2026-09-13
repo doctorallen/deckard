@@ -222,6 +222,30 @@ suite('Dashboard state', () => {
     });
   });
 
+  test('leaves notes out of the Dashboard only when asked', () => {
+    const index = createFileIndex([
+      createFile('notes/alpha.md', '# Alpha #work\nBody text.'),
+    ]);
+
+    const withNotes = createDashboardSnapshot(index, defaultPreferences, 'active');
+    assert.strictEqual(withNotes.notes.length, 1);
+    assert.strictEqual(withNotes.notesOmitted, undefined);
+
+    const withoutNotes = createDashboardSnapshot(
+      index,
+      defaultPreferences,
+      'active',
+      [],
+      undefined,
+      [],
+      'inline',
+      false,
+    );
+    assert.deepStrictEqual(withoutNotes.notes, []);
+    assert.strictEqual(withoutNotes.notesOmitted, true);
+    assert.strictEqual(withoutNotes.totalNoteCount, 1, 'the count still covers every note');
+  });
+
   test('filters tasks and preserves explicit task display order', () => {
     const tasks = [
       createTask('first', false, 1, ['#work']),

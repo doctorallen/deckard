@@ -8,6 +8,8 @@ const vscode = require('vscode');
 const { mountWebview } = require('./webviewRuntime.js');
 const { DashboardPanel } = require('../../out/ui/webview/dashboard.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
 
 /** Longer than the page's search debounce. */
 const SETTLE_MS = 450;
@@ -48,9 +50,8 @@ function createGlobalState() {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Opens the Dashboard and mounts its webview, wired to the real host. */
-async function openDashboard(taskLayout = 'list') {
+async function openDashboard(taskLayout = 'list', index = createIndex()) {
   vscode._test.createdPanels.length = 0;
-  const index = createIndex();
   const updates = new vscode.EventEmitter();
   const indexer = {
     ready: Promise.resolve(),
@@ -120,6 +121,27 @@ test('a hidden Dashboard skips updates and catches up when shown', async () => {
 
   panel._setVisible(true);
   assert.strictEqual(panel._toWebview.length, before + 1, 'showing it draws once');
+});
+
+test('only the Notes tab is sent notes, without HTML in the Markdown view', async () => {
+  const note = parseMarkdown(
+    'notes/alpha.md',
+    '# Alpha #work\nBody text.',
+    { createdAt: 1, updatedAt: 2 },
+    {},
+  );
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view, lastState } = await openDashboard('list', index);
+  assert.strictEqual(lastState().data.notesOmitted, true, 'the Tasks tab is sent no notes');
+  assert.deepStrictEqual(lastState().data.notes, []);
+
+  view.click(view.find('[data-dashboard-mode="notes"]'));
+  await delay(20);
+  const state = lastState().data;
+  assert.strictEqual(state.notesOmitted, undefined, 'the Notes tab asks for them');
+  assert.strictEqual(state.notes.length, 1);
+  assert.strictEqual(state.notes[0].renderedHtml, '', 'the Markdown view is sent no HTML');
+  assert.strictEqual(view.findAll('.note-row').length, 1, 'the card is drawn');
 });
 
 test('typing a tag search keeps focus and text through a host update', async () => {

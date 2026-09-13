@@ -275,7 +275,6 @@ export interface DashboardNote extends TagOverviewCard {
 }
 
 export interface DashboardSnapshot {
-  sections: Section[];
   tags: TagInfo[];
   entities: Entity[];
   notes: DashboardNote[];
@@ -305,6 +304,11 @@ export interface DashboardSnapshot {
   taskLayout?: DashboardTaskLayout;
   /** The filtered tasks as a board, present when `taskLayout` is `board`. */
   taskBoard?: TaskBoardLayout;
+  /**
+   * True when `notes` was left empty because the Notes tab is not showing.
+   * Notes are most of what the page is sent, so other tabs are sent none.
+   */
+  notesOmitted?: boolean;
 }
 
 export interface TagOverviewSnapshot {

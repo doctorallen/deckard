@@ -55,6 +55,7 @@ export function createDashboardSnapshot(
   selectedTag?: string,
   selectedNoteTags: string[] = [],
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  includeNotes = true,
 ): DashboardSnapshot {
   const tags = sortTags(index.tags.values(), preferences);
   const entities = sortEntities(index.entities.values(), preferences);
@@ -76,7 +77,9 @@ export function createDashboardSnapshot(
     selectedNoteTags,
     availableNoteTags,
   );
-  const notes = sortDashboardNotes(
+  // Every section becomes a note card, so a page that is not showing notes
+  // is spared building them.
+  const notes = !includeNotes ? [] : sortDashboardNotes(
     [
       ...[...index.sections.values()].map((section) =>
         createDashboardNote(
@@ -104,7 +107,7 @@ export function createDashboardSnapshot(
     .map((task) => createDashboardTask(task, index.sections));
 
   return {
-    sections: [...index.sections.values()],
+    ...(includeNotes ? {} : { notesOmitted: true }),
     tags,
     entities,
     notes,

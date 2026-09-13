@@ -184,6 +184,12 @@
 
 ### Fixed
 
+- A visible Dashboard no longer sends its page every note after each save.
+  The Tasks and Tags tabs are sent no notes, and the Notes tab is sent each
+  note's rendered HTML only in the HTML view. With 940 notes, an update
+  shrinks from 24 MB to 1.9 MB on the Tasks tab and 9.9 MB on the Notes tab.
+  The page was also sent every indexed section, which it never read.
+
 - Opening Related Notes on an entry from its count or its hover works in a
   note with unsaved changes. The entry was looked up by its line in the saved
   note, so after lines were added above it Deckard asked to save first. It is

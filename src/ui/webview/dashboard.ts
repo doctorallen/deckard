@@ -265,11 +265,19 @@ export class DashboardPanel implements vscode.Disposable {
       undefined,
       this.selectedNoteTags,
       tagTitleDisplayMode,
+      // Switching tabs asks the host again, so only the Notes tab gets notes.
+      this.dashboardMode === 'notes',
     );
     // The board lays out the same filtered tasks the list would show.
     const taskLayout = preferences.dashboardTaskLayout ?? 'list';
     const data: DashboardSnapshot = {
       ...snapshot,
+      // The Markdown view shows each note's source, which its search also
+      // reads, so only the HTML view is sent each note rendered.
+      notes:
+        snapshot.renderMode === 'html'
+          ? snapshot.notes
+          : snapshot.notes.map((note) => ({ ...note, renderedHtml: '' })),
       taskLayout,
       taskBoard:
         taskLayout === 'board'
