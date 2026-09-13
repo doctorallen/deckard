@@ -1,29 +1,29 @@
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 
 import {
   extractTagSpans,
   findFencedLines,
   getEntityNamespaceAliases,
   getPersonMarker,
-} from "../../core/markdown/parser";
-import { ParsedFile, Section, WorkspaceIndex } from "../../core/types";
+} from '../../core/markdown/parser';
+import { ParsedFile, Section, WorkspaceIndex } from '../../core/types';
 import {
   BacklinkIndex,
   buildBacklinkIndex,
   findWikiLinkAt,
   WikiLinkOccurrence,
-} from "../../core/workspace/backlinks";
-import { isMarkdownFile } from "../../core/workspace/scanner";
-import { createSidebarSnapshot } from "../state/dashboardState";
+} from '../../core/workspace/backlinks';
+import { isMarkdownFile } from '../../core/workspace/scanner';
+import { createSidebarSnapshot } from '../state/dashboardState';
 import {
   createLinkPreview,
   createReferenceSummary,
   createTagSummary,
   LinkPreview,
   TagSummary,
-} from "../state/referenceState";
-import { createEntryScope } from "../webview/sidebarNotes";
-import { resolveSourceUri } from "./navigation";
+} from '../state/referenceState';
+import { createEntryScope } from '../webview/sidebarNotes';
+import { resolveSourceUri } from './navigation';
 
 interface ReferenceIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
@@ -85,7 +85,7 @@ export class EditorReferences
         this.changeEmitter.fire();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration("deckard")) {
+        if (event.affectsConfiguration('deckard')) {
           this.relatedCounts.clear();
           this.changeEmitter.fire();
         }
@@ -102,7 +102,7 @@ export class EditorReferences
   public provideCodeLenses(document: vscode.TextDocument): DeckardLens[] {
     if (
       !isMarkdownFile(document.uri) ||
-      !readSetting(document, "referenceCounts")
+      !readSetting(document, 'referenceCounts')
     ) {
       return [];
     }
@@ -117,7 +117,7 @@ export class EditorReferences
         createReferencesLens(
           document.uri,
           new vscode.Range(0, 0, 0, 0),
-          `Linked from ${pluralize(notes, "note")}`,
+          `Linked from ${pluralize(notes, 'note')}`,
           () => locateLinks(summary.backlinks),
         ),
       );
@@ -135,7 +135,7 @@ export class EditorReferences
           createReferencesLens(
             document.uri,
             range,
-            pluralize(heading.references.length, "reference"),
+            pluralize(heading.references.length, 'reference'),
             () => locateLinks(heading.references),
           ),
         );
@@ -145,7 +145,7 @@ export class EditorReferences
           createReferencesLens(
             document.uri,
             range,
-            pluralize(heading.openTasks.length, "open task"),
+            pluralize(heading.openTasks.length, 'open task'),
             async () =>
               heading.openTasks.map(
                 (task) =>
@@ -183,7 +183,7 @@ export class EditorReferences
   ): Promise<vscode.Hover | undefined> {
     if (
       !isMarkdownFile(document.uri) ||
-      !readSetting(document, "hoverPreviews")
+      !readSetting(document, 'hoverPreviews')
     ) {
       return undefined;
     }
@@ -193,7 +193,7 @@ export class EditorReferences
       return undefined;
     }
 
-    const link = findWikiLinkAt(lines[position.line] ?? "", position.character);
+    const link = findWikiLinkAt(lines[position.line] ?? '', position.character);
     if (link) {
       const preview = createLinkPreview(
         this.getIndex(),
@@ -213,16 +213,16 @@ export class EditorReferences
     }
 
     const configuration = vscode.workspace.getConfiguration(
-      "deckard",
+      'deckard',
       document.uri,
     );
     const span = extractTagSpans(
       text,
-      configuration.get<boolean>("parseInlineTags", true),
+      configuration.get<boolean>('parseInlineTags', true),
       getEntityNamespaceAliases(
-        configuration.get<unknown>("entityNamespaceAliases", {}),
+        configuration.get<unknown>('entityNamespaceAliases', {}),
       ),
-      getPersonMarker(configuration.get<unknown>("personMarker", "@")),
+      getPersonMarker(configuration.get<unknown>('personMarker', '@')),
     ).find(
       (candidate) =>
         candidate.lineNumber - 1 === position.line &&
@@ -257,12 +257,12 @@ export class EditorReferences
   ): vscode.Command {
     const count = this.countRelatedEntries(document, file, section);
     if (count === 0) {
-      return { title: "No related entries", command: "" };
+      return { title: 'No related entries', command: '' };
     }
     return {
-      title: count === 1 ? "1 related entry" : `${count} related entries`,
-      tooltip: "Show them in Related Notes",
-      command: "deckard.showEntryRelatedNotes",
+      title: count === 1 ? '1 related entry' : `${count} related entries`,
+      tooltip: 'Show them in Related Notes',
+      command: 'deckard.showEntryRelatedNotes',
       arguments: [document.uri.toString(), section.startLine],
     };
   }
@@ -289,26 +289,26 @@ export class EditorReferences
     }
 
     const configuration = vscode.workspace.getConfiguration(
-      "deckard",
+      'deckard',
       document.uri,
     );
     const count = createSidebarSnapshot(
       this.getIndex(),
       file.filePath,
       scope.file,
-      configuration.get<boolean>("enableKeywordLinks", true),
-      "tags",
+      configuration.get<boolean>('enableKeywordLinks', true),
+      'tags',
       {},
-      "inline",
+      'inline',
       undefined,
       scope.tagWeights,
       {
         associationMinimumSupport: configuration.get<number>(
-          "relatedNotesAssociationMinimumSupport",
+          'relatedNotesAssociationMinimumSupport',
           1,
         ),
         recencyHalfLifeDays: configuration.get<number>(
-          "relatedNotesRecencyHalfLifeDays",
+          'relatedNotesRecencyHalfLifeDays',
           0,
         ),
       },
@@ -328,14 +328,14 @@ export class EditorReferences
   }
 }
 
-const markdownFiles: vscode.DocumentSelector = { pattern: "**/*.md" };
+const markdownFiles: vscode.DocumentSelector = { pattern: '**/*.md' };
 
 function readSetting(
   document: vscode.TextDocument,
-  name: "referenceCounts" | "hoverPreviews",
+  name: 'referenceCounts' | 'hoverPreviews',
 ): boolean {
   return vscode.workspace
-    .getConfiguration("deckard", document.uri)
+    .getConfiguration('deckard', document.uri)
     .get<boolean>(`editor.${name}`, true);
 }
 
@@ -348,8 +348,8 @@ function createReferencesLens(
 ): DeckardLens {
   return new DeckardLens(range, async () => ({
     title,
-    tooltip: "Show them in the references view",
-    command: "editor.action.showReferences",
+    tooltip: 'Show them in the references view',
+    command: 'editor.action.showReferences',
     arguments: [documentUri, range.start, await locate()],
   }));
 }
@@ -392,18 +392,18 @@ async function renderLinkPreview(
   preview: LinkPreview,
 ): Promise<vscode.MarkdownString> {
   const markdown = new vscode.MarkdownString();
-  if (preview.kind === "missing") {
+  if (preview.kind === 'missing') {
     return markdown.appendMarkdown(
       `No note is named **${escapeMarkdown(preview.note)}** yet.`,
     );
   }
-  if (preview.kind === "ambiguous") {
+  if (preview.kind === 'ambiguous') {
     return markdown.appendMarkdown(
       `**${escapeMarkdown(preview.note)}** matches ${preview.matches} notes, so Deckard cannot tell which one this link means.`,
     );
   }
 
-  const fileName = preview.filePath.split("/").pop() ?? preview.filePath;
+  const fileName = preview.filePath.split('/').pop() ?? preview.filePath;
   markdown.appendMarkdown(
     `**${await linkToLine(preview.title, preview.filePath, preview.line)}** · ${escapeMarkdown(fileName)}\n\n`,
   );
@@ -412,13 +412,13 @@ async function renderLinkPreview(
       `*This note has no heading "${escapeMarkdown(preview.missingHeading)}", so this is its start.*\n\n`,
     );
   }
-  markdown.appendMarkdown("---\n\n");
-  markdown.appendMarkdown(preview.excerpt || "*Nothing written here yet.*");
+  markdown.appendMarkdown('---\n\n');
+  markdown.appendMarkdown(preview.excerpt || '*Nothing written here yet.*');
   if (preview.truncated) {
-    markdown.appendMarkdown("\n\n…");
+    markdown.appendMarkdown('\n\n…');
   }
   markdown.appendMarkdown(
-    `\n\n---\n\nLinked from ${pluralize(preview.backlinkCount, "other note")}`,
+    `\n\n---\n\nLinked from ${pluralize(preview.backlinkCount, 'other note')}`,
   );
   return markdown;
 }
@@ -428,25 +428,25 @@ async function renderTagSummary(
   tagKey: string,
 ): Promise<vscode.MarkdownString> {
   const counts = [
-    pluralize(summary.noteCount, "note"),
+    pluralize(summary.noteCount, 'note'),
     summary.taskCount > 0
-      ? `${pluralize(summary.taskCount, "task")}, ${summary.openTaskCount} open`
-      : "",
+      ? `${pluralize(summary.taskCount, 'task')}, ${summary.openTaskCount} open`
+      : '',
   ].filter(Boolean);
   const lines = [
-    `**${escapeMarkdown(summary.label)}** · ${counts.join(" · ")}`,
-    "",
+    `**${escapeMarkdown(summary.label)}** · ${counts.join(' · ')}`,
+    '',
   ];
   if (summary.hubFilePath) {
     const hubFileName =
-      summary.hubFilePath.split("/").pop() ?? summary.hubFilePath;
+      summary.hubFilePath.split('/').pop() ?? summary.hubFilePath;
     lines.push(
       `Hub: ${await linkToLine(hubFileName, summary.hubFilePath, 1)}`,
-      "",
+      '',
     );
   }
   for (const entry of summary.entries) {
-    const box = entry.task ? (entry.completed ? "☑ " : "☐ ") : "";
+    const box = entry.task ? (entry.completed ? '☑ ' : '☐ ') : '';
     lines.push(
       `- ${box}${await linkToLine(entry.title, entry.filePath, entry.line)} · ${escapeMarkdown(entry.fileName)}`,
     );
@@ -454,13 +454,13 @@ async function renderTagSummary(
   const shown = summary.entries.length;
   const total = summary.noteCount + summary.taskCount;
   if (total > shown) {
-    lines.push("", `*…and ${total - shown} more*`);
+    lines.push('', `*…and ${total - shown} more*`);
   }
   const overview = `command:deckard.showTagOverview?${encodeURIComponent(JSON.stringify([tagKey]))}`;
-  lines.push("", `[Open overview](${overview})`);
+  lines.push('', `[Open overview](${overview})`);
 
-  const markdown = new vscode.MarkdownString(lines.join("\n"));
-  markdown.isTrusted = { enabledCommands: ["deckard.showTagOverview"] };
+  const markdown = new vscode.MarkdownString(lines.join('\n'));
+  markdown.isTrusted = { enabledCommands: ['deckard.showTagOverview'] };
   return markdown;
 }
 
@@ -477,9 +477,9 @@ async function linkToLine(
 }
 
 function pluralize(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 function escapeMarkdown(value: string): string {
-  return value.replace(/[\\`*_[\]{}()#+.!|<>]/g, "\\$&");
+  return value.replace(/[\\`*_[\]{}()#+.!|<>]/g, '\\$&');
 }
