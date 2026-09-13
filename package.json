@@ -275,220 +275,280 @@
         "when": "config.deckard.assistantTools"
       }
     ],
-    "configuration": {
-      "title": "Deckard",
-      "properties": {
-        "deckard.theme": {
-          "type": "string",
-          "enum": [
-            "replicant",
-            "oblivion",
-            "lcars",
-            "synthwave",
-            "tomcat",
-            "fellowship"
-          ],
-          "enumDescriptions": [
-            "Deckard's original replicant terminal interface.",
-            "A dark technical operations interface inspired by the Oblivion reference screens.",
-            "A warm, high-contrast interface inspired by LCARS from Star Trek: The Next Generation.",
-            "A neon grid interface inspired by 1980s synthwave and outrun aesthetics.",
-            "A flight-display interface inspired by F-14 Tomcat HUD instrumentation.",
-            "A woodland travel-journal interface inspired by The Lord of the Rings."
-          ],
-          "default": "replicant",
-          "description": "Visual theme used by Deckard webviews."
-        },
-        "deckard.dashboard.openOnStartup": {
-          "type": "boolean",
-          "default": false,
-          "description": "Open the Deckard Dashboard when VS Code starts in a workspace with indexed notes."
-        },
-        "deckard.tagOverview.hubNoteExpanded": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a tag's hub note open at the top of its Tag Overview. When off, the hub starts collapsed to its title row; select the title to open it."
-        },
-        "deckard.notesFolder": {
-          "type": "string",
-          "default": "",
-          "description": "Optional workspace-relative folder containing Markdown notes. Leave empty to index all Markdown files in the workspace."
-        },
-        "deckard.dailyNoteTemplate": {
-          "type": "string",
-          "default": "# {date}\n\n",
-          "description": "Template used when creating a daily note."
-        },
-        "deckard.parseInlineTags": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Index tags on non-heading Markdown lines as standalone entries."
-        },
-        "deckard.highlightNoteSections": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Highlight indexed tagged note sections in Markdown editors."
-        },
-        "deckard.autoSelectNoteSections": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Automatically show Related Notes for the tagged note section containing the cursor."
-        },
-        "deckard.outline.showTags": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show each heading's tags beside it in the Deckard Outline."
-        },
-        "deckard.outline.followCursor": {
-          "type": "boolean",
-          "default": true,
-          "description": "Select the Deckard Outline heading that contains the editor cursor."
-        },
-        "deckard.outline.inheritedTags": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": false,
-          "description": "Also show front-matter tags that every heading in the file inherits."
-        },
-        "deckard.agenda.upcomingDays": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 90,
-          "default": 7,
-          "description": "How many days ahead the Agenda's Upcoming group looks for due, scheduled, and start dates."
-        },
-        "deckard.tasks.addDoneDate": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Add a completion date (✅ or [completion:: …]) when Deckard completes a task. Reopening the task removes it."
-        },
-        "deckard.tasks.metadataFormat": {
-          "type": "string",
-          "scope": "resource",
-          "enum": [
-            "emoji",
-            "dataview"
-          ],
-          "enumDescriptions": [
-            "Obsidian Tasks emoji format, such as 📅 2026-09-20 ⏫ 🔁 every week.",
-            "Obsidian Tasks Dataview format, such as [due:: 2026-09-20] [priority:: high] [repeat:: every week]."
-          ],
-          "default": "emoji",
-          "description": "Format Deckard writes for a task that has no metadata yet, in / suggestions and completion dates. A task that already uses one format keeps it, and Deckard reads both."
-        },
-        "deckard.tasks.metadataSuggestions": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task."
-        },
-        "deckard.board.statusNamespace": {
-          "type": "string",
-          "default": "status",
-          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
-          "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing."
-        },
-        "deckard.board.statuses": {
-          "type": "array",
-          "items": {
+    "configuration": [
+      {
+        "title": "General",
+        "properties": {
+          "deckard.notesFolder": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "default": "",
+            "description": "Optional workspace-relative folder containing Markdown notes. Leave empty to index all Markdown files in the workspace.",
+            "order": 0
           },
-          "default": [
-            "todo",
-            "doing",
-            "waiting"
-          ],
-          "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them."
-        },
-        "deckard.editor.referenceCounts": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Show, above the lines of a Markdown note, how many notes link to it, how many links name each heading, how many open tasks sit under each heading, and how many related entries Related Notes finds for each tagged heading."
-        },
-        "deckard.editor.hoverPreviews": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag."
-        },
-        "deckard.assistantTools": {
-          "type": "boolean",
-          "default": true,
-          "description": "Let AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that called it, which may send it to its own model service. VS Code asks you to allow the first call in each session."
-        },
-        "deckard.tagTitleDisplayMode": {
-          "type": "string",
-          "enum": [
-            "inline",
-            "separate"
-          ],
-          "enumDescriptions": [
-            "Keep tags in related-note and tag-overview titles.",
-            "Remove tags from titles and show them as separate tag controls."
-          ],
-          "default": "inline",
-          "description": "Choose whether tags stay inline in note titles or appear separately."
-        },
-        "deckard.enableHeadingTagRelationships": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show weighted tag associations from explicit co-occurrence and heading proximity in Tag Overviews."
-        },
-        "deckard.enableTagAutocomplete": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Show indexed tag suggestions after a tag or people marker. Disable without affecting tag indexing, highlighting, or navigation."
-        },
-        "deckard.enableKeywordLinks": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Let capped, section-scoped similarity of wording adjust the score of a related note that already shares a tag, association, or Wiki link. Shared wording never makes a note related on its own. Disable to rank by tags and links alone."
-        },
-        "deckard.relatedNotesAssociationMinimumSupport": {
-          "type": "number",
-          "scope": "resource",
-          "minimum": 1,
-          "maximum": 20,
-          "default": 1,
-          "description": "Minimum distinct atomic source units required before a learned tag association affects Related Notes. One preserves intentional one-off associations."
-        },
-        "deckard.relatedNotesRecencyHalfLifeDays": {
-          "type": "number",
-          "scope": "resource",
-          "minimum": 0,
-          "maximum": 3650,
-          "default": 0,
-          "description": "Optional Related Notes recency tie-breaker half-life in days. Zero disables it; daily-note and front-matter dates are preferred over filesystem dates."
-        },
-        "deckard.entityNamespaceAliases": {
-          "type": "object",
-          "scope": "resource",
-          "default": {
-            "org": "organization"
-          },
-          "additionalProperties": {
+          "deckard.theme": {
             "type": "string",
-            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+            "enum": [
+              "replicant",
+              "oblivion",
+              "lcars",
+              "synthwave",
+              "tomcat",
+              "fellowship"
+            ],
+            "enumDescriptions": [
+              "Deckard's original replicant terminal interface.",
+              "A dark technical operations interface inspired by the Oblivion reference screens.",
+              "A warm, high-contrast interface inspired by LCARS from Star Trek: The Next Generation.",
+              "A neon grid interface inspired by 1980s synthwave and outrun aesthetics.",
+              "A flight-display interface inspired by F-14 Tomcat HUD instrumentation.",
+              "A woodland travel-journal interface inspired by The Lord of the Rings."
+            ],
+            "default": "replicant",
+            "description": "Visual theme used by Deckard webviews.",
+            "order": 1
           },
-          "description": "Maps one #namespace to another. Targets can be built-in or custom; for example, { \"proj\": \"project\", \"leadership\": \"management\" } treats #proj/atlas as a project and collapses #leadership/performance into #management/performance."
-        },
-        "deckard.personMarker": {
-          "type": "string",
-          "scope": "resource",
-          "default": "@",
-          "pattern": "^[!$%&*+,.?:;=@^|~]$",
-          "description": "Single-character marker for people. For example, set this to \"~\" to recognize ~mara-vale as a person."
+          "deckard.dashboard.openOnStartup": {
+            "type": "boolean",
+            "default": false,
+            "description": "Open the Deckard Dashboard when VS Code starts in a workspace with indexed notes.",
+            "order": 2
+          },
+          "deckard.dailyNoteTemplate": {
+            "type": "string",
+            "default": "# {date}\n\n",
+            "description": "Template used when creating a daily note.",
+            "order": 3
+          }
+        }
+      },
+      {
+        "title": "Tags and People",
+        "properties": {
+          "deckard.parseInlineTags": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Index tags on non-heading Markdown lines as standalone entries.",
+            "order": 0
+          },
+          "deckard.personMarker": {
+            "type": "string",
+            "scope": "resource",
+            "default": "@",
+            "pattern": "^[!$%&*+,.?:;=@^|~]$",
+            "description": "Single-character marker for people. For example, set this to \"~\" to recognize ~mara-vale as a person.",
+            "order": 1
+          },
+          "deckard.entityNamespaceAliases": {
+            "type": "object",
+            "scope": "resource",
+            "default": {
+              "org": "organization"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+            },
+            "description": "Maps one #namespace to another. Targets can be built-in or custom; for example, { \"proj\": \"project\", \"leadership\": \"management\" } treats #proj/atlas as a project and collapses #leadership/performance into #management/performance.",
+            "order": 2
+          },
+          "deckard.enableTagAutocomplete": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show indexed tag suggestions after a tag or people marker. Disable without affecting tag indexing, highlighting, or navigation.",
+            "order": 3
+          },
+          "deckard.tagTitleDisplayMode": {
+            "type": "string",
+            "enum": [
+              "inline",
+              "separate"
+            ],
+            "enumDescriptions": [
+              "Keep tags in related-note and tag-overview titles.",
+              "Remove tags from titles and show them as separate tag controls."
+            ],
+            "default": "inline",
+            "description": "Choose whether tags stay inline in note titles or appear separately.",
+            "order": 4
+          },
+          "deckard.tagOverview.hubNoteExpanded": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show a tag's hub note open at the top of its Tag Overview. When off, the hub starts collapsed to its title row; select the title to open it.",
+            "order": 5
+          },
+          "deckard.enableHeadingTagRelationships": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show weighted tag associations from explicit co-occurrence and heading proximity in Tag Overviews.",
+            "order": 6
+          }
+        }
+      },
+      {
+        "title": "Editor",
+        "properties": {
+          "deckard.highlightNoteSections": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Highlight indexed tagged note sections in Markdown editors.",
+            "order": 0
+          },
+          "deckard.editor.referenceCounts": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, above the lines of a Markdown note, how many notes link to it, how many links name each heading, how many open tasks sit under each heading, and how many related entries Related Notes finds for each tagged heading.",
+            "order": 1
+          },
+          "deckard.editor.hoverPreviews": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag.",
+            "order": 2
+          }
+        }
+      },
+      {
+        "title": "Related Notes",
+        "properties": {
+          "deckard.autoSelectNoteSections": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Automatically show Related Notes for the tagged note section containing the cursor.",
+            "order": 0
+          },
+          "deckard.enableKeywordLinks": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Let capped, section-scoped similarity of wording adjust the score of a related note that already shares a tag, association, or Wiki link. Shared wording never makes a note related on its own. Disable to rank by tags and links alone.",
+            "order": 1
+          },
+          "deckard.relatedNotesAssociationMinimumSupport": {
+            "type": "number",
+            "scope": "resource",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 1,
+            "description": "Minimum distinct atomic source units required before a learned tag association affects Related Notes. One preserves intentional one-off associations.",
+            "order": 2
+          },
+          "deckard.relatedNotesRecencyHalfLifeDays": {
+            "type": "number",
+            "scope": "resource",
+            "minimum": 0,
+            "maximum": 3650,
+            "default": 0,
+            "description": "Optional Related Notes recency tie-breaker half-life in days. Zero disables it; daily-note and front-matter dates are preferred over filesystem dates.",
+            "order": 3
+          }
+        }
+      },
+      {
+        "title": "Tasks",
+        "properties": {
+          "deckard.tasks.addDoneDate": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Add a completion date (✅ or [completion:: …]) when Deckard completes a task. Reopening the task removes it.",
+            "order": 0
+          },
+          "deckard.tasks.metadataFormat": {
+            "type": "string",
+            "scope": "resource",
+            "enum": [
+              "emoji",
+              "dataview"
+            ],
+            "enumDescriptions": [
+              "Obsidian Tasks emoji format, such as 📅 2026-09-20 ⏫ 🔁 every week.",
+              "Obsidian Tasks Dataview format, such as [due:: 2026-09-20] [priority:: high] [repeat:: every week]."
+            ],
+            "default": "emoji",
+            "description": "Format Deckard writes for a task that has no metadata yet, in / suggestions and completion dates. A task that already uses one format keeps it, and Deckard reads both.",
+            "order": 1
+          },
+          "deckard.tasks.metadataSuggestions": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task.",
+            "order": 2
+          },
+          "deckard.agenda.upcomingDays": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 90,
+            "default": 7,
+            "description": "How many days ahead the Agenda's Upcoming group looks for due, scheduled, and start dates.",
+            "order": 3
+          },
+          "deckard.board.statuses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            },
+            "default": [
+              "todo",
+              "doing",
+              "waiting"
+            ],
+            "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them.",
+            "order": 4
+          },
+          "deckard.board.statusNamespace": {
+            "type": "string",
+            "default": "status",
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+            "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing.",
+            "order": 5
+          }
+        }
+      },
+      {
+        "title": "Outline",
+        "properties": {
+          "deckard.outline.showTags": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show each heading's tags beside it in the Deckard Outline.",
+            "order": 0
+          },
+          "deckard.outline.followCursor": {
+            "type": "boolean",
+            "default": true,
+            "description": "Select the Deckard Outline heading that contains the editor cursor.",
+            "order": 1
+          },
+          "deckard.outline.inheritedTags": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": false,
+            "description": "Also show front-matter tags that every heading in the file inherits.",
+            "order": 2
+          }
+        }
+      },
+      {
+        "title": "AI Assistants",
+        "properties": {
+          "deckard.assistantTools": {
+            "type": "boolean",
+            "default": true,
+            "description": "Let AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that called it, which may send it to its own model service. VS Code asks you to allow the first call in each session.",
+            "order": 0
+          }
         }
       }
-    }
+    ]
   },
   "dependencies": {
     "markdown-it": "^14.1.0",

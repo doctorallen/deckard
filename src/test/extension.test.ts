@@ -10,6 +10,13 @@ suite('Extension Test Suite', () => {
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
     );
     assert.ok(extension);
+    // Settings are grouped into titled sections; read them as one map.
+    const sections: Array<{ title?: string; properties: Record<string, never> }> =
+      extension.packageJSON.contributes?.configuration ?? [];
+    assert.ok(sections.every((section) => section.title), 'every group has a title');
+    const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
+      Object.assign({}, ...sections.map((section) => section.properties));
+    assert.strictEqual(Object.keys(settings).length, 28);
     const activationEvents = extension.packageJSON.activationEvents ?? [];
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.dashboard'));
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.tagOverview'));
@@ -44,79 +51,79 @@ suite('Extension Test Suite', () => {
       ],
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.notesFolder'
       ].default,
       '',
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.parseInlineTags'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.highlightNoteSections'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.autoSelectNoteSections'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.tagTitleDisplayMode'
       ].default,
       'inline',
     );
     assert.deepStrictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.tagTitleDisplayMode'
       ].enum,
       ['inline', 'separate'],
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.enableHeadingTagRelationships'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.enableKeywordLinks'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.enableTagAutocomplete'
       ].default,
       true,
     );
     assert.deepStrictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.entityNamespaceAliases'
       ].default,
       { org: 'organization' },
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.personMarker'
       ].default,
       '@',
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.dashboard.openOnStartup'
       ].default,
       false,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.tagOverview.hubNoteExpanded'
       ].default,
       true,

@@ -150,6 +150,10 @@
 
 ### Changed
 
+- Deckard's settings are grouped into titled sections in the Settings editor:
+  General, Tags and People, Editor, Related Notes, Tasks, Outline, and AI
+  Assistants, each listed in a deliberate order rather than alphabetically.
+
 - The Related Notes view is named **Related Notes** in the Deckard side bar.
   It was named Deckard, so its header repeated the side bar's own title.
 
