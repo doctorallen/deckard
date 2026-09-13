@@ -125,7 +125,7 @@ suite('Extension Test Suite', () => {
       extension.packageJSON.contributes?.views?.deckard?.some(
         (view: { id: string; name: string; type: string }) =>
           view.id === 'deckard.relatedNotes' &&
-          view.name === 'Deckard' &&
+          view.name === 'Related Notes' &&
           view.type === 'webview',
       ),
     );

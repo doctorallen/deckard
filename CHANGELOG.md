@@ -150,6 +150,9 @@
 
 ### Changed
 
+- The Related Notes view is named **Related Notes** in the Deckard side bar.
+  It was named Deckard, so its header repeated the side bar's own title.
+
 - The AI assistant tools ask before their first call in each session. VS Code
   shows a confirmation saying that matching notes will go to the assistant,
   which may send them to its model service, and later calls in the session go

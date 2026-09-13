@@ -2,7 +2,6 @@
 
 # Improvements
 - Later: move each webview's page script into TypeScript modules bundled by esbuild, with typed state and messages, so the pages are type-checked like the rest of the source. For now `npm run test:ui` type-checks and lints the generated scripts instead, which catches unknown names, redeclarations, syntax errors, and wrong argument counts but not type errors. The pages hold about 4,800 lines of script (the Notes Graph 1,771, the Dashboard 1,133, the Tag Overview 1,067), and about 400 checks in `src/test/messages-rendering.test.ts` match script source text, so they would need rewriting as behavior tests first.
-- Rename the sidebar view from "Deckard" to "Related Notes"; inside the Deckard container its pane header repeats "Deckard".
 - A visible Dashboard takes about 0.7 s to redraw after each save at 940 notes. Update it in place, or virtualize its lists.
 - Group the ~30 settings into titled sections in `package.json`.
 - The SQLite search store (`node:sqlite` `DatabaseSync`) rebuilds synchronously on every full scan and blocks the extension host while it does. Watch "Rebuild search index" in Deckard's log on large workspaces, and move it off the main thread if it shows up.
