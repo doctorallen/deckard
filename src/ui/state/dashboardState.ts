@@ -1696,7 +1696,7 @@ function getCachedLexicalTerms(
     byText = new Map();
     lexicalTermsByText.set(index, byText);
   }
-  const key = `${title} ${content}`;
+  const key = `${title}\u0000${content}`;
   let terms = byText.get(key);
   if (!terms) {
     terms = getLexicalTerms(title, content);
