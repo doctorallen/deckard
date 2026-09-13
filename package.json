@@ -420,7 +420,7 @@
         "deckard.assistantTools": {
           "type": "boolean",
           "default": true,
-          "description": "Let AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that called it, which may send it to its own model service."
+          "description": "Let AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that called it, which may send it to its own model service. VS Code asks you to allow the first call in each session."
         },
         "deckard.tagTitleDisplayMode": {
           "type": "string",

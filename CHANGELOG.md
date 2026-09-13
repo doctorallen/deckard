@@ -150,6 +150,11 @@
 
 ### Changed
 
+- The AI assistant tools ask before their first call in each session. VS Code
+  shows a confirmation saying that matching notes will go to the assistant,
+  which may send them to its model service, and later calls in the session go
+  ahead.
+
 - **Related Notes** lists only entries that share a tag, an associated tag,
   or a Wiki link with the note. Shared wording still ranks those entries, but
   it no longer makes an entry related on its own, which had listed nearly

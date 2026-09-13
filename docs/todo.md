@@ -1,5 +1,4 @@
 # Fixes
-- Decide whether the AI assistant tools should be off by default, or ask the first time they run, since Copilot sends what they return to its cloud model. `deckard.assistantTools` is on by default.
 
 # Improvements
 - need to do a style consistency pass, there are small inconsistencies all over
