@@ -110,9 +110,9 @@ const viewConfiguration = {
     target: 'workbench',
     output: 'docs/images/editor-assistance.png',
     title: 'editor reference counts',
-    // Related-entry counts resolve last, after the backlink count.
+    // Shared-tag counts resolve after the backlink count.
     renderedAssertion:
-      "[...document.querySelectorAll('.codelens-decoration')].some((lens) => lens.textContent.includes('Linked from')) && [...document.querySelectorAll('.codelens-decoration')].some((lens) => lens.textContent.includes('related entr'))",
+      "[...document.querySelectorAll('.codelens-decoration')].some((lens) => lens.textContent.includes('Linked from')) && [...document.querySelectorAll('.codelens-decoration')].some((lens) => lens.textContent.includes('share a tag'))",
   },
   outline: {
     scene: `await openNote('2026-08-26.md', '## Meridian requirements');

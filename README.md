@@ -200,7 +200,7 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - **Hovering a `[[Wiki link]]`** previews the note, or the section its `#Heading` names, and says how many other notes link to it. A link to a note that does not exist yet, or to a name several notes share, says so instead.
 - **Hovering a tag** shows how many notes and tasks use it, its [hub note](#hub-notes) when it has one, and its five most recently updated entries, each a link to its line, with **Open overview**. Set `deckard.editor.hoverPreviews` to `false` to turn previews off. The tag's **Rename** action stays in the same hover.
 
-![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and related entries.](docs/images/editor-assistance.png)
+![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](docs/images/editor-assistance.png)
 
 ## Dashboard
 
