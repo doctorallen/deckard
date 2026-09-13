@@ -172,7 +172,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
 .query-builder-row .query-builder-value { width: 100%; min-width: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); }
 .query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
-.query-builder-and { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; min-width: 30px; }
+.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
 .query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .query-builder-actions button { font-size: 11px; }
