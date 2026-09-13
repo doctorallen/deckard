@@ -26,6 +26,8 @@ interface Frontmatter {
   tagSpans: HeadingTagSpan[];
   endLine?: number;
   hub?: NoteHub;
+  /** A `date:`, `created:`, or `updated:` value, as YYYY-MM-DD. */
+  date?: string;
 }
 
 /** Front-matter fields a hub note's property list leaves out. */
@@ -153,6 +155,18 @@ export function parseMarkdown(
     }
   }
   const headings = findHeadings(lines, fencedLines);
+  // Loose task dates such as "next Friday" are read from the day the note is
+  // about. The file's modified time changes whenever the note is edited or
+  // the repository is cloned, so it is only the last resort.
+  const noteDate =
+    findDailyNoteDate(
+      filePath,
+      headings
+        .filter((heading) => heading.level === 1)
+        .map((heading) => heading.text),
+    ) ?? frontmatter.date;
+  const dateAnchor =
+    (noteDate ? parseIsoDate(noteDate) : undefined) ?? metadata?.updatedAt;
   const headingSections = headings.map((heading, headingIndex) =>
     createSection(
       filePath,
@@ -188,6 +202,7 @@ export function parseMarkdown(
     metadata,
     frontmatter.tags,
     personMarker,
+    dateAnchor,
   );
 
   return normalizeParsedTagReferences({
@@ -405,7 +420,21 @@ function formatTitlePart(value: string): string {
       tagSpans,
       endLine: end,
       ...createHub(values, entityNamespaceAliases, personMarker),
+      ...findFrontmatterDate(values),
     };
+  }
+
+  /** The first of `date:`, `created:`, and `updated:` that holds a date. */
+  function findFrontmatterDate(
+    values: Map<string, string[]>,
+  ): { date?: string } {
+    for (const key of ['date', 'created', 'updated']) {
+      const date = values.get(key)?.[0]?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+      if (date) {
+        return { date };
+      }
+    }
+    return {};
   }
 
   /**
@@ -1137,6 +1166,8 @@ function findTasks(
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   frontmatterTags: TagReference[] = [],
   personMarker?: string,
+  /** The day loose dates such as "next Friday" count from. */
+  dateAnchor?: number,
 ): Task[] {
   return lines.flatMap((line, lineIndex) => {
     if (fencedLines.has(lineIndex)) {
@@ -1167,7 +1198,7 @@ function findTasks(
     const dueDate =
       fields.due !== undefined
         ? toTaskDate(fields.due)
-        : findTaskDate(title, metadata?.updatedAt);
+        : findTaskDate(title, dateAnchor);
 
     return [
       {
@@ -1199,6 +1230,23 @@ function findTasks(
       },
     ];
   });
+}
+
+/**
+ * The day a daily note is for: a YYYY-MM-DD file name, or failing that a
+ * top-level heading that holds such a date.
+ */
+export function findDailyNoteDate(
+  filePath: string,
+  topLevelHeadings: readonly string[],
+): string | undefined {
+  const fromPath = filePath.match(/(?:^|\/)(\d{4}-\d{2}-\d{2})(?:\.md)?$/);
+  if (fromPath) {
+    return fromPath[1];
+  }
+  return topLevelHeadings
+    .map((heading) => heading.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0])
+    .find((date): date is string => date !== undefined);
 }
 
 interface TaskDate {

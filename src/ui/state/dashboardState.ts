@@ -26,7 +26,11 @@ import {
   DeckardStatsSnapshot,
 } from '../../core/types';
 
-import { extractWikiLinks, stripTags } from '../../core/markdown/parser';
+import {
+  extractWikiLinks,
+  findDailyNoteDate,
+  stripTags,
+} from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import {
   buildTagIntersectionQuery,
@@ -1879,14 +1883,12 @@ function getTaskHeadingPath(
 }
 
 function getDailyNoteDate(file: ParsedFile): string | undefined {
-  const fromPath = file.filePath.match(/(?:^|\/)(\d{4}-\d{2}-\d{2})(?:\.md)?$/);
-  if (fromPath) {
-    return fromPath[1];
-  }
-  return file.sections
-    .filter((section) => section.headingLevel === 1)
-    .map((section) => section.heading.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0])
-    .find((date): date is string => date !== undefined);
+  return findDailyNoteDate(
+    file.filePath,
+    file.sections
+      .filter((section) => section.headingLevel === 1)
+      .map((section) => section.heading),
+  );
 }
 
 function getRelevantDate(

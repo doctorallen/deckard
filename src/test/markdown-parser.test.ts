@@ -378,6 +378,38 @@ suite('Markdown parser', () => {
     );
   });
 
+  test('reads loose task dates from the day a daily note is for', () => {
+    // Saved long afterwards, as after editing an old note or cloning the
+    // repository, which must not move its dates.
+    const edited = { updatedAt: new Date(2027, 2, 3).getTime() };
+    const friday = new Date(2026, 7, 28).toDateString();
+
+    const fromName = parseMarkdown(
+      'journal/2026-08-25.md',
+      '# Planning\n- [ ] Draft the agenda next Friday\n- [ ] Book the room Sep 16',
+      edited,
+    );
+    assert.strictEqual(new Date(fromName.tasks[0].dueAt ?? 0).toDateString(), friday);
+    assert.strictEqual(new Date(fromName.tasks[1].dueAt ?? 0).getFullYear(), 2026);
+
+    const fromHeading = parseMarkdown(
+      'journal/planning.md',
+      '# 2026-08-25\n- [ ] Draft the agenda next Friday',
+      edited,
+    );
+    assert.strictEqual(new Date(fromHeading.tasks[0].dueAt ?? 0).toDateString(), friday);
+
+    const fromFrontmatter = parseMarkdown(
+      'journal/planning.md',
+      '---\ndate: 2026-08-25\n---\n# Planning\n- [ ] Draft the agenda next Friday',
+      edited,
+    );
+    assert.strictEqual(
+      new Date(fromFrontmatter.tasks[0].dueAt ?? 0).toDateString(),
+      friday,
+    );
+  });
+
   test('indexes nested sections with exact ranges and inherited task tags', () => {
     const parsed = parseMarkdown(
       'notes/investigation.md',

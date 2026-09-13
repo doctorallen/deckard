@@ -1,5 +1,4 @@
 # Fixes
-- Loose task dates such as "next Friday" or "Sep 16" are read relative to the file's modified time (`findTaskDate(title, metadata?.updatedAt)` in `src/core/markdown/parser.ts`), so editing an old note or cloning the repo moves them. Anchor a daily note on its own date, then a front-matter date, then the modified time. Created/updated sorting has the same weakness after a clone.
 - Related Notes treats almost every entry as related (356–423 of 482 in the sample notes), because word similarity alone qualifies a result, and the sidebar sends and draws them all. Require a shared tag or link, or a minimum relevance, and cap the list at about 50 with Show more. The heading count already counts only entries that share a tag.
 - CI runs only `npm test` and the VSIX build. Add `npm run test:ui` and `npm run test:e2e` to `.github/workflows/ci.yml`; neither needs a display.
 - Add a license. There is no LICENSE file or `license` field in `package.json`, and `package:vsix` passes `--skip-license`.
@@ -21,6 +20,7 @@
 - Add `.DS_Store` and `.claude/` to the repo's `.gitignore`; today only a global gitignore keeps them out.
 - Remove the stray `- [ ] do something about` task from `development/notes/2026-08-26.md`; it shows in the README screenshots.
 - Cut a release: the CHANGELOG's Unreleased section is long for version 1.8.0.
+- Created and updated dates, used for sorting and the `created` and `updated` query fields, still come from file timestamps, which a git clone resets. Consider daily-note and front-matter dates there too, as loose task dates now do.
 
 # Features
 - Quick capture and templates (`docs/improvements.md` #3): `Deckard: Capture` to add a task to today's note without leaving the editor, a templates folder with `{date}`, `{title}`, and prompted values, and a template per namespace for new hub notes.

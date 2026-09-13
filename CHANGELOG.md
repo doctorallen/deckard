@@ -167,6 +167,12 @@
 
 ### Fixed
 
+- Loose task dates such as `next Friday` or `Sep 16` count from the day the
+  note is about: a daily note's date from its file name or top heading, else a
+  `date:`, `created:`, or `updated:` front-matter date. They used to count from
+  when the file was last modified, so editing an old daily note or cloning the
+  notes moved every such date in it.
+
 - The packaged extension holds only what it runs: the bundle, its resources,
   the README, and the changelog. It no longer carries the screenshots and
   planning docs, the test and script folders, or local folders such as
