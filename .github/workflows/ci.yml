@@ -39,6 +39,12 @@ jobs:
       - name: Run automated tests
         run: xvfb-run --auto-servernum npm test
 
+      - name: Check webview pages
+        run: npm run test:ui
+
+      - name: Run end-to-end webview tests
+        run: npm run test:e2e
+
       - name: Build VSIX
         run: npm run package:vsix
 
