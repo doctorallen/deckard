@@ -513,7 +513,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "test:e2e": "npm run compile-tests && node test/e2e/run.js",
-    "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js"
+    "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.2.0",

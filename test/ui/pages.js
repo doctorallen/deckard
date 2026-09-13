@@ -1,0 +1,42 @@
+// The rendered HTML of every Deckard webview, built from the compiled sources
+// with VS Code replaced by the e2e stub. The webview checks share it, so a new
+// page is added once and every check covers it.
+const path = require('node:path');
+const { existsSync } = require('node:fs');
+
+const compiled = path.join(__dirname, '..', '..', 'out');
+if (!existsSync(compiled)) {
+  console.error('Run "npm run compile-tests" first: out/ is missing.');
+  process.exit(1);
+}
+const Module = require('node:module');
+const resolveFilename = Module._resolveFilename;
+Module._resolveFilename = function patched(request, ...rest) {
+  if (request === 'vscode') {
+    return path.join(__dirname, '..', 'e2e', 'vscodeStub.js');
+  }
+  return resolveFilename.call(this, request, ...rest);
+};
+const webview = {
+  cspSource: 'vscode-webview://deckard',
+  asWebviewUri: (uri) => ({ toString: () => 'vscode-webview://deckard/asset' }),
+};
+const pages = [
+  ['dashboard', () => require('../../out/ui/webview/dashboardHtml.js').getDashboardHtml(webview, { fsPath: '/ext' })],
+  ['tagOverview', () => require('../../out/ui/webview/tagOverviewHtml.js').getTagOverviewHtml(webview)],
+  ['sidebarNotes', () => require('../../out/ui/webview/sidebarNotesHtml.js').getSidebarNotesHtml(webview, '1.0.0')],
+  ['notesGraph', () => require('../../out/ui/webview/notesGraphHtml.js').getNotesGraphHtml(webview)],
+  ['help', () => require('../../out/ui/webview/helpHtml.js').getHelpHtml(webview, { fsPath: '/ext' })],
+  ['stats', () => require('../../out/ui/webview/statsHtml.js').getStatsHtml(webview)],
+  ['taskBoard', () => require('../../out/ui/webview/taskBoardHtml.js').getTaskBoardHtml(webview)],
+  ['relatedNotesDebug', () => require('../../out/ui/webview/relatedNotesDebugHtml.js')
+      .getRelatedNotesDebugHtml(webview, {
+        filePath: 'notes/a.md', sourceLine: 1, title: 'Entry', tags: [],
+        snapshot: {
+          activeTags: [], notes: [], tagOverviewFilters: [],
+          tagTitleDisplayMode: 'inline', state: 'ready',
+        },
+      })],
+];
+
+module.exports = { pages };
