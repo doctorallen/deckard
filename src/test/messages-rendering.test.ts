@@ -1316,7 +1316,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('note entries'), false);
     assert.strictEqual(html.includes('data-action="save-filter"'), true);
     assert.strictEqual(
-      html.includes('aria-label="Save this combined tag filter"'),
+      html.includes('aria-label="Save this view"'),
       true,
     );
     assert.strictEqual(html.includes("type: 'saveTagOverviewFilter'"), true);
@@ -1338,7 +1338,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('class="relationship-tree-group"'), true);
     assert.strictEqual(html.includes('class="relationship-node"'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), true);
-    assert.strictEqual(html.includes('const filterTags = state.filterTags'), true);
+    assert.strictEqual(
+      html.includes(
+        'state.filterTags || (state.filterTag ? [state.filterTag] : [])',
+      ),
+      true,
+    );
     assert.strictEqual(
       html.includes('function renderOverviewTagLink(tag, text)'),
       true,
