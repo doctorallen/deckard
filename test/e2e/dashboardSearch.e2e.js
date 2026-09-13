@@ -51,10 +51,11 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function openDashboard(taskLayout = 'list') {
   vscode._test.createdPanels.length = 0;
   const index = createIndex();
+  const updates = new vscode.EventEmitter();
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
-    onDidUpdate: new vscode.EventEmitter().event,
+    onDidUpdate: updates.event,
   };
   const preferences = new PreferencesStore(createGlobalState());
   await preferences.setDashboardTaskLayout(taskLayout);
@@ -77,7 +78,7 @@ async function openDashboard(taskLayout = 'list') {
     view.posted
       .filter((message) => message.type === 'setDashboardSearch' && message.field === field)
       .map((message) => message.query);
-  return { view, panel, lastState, stored };
+  return { view, panel, updates, lastState, stored };
 }
 
 const tests = [];
@@ -108,6 +109,18 @@ for (const [layout, cardSelector] of [['list', '.task-row'], ['board', '.board-c
     assert.strictEqual(view.document.activeElement, search());
   });
 }
+
+test('a hidden Dashboard skips updates and catches up when shown', async () => {
+  const { panel, updates } = await openDashboard();
+  panel._setVisible(false);
+  const before = panel._toWebview.length;
+  updates.fire();
+  updates.fire();
+  assert.strictEqual(panel._toWebview.length, before, 'nothing is drawn while hidden');
+
+  panel._setVisible(true);
+  assert.strictEqual(panel._toWebview.length, before + 1, 'showing it draws once');
+});
 
 test('typing a tag search keeps focus and text through a host update', async () => {
   const { view, panel, lastState, stored } = await openDashboard();

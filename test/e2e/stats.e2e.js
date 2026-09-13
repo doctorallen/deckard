@@ -64,10 +64,11 @@ async function openStats() {
   vscode._test.createdPanels.length = 0;
   opened.length = 0;
   const index = createIndex();
+  const updates = new vscode.EventEmitter();
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
-    onDidUpdate: new vscode.EventEmitter().event,
+    onDidUpdate: updates.event,
   };
   const preferences = new PreferencesStore(createGlobalState());
   await preferences.recordTagAccess('#project/relay');
@@ -83,7 +84,7 @@ async function openStats() {
   panel._toWebview.forEach((message) => panel._deliver(message));
   // Tags, canonical tags, then note entries, in page order.
   const rows = () => view.findAll('.stat-row');
-  return { view, index, preferences, openedTags, rows };
+  return { view, panel, updates, index, preferences, openedTags, rows };
 }
 
 const tests = [];
@@ -139,6 +140,20 @@ test('clicking a most-viewed note entry opens its note and counts the view', asy
   });
   assert.deepStrictEqual(opened, ['/notes/relay.md']);
   assert.strictEqual(preferences.value.sectionAccessCounts[section.id], before + 1);
+});
+
+test('a hidden Stats page skips updates and catches up when shown', async () => {
+  const { panel, updates, index } = await openStats();
+  panel._setVisible(false);
+  const before = panel._toWebview.length;
+  index.tags.clear();
+  updates.fire(index);
+  updates.fire(index);
+  assert.strictEqual(panel._toWebview.length, before, 'nothing is drawn while hidden');
+
+  panel._setVisible(true);
+  assert.strictEqual(panel._toWebview.length, before + 1, 'showing the page draws it once');
+  assert.deepStrictEqual(panel._toWebview[before].data.tagViews, [], 'with the newest data');
 });
 
 test('a row the index no longer has opens nothing', async () => {

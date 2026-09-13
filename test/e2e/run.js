@@ -19,6 +19,7 @@ const suites = [
   'dashboardSearch.e2e.js',
   'stats.e2e.js',
   'sidebarNotes.e2e.js',
+  'editorDecorations.e2e.js',
 ];
 
 const compiled = path.join(__dirname, '..', '..', 'out');
