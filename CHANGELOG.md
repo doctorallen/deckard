@@ -176,6 +176,11 @@
 
 ### Fixed
 
+- Opening Related Notes on an entry from its count or its hover works in a
+  note with unsaved changes. The entry was looked up by its line in the saved
+  note, so after lines were added above it Deckard asked to save first. It is
+  now found by its title, and among entries sharing a title by their order.
+
 - Loose task dates such as `next Friday` or `Sep 16` count from the day the
   note is about: a daily note's date from its file name or top heading, else a
   `date:`, `created:`, or `updated:` front-matter date. They used to count from

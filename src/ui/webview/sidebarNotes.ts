@@ -167,16 +167,21 @@ export class SidebarNotesView
     const index = this.indexer.getSnapshot();
     const filePath = this.indexer.getFilePath(documentUri);
     const file = index.files.get(filePath);
-    const entry = file && findTaggedEntry(file, sourceLine);
-    if (!file || !entry) {
+    const savedLine =
+      file && this.resolveSavedEntryLine(documentUri, sourceLine, file);
+    const entry =
+      file && savedLine !== undefined
+        ? findTaggedEntry(file, savedLine)
+        : undefined;
+    if (!file || savedLine === undefined || !entry) {
       void vscode.window.showWarningMessage(
-        'Deckard could not find that tagged note entry. Save the file and try again.',
+        'Deckard could not find that tagged entry in the saved note. Save the file and try again.',
       );
       return;
     }
 
     this.graphContext = undefined;
-    this.entryContext = { filePath, sourceLine, source: 'manual' };
+    this.entryContext = { filePath, sourceLine: savedLine, source: 'manual' };
     this.suppressAutomaticEntrySelection = false;
     await vscode.commands.executeCommand('workbench.view.extension.deckard');
     this.view?.show(true);
@@ -203,6 +208,29 @@ export class SidebarNotesView
     this.refresh();
   }
 
+  /**
+   * Where an entry the editor names sits in the saved note. Related Notes
+   * ranks saved notes, but a count or hover in an unsaved note names a line
+   * in the text as it is now, where lines may have moved since the save.
+   */
+  private resolveSavedEntryLine(
+    documentUri: vscode.Uri,
+    sourceLine: number,
+    savedFile: ParsedFile,
+  ): number | undefined {
+    const document = vscode.workspace.textDocuments.find(
+      (candidate) => candidate.uri.toString() === documentUri.toString(),
+    );
+    if (!document?.isDirty) {
+      return sourceLine;
+    }
+    return findMatchingEntryLine(
+      this.indexer.parse(documentUri, document.getText()),
+      sourceLine,
+      savedFile,
+    );
+  }
+
   public async getEntryDiagnostic(
     documentUri: vscode.Uri,
     sourceLine: number,
@@ -211,14 +239,19 @@ export class SidebarNotesView
     const index = this.indexer.getSnapshot();
     const filePath = this.indexer.getFilePath(documentUri);
     const file = index.files.get(filePath);
-    const entryScope = file && createEntryScope(file, sourceLine);
-    if (!file || !entryScope) {
+    const savedLine =
+      file && this.resolveSavedEntryLine(documentUri, sourceLine, file);
+    const entryScope =
+      file && savedLine !== undefined
+        ? createEntryScope(file, savedLine)
+        : undefined;
+    if (!file || savedLine === undefined || !entryScope) {
       return undefined;
     }
 
     return {
       filePath,
-      sourceLine,
+      sourceLine: savedLine,
       title: getEntryTitle(entryScope.file) ?? 'Selected note',
       tags: [...entryScope.tagWeights.entries()].map(([key, weight]) => ({
         key,
@@ -665,6 +698,52 @@ function getEntryStartLine(
   entry: NonNullable<ReturnType<typeof findTaggedEntry>>,
 ): number {
   return 'heading' in entry ? entry.startLine : entry.lineNumber;
+}
+
+/**
+ * The saved line of the tagged entry at `liveLine` in a note's unsaved text,
+ * or undefined when the saved note has no such entry, as when its title was
+ * changed and not yet saved.
+ *
+ * The entry is found again by its title, and among entries sharing a title by
+ * its position, so the second "## Next" in the editor is the second one saved
+ * even when lines above both have moved.
+ */
+export function findMatchingEntryLine(
+  liveFile: ParsedFile,
+  liveLine: number,
+  savedFile: ParsedFile,
+): number | undefined {
+  const liveEntry = findTaggedEntry(liveFile, liveLine);
+  if (!liveEntry) {
+    return undefined;
+  }
+  const liveStart = getEntryStartLine(liveEntry);
+  const pick = (liveLines: number[], savedLines: number[]) => {
+    const tagged = savedLines.filter(
+      (line) => findTaggedEntry(savedFile, line) !== undefined,
+    );
+    const occurrence = liveLines.filter((line) => line < liveStart).length;
+    return tagged[Math.min(occurrence, tagged.length - 1)];
+  };
+  if ('heading' in liveEntry) {
+    const sameTitle = (sections: Section[]) =>
+      sections
+        .filter(
+          (section) =>
+            section.heading === liveEntry.heading &&
+            Boolean(section.isInline) === Boolean(liveEntry.isInline),
+        )
+        .map((section) => section.startLine)
+        .sort((left, right) => left - right);
+    return pick(sameTitle(liveFile.sections), sameTitle(savedFile.sections));
+  }
+  const sameTitle = (file: ParsedFile) =>
+    file.tasks
+      .filter((task) => task.title === liveEntry.title)
+      .map((task) => task.lineNumber)
+      .sort((left, right) => left - right);
+  return pick(sameTitle(liveFile), sameTitle(savedFile));
 }
 
 export function createEntryScope(
