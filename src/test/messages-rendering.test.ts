@@ -28,7 +28,10 @@ suite('Webview contracts', () => {
     });
 
     assertWebviewScriptParses(html);
-    assert.strictEqual(html.includes('Each note or task joins one primary tag community'), true);
+    assert.strictEqual(
+      html.includes('The graph uses prevalence-aware visual communities'),
+      true,
+    );
     assert.strictEqual(
       html.includes('var targetClusterSize = Math.max(3, Math.sqrt(sourceCount))'),
       true,
@@ -38,6 +41,90 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('var clusterGravity ='), true);
     assert.strictEqual(html.includes('id="show-notes" checked'), true);
     assert.strictEqual(html.includes("node.kind === 'note' && !settings.showNotes"), true);
+    assert.strictEqual(html.includes('id="link-density"'), true);
+    assert.strictEqual(html.includes('id="tag-specificity"'), true);
+    assert.strictEqual(html.includes('id="bridge-strength"'), true);
+    assert.strictEqual(html.includes('id="cluster-cohesion"'), true);
+    assert.strictEqual(html.includes('id="community-spacing"'), true);
+    assert.strictEqual(html.includes('id="show-all-links"'), true);
+    assert.strictEqual(html.includes('id="reset-graph-settings"'), true);
+    assert.strictEqual(
+      html.includes('title="Filter note, task, and tag titles and file paths."'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('title="Show tag nodes and tag links; hidden tags still guide clustering."'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('title="Choose how many of each node\'s strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections."'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage."'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('title="Set the target length of visible links; larger values spread connected nodes farther apart."'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('title="Restore all graph controls and filters, clear node momentum, and reframe the graph."'),
+      true,
+    );
+    [
+      'search',
+      'show-notes',
+      'show-tasks',
+      'show-tags',
+      'show-orphans',
+      'tag-search',
+      'clear-tags',
+      'node-size',
+      'link-thickness',
+      'link-density',
+      'tag-specificity',
+      'bridge-strength',
+      'show-all-links',
+      'label-threshold',
+      'center-strength',
+      'cluster-cohesion',
+      'community-spacing',
+      'repel-strength',
+      'link-strength',
+      'link-distance',
+      'zoom-out',
+      'zoom-in',
+      'zoom-fit',
+      'reset-graph-settings',
+    ].forEach((id) => {
+      assert.strictEqual(new RegExp(`id="${id}"[^>]*title="[^"]+"`).test(html), true);
+    });
+    assert.strictEqual(html.includes('class="graph-zoom-controls"'), true);
+    assert.strictEqual(
+      html.indexOf('id="reset-graph-settings"') >
+        html.indexOf('class="graph-zoom-controls"'),
+      true,
+    );
+    assert.strictEqual(html.includes('function resetGraphSettings()'), true);
+    assert.strictEqual(
+      html.includes("input[type='search']::-webkit-search-cancel-button { cursor: pointer; }"),
+      true,
+    );
+    assert.strictEqual(html.includes('vx.fill(0);'), true);
+    assert.strictEqual(html.includes('vy.fill(0);'), true);
+    assert.strictEqual(html.includes('reheat(1);'), true);
+    assert.strictEqual(html.includes('function selectSalientEdges('), true);
+    assert.strictEqual(html.includes('function tagMembershipScore('), true);
+    assert.strictEqual(html.includes('function buildCommunities('), true);
+    assert.strictEqual(html.includes('function isPhysicalNode('), true);
+    assert.strictEqual(html.includes('function tickCommunityAnchors('), true);
+    assert.strictEqual(html.includes('communityEdges = communityData.edges'), true);
+    assert.strictEqual(html.includes('strong links / '), true);
     assert.strictEqual(html.includes("message.type === 'selectNode'"), true);
     assert.strictEqual(html.includes('selectedNeighbors[index]'), true);
   });

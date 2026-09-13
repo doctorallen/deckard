@@ -25,6 +25,13 @@ const viewConfiguration = {
     renderedAssertion:
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Dashboard' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
   },
+  'notes-graph': {
+    command: 'deckard.showNotesGraph',
+    output: 'docs/images/notes-graph.png',
+    title: 'Notes Graph',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Notes Graph' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#graph')) && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.overlay'))",
+  },
   'related-notes': {
     command: 'workbench.view.extension.deckard',
     output: 'docs/images/related-notes.png',
@@ -69,7 +76,7 @@ const extensions = mkdtempSync(
   join(tmpdir(), 'deckard-screenshot-extensions-'),
 );
 const companion = mkdtempSync(join(tmpdir(), 'deckard-screenshot-companion-'));
-const candidate = join(tmpdir(), `deckard-dashboard-${Date.now()}.png`);
+const candidate = join(tmpdir(), `deckard-${view}-${Date.now()}.png`);
 let portOwner;
 let succeeded = false;
 

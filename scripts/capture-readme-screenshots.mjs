@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
-const views = ['dashboard', 'related-notes', 'tag-overview', 'help'];
+const views = [
+  'dashboard',
+  'related-notes',
+  'tag-overview',
+  'help',
+  'notes-graph',
+];
 const themesSource = readFileSync(
   resolve(repositoryRoot, 'src/ui/webview/themes.ts'),
   'utf8',

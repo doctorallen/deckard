@@ -65,6 +65,7 @@ input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); 
 input[type='checkbox'] { accent-color: var(--amber-bright); }
 .toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: 11px var(--font-mono); cursor: pointer; }
 .graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: 11px var(--font-mono); }
+input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); outline: none; }
 .tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
 .tag-list .toggle-row { padding: 2px 4px; font-size: 10px; }
@@ -74,11 +75,14 @@ input[type='checkbox'] { accent-color: var(--amber-bright); }
 .relationship-note { margin: 0; color: var(--muted); font: 10px/1.45 var(--font-mono); }
 .clear-tags { align-self: flex-start; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 10px var(--font-mono); text-transform: uppercase; cursor: pointer; }
 .clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); outline: none; }
-.zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: inline-flex; }
+.graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.zoom-controls { display: inline-flex; }
 .zoom-controls button { min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
 .zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); outline: none; position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: 10px var(--font-mono); }
+.reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 10px var(--font-mono); text-transform: uppercase; cursor: pointer; }
+.reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); outline: none; }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
 .tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
@@ -95,46 +99,56 @@ ${getDeckardThemeCss(getDeckardTheme())}
   <details class="control-group" open>
     <summary>Filters</summary>
     <div class="control-body">
-      <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes">
-      <label class="toggle-row"><input type="checkbox" id="show-notes" checked> Show notes</label>
-      <label class="toggle-row"><input type="checkbox" id="show-tasks" checked> Show tasks</label>
-      <label class="toggle-row"><input type="checkbox" id="show-tags"> Show tags</label>
-      <label class="toggle-row"><input type="checkbox" id="show-orphans" checked> Show orphans</label>
-      <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist">
+      <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" title="Filter note, task, and tag titles and file paths.">
+      <label class="toggle-row" title="Show or hide note nodes and their visible links."><input type="checkbox" id="show-notes" checked title="Show or hide note nodes and their visible links."> Show notes</label>
+      <label class="toggle-row" title="Show or hide task nodes and their visible links."><input type="checkbox" id="show-tasks" checked title="Show or hide task nodes and their visible links."> Show tasks</label>
+      <label class="toggle-row" title="Show tag nodes and tag links; hidden tags still guide clustering."><input type="checkbox" id="show-tags" title="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
+      <label class="toggle-row" title="Show nodes with no currently visible connections."><input type="checkbox" id="show-orphans" checked title="Show nodes with no currently visible connections."> Show orphans</label>
+      <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" title="Narrow the tag checklist without changing the graph.">
       <div class="tag-list" id="tag-list" role="group" aria-label="Tag filters"></div>
-      <button class="clear-tags" id="clear-tags" type="button">Clear tag filters</button>
+      <button class="clear-tags" id="clear-tags" type="button" title="Remove all selected tag filters.">Clear tag filters</button>
     </div>
   </details>
   <details class="control-group">
     <summary>Display</summary>
     <div class="control-body">
-      <div class="control-row"><label for="node-size">Node size</label><div class="slider-line"><input type="range" id="node-size" min="0.5" max="3" step="0.1" value="1"><output id="node-size-out">1.0</output></div></div>
-      <div class="control-row"><label for="link-thickness">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" min="0.5" max="3" step="0.1" value="1"><output id="link-thickness-out">1.0</output></div></div>
-      <div class="control-row"><label for="label-threshold">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" min="0.5" max="4" step="0.1" value="1.4"><output id="label-threshold-out">1.4</output></div></div>
+      <div class="control-row"><label for="node-size" title="Scale node circles; larger nodes make highly connected items easier to spot.">Node size</label><div class="slider-line"><input type="range" id="node-size" min="0.5" max="3" step="0.1" value="1" title="Scale node circles; larger nodes make highly connected items easier to spot."><output id="node-size-out">1.0</output></div></div>
+      <div class="control-row"><label for="link-thickness" title="Scale the width of visible edges.">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" min="0.5" max="3" step="0.1" value="1" title="Scale the width of visible edges."><output id="link-thickness-out">1.0</output></div></div>
+      <div class="control-row"><label for="link-density" title="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections.">Connection density</label><div class="slider-line"><input type="range" id="link-density" min="0.15" max="1" step="0.05" value="0.3" title="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections."><output id="link-density-out">0.30</output></div></div>
+      <div class="control-row"><label for="tag-specificity" title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage.">Tag prevalence bias</label><div class="slider-line"><input type="range" id="tag-specificity" min="0" max="1" step="0.05" value="0.9" title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage."><output id="tag-specificity-out">0.90</output></div></div>
+      <div class="control-row"><label for="bridge-strength" title="Control how strongly secondary tags and tag associations bridge different communities.">Secondary bridge strength</label><div class="slider-line"><input type="range" id="bridge-strength" min="0" max="1" step="0.05" value="0.15" title="Control how strongly secondary tags and tag associations bridge different communities."><output id="bridge-strength-out">0.15</output></div></div>
+      <label class="toggle-row" title="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."><input type="checkbox" id="show-all-links" title="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."> Show all links (comparison)</label>
+      <div class="control-row"><label for="label-threshold" title="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer.">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" min="0.5" max="4" step="0.1" value="1.4" title="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer."><output id="label-threshold-out">1.4</output></div></div>
     </div>
   </details>
   <details class="control-group">
     <summary>Forces</summary>
     <div class="control-body">
-      <div class="control-row"><label for="center-strength">Cluster centering</label><div class="slider-line"><input type="range" id="center-strength" min="0" max="1" step="0.05" value="0.4"><output id="center-strength-out">0.40</output></div></div>
-      <div class="control-row"><label for="repel-strength">Repel strength</label><div class="slider-line"><input type="range" id="repel-strength" min="50" max="2000" step="25" value="400"><output id="repel-strength-out">400</output></div></div>
-      <div class="control-row"><label for="link-strength">Link strength</label><div class="slider-line"><input type="range" id="link-strength" min="0" max="2" step="0.05" value="1"><output id="link-strength-out">1.00</output></div></div>
-      <div class="control-row"><label for="link-distance">Link distance</label><div class="slider-line"><input type="range" id="link-distance" min="10" max="200" step="5" value="40"><output id="link-distance-out">40</output></div></div>
+      <div class="control-row"><label for="center-strength" title="Pull community anchors gently toward the center of the viewport.">Cluster centering</label><div class="slider-line"><input type="range" id="center-strength" min="0" max="1" step="0.05" value="0.4" title="Pull community anchors gently toward the center of the viewport."><output id="center-strength-out">0.40</output></div></div>
+      <div class="control-row"><label for="cluster-cohesion" title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor.">Cluster cohesion</label><div class="slider-line"><input type="range" id="cluster-cohesion" min="0.5" max="3" step="0.1" value="1.5" title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."><output id="cluster-cohesion-out">1.5</output></div></div>
+      <div class="control-row"><label for="community-spacing" title="Increase or reduce the distance between detected communities; changing it recomputes the layout framing.">Community spacing</label><div class="slider-line"><input type="range" id="community-spacing" min="0.6" max="2.5" step="0.1" value="1.2" title="Increase or reduce the distance between detected communities; changing it recomputes the layout framing."><output id="community-spacing-out">1.2</output></div></div>
+      <div class="control-row"><label for="repel-strength" title="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart.">Repel strength</label><div class="slider-line"><input type="range" id="repel-strength" min="50" max="2000" step="25" value="220" title="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart."><output id="repel-strength-out">220</output></div></div>
+      <div class="control-row"><label for="link-strength" title="Increase or reduce the spring force along visible links.">Link strength</label><div class="slider-line"><input type="range" id="link-strength" min="0" max="2" step="0.05" value="1" title="Increase or reduce the spring force along visible links."><output id="link-strength-out">1.00</output></div></div>
+      <div class="control-row"><label for="link-distance" title="Set the target length of visible links; larger values spread connected nodes farther apart.">Link distance</label><div class="slider-line"><input type="range" id="link-distance" min="10" max="200" step="5" value="32" title="Set the target length of visible links; larger values spread connected nodes farther apart."><output id="link-distance-out">32</output></div></div>
     </div>
   </details>
   <details class="control-group">
     <summary>Relationships</summary>
     <div class="control-body">
-      <p class="relationship-note">Each note or task joins one primary tag community, chosen to avoid both one-off and workspace-wide tags. Stronger local gravity makes those communities distinct; secondary tags still provide lighter bridges. Enable Show tags to reveal membership and learned tag-association links.</p>
+      <p class="relationship-note">The graph uses prevalence-aware visual communities: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
+      <p class="relationship-note">Connection density controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
       <p class="relationship-note">Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p>
     </div>
   </details>
 </div>
-<div class="zoom-controls" role="group" aria-label="Zoom controls">
-  <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
-  <span class="zoom-readout" id="zoom-readout">100%</span>
-  <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
-  <button type="button" id="zoom-fit" aria-label="Fit graph to view">Fit</button>
+<div class="graph-zoom-controls">
+  <div class="zoom-controls" role="group" aria-label="Zoom controls">
+    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">−</button>
+    <span class="zoom-readout" id="zoom-readout">100%</span>
+    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">+</button>
+    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit</button>
+  </div>
+  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph settings</button>
 </div>
 <div class="status-line"><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>
@@ -176,11 +190,17 @@ ${getDeckardThemeCss(getDeckardTheme())}
     search: '',
     nodeSize: 1,
     linkThickness: 1,
+    linkDensity: 0.3,
+    tagSpecificity: 0.9,
+    bridgeStrength: 0.15,
+    showAllLinks: false,
     labelThreshold: 1.4,
     centerStrength: 0.4,
-    repelStrength: 400,
+    clusterCohesion: 1.5,
+    communitySpacing: 1.2,
+    repelStrength: 220,
     linkStrength: 1,
-    linkDistance: 40
+    linkDistance: 32
   };
   var saved = vscode.getState() || {};
   var settings = {};
@@ -205,6 +225,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
   var degrees;                  // per-node visible edge counts
   var primaryTag;               // note/task index -> strongest cluster anchor
   var primaryClusterSize;       // tag index -> assigned note/task count
+  var communityId;              // node index -> visual community index
+  var communitySizes = [];
+  var communityAnchorX = new Float32Array(0);
+  var communityAnchorY = new Float32Array(0);
+  var communityVx = new Float32Array(0);
+  var communityVy = new Float32Array(0);
+  var tagOffsetX = new Float32Array(0);
+  var tagOffsetY = new Float32Array(0);
+  var communityEdges = [];
+  var communityCount = 0;
   var alpha = 0;
   var alphaDecay = 0.0228;
   var alphaMin = 0.005;
@@ -232,11 +262,13 @@ ${getDeckardThemeCss(getDeckardTheme())}
   var selectedNeighbors = {};
 
   // ---- view construction ------------------------------------------------
-  function rebuildView() {
+  function rebuildView(repositionCommunities) {
     if (!snapshot) { return; }
     var previous = {};
-    for (var p = 0; p < nodes.length; p += 1) {
-      previous[nodes[p].id] = { x: px[p], y: py[p], vx: vx[p], vy: vy[p] };
+    if (!repositionCommunities) {
+      for (var p = 0; p < nodes.length; p += 1) {
+        previous[nodes[p].id] = { x: px[p], y: py[p], vx: vx[p], vy: vy[p] };
+      }
     }
 
     var candidate = snapshot.nodes.filter(function (node) {
@@ -247,10 +279,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
     var candidateIndex = {};
     candidate.forEach(function (node, index) { candidateIndex[node.id] = index; });
 
-    var candidateEdges = snapshot.edges.filter(function (edge) {
+    var allCandidateEdges = snapshot.edges.filter(function (edge) {
       return candidateIndex[edge.source] !== undefined &&
         candidateIndex[edge.target] !== undefined;
     });
+    var candidateEdges = settings.showAllLinks
+      ? allCandidateEdges
+      : selectSalientEdges(
+      candidate,
+      allCandidateEdges,
+      settings.linkDensity,
+      settings.tagSpecificity,
+      settings.bridgeStrength
+    );
 
     var connected = {};
     candidateEdges.forEach(function (edge) {
@@ -299,6 +340,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     primaryClusterSize = new Uint32Array(count);
     var memberships = [];
     var membershipCount = new Uint32Array(count);
+    var clusteringEdges = allCandidateEdges.filter(function (edge) {
+      return candidateIndex[edge.source] !== undefined &&
+        candidateIndex[edge.target] !== undefined;
+    });
     for (var a = 0; a < count; a += 1) { adjacency.push([]); }
     for (var pTag = 0; pTag < count; pTag += 1) {
       primaryTag[pTag] = -1;
@@ -309,9 +354,17 @@ ${getDeckardThemeCss(getDeckardTheme())}
       degrees[edge.b] += 1;
       adjacency[edge.a].push(edge.b);
       adjacency[edge.b].push(edge.a);
+    });
+    clusteringEdges.forEach(function (edge) {
+      if (candidateIndex[edge.source] === undefined ||
+          candidateIndex[edge.target] === undefined) {
+        return;
+      }
+      var clusterA = candidateIndex[edge.source];
+      var clusterB = candidateIndex[edge.target];
       if (edge.types.indexOf('tag-membership') !== -1) {
-        var noteIndex = nodes[edge.a].kind === 'tag' ? edge.b : edge.a;
-        var tagIndex = nodes[edge.a].kind === 'tag' ? edge.a : edge.b;
+        var noteIndex = nodes[clusterA].kind === 'tag' ? clusterB : clusterA;
+        var tagIndex = nodes[clusterA].kind === 'tag' ? clusterA : clusterB;
         memberships[noteIndex].push({ tagIndex: tagIndex, weight: edge.weight });
         membershipCount[tagIndex] += 1;
       }
@@ -340,30 +393,104 @@ ${getDeckardThemeCss(getDeckardTheme())}
       primaryTag[memberIndex] = bestMembership.tagIndex;
       primaryClusterSize[bestMembership.tagIndex] += 1;
     }
+    var communityData = buildCommunities(
+      nodes,
+      clusteringEdges,
+      memberships,
+      membershipCount,
+      primaryTag
+    );
+    communityId = communityData.ids;
+    communitySizes = communityData.sizes;
+    communityEdges = communityData.edges;
+    communityCount = communitySizes.length;
+    communityAnchorX = new Float32Array(communityCount);
+    communityAnchorY = new Float32Array(communityCount);
+    communityVx = new Float32Array(communityCount);
+    communityVy = new Float32Array(communityCount);
+    tagOffsetX = new Float32Array(count);
+    tagOffsetY = new Float32Array(count);
+    var previousCommunityCenters = [];
+    var previousCommunityCounts = [];
+    for (var previousCommunity = 0; previousCommunity < communityCount; previousCommunity += 1) {
+      previousCommunityCenters.push({ x: 0, y: 0 });
+      previousCommunityCounts.push(0);
+    }
+    if (!repositionCommunities) {
+      for (var previousNode = 0; previousNode < count; previousNode += 1) {
+        var previousPosition = previous[nodes[previousNode].id];
+        var previousCommunityId = communityId[previousNode];
+        if (!previousPosition || previousCommunityId < 0) { continue; }
+        previousCommunityCenters[previousCommunityId].x += previousPosition.x;
+        previousCommunityCenters[previousCommunityId].y += previousPosition.y;
+        previousCommunityCounts[previousCommunityId] += 1;
+      }
+    }
+    for (var community = 0; community < communityCount; community += 1) {
+      if (previousCommunityCounts[community] > 0) {
+        communityAnchorX[community] =
+          previousCommunityCenters[community].x / previousCommunityCounts[community];
+        communityAnchorY[community] =
+          previousCommunityCenters[community].y / previousCommunityCounts[community];
+        continue;
+      }
+      var communityRadius = 150 * settings.communitySpacing *
+        Math.sqrt(community + 1);
+      var communityAngle = community * 2.39996322972865332;
+      communityAnchorX[community] = communityRadius * Math.cos(communityAngle);
+      communityAnchorY[community] = communityRadius * Math.sin(communityAngle);
+    }
     var reusedAny = false;
     var retained = {};
-    var primaryTagOrdinal = 0;
-    var auxiliaryTagOrdinal = 0;
+    var communityMemberOrdinal = [];
+    var communityTagOrdinal = [];
+    for (var communityOrdinal = 0; communityOrdinal < communityCount; communityOrdinal += 1) {
+      communityMemberOrdinal.push(0);
+      communityTagOrdinal.push(0);
+    }
     for (var i = 0; i < count; i += 1) {
+      if (nodes[i].kind === 'tag') {
+        var tagCommunity = communityId[i];
+        if (tagCommunity >= 0) {
+          var tagOrdinal = communityTagOrdinal[tagCommunity]++;
+          var tagRadius = 18 + 5 * Math.sqrt(tagOrdinal + 1);
+          var tagAngle = tagOrdinal * 2.39996322972865332;
+          tagOffsetX[i] = tagRadius * Math.cos(tagAngle);
+          tagOffsetY[i] = tagRadius * Math.sin(tagAngle);
+          px[i] = communityAnchorX[tagCommunity] + tagOffsetX[i];
+          py[i] = communityAnchorY[tagCommunity] + tagOffsetY[i];
+        } else {
+          px[i] = 0;
+          py[i] = 0;
+        }
+        vx[i] = 0;
+        vy[i] = 0;
+        continue;
+      }
       var kept = previous[nodes[i].id];
       if (kept) {
         px[i] = kept.x; py[i] = kept.y; vx[i] = kept.vx; vy[i] = kept.vy;
         retained[i] = true;
         reusedAny = true;
-      } else if (nodes[i].kind === 'tag') {
-        var isPrimaryAnchor = primaryClusterSize[i] > 0;
-        var tagOrdinal = isPrimaryAnchor
-          ? primaryTagOrdinal++
-          : auxiliaryTagOrdinal++;
-        // Primary anchors start far apart; secondary tags begin nearer the
-        // center and are pulled toward their associated communities.
-        var spacing = isPrimaryAnchor ? 100 : 24;
-        var radius = spacing * Math.sqrt(tagOrdinal);
-        var angle = tagOrdinal * 2.39996322972865332;
-        px[i] = radius * Math.cos(angle);
-        py[i] = radius * Math.sin(angle);
-        vx[i] = 0; vy[i] = 0;
+        continue;
       }
+      var nodeCommunity = communityId[i];
+      if (nodeCommunity >= 0) {
+        var localOrdinal = communityMemberOrdinal[nodeCommunity]++;
+        var localAngle = localOrdinal * 2.39996322972865332;
+        var localRadius = 14 + 4 * Math.sqrt(localOrdinal + 1);
+        px[i] = communityAnchorX[nodeCommunity] +
+          localRadius * Math.cos(localAngle);
+        py[i] = communityAnchorY[nodeCommunity] +
+          localRadius * Math.sin(localAngle);
+      } else {
+        var orphanRadius = 30 * Math.sqrt(i + 1);
+        var orphanAngle = i * 2.39996322972865332;
+        px[i] = orphanRadius * Math.cos(orphanAngle);
+        py[i] = orphanRadius * Math.sin(orphanAngle);
+      }
+      vx[i] = 0;
+      vy[i] = 0;
     }
     for (var sourceIndex = 0; sourceIndex < count; sourceIndex += 1) {
       if (retained[sourceIndex] || nodes[sourceIndex].kind === 'tag') {
@@ -425,10 +552,416 @@ ${getDeckardThemeCss(getDeckardTheme())}
         if (selected[tagKey]) { tagMatchSet[index] = true; }
         return;
       }
+
       for (var t = 0; t < node.tagKeys.length; t += 1) {
         if (selected[node.tagKeys[t]]) { tagMatchSet[index] = true; return; }
       }
     });
+  }
+
+  // Build visual communities without changing the indexed graph. Primary tag
+  // labels provide deterministic seeds, then structural links and specific
+  // tag evidence merge those seeds through a few bounded label-propagation
+  // passes. Generic tags have bounded influence through their prevalence score.
+  function buildCommunities(
+    candidateNodes,
+    analyticalEdges,
+    memberships,
+    membershipCount,
+    primaryTags
+  ) {
+    var count = candidateNodes.length;
+    var directNeighbors = [];
+    var tagMembers = {};
+    var candidateIndexById = {};
+    var sourceCount = candidateNodes.filter(function (node) {
+      return node.kind !== 'tag';
+    }).length;
+    var targetClusterSize = Math.max(3, Math.sqrt(sourceCount));
+    for (var index = 0; index < count; index += 1) {
+      candidateIndexById[candidateNodes[index].id] = index;
+      directNeighbors.push([]);
+      if (candidateNodes[index].kind !== 'tag') {
+        memberships[index].forEach(function (membership) {
+          (tagMembers[membership.tagIndex] ||
+            (tagMembers[membership.tagIndex] = [])).push({
+            nodeIndex: index,
+            weight: membership.weight
+          });
+        });
+      }
+    }
+    analyticalEdges.forEach(function (edge) {
+      var sourceIndex = candidateIndexById[edge.source];
+      var targetIndex = candidateIndexById[edge.target];
+      var source = sourceIndex === undefined ? null : candidateNodes[sourceIndex];
+      var target = targetIndex === undefined ? null : candidateNodes[targetIndex];
+      if (!source || !target ||
+          source.kind === 'tag' || target.kind === 'tag') {
+        return;
+      }
+      var weight = 0.6;
+      if (edge.types.indexOf('wiki-link') !== -1) { weight += 3.5; }
+      if (edge.types.indexOf('heading') !== -1) { weight += 1.5; }
+      directNeighbors[sourceIndex].push({
+        index: targetIndex,
+        weight: weight
+      });
+      directNeighbors[targetIndex].push({
+        index: sourceIndex,
+        weight: weight
+      });
+    });
+
+    var labels = new Int32Array(count);
+    for (var seed = 0; seed < count; seed += 1) {
+      labels[seed] = candidateNodes[seed].kind === 'tag'
+        ? -1
+        : primaryTags[seed] >= 0 ? primaryTags[seed] : count + seed;
+    }
+
+    function chooseTagLabels(currentLabels) {
+      var tagLabels = {};
+      Object.keys(tagMembers).forEach(function (tagKey) {
+        var scores = {};
+        tagMembers[tagKey].forEach(function (member) {
+          var label = currentLabels[member.nodeIndex];
+          if (label < 0) { return; }
+          var evidence = tagMembershipScore(
+            member.weight,
+            membershipCount[Number(tagKey)] || 1,
+            targetClusterSize,
+            settings.tagSpecificity
+          );
+          var labelKey = String(label);
+          scores[labelKey] = (scores[labelKey] || 0) + evidence;
+        });
+        var bestLabel = -1;
+        var bestScore = -Infinity;
+        Object.keys(scores).forEach(function (labelKey) {
+          var label = Number(labelKey);
+          var score = scores[labelKey];
+          if (score > bestScore ||
+              score === bestScore && (bestLabel < 0 || label < bestLabel)) {
+            bestLabel = label;
+            bestScore = score;
+          }
+        });
+        tagLabels[tagKey] = bestLabel;
+      });
+      return tagLabels;
+    }
+
+    for (var pass = 0; pass < 5; pass += 1) {
+      var tagLabels = chooseTagLabels(labels);
+      var nextLabels = new Int32Array(labels);
+      for (var nodeIndex = 0; nodeIndex < count; nodeIndex += 1) {
+        if (candidateNodes[nodeIndex].kind === 'tag') { continue; }
+        var scores = {};
+        var currentLabel = labels[nodeIndex];
+        scores[String(currentLabel)] = 0.15;
+        directNeighbors[nodeIndex].forEach(function (neighbor) {
+          var neighborLabel = labels[neighbor.index];
+          if (neighborLabel < 0) { return; }
+          var neighborKey = String(neighborLabel);
+          scores[neighborKey] = (scores[neighborKey] || 0) + neighbor.weight;
+        });
+        memberships[nodeIndex].forEach(function (membership) {
+          var tagLabel = tagLabels[membership.tagIndex];
+          if (tagLabel === undefined || tagLabel < 0) { return; }
+          var membershipEvidence = tagMembershipScore(
+            membership.weight,
+            membershipCount[membership.tagIndex] || 1,
+            targetClusterSize,
+            settings.tagSpecificity
+          );
+          membershipEvidence *= primaryTags[nodeIndex] === membership.tagIndex
+            ? 1.25
+            : 0.45;
+          var tagLabelKey = String(tagLabel);
+          scores[tagLabelKey] = (scores[tagLabelKey] || 0) + membershipEvidence;
+        });
+        var bestLabel = currentLabel;
+        var bestScore = scores[String(currentLabel)] || 0;
+        Object.keys(scores).forEach(function (labelKey) {
+          var label = Number(labelKey);
+          var score = scores[labelKey];
+          if (score > bestScore ||
+              score === bestScore && label < bestLabel) {
+            bestLabel = label;
+            bestScore = score;
+          }
+        });
+        nextLabels[nodeIndex] = bestLabel;
+      }
+      labels = nextLabels;
+    }
+
+    var labelKeys = {};
+    for (var labeled = 0; labeled < count; labeled += 1) {
+      if (candidateNodes[labeled].kind !== 'tag') {
+        labelKeys[String(labels[labeled])] = true;
+      }
+    }
+    var sortedLabels = Object.keys(labelKeys).map(function (value) {
+      return Number(value);
+    }).sort(function (left, right) { return left - right; });
+    var labelToCommunity = {};
+    sortedLabels.forEach(function (label, community) {
+      labelToCommunity[String(label)] = community;
+    });
+    var ids = new Int32Array(count);
+    for (var idIndex = 0; idIndex < count; idIndex += 1) { ids[idIndex] = -1; }
+    var sizes = [];
+    sortedLabels.forEach(function () { sizes.push(0); });
+    for (var assigned = 0; assigned < count; assigned += 1) {
+      if (candidateNodes[assigned].kind === 'tag') { continue; }
+      var assignedCommunity = labelToCommunity[String(labels[assigned])];
+      ids[assigned] = assignedCommunity;
+      sizes[assignedCommunity] += 1;
+    }
+
+    Object.keys(tagMembers).forEach(function (tagKey) {
+      var communityScores = {};
+      tagMembers[tagKey].forEach(function (member) {
+        var memberCommunity = ids[member.nodeIndex];
+        if (memberCommunity < 0) { return; }
+        var score = tagMembershipScore(
+          member.weight,
+          membershipCount[Number(tagKey)] || 1,
+          targetClusterSize,
+          settings.tagSpecificity
+        );
+        communityScores[String(memberCommunity)] =
+          (communityScores[String(memberCommunity)] || 0) + score;
+      });
+      var bestCommunity = -1;
+      var bestCommunityScore = -Infinity;
+      Object.keys(communityScores).forEach(function (communityKey) {
+        var community = Number(communityKey);
+        var score = communityScores[communityKey];
+        if (score > bestCommunityScore ||
+            score === bestCommunityScore &&
+            (bestCommunity < 0 || community < bestCommunity)) {
+          bestCommunity = community;
+          bestCommunityScore = score;
+        }
+      });
+      var tagIndex = Number(tagKey);
+      if (tagIndex >= 0 && tagIndex < count) {
+        ids[tagIndex] = bestCommunity;
+      }
+    });
+    var communityEdgeWeights = {};
+    analyticalEdges.forEach(function (edge) {
+      var sourceIndex = candidateIndexById[edge.source];
+      var targetIndex = candidateIndexById[edge.target];
+      if (sourceIndex === undefined || targetIndex === undefined ||
+          candidateNodes[sourceIndex].kind === 'tag' ||
+          candidateNodes[targetIndex].kind === 'tag') {
+        return;
+      }
+      var sourceCommunity = ids[sourceIndex];
+      var targetCommunity = ids[targetIndex];
+      if (sourceCommunity < 0 || targetCommunity < 0 ||
+          sourceCommunity === targetCommunity) {
+        return;
+      }
+      var edgeWeight = 0.6;
+      if (edge.types.indexOf('wiki-link') !== -1) { edgeWeight += 3.5; }
+      if (edge.types.indexOf('heading') !== -1) { edgeWeight += 1.5; }
+      var low = Math.min(sourceCommunity, targetCommunity);
+      var high = Math.max(sourceCommunity, targetCommunity);
+      var key = low + ':' + high;
+      communityEdgeWeights[key] = (communityEdgeWeights[key] || 0) + edgeWeight;
+    });
+    var edges = Object.keys(communityEdgeWeights).map(function (key) {
+      var parts = key.split(':');
+      return {
+        a: Number(parts[0]),
+        b: Number(parts[1]),
+        weight: communityEdgeWeights[key]
+      };
+    });
+    return { ids: ids, sizes: sizes, edges: edges };
+  }
+
+  function selectSalientEdges(
+    candidateNodes,
+    allEdges,
+    density,
+    specificity,
+    bridgeStrength
+  ) {
+    var nodeById = {};
+    candidateNodes.forEach(function (node) { nodeById[node.id] = node; });
+    var memberCountByTag = {};
+    var sourceCount = candidateNodes.filter(function (node) {
+      return node.kind !== 'tag';
+    }).length;
+    var targetClusterSize = Math.max(3, Math.sqrt(sourceCount));
+    allEdges.forEach(function (edge) {
+      if (edge.types.indexOf('tag-membership') === -1) { return; }
+      var tagId = nodeById[edge.source].kind === 'tag'
+        ? edge.source
+        : edge.target;
+      var tagKey = tagId.slice(4);
+      memberCountByTag[tagKey] = (memberCountByTag[tagKey] || 0) + 1;
+    });
+    var primaryTagByNode = {};
+    var membershipsByNode = {};
+    allEdges.forEach(function (edge) {
+      if (edge.types.indexOf('tag-membership') === -1) { return; }
+      var noteId = nodeById[edge.source].kind === 'tag'
+        ? edge.target
+        : edge.source;
+      var tagId = nodeById[edge.source].kind === 'tag'
+        ? edge.source
+        : edge.target;
+      (membershipsByNode[noteId] || (membershipsByNode[noteId] = []))
+        .push({ edge: edge, tagId: tagId });
+    });
+    Object.keys(membershipsByNode).forEach(function (nodeId) {
+      membershipsByNode[nodeId].sort(function (left, right) {
+        return tagMembershipScore(
+          right.edge.weight,
+          memberCountByTag[right.tagId.slice(4)] || 1,
+          targetClusterSize,
+          specificity
+        ) - tagMembershipScore(
+          left.edge.weight,
+          memberCountByTag[left.tagId.slice(4)] || 1,
+          targetClusterSize,
+          specificity
+        ) || left.tagId.localeCompare(right.tagId);
+      });
+      primaryTagByNode[nodeId] = membershipsByNode[nodeId][0].tagId;
+    });
+
+    var scored = allEdges.map(function (edge) {
+      return {
+        edge: edge,
+        score: graphEdgeSalience(
+          edge,
+          nodeById,
+          memberCountByTag,
+          targetClusterSize,
+          primaryTagByNode,
+          bridgeStrength,
+          specificity
+        )
+      };
+    });
+    var incident = {};
+    scored.forEach(function (item) {
+      [item.edge.source, item.edge.target].forEach(function (nodeId) {
+        (incident[nodeId] || (incident[nodeId] = [])).push(item);
+      });
+    });
+
+    var clampedDensity = Math.max(
+      0.15,
+      Math.min(1, finiteNumber(density, 0.45))
+    );
+    var selectedByNode = {};
+    Object.keys(incident).forEach(function (nodeId) {
+      var node = nodeById[nodeId];
+      var tagCount = node.kind === 'tag'
+        ? memberCountByTag[nodeId.slice(4)] || 1
+        : 0;
+      var budget = node.kind === 'tag'
+        ? Math.max(
+          8,
+          Math.round(5 + Math.sqrt(tagCount) * (1 + clampedDensity * 2))
+        )
+        : Math.max(3, Math.round(3 + clampedDensity * 7));
+      incident[nodeId].sort(function (left, right) {
+        return right.score - left.score ||
+          left.edge.id.localeCompare(right.edge.id);
+      });
+      selectedByNode[nodeId] = {};
+      incident[nodeId].slice(0, budget).forEach(function (item) {
+        selectedByNode[nodeId][item.edge.id] = true;
+      });
+    });
+
+    var minimumScore = 0.06 + (1 - clampedDensity) * 0.1;
+    return scored
+      .filter(function (item) {
+        if (item.score < minimumScore) { return false; }
+        var edge = item.edge;
+        var selectedA = selectedByNode[edge.source] &&
+          selectedByNode[edge.source][edge.id];
+        var selectedB = selectedByNode[edge.target] &&
+          selectedByNode[edge.target][edge.id];
+        var hasTagRelationship =
+          edge.types.indexOf('tag-membership') !== -1 ||
+          edge.types.indexOf('associated-tag') !== -1;
+        return hasTagRelationship
+          ? selectedA && selectedB
+          : selectedA || selectedB;
+      })
+      .map(function (item) { return item.edge; });
+  }
+
+  function tagMembershipScore(weight, memberCount, targetClusterSize, specificity) {
+    var fit = memberCount > 1
+      ? 1 / (1 + Math.abs(Math.log(memberCount / targetClusterSize)))
+      : 0.05;
+    var support = memberCount > 1
+      ? Math.min(
+        1,
+        Math.log1p(memberCount) / Math.log1p(targetClusterSize)
+      )
+      : 0.05;
+    var exponent = 0.5 + unitValue(specificity, 0.75) * 2.5;
+    return weight * Math.pow(fit, exponent) * support * 3;
+  }
+
+  function graphEdgeSalience(
+    edge,
+    nodeById,
+    memberCountByTag,
+    targetClusterSize,
+    primaryTagByNode,
+    bridgeStrength,
+    specificity
+  ) {
+    var score = 0;
+    if (edge.types.indexOf('wiki-link') !== -1) { score += 2.5; }
+    if (edge.types.indexOf('heading') !== -1) { score += 0.9; }
+    if (edge.types.indexOf('associated-tag') !== -1) {
+      score += (0.25 + Math.min(0.75, edge.weight)) *
+        unitValue(bridgeStrength, 0.25);
+    }
+    if (edge.types.indexOf('tag-membership') !== -1) {
+      var noteId = nodeById[edge.source].kind === 'tag'
+        ? edge.target
+        : edge.source;
+      var tagId = nodeById[edge.source].kind === 'tag'
+        ? edge.source
+        : edge.target;
+      var memberCount = memberCountByTag[tagId.slice(4)] || 1;
+      var membershipScore = tagMembershipScore(
+        edge.weight,
+        memberCount,
+        targetClusterSize,
+        specificity
+      );
+      var isPrimary = primaryTagByNode[noteId] === tagId;
+      var bridge = unitValue(bridgeStrength, 0.25);
+      score += isPrimary ? membershipScore : membershipScore * bridge;
+    }
+    return score;
+  }
+
+  function finiteNumber(value, fallback) {
+    var number = Number(value);
+    return isFinite(number) ? number : fallback;
+  }
+
+  function unitValue(value, fallback) {
+    return Math.max(0, Math.min(1, finiteNumber(value, fallback)));
   }
 
   function isDimmed(index) {
@@ -478,22 +1011,97 @@ ${getDeckardThemeCss(getDeckardTheme())}
       selectedNeighbors[index];
   }
 
+  function isPhysicalNode(index) {
+    return nodes[index].kind !== 'tag';
+  }
+
   // ---- simulation -------------------------------------------------------
+  function tickCommunityAnchors() {
+    if (communityCount === 0) { return; }
+    var macroStrength = Math.max(0.25, settings.linkStrength) *
+      0.035 * alpha;
+    var macroDistance = settings.linkDistance *
+      (3 + settings.communitySpacing);
+    communityEdges.forEach(function (edge) {
+      var dx = communityAnchorX[edge.b] - communityAnchorX[edge.a];
+      var dy = communityAnchorY[edge.b] - communityAnchorY[edge.a];
+      var distance = Math.sqrt(dx * dx + dy * dy) || 1e-6;
+      var strength = macroStrength * Math.min(1, edge.weight / 6);
+      var delta = (distance - macroDistance) / distance * strength;
+      communityVx[edge.b] -= dx * delta;
+      communityVy[edge.b] -= dy * delta;
+      communityVx[edge.a] += dx * delta;
+      communityVy[edge.a] += dy * delta;
+    });
+
+    // Community anchors are few compared with graph nodes. A bounded
+    // pairwise pass keeps nearby communities separated while large graphs
+    // retain their deterministic spiral spacing without an O(n^2) fallback.
+    if (communityCount <= 384) {
+      for (var left = 0; left < communityCount; left += 1) {
+        for (var right = left + 1; right < communityCount; right += 1) {
+          var separationX = communityAnchorX[right] - communityAnchorX[left];
+          var separationY = communityAnchorY[right] - communityAnchorY[left];
+          var separation = Math.sqrt(
+            separationX * separationX + separationY * separationY
+          ) || 1e-6;
+          var desiredSeparation = 90 * settings.communitySpacing +
+            3 * (
+              Math.sqrt(communitySizes[left]) +
+              Math.sqrt(communitySizes[right])
+            );
+          if (separation >= desiredSeparation) { continue; }
+          var separationForce = (desiredSeparation - separation) /
+            separation * 0.025 * alpha;
+          communityVx[right] += separationX * separationForce;
+          communityVy[right] += separationY * separationForce;
+          communityVx[left] -= separationX * separationForce;
+          communityVy[left] -= separationY * separationForce;
+        }
+      }
+    }
+
+    var center = settings.centerStrength * 0.0008 * alpha;
+    for (var community = 0; community < communityCount; community += 1) {
+      communityVx[community] -= communityAnchorX[community] * center;
+      communityVy[community] -= communityAnchorY[community] * center;
+      communityVx[community] *= 0.75;
+      communityVy[community] *= 0.75;
+      communityAnchorX[community] += communityVx[community];
+      communityAnchorY[community] += communityVy[community];
+    }
+    for (var tag = 0; tag < nodes.length; tag += 1) {
+      if (nodes[tag].kind !== 'tag') { continue; }
+      var tagCommunity = communityId[tag];
+      if (tagCommunity >= 0) {
+        px[tag] = communityAnchorX[tagCommunity] + tagOffsetX[tag];
+        py[tag] = communityAnchorY[tagCommunity] + tagOffsetY[tag];
+      }
+      vx[tag] = 0;
+      vy[tag] = 0;
+    }
+  }
+
   function tick() {
     var count = nodes.length;
     if (count === 0) { return; }
+
+    tickCommunityAnchors();
 
     // Link springs, degree-biased like d3-force so hubs move less.
     var linkDistance = settings.linkDistance;
     for (var e = 0; e < edges.length; e += 1) {
       var edge = edges[e];
+      var isMembership = edge.types.indexOf('tag-membership') !== -1;
+      var isAssociation = edge.types.indexOf('associated-tag') !== -1;
+      if (!settings.showTags && (isMembership || isAssociation)) {
+        continue;
+      }
       var dx = (px[edge.b] + vx[edge.b]) - (px[edge.a] + vx[edge.a]);
       var dy = (py[edge.b] + vy[edge.b]) - (py[edge.a] + vy[edge.a]);
       var distance = Math.sqrt(dx * dx + dy * dy) || 1e-6;
       var minDegree = Math.min(degrees[edge.a], degrees[edge.b]) || 1;
       var strength = settings.linkStrength * Math.min(1, edge.weight) / minDegree;
-      var isMembership = edge.types.indexOf('tag-membership') !== -1;
-      var isAssociation = edge.types.indexOf('associated-tag') !== -1;
       var desiredDistance = linkDistance;
       if (isMembership) {
         var membershipNote = nodes[edge.a].kind === 'tag' ? edge.b : edge.a;
@@ -517,20 +1125,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
 
     applyRepulsion();
 
-    // Each note/task has one deterministic primary tag community. This
-    // explicit gravity creates dense islands even when secondary tags bridge
-    // many otherwise distinct communities.
-    var clusterGravity = Math.max(0.25, settings.linkStrength) * 0.02 * alpha;
+    // Virtual community anchors keep hidden tags from becoming high-mass
+    // particles while still pulling each note/task into a compact island.
+    var clusterGravity = Math.max(0.25, settings.linkStrength) *
+      settings.clusterCohesion * 0.035 * alpha;
     for (var clustered = 0; clustered < count; clustered += 1) {
-      var anchor = primaryTag[clustered];
-      if (anchor < 0 || clustered === dragIndex) { continue; }
-      var clusterDx = px[anchor] - px[clustered];
-      var clusterDy = py[anchor] - py[clustered];
+      if (nodes[clustered].kind === 'tag' || clustered === dragIndex) {
+        continue;
+      }
+      var community = communityId[clustered];
+      if (community < 0) { continue; }
+      var clusterDx = communityAnchorX[community] - px[clustered];
+      var clusterDy = communityAnchorY[community] - py[clustered];
       vx[clustered] += clusterDx * clusterGravity;
       vy[clustered] += clusterDy * clusterGravity;
-      var anchorResponse = 0.04 / Math.max(1, primaryClusterSize[anchor]);
-      vx[anchor] -= clusterDx * clusterGravity * anchorResponse;
-      vy[anchor] -= clusterDy * clusterGravity * anchorResponse;
     }
 
     // Tags are cluster anchors. Center only those anchors (plus truly
@@ -538,6 +1146,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
     // collapsing into one global sun.
     var center = settings.centerStrength * 0.006 * alpha;
     for (var i = 0; i < count; i += 1) {
+      if (nodes[i].kind === 'tag') {
+        var tagCommunity = communityId[i];
+        if (tagCommunity >= 0) {
+          px[i] = communityAnchorX[tagCommunity] + tagOffsetX[i];
+          py[i] = communityAnchorY[tagCommunity] + tagOffsetY[i];
+        }
+        vx[i] = 0;
+        vy[i] = 0;
+        continue;
+      }
       var centerScale = nodes[i].kind === 'tag'
         ? 1
         : nodes[i].tagKeys.length === 0 ? 0.2 : 0;
@@ -558,14 +1176,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
   // Barnes-Hut approximation: build a quadtree each tick and treat far cells
   // as single point charges (theta = 0.9).
   function applyRepulsion() {
-    var count = nodes.length;
-    if (count < 2) { return; }
+    var physicalIndices = [];
+    for (var physical = 0; physical < nodes.length; physical += 1) {
+      if (isPhysicalNode(physical)) { physicalIndices.push(physical); }
+    }
+    if (physicalIndices.length < 2) { return; }
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (var i = 0; i < count; i += 1) {
-      if (px[i] < minX) { minX = px[i]; }
-      if (px[i] > maxX) { maxX = px[i]; }
-      if (py[i] < minY) { minY = py[i]; }
-      if (py[i] > maxY) { maxY = py[i]; }
+    for (var i = 0; i < physicalIndices.length; i += 1) {
+      var physicalIndex = physicalIndices[i];
+      if (px[physicalIndex] < minX) { minX = px[physicalIndex]; }
+      if (px[physicalIndex] > maxX) { maxX = px[physicalIndex]; }
+      if (py[physicalIndex] < minY) { minY = py[physicalIndex]; }
+      if (py[physicalIndex] > maxY) { maxY = py[physicalIndex]; }
     }
     var size = Math.max(maxX - minX, maxY - minY) || 1;
 
@@ -576,7 +1198,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     function nodeMass(index) {
       if (nodes[index].kind !== 'tag') { return 1; }
       return primaryClusterSize[index] > 0
-        ? 3 + Math.min(8, Math.sqrt(primaryClusterSize[index]))
+        ? 2 + Math.min(4, Math.sqrt(primaryClusterSize[index]))
         : 0.35;
     }
 
@@ -629,7 +1251,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
       insert(child, index);
     }
 
-    for (var n = 0; n < count; n += 1) { insert(root, n); }
+    for (var n = 0; n < physicalIndices.length; n += 1) {
+      insert(root, physicalIndices[n]);
+    }
 
     var theta2 = 0.81;
     var repel = settings.repelStrength;
@@ -648,7 +1272,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         }
         if (dist2 < 16) { dist2 = 16; }
         var targetCharge = nodes[index].kind === 'tag'
-          ? primaryClusterSize[index] > 0 ? 2.5 : 0.5
+          ? primaryClusterSize[index] > 0 ? 1.5 : 0.5
           : 1;
         var force = repel * cell.mass * targetCharge * alpha / dist2;
         var dist = Math.sqrt(dist2);
@@ -662,8 +1286,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
       applyCell(cell.children[3], index);
     }
 
-    for (var target = 0; target < count; target += 1) {
-      applyCell(root, target);
+    for (var target = 0; target < physicalIndices.length; target += 1) {
+      applyCell(root, physicalIndices[target]);
     }
   }
 
@@ -815,7 +1439,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
       return isRendered(edge.a) && isRendered(edge.b);
     }).length;
     statusCounts.textContent = snapshot.totalNoteCount + ' notes · ' +
-      snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount + ' visible links';
+      snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount +
+      ' strong links / ' + snapshot.edges.length + ' indexed · ' +
+      communityCount + ' communities';
   }
 
   // ---- frame loop -------------------------------------------------------
@@ -1096,6 +1722,58 @@ ${getDeckardThemeCss(getDeckardTheme())}
   bindToggle('show-tasks', 'showTasks', true);
   bindToggle('show-tags', 'showTags', true);
   bindToggle('show-orphans', 'showOrphans', true);
+  bindToggle('show-all-links', 'showAllLinks', true);
+
+  function resetGraphSettings() {
+    Object.keys(defaults).forEach(function (key) {
+      settings[key] = Array.isArray(defaults[key])
+        ? defaults[key].slice()
+        : defaults[key];
+    });
+    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-all-links']
+      .forEach(function (id) {
+        var key = id.replace(/-([a-z])/g, function (_, letter) {
+          return letter.toUpperCase();
+        });
+        document.getElementById(id).checked = settings[key];
+      });
+    [
+      ['node-size', 'nodeSize', 1],
+      ['link-thickness', 'linkThickness', 1],
+      ['link-density', 'linkDensity', 2],
+      ['tag-specificity', 'tagSpecificity', 2],
+      ['bridge-strength', 'bridgeStrength', 2],
+      ['label-threshold', 'labelThreshold', 1],
+      ['center-strength', 'centerStrength', 2],
+      ['cluster-cohesion', 'clusterCohesion', 1],
+      ['community-spacing', 'communitySpacing', 1],
+      ['repel-strength', 'repelStrength', 0],
+      ['link-strength', 'linkStrength', 2],
+      ['link-distance', 'linkDistance', 0]
+    ].forEach(function (definition) {
+      var input = document.getElementById(definition[0]);
+      input.value = String(settings[definition[1]]);
+      document.getElementById(definition[0] + '-out').textContent =
+        Number(settings[definition[1]]).toFixed(definition[2]);
+    });
+    searchInput.value = settings.search;
+    tagSearchInput.value = '';
+    window.clearTimeout(searchTimer);
+    camera = { x: 0, y: 0, k: 1 };
+    hasFramed = false;
+    persist();
+    renderTagList();
+    rebuildView(true);
+    if (vx && vy) {
+      vx.fill(0);
+      vy.fill(0);
+    }
+    reheat(1);
+  }
+  document.getElementById('reset-graph-settings').addEventListener(
+    'click',
+    resetGraphSettings
+  );
 
   function bindSlider(id, key, decimals, onChange) {
     var element = document.getElementById(id);
@@ -1111,8 +1789,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
   bindSlider('node-size', 'nodeSize', 1, scheduleFrame);
   bindSlider('link-thickness', 'linkThickness', 1, scheduleFrame);
+  bindSlider('link-density', 'linkDensity', 2, rebuildView);
+  bindSlider('tag-specificity', 'tagSpecificity', 2, rebuildView);
+  bindSlider('bridge-strength', 'bridgeStrength', 2, rebuildView);
   bindSlider('label-threshold', 'labelThreshold', 1, scheduleFrame);
   bindSlider('center-strength', 'centerStrength', 2, function () { reheat(0.5); });
+  bindSlider('cluster-cohesion', 'clusterCohesion', 1, function () { reheat(0.5); });
+  bindSlider('community-spacing', 'communitySpacing', 1, function () {
+    hasFramed = false;
+    rebuildView(true);
+  });
   bindSlider('repel-strength', 'repelStrength', 0, function () { reheat(0.5); });
   bindSlider('link-strength', 'linkStrength', 2, function () { reheat(0.5); });
   bindSlider('link-distance', 'linkDistance', 0, function () { reheat(0.5); });
@@ -1152,8 +1838,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
       shown += 1;
       var row = document.createElement('label');
       row.className = 'toggle-row';
+      row.title = 'Filter to nodes carrying the ' + label + ' tag.';
       var checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
+      checkbox.title = row.title;
       checkbox.checked = Boolean(selected[key]);
       checkbox.addEventListener('change', function () {
         var next = settings.selectedTags.filter(function (item) { return item !== key; });
