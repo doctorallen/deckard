@@ -53,6 +53,8 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .eyebrow { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--amber); font-size: 10px; letter-spacing: .15em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .version { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
+.graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
+.graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
@@ -100,6 +102,10 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button { color: var(--text); }
 .active-file .tag-list button { color: var(--text); }
+.graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: 9px var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
+.graph-kind.task { color: var(--amber); }
+.graph-kind.tag { color: var(--green); }
+.graph-tag-pill { margin-left: 0; color: var(--text); }
 .sidebar-relationships { margin-top: 8px; overflow: visible; border: 2px solid var(--line); background: var(--panel-deep); }
 .sidebar-relationships-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 8px; border-bottom: 2px solid var(--line); }
 .sidebar-relationships-title { color: var(--amber); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
@@ -342,13 +348,57 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return rendered + escapeHtml(title.slice(offset)) + trailingTags;
   }
 
+  /** Shared shell for Related Notes and graph-connected node cards. */
+  function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
+    return '<article class="note ' + className + '" tabindex="0" ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
+  }
+
+  function renderGraphConnections(graph) {
+    if (!graph.selectedNode) {
+      return '<div class="empty">Select a graph node to inspect its connections.</div>';
+    }
+    if (!graph.connections.length) {
+      return '<div class="empty">This graph node has no direct connections.</div>';
+    }
+    return '<div class="note-list">' + graph.connections.map(function (connection) {
+      const node = connection.node;
+      const title = node.kind === 'tag'
+        ? '<span class="inline-tag graph-tag-pill">' + renderTagLabel(node.title) + '</span>'
+        : escapeHtml(node.title);
+      const kind = '<span class="graph-kind ' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
+      const source = node.filePath
+        ? escapeHtml(node.filePath.split('/').pop() || node.filePath) + ' / line ' + node.line
+        : 'Tag node';
+      const relationships = connection.types.map(function (type) {
+        return type.replaceAll('-', ' ');
+      }).join(' · ');
+      return renderNoteCard(
+        'graph-node',
+        'data-node-id="' + escapeHtml(node.id) + '"',
+        title,
+        kind,
+        '<div class="source">' + source + '</div>',
+        '<div class="source">' + escapeHtml(relationships) + '</div>'
+      );
+    }).join('') + '</div>';
+  }
+
+  function renderSelectedGraphNode(node) {
+    const title = node.kind === 'tag'
+      ? '<span class="inline-tag graph-tag-pill">' + renderTagLabel(node.title) + '</span>'
+      : escapeHtml(node.title);
+    return '<button type="button" class="active-file graph-selected-node" data-action="open-selected-graph-node" data-node-id="' + escapeHtml(node.id) + '" aria-label="Open selected ' + escapeHtml(node.kind) + ': ' + escapeHtml(node.title) + '"><span class="active-label">Selected graph node · open</span><span class="active-name">' + title + '</span></button>';
+  }
+
   /** Render explicit empty states so the sidebar explains why no notes appear. */
   function render() {
     if (!state) return;
     closeTagContextMenu();
     const tagOverviewFilters = state.tagOverviewFilters || (state.tagOverviewFilter ? [state.tagOverviewFilter] : []);
     let content;
-    if (state.state === 'noMarkdown') {
+    if (state.state === 'graph') {
+      content = renderGraphConnections(state.graph);
+    } else if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
     } else if (state.state === 'noTags') {
       content = '<div class="empty">This note has no tags yet.</div>';
@@ -398,24 +448,37 @@ ${getDeckardThemeCss(getDeckardTheme())}
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
-        return '<article class="note" tabindex="0" data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + relevance + '</div><div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div></article>';
+        return renderNoteCard(
+          '',
+          'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
+          titleHtml,
+          relevance,
+          '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
+          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+        );
       }).join('') + '</div>';
     }
     const activeTags = state.activeTags.length
       ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>'
       : '';
-    const context = state.tagOverview
+    const context = state.state === 'graph'
+      ? (state.graph.selectedNode
+        ? renderSelectedGraphNode(state.graph.selectedNode)
+        : '<div class="active-file"><div class="active-label">Notes Graph</div><div class="active-name">Connected nodes</div></div>')
+      : state.tagOverview
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
         ? [state.tagOverview].concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('<span class="active-filter-joiner"> AND </span>')
         : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
-    const relatedNotesSort = !state.tagOverview && state.relatedNotesSortMode
+    const relatedNotesSort = state.state !== 'graph' && !state.tagOverview && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
-    const sectionLabel = state.tagOverview
+    const sectionLabel = state.state === 'graph'
+      ? '<span class="section-label">Connected nodes</span>'
+      : state.tagOverview
       ? '<span class="section-label">Current notes</span>'
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
-    const relationshipTree = state.tagOverview ? renderSidebarRelationships(state) : '';
+    const relationshipTree = state.state !== 'graph' && state.tagOverview ? renderSidebarRelationships(state) : '';
     document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
   }
 
@@ -465,26 +528,49 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });
       if (target.dataset.action === 'open-notes-graph') vscode.postMessage({ type: 'openNotesGraph' });
+      if (target.dataset.action === 'open-selected-graph-node') {
+        vscode.postMessage({
+          type: 'activateNotesGraphNode',
+          nodeId: target.dataset.nodeId,
+          open: true
+        });
+      }
       if (target.dataset.action === 'create-daily-note') vscode.postMessage({ type: 'createDailyNote' });
       if (target.dataset.action === 'clear-entry-related-notes') vscode.postMessage({ type: 'clearEntryRelatedNotes' });
+      return;
+    }
+    const graphNode = event.target.closest('.graph-node');
+    if (graphNode) {
+      vscode.postMessage({
+        type: 'activateNotesGraphNode',
+        nodeId: graphNode.dataset.nodeId,
+        open: event.metaKey || event.ctrlKey
+      });
       return;
     }
     const note = event.target.closest('.note');
     if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
   });
   document.addEventListener('pointerover', function (event) {
+    const graphNode = event.target.closest('.graph-node');
+    if (graphNode && !graphNode.contains(event.relatedTarget)) {
+      vscode.postMessage({
+        type: 'hoverNotesGraphNode',
+        nodeId: graphNode.dataset.nodeId
+      });
+      return;
+    }
     const note = event.target.closest('.note');
     if (!note || note.contains(event.relatedTarget)) return;
-    vscode.postMessage({
-      type: 'hoverNotesGraphSource',
-      filePath: note.dataset.filePath,
-      line: Number(note.dataset.line)
-    });
   });
   document.addEventListener('pointerout', function (event) {
+    const graphNode = event.target.closest('.graph-node');
+    if (graphNode && !graphNode.contains(event.relatedTarget)) {
+      vscode.postMessage({ type: 'hoverNotesGraphNode' });
+      return;
+    }
     const note = event.target.closest('.note');
     if (!note || note.contains(event.relatedTarget)) return;
-    vscode.postMessage({ type: 'clearNotesGraphSourceHover' });
   });
   document.addEventListener('contextmenu', function (event) {
     const target = event.target.closest('[data-action="open-tag"][data-tag-key]');
@@ -497,6 +583,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     if (event.target.closest('[data-action]')) return;
+    const graphNode = event.target.closest('.graph-node');
+    if (graphNode) {
+      event.preventDefault();
+      vscode.postMessage({
+        type: 'activateNotesGraphNode',
+        nodeId: graphNode.dataset.nodeId,
+        open: event.metaKey || event.ctrlKey
+      });
+      return;
+    }
     const note = event.target.closest('.note');
     if (note) {
       event.preventDefault();

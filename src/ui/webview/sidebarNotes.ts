@@ -7,9 +7,9 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   ParsedFile,
   Section,
+  SidebarGraphContext,
   SidebarNotesSnapshot,
   SidebarMessage,
-  SourceLocation,
   TagReference,
   TagTitleDisplayMode,
 } from '../../core/types';
@@ -39,6 +39,7 @@ export class SidebarNotesView
   private view: vscode.WebviewView | undefined;
   private viewDisposables: vscode.Disposable[] = [];
   private entryContext: EntryContext | undefined;
+  private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
 
   public constructor(
@@ -162,6 +163,7 @@ export class SidebarNotesView
       return;
     }
 
+    this.graphContext = undefined;
     this.entryContext = { filePath, sourceLine, source: 'manual' };
     this.suppressAutomaticEntrySelection = false;
     await vscode.commands.executeCommand('workbench.view.extension.deckard');
@@ -169,33 +171,24 @@ export class SidebarNotesView
     this.refresh();
   }
 
-  /**
-   * Shows graph connections for a canonical source, using entry scope when
-   * available and otherwise falling back to the complete indexed file.
-   */
-  public async showRelatedNotesForIndexedSource(
-    filePath: string,
-    sourceLine: number,
-  ): Promise<SourceLocation[]> {
-    await this.indexer.ready;
-    const file = this.indexer.getSnapshot().files.get(filePath);
-    if (!file) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not find that graph note. Save the file and try again.',
-      );
-      return [];
+  public async showGraphConnections(
+    context: SidebarGraphContext,
+    reveal = false,
+  ): Promise<void> {
+    this.graphContext = context;
+    if (reveal) {
+      await vscode.commands.executeCommand('workbench.view.extension.deckard');
+      this.view?.show(true);
     }
+    this.refresh();
+  }
 
-    this.entryContext = { filePath, sourceLine, source: 'manual' };
-    this.suppressAutomaticEntrySelection = false;
-    await vscode.commands.executeCommand('workbench.view.extension.deckard');
-    this.view?.show(true);
-    const snapshot = this.createSnapshot();
-    this.refresh(snapshot);
-    return snapshot.notes.map((note) => ({
-      filePath: note.filePath,
-      line: note.sourceLine,
-    }));
+  public clearGraphConnections(): void {
+    if (!this.graphContext) {
+      return;
+    }
+    this.graphContext = undefined;
+    this.refresh();
   }
 
   public async getEntryDiagnostic(
@@ -287,6 +280,16 @@ export class SidebarNotesView
    */
   private createSnapshot() {
     const index = this.indexer.getSnapshot();
+    if (this.graphContext) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagOverviewFilters: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        graph: this.graphContext,
+        state: 'graph' as const,
+      };
+    }
     const activeTagKey = this.tagOverview.getActiveTagKey();
     const activeTagFilterKeys = this.tagOverview.getActiveTagFilterKeys();
     if (activeTagKey) {
@@ -469,17 +472,18 @@ export class SidebarNotesView
       await vscode.commands.executeCommand('deckard.showNotesGraph');
       return;
     }
-    if (message.type === 'hoverNotesGraphSource') {
+    if (message.type === 'activateNotesGraphNode') {
       await vscode.commands.executeCommand(
-        'deckard.highlightNotesGraphSource',
-        message.filePath,
-        message.line,
+        'deckard.activateNotesGraphNode',
+        message.nodeId,
+        message.open,
       );
       return;
     }
-    if (message.type === 'clearNotesGraphSourceHover') {
+    if (message.type === 'hoverNotesGraphNode') {
       await vscode.commands.executeCommand(
-        'deckard.highlightNotesGraphSource',
+        'deckard.highlightNotesGraphNode',
+        message.nodeId,
       );
       return;
     }

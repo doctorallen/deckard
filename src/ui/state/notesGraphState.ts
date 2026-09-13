@@ -1,6 +1,7 @@
 import {
   NotesGraphEdge,
   NotesGraphEdgeType,
+  NotesGraphConnection,
   NotesGraphNode,
   NotesGraphSnapshot,
   Section,
@@ -70,6 +71,37 @@ export function createNotesGraphSnapshot(
     totalTaskCount: sources.filter((source) => source.node.kind === 'task')
       .length,
   };
+}
+
+export function createNotesGraphConnections(
+  snapshot: NotesGraphSnapshot,
+  nodeId: string,
+): NotesGraphConnection[] {
+  const nodesById = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  if (!nodesById.has(nodeId)) {
+    return [];
+  }
+
+  return snapshot.edges
+    .flatMap((edge) => {
+      const connectedId =
+        edge.source === nodeId
+          ? edge.target
+          : edge.target === nodeId
+            ? edge.source
+            : undefined;
+      const node = connectedId ? nodesById.get(connectedId) : undefined;
+      return node
+        ? [{ node, weight: edge.weight, types: [...edge.types] }]
+        : [];
+    })
+    .sort(
+      (left, right) =>
+        right.weight - left.weight ||
+        compareNodeKinds(left.node.kind, right.node.kind) ||
+        left.node.title.localeCompare(right.node.title) ||
+        left.node.id.localeCompare(right.node.id),
+    );
 }
 
 function createGraphSources(index: WorkspaceIndex): GraphSource[] {
@@ -424,5 +456,13 @@ function compareEdgeTypes(
     'associated-tag',
     'tag-membership',
   ];
+  return order.indexOf(left) - order.indexOf(right);
+}
+
+function compareNodeKinds(
+  left: NotesGraphNode['kind'],
+  right: NotesGraphNode['kind'],
+): number {
+  const order: NotesGraphNode['kind'][] = ['note', 'task', 'tag'];
   return order.indexOf(left) - order.indexOf(right);
 }

@@ -140,14 +140,15 @@ Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, ta
 
 ## Notes Graph
 
-Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in Related Notes, to see the whole workspace as a zoomable force-directed map. Notes and tasks appear as dots sized by connection count. Specific tags act as stronger hidden gravity anchors than common tags, while related tag anchors attract one another, producing visible communities without drawing a dense web between every pair of notes. The view starts zoomed out over the full graph and stays smooth with thousands of nodes.
+Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in Related Notes, to see the whole workspace as a zoomable force-directed map. Notes and tasks appear as dots sized by connection count. Each joins a primary tag community chosen to avoid both one-off and workspace-wide tags; stronger local gravity and separated tag anchors make those communities visibly distinct. Secondary tags and related tag anchors still provide lighter bridges without drawing a dense web between every pair of notes. The view starts zoomed out over the full graph and stays smooth with thousands of nodes.
 
 - Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
-- Hover a dot to highlight its structural neighbors and see its source location. Select a note or task dot to overlay the exact top results from Deckard's Related Notes ranking and show them in the sidebar. This includes shared and associated tags, Wiki links, section-scoped lexical similarity, and optional recency; hovering a sidebar result highlights its corresponding graph node. Cmd/Ctrl-click a graph dot to jump to its exact source line, or Cmd/Ctrl-click a tag dot to open that tag's overview. Select empty space to clear the selection.
-- **Filters** searches titles and paths, restricts the view to selected tags, and toggles tasks, tag nodes (off by default), and orphan nodes.
+- Hover a dot to highlight its direct graph neighbors and see its source location. Select any note, task, or tag dot to list those connected nodes in the sidebar using the same note-card and tag styling as the rest of Deckard. Select the current node at the top of the sidebar to open its note/task source or tag overview. Select a connected sidebar item to move the graph selection; Cmd/Ctrl-click it to open that item instead. Cmd/Ctrl-clicking a graph dot opens the same destination, and selecting empty space clears the selection.
+- **Filters** searches titles and paths, restricts the view to selected tags, and independently toggles notes, tasks, tag nodes (off by default), and orphan nodes.
 - **Display** adjusts node size, link thickness, and the zoom level at which labels appear.
 - **Forces** tunes the layout with cluster centering, repel strength, link strength, and link distance; changes re-run the simulation live.
 - The graph is read-only: it never changes tags, associations, or your Markdown sources, and control choices persist per panel.
+- The sidebar switches to **Connected nodes** only while the Notes Graph tab is active. Returning to a Markdown editor restores the normal Related Notes ranking.
 
 ## Related Notes
 

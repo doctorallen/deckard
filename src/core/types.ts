@@ -390,7 +390,8 @@ export interface SidebarNotesSnapshot {
     sharedAssociatedTags: TagAssociation[];
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
-  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
+  graph?: SidebarGraphContext;
+  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches' | 'graph';
 }
 
 export interface SidebarTag extends TagReference {
@@ -440,6 +441,17 @@ export interface NotesGraphSnapshot {
   totalTaskCount: number;
 }
 
+export interface NotesGraphConnection {
+  node: NotesGraphNode;
+  weight: number;
+  types: NotesGraphEdgeType[];
+}
+
+export interface SidebarGraphContext {
+  selectedNode?: NotesGraphNode;
+  connections: NotesGraphConnection[];
+}
+
 export interface NotesGraphOpenSourceMessage {
   type: 'openSource';
   filePath: string;
@@ -451,16 +463,20 @@ export interface NotesGraphOpenTagMessage {
   tagKey: string;
 }
 
-export interface NotesGraphShowConnectionsMessage {
-  type: 'showConnections';
-  filePath: string;
-  line: number;
+export interface NotesGraphSelectNodeMessage {
+  type: 'selectNode';
+  nodeId: string;
+}
+
+export interface NotesGraphClearSelectionMessage {
+  type: 'clearSelection';
 }
 
 export type NotesGraphMessage =
   | NotesGraphOpenSourceMessage
   | NotesGraphOpenTagMessage
-  | NotesGraphShowConnectionsMessage;
+  | NotesGraphSelectNodeMessage
+  | NotesGraphClearSelectionMessage;
 
 export interface OpenSourceMessage {
   type: 'openSource';
@@ -603,14 +619,15 @@ export interface OpenNotesGraphMessage {
   type: 'openNotesGraph';
 }
 
-export interface HoverNotesGraphSourceMessage {
-  type: 'hoverNotesGraphSource';
-  filePath: string;
-  line: number;
+export interface ActivateNotesGraphNodeMessage {
+  type: 'activateNotesGraphNode';
+  nodeId: string;
+  open: boolean;
 }
 
-export interface ClearNotesGraphSourceHoverMessage {
-  type: 'clearNotesGraphSourceHover';
+export interface HoverNotesGraphNodeMessage {
+  type: 'hoverNotesGraphNode';
+  nodeId?: string;
 }
 
 export interface CreateDailyNoteMessage {
@@ -676,8 +693,8 @@ export type SidebarMessage =
   | RenameTagMessage
   | OpenDashboardMessage
   | OpenNotesGraphMessage
-  | HoverNotesGraphSourceMessage
-  | ClearNotesGraphSourceHoverMessage
+  | ActivateNotesGraphNodeMessage
+  | HoverNotesGraphNodeMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
   | SetRelatedNotesSortMessage

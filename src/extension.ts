@@ -68,8 +68,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const notesGraph = new NotesGraphPanel(
     indexer,
     context.extensionUri,
-    async (filePath, line) => {
-      return sidebarNotes.showRelatedNotesForIndexedSource(filePath, line);
+    async (graphContext, reveal) => {
+      if (graphContext) {
+        await sidebarNotes.showGraphConnections(graphContext, reveal);
+      } else {
+        sidebarNotes.clearGraphConnections();
+      }
     },
   );
   const relatedNotesDebug = new RelatedNotesDebugPanel(
@@ -155,13 +159,18 @@ export function activate(context: vscode.ExtensionContext): void {
       notesGraph.show(),
     ),
     vscode.commands.registerCommand(
-      'deckard.highlightNotesGraphSource',
-      (filePath?: unknown, line?: unknown) => {
-        notesGraph.highlightSource(
-          typeof filePath === 'string' ? filePath : undefined,
-          typeof line === 'number' && Number.isInteger(line) && line > 0
-            ? line
-            : undefined,
+      'deckard.activateNotesGraphNode',
+      async (nodeId: unknown, open: unknown) => {
+        if (typeof nodeId === 'string' && typeof open === 'boolean') {
+          await notesGraph.activateNode(nodeId, open);
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.highlightNotesGraphNode',
+      (nodeId?: unknown) => {
+        notesGraph.highlightNode(
+          typeof nodeId === 'string' ? nodeId : undefined,
         );
       },
     ),

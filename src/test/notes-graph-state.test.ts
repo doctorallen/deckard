@@ -2,7 +2,10 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
+import {
+  createNotesGraphConnections,
+  createNotesGraphSnapshot,
+} from '../ui/state/notesGraphState';
 import {
   parseNotesGraphMessage,
   parseSidebarMessage,
@@ -126,6 +129,34 @@ suite('Notes graph state', () => {
       });
   });
 
+  test('projects connected notes, tasks, and tags from direct graph edges', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown(
+        'notes/a.md',
+        '# Alpha #project/atlas #risk/breach\n\n- [ ] Follow up #project/atlas',
+      ),
+      parseMarkdown('notes/b.md', '# Beta #project/atlas'),
+    ]);
+    const tagNode = snapshot.nodes.find(
+      (node) => node.id === 'tag:#project/atlas',
+    );
+    assert.ok(tagNode);
+
+    const connections = createNotesGraphConnections(snapshot, tagNode.id);
+
+    assert.ok(connections.some((connection) => connection.node.kind === 'note'));
+    assert.ok(connections.some((connection) => connection.node.kind === 'task'));
+    assert.ok(connections.some((connection) => connection.node.kind === 'tag'));
+    assert.ok(
+      connections.every((connection) =>
+        connection.types.some(
+          (type) =>
+            type === 'tag-membership' || type === 'associated-tag',
+        ),
+      ),
+    );
+  });
+
   test('includes metadata-only files as note nodes', () => {
     const snapshot = buildSnapshot([
       parseMarkdown(
@@ -186,12 +217,14 @@ suite('Notes graph messages', () => {
     );
     assert.deepStrictEqual(
       parseNotesGraphMessage({
-        type: 'showConnections',
-        filePath: 'notes/a.md',
-        line: 3,
+        type: 'selectNode',
+        nodeId: 'section:notes/a.md:3',
       }),
-      { type: 'showConnections', filePath: 'notes/a.md', line: 3 },
+      { type: 'selectNode', nodeId: 'section:notes/a.md:3' },
     );
+    assert.deepStrictEqual(parseNotesGraphMessage({ type: 'clearSelection' }), {
+      type: 'clearSelection',
+    });
   });
 
   test('rejects malformed messages', () => {
@@ -214,7 +247,7 @@ suite('Notes graph messages', () => {
       undefined,
     );
     assert.strictEqual(
-      parseNotesGraphMessage({ type: 'showConnections', filePath: 'a.md' }),
+      parseNotesGraphMessage({ type: 'selectNode', nodeId: '' }),
       undefined,
     );
   });
@@ -225,25 +258,31 @@ suite('Notes graph messages', () => {
     });
     assert.deepStrictEqual(
       parseSidebarMessage({
-        type: 'hoverNotesGraphSource',
-        filePath: 'notes/related.md',
-        line: 7,
+        type: 'activateNotesGraphNode',
+        nodeId: 'task:related',
+        open: false,
       }),
       {
-        type: 'hoverNotesGraphSource',
-        filePath: 'notes/related.md',
-        line: 7,
+        type: 'activateNotesGraphNode',
+        nodeId: 'task:related',
+        open: false,
       },
     );
     assert.deepStrictEqual(
-      parseSidebarMessage({ type: 'clearNotesGraphSourceHover' }),
-      { type: 'clearNotesGraphSourceHover' },
+      parseSidebarMessage({
+        type: 'hoverNotesGraphNode',
+        nodeId: 'tag:#project/atlas',
+      }),
+      { type: 'hoverNotesGraphNode', nodeId: 'tag:#project/atlas' },
     );
+    assert.deepStrictEqual(parseSidebarMessage({ type: 'hoverNotesGraphNode' }), {
+      type: 'hoverNotesGraphNode',
+    });
     assert.strictEqual(
       parseSidebarMessage({
-        type: 'hoverNotesGraphSource',
-        filePath: 'notes/related.md',
-        line: 0,
+        type: 'activateNotesGraphNode',
+        nodeId: 'task:related',
+        open: 'yes',
       }),
       undefined,
     );

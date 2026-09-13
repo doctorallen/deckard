@@ -8,8 +8,10 @@ import { buildWorkspaceIndex, WorkspaceIndexer } from '../core/workspace/indexer
 import {
   NotesGraphMessage,
   PersistedPreferences,
+  SidebarGraphContext,
   SidebarNotesSnapshot,
 } from '../core/types';
+import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
 import { NotesGraphPanel } from '../ui/webview/notesGraph';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 
@@ -49,7 +51,7 @@ const defaultPreferences: PersistedPreferences = {
 };
 
 suite('Notes graph navigation', () => {
-  test('forwards a valid graph source without entry-level tags', async () => {
+  test('publishes direct graph connections for a selected node', async () => {
     const parsed = parseMarkdown(
       'notes/source.md',
       '---\ntags: [project/atlas]\n---\n\n# Source',
@@ -58,21 +60,28 @@ suite('Notes graph navigation', () => {
       new Map([[parsed.filePath, parsed]]),
     );
     const indexer = createIndexer(workspaceIndex);
-    const selected: Array<{ filePath: string; line: number }> = [];
+    const snapshot = createNotesGraphSnapshot(workspaceIndex);
+    const selectedNode = snapshot.nodes.find((node) => node.kind === 'note');
+    assert.ok(selectedNode);
+    const contexts: Array<{
+      context: SidebarGraphContext | undefined;
+      reveal: boolean | undefined;
+    }> = [];
     const posted: unknown[] = [];
     const graph = new NotesGraphPanel(
       indexer,
       vscode.Uri.file(process.cwd()),
-      async (filePath, line) => {
-        selected.push({ filePath, line });
-        return [{ filePath: 'notes/related.md', line: 8 }];
+      async (context, reveal) => {
+        contexts.push({ context, reveal });
       },
     );
 
     try {
       const controller = graph as unknown as {
         panel: {
+          active: boolean;
           dispose(): void;
+          reveal(): void;
           webview: {
             postMessage(message: unknown): Promise<boolean>;
           };
@@ -80,7 +89,9 @@ suite('Notes graph navigation', () => {
         handleValidMessage(message: NotesGraphMessage): Promise<void>;
       };
       controller.panel = {
+        active: true,
         dispose: () => undefined,
+        reveal: () => undefined,
         webview: {
           postMessage: async (message) => {
             posted.push(message);
@@ -89,30 +100,26 @@ suite('Notes graph navigation', () => {
         },
       };
       await controller.handleValidMessage({
-        type: 'showConnections',
-        filePath: parsed.filePath,
-        line: parsed.sections[0].startLine,
+        type: 'selectNode',
+        nodeId: selectedNode.id,
       });
 
-      assert.deepStrictEqual(selected, [
-        { filePath: parsed.filePath, line: parsed.sections[0].startLine },
-      ]);
       assert.deepStrictEqual(posted, [
-        {
-          type: 'relatedSources',
-          source: {
-            filePath: parsed.filePath,
-            line: parsed.sections[0].startLine,
-          },
-          sources: [{ filePath: 'notes/related.md', line: 8 }],
-        },
+        { type: 'selectNode', nodeId: selectedNode.id },
       ]);
+      assert.strictEqual(contexts.at(-1)?.reveal, true);
+      assert.strictEqual(contexts.at(-1)?.context?.selectedNode?.id, selectedNode.id);
+      assert.ok(
+        contexts.at(-1)?.context?.connections.some(
+          (connection) => connection.node.kind === 'tag',
+        ),
+      );
     } finally {
       graph.dispose();
     }
   });
 
-  test('renders manual graph context without the selected file being active', () => {
+  test('uses graph context only while it is set, then restores notes', () => {
     const selected = parseMarkdown(
       'notes/selected.md',
       '---\ntags: [project/atlas]\n---\n\n# Selected',
@@ -140,6 +147,7 @@ suite('Notes graph navigation', () => {
       },
     });
     const controller = sidebar as unknown as {
+      graphContext: SidebarGraphContext | undefined;
       entryContext: {
         filePath: string;
         sourceLine: number;
@@ -147,6 +155,22 @@ suite('Notes graph navigation', () => {
       };
       createSnapshot(): SidebarNotesSnapshot;
     };
+    const graphSnapshot = createNotesGraphSnapshot(workspaceIndex);
+    const selectedNode = graphSnapshot.nodes.find(
+      (node) => node.filePath === selected.filePath && node.kind === 'note',
+    );
+    assert.ok(selectedNode);
+    controller.graphContext = {
+      selectedNode,
+      connections: [],
+    };
+
+    const connectedSnapshot = controller.createSnapshot();
+
+    assert.strictEqual(connectedSnapshot.state, 'graph');
+    assert.strictEqual(connectedSnapshot.graph?.selectedNode?.id, selectedNode.id);
+
+    controller.graphContext = undefined;
     controller.entryContext = {
       filePath: selected.filePath,
       sourceLine: selected.sections[0].startLine,

@@ -28,13 +28,35 @@ suite('Webview contracts', () => {
     });
 
     assertWebviewScriptParses(html);
-    assert.strictEqual(html.includes('Specific tags act as stronger gravity wells'), true);
+    assert.strictEqual(html.includes('Each note or task joins one primary tag community'), true);
     assert.strictEqual(
-      html.includes("Math.sqrt(degrees[index]) * 0.5"),
+      html.includes('var targetClusterSize = Math.max(3, Math.sqrt(sourceCount))'),
       true,
     );
-    assert.strictEqual(html.includes("message.type === 'relatedSources'"), true);
-    assert.strictEqual(html.includes('selectedRelated[index]'), true);
+    assert.strictEqual(html.includes('primaryClusterSize[bestMembership.tagIndex] += 1'), true);
+    assert.strictEqual(html.includes('strength *= isPrimaryMembership ? 3 : 0.08'), true);
+    assert.strictEqual(html.includes('var clusterGravity ='), true);
+    assert.strictEqual(html.includes('id="show-notes" checked'), true);
+    assert.strictEqual(html.includes("node.kind === 'note' && !settings.showNotes"), true);
+    assert.strictEqual(html.includes("message.type === 'selectNode'"), true);
+    assert.strictEqual(html.includes('selectedNeighbors[index]'), true);
+  });
+
+  test('opens the selected graph node from the sidebar header', () => {
+    const html = getSidebarNotesHtml({
+      cspSource: 'vscode-webview://deckard',
+    }, '1.0.0');
+
+    assertWebviewScriptParses(html);
+    assert.strictEqual(
+      html.includes('data-action="open-selected-graph-node"'),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("if (target.dataset.action === 'open-selected-graph-node')"),
+      true,
+    );
+    assert.strictEqual(html.includes('open: true'), true);
   });
 
   test('distinguishes selected, parent, and child tag context in diagnostics', () => {
@@ -1353,13 +1375,16 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes("type: 'hoverNotesGraphSource'"),
+      html.includes("type: 'hoverNotesGraphNode'"),
       true,
     );
     assert.strictEqual(
-      html.includes("type: 'clearNotesGraphSourceHover'"),
+      html.includes("type: 'activateNotesGraphNode'"),
       true,
     );
+    assert.strictEqual(html.includes('function renderNoteCard('), true);
+    assert.strictEqual(html.includes('Connected nodes'), true);
+    assert.strictEqual(html.includes('class="graph-kind '), true);
     assert.strictEqual(
       html.includes('function renderTagLabel(label)'),
       true,

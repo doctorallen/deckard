@@ -191,10 +191,20 @@ export function parseNotesGraphMessage(
     return undefined;
   }
 
-  if (value.type === 'openSource' || value.type === 'showConnections') {
+  if (value.type === 'openSource') {
     return isSourceMessage(value)
       ? (value as unknown as NotesGraphMessage)
       : undefined;
+  }
+  if (
+    value.type === 'selectNode' &&
+    typeof value.nodeId === 'string' &&
+    value.nodeId.length > 0
+  ) {
+    return { type: 'selectNode', nodeId: value.nodeId };
+  }
+  if (value.type === 'clearSelection') {
+    return { type: 'clearSelection' };
   }
   if (
     value.type === 'openTag' &&
@@ -227,13 +237,20 @@ export function parseSidebarMessage(
       ? (value as unknown as SidebarMessage)
       : undefined;
   }
-  if (value.type === 'hoverNotesGraphSource') {
-    return isSourceMessage(value)
-      ? (value as unknown as SidebarMessage)
-      : undefined;
+  if (
+    value.type === 'activateNotesGraphNode' &&
+    typeof value.nodeId === 'string' &&
+    value.nodeId.length > 0 &&
+    typeof value.open === 'boolean'
+  ) {
+    return value as unknown as SidebarMessage;
   }
-  if (value.type === 'clearNotesGraphSourceHover') {
-    return { type: 'clearNotesGraphSourceHover' };
+  if (
+    value.type === 'hoverNotesGraphNode' &&
+    (value.nodeId === undefined ||
+      (typeof value.nodeId === 'string' && value.nodeId.length > 0))
+  ) {
+    return value as unknown as SidebarMessage;
   }
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return value as unknown as SidebarMessage;

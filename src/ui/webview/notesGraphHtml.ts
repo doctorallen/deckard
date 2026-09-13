@@ -96,6 +96,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     <summary>Filters</summary>
     <div class="control-body">
       <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes">
+      <label class="toggle-row"><input type="checkbox" id="show-notes" checked> Show notes</label>
       <label class="toggle-row"><input type="checkbox" id="show-tasks" checked> Show tasks</label>
       <label class="toggle-row"><input type="checkbox" id="show-tags"> Show tags</label>
       <label class="toggle-row"><input type="checkbox" id="show-orphans" checked> Show orphans</label>
@@ -124,8 +125,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
   <details class="control-group">
     <summary>Relationships</summary>
     <div class="control-body">
-      <p class="relationship-note">Specific tags act as stronger gravity wells than common tags. Visible resting links are Wiki links and heading structure; enable Show tags to reveal membership and learned tag-association links.</p>
-      <p class="relationship-note">Selecting a note overlays its top Related Notes results, including shared and associated tags, links, lexical similarity, and optional recency scoring.</p>
+      <p class="relationship-note">Each note or task joins one primary tag community, chosen to avoid both one-off and workspace-wide tags. Stronger local gravity makes those communities distinct; secondary tags still provide lighter bridges. Enable Show tags to reveal membership and learned tag-association links.</p>
+      <p class="relationship-note">Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p>
     </div>
   </details>
 </div>
@@ -167,6 +168,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
 
   // ---- persisted webview-local settings -------------------------------
   var defaults = {
+    showNotes: true,
     showTasks: true,
     showTags: false,
     showOrphans: true,
@@ -201,6 +203,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
   var adjacency = [];           // index -> array of neighbor indices
   var px, py, vx, vy;           // Float32Array simulation state
   var degrees;                  // per-node visible edge counts
+  var primaryTag;               // note/task index -> strongest cluster anchor
+  var primaryClusterSize;       // tag index -> assigned note/task count
   var alpha = 0;
   var alphaDecay = 0.0228;
   var alphaMin = 0.005;
@@ -222,12 +226,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
   var matchSet = null;          // null = everything matches the search
   var tagMatchSet = null;       // null = no tag filter active
   var hoverNeighbors = {};      // neighbor index set for the hovered node
-  var externalHoverSource = null;
+  var externalHoverNodeId = null;
   var selectedId = null;        // sticky selection survives snapshot rebuilds
   var selectedIndex = -1;
   var selectedNeighbors = {};
-  var relatedSources = [];
-  var selectedRelated = {};
 
   // ---- view construction ------------------------------------------------
   function rebuildView() {
@@ -238,6 +240,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
 
     var candidate = snapshot.nodes.filter(function (node) {
+      if (node.kind === 'note' && !settings.showNotes) { return false; }
       if (node.kind === 'task' && !settings.showTasks) { return false; }
       return true;
     });
@@ -292,10 +295,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
     vy = new Float32Array(count);
     degrees = new Float32Array(count);
     adjacency = [];
-    var primaryTag = new Int32Array(count);
-    var primaryTagWeight = new Float32Array(count);
+    primaryTag = new Int32Array(count);
+    primaryClusterSize = new Uint32Array(count);
+    var memberships = [];
+    var membershipCount = new Uint32Array(count);
     for (var a = 0; a < count; a += 1) { adjacency.push([]); }
-    for (var pTag = 0; pTag < count; pTag += 1) { primaryTag[pTag] = -1; }
+    for (var pTag = 0; pTag < count; pTag += 1) {
+      primaryTag[pTag] = -1;
+      memberships.push([]);
+    }
     edges.forEach(function (edge) {
       degrees[edge.a] += 1;
       degrees[edge.b] += 1;
@@ -304,27 +312,54 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (edge.types.indexOf('tag-membership') !== -1) {
         var noteIndex = nodes[edge.a].kind === 'tag' ? edge.b : edge.a;
         var tagIndex = nodes[edge.a].kind === 'tag' ? edge.a : edge.b;
-        if (edge.weight > primaryTagWeight[noteIndex]) {
-          primaryTag[noteIndex] = tagIndex;
-          primaryTagWeight[noteIndex] = edge.weight;
-        }
+        memberships[noteIndex].push({ tagIndex: tagIndex, weight: edge.weight });
+        membershipCount[tagIndex] += 1;
       }
     });
-
+    var sourceCount = nodes.filter(function (node) {
+      return node.kind !== 'tag';
+    }).length;
+    var targetClusterSize = Math.max(3, Math.sqrt(sourceCount));
+    for (var memberIndex = 0; memberIndex < count; memberIndex += 1) {
+      if (nodes[memberIndex].kind === 'tag' || !memberships[memberIndex].length) {
+        continue;
+      }
+      var bestMembership = memberships[memberIndex][0];
+      var bestScore = -Infinity;
+      memberships[memberIndex].forEach(function (membership) {
+        var members = membershipCount[membership.tagIndex];
+        var sizeScore = members > 1
+          ? 1 / (1 + Math.abs(Math.log(members / targetClusterSize)))
+          : 0.05;
+        var score = sizeScore + membership.weight * 0.05;
+        if (score > bestScore) {
+          bestMembership = membership;
+          bestScore = score;
+        }
+      });
+      primaryTag[memberIndex] = bestMembership.tagIndex;
+      primaryClusterSize[bestMembership.tagIndex] += 1;
+    }
     var reusedAny = false;
     var retained = {};
-    var tagOrdinal = 0;
+    var primaryTagOrdinal = 0;
+    var auxiliaryTagOrdinal = 0;
     for (var i = 0; i < count; i += 1) {
-      var currentTagOrdinal = nodes[i].kind === 'tag' ? tagOrdinal++ : -1;
       var kept = previous[nodes[i].id];
       if (kept) {
         px[i] = kept.x; py[i] = kept.y; vx[i] = kept.vx; vy[i] = kept.vy;
         retained[i] = true;
         reusedAny = true;
       } else if (nodes[i].kind === 'tag') {
-        // Spread invisible tag anchors first so communities start separated.
-        var radius = 90 * Math.sqrt(currentTagOrdinal);
-        var angle = currentTagOrdinal * 2.39996322972865332;
+        var isPrimaryAnchor = primaryClusterSize[i] > 0;
+        var tagOrdinal = isPrimaryAnchor
+          ? primaryTagOrdinal++
+          : auxiliaryTagOrdinal++;
+        // Primary anchors start far apart; secondary tags begin nearer the
+        // center and are pulled toward their associated communities.
+        var spacing = isPrimaryAnchor ? 100 : 24;
+        var radius = spacing * Math.sqrt(tagOrdinal);
+        var angle = tagOrdinal * 2.39996322972865332;
         px[i] = radius * Math.cos(angle);
         py[i] = radius * Math.sin(angle);
         vx[i] = 0; vy[i] = 0;
@@ -351,14 +386,13 @@ ${getDeckardThemeCss(getDeckardTheme())}
 
     recomputeSearchMatches();
     recomputeTagMatches();
-    setHoverIndex(findSourceIndex(externalHoverSource));
+    setHoverIndex(findNodeIndex(externalHoverNodeId));
     hideTooltip();
     var restoredSelection = selectedId !== null &&
       nodeIndexById[selectedId] !== undefined
       ? nodeIndexById[selectedId]
       : -1;
     setSelectedIndex(restoredSelection);
-    rebuildRelatedIndices();
     alpha = reusedAny && hasFramed ? 0.3 : 1;
     updateStatus();
     emptyState.style.display = snapshot.nodes.length === 0 ? 'grid' : 'none';
@@ -404,9 +438,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (matchSet && !matchSet[index]) { return true; }
     if (tagMatchSet && !tagMatchSet[index]) { return true; }
     if (selectedIndex >= 0) {
-      return index !== selectedIndex &&
-        !selectedNeighbors[index] &&
-        !selectedRelated[index];
+      return index !== selectedIndex && !selectedNeighbors[index];
     }
     return false;
   }
@@ -422,16 +454,6 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
   }
 
-  function rebuildRelatedIndices() {
-    selectedRelated = {};
-    relatedSources.forEach(function (source) {
-      var index = findSourceIndex(source);
-      if (index >= 0 && index !== selectedIndex) {
-        selectedRelated[index] = true;
-      }
-    });
-  }
-
   function setHoverIndex(index) {
     hoverIndex = index;
     hoverNeighbors = {};
@@ -442,18 +464,18 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
   }
 
-  function findSourceIndex(source) {
-    if (!source) { return -1; }
-    for (var i = 0; i < nodes.length; i += 1) {
-      if (nodes[i].filePath === source.filePath && nodes[i].line === source.line) {
-        return i;
-      }
-    }
-    return -1;
+  function findNodeIndex(nodeId) {
+    return nodeId && nodeIndexById[nodeId] !== undefined
+      ? nodeIndexById[nodeId]
+      : -1;
   }
 
   function isRendered(index) {
-    return nodes[index].kind !== 'tag' || settings.showTags;
+    return nodes[index].kind !== 'tag' ||
+      settings.showTags ||
+      index === selectedIndex ||
+      index === hoverIndex ||
+      selectedNeighbors[index];
   }
 
   // ---- simulation -------------------------------------------------------
@@ -471,7 +493,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
       var minDegree = Math.min(degrees[edge.a], degrees[edge.b]) || 1;
       var strength = settings.linkStrength * Math.min(1, edge.weight) / minDegree;
       var isMembership = edge.types.indexOf('tag-membership') !== -1;
-      var desiredDistance = isMembership ? linkDistance * 1.25 : linkDistance;
+      var isAssociation = edge.types.indexOf('associated-tag') !== -1;
+      var desiredDistance = linkDistance;
+      if (isMembership) {
+        var membershipNote = nodes[edge.a].kind === 'tag' ? edge.b : edge.a;
+        var membershipTag = nodes[edge.a].kind === 'tag' ? edge.a : edge.b;
+        var isPrimaryMembership = primaryTag[membershipNote] === membershipTag;
+        strength *= isPrimaryMembership ? 3 : 0.08;
+        desiredDistance *= isPrimaryMembership ? 0.8 : 1.6;
+      } else if (isAssociation) {
+        // Associations influence neighboring communities without collapsing
+        // every tag anchor into one dense central component.
+        strength *= 0.2;
+        desiredDistance *= 1.8;
+      }
       var delta = (distance - desiredDistance) / distance * alpha * strength;
       var bias = degrees[edge.a] / (degrees[edge.a] + degrees[edge.b] || 1);
       vx[edge.b] -= dx * delta * bias;
@@ -481,6 +516,22 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
 
     applyRepulsion();
+
+    // Each note/task has one deterministic primary tag community. This
+    // explicit gravity creates dense islands even when secondary tags bridge
+    // many otherwise distinct communities.
+    var clusterGravity = Math.max(0.25, settings.linkStrength) * 0.02 * alpha;
+    for (var clustered = 0; clustered < count; clustered += 1) {
+      var anchor = primaryTag[clustered];
+      if (anchor < 0 || clustered === dragIndex) { continue; }
+      var clusterDx = px[anchor] - px[clustered];
+      var clusterDy = py[anchor] - py[clustered];
+      vx[clustered] += clusterDx * clusterGravity;
+      vy[clustered] += clusterDy * clusterGravity;
+      var anchorResponse = 0.04 / Math.max(1, primaryClusterSize[anchor]);
+      vx[anchor] -= clusterDx * clusterGravity * anchorResponse;
+      vy[anchor] -= clusterDy * clusterGravity * anchorResponse;
+    }
 
     // Tags are cluster anchors. Center only those anchors (plus truly
     // untagged nodes) so tagged notes orbit their communities instead of
@@ -523,9 +574,10 @@ ${getDeckardThemeCss(getDeckardTheme())}
     }
     var root = makeCell(minX, minY, size);
     function nodeMass(index) {
-      return nodes[index].kind === 'tag'
-        ? 1 + Math.min(3, Math.sqrt(degrees[index]) * 0.5)
-        : 1;
+      if (nodes[index].kind !== 'tag') { return 1; }
+      return primaryClusterSize[index] > 0
+        ? 3 + Math.min(8, Math.sqrt(primaryClusterSize[index]))
+        : 0.35;
     }
 
     function insert(cell, index) {
@@ -588,14 +640,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
       var dist2 = dx * dx + dy * dy;
       var farEnough = cell.extent * cell.extent / dist2 < theta2;
       if (cell.children === null || farEnough) {
-        if (cell.nodeIndex === index && cell.mass === 1) { return; }
+        if (cell.nodeIndex === index) { return; }
         if (dist2 < 1e-6) {
           dx = (index % 7 - 3) * 0.01 || 0.01;
           dy = (index % 5 - 2) * 0.01 || 0.01;
           dist2 = dx * dx + dy * dy;
         }
         if (dist2 < 16) { dist2 = 16; }
-        var targetCharge = nodes[index].kind === 'tag' ? 1.5 : 1;
+        var targetCharge = nodes[index].kind === 'tag'
+          ? primaryClusterSize[index] > 0 ? 2.5 : 0.5
+          : 1;
         var force = repel * cell.mass * targetCharge * alpha / dist2;
         var dist = Math.sqrt(dist2);
         vx[index] -= dx / dist * force;
@@ -669,13 +723,6 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ctx.moveTo(px[edge.a], py[edge.a]);
       ctx.lineTo(px[edge.b], py[edge.b]);
     }
-    if (!hovering && selectedIndex >= 0) {
-      Object.keys(selectedRelated).forEach(function (key) {
-        var relatedIndex = Number(key);
-        if (!inView(selectedIndex) && !inView(relatedIndex)) { return; }
-        highlighted.push({ a: selectedIndex, b: relatedIndex });
-      });
-    }
     ctx.stroke();
     if (highlighted.length > 0) {
       ctx.strokeStyle = colors.edgeHighlight;
@@ -688,7 +735,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ctx.stroke();
     }
 
-    // Nodes: batch full-opacity and dimmed passes per kind color.
+    // Nodes retain their established kind colors.
     var kinds = ['note', 'task', 'tag'];
     var kindColors = { note: colors.note, task: colors.task, tag: colors.tag };
     for (var pass = 0; pass < 2; pass += 1) {
@@ -960,7 +1007,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (!clicked) { return; }
     if (wasDrag >= 0) {
       // Cmd/Ctrl+click opens the source; a plain click selects the node and
-      // surfaces its connections in the Related Notes sidebar.
+      // surfaces direct graph connections in the sidebar.
       if (event.metaKey || event.ctrlKey) {
         openNode(wasDrag);
       } else {
@@ -969,9 +1016,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
       return;
     }
     if (selectedIndex >= 0) {
-      relatedSources = [];
-      selectedRelated = {};
       setSelectedIndex(-1);
+      vscode.postMessage({ type: 'clearSelection' });
       scheduleFrame();
     }
   }
@@ -979,7 +1025,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   canvas.addEventListener('pointercancel', endPointer);
   canvas.addEventListener('pointerleave', function () {
     if (pointerId === -1 && hoverIndex !== -1) {
-      setHoverIndex(findSourceIndex(externalHoverSource));
+      setHoverIndex(findNodeIndex(externalHoverNodeId));
       canvas.classList.remove('is-pointing');
       hideTooltip();
       scheduleFrame();
@@ -987,17 +1033,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
   });
 
   function selectNode(index) {
-    relatedSources = [];
-    selectedRelated = {};
     setSelectedIndex(index);
     scheduleFrame();
     var node = nodes[index];
-    if (node && node.kind !== 'tag' && node.filePath && node.line) {
-      vscode.postMessage({
-        type: 'showConnections',
-        filePath: node.filePath,
-        line: node.line
-      });
+    if (node) {
+      vscode.postMessage({ type: 'selectNode', nodeId: node.id });
     }
   }
 
@@ -1052,6 +1092,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (needsRebuild) { rebuildView(); } else { scheduleFrame(); }
     });
   }
+  bindToggle('show-notes', 'showNotes', true);
   bindToggle('show-tasks', 'showTasks', true);
   bindToggle('show-tags', 'showTags', true);
   bindToggle('show-orphans', 'showOrphans', true);
@@ -1177,22 +1218,16 @@ ${getDeckardThemeCss(getDeckardTheme())}
       rebuildView();
       renderTagList();
     }
-    if (message && message.type === 'highlightSource') {
-      externalHoverSource = message.filePath && message.line
-        ? { filePath: message.filePath, line: message.line }
-        : null;
-      setHoverIndex(findSourceIndex(externalHoverSource));
+    if (message && message.type === 'highlightNode') {
+      externalHoverNodeId = message.nodeId || null;
+      setHoverIndex(findNodeIndex(externalHoverNodeId));
       hideTooltip();
       scheduleFrame();
     }
-    if (message && message.type === 'relatedSources' && message.source) {
-      var selected = selectedIndex >= 0 ? nodes[selectedIndex] : null;
-      if (selected &&
-          selected.filePath === message.source.filePath &&
-          selected.line === message.source.line &&
-          Array.isArray(message.sources)) {
-        relatedSources = message.sources;
-        rebuildRelatedIndices();
+    if (message && message.type === 'selectNode' && message.nodeId) {
+      var selectedNodeIndex = findNodeIndex(message.nodeId);
+      if (selectedNodeIndex >= 0) {
+        setSelectedIndex(selectedNodeIndex);
         scheduleFrame();
       }
     }
