@@ -1,5 +1,6 @@
 import {
   DashboardMessage,
+  NotesGraphMessage,
   RenderMode,
   SidebarMessage,
   TagOverviewMessage,
@@ -177,6 +178,68 @@ export function parseTagOverviewMessage(
   ) {
     return { type: 'saveTagOverviewFilter' };
   }
+  if (value.type === 'setOverviewQuery' && isOverviewQueryMessage(value)) {
+    return { type: 'setOverviewQuery', query: value.query as string };
+  }
+  if (
+    value.type === 'clearOverviewQuery' &&
+    Object.keys(value).length === 1
+  ) {
+    return { type: 'clearOverviewQuery' };
+  }
+  return undefined;
+}
+
+/** Upper bound on query text accepted from the webview. */
+const MAX_QUERY_LENGTH = 2000;
+
+/**
+ * Bounds query text before it reaches the parser.
+ *
+ * The parser is linear in the length of its input, but a bound keeps a runaway
+ * webview from handing the host an unreasonable string to tokenize on every
+ * keystroke.
+ */
+function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
+  return (
+    Object.keys(value).length === 2 &&
+    typeof value.query === 'string' &&
+    value.query.length <= MAX_QUERY_LENGTH
+  );
+}
+
+/**
+ * Validates the notes graph's navigation messages before dispatch.
+ */
+export function parseNotesGraphMessage(
+  value: unknown,
+): NotesGraphMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+
+  if (value.type === 'openSource') {
+    return isSourceMessage(value)
+      ? (value as unknown as NotesGraphMessage)
+      : undefined;
+  }
+  if (
+    value.type === 'selectNode' &&
+    typeof value.nodeId === 'string' &&
+    value.nodeId.length > 0
+  ) {
+    return { type: 'selectNode', nodeId: value.nodeId };
+  }
+  if (value.type === 'clearSelection') {
+    return { type: 'clearSelection' };
+  }
+  if (
+    value.type === 'openTag' &&
+    typeof value.tagKey === 'string' &&
+    value.tagKey.length > 0
+  ) {
+    return { type: 'openTag', tagKey: value.tagKey };
+  }
   return undefined;
 }
 
@@ -201,6 +264,21 @@ export function parseSidebarMessage(
       ? (value as unknown as SidebarMessage)
       : undefined;
   }
+  if (
+    value.type === 'activateNotesGraphNode' &&
+    typeof value.nodeId === 'string' &&
+    value.nodeId.length > 0 &&
+    typeof value.open === 'boolean'
+  ) {
+    return value as unknown as SidebarMessage;
+  }
+  if (
+    value.type === 'hoverNotesGraphNode' &&
+    (value.nodeId === undefined ||
+      (typeof value.nodeId === 'string' && value.nodeId.length > 0))
+  ) {
+    return value as unknown as SidebarMessage;
+  }
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return value as unknown as SidebarMessage;
   }
@@ -215,6 +293,7 @@ export function parseSidebarMessage(
   }
   if (
     value.type === 'openDashboard' ||
+    value.type === 'openNotesGraph' ||
     value.type === 'createDailyNote' ||
     value.type === 'openHelp'
   ) {

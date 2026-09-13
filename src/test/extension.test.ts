@@ -18,6 +18,7 @@ suite('Extension Test Suite', () => {
       commands.map((command: { command: string }) => command.command),
       [
         'deckard.showDashboard',
+        'deckard.showNotesGraph',
         'deckard.showStats',
         'deckard.showHelp',
         'deckard.reindexWorkspace',
@@ -25,6 +26,7 @@ suite('Extension Test Suite', () => {
         'deckard.extractHeading',
         'deckard.showTagOverview',
         'deckard.searchWorkspace',
+        'deckard.searchNotes',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
         'deckard.renameTag',

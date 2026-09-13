@@ -26,6 +26,21 @@ import {
 } from '../../core/types';
 
 import { extractWikiLinks, stripTags } from '../../core/markdown/parser';
+import { evaluateQuery } from '../../core/query/queryEvaluator';
+import {
+  buildTagIntersectionQuery,
+  collectQueryTagKeys,
+  toBuilderGroups,
+} from '../../core/query/queryFormat';
+import { FIELD_ALIASES, parseQuery } from '../../core/query/queryParser';
+import {
+  ParsedQuery,
+  QuerySuggestion,
+  QuerySuggestions,
+  QueryViewState,
+  QUERY_FIELDS,
+} from '../../core/query/queryTypes';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 
 /**
@@ -128,6 +143,18 @@ export function createDashboardSnapshot(
       selectedNoteTags: normalizedNoteTags,
     },
     savedFilters: preferences.savedFilters.flatMap((filter) => {
+      if (filter.query) {
+        // A saved query keeps its place in the rail even when the tags it
+        // names are not in the index yet.
+        return [
+          {
+            id: filter.id,
+            name: filter.name,
+            tags: resolveQueryTags(index, parseQuery(filter.query)),
+            query: filter.query,
+          },
+        ];
+      }
       const tags = filter.tagKeys
         .map((tagKey) => index.tags.get(tagKey))
         .filter((tag): tag is TagInfo => tag !== undefined)
@@ -497,6 +524,11 @@ export function createTagOverviewSnapshot(
     completed: taskCandidates.filter((task) => task.completed).length,
   };
 
+  const activeTagKeys = [
+    tag.key,
+    ...effectiveFilterTags.map((filterTag) => filterTag.key),
+  ];
+
   return {
     tag: {
       ...tag,
@@ -505,6 +537,16 @@ export function createTagOverviewSnapshot(
       filePaths: [...tag.filePaths],
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
+    // A tag overview still publishes the query that expresses its own
+    // intersection, so opening the advanced editor starts from what is on
+    // screen rather than from an empty bar.
+    query: createQueryViewState(
+      index,
+      parseQuery(buildTagIntersectionQuery(activeTagKeys)),
+      { notes: sections.length, tasks: taskCandidates.length },
+      // Tag chips drive this page, so the query bar stays a refinement of it.
+      false,
+    ),
     entity: index.entities.get(tagKey),
     filterTag: effectiveFilterTags[0],
     filterTags: effectiveFilterTags,
@@ -741,11 +783,24 @@ function fileIncludesTag(
  */
 export function createTagOverviewSidebarSnapshot(
   snapshot: TagOverviewSnapshot,
-): SidebarNotesSnapshot {
-  const tag = {
-    key: snapshot.tag.key,
-    label: snapshot.tag.label,
-  };
+): SidebarNotesSnapshot | undefined {
+  const query = snapshot.query?.isAdvanced ? snapshot.query : undefined;
+  const queryTags = query?.tags ?? [];
+  // A query drives the page whenever one is active, so the sidebar follows the
+  // query rather than the tag the page happened to be opened on. A query that
+  // names exactly one tag still gets that tag's chip and associations.
+  const focusTag = query
+    ? queryTags.length === 1
+      ? { ...queryTags[0] }
+      : undefined
+    : snapshot.tag
+      ? { key: snapshot.tag.key, label: snapshot.tag.label }
+      : undefined;
+  if (!focusTag && !query) {
+    return undefined;
+  }
+
+  const matchedTags = focusTag ? [focusTag] : queryTags.map((tag) => ({ ...tag }));
   const notes = snapshot.sections.map((section) => ({
     filePath: section.filePath,
     title: section.heading,
@@ -753,21 +808,30 @@ export function createTagOverviewSidebarSnapshot(
     sourceLine: section.startLine,
     headingPath: [stripTags(section.heading)],
     titleTags: section.titleTags,
-    matchedTags: [tag],
-    matchCount: 1,
-    totalTagCount: 1,
+    matchedTags,
+    matchCount: Math.max(1, matchedTags.length),
+    totalTagCount: Math.max(1, matchedTags.length),
     overlap: 1,
     relevanceScore: 100,
   }));
 
+  const filterTags = query
+    ? focusTag
+      ? []
+      : queryTags.map((tag) => ({ ...tag }))
+    : snapshot.filterTags.map((tag) => ({ ...tag }));
+
   return {
     activeTags: [],
     notes,
-    tagOverview: tag,
-    tagOverviewFilter: snapshot.filterTag
-      ? { ...snapshot.filterTag }
-      : undefined,
-    tagOverviewFilters: snapshot.filterTags.map((tag) => ({ ...tag })),
+    tagOverview: focusTag,
+    tagOverviewQuery: query?.text,
+    tagOverviewFilter: query
+      ? undefined
+      : snapshot.filterTag
+        ? { ...snapshot.filterTag }
+        : undefined,
+    tagOverviewFilters: filterTags,
     tagOverviewRelationships: {
       associatedTags: cloneTagAssociations(snapshot.associatedTags),
       sharedAssociatedTags: cloneTagAssociations(snapshot.sharedAssociatedTags),
@@ -1885,4 +1949,251 @@ function getFrontmatterBody(content: string): string {
  */
 function getFileName(filePath: string | undefined): string | undefined {
   return filePath?.split('/').pop() ?? filePath;
+}
+
+/**
+ * Projects an overview driven by a Deckard query rather than a single tag.
+ *
+ * Results come from the query evaluator, but every card, task, and control is
+ * built with the same helpers a tag overview uses, so an advanced view is the
+ * same page with a wider filter rather than a second, divergent surface.
+ */
+export function createQueryOverviewSnapshot(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  queryText: string,
+  taskFilter: TaskFilter = 'active',
+  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  enableHeadingTagRelationships = true,
+  focusTagKey?: string,
+): TagOverviewSnapshot {
+  const parsed = parseQuery(queryText);
+  const results = evaluateQuery(index, parsed.node);
+
+  const sections = results.sections
+    .map((section) =>
+      createTagOverviewCard(
+        section,
+        preferences.sectionAccessCounts,
+        tagTitleDisplayMode,
+      ),
+    )
+    .concat(results.files.map((file) => createFileOverviewCard(file)))
+    .sort((left, right) =>
+      compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
+    );
+
+  const taskCounts = {
+    all: results.tasks.length,
+    active: results.tasks.filter((task) => !task.completed).length,
+    completed: results.tasks.filter((task) => task.completed).length,
+  };
+
+  const queryTags = resolveQueryTags(index, parsed);
+  const focusTag = focusTagKey ? index.tags.get(focusTagKey) : undefined;
+
+  return {
+    tag: focusTag
+      ? {
+          ...focusTag,
+          sectionIds: [...focusTag.sectionIds],
+          taskIds: [...focusTag.taskIds],
+          filePaths: [...focusTag.filePaths],
+          isFavorite: preferences.favoriteTags.includes(focusTag.key),
+        }
+      : undefined,
+    // Whatever its shape, this page is driven by the query rather than by the
+    // panel's focus tag, so it must not present that tag's chips.
+    query: createQueryViewState(
+      index,
+      parsed,
+      { notes: sections.length, tasks: results.tasks.length },
+      true,
+    ),
+    entity: focusTag ? index.entities.get(focusTag.key) : undefined,
+    filterTags: [],
+    savedViewName: findMatchingSavedQueryName(preferences.savedFilters, parsed),
+    // Association suggestions describe one tag's neighbourhood, which a
+    // multi-branch query does not have; they return with the tag chips.
+    associatedTags:
+      enableHeadingTagRelationships && queryTags.length === 1
+        ? cloneTagAssociations(index.tagAssociations?.get(queryTags[0].key) ?? [])
+        : [],
+    sharedAssociatedTags:
+      enableHeadingTagRelationships && queryTags.length > 1
+        ? getSharedTagAssociations(
+            index,
+            queryTags.map((tag) => tag.key),
+          )
+        : [],
+    sections,
+    tasks: results.tasks
+      .filter((task) => matchesTaskFilter(task, taskFilter))
+      .map((task) => createDashboardTask(task, index.sections)),
+    taskCounts,
+    taskFilter,
+    renderMode: preferences.renderMode,
+    sortMode: preferences.tagOverviewSortMode,
+    layout: preferences.tagOverviewLayout,
+    tagTitleDisplayMode,
+  };
+}
+
+/**
+ * Builds everything the query bar and its builder need from one parse.
+ */
+export function createQueryViewState(
+  index: WorkspaceIndex,
+  parsed: ParsedQuery,
+  matchCounts: { notes: number; tasks: number },
+  isAdvanced: boolean,
+): QueryViewState {
+  const groups = toBuilderGroups(parsed.node);
+  return {
+    text: parsed.text,
+    isAdvanced,
+    isBuildable: groups.every((group) =>
+      group.rows.every((row) => row.supported),
+    ),
+    diagnostics: parsed.diagnostics,
+    groups,
+    tags: resolveQueryTags(index, parsed),
+    suggestions: createQuerySuggestions(index),
+    matchCounts,
+  };
+}
+
+/**
+ * Resolves the tags a query names against the index so chips and titles can
+ * show a tag's real label rather than the spelling that was typed.
+ */
+function resolveQueryTags(
+  index: WorkspaceIndex,
+  parsed: ParsedQuery,
+): TagReference[] {
+  const seen = new Set<string>();
+  return collectQueryTagKeys(parsed.node)
+    .map((tagKey) => resolveIndexedTagKey(index.tags, tagKey))
+    .flatMap((tagKey) => {
+      if (!tagKey || seen.has(tagKey)) {
+        return [];
+      }
+      seen.add(tagKey);
+      const tag = index.tags.get(tagKey);
+      return tag ? [{ key: tag.key, label: tag.label }] : [];
+    });
+}
+
+/** Upper bound on tag completions sent across the webview boundary. */
+const QUERY_TAG_SUGGESTION_LIMIT = 400;
+/** Upper bound on file and path completions. */
+const QUERY_PATH_SUGGESTION_LIMIT = 200;
+
+/**
+ * Builds the completions both editing surfaces use.
+ *
+ * Values are grouped by field rather than pre-joined to one, so the query bar
+ * can complete a value once it knows which field the caret is in, and a
+ * builder row can complete its own value field with the same list.
+ */
+function createQuerySuggestions(index: WorkspaceIndex): QuerySuggestions {
+  const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
+    value: field,
+    label: field,
+    detail: describeQueryField(field),
+  }));
+
+  const tags: QuerySuggestion[] = [...index.tags.values()]
+    .sort((left, right) => right.count - left.count)
+    .slice(0, QUERY_TAG_SUGGESTION_LIMIT)
+    .map((tag) => ({
+      value: tag.key,
+      label: tag.label,
+      detail: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
+    }));
+
+  const kinds: QuerySuggestion[] = [
+    ...new Set(
+      [...index.entities.values()].map((entity) => String(entity.kind)),
+    ),
+  ]
+    .sort((left, right) => left.localeCompare(right))
+    .map((kind) => ({ value: kind, label: kind }));
+
+  const filePaths = [...index.files.keys()].sort();
+  const paths: QuerySuggestion[] = filePaths
+    .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
+    .map((filePath) => ({ value: filePath, label: filePath }));
+  const files: QuerySuggestion[] = [
+    ...new Set(filePaths.map((filePath) => getFileName(filePath) ?? filePath)),
+  ]
+    .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
+    .map((fileName) => ({ value: fileName, label: fileName }));
+
+  const dates: QuerySuggestion[] = [
+    { value: 'today', label: 'today' },
+    { value: 'yesterday', label: 'yesterday' },
+    { value: '7d', label: '7d', detail: 'the last seven days' },
+    { value: '30d', label: '30d', detail: 'the last thirty days' },
+    { value: '90d', label: '90d', detail: 'the last ninety days' },
+  ];
+
+  return {
+    fields,
+    aliases: { ...FIELD_ALIASES },
+    values: {
+      tag: tags,
+      kind: kinds,
+      task: [
+        { value: 'open', label: 'open' },
+        { value: 'done', label: 'done' },
+        { value: 'any', label: 'any' },
+      ],
+      file: files,
+      path: paths,
+      created: dates,
+      updated: dates,
+    },
+  };
+}
+
+/**
+ * One-line help shown beside each field in the query bar and the builder.
+ */
+export function describeQueryField(field: string): string {
+  switch (field) {
+    case 'tag':
+      return 'A tag, including tags inherited from a parent heading';
+    case 'text':
+      return 'Words in the note, task, or file body';
+    case 'task':
+      return 'open, done, or any';
+    case 'kind':
+      return 'An entity namespace such as project or person';
+    case 'file':
+      return 'A file name, with * as a wildcard';
+    case 'path':
+      return 'A workspace-relative path, with * as a wildcard';
+    case 'created':
+      return 'A date such as 2026-09-13, a window such as 30d, or today';
+    case 'updated':
+      return 'A date such as 2026-09-13, a window such as 30d, or today';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Finds the saved view whose query matches the one on screen.
+ */
+function findMatchingSavedQueryName(
+  savedFilters: PersistedPreferences['savedFilters'],
+  parsed: ParsedQuery,
+): string | undefined {
+  const normalized = parsed.text.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  return savedFilters.find((filter) => filter.query?.trim() === normalized)
+    ?.name;
 }

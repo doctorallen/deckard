@@ -18,6 +18,7 @@ import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
+import { NotesGraphPanel } from './ui/webview/notesGraph';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
@@ -53,6 +54,9 @@ export function activate(context: vscode.ExtensionContext): void {
     async (tagKey, filterTagKeys = []) => {
       await tagPanels.show(tagKey, undefined, filterTagKeys);
     },
+    async (queryText) => {
+      await tagPanels.showQuery(queryText);
+    },
   );
   const sidebarNotes = new SidebarNotesView(
     indexer,
@@ -64,6 +68,17 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   const stats = new StatsPanel(indexer, preferences, context.extensionUri);
   const help = new HelpPanel(context.extensionUri);
+  const notesGraph = new NotesGraphPanel(
+    indexer,
+    context.extensionUri,
+    async (graphContext, reveal) => {
+      if (graphContext) {
+        await sidebarNotes.showGraphConnections(graphContext, reveal);
+      } else {
+        sidebarNotes.clearGraphConnections();
+      }
+    },
+  );
   const relatedNotesDebug = new RelatedNotesDebugPanel(
     sidebarNotes,
     context.extensionUri,
@@ -80,6 +95,7 @@ export function activate(context: vscode.ExtensionContext): void {
     dashboard,
     stats,
     help,
+    notesGraph,
     relatedNotesDebug,
   };
 
@@ -95,6 +111,7 @@ export function activate(context: vscode.ExtensionContext): void {
     dashboard,
     stats,
     help,
+    notesGraph,
     relatedNotesDebug,
   );
   context.subscriptions.push(
@@ -126,6 +143,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewPanelSerializer('deckard.help', {
       deserializeWebviewPanel: (webviewPanel) => help.restore(webviewPanel),
     }),
+    vscode.window.registerWebviewPanelSerializer('deckard.notesGraph', {
+      deserializeWebviewPanel: (webviewPanel) =>
+        notesGraph.restore(webviewPanel),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
       deserializeWebviewPanel: (webviewPanel, state) =>
         tagPanels.restore(webviewPanel, state),
@@ -137,6 +158,25 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('deckard.showStats', () => stats.show()),
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
+    vscode.commands.registerCommand('deckard.showNotesGraph', () =>
+      notesGraph.show(),
+    ),
+    vscode.commands.registerCommand(
+      'deckard.activateNotesGraphNode',
+      async (nodeId: unknown, open: unknown) => {
+        if (typeof nodeId === 'string' && typeof open === 'boolean') {
+          await notesGraph.activateNode(nodeId, open);
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.highlightNotesGraphNode',
+      (nodeId?: unknown) => {
+        notesGraph.highlightNode(
+          typeof nodeId === 'string' ? nodeId : undefined,
+        );
+      },
+    ),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.reindexWorkspace', async () => {
@@ -161,6 +201,11 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('deckard.searchWorkspace', () =>
       searchWorkspace(indexer),
+    ),
+    vscode.commands.registerCommand(
+      'deckard.searchNotes',
+      (requestedQuery?: unknown) =>
+        showQueryOverview(tagPanels, indexer, requestedQuery),
     ),
     vscode.commands.registerCommand('deckard.linkCurrentHeading', () =>
       linkCurrentHeading(indexer),
@@ -260,12 +305,39 @@ interface ExtensionServices {
   dashboard: DashboardPanel;
   stats: StatsPanel;
   help: HelpPanel;
+  notesGraph: NotesGraphPanel;
   relatedNotesDebug: RelatedNotesDebugPanel;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {
   const argument = Array.isArray(value) ? value[0] : value;
   return typeof argument === 'string' ? argument : undefined;
+}
+
+/**
+ * Opens the overview on an advanced query.
+ *
+ * The command accepts a query argument so a link or another command can open a
+ * saved search directly, and prompts for one otherwise.
+ */
+async function showQueryOverview(
+  tagPanels: TagOverviewPanels,
+  indexer: WorkspaceIndexer,
+  requestedQuery: unknown,
+): Promise<void> {
+  await indexer.ready;
+  const query =
+    getCommandTagArgument(requestedQuery) ??
+    (await vscode.window.showInputBox({
+      title: 'Search Deckard notes',
+      prompt:
+        'Write a query, such as (tag = #project/atlas AND tag = #urgent) OR text ~ "vendor"',
+      placeHolder: 'tag = #project/atlas AND task = open',
+    }));
+
+  if (query?.trim()) {
+    await tagPanels.showQuery(query);
+  }
 }
 
 /**

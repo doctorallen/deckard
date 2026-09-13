@@ -1,3 +1,5 @@
+import { QueryViewState } from './query/queryTypes';
+
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
 export type TaskSortMode = 'rank' | 'created' | 'updated';
 export type DashboardColumnCount = 1 | 2 | 3 | 4;
@@ -195,12 +197,15 @@ export interface PersistedPreferences {
 }
 
 /**
- * A named, reusable intersection of at least two canonical tag keys.
+ * A named, reusable view: either an intersection of at least two canonical tag
+ * keys, or a Deckard query when the view needs more than an intersection.
  */
 export interface SavedFilter {
   id: string;
   name: string;
   tagKeys: string[];
+  /** Present when the saved view was created from an advanced query. */
+  query?: string;
 }
 
 /**
@@ -210,6 +215,8 @@ export interface DashboardSavedFilter {
   id: string;
   name: string;
   tags: TagReference[];
+  /** Present when reopening this view should restore an advanced query. */
+  query?: string;
 }
 
 export interface DashboardTask {
@@ -254,8 +261,21 @@ export interface DashboardSnapshot {
 }
 
 export interface TagOverviewSnapshot {
-  tag: TagInfo;
+  /**
+   * The focus tag of a tag-driven overview.
+   *
+   * Undefined only for a standalone query view, which has no single tag to
+   * anchor its title, sidebar, or rename actions to.
+   */
+  tag?: TagInfo;
   entity?: Entity;
+  /**
+   * The advanced filter behind this view.
+   *
+   * Always present. A plain tag overview carries the query that expresses its
+   * own tag intersection, so the query bar and the tag chips never disagree.
+   */
+  query?: QueryViewState;
   /** @deprecated Use filterTags to support every active overview filter. */
   filterTag?: TagReference;
   filterTags: TagReference[];
@@ -382,6 +402,13 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  /**
+   * The advanced query driving the overview, when one is active.
+   *
+   * A query that names no single tag has no chip for the sidebar to show, so
+   * the query itself identifies the scope instead.
+   */
+  tagOverviewQuery?: string;
   /** @deprecated Use tagOverviewFilters to support every active overview filter. */
   tagOverviewFilter?: TagReference;
   tagOverviewFilters: TagReference[];
@@ -390,13 +417,93 @@ export interface SidebarNotesSnapshot {
     sharedAssociatedTags: TagAssociation[];
   };
   tagTitleDisplayMode: TagTitleDisplayMode;
-  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches';
+  graph?: SidebarGraphContext;
+  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches' | 'graph';
 }
 
 export interface SidebarTag extends TagReference {
   /** Relative contribution used when ranking Related Notes. */
   weight: number;
 }
+
+export type NotesGraphNodeKind = 'note' | 'task' | 'tag';
+
+export type NotesGraphEdgeType =
+  | 'wiki-link'
+  | 'heading'
+  | 'associated-tag'
+  | 'tag-membership';
+
+export interface NotesGraphNode {
+  /** 'section:<id>' | 'task:<id>' | 'file:<path>' | 'tag:<key>' */
+  id: string;
+  kind: NotesGraphNodeKind;
+  /** Heading or task text with tags stripped, or the tag label. */
+  title: string;
+  filePath?: string;
+  line?: number;
+  /** Canonical tag keys carried by this node; empty for tag nodes. */
+  tagKeys: string[];
+  /** Precomputed edge count; drives node radius in the webview. */
+  degree: number;
+}
+
+export interface NotesGraphEdge {
+  /** '<sourceId>::<targetId>' with the two ids sorted. */
+  id: string;
+  source: string;
+  target: string;
+  /** Combined evidence weight, used for spring strength. */
+  weight: number;
+  types: NotesGraphEdgeType[];
+}
+
+export interface NotesGraphSnapshot {
+  updatedAt: number;
+  nodes: NotesGraphNode[];
+  edges: NotesGraphEdge[];
+  /** All indexed tags for the filter list: [key, label, count]. */
+  tags: [string, string, number][];
+  totalNoteCount: number;
+  totalTaskCount: number;
+}
+
+export interface NotesGraphConnection {
+  node: NotesGraphNode;
+  weight: number;
+  types: NotesGraphEdgeType[];
+}
+
+export interface SidebarGraphContext {
+  selectedNode?: NotesGraphNode;
+  connections: NotesGraphConnection[];
+}
+
+export interface NotesGraphOpenSourceMessage {
+  type: 'openSource';
+  filePath: string;
+  line: number;
+}
+
+export interface NotesGraphOpenTagMessage {
+  type: 'openTag';
+  tagKey: string;
+}
+
+export interface NotesGraphSelectNodeMessage {
+  type: 'selectNode';
+  nodeId: string;
+}
+
+export interface NotesGraphClearSelectionMessage {
+  type: 'clearSelection';
+}
+
+export type NotesGraphMessage =
+  | NotesGraphOpenSourceMessage
+  | NotesGraphOpenTagMessage
+  | NotesGraphSelectNodeMessage
+  | NotesGraphClearSelectionMessage;
 
 export interface OpenSourceMessage {
   type: 'openSource';
@@ -516,6 +623,25 @@ export interface SaveTagOverviewFilterMessage {
   type: 'saveTagOverviewFilter';
 }
 
+/**
+ * Replaces the overview's active query.
+ *
+ * The webview sends canonical query text whether the author typed it in the
+ * query bar or assembled it in the visual builder, so the host only ever has
+ * one representation to validate and evaluate.
+ */
+export interface SetOverviewQueryMessage {
+  type: 'setOverviewQuery';
+  query: string;
+}
+
+/**
+ * Clears the advanced query and returns the page to its focus tag.
+ */
+export interface ClearOverviewQueryMessage {
+  type: 'clearOverviewQuery';
+}
+
 export interface SetTagOverviewSortMessage {
   type: 'setTagOverviewSort';
   mode: TagOverviewSortMode;
@@ -533,6 +659,21 @@ export interface SetRenderModeMessage {
 
 export interface OpenDashboardMessage {
   type: 'openDashboard';
+}
+
+export interface OpenNotesGraphMessage {
+  type: 'openNotesGraph';
+}
+
+export interface ActivateNotesGraphNodeMessage {
+  type: 'activateNotesGraphNode';
+  nodeId: string;
+  open: boolean;
+}
+
+export interface HoverNotesGraphNodeMessage {
+  type: 'hoverNotesGraphNode';
+  nodeId?: string;
 }
 
 export interface CreateDailyNoteMessage {
@@ -589,7 +730,9 @@ export type TagOverviewMessage =
   | RenameTagMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage
-  | SaveTagOverviewFilterMessage;
+  | SaveTagOverviewFilterMessage
+  | SetOverviewQueryMessage
+  | ClearOverviewQueryMessage;
 
 export type SidebarMessage =
   | SidebarReadyMessage
@@ -597,6 +740,9 @@ export type SidebarMessage =
   | OpenTagMessage
   | RenameTagMessage
   | OpenDashboardMessage
+  | OpenNotesGraphMessage
+  | ActivateNotesGraphNodeMessage
+  | HoverNotesGraphNodeMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
   | SetRelatedNotesSortMessage

@@ -19,11 +19,13 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 ## Screenshots
 
-| Dashboard | Related Notes |
+| **Dashboard** | **Related Notes** |
 |---|---|
 | <img src="docs/images/dashboard.png" alt="Deckard Dashboard showing workspace totals, tags, favorites, and active tasks." width="460"> | <img src="docs/images/related-notes.png" alt="Deckard Related Notes sidebar showing ranked note entries and matching tags." width="460"> |
 | **Tag Overview** | **Help** |
 | <img src="docs/images/tag-overview.png" alt="Deckard Tag Overview showing matching notes, active tasks, and display controls." width="460"> | <img src="docs/images/help.png" alt="Deckard Help webview with quick-start instructions and feature navigation." width="460"> |
+| **Node Graph** | |
+| <img src="docs/images/notes-graph.png" alt="eckard Notes Graph showing clustered note, task, and tag connections." width="460"> |  |
 
 ## Themes
 
@@ -50,6 +52,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | Command | Description |
 | --- | --- |
 | **Deckard: Open Dashboard** | Opens workspace totals, tags, and tasks. |
+| **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
 | **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
@@ -57,6 +60,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note. |
 | **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
+| **Deckard: Search Notes and Tasks** | Opens an overview on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
@@ -137,6 +141,18 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
 
+## Notes Graph
+
+Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in Related Notes, to see the whole workspace as a zoomable force-directed map. Notes and tasks appear as dots sized by connection count. The visual layout detects weighted communities from structural links and prevalence-adjusted tag evidence, then positions each community around a virtual anchor; hidden tag nodes no longer act as high-mass particles. Secondary tags and associations still provide lighter bridges without drawing a dense web between every pair of notes. The view starts zoomed out over the full graph and stays smooth with thousands of nodes.
+
+- Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
+- Hover a dot to highlight its direct graph neighbors and see its source location. Select any note, task, or tag dot to list those connected nodes in the sidebar using the same note-card and tag styling as the rest of Deckard. Select the current node at the top of the sidebar to open its note/task source or tag overview. Select a connected sidebar item to move the graph selection; Cmd/Ctrl-click it to open that item instead. Cmd/Ctrl-clicking a graph dot opens the same destination, and selecting empty space clears the selection.
+- **Filters** searches titles and paths, restricts the view to selected tags, and independently toggles notes, tasks, tag nodes (off by default), and orphan nodes.
+- **Display** adjusts node size, link thickness, and the zoom level at which labels appear. **Connection density** sets the local edge budget; **Tag prevalence bias** controls how strongly rare/common tag populations affect salience; **Secondary bridge strength** controls weaker cross-community tag and association links. **Show all links** disables the backbone filter for comparison. **Reset graph settings** restores these controls, clears graph filters, and reframes the view.
+- **Forces** tunes the layout with cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance; changes re-run the simulation live. The graph's default layout uses a prevalence-aware local backbone: direct Wiki links and headings seed visual communities, tag memberships are scored against a target community size, and each node retains only its strongest connections. The underlying Connected Nodes sidebar still uses every indexed relationship.
+- The graph is read-only: it never changes tags, associations, or your Markdown sources, and control choices persist per panel.
+- The sidebar switches to **Connected nodes** only while the Notes Graph tab is active. Returning to a Markdown editor restores the normal Related Notes ranking.
+
 ## Related Notes
 
 Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work.
@@ -190,6 +206,36 @@ Each overview collects the matching sections from your notes. You can:
 - select a section to jump to its heading in the source note.
 
 Opening a tag overview records tag access. Opening a section records section access, which powers the access sort. Tag links inside an overview open the next overview without leaving the workflow.
+
+### Advanced filtering
+
+Selecting a tag and adding a related tag from the sidebar is the quickest way to narrow an overview, and it is unchanged. When an intersection is not enough, open **Advanced search** in the overview header to write a Deckard query.
+
+```
+(tag = #project/atlas AND tag = @ren-kade) OR (tag = #risk/vendor AND text ~ "elevator")
+```
+
+Terms combine with `AND`, `OR`, `NOT`, and parentheses. `AND` binds tighter than `OR`, adjacent terms are joined by an implicit `AND`, and `-` or `!` in front of a term negates it. A bare `#tag` or `@person` is a tag condition and a bare or quoted word is a text condition, so `#project/atlas "vendor risk"` is a complete query.
+
+| Field | Matches | Example |
+| --- | --- | --- |
+| `tag` | A tag, including tags a section inherits from a parent heading and tags a note carries in its front matter. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
+| `text` | Words in a note body, a task line, or a front-matter-only file. `:` and `~` match a substring; `=` and `!=` match a whole word. | `text ~ elevator`, `text = plan` |
+| `task` | `open`, `done`, or `any`. Only tasks can satisfy it, so a query using it returns no notes. | `task = open` |
+| `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
+| `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
+| `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
+| `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, or `today`. A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13` |
+
+Operators are `=` for is, `!=` for is not, `~` for contains, `!~` for does not contain, and `>`, `>=`, `<`, `<=` for dates. `:` is accepted everywhere `=` is, so queries written with `tag:#atlas` keep working, but Deckard writes `=` when it formats a query back. A comparison can follow the operator, so `updated:>2026-01-01` and `updated > 2026-01-01` mean the same thing. Every operator has an opposite, so any single condition can be negated without `NOT`; `NOT` is for negating a whole parenthesized group.
+
+- The query bar completes field names and, once it can see which field the caret is in, that field's values — indexed tags, task states, entity namespaces, file names, and date shorthands. Nothing is preselected, so Enter always runs the query you typed; Tab completes, arrow keys move through the list, and Escape abandons the edit.
+- A builder row's value field offers the same completions for its own field, so a tag row completes tags and a task row offers `open`, `done`, and `any`. Choosing one applies the query immediately.
+- **Builder** edits the same query as OR groups of AND rows, using dropdowns instead of syntax. Its operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so a row reads the way the query is written. A row says everything with its operator, so there is no separate negate control to disagree with it, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The query bar remains the source of truth, so a condition the builder cannot represent, such as a negated group, is shown as read-only text rather than rewritten.
+- The Related Notes sidebar follows the query. It identifies the scope as **Advanced search**, shows the query, lists what it matched, and returns to the ordinary tag view when the query is cleared. A query naming exactly one tag keeps that tag's association suggestions.
+- Editing a query never moves you to a different page. When a query narrows to an intersection led by the tag the page was opened on, the page returns to its ordinary chips in place; otherwise it keeps showing the query and its results. Opening a saved query or `Deckard: Search Notes and Tasks` on a plain intersection still lands on the ordinary tag overview, with its usual chips, association suggestions, and title.
+- **Save filter** stores a query under a name. Saved queries appear in the Dashboard's saved views beside saved tag intersections, and they survive tags being renamed or removed from the index.
+- A parse error is reported under the query bar and the previous results stay on screen, so a half-typed query never empties the page.
 
 Set `deckard.enableHeadingTagRelationships` to `false` when you want to hide Associated tags suggestions, including the sidebar list, while keeping ordinary tag indexing and note content unchanged.
 

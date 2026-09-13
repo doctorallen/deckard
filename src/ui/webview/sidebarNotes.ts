@@ -7,6 +7,7 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   ParsedFile,
   Section,
+  SidebarGraphContext,
   SidebarNotesSnapshot,
   SidebarMessage,
   TagReference,
@@ -14,6 +15,7 @@ import {
 } from '../../core/types';
 import {
   createSidebarSnapshot,
+  createQueryOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
@@ -38,6 +40,7 @@ export class SidebarNotesView
   private view: vscode.WebviewView | undefined;
   private viewDisposables: vscode.Disposable[] = [];
   private entryContext: EntryContext | undefined;
+  private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
 
   public constructor(
@@ -161,10 +164,31 @@ export class SidebarNotesView
       return;
     }
 
+    this.graphContext = undefined;
     this.entryContext = { filePath, sourceLine, source: 'manual' };
     this.suppressAutomaticEntrySelection = false;
     await vscode.commands.executeCommand('workbench.view.extension.deckard');
     this.view?.show(true);
+    this.refresh();
+  }
+
+  public async showGraphConnections(
+    context: SidebarGraphContext,
+    reveal = false,
+  ): Promise<void> {
+    this.graphContext = context;
+    if (reveal) {
+      await vscode.commands.executeCommand('workbench.view.extension.deckard');
+      this.view?.show(true);
+    }
+    this.refresh();
+  }
+
+  public clearGraphConnections(): void {
+    if (!this.graphContext) {
+      return;
+    }
+    this.graphContext = undefined;
     this.refresh();
   }
 
@@ -228,18 +252,18 @@ export class SidebarNotesView
   /**
    * Sends the current sidebar projection only when the view is attached.
    */
-  private refresh(): void {
+  private refresh(snapshot?: SidebarNotesSnapshot): void {
     if (!this.view) {
       this.log('Skipped Related Notes refresh because no webview is attached.');
       return;
     }
 
-    const snapshot = this.createSnapshot();
+    const currentSnapshot = snapshot ?? this.createSnapshot();
     this.log(
-      `Sending Related Notes state: ${snapshot.state}${snapshot.tagOverview ? ` (tag overview ${snapshot.tagOverview.key})` : snapshot.activeFileName ? ` (Markdown ${snapshot.activeFileName})` : ''}, ${snapshot.notes.length} note entries.`,
+      `Sending Related Notes state: ${currentSnapshot.state}${currentSnapshot.tagOverview ? ` (tag overview ${currentSnapshot.tagOverview.key})` : currentSnapshot.activeFileName ? ` (Markdown ${currentSnapshot.activeFileName})` : ''}, ${currentSnapshot.notes.length} note entries.`,
     );
     void this.view.webview
-      .postMessage({ type: 'state', data: snapshot })
+      .postMessage({ type: 'state', data: currentSnapshot })
       .then(
         (delivered) =>
           this.log(
@@ -257,33 +281,70 @@ export class SidebarNotesView
    */
   private createSnapshot() {
     const index = this.indexer.getSnapshot();
+    if (this.graphContext) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagOverviewFilters: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        graph: this.graphContext,
+        state: 'graph' as const,
+      };
+    }
     const activeTagKey = this.tagOverview.getActiveTagKey();
     const activeTagFilterKeys = this.tagOverview.getActiveTagFilterKeys();
-    if (activeTagKey) {
-      const overview = createTagOverviewSnapshot(
-        index,
-        this.preferences.value,
-        activeTagKey,
-        'active',
-        this.getTagTitleDisplayMode(),
-        this.areHeadingTagRelationshipsEnabled(),
-        activeTagFilterKeys[0],
-        [...activeTagFilterKeys],
-      );
-      if (overview) {
-        return createTagOverviewSidebarSnapshot(overview);
+    const activeQuery = this.tagOverview.getActiveQuery?.();
+    if (activeQuery || activeTagKey) {
+      // An advanced query decides what the overview is showing, so the sidebar
+      // projects the query's results rather than the page's focus tag.
+      const overview = activeQuery
+        ? createQueryOverviewSnapshot(
+            index,
+            this.preferences.value,
+            activeQuery,
+            'active',
+            this.getTagTitleDisplayMode(),
+            this.areHeadingTagRelationshipsEnabled(),
+            activeTagKey,
+          )
+        : createTagOverviewSnapshot(
+            index,
+            this.preferences.value,
+            activeTagKey as string,
+            'active',
+            this.getTagTitleDisplayMode(),
+            this.areHeadingTagRelationshipsEnabled(),
+            activeTagFilterKeys[0],
+            [...activeTagFilterKeys],
+          );
+      const sidebarSnapshot = overview
+        ? createTagOverviewSidebarSnapshot(overview)
+        : undefined;
+      if (sidebarSnapshot) {
+        return sidebarSnapshot;
       }
     }
 
     this.updateEntryContextFromActiveEditor();
     const active = this.getActiveFile();
-    const activeEntry = active && this.entryContext?.filePath === active.filePath
-      ? createEntryScope(active.file, this.entryContext.sourceLine)
-      : undefined;
+    const selectedFile =
+      this.entryContext?.source === 'manual'
+        ? index.files.get(this.entryContext.filePath)
+        : active?.file;
+    const selectedFilePath =
+      this.entryContext?.source === 'manual'
+        ? this.entryContext.filePath
+        : active?.filePath;
+    const activeEntry =
+      selectedFile &&
+      selectedFilePath &&
+      this.entryContext?.filePath === selectedFilePath
+        ? createEntryScope(selectedFile, this.entryContext.sourceLine)
+        : undefined;
     return createSidebarSnapshot(
       index,
-      active?.filePath,
-      activeEntry?.file ?? active?.file,
+      selectedFilePath,
+      activeEntry?.file ?? selectedFile,
       this.areKeywordLinksEnabled(),
       this.preferences.value.relatedNotesSortMode,
       this.preferences.value.sectionAccessCounts,
@@ -326,17 +387,16 @@ export class SidebarNotesView
    * Keeps the sidebar focused on the smallest tagged entry containing the cursor.
    */
   private updateEntryContextFromActiveEditor(fromSelection = false): void {
+    if (!fromSelection && this.entryContext?.source === 'manual') {
+      return;
+    }
     const editor = vscode.window.activeTextEditor;
     const active = this.getActiveFile();
     if (!editor || !active) {
       this.entryContext = undefined;
       return;
     }
-    if (
-      !fromSelection &&
-      (this.suppressAutomaticEntrySelection ||
-        this.entryContext?.source === 'manual')
-    ) {
+    if (!fromSelection && this.suppressAutomaticEntrySelection) {
       return;
     }
     if (!this.shouldAutoSelectNoteSections(editor.document)) {
@@ -425,6 +485,25 @@ export class SidebarNotesView
       await vscode.commands.executeCommand('deckard.showDashboard');
       return;
     }
+    if (message.type === 'openNotesGraph') {
+      await vscode.commands.executeCommand('deckard.showNotesGraph');
+      return;
+    }
+    if (message.type === 'activateNotesGraphNode') {
+      await vscode.commands.executeCommand(
+        'deckard.activateNotesGraphNode',
+        message.nodeId,
+        message.open,
+      );
+      return;
+    }
+    if (message.type === 'hoverNotesGraphNode') {
+      await vscode.commands.executeCommand(
+        'deckard.highlightNotesGraphNode',
+        message.nodeId,
+      );
+      return;
+    }
     if (message.type === 'createDailyNote') {
       await vscode.commands.executeCommand('deckard.createDailyNote');
       return;
@@ -489,6 +568,8 @@ interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
   getActiveTagFilterKeys(): readonly string[];
+  /** The advanced query driving the active overview, when there is one. */
+  getActiveQuery?(): string | undefined;
 }
 
 /**
@@ -505,7 +586,7 @@ interface EntryContext {
   source: 'cursor' | 'manual';
 }
 
-function findTaggedEntry(file: ParsedFile, sourceLine: number) {
+export function findTaggedEntry(file: ParsedFile, sourceLine: number) {
   const task = file.tasks.find(
     (candidate) =>
       candidate.lineNumber === sourceLine &&

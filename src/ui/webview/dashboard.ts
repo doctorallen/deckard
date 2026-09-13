@@ -43,6 +43,7 @@ export class DashboardPanel implements vscode.Disposable {
       tagKey: string,
       filterTagKeys?: readonly string[],
     ) => void | Promise<void>,
+    private readonly onOpenQuery: (queryText: string) => void | Promise<void>,
   ) {
     const initialPreferences = preferences.value;
     this.dashboardTaskColumns = initialPreferences.dashboardTaskColumns;
@@ -417,6 +418,10 @@ export class DashboardPanel implements vscode.Disposable {
           (filter) => filter.id === message.filterId,
         );
         if (!savedFilter) {
+          return;
+        }
+        if (savedFilter.query) {
+          await this.onOpenQuery(savedFilter.query);
           return;
         }
         const tagKeys = savedFilter.tagKeys.filter((tagKey) =>

@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.8.0",
+  "version": "1.9.0",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -19,6 +19,7 @@
     "onWebviewPanel:deckard.tagOverview",
     "onWebviewPanel:deckard.stats",
     "onWebviewPanel:deckard.help",
+    "onWebviewPanel:deckard.notesGraph",
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
@@ -27,6 +28,10 @@
       {
         "command": "deckard.showDashboard",
         "title": "Deckard: Open Dashboard"
+      },
+      {
+        "command": "deckard.showNotesGraph",
+        "title": "Deckard: Open Notes Graph"
       },
       {
         "command": "deckard.showStats",
@@ -55,6 +60,10 @@
       {
         "command": "deckard.searchWorkspace",
         "title": "Deckard: Search Workspace Knowledge"
+      },
+      {
+        "command": "deckard.searchNotes",
+        "title": "Deckard: Search Notes and Tasks"
       },
       {
         "command": "deckard.linkCurrentHeading",
@@ -233,7 +242,8 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:e2e": "npm run compile-tests && node test/e2e/run.js"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.2.0",
