@@ -149,7 +149,7 @@
 
 - Webview styling and page-script helpers are now shared from
   `src/ui/webview/components.ts` instead of being repeated per page, so one
-  change reaches every panel. See [components.md](components.md). Pages
+  change reaches every panel. See [components.md](docs/components.md). Pages
   previously carried their own copies that had drifted apart: the eyebrow
   label had five different treatments, borders were 1px on some pages and 2px
   on others, and half the pages declared only part of the design-token set.
