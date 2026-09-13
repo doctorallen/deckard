@@ -1,5 +1,4 @@
 # Fixes
-- Add a license. There is no LICENSE file or `license` field in `package.json`, and `package:vsix` passes `--skip-license`.
 - Selecting a heading's "entries share a tag" count opens Related Notes from the saved index, so in an unsaved note whose lines moved it asks to save first. Look the heading up in the live text, as the count does.
 - Decide whether the AI assistant tools should be off by default, or ask the first time they run, since Copilot sends what they return to its cloud model. `deckard.assistantTools` is on by default.
 

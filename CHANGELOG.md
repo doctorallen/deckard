@@ -4,6 +4,8 @@
 
 ### Added
 
+- Deckard is released under the MIT License, now included with the extension.
+
 - **AI assistant tools**: Deckard registers two read-only language model
   tools, so AI assistants in VS Code, such as GitHub Copilot in agent mode,
   can answer questions about your notes. `deckard_query` runs a Deckard query

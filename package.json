@@ -8,6 +8,7 @@
     "url": "https://github.com/doctorallen/deckard.git"
   },
   "version": "1.8.0",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
   },
@@ -500,7 +501,7 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
-    "package:vsix": "vsce package --no-dependencies --skip-license",
+    "package:vsix": "vsce package --no-dependencies",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "capture:dashboard": "node scripts/capture-dashboard-screenshot.mjs",
