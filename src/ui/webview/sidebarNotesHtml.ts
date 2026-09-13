@@ -56,6 +56,7 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
 .graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
@@ -403,7 +404,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
     } else if (state.state === 'noTags') {
       content = '<div class="empty">This note has no tags yet.</div>';
     } else if (state.state === 'noMatches') {
-      content = state.tagOverview
+      content = state.tagOverviewQuery
+        ? '<div class="empty">No notes match this query.</div>'
+        : state.tagOverview
         ? '<div class="empty">' + (tagOverviewFilters.length ? 'No notes currently carry all selected tags.' : 'No notes currently carry this tag.') + '</div>'
         : '<div class="empty">No other notes share its tags.</div>';
     } else {
@@ -465,18 +468,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? (state.graph.selectedNode
         ? renderSelectedGraphNode(state.graph.selectedNode)
         : '<div class="active-file"><div class="active-label">Notes Graph</div><div class="active-name">Connected nodes</div></div>')
+      : state.tagOverviewQuery
+      ? '<div class="active-file"><div class="active-label">Advanced search</div><div class="active-name"><code class="sidebar-query">' + escapeHtml(state.tagOverviewQuery) + '</code></div>' + (tagOverviewFilters.length || state.tagOverview ? '<div class="tag-list" aria-label="Tags in this query">' + (state.tagOverview ? [state.tagOverview] : []).concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('') + '</div>' : '') + '</div>'
       : state.tagOverview
       ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
         ? [state.tagOverview].concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('<span class="active-filter-joiner"> AND </span>')
         : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
-    const relatedNotesSort = state.state !== 'graph' && !state.tagOverview && state.relatedNotesSortMode
+    const relatedNotesSort = state.state !== 'graph' && !state.tagOverview && !state.tagOverviewQuery && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
-      : state.tagOverview
-      ? '<span class="section-label">Current notes</span>'
+      : state.tagOverview || state.tagOverviewQuery
+      ? '<span class="section-label">Matching notes</span>'
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
     const relationshipTree = state.state !== 'graph' && state.tagOverview ? renderSidebarRelationships(state) : '';
     document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;

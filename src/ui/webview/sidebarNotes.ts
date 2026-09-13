@@ -15,6 +15,7 @@ import {
 } from '../../core/types';
 import {
   createSidebarSnapshot,
+  createQueryOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
@@ -292,19 +293,35 @@ export class SidebarNotesView
     }
     const activeTagKey = this.tagOverview.getActiveTagKey();
     const activeTagFilterKeys = this.tagOverview.getActiveTagFilterKeys();
-    if (activeTagKey) {
-      const overview = createTagOverviewSnapshot(
-        index,
-        this.preferences.value,
-        activeTagKey,
-        'active',
-        this.getTagTitleDisplayMode(),
-        this.areHeadingTagRelationshipsEnabled(),
-        activeTagFilterKeys[0],
-        [...activeTagFilterKeys],
-      );
-      if (overview) {
-        return createTagOverviewSidebarSnapshot(overview);
+    const activeQuery = this.tagOverview.getActiveQuery?.();
+    if (activeQuery || activeTagKey) {
+      // An advanced query decides what the overview is showing, so the sidebar
+      // projects the query's results rather than the page's focus tag.
+      const overview = activeQuery
+        ? createQueryOverviewSnapshot(
+            index,
+            this.preferences.value,
+            activeQuery,
+            'active',
+            this.getTagTitleDisplayMode(),
+            this.areHeadingTagRelationshipsEnabled(),
+            activeTagKey,
+          )
+        : createTagOverviewSnapshot(
+            index,
+            this.preferences.value,
+            activeTagKey as string,
+            'active',
+            this.getTagTitleDisplayMode(),
+            this.areHeadingTagRelationshipsEnabled(),
+            activeTagFilterKeys[0],
+            [...activeTagFilterKeys],
+          );
+      const sidebarSnapshot = overview
+        ? createTagOverviewSidebarSnapshot(overview)
+        : undefined;
+      if (sidebarSnapshot) {
+        return sidebarSnapshot;
       }
     }
 
@@ -551,6 +568,8 @@ interface ActiveTagOverview {
   readonly onDidChange: vscode.Event<void>;
   getActiveTagKey(): string | undefined;
   getActiveTagFilterKeys(): readonly string[];
+  /** The advanced query driving the active overview, when there is one. */
+  getActiveQuery?(): string | undefined;
 }
 
 /**

@@ -317,6 +317,39 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Saves a named advanced query, replacing the existing filter that already
+   * stores the same query text.
+   */
+  public async saveSavedQueryFilter(
+    name: string,
+    query: string,
+  ): Promise<SavedFilter | undefined> {
+    const normalizedName = name.trim();
+    const normalizedQuery = query.trim();
+    if (!normalizedName || !normalizedQuery) {
+      return undefined;
+    }
+
+    const existing = this.preferences.savedFilters.find(
+      (filter) => filter.query?.trim() === normalizedQuery,
+    );
+    const savedFilter: SavedFilter = {
+      id: existing?.id ?? createSavedFilterId(),
+      name: normalizedName,
+      tagKeys: [],
+      query: normalizedQuery,
+    };
+    await this.update({
+      savedFilters: existing
+        ? this.preferences.savedFilters.map((filter) =>
+            filter.id === existing.id ? savedFilter : filter,
+          )
+        : [...this.preferences.savedFilters, savedFilter],
+    });
+    return cloneSavedFilter(savedFilter);
+  }
+
+  /**
    * Updates one saved filter when its stable ID still identifies a valid entry.
    */
   public async updateSavedFilter(
@@ -398,6 +431,11 @@ export class PreferencesStore implements vscode.Disposable {
       ),
     );
     const savedFilters = this.preferences.savedFilters.flatMap((filter) => {
+      // A saved query can name tags that do not exist yet, or none at all, so
+      // only tag-set filters are pruned against the index.
+      if (filter.query) {
+        return [filter];
+      }
       const tagKeys = filter.tagKeys.filter((tagKey) => validTags.has(tagKey));
       return tagKeys.length >= 2
         ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
@@ -616,18 +654,28 @@ function normalizeSavedFilters(values: SavedFilter[] | undefined): SavedFilter[]
     }
     const name = value.name.trim();
     const tagKeys = normalizeSavedFilterTagKeys(value.tagKeys);
-    const tagSet = tagKeys.join('\u0000');
+    const query =
+      typeof value.query === 'string' && value.query.trim()
+        ? value.query.trim()
+        : undefined;
+    // A saved view is identified by its query when it has one and by its tag
+    // set otherwise, so the two kinds never collide.
+    const identity = query
+      ? `query\u0000${query}`
+      : `tags\u0000${tagKeys.join('\u0000')}`;
     if (
       !name ||
-      tagKeys.length < 2 ||
+      (!query && tagKeys.length < 2) ||
       seenIds.has(value.id) ||
-      seenTagSets.has(tagSet)
+      seenTagSets.has(identity)
     ) {
       return [];
     }
     seenIds.add(value.id);
-    seenTagSets.add(tagSet);
-    return [{ id: value.id, name, tagKeys }];
+    seenTagSets.add(identity);
+    return query
+      ? [{ id: value.id, name, tagKeys, query }]
+      : [{ id: value.id, name, tagKeys }];
   });
 }
 

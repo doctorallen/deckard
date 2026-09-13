@@ -54,6 +54,9 @@ export function activate(context: vscode.ExtensionContext): void {
     async (tagKey, filterTagKeys = []) => {
       await tagPanels.show(tagKey, undefined, filterTagKeys);
     },
+    async (queryText) => {
+      await tagPanels.showQuery(queryText);
+    },
   );
   const sidebarNotes = new SidebarNotesView(
     indexer,
@@ -199,6 +202,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('deckard.searchWorkspace', () =>
       searchWorkspace(indexer),
     ),
+    vscode.commands.registerCommand(
+      'deckard.searchNotes',
+      (requestedQuery?: unknown) =>
+        showQueryOverview(tagPanels, indexer, requestedQuery),
+    ),
     vscode.commands.registerCommand('deckard.linkCurrentHeading', () =>
       linkCurrentHeading(indexer),
     ),
@@ -304,6 +312,32 @@ interface ExtensionServices {
 function getCommandTagArgument(value: unknown): string | undefined {
   const argument = Array.isArray(value) ? value[0] : value;
   return typeof argument === 'string' ? argument : undefined;
+}
+
+/**
+ * Opens the overview on an advanced query.
+ *
+ * The command accepts a query argument so a link or another command can open a
+ * saved search directly, and prompts for one otherwise.
+ */
+async function showQueryOverview(
+  tagPanels: TagOverviewPanels,
+  indexer: WorkspaceIndexer,
+  requestedQuery: unknown,
+): Promise<void> {
+  await indexer.ready;
+  const query =
+    getCommandTagArgument(requestedQuery) ??
+    (await vscode.window.showInputBox({
+      title: 'Search Deckard notes',
+      prompt:
+        'Write a query, such as (tag = #project/atlas AND tag = #urgent) OR text ~ "vendor"',
+      placeHolder: 'tag = #project/atlas AND task = open',
+    }));
+
+  if (query?.trim()) {
+    await tagPanels.showQuery(query);
+  }
 }
 
 /**

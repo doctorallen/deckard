@@ -1,3 +1,5 @@
+import { QueryViewState } from './query/queryTypes';
+
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
 export type TaskSortMode = 'rank' | 'created' | 'updated';
 export type DashboardColumnCount = 1 | 2 | 3 | 4;
@@ -195,12 +197,15 @@ export interface PersistedPreferences {
 }
 
 /**
- * A named, reusable intersection of at least two canonical tag keys.
+ * A named, reusable view: either an intersection of at least two canonical tag
+ * keys, or a Deckard query when the view needs more than an intersection.
  */
 export interface SavedFilter {
   id: string;
   name: string;
   tagKeys: string[];
+  /** Present when the saved view was created from an advanced query. */
+  query?: string;
 }
 
 /**
@@ -210,6 +215,8 @@ export interface DashboardSavedFilter {
   id: string;
   name: string;
   tags: TagReference[];
+  /** Present when reopening this view should restore an advanced query. */
+  query?: string;
 }
 
 export interface DashboardTask {
@@ -254,8 +261,21 @@ export interface DashboardSnapshot {
 }
 
 export interface TagOverviewSnapshot {
-  tag: TagInfo;
+  /**
+   * The focus tag of a tag-driven overview.
+   *
+   * Undefined only for a standalone query view, which has no single tag to
+   * anchor its title, sidebar, or rename actions to.
+   */
+  tag?: TagInfo;
   entity?: Entity;
+  /**
+   * The advanced filter behind this view.
+   *
+   * Always present. A plain tag overview carries the query that expresses its
+   * own tag intersection, so the query bar and the tag chips never disagree.
+   */
+  query?: QueryViewState;
   /** @deprecated Use filterTags to support every active overview filter. */
   filterTag?: TagReference;
   filterTags: TagReference[];
@@ -382,6 +402,13 @@ export interface SidebarNotesSnapshot {
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
   tagOverview?: TagReference;
+  /**
+   * The advanced query driving the overview, when one is active.
+   *
+   * A query that names no single tag has no chip for the sidebar to show, so
+   * the query itself identifies the scope instead.
+   */
+  tagOverviewQuery?: string;
   /** @deprecated Use tagOverviewFilters to support every active overview filter. */
   tagOverviewFilter?: TagReference;
   tagOverviewFilters: TagReference[];
@@ -596,6 +623,25 @@ export interface SaveTagOverviewFilterMessage {
   type: 'saveTagOverviewFilter';
 }
 
+/**
+ * Replaces the overview's active query.
+ *
+ * The webview sends canonical query text whether the author typed it in the
+ * query bar or assembled it in the visual builder, so the host only ever has
+ * one representation to validate and evaluate.
+ */
+export interface SetOverviewQueryMessage {
+  type: 'setOverviewQuery';
+  query: string;
+}
+
+/**
+ * Clears the advanced query and returns the page to its focus tag.
+ */
+export interface ClearOverviewQueryMessage {
+  type: 'clearOverviewQuery';
+}
+
 export interface SetTagOverviewSortMessage {
   type: 'setTagOverviewSort';
   mode: TagOverviewSortMode;
@@ -684,7 +730,9 @@ export type TagOverviewMessage =
   | RenameTagMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage
-  | SaveTagOverviewFilterMessage;
+  | SaveTagOverviewFilterMessage
+  | SetOverviewQueryMessage
+  | ClearOverviewQueryMessage;
 
 export type SidebarMessage =
   | SidebarReadyMessage

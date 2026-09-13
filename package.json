@@ -62,6 +62,10 @@
         "title": "Deckard: Search Workspace Knowledge"
       },
       {
+        "command": "deckard.searchNotes",
+        "title": "Deckard: Search Notes and Tasks"
+      },
+      {
         "command": "deckard.linkCurrentHeading",
         "title": "Deckard: Link Current Heading to Entity"
       },
@@ -238,7 +242,8 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:e2e": "npm run compile-tests && node test/e2e/run.js"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.2.0",

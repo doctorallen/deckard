@@ -353,7 +353,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   }
 
   function formatEntityKindLabel(value) {
-    return String(value).replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (character) { return character.toUpperCase(); });
+    return String(value).replace(/[-_]+/g, ' ').replace(/\\b[a-z]/g, function (character) { return character.toUpperCase(); });
   }
 
   function formatTagDisplay(tag) {

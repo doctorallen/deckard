@@ -213,6 +213,40 @@ button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
 .tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .tag-context-menu[hidden] { display: none; }
 .tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
+.query-workspace { margin-top: 16px; border: 2px solid var(--line); background: var(--panel-deep); }
+.query-workspace[hidden] { display: none; }
+.query-bar-row { display: flex; align-items: stretch; gap: 6px; padding: 10px; }
+.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: 2px solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.query-input:focus { border-color: var(--amber); outline: none; }
+.query-input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.query-input.invalid { border-color: #FF5555; }
+.query-input-shell { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
+.query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 220px; overflow-y: auto; border: 2px solid var(--amber); background: var(--panel-raised); }
+.query-suggestions[hidden] { display: none; }
+.query-suggestion { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; border: 0; background: transparent; padding: 6px 9px; text-align: left; font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.query-suggestion:hover, .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
+.query-suggestion-detail { color: var(--muted); font-size: 10px; }
+.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
+.query-error { color: #FF8080; font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.query-hint { color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.query-builder { border-top: 2px solid var(--line); padding: 10px; }
+.query-builder[hidden] { display: none; }
+.query-builder-group { border: 2px solid var(--line); background: var(--panel); padding: 10px; }
+.query-builder-group + .query-builder-or { display: block; margin: 8px 0; color: var(--amber); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); letter-spacing: .12em; text-align: center; text-transform: uppercase; }
+.query-builder-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.query-builder-row + .query-builder-row { margin-top: 6px; }
+.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: 12px; }
+.query-builder-row .query-builder-operator { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
+.query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
+.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
+.query-builder-and { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; min-width: 30px; }
+.query-builder-remove { min-height: 28px; padding: 4px 8px; }
+.query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.query-builder-actions button { font-size: 11px; }
+.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.query-summary { color: var(--cyan); font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .cards { display: grid; gap: 12px; margin-top: 20px; }
 .overview-filter-tag { display: inline-flex; align-items: baseline; gap: 5px; }
 .title-filter-remove { min-height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--muted); padding: 0 4px; font-size: 12px; line-height: 16px; vertical-align: middle; }
@@ -258,6 +292,78 @@ ${getDeckardThemeCss(getDeckardTheme())}
   let taskSearchQuery = '';
   let tagContextMenu;
   let tagContextKey;
+  /** Local edit buffer for the query bar; the host owns the applied query. */
+  let queryDraft;
+  let queryPanelOpen = false;
+  let builderOpen = false;
+  let suggestionItems = [];
+  let suggestionIndex = -1;
+  /** Which input the completion list is attached to, if any. */
+  let suggestionHostKey;
+  /** The partial text the completion list is filtering on. */
+  let suggestionToken = '';
+  let restoreQueryFocus = false;
+  /**
+   * Local builder rows.
+   *
+   * The builder needs to hold a row the author has not finished writing, and
+   * an incomplete row contributes nothing to the query text, so the rows
+   * cannot come straight from the host's parse. The draft owns them until
+   * they turn into text the host can parse.
+   */
+  let builderDraft;
+  /** Applied query the draft was last reconciled with. */
+  let builderSourceText;
+  /** Value input to focus once the next render settles. */
+  let pendingBuilderFocus;
+
+  const QUERY_FIELD_OPERATORS = {
+    tag: ['eq', 'neq'],
+    text: ['contains', 'notContains', 'eq', 'neq'],
+    task: ['eq', 'neq'],
+    kind: ['eq', 'neq'],
+    file: ['eq', 'neq', 'contains', 'notContains'],
+    path: ['eq', 'neq', 'contains', 'notContains'],
+    created: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+    updated: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  };
+  const QUERY_FIELDS = Object.keys(QUERY_FIELD_OPERATORS);
+  const OPERATOR_LABELS = {
+    eq: '=',
+    neq: '!=',
+    contains: '~',
+    notContains: '!~',
+    gt: '>',
+    gte: '>=',
+    lt: '<',
+    lte: '<=',
+  };
+  /** Hover text, since a symbol alone does not say what it compares. */
+  const OPERATOR_DESCRIPTIONS = {
+    eq: 'is',
+    neq: 'is not',
+    contains: 'contains',
+    notContains: 'does not contain',
+    gt: 'after',
+    gte: 'on or after',
+    lt: 'before',
+    lte: 'on or before',
+  };
+  /** The text field matches whole words with = and any substring with ~. */
+  const TEXT_OPERATOR_DESCRIPTIONS = {
+    eq: 'is the whole word',
+    neq: 'does not have the whole word',
+  };
+  const FIELD_PLACEHOLDERS = {
+    tag: '#project/atlas',
+    text: 'vendor review',
+    task: 'open',
+    kind: 'project',
+    file: '2026-09-*.md',
+    path: 'notes/*',
+    created: '2026-09-13',
+    updated: '30d',
+  };
 
   /** Escape headings and source paths before inserting snapshot data as HTML. */
   function escapeHtml(value) {
@@ -287,7 +393,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   /** Give built-in and user-created namespaces the same readable title form. */
   function formatEntityTitle(kind, name) {
     function formatPart(value) {
-      return String(value).replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (character) { return character.toUpperCase(); });
+      return String(value).replace(/[-_]+/g, ' ').replace(/\\b[a-z]/g, function (character) { return character.toUpperCase(); });
     }
     return formatPart(kind) + ': ' + formatPart(name);
   }
@@ -552,6 +658,318 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<section class="relationship-workspace" aria-labelledby="relationships-heading"><div class="relationship-workspace-header"><div class="relationship-workspace-title"><h2 id="relationships-heading" class="relationship-heading">Tag associations</h2><span class="relationship-summary">' + associations.length + ' related tags</span></div><div class="relationship-view-switch" role="tablist" aria-label="Relationship view"><button class="' + (treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="tree" role="tab" aria-selected="' + treeActive + '">Tree</button><button class="' + (!treeActive ? 'active' : '') + '" data-action="set-relationship-view" data-view="graph" role="tab" aria-selected="' + (!treeActive) + '">Graph</button></div></div><div class="relationship-view-panel"' + (treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipTree(associations, rootTag) + '</div><div class="relationship-view-panel"' + (!treeActive ? '' : ' hidden') + ' role="tabpanel">' + renderRelationshipGraph(associations, rootTag) + '</div></section>';
   }
 
+  /** Read the query the host most recently applied. */
+  function appliedQuery() {
+    return (state && state.query && state.query.text) || '';
+  }
+
+  /** Read the draft in the bar, falling back to the applied query. */
+  function currentQuery() {
+    return queryDraft === undefined ? appliedQuery() : queryDraft;
+  }
+
+  function queryErrors() {
+    const diagnostics = (state && state.query && state.query.diagnostics) || [];
+    return diagnostics.filter(function (diagnostic) { return diagnostic.severity === 'error'; });
+  }
+
+  /** Render the query bar, its completion list, and the optional builder. */
+  function renderQueryWorkspace() {
+    if (!queryPanelOpen) return '';
+    const value = currentQuery();
+    const errors = queryErrors();
+    const errorHtml = errors.length
+      ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
+      : '<span class="query-hint">Enter applies. Combine terms with AND, OR, NOT and parentheses.</span>';
+    const counts = (state.query && state.query.matchCounts) || { notes: 0, tasks: 0 };
+    const summary = '<span>' + counts.notes + ' ' + (counts.notes === 1 ? 'note' : 'notes') + ' &middot; ' + counts.tasks + ' ' + (counts.tasks === 1 ? 'task' : 'tasks') + '</span>';
+    const builderToggle = '<button data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the query with dropdowns">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>';
+    const applyButton = '<button data-action="apply-query" title="Apply this query">Apply</button>';
+    const clearButton = value ? '<button data-action="clear-query" title="Clear this query">Clear</button>' : '';
+    return '<section class="query-workspace" aria-label="Advanced filter">'
+      + '<div class="query-bar-row">'
+      + '<span class="query-input-shell"><input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="Deckard query" placeholder="tag = #project/atlas AND task = open" value="' + escapeHtml(value) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
+      + applyButton + builderToggle + clearButton
+      + '</div>'
+      + '<div class="query-status">' + errorHtml + summary + '</div>'
+      + renderQueryBuilder()
+      + '</section>';
+  }
+
+  /** Render OR groups of AND rows over the host's parse of the query. */
+  function renderQueryBuilder() {
+    if (!builderOpen) return '';
+    const query = state.query || {};
+    const draft = builderGroups();
+    const groups = draft.length ? draft : [{ rows: [] }];
+    const groupsHtml = groups.map(function (group, groupIndex) {
+      const rows = group.rows.length
+        ? group.rows.map(function (row, rowIndex) { return renderBuilderRow(row, groupIndex, rowIndex); }).join('')
+        : '<p class="query-builder-note">This group is empty. Add a condition to start it.</p>';
+      return (groupIndex > 0 ? '<span class="query-builder-or">or</span>' : '')
+        + '<div class="query-builder-group" data-group-index="' + groupIndex + '">' + rows
+        + '<div class="query-builder-actions"><button data-action="builder-add-row" data-group-index="' + groupIndex + '">Add condition</button>'
+        + (groups.length > 1 ? '<button data-action="builder-remove-group" data-group-index="' + groupIndex + '">Remove group</button>' : '')
+        + '</div></div>';
+    }).join('');
+    const note = query.isBuildable === false
+      ? '<p class="query-builder-note">Some conditions were written by hand and are shown as text. Editing them in the query bar keeps them exactly as written.</p>'
+      : '';
+    return '<div class="query-builder">' + groupsHtml
+      + '<div class="query-builder-actions"><button data-action="builder-add-group">Add OR group</button></div>'
+      + note + '</div>';
+  }
+
+  function renderBuilderRow(row, groupIndex, rowIndex) {
+    const position = ' data-group-index="' + groupIndex + '" data-row-index="' + rowIndex + '"';
+    const suggestKey = 'g' + groupIndex + 'r' + rowIndex;
+    const joiner = '<span class="query-builder-and">' + (rowIndex === 0 ? 'where' : 'and') + '</span>';
+    if (!row.supported) {
+      return '<div class="query-builder-row">' + joiner
+        + '<code class="query-builder-readonly">' + escapeHtml(row.text) + '</code>'
+        + '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button></div>';
+    }
+    const fields = QUERY_FIELDS.map(function (field) {
+      return '<option value="' + field + '"' + (field === row.field ? ' selected' : '') + '>' + field + '</option>';
+    }).join('');
+    const descriptions = row.field === 'text'
+      ? Object.assign({}, OPERATOR_DESCRIPTIONS, TEXT_OPERATOR_DESCRIPTIONS)
+      : OPERATOR_DESCRIPTIONS;
+    const operators = (QUERY_FIELD_OPERATORS[row.field] || ['eq']).map(function (operator) {
+      return '<option value="' + operator + '" title="' + escapeHtml(descriptions[operator] || '') + '"' + (operator === row.operator ? ' selected' : '') + '>' + escapeHtml(OPERATOR_LABELS[operator] || operator) + '</option>';
+    }).join('');
+    const operatorTitle = descriptions[row.operator] || 'Operator';
+    return '<div class="query-builder-row">' + joiner
+      + '<select data-action="builder-set-field"' + position + ' aria-label="Field">' + fields + '</select>'
+      + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" title="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
+      + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+      + '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button></div>';
+  }
+
+  /**
+   * Adopt edited builder rows, then send the query they describe.
+   *
+   * A row that is still empty changes the rows without changing the query, so
+   * that case re-renders locally instead of making a round trip that would
+   * drop the row on the way back.
+   */
+  function applyBuilderGroups(groups) {
+    builderDraft = groups;
+    const text = buildQueryFromGroups(groups);
+    if (text === appliedQuery()) {
+      render();
+      return;
+    }
+    builderSourceText = text;
+    queryDraft = text;
+    sendQuery(text);
+  }
+
+  /** Render builder rows as query text, skipping rows with no value yet. */
+  function buildQueryFromGroups(groups) {
+    const branches = groups.map(function (group) {
+      return group.rows.map(function (row) {
+        if (!row.supported) return row.text.trim();
+        if (!String(row.value).trim()) return '';
+        return formatBuilderCondition(row);
+      }).filter(Boolean).join(' AND ');
+    }).filter(Boolean);
+    return branches.length <= 1
+      ? (branches[0] || '')
+      : branches.map(function (branch) {
+        return branch.indexOf(' AND ') >= 0 ? '(' + branch + ')' : branch;
+      }).join(' OR ');
+  }
+
+  function formatBuilderCondition(row) {
+    const value = quoteQueryValue(String(row.value).trim());
+    const symbols = { eq: '=', neq: '!=', contains: '~', notContains: '!~', gt: '>', gte: '>=', lt: '<', lte: '<=' };
+    return row.field + ' ' + (symbols[row.operator] || '=') + ' ' + value;
+  }
+
+  function quoteQueryValue(value) {
+    return /[\\s:=<>~!()"']/.test(value) || !value
+      ? '"' + value.replace(/(["\\\\])/g, '\\\\$1') + '"'
+      : value;
+  }
+
+  /**
+   * Read the builder's rows, seeding them from the host's parse on first use.
+   *
+   * Returns a copy so a caller can mutate rows freely and hand the result
+   * back through applyBuilderGroups.
+   */
+  function builderGroups() {
+    if (!builderDraft) {
+      builderDraft = ((state.query && state.query.groups) || []).map(function (group) {
+        return { rows: group.rows.map(function (row) { return Object.assign({}, row); }) };
+      });
+      builderSourceText = appliedQuery();
+    }
+    return builderDraft.map(function (group) {
+      return { rows: group.rows.map(function (row) { return Object.assign({}, row); }) };
+    });
+  }
+
+  function emptyBuilderRow() {
+    return { field: 'tag', operator: 'eq', value: '', supported: true, text: '' };
+  }
+
+  function sendQuery(text) {
+    vscode.postMessage({ type: 'setOverviewQuery', query: text });
+  }
+
+  /**
+   * Completions for the token under the caret in the query bar.
+   *
+   * When the caret sits after a field and its operator the list narrows to
+   * values that field accepts; otherwise it offers field names and tags,
+   * which are complete conditions on their own.
+   */
+  function queryBarSuggestions(input) {
+    const caret = caretPosition(input);
+    const prefix = input.value.slice(0, caret);
+    const suggestions = (state.query && state.query.suggestions) || {};
+    const context = valueContext(prefix, suggestions.aliases || {});
+    if (context) {
+      const values = (suggestions.values || {})[context.field] || [];
+      return {
+        token: context.token,
+        items: values.map(function (item) {
+          return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ' };
+        }),
+      };
+    }
+    const token = (prefix.match(/[^\\s()]*$/) || [''])[0];
+    const fields = (suggestions.fields || []).map(function (item) {
+      return { value: item.value, label: item.label + ' =', detail: item.detail, insert: item.value + ' = ' };
+    });
+    const tags = ((suggestions.values || {}).tag || []).map(function (item) {
+      return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ' };
+    });
+    return { token: token, items: fields.concat(tags) };
+  }
+
+  /** Where the caret sits, defaulting to the end of the value. */
+  function caretPosition(input) {
+    return typeof input.selectionStart === 'number'
+      ? input.selectionStart
+      : input.value.length;
+  }
+
+  /** Detect a caret sitting in the value of a field condition. */
+  function valueContext(prefix, aliases) {
+    const match = prefix.match(/([A-Za-z]+)\\s*(!=|!~|>=|<=|[:=~<>])\\s*([^\\s()]*)$/);
+    if (!match) return undefined;
+    const field = aliases[match[1].toLowerCase()];
+    return field ? { field: field, token: match[3] } : undefined;
+  }
+
+  /** Completions for one builder row's value field. */
+  function builderValueSuggestions(field, token) {
+    const suggestions = (state.query && state.query.suggestions) || {};
+    const values = (suggestions.values || {})[field] || [];
+    return {
+      token: token,
+      items: values.map(function (item) {
+        return { value: item.value, label: item.label, detail: item.detail, insert: item.value };
+      }),
+    };
+  }
+
+  /** Populate and show the list attached to an input. */
+  function openSuggestions(input) {
+    const key = input.dataset.suggestKey;
+    if (!key) return;
+    const source = key === 'query'
+      ? queryBarSuggestions(input)
+      : builderValueSuggestions(input.dataset.field, input.value);
+    const token = String(source.token || '');
+    suggestionItems = !token
+      ? []
+      : source.items.filter(function (item) {
+        return item.value.toLowerCase().indexOf(token.toLowerCase()) >= 0
+          || String(item.label).toLowerCase().indexOf(token.toLowerCase()) >= 0;
+      }).slice(0, 12);
+    suggestionToken = token;
+    suggestionHostKey = key;
+    // Nothing is highlighted until the author arrows into the list, so Enter
+    // runs the query they typed instead of silently accepting a completion.
+    suggestionIndex = -1;
+    renderSuggestions(input);
+  }
+
+  function suggestionContainer(key) {
+    return document.querySelector('[data-suggestions="' + key + '"]');
+  }
+
+  function renderSuggestions(input) {
+    const container = suggestionContainer(suggestionHostKey);
+    if (!container) return;
+    if (!suggestionItems.length) {
+      container.hidden = true;
+      container.innerHTML = '';
+      if (input) input.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    container.innerHTML = suggestionItems.map(function (item, index) {
+      return '<button type="button" role="option" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span>' + escapeHtml(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
+    }).join('');
+    container.hidden = false;
+    if (input) input.setAttribute('aria-expanded', 'true');
+  }
+
+  /** Replace the token being completed with the chosen suggestion. */
+  function acceptSuggestion(index) {
+    const item = suggestionItems[index];
+    if (!item) return;
+    const key = suggestionHostKey;
+    const input = document.querySelector('[data-suggest-key="' + key + '"]');
+    if (!input) return;
+
+    if (key === 'query') {
+      const caret = caretPosition(input);
+      const start = caret - suggestionToken.length;
+      input.value = input.value.slice(0, start) + item.insert + input.value.slice(caret);
+      const nextCaret = start + item.insert.length;
+      closeSuggestions();
+      input.setSelectionRange(nextCaret, nextCaret);
+      queryDraft = input.value;
+      input.focus();
+      return;
+    }
+
+    // A builder value is committed as soon as it is chosen, so the results
+    // update without waiting for the field to lose focus.
+    input.value = item.insert;
+    closeSuggestions();
+    commitBuilderValue(input);
+  }
+
+  function commitBuilderValue(input) {
+    const groups = builderGroups();
+    const group = groups[Number(input.dataset.groupIndex)];
+    const row = group && group.rows[Number(input.dataset.rowIndex)];
+    if (!row) return;
+    row.value = input.value;
+    pendingBuilderFocus = {
+      groupIndex: Number(input.dataset.groupIndex),
+      rowIndex: Number(input.dataset.rowIndex),
+    };
+    applyBuilderGroups(groups);
+  }
+
+  function closeSuggestions() {
+    suggestionItems = [];
+    suggestionIndex = -1;
+    const container = suggestionContainer(suggestionHostKey);
+    if (container) {
+      container.hidden = true;
+      container.innerHTML = '';
+    }
+    suggestionHostKey = undefined;
+  }
+
   function filterOverviewEntries(kind, query, total) {
     const normalizedQuery = query.trim().toLowerCase();
     let visibleCount = 0;
@@ -598,35 +1016,47 @@ ${getDeckardThemeCss(getDeckardTheme())}
   function render() {
     if (!state) return;
     closeTagContextMenu();
+    const queryState = state.query || {};
+    // A query the tag chips cannot express takes over the title; every other
+    // view keeps the original chip presentation exactly as it was.
+    const isQueryView = queryState.isAdvanced === true;
+    const filterTags = isQueryView
+      ? []
+      : (state.filterTags || (state.filterTag ? [state.filterTag] : []));
     const baseTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
-      : state.tag.label;
-    const filterTags = state.filterTags || (state.filterTag ? [state.filterTag] : []);
+      : (state.tag ? state.tag.label : 'Search');
     const focusReference = state.entity
       ? { key: state.entity.key, label: state.entity.label }
       : state.tag;
     const focusTitle = state.entity
       ? formatEntityTitle(state.entity.kind, state.entity.name)
-      : state.tag.label;
+      : (state.tag ? state.tag.label : 'Search');
     const activeTitleTags = filterTags.map(function (tag) {
       return { tag: tag, text: formatTagReferenceTitle(tag) };
-    }).concat([{ tag: focusReference, text: focusTitle }]);
-    const titleHtml = filterTags.length
-      ? activeTitleTags.map(function (item) {
-        const removingFocus = item.tag.key === focusReference.key;
-        const remainingFilterTags = removingFocus
-          ? filterTags.slice(1)
-          : filterTags.filter(function (tag) { return tag.key !== item.tag.key; });
-        const nextTagKey = removingFocus ? filterTags[0].key : focusReference.key;
-        return renderFilteredOverviewTag(item.tag, item.text, nextTagKey, remainingFilterTags.map(function (tag) { return tag.key; }));
-      }).join('<span class="overview-title-joiner"> AND </span>')
-      : renderOverviewTagLink(focusReference, focusTitle);
-    const titleAriaLabel = filterTags.length
-      ? activeTitleTags.map(function (item) { return item.text; }).join(' and ') + (state.entity ? '' : ' overview')
-      : baseTitle;
-    const entityMeta = state.entity
+    }).concat(focusReference ? [{ tag: focusReference, text: focusTitle }] : []);
+    const titleHtml = isQueryView || !focusReference
+      ? '<span class="query-summary">' + escapeHtml(queryState.text || 'Search') + '</span>'
+      : filterTags.length
+        ? activeTitleTags.map(function (item) {
+          const removingFocus = item.tag.key === focusReference.key;
+          const remainingFilterTags = removingFocus
+            ? filterTags.slice(1)
+            : filterTags.filter(function (tag) { return tag.key !== item.tag.key; });
+          const nextTagKey = removingFocus ? filterTags[0].key : focusReference.key;
+          return renderFilteredOverviewTag(item.tag, item.text, nextTagKey, remainingFilterTags.map(function (tag) { return tag.key; }));
+        }).join('<span class="overview-title-joiner"> AND </span>')
+        : renderOverviewTagLink(focusReference, focusTitle);
+    const titleAriaLabel = isQueryView || !focusReference
+      ? 'Query: ' + (queryState.text || '')
+      : filterTags.length
+        ? activeTitleTags.map(function (item) { return item.text; }).join(' and ') + (state.entity ? '' : ' overview')
+        : baseTitle;
+    const entityMeta = state.entity && !isQueryView
       ? '<div class="entity-meta">' + (filterTags.length ? filterTags.map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ') + ' · ' : '') + renderOverviewTagLink(focusReference, state.entity.label) + '</div>'
-      : '';
+      : isQueryView
+        ? '<div class="entity-meta">' + (queryState.tags || []).map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ') + '</div>'
+        : '';
     const cards = state.sections.length ? state.sections.map(function (section) {
       const fileName = section.filePath.split('/').pop() || section.filePath;
       const content = section.rawContent ? (state.renderMode === 'html' ? '<div class="rendered">' + section.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(section.rawContent) + '</pre>') : '';
@@ -638,7 +1068,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       }).join('') : '';
       const searchText = [section.heading, section.filePath, section.rawContent].join(' ').toLowerCase();
       return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
-    }).join('') : '<div class="empty">' + (filterTags.length ? 'No sections currently carry all selected tags.' : 'No sections currently carry this tag.') + '</div>';
+    }).join('') : '<div class="empty">' + (isQueryView ? 'No notes match this query.' : filterTags.length ? 'No sections currently carry all selected tags.' : 'No sections currently carry this tag.') + '</div>';
     const tasks = state.tasks.length ? '<div class="task-summary">' + state.tasks.map(function (item) {
       const task = item.task;
       const searchText = [task.title, item.fileName, item.sectionHeading || ''].join(' ').toLowerCase();
@@ -662,9 +1092,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       : '<div class="overview-tabs-row"><div class="overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (<span data-search-count="notes">' + notesCount + '</span>)</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</button></div></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const relationships = '';
-    const saveFilterControl = filterTags.length
-      ? '<button class="save-filter" data-action="save-filter" aria-label="Save this combined tag filter" title="Save filter">Save filter</button>'
+    const saveFilterControl = filterTags.length || isQueryView
+      ? '<button class="save-filter" data-action="save-filter" aria-label="Save this view" title="Save filter">Save filter</button>'
       : '';
+    // The visible text is the accessible name, so the two cannot drift apart.
+    const queryToggle = '<button data-action="toggle-query" aria-expanded="' + queryPanelOpen + '" title="Search with a query: combine tags, text, tasks and dates using AND, OR and NOT">' + (queryPanelOpen ? 'Hide advanced search' : 'Advanced search') + '</button>';
     const layoutControls = '<div class="toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
     const formatControls = '<div class="toolbar-toggle-group" role="group" aria-label="Content format"><button class="toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const viewOptions = '<details class="view-options"><summary aria-label="View options" title="View options"><svg class="toolbar-icon settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"/></svg></summary><div class="view-options-menu"><div class="view-options-group"><span>Layout</span>' + layoutControls + '</div><div class="view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
@@ -672,11 +1104,36 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const savedViewName = state.savedViewName
       ? '<div class="saved-view-name" aria-label="Saved view: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved view:</span> ' + escapeHtml(state.savedViewName) + '</div>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW</p>' + saveFilterControl + '</div>' + savedViewName + '<h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + '</div>' + headerControls + '</header>' + relationships + layoutContent;
+    const eyebrow = isQueryView || !state.tag
+      ? 'DECKARD / SEARCH'
+      : 'DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW';
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p>' + queryToggle + saveFilterControl + '</div>' + savedViewName + '<h1 aria-label="' + escapeHtml(titleAriaLabel) + '">' + titleHtml + '</h1>' + entityMeta + '</div>' + headerControls + '</header>' + renderQueryWorkspace() + relationships + layoutContent;
     filterOverviewEntries('notes', noteSearchQuery, state.sections.length);
     filterOverviewEntries('tasks', taskSearchQuery, state.tasks.length);
+    if (restoreQueryFocus) {
+      restoreQueryFocus = false;
+      const input = document.querySelector('[data-action="query-input"]');
+      if (input) {
+        input.focus();
+        const caret = input.value.length;
+        input.setSelectionRange(caret, caret);
+      }
+    }
+    if (pendingBuilderFocus) {
+      const target = document.querySelector('[data-action="builder-set-value"][data-group-index="' + pendingBuilderFocus.groupIndex + '"][data-row-index="' + pendingBuilderFocus.rowIndex + '"]');
+      pendingBuilderFocus = undefined;
+      if (target) target.focus();
+    }
   }
 
+  // Pressing the mouse on a completion must not move focus out of the field it
+  // belongs to. A builder value commits when it loses focus, which re-renders
+  // the row and would destroy the completion before its click could land.
+  document.addEventListener('mousedown', function (event) {
+    if (event.target.closest && event.target.closest('[data-action="query-suggestion"]')) {
+      event.preventDefault();
+    }
+  });
   document.addEventListener('click', function (event) {
     const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
     if (contextAction) {
@@ -694,6 +1151,9 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (viewOptions && viewOptions.open && !event.target.closest('.view-options')) {
       viewOptions.open = false;
     }
+    if (suggestionItems.length && !event.target.closest('.query-input-shell')) {
+      closeSuggestions();
+    }
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
@@ -709,6 +1169,57 @@ ${getDeckardThemeCss(getDeckardTheme())}
       }
       if (target.dataset.action === 'save-filter') {
         vscode.postMessage({ type: 'saveTagOverviewFilter' });
+      }
+      if (target.dataset.action === 'toggle-query') {
+        queryPanelOpen = !queryPanelOpen;
+        if (queryPanelOpen) restoreQueryFocus = true;
+        else closeSuggestions();
+        render();
+      }
+      if (target.dataset.action === 'toggle-builder') {
+        builderOpen = !builderOpen;
+        render();
+      }
+      if (target.dataset.action === 'apply-query') {
+        closeSuggestions();
+        sendQuery(currentQuery());
+      }
+      if (target.dataset.action === 'clear-query') {
+        queryDraft = '';
+        closeSuggestions();
+        vscode.postMessage({ type: 'clearOverviewQuery' });
+      }
+      if (target.dataset.action === 'query-suggestion') {
+        acceptSuggestion(Number(target.dataset.suggestionIndex));
+      }
+      if (target.dataset.action === 'builder-add-group') {
+        const groups = builderGroups();
+        groups.push({ rows: [emptyBuilderRow()] });
+        pendingBuilderFocus = { groupIndex: groups.length - 1, rowIndex: 0 };
+        applyBuilderGroups(groups);
+      }
+      if (target.dataset.action === 'builder-add-row') {
+        const groups = builderGroups();
+        const groupIndex = Number(target.dataset.groupIndex);
+        const group = groups[groupIndex];
+        if (group) {
+          group.rows.push(emptyBuilderRow());
+          pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: group.rows.length - 1 };
+          applyBuilderGroups(groups);
+        }
+      }
+      if (target.dataset.action === 'builder-remove-group') {
+        const groups = builderGroups();
+        groups.splice(Number(target.dataset.groupIndex), 1);
+        applyBuilderGroups(groups);
+      }
+      if (target.dataset.action === 'builder-remove-row') {
+        const groups = builderGroups();
+        const group = groups[Number(target.dataset.groupIndex)];
+        if (group) {
+          group.rows.splice(Number(target.dataset.rowIndex), 1);
+          applyBuilderGroups(groups);
+        }
       }
       if (target.dataset.action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
       if (target.dataset.action === 'open-tag') {
@@ -728,6 +1239,60 @@ ${getDeckardThemeCss(getDeckardTheme())}
     if (target) openTagContextMenu(event, target);
   });
   document.addEventListener('keydown', function (event) {
+    const suggestInput = event.target.closest
+      ? event.target.closest('[data-suggest-key]')
+      : undefined;
+    if (suggestInput) {
+      const isQueryBar = suggestInput.dataset.suggestKey === 'query';
+      if (event.key === 'ArrowDown' && suggestionItems.length) {
+        event.preventDefault();
+        suggestionIndex = (suggestionIndex + 1) % suggestionItems.length;
+        renderSuggestions(suggestInput);
+        return;
+      }
+      if (event.key === 'ArrowUp' && suggestionItems.length) {
+        event.preventDefault();
+        suggestionIndex = (suggestionIndex - 1 + suggestionItems.length) % suggestionItems.length;
+        renderSuggestions(suggestInput);
+        return;
+      }
+      if (event.key === 'Tab' && suggestionItems.length) {
+        // Tab is the key that means "complete this", so it takes the first
+        // entry when the author has not picked one.
+        event.preventDefault();
+        acceptSuggestion(suggestionIndex >= 0 ? suggestionIndex : 0);
+        return;
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (suggestionItems.length && suggestionIndex >= 0) {
+          acceptSuggestion(suggestionIndex);
+          return;
+        }
+        if (isQueryBar) {
+          closeSuggestions();
+          sendQuery(suggestInput.value);
+        } else {
+          closeSuggestions();
+          commitBuilderValue(suggestInput);
+        }
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (suggestionItems.length) {
+          closeSuggestions();
+          return;
+        }
+        if (isQueryBar) {
+          // Escape with no completions open abandons the edit.
+          queryDraft = undefined;
+          suggestInput.value = appliedQuery();
+        }
+        return;
+      }
+      return;
+    }
     if (event.key === 'Escape') {
       const viewOptions = document.querySelector('.view-options');
       if (viewOptions && viewOptions.open) {
@@ -762,9 +1327,34 @@ ${getDeckardThemeCss(getDeckardTheme())}
     const target = event.target;
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    const builderAction = target.dataset.action;
+    if (builderAction === 'builder-set-field' || builderAction === 'builder-set-operator' || builderAction === 'builder-set-value') {
+      const groups = builderGroups();
+      const group = groups[Number(target.dataset.groupIndex)];
+      const row = group && group.rows[Number(target.dataset.rowIndex)];
+      if (!row) return;
+      if (builderAction === 'builder-set-field') {
+        row.field = target.value;
+        // Keep the operator valid for the new field.
+        const allowed = QUERY_FIELD_OPERATORS[row.field] || ['eq'];
+        if (allowed.indexOf(row.operator) < 0) row.operator = allowed[0];
+      }
+      if (builderAction === 'builder-set-operator') row.operator = target.value;
+      if (builderAction === 'builder-set-value') row.value = target.value;
+      applyBuilderGroups(groups);
+    }
   });
   document.addEventListener('input', function (event) {
     const target = event.target;
+    if (target.dataset.action === 'query-input') {
+      queryDraft = target.value;
+      openSuggestions(target);
+      return;
+    }
+    if (target.dataset.action === 'builder-set-value') {
+      openSuggestions(target);
+      return;
+    }
     if (target.dataset.action !== 'search-notes' && target.dataset.action !== 'search-tasks') return;
     if (target.dataset.action === 'search-notes') {
       noteSearchQuery = target.value;
@@ -778,7 +1368,28 @@ ${getDeckardThemeCss(getDeckardTheme())}
     );
   });
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') { state = event.data.data; vscode.setState({ tagKey: state.tag.key, filterTagKey: state.filterTag && state.filterTag.key, filterTagKeys: (state.filterTags || []).map(function (tag) { return tag.key; }) }); render(); }
+    if (event.data && event.data.type === 'state') {
+      state = event.data.data;
+      // The host owns the applied query, so a fresh snapshot supersedes any
+      // local draft and the bar always shows what the results reflect.
+      queryDraft = undefined;
+      // The builder's rows survive the echo of a query this builder just
+      // sent, and are rebuilt whenever the query changed some other way.
+      const appliedText = (state.query && state.query.text) || '';
+      if (appliedText !== builderSourceText) {
+        builderDraft = undefined;
+        builderSourceText = appliedText;
+      }
+      const advanced = state.query && state.query.isAdvanced;
+      if (advanced) queryPanelOpen = true;
+      vscode.setState({
+        tagKey: state.tag && state.tag.key,
+        filterTagKey: state.filterTag && state.filterTag.key,
+        filterTagKeys: (state.filterTags || []).map(function (tag) { return tag.key; }),
+        query: advanced ? state.query.text : undefined,
+      });
+      render();
+    }
   });
 
   function getFilterTagKeys(value) {

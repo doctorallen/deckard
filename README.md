@@ -60,6 +60,7 @@ Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note. |
 | **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
+| **Deckard: Search Notes and Tasks** | Opens an overview on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
@@ -205,6 +206,36 @@ Each overview collects the matching sections from your notes. You can:
 - select a section to jump to its heading in the source note.
 
 Opening a tag overview records tag access. Opening a section records section access, which powers the access sort. Tag links inside an overview open the next overview without leaving the workflow.
+
+### Advanced filtering
+
+Selecting a tag and adding a related tag from the sidebar is the quickest way to narrow an overview, and it is unchanged. When an intersection is not enough, open **Advanced search** in the overview header to write a Deckard query.
+
+```
+(tag = #project/atlas AND tag = @ren-kade) OR (tag = #risk/vendor AND text ~ "elevator")
+```
+
+Terms combine with `AND`, `OR`, `NOT`, and parentheses. `AND` binds tighter than `OR`, adjacent terms are joined by an implicit `AND`, and `-` or `!` in front of a term negates it. A bare `#tag` or `@person` is a tag condition and a bare or quoted word is a text condition, so `#project/atlas "vendor risk"` is a complete query.
+
+| Field | Matches | Example |
+| --- | --- | --- |
+| `tag` | A tag, including tags a section inherits from a parent heading and tags a note carries in its front matter. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
+| `text` | Words in a note body, a task line, or a front-matter-only file. `:` and `~` match a substring; `=` and `!=` match a whole word. | `text ~ elevator`, `text = plan` |
+| `task` | `open`, `done`, or `any`. Only tasks can satisfy it, so a query using it returns no notes. | `task = open` |
+| `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
+| `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
+| `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
+| `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, or `today`. A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13` |
+
+Operators are `=` for is, `!=` for is not, `~` for contains, `!~` for does not contain, and `>`, `>=`, `<`, `<=` for dates. `:` is accepted everywhere `=` is, so queries written with `tag:#atlas` keep working, but Deckard writes `=` when it formats a query back. A comparison can follow the operator, so `updated:>2026-01-01` and `updated > 2026-01-01` mean the same thing. Every operator has an opposite, so any single condition can be negated without `NOT`; `NOT` is for negating a whole parenthesized group.
+
+- The query bar completes field names and, once it can see which field the caret is in, that field's values — indexed tags, task states, entity namespaces, file names, and date shorthands. Nothing is preselected, so Enter always runs the query you typed; Tab completes, arrow keys move through the list, and Escape abandons the edit.
+- A builder row's value field offers the same completions for its own field, so a tag row completes tags and a task row offers `open`, `done`, and `any`. Choosing one applies the query immediately.
+- **Builder** edits the same query as OR groups of AND rows, using dropdowns instead of syntax. Its operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so a row reads the way the query is written. A row says everything with its operator, so there is no separate negate control to disagree with it, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The query bar remains the source of truth, so a condition the builder cannot represent, such as a negated group, is shown as read-only text rather than rewritten.
+- The Related Notes sidebar follows the query. It identifies the scope as **Advanced search**, shows the query, lists what it matched, and returns to the ordinary tag view when the query is cleared. A query naming exactly one tag keeps that tag's association suggestions.
+- Editing a query never moves you to a different page. When a query narrows to an intersection led by the tag the page was opened on, the page returns to its ordinary chips in place; otherwise it keeps showing the query and its results. Opening a saved query or `Deckard: Search Notes and Tasks` on a plain intersection still lands on the ordinary tag overview, with its usual chips, association suggestions, and title.
+- **Save filter** stores a query under a name. Saved queries appear in the Dashboard's saved views beside saved tag intersections, and they survive tags being renamed or removed from the index.
+- A parse error is reported under the query bar and the previous results stay on screen, so a half-typed query never empties the page.
 
 Set `deckard.enableHeadingTagRelationships` to `false` when you want to hide Associated tags suggestions, including the sidebar list, while keeping ordinary tag indexing and note content unchanged.
 

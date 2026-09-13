@@ -178,7 +178,34 @@ export function parseTagOverviewMessage(
   ) {
     return { type: 'saveTagOverviewFilter' };
   }
+  if (value.type === 'setOverviewQuery' && isOverviewQueryMessage(value)) {
+    return { type: 'setOverviewQuery', query: value.query as string };
+  }
+  if (
+    value.type === 'clearOverviewQuery' &&
+    Object.keys(value).length === 1
+  ) {
+    return { type: 'clearOverviewQuery' };
+  }
   return undefined;
+}
+
+/** Upper bound on query text accepted from the webview. */
+const MAX_QUERY_LENGTH = 2000;
+
+/**
+ * Bounds query text before it reaches the parser.
+ *
+ * The parser is linear in the length of its input, but a bound keeps a runaway
+ * webview from handing the host an unreasonable string to tokenize on every
+ * keystroke.
+ */
+function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
+  return (
+    Object.keys(value).length === 2 &&
+    typeof value.query === 'string' &&
+    value.query.length <= MAX_QUERY_LENGTH
+  );
 }
 
 /**
