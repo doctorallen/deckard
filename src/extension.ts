@@ -88,7 +88,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       tagPanels.show(tagKey, filterTagKey, filterTagKeys),
     context.extension.packageJSON.version,
   );
-  const stats = new StatsPanel(indexer, preferences, context.extensionUri);
+  const stats = new StatsPanel(
+    indexer,
+    preferences,
+    context.extensionUri,
+    async (tagKey) => {
+      await tagPanels.show(tagKey);
+    },
+  );
   const taskBoard = new TaskBoardPanel(indexer, context.extensionUri, (tagKey) =>
     tagPanels.show(tagKey),
   );

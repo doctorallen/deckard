@@ -441,6 +441,8 @@ export interface StatsAccessItem {
   label: string;
   detail: string;
   count: number;
+  /** The message that opens the item: its tag overview or its source line. */
+  open: OpenTagMessage | OpenSourceMessage;
 }
 
 export interface DeckardStatsSnapshot {
@@ -456,6 +458,9 @@ export interface DeckardStatsSnapshot {
   entityViews: StatsAccessItem[];
   sectionViews: StatsAccessItem[];
 }
+
+/** Messages from the Stats page, which only opens what it lists. */
+export type StatsMessage = OpenTagMessage | OpenSourceMessage;
 
 export interface SidebarNotesSnapshot {
   activeFileName?: string;

@@ -204,10 +204,20 @@ suite('Dashboard state', () => {
         label: '#project/relay',
         detail: '2 indexed entries',
         count: 3,
+        open: { type: 'openTag', tagKey: '#project/relay' },
       },
     ]);
     assert.strictEqual(stats.entityViews[0].label, 'relay');
+    assert.deepStrictEqual(stats.entityViews[0].open, {
+      type: 'openTag',
+      tagKey: '#project/relay',
+    });
     assert.strictEqual(stats.sectionViews[0].label, 'Relay');
+    assert.deepStrictEqual(stats.sectionViews[0].open, {
+      type: 'openSource',
+      filePath: 'notes/first.md',
+      line: first.sections[0].startLine,
+    });
   });
 
   test('filters tasks and preserves explicit task display order', () => {

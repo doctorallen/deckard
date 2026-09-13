@@ -219,7 +219,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences.
+Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its overview, or a note entry to open its note at that line.
 
 ![Deckard Stats showing index totals and the most-viewed tags, entities, and note entries.](docs/images/stats.png)
 

@@ -14,6 +14,7 @@ import {
   DashboardSearchField,
   TaskBoardGroupBy,
   TaskBoardMessage,
+  StatsMessage,
 } from '../../core/types';
 
 /**
@@ -379,6 +380,33 @@ export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
 /**
  * Checks source locations before they are used to open an editor line.
  */
+/**
+ * Validates the Stats page's messages. The page only opens what it lists, and
+ * the host still checks each tag and line against the current index.
+ */
+export function parseStatsMessage(value: unknown): StatsMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+
+  switch (value.type) {
+    case 'openTag':
+      return isOpenTagMessage(value)
+        ? { type: 'openTag', tagKey: value.tagKey as string }
+        : undefined;
+    case 'openSource':
+      return isSourceMessage(value)
+        ? {
+            type: 'openSource',
+            filePath: value.filePath as string,
+            line: value.line as number,
+          }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
 function isSourceMessage(value: Record<string, unknown>): boolean {
   return (
     typeof value.filePath === 'string' &&

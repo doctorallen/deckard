@@ -213,7 +213,11 @@ export function createDeckardStatsSnapshot(
     tagViews: createAccessItems(preferences.tagAccessCounts, (tagKey) => {
       const tag = index.tags.get(tagKey);
       return tag
-        ? { label: tag.label, detail: `${tag.count} indexed entries` }
+        ? {
+            label: tag.label,
+            detail: `${tag.count} indexed entries`,
+            open: { type: 'openTag', tagKey },
+          }
         : undefined;
     }),
     entityViews: createAccessItems(
@@ -224,6 +228,8 @@ export function createDeckardStatsSnapshot(
           ? {
               label: entity.name,
               detail: `${entity.kind} / ${entity.count} indexed entries`,
+              // Entities are keyed by the tag that names them.
+              open: { type: 'openTag', tagKey: entityKey },
             }
           : undefined;
       },
@@ -236,6 +242,11 @@ export function createDeckardStatsSnapshot(
           ? {
               label: stripTags(section.heading),
               detail: `${getFileName(section.filePath) ?? section.filePath} / line ${section.startLine}`,
+              open: {
+                type: 'openSource',
+                filePath: section.filePath,
+                line: section.startLine,
+              },
             }
           : undefined;
       },

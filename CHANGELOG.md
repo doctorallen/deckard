@@ -130,6 +130,11 @@
 
 ### Changed
 
+- The Stats page's most-viewed tags, canonical tags, and note entries now
+  open when selected, with the mouse or with Enter or Space: a tag opens its
+  overview, and a note entry opens its note at that line. Tags are drawn with
+  their namespace dimmed, and rows shift on hover, as on the Dashboard.
+
 - **Extract Tagged Heading** now leaves a `[[link]]` to the new note where the
   section was, instead of removing the section without a trace.
 

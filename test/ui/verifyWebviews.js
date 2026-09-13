@@ -110,7 +110,7 @@ function effectiveValue(css, selector, property) {
 // Classes that render a row a reader can open.
 const CONTENT_ROWS = [
   'tag-row', 'entity-row', 'note-row', 'task-row', 'saved-filter-row',
-  'board-card',
+  'board-card', 'stat-row',
 ];
 const SHARED_HELPERS = [
   'escapeHtml', 'renderTagLabel', 'renderTagButton', 'renderInlineTitle',
