@@ -9,6 +9,11 @@ import { createDailyNote } from './ui/commands/dailyNote';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
+import {
+  CREATE_LINKED_NOTE_COMMAND,
+  createLinkedNote,
+  LinkHealth,
+} from './ui/commands/linkHealth';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
@@ -86,6 +91,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const assistantTools = new AssistantTools(indexer);
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
+  const linkHealth = new LinkHealth(indexer);
   const dashboard = new DashboardPanel(
     indexer,
     preferences,
@@ -155,6 +161,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskMetadataSuggestions,
     taskBoard,
     editorReferences,
+    linkHealth,
   };
 
   context.subscriptions.push(
@@ -177,6 +184,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskMetadataSuggestions,
     taskBoard,
     editorReferences,
+    linkHealth,
     assistantTools,
   );
   context.subscriptions.push(
@@ -319,6 +327,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer),
     ),
+    vscode.commands.registerCommand(
+      CREATE_LINKED_NOTE_COMMAND,
+      (documentUri: unknown, name: unknown) =>
+        typeof documentUri === 'string' && typeof name === 'string'
+          ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name)
+          : undefined,
+    ),
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.extractHeading', () =>
@@ -446,6 +461,7 @@ export function deactivate(): void {
   activeServices?.taskMetadataSuggestions.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
+  activeServices?.linkHealth.dispose();
   activeServices = undefined;
 }
 
@@ -472,6 +488,7 @@ interface ExtensionServices {
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
+  linkHealth: LinkHealth;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {

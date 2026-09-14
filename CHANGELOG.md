@@ -24,6 +24,11 @@
   link it in the Notes Graph and Related Notes, and link completion offers
   them. As with titles, a name two notes share opens neither.
 
+- **Link problems**: a `[[link]]` that opens no note is marked in open notes.
+  A link to a note that does not exist yet gets a **Create note** quick fix,
+  which creates it in the notes folder, and a name several notes share is a
+  warning. `deckard.editor.linkDiagnostics` turns this off.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

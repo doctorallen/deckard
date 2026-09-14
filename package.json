@@ -429,6 +429,13 @@
             "default": true,
             "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag.",
             "order": 2
+          },
+          "deckard.editor.linkDiagnostics": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note.",
+            "order": 3
           }
         }
       },
