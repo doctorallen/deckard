@@ -379,7 +379,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const parsedFile =
           update.content === undefined
             ? await this.scanner.read(update.uri)
-            : this.scanner.parse(update.uri, update.content, previous);
+            : this.scanner.parse(update.uri, update.content, previous?.fileTimes);
         this.files.set(filePath, parsedFile);
         this.searchStore?.upsert(parsedFile);
       } catch (error) {

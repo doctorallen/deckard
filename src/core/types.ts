@@ -145,8 +145,17 @@ export interface ParsedFile {
   links: string[];
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
+  /**
+   * When the note was created and last updated. A date the note states about
+   * itself, in front matter or as a daily note's day, comes before its file's.
+   */
   createdAt?: number;
   updatedAt?: number;
+  /**
+   * The file's own created and modified times, which tell whether the file
+   * changed since it was last read.
+   */
+  fileTimes?: { createdAt?: number; updatedAt?: number };
 }
 
 /**

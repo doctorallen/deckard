@@ -361,6 +361,46 @@ suite('Markdown parser', () => {
     ]);
   });
 
+  test("takes a note's created and updated dates from the note before its file", () => {
+    // A clone gives every file the same, later times.
+    const cloned = {
+      createdAt: new Date(2027, 2, 3).getTime(),
+      updatedAt: new Date(2027, 2, 4).getTime(),
+    };
+    const dayOf = (value: number | undefined) => new Date(value ?? 0).toDateString();
+    const on = (year: number, month: number, date: number) =>
+      new Date(year, month, date).toDateString();
+
+    const stated = parseMarkdown(
+      'atlas.md',
+      '---\ncreated: 2026-05-01\nupdated: 2026-06-02\n---\n# Atlas\n- [ ] Plan',
+      cloned,
+    );
+    assert.strictEqual(dayOf(stated.createdAt), on(2026, 4, 1));
+    assert.strictEqual(dayOf(stated.updatedAt), on(2026, 5, 2));
+    assert.strictEqual(dayOf(stated.sections[0].createdAt), on(2026, 4, 1));
+    assert.strictEqual(dayOf(stated.tasks[0].updatedAt), on(2026, 5, 2));
+    assert.deepStrictEqual(stated.fileTimes, cloned, 'the file times are kept');
+
+    const dated = parseMarkdown('atlas.md', '---\ndate: 2026-05-01\n---\n# Atlas', cloned);
+    assert.strictEqual(dayOf(dated.createdAt), on(2026, 4, 1));
+    assert.strictEqual(dated.updatedAt, cloned.updatedAt, 'date: is not an update');
+
+    const daily = parseMarkdown('journal/2026-08-25.md', '# Planning', cloned);
+    assert.strictEqual(dayOf(daily.createdAt), on(2026, 7, 25), 'a clone never moves it past its day');
+    assert.strictEqual(daily.updatedAt, cloned.updatedAt);
+
+    const planned = parseMarkdown('journal/2026-08-25.md', '# Planning', {
+      createdAt: new Date(2026, 7, 20).getTime(),
+      updatedAt: new Date(2026, 7, 26).getTime(),
+    });
+    assert.strictEqual(dayOf(planned.createdAt), on(2026, 7, 20), 'a plan written ahead keeps its own day');
+
+    const plain = parseMarkdown('atlas.md', '# Atlas', cloned);
+    assert.strictEqual(plain.createdAt, cloned.createdAt);
+    assert.strictEqual(plain.updatedAt, cloned.updatedAt);
+  });
+
   test('anchors common task dates to the saved note year', () => {
     const parsed = parseMarkdown(
       'atlas.md',

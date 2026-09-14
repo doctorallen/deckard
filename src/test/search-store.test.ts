@@ -74,6 +74,27 @@ suite('Local search store', () => {
     }
   });
 
+  test('a rescan finds an edit to a note that states its own updated date', () => {
+    const store = new SearchStore(undefined);
+    // The edit keeps the note's size and its `updated:` date; only the file's
+    // own modified time shows that it changed.
+    const note = (word: string, modified: number) =>
+      parseMarkdown(
+        'atlas.md',
+        `---\nupdated: 2026-09-01\n---\n# Atlas\n${word} plan.`,
+        { createdAt: 1, updatedAt: modified },
+      );
+    try {
+      store.replace([note('alpha', 1)]);
+      store.replace([note('omega', 2)]);
+
+      assert.deepStrictEqual(store.search('omega').map((r) => r.filePath), ['atlas.md']);
+      assert.deepStrictEqual(store.search('alpha'), []);
+    } finally {
+      store.dispose();
+    }
+  });
+
   test('saving and removing single notes replaces their text', () => {
     const store = new SearchStore(undefined);
     try {

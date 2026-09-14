@@ -121,8 +121,8 @@ export class SearchStore implements vscode.Disposable {
         const previous = stored.get(file.filePath);
         const unchanged =
           previous !== undefined &&
-          file.updatedAt !== undefined &&
-          previous.updatedAt === file.updatedAt &&
+          file.fileTimes?.updatedAt !== undefined &&
+          previous.updatedAt === file.fileTimes.updatedAt &&
           previous.bytes === Buffer.byteLength(file.content, 'utf8');
         if (!unchanged) {
           this.write(file);
@@ -198,7 +198,11 @@ export class SearchStore implements vscode.Disposable {
 
   private write(file: ParsedFile): void {
     // An update keeps the note's id, so its old text is found and replaced.
-    this.writeNote.run(file.filePath, file.content, file.updatedAt ?? null);
+    this.writeNote.run(
+      file.filePath,
+      file.content,
+      file.fileTimes?.updatedAt ?? null,
+    );
     this.deleteText.run(file.filePath);
     this.writeText.run(file.filePath, file.filePath, file.content);
   }

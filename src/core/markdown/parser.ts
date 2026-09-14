@@ -26,8 +26,10 @@ interface Frontmatter {
   tagSpans: HeadingTagSpan[];
   endLine?: number;
   hub?: NoteHub;
-  /** A `date:`, `created:`, or `updated:` value, as YYYY-MM-DD. */
+  /** The note's `date:`, `created:`, and `updated:` values, as YYYY-MM-DD. */
   date?: string;
+  created?: string;
+  updated?: string;
 }
 
 /** Front-matter fields a hub note's property list leaves out. */
@@ -155,18 +157,35 @@ export function parseMarkdown(
     }
   }
   const headings = findHeadings(lines, fencedLines);
+  const dailyDate = findDailyNoteDate(
+    filePath,
+    headings
+      .filter((heading) => heading.level === 1)
+      .map((heading) => heading.text),
+  );
   // Loose task dates such as "next Friday" are read from the day the note is
   // about. The file's modified time changes whenever the note is edited or
   // the repository is cloned, so it is only the last resort.
-  const noteDate =
-    findDailyNoteDate(
-      filePath,
-      headings
-        .filter((heading) => heading.level === 1)
-        .map((heading) => heading.text),
-    ) ?? frontmatter.date;
   const dateAnchor =
-    (noteDate ? parseIsoDate(noteDate) : undefined) ?? metadata?.updatedAt;
+    firstIsoDate(
+      dailyDate,
+      frontmatter.date,
+      frontmatter.created,
+      frontmatter.updated,
+    ) ?? metadata?.updatedAt;
+  // A clone resets file times too, so the dates a note states come first. A
+  // daily note keeps the earlier of its day and its file's creation: a clone
+  // never moves it past its day, and a plan written ahead keeps its own day.
+  const dailyAt = firstIsoDate(dailyDate);
+  const fileCreatedAt = metadata?.createdAt;
+  const dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'> = {
+    createdAt:
+      firstIsoDate(frontmatter.created, frontmatter.date) ??
+      (dailyAt !== undefined && fileCreatedAt !== undefined
+        ? Math.min(dailyAt, fileCreatedAt)
+        : (dailyAt ?? fileCreatedAt)),
+    updatedAt: firstIsoDate(frontmatter.updated) ?? metadata?.updatedAt,
+  };
   const headingSections = headings.map((heading, headingIndex) =>
     createSection(
       filePath,
@@ -174,7 +193,7 @@ export function parseMarkdown(
       headings,
       heading,
       headingIndex,
-      metadata,
+      dates,
       frontmatter.tags,
       personMarker,
     ),
@@ -187,7 +206,7 @@ export function parseMarkdown(
           lines,
           fencedLines,
           headingSections,
-          metadata,
+          dates,
           frontmatter.tags,
           personMarker,
         );
@@ -199,7 +218,7 @@ export function parseMarkdown(
     lines,
     sections,
     fencedLines,
-    metadata,
+    dates,
     frontmatter.tags,
     personMarker,
     dateAnchor,
@@ -213,9 +232,28 @@ export function parseMarkdown(
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
     ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
-    createdAt: metadata?.createdAt,
-    updatedAt: metadata?.updatedAt,
+    createdAt: dates.createdAt,
+    updatedAt: dates.updatedAt,
+    ...(metadata
+      ? {
+          fileTimes: {
+            createdAt: metadata.createdAt,
+            updatedAt: metadata.updatedAt,
+          },
+        }
+      : {}),
   }, options.entityNamespaceAliases);
+}
+
+/** The first of these YYYY-MM-DD values that is a real date. */
+function firstIsoDate(...values: (string | undefined)[]): number | undefined {
+  for (const value of values) {
+    const date = parseIsoDate(value);
+    if (date !== undefined) {
+      return date;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -420,21 +458,21 @@ function formatTitlePart(value: string): string {
       tagSpans,
       endLine: end,
       ...createHub(values, entityNamespaceAliases, personMarker),
-      ...findFrontmatterDate(values),
+      ...findFrontmatterDates(values),
     };
   }
 
-  /** The first of `date:`, `created:`, and `updated:` that holds a date. */
-  function findFrontmatterDate(
+  /** The `date:`, `created:`, and `updated:` values that start with a date. */
+  function findFrontmatterDates(
     values: Map<string, string[]>,
-  ): { date?: string } {
-    for (const key of ['date', 'created', 'updated']) {
-      const date = values.get(key)?.[0]?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
-      if (date) {
-        return { date };
-      }
-    }
-    return {};
+  ): Pick<Frontmatter, 'date' | 'created' | 'updated'> {
+    const read = (key: string) =>
+      values.get(key)?.[0]?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    return {
+      date: read('date'),
+      created: read('created'),
+      updated: read('updated'),
+    };
   }
 
   /**

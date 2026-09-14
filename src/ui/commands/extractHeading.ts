@@ -139,7 +139,7 @@ async function chooseTaggedHeading(
       const parsed = indexer.parse(
         editor.document.uri,
         editor.document.getText(),
-        previous,
+        previous?.fileTimes,
       );
       const section = findTaggedHeadingAtLine(
         parsed.sections,

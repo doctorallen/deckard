@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- A note's created and updated dates, used by the `created` and `updated`
+  query fields and the Created and Updated sorts, now come from the note
+  before its file. `created:`, `date:`, and `updated:` front matter win, and a
+  daily note counts as created on its day, or earlier if its file is older.
+  A git clone resets every file's times, so these dates used to be the day of
+  the clone.
+
 ## 1.9.0 - 2026-09-13
 
 ### Added
