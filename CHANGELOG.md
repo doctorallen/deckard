@@ -58,6 +58,11 @@
   copies the command that adds it to Claude Code, and `Deckard: Reset MCP
   Server Token` retires every copied setup. It is off by default.
 
+- **Cooper theme**: set `deckard.theme` to `cooper` for a spare
+  mission-control look after Interstellar: a starfield with Gargantua's gold at
+  its edge, warm white readouts, thin letter-spaced headings, and outlined
+  instrument buttons.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

@@ -8,4 +8,3 @@
 # Features
 
 # Themes
-interstellar - called "cooper"

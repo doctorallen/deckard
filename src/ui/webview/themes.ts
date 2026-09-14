@@ -7,6 +7,7 @@ export const deckardThemes = [
   'synthwave',
   'tomcat',
   'fellowship',
+  'cooper',
 ] as const;
 
 export type DeckardTheme = (typeof deckardThemes)[number];
@@ -180,6 +181,63 @@ button:hover, button.active, select:hover, .tag-open:hover { border-color: var(-
 .metric:nth-child(3n + 2)::before { border-bottom-color: var(--amber); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }
 .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--green); background: var(--panel-raised); box-shadow: inset 4px 0 0 var(--green), 0 0 0 1px rgba(85, 113, 61, .2); }
+`;
+  }
+
+  // Cooper, after Interstellar: the Endurance's spare instrument panels, TARS's
+  // white-on-black readouts, and Gargantua's gold at the edge of a starfield.
+  if (theme === 'cooper') {
+    return `
+:root {
+  --bg-dark: #030405;
+  --bg: #07090b;
+  --panel-bg: #0d1013;
+  --panel: #0d1013;
+  --panel-raised: #171b1f;
+  --panel-deep: #020304;
+  --text: #ebe8e1;
+  --muted: #8f959a;
+  --slate-border: #2b3136;
+  --line: #3b4248;
+  --line-strong: #a7afb4;
+  --cyan-bright: #d6e4ee;
+  --cyan: #9fbfd4;
+  --amber-bright: #f3c46e;
+  --amber: #dca24a;
+  --amber-dim: #7c6134;
+  --green: #b5cfa5;
+  --toxic-green: #b5cfa5;
+  --favorite-red: #d9673b;
+  --warning-orange: #e27d3c;
+  --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+body {
+  background-color: var(--bg-dark);
+  background-image: radial-gradient(ellipse at 88% -8%, rgba(220, 162, 74, .16), transparent 42%), radial-gradient(circle at 1px 1px, rgba(235, 232, 225, .22) 1px, transparent 1.5px), radial-gradient(circle at 1px 1px, rgba(159, 191, 212, .14) 1px, transparent 1.5px);
+  background-size: 100% 100%, 97px 89px, 53px 61px;
+  background-position: 0 0, 13px 21px, 37px 7px;
+}
+main { border-color: var(--slate-border); border-top-color: var(--line-strong); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+header { border-color: var(--line); }
+h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font-display); font-weight: 300; letter-spacing: .22em; text-transform: uppercase; }
+h1 { font-weight: 200; letter-spacing: .3em; }
+.metric-value { font-family: var(--font-display); font-weight: 300; letter-spacing: .04em; }
+.eyebrow { color: var(--amber); letter-spacing: .28em; }
+button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
+input[type='checkbox'] { accent-color: var(--amber); }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(13, 16, 19, .92); box-shadow: inset 2px 0 0 var(--cyan); }
+.metric:nth-child(3n), .card:nth-child(3n), .note-row:nth-child(3n), .task-row:nth-child(3n), .view-panel:nth-child(3n) { box-shadow: inset 2px 0 0 var(--amber); }
+.metric::before { border-bottom-color: var(--line-strong); }
+.metric:nth-child(3n)::before { border-bottom-color: var(--amber); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--line-strong); background: var(--panel-raised); box-shadow: inset 3px 0 0 var(--amber); }
+.empty { border-color: var(--slate-border); background: var(--panel-deep); }
+.favorite-toggle { border-color: var(--amber); background: transparent; color: var(--amber); }
+.favorite-toggle.favorite { border-color: var(--amber); background: var(--amber); color: var(--bg-dark); }
+.favorite-toggle .favorite-heart { color: var(--amber); }
+.favorite-toggle.favorite .favorite-heart { color: var(--bg-dark); }
+${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
 `;
   }
 

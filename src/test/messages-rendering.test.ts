@@ -780,6 +780,7 @@ suite('Webview contracts', () => {
       'synthwave',
       'tomcat',
       'fellowship',
+      'cooper',
     ]);
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
@@ -1090,6 +1091,26 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    const cooper = getDeckardThemeCss('cooper');
+    assert.strictEqual(cooper.includes('--bg-dark: #030405'), true);
+    assert.strictEqual(cooper.includes('--amber: #dca24a'), true, "Gargantua's gold");
+    assert.strictEqual(
+      cooper.includes('radial-gradient(circle at 1px 1px'),
+      true,
+      'a starfield behind the page',
+    );
+    assert.strictEqual(
+      cooper.includes('letter-spacing: .22em; text-transform: uppercase;'),
+      true,
+    );
+    assert.strictEqual(
+      cooper.includes(
+        'main { border-color: var(--slate-border); border-top-color: var(--line-strong);',
+      ),
+      true,
+      "a page's top rule is recolored, not replaced",
+    );
+    assert.strictEqual(/main \{[^}]*border-top:/.test(cooper), false);
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {

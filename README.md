@@ -56,6 +56,8 @@ Set `deckard.theme` to choose the visual style used by Deckard webviews. The def
 | <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |
 | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220"> | <img src="docs/images/dashboard-synthwave.png" alt="Synthwave theme Dashboard." width="220"> |
+| **Cooper** | | |
+| <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Dashboard." width="220"> | | |
 
 ## Get started
 

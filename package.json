@@ -335,7 +335,8 @@
               "lcars",
               "synthwave",
               "tomcat",
-              "fellowship"
+              "fellowship",
+              "cooper"
             ],
             "enumDescriptions": [
               "Deckard's original replicant terminal interface.",
@@ -343,7 +344,8 @@
               "A warm, high-contrast interface inspired by LCARS from Star Trek: The Next Generation.",
               "A neon grid interface inspired by 1980s synthwave and outrun aesthetics.",
               "A flight-display interface inspired by F-14 Tomcat HUD instrumentation.",
-              "A woodland travel-journal interface inspired by The Lord of the Rings."
+              "A woodland travel-journal interface inspired by The Lord of the Rings.",
+              "A spare mission-control interface inspired by the Endurance and TARS in Interstellar."
             ],
             "default": "replicant",
             "description": "Visual theme used by Deckard webviews.",
