@@ -12,6 +12,12 @@ export interface StoredSearchMatch {
 }
 
 /**
+ * The cache's layout. A database from an older layout is dropped and rebuilt
+ * from the next scan.
+ */
+const SCHEMA_VERSION = 1;
+
+/**
  * Maintains a private, workspace-scoped full-text index. The database is a
  * cache: Markdown files remain the source of truth and are reindexed at start.
  */
@@ -30,10 +36,24 @@ export class SearchStore implements vscode.Disposable {
       mkdirSync(dirname(databasePath), { recursive: true });
     }
     this.database = new DatabaseSync(databasePath);
+    this.database.exec('PRAGMA journal_mode = WAL;');
+    const version = Number(
+      this.database.prepare('PRAGMA user_version').get()?.user_version,
+    );
+    if (version !== SCHEMA_VERSION) {
+      this.database.exec(`
+        DROP TABLE IF EXISTS notes;
+        DROP TABLE IF EXISTS notes_fts;
+        PRAGMA user_version = ${SCHEMA_VERSION};
+      `);
+    }
+    // Each note's text is stored under its note's id, so a note's text is
+    // found by id. The path column is not indexed by the text index, and
+    // finding a note's text by path would read every note.
     this.database.exec(`
-      PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS notes (
-        file_path TEXT PRIMARY KEY NOT NULL,
+        id INTEGER PRIMARY KEY,
+        file_path TEXT NOT NULL UNIQUE,
         content TEXT NOT NULL,
         updated_at INTEGER
       ) STRICT;
@@ -53,10 +73,11 @@ export class SearchStore implements vscode.Disposable {
       'DELETE FROM notes WHERE file_path = ?',
     );
     this.writeText = this.database.prepare(
-      'INSERT INTO notes_fts (file_path, content) VALUES (?, ?)',
+      `INSERT INTO notes_fts (rowid, file_path, content)
+       VALUES ((SELECT id FROM notes WHERE file_path = ?), ?, ?)`,
     );
     this.deleteText = this.database.prepare(
-      'DELETE FROM notes_fts WHERE file_path = ?',
+      'DELETE FROM notes_fts WHERE rowid = (SELECT id FROM notes WHERE file_path = ?)',
     );
   }
 
@@ -89,8 +110,7 @@ export class SearchStore implements vscode.Disposable {
         ?.count,
     );
 
-    this.database.exec('BEGIN');
-    try {
+    this.transaction(() => {
       if (indexedCount !== stored.size) {
         this.database.exec('DELETE FROM notes; DELETE FROM notes_fts;');
         stored.clear();
@@ -110,26 +130,21 @@ export class SearchStore implements vscode.Disposable {
       }
       for (const filePath of stored.keys()) {
         if (!scanned.has(filePath)) {
-          this.remove(filePath);
+          this.erase(filePath);
         }
       }
-      this.database.exec('COMMIT');
-    } catch (error) {
-      this.database.exec('ROLLBACK');
-      throw error;
-    }
+    });
   }
 
   /**
    * Synchronizes one saved file without waiting for a complete workspace scan.
    */
   public upsert(file: ParsedFile): void {
-    this.write(file);
+    this.transaction(() => this.write(file));
   }
 
   public remove(filePath: string): void {
-    this.deleteNote.run(filePath);
-    this.deleteText.run(filePath);
+    this.transaction(() => this.erase(filePath));
   }
 
   /**
@@ -166,10 +181,32 @@ export class SearchStore implements vscode.Disposable {
     this.database.close();
   }
 
+  /**
+   * Commits a change's statements together, so a note is never left without
+   * its text and a save commits once rather than three times.
+   */
+  private transaction(change: () => void): void {
+    this.database.exec('BEGIN');
+    try {
+      change();
+      this.database.exec('COMMIT');
+    } catch (error) {
+      this.database.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   private write(file: ParsedFile): void {
+    // An update keeps the note's id, so its old text is found and replaced.
     this.writeNote.run(file.filePath, file.content, file.updatedAt ?? null);
     this.deleteText.run(file.filePath);
-    this.writeText.run(file.filePath, file.content);
+    this.writeText.run(file.filePath, file.filePath, file.content);
+  }
+
+  private erase(filePath: string): void {
+    // The text goes first: it is found through the note's id.
+    this.deleteText.run(filePath);
+    this.deleteNote.run(filePath);
   }
 }
 

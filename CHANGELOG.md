@@ -194,6 +194,11 @@
   notes an unchanged rescan now takes 29 ms of search-cache work instead of
   most of a second.
 
+- Saving a note no longer reads every note in the search cache to find its old
+  text. At 5,000 notes a save's search-cache work now takes about 0.6 ms
+  instead of 13 to 40 ms. The cache's layout changed, so the first start after
+  updating rebuilds it once, in under a second at 5,000 notes.
+
 - A visible Dashboard no longer sends its page every note after each save.
   The Tasks and Tags tabs are sent no notes, and the Notes tab is sent each
   note's rendered HTML only in the HTML view. With 940 notes, an update

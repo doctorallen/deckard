@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { DatabaseSync } from 'node:sqlite';
 
 import * as vscode from 'vscode';
 
@@ -48,6 +49,69 @@ suite('Local search store', () => {
       assert.deepStrictEqual(paths('budget'), ['atlas.md'], 'the edit is indexed');
       assert.deepStrictEqual(paths('staffing'), ['harbor.md'], 'the old text is gone');
       assert.deepStrictEqual(paths('elevator'), [], 'the deleted note is gone');
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('a scan that changes many notes leaves none of their old text', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const store = new SearchStore(vscode.Uri.file(directory));
+    const notes = (word: string, updatedAt: number, count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        parseMarkdown(`note-${index}.md`, `# Note ${index}\n${word}.`, { updatedAt }),
+      );
+    try {
+      store.replace(notes('staffing', 1, 300));
+      store.replace(notes('budget', 2, 250));
+
+      assert.strictEqual(store.search('budget', 1000).length, 250, 'every edit is indexed');
+      assert.strictEqual(store.search('staffing', 1000).length, 0, 'no old text is left');
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('saving and removing single notes replaces their text', () => {
+    const store = new SearchStore(undefined);
+    try {
+      store.replace([
+        parseMarkdown('atlas.md', '# Atlas\nStaffing plan.', { updatedAt: 1 }),
+        parseMarkdown('vendor.md', '# Vendor\nStaffing contract.', { updatedAt: 1 }),
+      ]);
+      store.upsert(parseMarkdown('atlas.md', '# Atlas\nBudget review.', { updatedAt: 2 }));
+      store.upsert(parseMarkdown('harbor.md', '# Harbor\nBudget roster.', { updatedAt: 1 }));
+      store.remove('vendor.md');
+
+      const paths = (query: string) =>
+        store.search(query).map((result) => result.filePath).sort();
+      assert.deepStrictEqual(paths('budget'), ['atlas.md', 'harbor.md']);
+      assert.deepStrictEqual(paths('staffing'), [], 'old and removed text is gone');
+    } finally {
+      store.dispose();
+    }
+  });
+
+  test('replaces a cache written in an older layout', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const old = new DatabaseSync(join(directory, 'deckard-search.sqlite'));
+    old.exec(`
+      CREATE TABLE notes (file_path TEXT PRIMARY KEY NOT NULL, content TEXT NOT NULL, updated_at INTEGER) STRICT;
+      CREATE VIRTUAL TABLE notes_fts USING fts5(file_path UNINDEXED, content);
+      INSERT INTO notes VALUES ('atlas.md', 'Staffing plan.', 1);
+      INSERT INTO notes_fts VALUES ('atlas.md', 'Staffing plan.');
+    `);
+    old.close();
+
+    const store = new SearchStore(vscode.Uri.file(directory));
+    try {
+      assert.deepStrictEqual(store.search('staffing'), [], 'the old cache is dropped');
+      store.replace([parseMarkdown('atlas.md', '# Atlas\nBudget review.', { updatedAt: 2 })]);
+      store.upsert(parseMarkdown('atlas.md', '# Atlas\nStaffing review.', { updatedAt: 3 }));
+      assert.deepStrictEqual(store.search('staffing').map((r) => r.filePath), ['atlas.md']);
+      assert.deepStrictEqual(store.search('budget'), []);
     } finally {
       store.dispose();
       rmSync(directory, { recursive: true, force: true });
