@@ -6,6 +6,7 @@ import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
 import { capture } from './ui/commands/capture';
 import { createDailyNote } from './ui/commands/dailyNote';
+import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
@@ -314,6 +315,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
       capture(indexer, 'heading'),
+    ),
+    vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
+      newNoteFromTemplate(indexer),
     ),
   );
   context.subscriptions.push(

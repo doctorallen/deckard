@@ -10,6 +10,12 @@
   capture box, adds it under a heading you pick in any note instead. A note
   open in an editor keeps its unsaved changes.
 
+- **Templates**: `Deckard: New Note from Template` creates a note from a
+  Markdown file in the templates folder (`deckard.templatesFolder`,
+  `templates` by default), filling in `{title}`, `{date}`, `{time}`, and an
+  answer for each `{ask:Question}`. Deckard does not index the templates
+  folder, so a template's tags and tasks stay out of your notes.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

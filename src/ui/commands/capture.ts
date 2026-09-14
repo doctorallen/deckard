@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { getPersonMarker } from '../../core/markdown/parser';
 import { Section, TagInfo } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { chooseWorkspaceFolder, ensureDailyNote } from './dailyNote';
+import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 
 /** Where a capture goes: today's daily note, or under a chosen heading. */
@@ -44,8 +44,7 @@ export async function capture(
   const line = formatCaptureLine(answer.text);
 
   if (answer.target === 'today') {
-    const folder =
-      getActiveWorkspaceFolder() ?? (await chooseWorkspaceFolder());
+    const folder = await chooseTargetFolder();
     if (!folder) {
       return;
     }
@@ -320,11 +319,6 @@ async function pickHeading(
     matchOnDescription: true,
   });
   return picked?.section;
-}
-
-function getActiveWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
-  const uri = vscode.window.activeTextEditor?.document.uri;
-  return uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined;
 }
 
 /** Says where the task went, with a way to open it there. */

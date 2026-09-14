@@ -71,6 +71,32 @@ suite('Workspace scanner and index', () => {
     );
   });
 
+  test('leaves the templates folder out of the notes', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
+    const noteUri = vscode.Uri.joinPath(workspaceUri, 'case.md');
+    const templateUri = vscode.Uri.joinPath(workspaceUri, 'templates', 'meeting.md');
+    const workspaceFolder = {
+      uri: workspaceUri,
+      name: 'deckard-scanner',
+      index: 0,
+    } as vscode.WorkspaceFolder;
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => [noteUri, templateUri],
+      readFile: async () => Buffer.from('# Meeting #project/atlas\n- [ ] Agenda', 'utf8'),
+    });
+
+    const files = await scanner.scan();
+
+    assert.deepStrictEqual(files.map((file) => file.filePath), ['case.md']);
+    assert.strictEqual(scanner.isNotesFile(noteUri), true);
+    assert.strictEqual(scanner.isNotesFile(templateUri), false);
+    assert.strictEqual(
+      scanner.getTemplatesFolderUri(workspaceFolder)?.path,
+      templateUri.path.replace(/\/meeting\.md$/, ''),
+    );
+  });
+
   test('reads notes with workspace-relative paths', async () => {
     const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
     const noteUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'case.md');

@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 28);
+    assert.strictEqual(Object.keys(settings).length, 29);
     const activationEvents = extension.packageJSON.activationEvents ?? [];
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.dashboard'));
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.tagOverview'));
@@ -36,6 +36,7 @@ suite('Extension Test Suite', () => {
         'deckard.createDailyNote',
         'deckard.capture',
         'deckard.captureUnderHeading',
+        'deckard.newNoteFromTemplate',
         'deckard.extractHeading',
         'deckard.showTagOverview',
         'deckard.searchWorkspace',

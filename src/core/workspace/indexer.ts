@@ -185,6 +185,12 @@ export class WorkspaceIndexer implements vscode.Disposable {
     return this.scanner.getNotesFolderUri(workspaceFolder);
   }
 
+  public getTemplatesFolderUri(
+    workspaceFolder: vscode.WorkspaceFolder,
+  ): vscode.Uri | undefined {
+    return this.scanner.getTemplatesFolderUri(workspaceFolder);
+  }
+
   /**
    * Performs a full replacement refresh while reporting progress in VS Code.
    */
@@ -265,11 +271,15 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const personMarkerChanged = event.affectsConfiguration(
           'deckard.personMarker',
         );
+        const templatesFolderChanged = event.affectsConfiguration(
+          'deckard.templatesFolder',
+        );
         if (
           notesFolderChanged ||
           inlineTagsChanged ||
           entityNamespaceAliasesChanged ||
-          personMarkerChanged
+          personMarkerChanged ||
+          templatesFolderChanged
         ) {
           if (notesFolderChanged) {
             this.replaceWatchers();
@@ -305,12 +315,14 @@ export class WorkspaceIndexer implements vscode.Disposable {
     for (const pattern of this.scanner.getPatterns()) {
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
       this.watcherDisposables.push(watcher);
-      this.watcherDisposables.push(
-        watcher.onDidCreate((uri) => this.queueUpsert(uri)),
-      );
-      this.watcherDisposables.push(
-        watcher.onDidChange((uri) => this.queueUpsert(uri)),
-      );
+      // The glob can take in files that are not notes, such as templates.
+      const upsertNote = (uri: vscode.Uri) => {
+        if (this.scanner.isNotesFile(uri)) {
+          this.queueUpsert(uri);
+        }
+      };
+      this.watcherDisposables.push(watcher.onDidCreate(upsertNote));
+      this.watcherDisposables.push(watcher.onDidChange(upsertNote));
       this.watcherDisposables.push(
         watcher.onDidDelete((uri) => this.queueDelete(uri)),
       );

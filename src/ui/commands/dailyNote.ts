@@ -88,10 +88,24 @@ export async function chooseWorkspaceFolder(): Promise<
 }
 
 /**
+ * The workspace folder of the active editor, or the one the user picks when
+ * that does not settle it.
+ */
+export async function chooseTargetFolder(): Promise<
+  vscode.WorkspaceFolder | undefined
+> {
+  const uri = vscode.window.activeTextEditor?.document.uri;
+  return (
+    (uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined) ??
+    chooseWorkspaceFolder()
+  );
+}
+
+/**
  * Uses local calendar fields so a daily note is named for the user's day, not
  * the previous or next UTC day around a timezone boundary.
  */
-function formatLocalDate(date: Date): string {
+export function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');

@@ -51,9 +51,11 @@ export class WorkspaceScanner {
     for (const workspaceFolder of this.access.workspaceFolders ?? []) {
       const pattern = this.createPattern(workspaceFolder);
       const uris = await this.access.findFiles(pattern);
+      const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
 
       uris
         .filter((uri) => isMarkdownFile(uri))
+        .filter((uri) => !templatesUri || !isWithinWorkspace(uri, templatesUri))
         .forEach((uri) => entries.push({ uri, workspaceFolder }));
     }
 
@@ -171,6 +173,23 @@ export class WorkspaceScanner {
   }
 
   /**
+   * The folder of note templates, which is never indexed so a template's tags
+   * and tasks stay out of the notes. Undefined when the setting is empty.
+   */
+  public getTemplatesFolderUri(
+    workspaceFolder: vscode.WorkspaceFolder,
+  ): vscode.Uri | undefined {
+    const folder = this.getConfiguration(workspaceFolder)
+      .get<string>('templatesFolder', 'templates')
+      .trim()
+      .replaceAll('\\', '/')
+      .replace(/^\/+|\/+$/g, '');
+    return folder && folder !== '.'
+      ? vscode.Uri.joinPath(workspaceFolder.uri, ...folder.split('/'))
+      : undefined;
+  }
+
+  /**
    * Supplies parser options from the same workspace scope as the note.
    */
   public getParseOptions(
@@ -205,9 +224,14 @@ export class WorkspaceScanner {
     }
 
     const workspaceFolder = this.findWorkspaceFolder(uri);
-    return workspaceFolder
-      ? isWithinWorkspace(uri, this.getNotesFolderUri(workspaceFolder))
-      : false;
+    if (!workspaceFolder) {
+      return false;
+    }
+    const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
+    return (
+      isWithinWorkspace(uri, this.getNotesFolderUri(workspaceFolder)) &&
+      !(templatesUri && isWithinWorkspace(uri, templatesUri))
+    );
   }
 
   /**

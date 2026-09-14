@@ -71,6 +71,10 @@
         "title": "Deckard: Capture Under a Heading"
       },
       {
+        "command": "deckard.newNoteFromTemplate",
+        "title": "Deckard: New Note from Template"
+      },
+      {
         "command": "deckard.extractHeading",
         "title": "Deckard: Extract Tagged Heading"
       },
@@ -326,6 +330,13 @@
             "default": "# {date}\n\n",
             "description": "Template used when creating a daily note.",
             "order": 3
+          },
+          "deckard.templatesFolder": {
+            "type": "string",
+            "scope": "resource",
+            "default": "templates",
+            "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
+            "order": 4
           }
         }
       },

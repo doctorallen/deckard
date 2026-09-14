@@ -28,6 +28,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and open the note they name. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
+| [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
 | [Workspace search](#commands) | Full-text search across saved notes, entities, and tasks from the Command Palette. |
 | [Stats](#stats) | Index totals and your most-viewed tags, entities, and notes. |
@@ -83,6 +84,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
 | **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
+| **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
@@ -458,6 +460,19 @@ Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today'
 
 A capture goes after the last list item already there, or after a blank line below the last text. A note open in an editor keeps its unsaved changes, and the note is saved.
 
+## Templates
+
+Put Markdown files in a `templates` folder at the root of your workspace, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Deckard asks which template to use and the new note's title, then creates the note in your notes folder and opens it. Deckard never indexes the templates folder, so a template's tags and tasks stay out of your notes.
+
+| Placeholder | Becomes |
+| --- | --- |
+| `{title}` | The title you enter, which is also the file name. |
+| `{date}` | Today's date, such as `2026-09-13`. |
+| `{time}` | The current time, such as `09:05`. |
+| `{ask:Question}` | Your answer when Deckard asks the question. A question used twice is asked once. |
+
+Anything else in braces is left as written.
+
 ## Settings
 
 Open **Settings** and search for `Deckard`, or add these options to your workspace settings:
@@ -469,6 +484,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tagOverview.hubNoteExpanded": true,
 	"deckard.notesFolder": "notes",
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
+	"deckard.templatesFolder": "templates",
 	"deckard.parseInlineTags": true,
 	"deckard.outline.showTags": true,
 	"deckard.outline.followCursor": true,
@@ -503,6 +519,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
+| `deckard.templatesFolder` | `templates` | The folder of [note templates](#templates), relative to the workspace folder. Deckard does not index it. Leave it empty to turn templates off. |
 | `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
 | `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
