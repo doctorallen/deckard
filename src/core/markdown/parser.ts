@@ -2,11 +2,13 @@ import {
   BuiltInEntityKind,
   EntityKind,
   HeadingTagSpan,
+  NoteHub,
   ParsedFile,
   Section,
   TagReference,
   Task,
 } from '../types';
+import { parseIsoDate, parseTaskMetadata } from './taskMetadata';
 
 interface HeadingMatch {
   lineNumber: number;
@@ -21,8 +23,23 @@ interface ListItemMatch {
 interface Frontmatter {
   tags: TagReference[];
   links: string[];
+  /** Other names for the note, from `aliases:` or `alias:`. */
+  aliases?: string[];
   tagSpans: HeadingTagSpan[];
   endLine?: number;
+  hub?: NoteHub;
+  /** The note's `date:`, `created:`, and `updated:` values, as YYYY-MM-DD. */
+  date?: string;
+  created?: string;
+  updated?: string;
+}
+
+/** Front-matter fields a hub note's property list leaves out. */
+const hubPropertyExclusions = new Set(['describes', 'tag', 'tags']);
+
+/** `describes:` names tags exactly as `tags:` does, so both parse the same. */
+function getTagField(field: string): string {
+  return field === 'describes' ? 'tags' : field;
 }
 
 const headingPattern = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/;
@@ -142,6 +159,35 @@ export function parseMarkdown(
     }
   }
   const headings = findHeadings(lines, fencedLines);
+  const dailyDate = findDailyNoteDate(
+    filePath,
+    headings
+      .filter((heading) => heading.level === 1)
+      .map((heading) => heading.text),
+  );
+  // Loose task dates such as "next Friday" are read from the day the note is
+  // about. The file's modified time changes whenever the note is edited or
+  // the repository is cloned, so it is only the last resort.
+  const dateAnchor =
+    firstIsoDate(
+      dailyDate,
+      frontmatter.date,
+      frontmatter.created,
+      frontmatter.updated,
+    ) ?? metadata?.updatedAt;
+  // A clone resets file times too, so the dates a note states come first. A
+  // daily note keeps the earlier of its day and its file's creation: a clone
+  // never moves it past its day, and a plan written ahead keeps its own day.
+  const dailyAt = firstIsoDate(dailyDate);
+  const fileCreatedAt = metadata?.createdAt;
+  const dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'> = {
+    createdAt:
+      firstIsoDate(frontmatter.created, frontmatter.date) ??
+      (dailyAt !== undefined && fileCreatedAt !== undefined
+        ? Math.min(dailyAt, fileCreatedAt)
+        : (dailyAt ?? fileCreatedAt)),
+    updatedAt: firstIsoDate(frontmatter.updated) ?? metadata?.updatedAt,
+  };
   const headingSections = headings.map((heading, headingIndex) =>
     createSection(
       filePath,
@@ -149,7 +195,7 @@ export function parseMarkdown(
       headings,
       heading,
       headingIndex,
-      metadata,
+      dates,
       frontmatter.tags,
       personMarker,
     ),
@@ -162,7 +208,7 @@ export function parseMarkdown(
           lines,
           fencedLines,
           headingSections,
-          metadata,
+          dates,
           frontmatter.tags,
           personMarker,
         );
@@ -174,9 +220,10 @@ export function parseMarkdown(
     lines,
     sections,
     fencedLines,
-    metadata,
+    dates,
     frontmatter.tags,
     personMarker,
+    dateAnchor,
   );
 
   return normalizeParsedTagReferences({
@@ -186,9 +233,30 @@ export function parseMarkdown(
     tasks,
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
-    createdAt: metadata?.createdAt,
-    updatedAt: metadata?.updatedAt,
+    ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
+    ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
+    createdAt: dates.createdAt,
+    updatedAt: dates.updatedAt,
+    ...(metadata
+      ? {
+          fileTimes: {
+            createdAt: metadata.createdAt,
+            updatedAt: metadata.updatedAt,
+          },
+        }
+      : {}),
   }, options.entityNamespaceAliases);
+}
+
+/** The first of these YYYY-MM-DD values that is a real date. */
+function firstIsoDate(...values: (string | undefined)[]): number | undefined {
+  for (const value of values) {
+    const date = parseIsoDate(value);
+    if (date !== undefined) {
+      return date;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -374,9 +442,12 @@ function formatTitlePart(value: string): string {
         fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
         return;
       }
+      if (key === 'aliases' || key === 'alias') {
+        return;
+      }
       fieldValues.forEach((value) => {
         const tag = frontmatterValueToTag(
-          key,
+          getTagField(key),
           value,
           entityNamespaceAliases,
           personMarker,
@@ -387,11 +458,79 @@ function formatTitlePart(value: string): string {
       });
     });
 
+    const aliases = [
+      ...new Set(
+        [...(values.get('aliases') ?? []), ...(values.get('alias') ?? [])]
+          .map((alias) => alias.trim())
+          .filter(Boolean),
+      ),
+    ];
+
     return {
       tags: deduplicateTagReferences(tags),
       links: [...new Set(links)],
+      ...(aliases.length > 0 ? { aliases } : {}),
       tagSpans,
       endLine: end,
+      ...createHub(values, entityNamespaceAliases, personMarker),
+      ...findFrontmatterDates(values),
+    };
+  }
+
+  /** The `date:`, `created:`, and `updated:` values that start with a date. */
+  function findFrontmatterDates(
+    values: Map<string, string[]>,
+  ): Pick<Frontmatter, 'date' | 'created' | 'updated'> {
+    const read = (key: string) =>
+      values.get(key)?.[0]?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    return {
+      date: read('date'),
+      created: read('created'),
+      updated: read('updated'),
+    };
+  }
+
+  /**
+   * Reads a hub note: the tags its `describes:` names, and the rest of its
+   * front matter as properties whose values may themselves be tags.
+   */
+  function createHub(
+    values: Map<string, string[]>,
+    entityNamespaceAliases?: EntityNamespaceAliases,
+    personMarker?: string,
+  ): { hub?: NoteHub } {
+    const describes = (values.get('describes') ?? [])
+      .map((value) =>
+        frontmatterValueToTag(
+          'tags',
+          value,
+          entityNamespaceAliases,
+          personMarker,
+        ),
+      )
+      .filter((tag): tag is TagReference => tag !== undefined);
+    if (describes.length === 0) {
+      return {};
+    }
+
+    return {
+      hub: {
+        describes: deduplicateTagReferences(describes),
+        properties: [...values]
+          .filter(([name]) => !hubPropertyExclusions.has(name))
+          .map(([name, fieldValues]) => ({
+            name,
+            values: fieldValues.map((text) => {
+              const tag = frontmatterValueToTag(
+                name,
+                text,
+                entityNamespaceAliases,
+                personMarker,
+              );
+              return tag ? { text, tag } : { text };
+            }),
+          })),
+      },
     };
   }
 
@@ -500,7 +639,7 @@ function formatTitlePart(value: string): string {
       const sourceValue = item.trim();
       const value = unquote(sourceValue);
       const tag = frontmatterValueToTag(
-        field,
+        getTagField(field),
         value,
         entityNamespaceAliases,
         personMarker,
@@ -656,6 +795,22 @@ function normalizeParsedTagReferences(
     parsed.frontmatterTags,
     entityNamespaceAliases,
   );
+  if (parsed.hub) {
+    parsed.hub.describes = normalizeTagReferences(
+      parsed.hub.describes,
+      entityNamespaceAliases,
+    );
+    parsed.hub.properties.forEach((property) => {
+      property.values.forEach((value) => {
+        if (value.tag) {
+          value.tag = normalizeTagReferences(
+            [value.tag],
+            entityNamespaceAliases,
+          )[0];
+        }
+      });
+    });
+  }
   [...parsed.sections, ...parsed.tasks].forEach((item) => {
     if ('headingTags' in item) {
       item.headingTags = normalizeTagReferences(
@@ -724,7 +879,7 @@ function normalizeTagKey(
 export function stripTags(text: string, personMarker?: string): string {
   return text
     .replace(
-      createTagPattern(getPersonMarker(personMarker)),
+      getTagPattern(getPersonMarker(personMarker)),
       (fullMatch, prefix: string, marker: string, rawName: string) =>
         isNumericHashTag(marker, rawName) ? fullMatch : prefix,
     )
@@ -749,7 +904,7 @@ function findTagMatches(
   personMarker?: string,
 ): TagMatch[] {
   const activePersonMarker = getPersonMarker(personMarker);
-  return [...text.matchAll(createTagPattern(activePersonMarker))].flatMap((match) => {
+  return [...text.matchAll(getTagPattern(activePersonMarker))].flatMap((match) => {
     const marker = match[2];
     const rawName = match[3];
     if (isNumericHashTag(marker, rawName)) {
@@ -776,12 +931,25 @@ function findTagMatches(
   });
 }
 
-function createTagPattern(personMarker: string): RegExp {
-  const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
-  return new RegExp(
-    `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
-    'g',
-  );
+/**
+ * One compiled pattern per people marker. Building a RegExp is costly and
+ * `stripTags` runs for every heading ranking shows. Sharing a global pattern
+ * is safe here because `replace` and `matchAll`, its only users, never carry
+ * `lastIndex` from one call to the next.
+ */
+const tagPatterns = new Map<string, RegExp>();
+
+function getTagPattern(personMarker: string): RegExp {
+  let pattern = tagPatterns.get(personMarker);
+  if (!pattern) {
+    const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
+    pattern = new RegExp(
+      `(^|[^\\w#])([#@${escapedMarker}])([A-Za-z0-9][A-Za-z0-9_-]*(?:\\/[A-Za-z0-9][A-Za-z0-9_-]*)*)\\b`,
+      'g',
+    );
+    tagPatterns.set(personMarker, pattern);
+  }
+  return pattern;
 }
 
 /**
@@ -1051,6 +1219,8 @@ function findTasks(
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   frontmatterTags: TagReference[] = [],
   personMarker?: string,
+  /** The day loose dates such as "next Friday" count from. */
+  dateAnchor?: number,
 ): Task[] {
   return lines.flatMap((line, lineIndex) => {
     if (fencedLines.has(lineIndex)) {
@@ -1075,20 +1245,35 @@ function findTasks(
     const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
     const checkboxColumn = match[1].length + match[2].length + 2;
     const checkboxValue = match[3] as ' ' | 'x' | 'X';
-    const dueDate = findTaskDate(match[4], metadata?.updatedAt);
+    // Obsidian Tasks markers become fields and leave the title, so a ✅ date
+    // is never read as a due date and titles read the way Tasks shows them.
+    const { metadata: fields, title } = parseTaskMetadata(match[4]);
+    const dueDate =
+      fields.due !== undefined
+        ? toTaskDate(fields.due)
+        : findTaskDate(title, dateAnchor);
 
     return [
       {
         id: createId('task', `${filePath}:${lineNumber}:${match[4]}`),
         filePath,
         sectionId: section?.id,
-        title: match[4],
+        title: title || match[4],
         completed: checkboxValue !== ' ',
         tags,
         tagLabels,
         associationTagGroups: [inlineTags],
         dueAt: dueDate?.at,
         dueText: dueDate?.text,
+        ...omitUndefined({
+          scheduledAt: parseIsoDate(fields.scheduled),
+          startAt: parseIsoDate(fields.start),
+          doneAt: parseIsoDate(fields.done),
+          priority: fields.priority,
+          recurrence: fields.recurrence,
+          dependencyId: fields.id,
+          dependsOn: fields.dependsOn.length > 0 ? fields.dependsOn : undefined,
+        }),
         lineNumber,
         checkboxColumn,
         checkboxValue,
@@ -1100,9 +1285,46 @@ function findTasks(
   });
 }
 
+/**
+ * The day a daily note is for: a YYYY-MM-DD file name, or failing that a
+ * top-level heading that holds such a date.
+ */
+/** Whether a note is named for a week or a month, as `2026-W37.md` or `2026-09.md` are. */
+export function isPeriodicNotePath(filePath: string): boolean {
+  return /(?:^|\/)\d{4}-(?:W\d{2}|\d{2})\.md$/i.test(filePath);
+}
+
+export function findDailyNoteDate(
+  filePath: string,
+  topLevelHeadings: readonly string[],
+): string | undefined {
+  const fromPath = filePath.match(/(?:^|\/)(\d{4}-\d{2}-\d{2})(?:\.md)?$/);
+  if (fromPath) {
+    return fromPath[1];
+  }
+  return topLevelHeadings
+    .map((heading) => heading.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0])
+    .find((date): date is string => date !== undefined);
+}
+
 interface TaskDate {
   at: number;
   text: string;
+}
+
+function toTaskDate(value: string): TaskDate | undefined {
+  const at = parseIsoDate(value);
+  return at === undefined ? undefined : { at, text: value };
+}
+
+/**
+ * Drops absent optional fields, so a task without Tasks metadata keeps the
+ * shape it always had.
+ */
+function omitUndefined<T extends object>(value: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined),
+  ) as Partial<T>;
 }
 
 /**

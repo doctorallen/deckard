@@ -2,19 +2,37 @@ import * as vscode from 'vscode';
 
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
+import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
-import { createDailyNote } from './ui/commands/dailyNote';
+import { capture } from './ui/commands/capture';
+import {
+  createDailyNote,
+  openAdjacentDailyNote,
+  openPeriodicNote,
+} from './ui/commands/dailyNote';
+import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
+import {
+  CREATE_LINKED_NOTE_COMMAND,
+  createLinkedNote,
+  LinkHealth,
+} from './ui/commands/linkHealth';
+import { CalendarView } from './ui/webview/calendar';
+import { readManifestTools } from './core/mcp/mcpProtocol';
+import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
-import { renameIndexedTag } from './ui/commands/renameTag';
+import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
   EditorTagDecorations,
   isMarkdownDocument,
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
+import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
+import { EditorReferences } from './ui/commands/editorReferences';
+import { AssistantTools } from './ui/commands/assistantTools';
 import { searchWorkspace } from './ui/commands/workspaceSearch';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
@@ -22,9 +40,27 @@ import { NotesGraphPanel } from './ui/webview/notesGraph';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
+import { TaskBoardPanel } from './ui/webview/taskBoard';
 import { TagOverviewPanels } from './ui/webview/tagOverview';
+import {
+  OutlineTreeProvider,
+  pickOutlineTag,
+  setOutlineFollowCursor,
+  syncOutlineFollowCursorContext,
+} from './ui/views/outlineTree';
+import { OutlineNode } from './ui/state/outlineState';
+import { QueryBlocks } from './ui/preview/queryBlocks';
+import { AgendaTreeProvider } from './ui/views/agendaTree';
 
 let activeServices: ExtensionServices | undefined;
+
+/**
+ * What the extension exports. VS Code's Markdown preview calls
+ * `extendMarkdownIt` to draw ```deckard query blocks.
+ */
+export interface DeckardExports {
+  extendMarkdownIt: QueryBlocks['extendMarkdownIt'];
+}
 
 /**
  * Creates the extension's service graph and registers every VS Code entrypoint.
@@ -32,7 +68,19 @@ let activeServices: ExtensionServices | undefined;
  * Keeping services alive from one activation boundary lets panels, the sidebar,
  * decorations, and completion all observe the same index and preference store.
  */
-export function activate(context: vscode.ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): DeckardExports {
+  // One log for the whole extension. Its level, set from the Output panel,
+  // decides how much of Deckard's timing it keeps.
+  const log = vscode.window.createOutputChannel('Deckard', { log: true });
+  setTimingLog(log);
+  context.subscriptions.push(
+    log,
+    { dispose: () => setTimingLog(undefined) },
+    vscode.commands.registerCommand('deckard.showLog', () => log.show()),
+  );
+  log.info(
+    `Deckard ${String(context.extension.packageJSON.version)} activated.`,
+  );
   const indexer = new WorkspaceIndexer(
     undefined,
     new SearchStore(context.storageUri),
@@ -45,8 +93,22 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
+  const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
+  const editorReferences = new EditorReferences(indexer);
+  const assistantTools = new AssistantTools(indexer);
+  const mcpServer = new DeckardMcpServer(
+    indexer,
+    context.secrets,
+    readManifestTools(
+      context.extension.packageJSON.contributes?.languageModelTools,
+    ),
+    context.extension.packageJSON.version,
+  );
+  void mcpServer.restart();
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
+  const linkHealth = new LinkHealth(indexer);
+  const calendar = new CalendarView(indexer);
   const dashboard = new DashboardPanel(
     indexer,
     preferences,
@@ -66,7 +128,17 @@ export function activate(context: vscode.ExtensionContext): void {
       tagPanels.show(tagKey, filterTagKey, filterTagKeys),
     context.extension.packageJSON.version,
   );
-  const stats = new StatsPanel(indexer, preferences, context.extensionUri);
+  const stats = new StatsPanel(
+    indexer,
+    preferences,
+    context.extensionUri,
+    async (tagKey) => {
+      await tagPanels.show(tagKey);
+    },
+  );
+  const taskBoard = new TaskBoardPanel(indexer, context.extensionUri, (tagKey) =>
+    tagPanels.show(tagKey),
+  );
   const help = new HelpPanel(context.extensionUri);
   const notesGraph = new NotesGraphPanel(
     indexer,
@@ -83,6 +155,9 @@ export function activate(context: vscode.ExtensionContext): void {
     sidebarNotes,
     context.extensionUri,
   );
+  const outline = new OutlineTreeProvider(indexer);
+  const queryBlocks = new QueryBlocks(indexer);
+  const agenda = new AgendaTreeProvider(indexer);
   activeServices = {
     indexer,
     preferences,
@@ -97,6 +172,14 @@ export function activate(context: vscode.ExtensionContext): void {
     help,
     notesGraph,
     relatedNotesDebug,
+    outline,
+    queryBlocks,
+    agenda,
+    taskMetadataSuggestions,
+    taskBoard,
+    editorReferences,
+    linkHealth,
+    calendar,
   };
 
   context.subscriptions.push(
@@ -113,6 +196,16 @@ export function activate(context: vscode.ExtensionContext): void {
     help,
     notesGraph,
     relatedNotesDebug,
+    outline,
+    queryBlocks,
+    agenda,
+    taskMetadataSuggestions,
+    taskBoard,
+    editorReferences,
+    linkHealth,
+    calendar,
+    assistantTools,
+    mcpServer,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -131,6 +224,61 @@ export function activate(context: vscode.ExtensionContext): void {
       sidebarNotes,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
+    vscode.window.registerWebviewViewProvider('deckard.calendar', calendar, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
+  );
+  const outlineView = vscode.window.createTreeView('deckard.outline', {
+    treeDataProvider: outline,
+    showCollapseAll: true,
+  });
+  outline.attach(outlineView);
+  context.subscriptions.push(outlineView);
+  const agendaView = vscode.window.createTreeView('deckard.agenda', {
+    treeDataProvider: agenda,
+    manageCheckboxStateManually: true,
+  });
+  agenda.attach(agendaView);
+  context.subscriptions.push(agendaView);
+  void syncOutlineFollowCursorContext();
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'deckard.outline.revealSection',
+      (node?: unknown) => {
+        const outlineNode = asOutlineNode(node);
+        return outlineNode ? outline.revealSection(outlineNode) : undefined;
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.outline.openTagOverview',
+      async (node?: unknown) => {
+        const tagKey = await pickOutlineTag(
+          asOutlineNode(node),
+          'Choose a tag from this heading',
+        );
+        if (tagKey) {
+          await tagPanels.show(tagKey);
+        }
+      },
+    ),
+    vscode.commands.registerCommand(
+      'deckard.outline.renameTag',
+      async (node?: unknown) => {
+        const tagKey = await pickOutlineTag(
+          asOutlineNode(node),
+          'Choose a tag to rename',
+        );
+        if (tagKey) {
+          await renameIndexedTag(indexer, tagKey, preferences);
+        }
+      },
+    ),
+    vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
+      setOutlineFollowCursor(true),
+    ),
+    vscode.commands.registerCommand('deckard.outline.disableFollowCursor', () =>
+      setOutlineFollowCursor(false),
+    ),
   );
   context.subscriptions.push(
     vscode.window.registerWebviewPanelSerializer('deckard.dashboard', {
@@ -147,6 +295,10 @@ export function activate(context: vscode.ExtensionContext): void {
       deserializeWebviewPanel: (webviewPanel) =>
         notesGraph.restore(webviewPanel),
     }),
+    vscode.window.registerWebviewPanelSerializer('deckard.taskBoard', {
+      deserializeWebviewPanel: (webviewPanel, state) =>
+        taskBoard.restore(webviewPanel, state),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
       deserializeWebviewPanel: (webviewPanel, state) =>
         tagPanels.restore(webviewPanel, state),
@@ -160,6 +312,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
     vscode.commands.registerCommand('deckard.showNotesGraph', () =>
       notesGraph.show(),
+    ),
+    vscode.commands.registerCommand('deckard.showTaskBoard', () =>
+      taskBoard.show(),
     ),
     vscode.commands.registerCommand(
       'deckard.activateNotesGraphNode',
@@ -187,6 +342,38 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
       createDailyNote(),
+    ),
+    vscode.commands.registerCommand('deckard.previousDailyNote', () =>
+      openAdjacentDailyNote(indexer, 'previous'),
+    ),
+    vscode.commands.registerCommand('deckard.nextDailyNote', () =>
+      openAdjacentDailyNote(indexer, 'next'),
+    ),
+    vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
+      openPeriodicNote('week'),
+    ),
+    vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
+      openPeriodicNote('month'),
+    ),
+    vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
+    vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
+      capture(indexer, 'heading'),
+    ),
+    vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
+      newNoteFromTemplate(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
+      mcpServer.copySetup(),
+    ),
+    vscode.commands.registerCommand('deckard.resetMcpToken', () =>
+      mcpServer.resetTokenCommand(),
+    ),
+    vscode.commands.registerCommand(
+      CREATE_LINKED_NOTE_COMMAND,
+      (documentUri: unknown, name: unknown) =>
+        typeof documentUri === 'string' && typeof name === 'string'
+          ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name)
+          : undefined,
     ),
   );
   context.subscriptions.push(
@@ -219,6 +406,16 @@ export function activate(context: vscode.ExtensionContext): void {
         renameIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
+          preferences,
+        ),
+    ),
+    vscode.commands.registerCommand(
+      'deckard.mergeTag',
+      (requestedTagKey?: unknown) =>
+        mergeIndexedTag(
+          indexer,
+          getCommandTagArgument(requestedTagKey),
+          preferences,
         ),
     ),
     vscode.commands.registerCommand(
@@ -259,6 +456,14 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
+  if (
+    vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('dashboard.openOnStartup', false)
+  ) {
+    void dashboard.showOnStartup();
+  }
+
   void indexer.start().then(async () => {
     const index = indexer.getSnapshot();
     await preferences.prune(
@@ -268,6 +473,10 @@ export function activate(context: vscode.ExtensionContext): void {
       index.entities.keys(),
     );
   });
+
+  return {
+    extendMarkdownIt: (md) => queryBlocks.extendMarkdownIt(md),
+  };
 }
 
 /**
@@ -287,6 +496,14 @@ export function deactivate(): void {
   activeServices?.stats.dispose();
   activeServices?.help.dispose();
   activeServices?.relatedNotesDebug.dispose();
+  activeServices?.outline.dispose();
+  activeServices?.queryBlocks.dispose();
+  activeServices?.agenda.dispose();
+  activeServices?.taskMetadataSuggestions.dispose();
+  activeServices?.taskBoard.dispose();
+  activeServices?.editorReferences.dispose();
+  activeServices?.linkHealth.dispose();
+  activeServices?.calendar.dispose();
   activeServices = undefined;
 }
 
@@ -307,11 +524,33 @@ interface ExtensionServices {
   help: HelpPanel;
   notesGraph: NotesGraphPanel;
   relatedNotesDebug: RelatedNotesDebugPanel;
+  outline: OutlineTreeProvider;
+  queryBlocks: QueryBlocks;
+  agenda: AgendaTreeProvider;
+  taskMetadataSuggestions: TaskMetadataCompletionProvider;
+  taskBoard: TaskBoardPanel;
+  editorReferences: EditorReferences;
+  linkHealth: LinkHealth;
+  calendar: CalendarView;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {
   const argument = Array.isArray(value) ? value[0] : value;
   return typeof argument === 'string' ? argument : undefined;
+}
+
+/**
+ * Validates the tree argument because these commands are also reachable from
+ * keybindings and other extensions, which can pass anything.
+ */
+function asOutlineNode(value: unknown): OutlineNode | undefined {
+  return typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'line' in value &&
+    'tags' in value
+    ? (value as OutlineNode)
+    : undefined;
 }
 
 /**

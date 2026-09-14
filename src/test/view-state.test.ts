@@ -3,20 +3,22 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
-  createSidebarSnapshot,
   createDeckardStatsSnapshot,
   createDashboardSnapshot,
   createTagOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
-  rankRelatedNotes,
   sortDashboardNotes,
   sortEntities,
-  sortRelatedNotes,
   sortTasks,
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
+import {
+  createSidebarSnapshot,
+  rankRelatedNotes,
+  sortRelatedNotes,
+} from '../ui/state/relatedNotesRanking';
 import { createEntryScope } from '../ui/webview/sidebarNotes';
 import {
   ParsedFile,
@@ -179,6 +181,33 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('lists the notes nothing links to, leaving out periodic notes', () => {
+    const first = createFile('notes/first.md', '# First\nSee [[Second]].');
+    const second = createFile('notes/second.md', '# Second');
+    const daily = createFile('notes/2026-09-13.md', '# 2026-09-13\nNotes.');
+    const weekly = createFile('notes/2026-W37.md', '# 2026-W37');
+    const monthly = createFile('notes/2026-09.md', '# 2026-09');
+    const self = createFile('notes/self.md', '# Self\nSee [[self]].');
+    const stats = createDeckardStatsSnapshot(
+      createFileIndex([self, first, second, daily, weekly, monthly]),
+      defaultPreferences,
+    );
+
+    assert.strictEqual(stats.orphanNoteCount, 2);
+    assert.deepStrictEqual(stats.orphanNotes, [
+      {
+        label: 'first',
+        detail: 'notes/first.md',
+        open: { type: 'openSource', filePath: 'notes/first.md', line: 1 },
+      },
+      {
+        label: 'self',
+        detail: 'notes/self.md',
+        open: { type: 'openSource', filePath: 'notes/self.md', line: 1 },
+      },
+    ]);
+  });
+
   test('projects current index totals and valid view counts for stats', () => {
     const first = createFile(
       'notes/first.md',
@@ -204,10 +233,44 @@ suite('Dashboard state', () => {
         label: '#project/relay',
         detail: '2 indexed entries',
         count: 3,
+        open: { type: 'openTag', tagKey: '#project/relay' },
       },
     ]);
     assert.strictEqual(stats.entityViews[0].label, 'relay');
+    assert.deepStrictEqual(stats.entityViews[0].open, {
+      type: 'openTag',
+      tagKey: '#project/relay',
+    });
     assert.strictEqual(stats.sectionViews[0].label, 'Relay');
+    assert.deepStrictEqual(stats.sectionViews[0].open, {
+      type: 'openSource',
+      filePath: 'notes/first.md',
+      line: first.sections[0].startLine,
+    });
+  });
+
+  test('leaves notes out of the Dashboard only when asked', () => {
+    const index = createFileIndex([
+      createFile('notes/alpha.md', '# Alpha #work\nBody text.'),
+    ]);
+
+    const withNotes = createDashboardSnapshot(index, defaultPreferences, 'active');
+    assert.strictEqual(withNotes.notes.length, 1);
+    assert.strictEqual(withNotes.notesOmitted, undefined);
+
+    const withoutNotes = createDashboardSnapshot(
+      index,
+      defaultPreferences,
+      'active',
+      [],
+      undefined,
+      [],
+      'inline',
+      false,
+    );
+    assert.deepStrictEqual(withoutNotes.notes, []);
+    assert.strictEqual(withoutNotes.notesOmitted, true);
+    assert.strictEqual(withoutNotes.totalNoteCount, 1, 'the count still covers every note');
   });
 
   test('filters tasks and preserves explicit task display order', () => {
@@ -703,6 +766,24 @@ suite('Dashboard state', () => {
     assert.strictEqual(unrelated?.relevanceEvidence?.lexicalWeight, 0);
   });
 
+  test("counts an entry link that names the note by an alias", () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work\n\n[[Program#Target]]',
+    );
+    const related = createFile(
+      'notes/related.md',
+      '---\naliases: [Program]\n---\n# Broad #other\n\n## Target #other\nNeural archive calibration.',
+    );
+    const target = createSidebarSnapshot(
+      createFileIndex([active, related]),
+      active.filePath,
+      active,
+    ).notes.find((note) => note.title.startsWith('Target'));
+
+    assert.strictEqual(target?.relevanceEvidence?.entryLinkWeight, 0.5);
+  });
+
   test('keeps optional recency disabled unless a half-life is configured', () => {
     const active = createFile('notes/current.md', '# Current #work');
     const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');
@@ -919,7 +1000,7 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('can disable keyword-only related-note matches', () => {
+  test('never lists an entry that only shares wording with the note', () => {
     const active = createFile(
       'notes/current.md',
       '# Current #work\nSee [[Linked]].\nSignal integrity protocol.',
@@ -931,17 +1012,21 @@ suite('Dashboard state', () => {
     const linked = createFile('notes/linked.md', '# Linked #other');
     const index = createFileIndex([active, keywordOnly, linked]);
 
-    const snapshot = createSidebarSnapshot(
-      index,
-      active.filePath,
-      active,
-      false,
-    );
-
-    assert.deepStrictEqual(
-      snapshot.notes.map((note) => note.filePath),
-      ['notes/linked.md'],
-    );
+    // Shared wording adjusts scores, but a shared tag, association, or link
+    // is what makes an entry related, whether keyword links are on or off.
+    for (const enableKeywordLinks of [true, false]) {
+      const snapshot = createSidebarSnapshot(
+        index,
+        active.filePath,
+        active,
+        enableKeywordLinks,
+      );
+      assert.deepStrictEqual(
+        snapshot.notes.map((note) => note.filePath),
+        ['notes/linked.md'],
+        `enableKeywordLinks: ${enableKeywordLinks}`,
+      );
+    }
   });
 
   test('sorts related notes by date, matching tags, and local access', () => {
@@ -1704,6 +1789,58 @@ suite('Dashboard state', () => {
       ),
       ['#parent', '#task', '#child'],
     );
+  });
+
+  test('leads a plain tag overview with its hub note', () => {
+    const files = [
+      parseMarkdown(
+        'notes/atlas.md',
+        [
+          '---',
+          'describes: project/atlas',
+          'status: active',
+          '---',
+          '# Atlas',
+          'Retire the old ledger.',
+        ].join('\n'),
+      ),
+      parseMarkdown('notes/plan.md', '# Plan #project/atlas #meeting'),
+    ];
+    const index = buildWorkspaceIndex(
+      new Map(files.map((file) => [file.filePath, file])),
+    );
+
+    const overview = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/atlas',
+    );
+    assert.ok(overview);
+    assert.ok(overview.hub);
+    assert.strictEqual(overview.hub.filePath, 'notes/atlas.md');
+    assert.strictEqual(overview.hub.rawContent, '# Atlas\nRetire the old ledger.');
+    assert.deepStrictEqual(overview.hub.properties, [
+      { name: 'status', values: [{ text: 'active' }] },
+    ]);
+    assert.deepStrictEqual(overview.hub.otherFilePaths, []);
+    // The hub's own sections are on screen already, so they are not listed.
+    assert.deepStrictEqual(
+      overview.sections.map((section) => section.filePath),
+      ['notes/plan.md'],
+    );
+
+    const filtered = createTagOverviewSnapshot(
+      index,
+      defaultPreferences,
+      '#project/atlas',
+      'active',
+      'inline',
+      true,
+      undefined,
+      ['#meeting'],
+    );
+    assert.ok(filtered);
+    assert.strictEqual(filtered.hub, undefined);
   });
 });
 

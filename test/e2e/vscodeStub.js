@@ -1,4 +1,5 @@
-// A vscode API surface just large enough to run the overview panel for real.
+// A vscode API surface just large enough to run Deckard's panels, sidebar,
+// and editor features for real.
 class EventEmitter {
   constructor() {
     this.handlers = [];
@@ -17,6 +18,38 @@ class EventEmitter {
   }
 }
 
+class Range {
+  constructor(startLine, startCharacter, endLine, endCharacter) {
+    this.start = { line: startLine, character: startCharacter };
+    this.end = { line: endLine, character: endCharacter };
+  }
+}
+
+class DocumentLink {
+  constructor(range, target) {
+    this.range = range;
+    this.target = target;
+  }
+}
+
+class MarkdownString {
+  constructor(value = '') {
+    this.value = value;
+  }
+}
+
+class ThemeColor {
+  constructor(id) {
+    this.id = id;
+  }
+}
+
+// Editor events a test can fire through _test.emitters.
+const selectionEmitter = new EventEmitter();
+const activeEditorEmitter = new EventEmitter();
+const visibleEditorsEmitter = new EventEmitter();
+const textDocumentEmitter = new EventEmitter();
+
 const createdPanels = [];
 
 function createWebviewPanel(viewType, title, column, options) {
@@ -34,6 +67,12 @@ function createWebviewPanel(viewType, title, column, options) {
     _toWebview: [],
     // Set by the harness so the script can post back.
     _onWebviewMessage: (message) => messageEmitter.fire(message),
+    // Hides or shows the panel, as switching editor tabs does.
+    _setVisible: (visible) => {
+      panel.visible = visible;
+      panel.active = visible;
+      viewStateEmitter.fire({ webviewPanel: panel });
+    },
     webview: {
       cspSource: 'vscode-webview://deckard',
       options: {},
@@ -59,7 +98,8 @@ function createWebviewPanel(viewType, title, column, options) {
     },
     reveal: () => {
       panel.active = true;
-      viewStateEmitter.fire({});
+      panel.visible = true;
+      viewStateEmitter.fire({ webviewPanel: panel });
     },
     dispose: () => {
       panel.disposed = true;
@@ -101,6 +141,11 @@ function createWebviewView() {
     onDidDispose: disposeEmitter.event,
     onDidChangeVisibility: visibilityEmitter.event,
     _fromWebview: (message) => messageEmitter.fire(message),
+    // Hides or shows the view, as collapsing its side bar does.
+    _setVisible: (visible) => {
+      view.visible = visible;
+      visibilityEmitter.fire();
+    },
   };
   return view;
 }
@@ -110,10 +155,14 @@ let inputBoxResponse;
 
 module.exports = {
   EventEmitter,
+  Range,
+  DocumentLink,
+  MarkdownString,
+  ThemeColor,
   Uri: {
     joinPath: (...parts) => ({ fsPath: parts.join('/') }),
-    parse: (value) => ({ fsPath: value, toString: () => value }),
-    file: (value) => ({ fsPath: value }),
+    parse: (value) => ({ fsPath: value, path: value, toString: () => value }),
+    file: (value) => ({ fsPath: value, path: value, toString: () => `file://${value}` }),
   },
   ViewColumn: { Active: -1, One: 1 },
   window: {
@@ -128,21 +177,26 @@ module.exports = {
     },
     showInputBox: () => Promise.resolve(inputBoxResponse),
     showQuickPick: () => Promise.resolve(undefined),
-    onDidChangeActiveTextEditor: new EventEmitter().event,
-    onDidChangeTextEditorSelection: new EventEmitter().event,
-    onDidChangeVisibleTextEditors: new EventEmitter().event,
+    onDidChangeWindowState: new EventEmitter().event,
+    onDidChangeActiveTextEditor: activeEditorEmitter.event,
+    onDidChangeTextEditorSelection: selectionEmitter.event,
+    onDidChangeVisibleTextEditors: visibleEditorsEmitter.event,
     activeTextEditor: undefined,
     registerWebviewViewProvider: () => ({ dispose: () => undefined }),
     createOutputChannel: () => ({
       appendLine: () => undefined,
       dispose: () => undefined,
     }),
+    createTextEditorDecorationType: () => ({ dispose: () => undefined }),
     visibleTextEditors: [],
+  },
+  languages: {
+    registerDocumentLinkProvider: () => ({ dispose: () => undefined }),
   },
   workspace: {
     getConfiguration: () => ({ get: (_key, fallback) => fallback }),
     onDidChangeConfiguration: new EventEmitter().event,
-    onDidChangeTextDocument: new EventEmitter().event,
+    onDidChangeTextDocument: textDocumentEmitter.event,
     onDidSaveTextDocument: new EventEmitter().event,
     onDidOpenTextDocument: new EventEmitter().event,
     onDidCloseTextDocument: new EventEmitter().event,
@@ -155,6 +209,12 @@ module.exports = {
     createdPanels,
     createWebviewView,
     shown,
+    emitters: {
+      selection: selectionEmitter,
+      activeEditor: activeEditorEmitter,
+      visibleEditors: visibleEditorsEmitter,
+      textDocument: textDocumentEmitter,
+    },
     setInputBoxResponse: (value) => {
       inputBoxResponse = value;
     },

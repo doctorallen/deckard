@@ -1,22 +1,30 @@
 import * as vscode from 'vscode';
 
 import { PreferencesStore } from '../../core/storage/preferences';
+import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
+import { openSourceAt } from '../commands/navigation';
 import { createDeckardStatsSnapshot } from '../state/dashboardState';
+import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
 
 /**
- * Provides a read-only overview of indexed content and recorded local views.
+ * Provides an overview of indexed content and recorded local views. Each
+ * most-viewed row opens the tag overview or note entry it counts.
  */
 export class StatsPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
+  /** Whether the index changed while the panel was hidden. */
+  private isStale = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
+    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
@@ -85,7 +93,51 @@ export class StatsPanel implements vscode.Disposable {
         this.panel = undefined;
         this.disposePanelListeners();
       }),
+      panel.webview.onDidReceiveMessage((message: unknown) =>
+        this.handleMessage(message),
+      ),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+      }),
     ];
+  }
+
+  /**
+   * Opens what a row names, if the index still has it: the page may hold a
+   * snapshot from before a tag was renamed or a note was edited.
+   */
+  private async handleMessage(value: unknown): Promise<void> {
+    const message = parseStatsMessage(value);
+    if (!message) {
+      return;
+    }
+
+    const index = this.indexer.getSnapshot();
+    if (message.type === 'openTag') {
+      const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
+      if (tagKey) {
+        await this.onOpenTag(tagKey);
+      }
+      return;
+    }
+
+    const section = [...index.sections.values()].find(
+      (candidate) =>
+        candidate.filePath === message.filePath &&
+        candidate.startLine === message.line,
+    );
+    if (section) {
+      await openSourceAt(section.filePath, section.startLine);
+      await this.preferences.recordSectionAccess(section.id);
+      return;
+    }
+    // A note listed whole, such as one nothing links to, opens without
+    // counting as a view of one of its entries.
+    if (index.files.has(message.filePath)) {
+      await openSourceAt(message.filePath, message.line);
+    }
   }
 
   private disposePanelListeners(): void {
@@ -104,12 +156,20 @@ export class StatsPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden page keeps what it shows and catches up when shown again.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
+    this.isStale = false;
     void this.panel.webview.postMessage({
       type: 'state',
-      data: createDeckardStatsSnapshot(
-        this.indexer.getSnapshot(),
-        this.preferences.value,
+      data: measure('Stats', () =>
+        createDeckardStatsSnapshot(
+          this.indexer.getSnapshot(),
+          this.preferences.value,
+        ),
       ),
     });
   }

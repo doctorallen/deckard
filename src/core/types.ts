@@ -15,6 +15,9 @@ export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
 
+/** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
+export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
+
 export type DashboardMode = 'tasks' | 'notes' | 'browse';
 
 export type DashboardSearchField =
@@ -112,6 +115,19 @@ export interface Task {
   associationTagGroups?: TagReference[][];
   dueAt?: number;
   dueText?: string;
+  /** ⏳ scheduled date: the day the author plans to work on the task. */
+  scheduledAt?: number;
+  /** 🛫 start date: the task is not actionable before this day. */
+  startAt?: number;
+  /** ✅ date the task was completed. */
+  doneAt?: number;
+  priority?: TaskPriority;
+  /** 🔁 repeat rule as written, such as "every week". */
+  recurrence?: string;
+  /** 🆔 name other tasks use in ⛔ to depend on this one. */
+  dependencyId?: string;
+  /** ⛔ names of the tasks that must be done first. */
+  dependsOn?: string[];
   lineNumber: number;
   checkboxColumn: number;
   checkboxValue: ' ' | 'x' | 'X';
@@ -127,8 +143,41 @@ export interface ParsedFile {
   tasks: Task[];
   frontmatterTags: TagReference[];
   links: string[];
+  /** Other names `[[links]]` can use for the note, from `aliases:` front matter. */
+  aliases?: string[];
+  /** Present when the note's `describes:` front matter names tags. */
+  hub?: NoteHub;
+  /**
+   * When the note was created and last updated. A date the note states about
+   * itself, in front matter or as a daily note's day, comes before its file's.
+   */
   createdAt?: number;
   updatedAt?: number;
+  /**
+   * The file's own created and modified times, which tell whether the file
+   * changed since it was last read.
+   */
+  fileTimes?: { createdAt?: number; updatedAt?: number };
+}
+
+/**
+ * A note that describes tags, so it can lead their overviews.
+ */
+export interface NoteHub {
+  describes: TagReference[];
+  /** The rest of the note's front matter, in source order. */
+  properties: FrontmatterProperty[];
+}
+
+export interface FrontmatterProperty {
+  name: string;
+  values: FrontmatterValue[];
+}
+
+export interface FrontmatterValue {
+  text: string;
+  /** Set when the value names a tag, such as `owner: "@dana"`. */
+  tag?: TagReference;
 }
 
 export interface TagInfo {
@@ -139,6 +188,8 @@ export interface TagInfo {
   filePaths: string[];
   count: number;
   isFavorite: boolean;
+  /** Notes whose `describes:` names this tag, by path; the first is its hub. */
+  hubFilePaths?: string[];
 }
 
 export interface TagAssociation {
@@ -194,6 +245,9 @@ export interface PersistedPreferences {
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
+  /** Absent in preferences saved before the Dashboard had a board layout. */
+  dashboardTaskLayout?: DashboardTaskLayout;
+  dashboardBoardGroup?: TaskBoardGroupBy;
 }
 
 /**
@@ -232,7 +286,6 @@ export interface DashboardNote extends TagOverviewCard {
 }
 
 export interface DashboardSnapshot {
-  sections: Section[];
   tags: TagInfo[];
   entities: Entity[];
   notes: DashboardNote[];
@@ -258,6 +311,15 @@ export interface DashboardSnapshot {
   selectedTag?: string;
   viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
+  /** List when absent. */
+  taskLayout?: DashboardTaskLayout;
+  /** The filtered tasks as a board, present when `taskLayout` is `board`. */
+  taskBoard?: TaskBoardLayout;
+  /**
+   * True when `notes` was left empty because the Notes tab is not showing.
+   * Notes are most of what the page is sent, so other tabs are sent none.
+   */
+  notesOmitted?: boolean;
 }
 
 export interface TagOverviewSnapshot {
@@ -269,6 +331,8 @@ export interface TagOverviewSnapshot {
    */
   tag?: TagInfo;
   entity?: Entity;
+  /** The note that describes the tag; only on an overview with no filters. */
+  hub?: TagOverviewHub;
   /**
    * The advanced filter behind this view.
    *
@@ -296,6 +360,19 @@ export interface TagOverviewSnapshot {
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
   tagTitleDisplayMode: TagTitleDisplayMode;
+}
+
+export interface TagOverviewHub {
+  filePath: string;
+  fileName: string;
+  /** The note's body after its front matter. */
+  rawContent: string;
+  renderedHtml: string;
+  properties: FrontmatterProperty[];
+  /** Other notes that also describe the tag. */
+  otherFilePaths: string[];
+  /** Whether the hub starts open, from `deckard.tagOverview.hubNoteExpanded`. */
+  expanded?: boolean;
 }
 
 export interface TagOverviewCard {
@@ -379,6 +456,15 @@ export interface StatsAccessItem {
   label: string;
   detail: string;
   count: number;
+  /** The message that opens the item: its tag overview or its source line. */
+  open: OpenTagMessage | OpenSourceMessage;
+}
+
+/** A note the Stats page lists by name, which opens at its first line. */
+export interface StatsNoteItem {
+  label: string;
+  detail: string;
+  open: OpenSourceMessage;
 }
 
 export interface DeckardStatsSnapshot {
@@ -393,7 +479,22 @@ export interface DeckardStatsSnapshot {
   tagViews: StatsAccessItem[];
   entityViews: StatsAccessItem[];
   sectionViews: StatsAccessItem[];
+  /** Notes no other note links to, periodic notes aside: the first by title. */
+  orphanNotes: StatsNoteItem[];
+  /** How many such notes there are, listed or not. */
+  orphanNoteCount: number;
 }
+
+/** Messages from the Stats page, which only opens what it lists. */
+export type StatsMessage = OpenTagMessage | OpenSourceMessage;
+
+/** Messages from the sidebar calendar. The host finds each note itself. */
+export type CalendarMessage =
+  | { type: 'ready' }
+  | { type: 'openMonth' }
+  | { type: 'showMonth'; month: string }
+  | { type: 'openDay'; date: string }
+  | { type: 'openWeek'; date: string };
 
 export interface SidebarNotesSnapshot {
   activeFileName?: string;
@@ -578,6 +679,10 @@ export interface SetDashboardSearchMessage {
   query: string;
 }
 
+export interface CreateHubNoteMessage {
+  type: 'createHubNote';
+}
+
 export interface SetDashboardColumnsMessage {
   type: 'setDashboardColumns';
   section: 'tasks' | 'notes' | 'tags';
@@ -665,6 +770,10 @@ export interface OpenNotesGraphMessage {
   type: 'openNotesGraph';
 }
 
+export interface OpenTaskBoardMessage {
+  type: 'openTaskBoard';
+}
+
 export interface ActivateNotesGraphNodeMessage {
   type: 'activateNotesGraphNode';
   nodeId: string;
@@ -719,7 +828,10 @@ export type DashboardMessage =
   | OpenTagMessage
   | RenameTagMessage
   | OpenSavedFilterMessage
-  | RemoveSavedFilterMessage;
+  | RemoveSavedFilterMessage
+  | SetDashboardTaskLayoutMessage
+  | SetBoardGroupMessage
+  | MoveTaskMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -732,7 +844,8 @@ export type TagOverviewMessage =
   | SetTagOverviewLayoutMessage
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
-  | ClearOverviewQueryMessage;
+  | ClearOverviewQueryMessage
+  | CreateHubNoteMessage;
 
 export type SidebarMessage =
   | SidebarReadyMessage
@@ -741,9 +854,85 @@ export type SidebarMessage =
   | RenameTagMessage
   | OpenDashboardMessage
   | OpenNotesGraphMessage
+  | OpenTaskBoardMessage
   | ActivateNotesGraphNodeMessage
   | HoverNotesGraphNodeMessage
   | CreateDailyNoteMessage
   | OpenHelpMessage
   | SetRelatedNotesSortMessage
   | ClearEntryRelatedNotesMessage;
+
+/** How the task board arranges its columns. */
+export type TaskBoardGroupBy = 'status' | 'priority' | 'due';
+
+export interface TaskBoardCard {
+  taskId: string;
+  title: string;
+  /** Tags written inside the title, rendered as controls where they appear. */
+  titleTags: TagReference[];
+  completed: boolean;
+  filePath: string;
+  line: number;
+  /** Short facts under the title, such as "due 2026-09-14". */
+  details: string[];
+  overdue: boolean;
+}
+
+export interface TaskBoardColumn {
+  /** What dropping a task here writes, such as `status:doing` or `done`. */
+  id: string;
+  label: string;
+  /** False for a column that no single edit can move a task into. */
+  droppable: boolean;
+  cards: TaskBoardCard[];
+  /** Completed tasks left out of a long Done column. */
+  hiddenCount: number;
+}
+
+/** A task board's columns, whichever page chose its tasks. */
+export interface TaskBoardLayout {
+  groupBy: TaskBoardGroupBy;
+  columns: TaskBoardColumn[];
+  taskCount: number;
+}
+
+/** The Task Board page, which chooses its tasks with a query. */
+export interface TaskBoardSnapshot extends TaskBoardLayout {
+  /** The query narrowing the board, or empty for every task. */
+  query: string;
+  /** Why the last query typed could not be applied. */
+  queryError?: string;
+}
+
+/** How the Dashboard's Tasks tab lays out its tasks. */
+export type DashboardTaskLayout = 'list' | 'board';
+
+export interface SetDashboardTaskLayoutMessage {
+  type: 'setDashboardTaskLayout';
+  layout: DashboardTaskLayout;
+}
+
+export interface MoveTaskMessage {
+  type: 'moveTask';
+  taskId: string;
+  column: string;
+}
+
+export interface SetBoardGroupMessage {
+  type: 'setBoardGroup';
+  groupBy: TaskBoardGroupBy;
+}
+
+export interface SetBoardQueryMessage {
+  type: 'setBoardQuery';
+  query: string;
+}
+
+export type TaskBoardMessage =
+  | SidebarReadyMessage
+  | OpenSourceMessage
+  | OpenTagMessage
+  | ToggleTaskMessage
+  | MoveTaskMessage
+  | SetBoardGroupMessage
+  | SetBoardQueryMessage;

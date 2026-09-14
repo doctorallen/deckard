@@ -155,6 +155,42 @@ suite('Tag suggestions', () => {
     provider.dispose();
   });
 
+  test('suggests tags inside a deckard query block but not other fences', async () => {
+    const provider = new TagCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () =>
+        createIndex([createTag('#project/atlas', 3), createTag('@ren', 1)]),
+    });
+    const document = createDocument(
+      '/tmp/deckard/notes/case.md',
+      '```deckard\ntag = #atl AND @re\n```\n```js\n#atl\n```',
+    );
+
+    const tagItems = await provider.provideCompletionItems(
+      document,
+      new vscode.Position(1, 10),
+    );
+    const personItems = await provider.provideCompletionItems(
+      document,
+      new vscode.Position(1, 18),
+    );
+    const codeItems = await provider.provideCompletionItems(
+      document,
+      new vscode.Position(4, 4),
+    );
+
+    assert.deepStrictEqual(
+      tagItems.map((item) => item.label),
+      ['#project/atlas'],
+    );
+    assert.deepStrictEqual(
+      personItems.map((item) => item.label),
+      ['@ren'],
+    );
+    assert.deepStrictEqual(codeItems, []);
+    provider.dispose();
+  });
+
   test('finds namespaced hash entities by their short name', async () => {
     const provider = new TagCompletionProvider({
       ready: Promise.resolve(),

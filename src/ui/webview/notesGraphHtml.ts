@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
 
+import {
+  createNonce,
+  getBaseCss,
+} from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
@@ -24,7 +28,7 @@ export function getNotesGraphHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Deckard Notes Graph</title>
-<style nonce="${nonce}">
+<style nonce="${nonce}">${getBaseCss()}
 :root {
   color-scheme: dark;
   --bg-dark: #050608;
@@ -1928,12 +1932,3 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </html>`;
 }
 
-function createNonce(): string {
-  const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let nonce = '';
-  for (let index = 0; index < 32; index += 1) {
-    nonce += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return nonce;
-}

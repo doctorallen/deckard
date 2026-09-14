@@ -33,6 +33,15 @@ export const settingsIcon =
   '</svg>';
 
 /**
+ * Three Kanban columns of falling height, for the task board. Solid like the
+ * Dashboard's glyph so the sidebar toolbar reads as one set.
+ */
+export const taskBoardIcon =
+  '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">' +
+  '<path d="M2 2h3.5v12H2zm4.25 0h3.5v8.5h-3.5zm4.25 0H14v5.5h-3.5z"/>' +
+  '</svg>';
+
+/**
  * Node-graph artwork shared by the Notes Graph tab icon asset
  * (resources/notes-graph.svg) and the sidebar toolbar button.
  */

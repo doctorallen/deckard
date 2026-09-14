@@ -12,12 +12,19 @@
  *
  * `tag` matches a canonical tag key, including tags inherited from parent
  * headings and note front matter. `text` matches note, task, and file body
- * text. The remaining fields describe the source unit itself.
+ * text. `due`, `scheduled`, `start`, `done`, and `priority` read a task's
+ * Obsidian Tasks metadata, so only tasks can satisfy them. The remaining
+ * fields describe the source unit itself.
  */
 export type QueryField =
   | 'tag'
   | 'text'
   | 'task'
+  | 'due'
+  | 'scheduled'
+  | 'start'
+  | 'done'
+  | 'priority'
   | 'kind'
   | 'file'
   | 'path'
@@ -28,12 +35,35 @@ export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',
   'text',
   'task',
+  'due',
+  'scheduled',
+  'start',
+  'done',
+  'priority',
   'kind',
   'file',
   'path',
   'created',
   'updated',
 ];
+
+/** Task date fields. Each also accepts `none`, meaning no date is written. */
+export const QUERY_TASK_DATE_FIELDS: readonly QueryField[] = [
+  'due',
+  'scheduled',
+  'start',
+  'done',
+];
+
+/** Values `priority` accepts, highest first. `none` is a task without one. */
+export const QUERY_PRIORITY_VALUES = [
+  'highest',
+  'high',
+  'medium',
+  'none',
+  'low',
+  'lowest',
+] as const;
 
 export type QueryOperator =
   | 'eq'
@@ -57,6 +87,11 @@ export const QUERY_FIELD_OPERATORS: Readonly<
   tag: ['eq', 'neq'],
   text: ['contains', 'notContains', 'eq', 'neq'],
   task: ['eq', 'neq'],
+  due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   kind: ['eq', 'neq'],
   file: ['eq', 'neq', 'contains', 'notContains'],
   path: ['eq', 'neq', 'contains', 'notContains'],

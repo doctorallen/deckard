@@ -5,3 +5,5 @@ node_modules
 .vscode/development-user-data/
 .vscode/development-extensions/
 *.vsix
+.DS_Store
+.claude/

@@ -12,6 +12,10 @@ import {
   TaskFilter,
   DashboardMode,
   DashboardSearchField,
+  TaskBoardGroupBy,
+  TaskBoardMessage,
+  CalendarMessage,
+  StatsMessage,
 } from '../../core/types';
 
 /**
@@ -117,6 +121,20 @@ export function parseDashboardMessage(
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'setDashboardTaskLayout':
+      return value.layout === 'list' || value.layout === 'board'
+        ? { type: 'setDashboardTaskLayout', layout: value.layout }
+        : undefined;
+    case 'setBoardGroup':
+      return isTaskBoardGroupBy(value.groupBy)
+        ? { type: 'setBoardGroup', groupBy: value.groupBy }
+        : undefined;
+    case 'moveTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.column === 'string' &&
+        value.column.length > 0
+        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
+        : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
       return isSavedFilterMessage(value)
@@ -177,6 +195,9 @@ export function parseTagOverviewMessage(
     Object.keys(value).length === 1
   ) {
     return { type: 'saveTagOverviewFilter' };
+  }
+  if (value.type === 'createHubNote' && Object.keys(value).length === 1) {
+    return { type: 'createHubNote' };
   }
   if (value.type === 'setOverviewQuery' && isOverviewQueryMessage(value)) {
     return { type: 'setOverviewQuery', query: value.query as string };
@@ -294,6 +315,7 @@ export function parseSidebarMessage(
   if (
     value.type === 'openDashboard' ||
     value.type === 'openNotesGraph' ||
+    value.type === 'openTaskBoard' ||
     value.type === 'createDailyNote' ||
     value.type === 'openHelp'
   ) {
@@ -303,8 +325,121 @@ export function parseSidebarMessage(
 }
 
 /**
+ * Validates the task board's messages. A column id is only a string here;
+ * the host decides what, if anything, a move to it may write.
+ */
+export function parseTaskBoardMessage(
+  value: unknown,
+): TaskBoardMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+
+  switch (value.type) {
+    case 'ready':
+      return { type: 'ready' };
+    case 'openSource':
+      return isSourceMessage(value)
+        ? (value as unknown as TaskBoardMessage)
+        : undefined;
+    case 'openTag':
+      return isOpenTagMessage(value)
+        ? { type: 'openTag', tagKey: value.tagKey as string }
+        : undefined;
+    case 'toggleTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.completed === 'boolean'
+        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
+        : undefined;
+    case 'moveTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.column === 'string' &&
+        value.column.length > 0
+        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
+        : undefined;
+    case 'setBoardGroup':
+      return isTaskBoardGroupBy(value.groupBy)
+        ? { type: 'setBoardGroup', groupBy: value.groupBy }
+        : undefined;
+    case 'setBoardQuery':
+      return typeof value.query === 'string' &&
+        value.query.length <= MAX_QUERY_LENGTH
+        ? { type: 'setBoardQuery', query: value.query }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Keeps the task board's grouping to the three it can lay out.
+ */
+export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
+  return value === 'status' || value === 'priority' || value === 'due';
+}
+
+/**
  * Checks source locations before they are used to open an editor line.
  */
+/**
+ * Validates the Stats page's messages. The page only opens what it lists, and
+ * the host still checks each tag and line against the current index.
+ */
+export function parseStatsMessage(value: unknown): StatsMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+
+  switch (value.type) {
+    case 'openTag':
+      return isOpenTagMessage(value)
+        ? { type: 'openTag', tagKey: value.tagKey as string }
+        : undefined;
+    case 'openSource':
+      return isSourceMessage(value)
+        ? {
+            type: 'openSource',
+            filePath: value.filePath as string,
+            line: value.line as number,
+          }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Accepts the calendar page's messages. Dates and months are checked for their
+ * shape; the host checks that each names a real day.
+ */
+export function parseCalendarMessage(
+  value: unknown,
+): CalendarMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+  const date = typeof value.date === 'string' ? value.date : '';
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+
+  switch (value.type) {
+    case 'ready':
+      return { type: 'ready' };
+    case 'openMonth':
+      return { type: 'openMonth' };
+    case 'showMonth':
+      return typeof value.month === 'string' &&
+        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month)
+        ? { type: 'showMonth', month: value.month }
+        : undefined;
+    case 'openDay':
+      return isDate ? { type: 'openDay', date } : undefined;
+    case 'openWeek':
+      return isDate ? { type: 'openWeek', date } : undefined;
+    default:
+      return undefined;
+  }
+}
+
 function isSourceMessage(value: Record<string, unknown>): boolean {
   return (
     typeof value.filePath === 'string' &&

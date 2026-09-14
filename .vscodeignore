@@ -17,3 +17,10 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.claude/**
+.worktrees/**
+docs/**
+test/**
+scripts/**
+*.vsix
+**/.DS_Store

@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import * as os from 'os';
+import * as path from 'path';
 
 import * as vscode from 'vscode';
 
@@ -8,6 +10,13 @@ suite('Extension Test Suite', () => {
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
     );
     assert.ok(extension);
+    // Settings are grouped into titled sections; read them as one map.
+    const sections: Array<{ title?: string; properties: Record<string, never> }> =
+      extension.packageJSON.contributes?.configuration ?? [];
+    assert.ok(sections.every((section) => section.title), 'every group has a title');
+    const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
+      Object.assign({}, ...sections.map((section) => section.properties));
+    assert.strictEqual(Object.keys(settings).length, 34);
     const activationEvents = extension.packageJSON.activationEvents ?? [];
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.dashboard'));
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.tagOverview'));
@@ -19,10 +28,21 @@ suite('Extension Test Suite', () => {
       [
         'deckard.showDashboard',
         'deckard.showNotesGraph',
+        'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
+        'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createDailyNote',
+        'deckard.previousDailyNote',
+        'deckard.nextDailyNote',
+        'deckard.openWeeklyNote',
+        'deckard.openMonthlyNote',
+        'deckard.capture',
+        'deckard.captureUnderHeading',
+        'deckard.newNoteFromTemplate',
+        'deckard.copyMcpSetup',
+        'deckard.resetMcpToken',
         'deckard.extractHeading',
         'deckard.showTagOverview',
         'deckard.searchWorkspace',
@@ -30,80 +50,98 @@ suite('Extension Test Suite', () => {
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',
         'deckard.renameTag',
+        'deckard.mergeTag',
         'deckard.showEntryRelatedNotesDebug',
+        'deckard.outline.revealSection',
+        'deckard.outline.openTagOverview',
+        'deckard.outline.renameTag',
+        'deckard.outline.enableFollowCursor',
+        'deckard.outline.disableFollowCursor',
       ],
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.notesFolder'
       ].default,
       '',
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.parseInlineTags'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.highlightNoteSections'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.autoSelectNoteSections'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.tagTitleDisplayMode'
       ].default,
       'inline',
     );
     assert.deepStrictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.tagTitleDisplayMode'
       ].enum,
       ['inline', 'separate'],
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.enableHeadingTagRelationships'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.enableKeywordLinks'
       ].default,
       true,
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.enableTagAutocomplete'
       ].default,
       true,
     );
     assert.deepStrictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.entityNamespaceAliases'
       ].default,
       { org: 'organization' },
     );
     assert.strictEqual(
-      extension.packageJSON.contributes?.configuration?.properties[
+      settings[
         'deckard.personMarker'
       ].default,
       '@',
+    );
+    assert.strictEqual(
+      settings[
+        'deckard.dashboard.openOnStartup'
+      ].default,
+      false,
+    );
+    assert.strictEqual(
+      settings[
+        'deckard.tagOverview.hubNoteExpanded'
+      ].default,
+      true,
     );
     assert.ok(
       extension.packageJSON.contributes?.views?.deckard?.some(
         (view: { id: string; name: string; type: string }) =>
           view.id === 'deckard.relatedNotes' &&
-          view.name === 'Deckard' &&
+          view.name === 'Related Notes' &&
           view.type === 'webview',
       ),
     );
@@ -154,5 +192,78 @@ suite('Extension Test Suite', () => {
         'deckard.showEntryRelatedNotes',
       ),
     );
+  });
+
+  test('counts the open tasks under a heading above it in the editor', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    await extension.activate();
+
+    const fileUri = vscode.Uri.file(
+      path.join(os.tmpdir(), `deckard-references-${Date.now()}.md`),
+    );
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from('# Plan #project/atlas\n- [ ] Ship it\n- [x] Draft it\n', 'utf8'),
+    );
+    try {
+      // The command asks the editor for lenses, so the document must be loaded.
+      await vscode.workspace.openTextDocument(fileUri);
+      const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+        'vscode.executeCodeLensProvider',
+        fileUri,
+        10,
+      );
+      const titles = lenses.map((lens) => lens.command?.title);
+      assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
+      // A tagged heading also counts the entries elsewhere that share one of
+      // its tags; no other note here carries #project/atlas.
+      assert.ok(titles.includes('No entries share a tag'), JSON.stringify(titles));
+    } finally {
+      await vscode.workspace.fs.delete(fileUri);
+    }
+  });
+
+  test('draws deckard query blocks in the Markdown preview engine', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    assert.strictEqual(
+      extension.packageJSON.contributes?.['markdown.markdownItPlugins'],
+      true,
+    );
+    await extension.activate();
+
+    // The built-in Markdown extension renders with every contributed plugin,
+    // so this checks the export VS Code actually loads, not just the plugin.
+    const html = await vscode.commands.executeCommand<string>(
+      'markdown.api.render',
+      '```deckard\ntag = #project/atlas\n```\n\n```js\nconst answer = 42;\n```\n',
+    );
+    assert.strictEqual(html.split('class="deckard-query-header"').length, 2);
+    assert.ok(html.includes('answer'));
+  });
+
+  test('registers its tools for AI assistants', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    assert.deepStrictEqual(
+      (extension.packageJSON.contributes?.languageModelTools ?? []).map(
+        (tool: { name: string }) => tool.name,
+      ),
+      ['deckard_query', 'deckard_list_tags'],
+    );
+    await extension.activate();
+
+    // Calling a tool first asks the user to allow it, so this checks that
+    // both are registered; the calls themselves are tested directly.
+    const registered = vscode.lm.tools.map((tool) => tool.name);
+    assert.ok(registered.includes('deckard_query'), JSON.stringify(registered));
+    assert.ok(registered.includes('deckard_list_tags'));
   });
 });

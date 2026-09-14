@@ -6,7 +6,15 @@ import {
   getPersonMarker,
   parseMarkdown,
 } from '../../core/markdown/parser';
+import { measure } from '../../core/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+
+/**
+ * How long typing must pause before a changed document is redrawn. VS Code
+ * moves existing decorations along with each edit, so they stay in place
+ * meanwhile.
+ */
+const decorationDelayMs = 150;
 
 /**
  * Keeps tag appearance and click behavior synchronized in visible editors.
@@ -16,6 +24,11 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
  */
 export class EditorTagDecorations implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
+  /** Redraws waiting for typing to pause, by document URI. */
+  private readonly pendingUpdates = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
   private readonly decorationType =
     vscode.window.createTextEditorDecorationType({
       border: '1px solid',
@@ -72,12 +85,12 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeTextDocument((event) => {
-        vscode.window.visibleTextEditors
-          .filter(
-            (editor) =>
-              editor.document.uri.toString() === event.document.uri.toString(),
-          )
-          .forEach((editor) => this.updateEditor(editor));
+        if (
+          event.contentChanges.length > 0 &&
+          isMarkdownDocument(event.document)
+        ) {
+          this.scheduleUpdate(event.document);
+        }
       }),
     );
 
@@ -87,9 +100,12 @@ export class EditorTagDecorations implements vscode.Disposable {
   }
 
   /**
-   * Releases the shared decoration type and every document/editor listener.
+   * Releases the shared decoration type, pending redraws, and every
+   * document/editor listener.
    */
   public dispose(): void {
+    this.pendingUpdates.forEach((handle) => clearTimeout(handle));
+    this.pendingUpdates.clear();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -103,25 +119,48 @@ export class EditorTagDecorations implements vscode.Disposable {
       return [];
     }
 
-    return extractTagSpans(
-      document.getText(),
-      this.parseInlineTags(document),
-      this.entityNamespaceAliases(document),
-      this.personMarker(document),
-    ).map((span) => {
-      const range = new vscode.Range(
-        span.lineNumber - 1,
-        span.startColumn,
-        span.lineNumber - 1,
-        span.endColumn,
-      );
-      const link = new vscode.DocumentLink(
-        range,
-        createTagOverviewUri(span.key),
-      );
-      link.tooltip = `Open ${span.label} tag overview`;
-      return link;
-    });
+    return measure(
+      'Tag links',
+      () =>
+        extractTagSpans(
+          document.getText(),
+          this.parseInlineTags(document),
+          this.entityNamespaceAliases(document),
+          this.personMarker(document),
+        ).map((span) => {
+          const range = new vscode.Range(
+            span.lineNumber - 1,
+            span.startColumn,
+            span.lineNumber - 1,
+            span.endColumn,
+          );
+          const link = new vscode.DocumentLink(
+            range,
+            createTagOverviewUri(span.key),
+          );
+          link.tooltip = `Open ${span.label} tag overview`;
+          return link;
+        }),
+      (links) => `${links.length} links, ${document.lineCount} lines`,
+    );
+  }
+
+  /**
+   * Redraws a changed document's editors once typing pauses, rather than
+   * reparsing the whole note on every keystroke.
+   */
+  private scheduleUpdate(document: vscode.TextDocument): void {
+    const key = document.uri.toString();
+    clearTimeout(this.pendingUpdates.get(key));
+    this.pendingUpdates.set(
+      key,
+      setTimeout(() => {
+        this.pendingUpdates.delete(key);
+        vscode.window.visibleTextEditors
+          .filter((editor) => editor.document.uri.toString() === key)
+          .forEach((editor) => this.updateEditor(editor));
+      }, decorationDelayMs),
+    );
   }
 
   /**
@@ -134,6 +173,14 @@ export class EditorTagDecorations implements vscode.Disposable {
       return;
     }
 
+    measure(
+      'Tag decorations',
+      () => this.decorate(editor),
+      () => `${editor.document.lineCount} lines`,
+    );
+  }
+
+  private decorate(editor: vscode.TextEditor): void {
     const content = editor.document.getText();
     const parseInlineTags = this.parseInlineTags(editor.document);
     const entityNamespaceAliases = this.entityNamespaceAliases(editor.document);
@@ -153,6 +200,13 @@ export class EditorTagDecorations implements vscode.Disposable {
       hoverMessage: createTagRenameHoverMessage(span.label, span.key),
     }));
     editor.setDecorations(this.decorationType, decorations);
+
+    // Section highlighting needs the whole note parsed, so that parse is
+    // skipped entirely when highlighting is off.
+    if (!this.shouldHighlightNoteSections(editor.document)) {
+      editor.setDecorations(this.noteDecorationType, []);
+      return;
+    }
 
     const parsed = parseMarkdown('', content, undefined, {
       parseInlineTags,
@@ -185,25 +239,22 @@ export class EditorTagDecorations implements vscode.Disposable {
 
     editor.setDecorations(
       this.noteDecorationType,
-      this.shouldHighlightNoteSections(editor.document)
-        ? entries.map((entry) => {
-            const endLine =
-              Math.min(entry.endLine, editor.document.lineCount) - 1;
-            return {
-              range: new vscode.Range(
-                entry.startLine - 1,
-                0,
-                endLine,
-                editor.document.lineAt(endLine).text.length,
-              ),
-              hoverMessage: createEntryRelatedNotesHoverMessage(
-                entry.title,
-                editor.document.uri.toString(),
-                entry.startLine,
-              ),
-            };
-          })
-        : [],
+      entries.map((entry) => {
+        const endLine = Math.min(entry.endLine, editor.document.lineCount) - 1;
+        return {
+          range: new vscode.Range(
+            entry.startLine - 1,
+            0,
+            endLine,
+            editor.document.lineAt(endLine).text.length,
+          ),
+          hoverMessage: createEntryRelatedNotesHoverMessage(
+            entry.title,
+            editor.document.uri.toString(),
+            entry.startLine,
+          ),
+        };
+      }),
     );
   }
 

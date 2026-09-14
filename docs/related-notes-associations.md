@@ -268,18 +268,17 @@ Deckard builds a candidate reference for each matching section and standalone
 task in every other indexed file. A task already represented by a matching
 section is not duplicated as a second sidebar result.
 
-A candidate can qualify through any of these signals:
+A candidate qualifies through any of these signals:
 
 - an exact shared tag;
 - a learned tag association;
-- a direct entry Wiki link;
-- a file-level Wiki link;
-- section-scoped lexical similarity; or
-- an already eligible candidate receiving an optional recency boost.
+- a direct entry Wiki link; or
+- a file-level Wiki link.
 
-Recency is a score component, not an eligibility condition. A note with no
-shared tag, association, link, or lexical match does not appear solely because
-it is recent.
+Section-scoped lexical similarity and the optional recency boost are score
+components, not eligibility conditions. Shared wording alone would make nearly
+every entry in a workspace related, so a note with no shared tag, association,
+or link does not appear, however similar its wording or recent its date.
 
 ### Direct shared tags
 
@@ -567,7 +566,7 @@ and any specificity adjustment.
 
 | Setting | Default | Effect on Related Notes |
 |---|---:|---|
-| `deckard.enableKeywordLinks` | `true` | Enables the capped lexical text signal. Disable it to use tags, associations, and Wiki links without text similarity. |
+| `deckard.enableKeywordLinks` | `true` | Enables the capped lexical text signal, which adjusts the score of a candidate that already qualifies. Disable it to rank by tags, associations, and Wiki links alone. Shared wording never qualifies a candidate either way. |
 | `deckard.relatedNotesAssociationMinimumSupport` | `1` | Requires an association to appear in at least this many distinct source units. Raising it suppresses one-off learned associations without removing them from the index. |
 | `deckard.relatedNotesRecencyHalfLifeDays` | `0` | Enables the optional recency contribution when greater than zero. |
 | `deckard.parseInlineTags` | `true` | Controls whether tagged prose and list lines become separate indexed entries and association source units. |
@@ -583,12 +582,12 @@ If an expected relationship is missing, check the following:
    different section may be a different source reference.
 3. Is `relatedNotesAssociationMinimumSupport` higher than the pair's
    **Shared source units** count?
-4. Is `enableKeywordLinks` disabled, or is the shared wording removed by tag,
-   link, code, front-matter, or stop-word filtering?
+4. Does the candidate share only wording with the selected entry? Shared
+   wording adjusts scores but never qualifies a candidate on its own.
 5. Is a namespace alias causing two source spellings to use one canonical key?
 
 If a candidate has no exact shared tag, it can still appear through an
-association, Wiki link, or lexical match. Recency can then add a small amount
+association or a Wiki link. Lexical similarity and recency can then add a small amount
 to its score. That is why the Debug page may show a candidate with an empty
 **Matched tags** table.
 

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { formatEntityTitle } from '../../core/markdown/parser';
 import { getQueryTagIntersection } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
+import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
@@ -18,6 +19,7 @@ import {
   createTagOverviewSnapshot,
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
+import { createHubNote } from '../commands/hubNote';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
@@ -63,7 +65,10 @@ export class TagOverviewPanels implements vscode.Disposable {
           this.panels.forEach((panel) => panel.renderHtml());
           this.refresh();
         }
-        if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
+        if (
+          event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
+          event.affectsConfiguration('deckard.tagOverview.hubNoteExpanded')
+        ) {
           this.refresh();
         }
         if (
@@ -445,6 +450,8 @@ class TagOverviewPanel implements vscode.Disposable {
    * the last query that did parse.
    */
   private invalidQueryText: string | undefined;
+  /** Whether the index changed while the panel was hidden. */
+  private isStale = false;
 
   public constructor(
     private readonly tagKey: string | undefined,
@@ -556,8 +563,14 @@ class TagOverviewPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden overview keeps its page and catches up when shown again.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
-    const snapshot = this.createSnapshot();
+    this.isStale = false;
+    const snapshot = measure('Tag overview', () => this.createSnapshot());
     if (snapshot) {
       void this.panel.webview.postMessage({ type: 'state', data: snapshot });
     }
@@ -604,7 +617,7 @@ class TagOverviewPanel implements vscode.Disposable {
     if (!this.tagKey) {
       return undefined;
     }
-    return createTagOverviewSnapshot(
+    const snapshot = createTagOverviewSnapshot(
       this.indexer.getSnapshot(),
       this.preferences.value,
       this.tagKey,
@@ -614,6 +627,18 @@ class TagOverviewPanel implements vscode.Disposable {
       this.filterTagKeys[0],
       this.filterTagKeys,
     );
+    return snapshot?.hub
+      ? {
+          ...snapshot,
+          hub: { ...snapshot.hub, expanded: this.isHubNoteExpanded() },
+        }
+      : snapshot;
+  }
+
+  private isHubNoteExpanded(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('tagOverview.hubNoteExpanded', true);
   }
 
   /**
@@ -645,7 +670,12 @@ class TagOverviewPanel implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      panel.onDidChangeViewState(() => this.onViewStateChange(panel.active)),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+        this.onViewStateChange(panel.active);
+      }),
     );
     this.disposables.push(
       panel.webview.onDidReceiveMessage((message) => {
@@ -695,6 +725,7 @@ class TagOverviewPanel implements vscode.Disposable {
       const replacement = await renameIndexedTag(
         this.indexer,
         message.tagKey,
+        this.preferences,
       );
       if (replacement) {
         await this.onOpenTag(replacement.key);
@@ -738,6 +769,12 @@ class TagOverviewPanel implements vscode.Disposable {
       await this.saveCurrentFilter();
       return;
     }
+    if (message.type === 'createHubNote') {
+      if (this.tagKey) {
+        await createHubNote(this.indexer, this.tagKey);
+      }
+      return;
+    }
     if (message.type === 'setOverviewQuery') {
       await this.applyQuery(message.query);
       return;
@@ -775,6 +812,15 @@ class TagOverviewPanel implements vscode.Disposable {
     }
 
     const snapshot = this.createSnapshot();
+    const hub = snapshot?.hub;
+    if (
+      hub &&
+      (message.filePath === hub.filePath ||
+        hub.otherFilePaths.includes(message.filePath))
+    ) {
+      await openSourceAt(message.filePath, message.line);
+      return;
+    }
     const card = snapshot?.sections.find(
       (section) =>
         section.filePath === message.filePath &&

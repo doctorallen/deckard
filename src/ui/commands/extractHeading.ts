@@ -105,7 +105,9 @@ export async function extractHeadingNote(
     );
   }
 
-  if (!(await removeSectionFromSource(sourceUri, section))) {
+  // Wiki links resolve against the file name, so the link names the new file.
+  const link = `[[${fileName.slice(0, -'.md'.length)}]]`;
+  if (!(await replaceSectionWithLink(sourceUri, section, link))) {
     try {
       await vscode.workspace.fs.delete(noteUri, { useTrash: false });
     } catch {}
@@ -137,7 +139,7 @@ async function chooseTaggedHeading(
       const parsed = indexer.parse(
         editor.document.uri,
         editor.document.getText(),
-        previous,
+        previous?.fileTimes,
       );
       const section = findTaggedHeadingAtLine(
         parsed.sections,
@@ -211,27 +213,28 @@ function getSuggestedNoteName(heading: string): string {
   return suggestion || 'extracted-note';
 }
 
-async function removeSectionFromSource(
+/**
+ * Replaces the extracted section with a link to its new note, keeping the
+ * line breaks that separated the section from whatever follows it.
+ */
+async function replaceSectionWithLink(
   sourceUri: vscode.Uri,
   section: Section,
+  link: string,
 ): Promise<boolean> {
   let sourceEditApplied = false;
-  let sourceStart: vscode.Position | undefined;
-  let originalSourceContent: string | undefined;
+  let linkRange: vscode.Range | undefined;
+  let replacedText: string | undefined;
 
   const restoreSource = async (): Promise<boolean> => {
-    if (
-      !sourceEditApplied ||
-      !sourceStart ||
-      originalSourceContent === undefined
-    ) {
+    if (!sourceEditApplied || !linkRange || replacedText === undefined) {
       return true;
     }
 
     sourceEditApplied = false;
     try {
       const rollback = new vscode.WorkspaceEdit();
-      rollback.insert(sourceUri, sourceStart, originalSourceContent);
+      rollback.replace(sourceUri, linkRange, replacedText);
       return await vscode.workspace.applyEdit(rollback);
     } catch {
       return false;
@@ -249,30 +252,37 @@ async function removeSectionFromSource(
     }
 
     const start = new vscode.Position(section.startLine - 1, 0);
-    sourceStart = start;
     const contentEnd = new vscode.Position(
       section.endLine - 1,
       document.lineAt(section.endLine - 1).text.length,
     );
     const contentRange = new vscode.Range(start, contentEnd);
-    originalSourceContent = document.getText(contentRange);
-    if (normalizeLineEndings(originalSourceContent) !== section.rawContent) {
+    if (
+      normalizeLineEndings(document.getText(contentRange)) !==
+      section.rawContent
+    ) {
       void vscode.window.showWarningMessage(
         'Deckard could not extract this heading because the source section changed.',
       );
       return false;
     }
 
-    const deletionEnd =
+    const replacedRange = new vscode.Range(
+      start,
       section.endLine < document.lineCount
         ? new vscode.Position(section.endLine, 0)
-        : contentEnd;
+        : contentEnd,
+    );
+    replacedText = document.getText(replacedRange);
+    const replacement =
+      link + (replacedText.match(/(?:\r?\n)*$/)?.[0] ?? '');
     const edit = new vscode.WorkspaceEdit();
-    edit.delete(sourceUri, new vscode.Range(start, deletionEnd));
+    edit.replace(sourceUri, replacedRange, replacement);
     if (!(await vscode.workspace.applyEdit(edit))) {
       return false;
     }
     sourceEditApplied = true;
+    linkRange = new vscode.Range(start, getEndPosition(start, replacement));
 
     const updatedDocument =
       vscode.workspace.textDocuments.find(
@@ -310,6 +320,16 @@ async function removeSectionFromSource(
     );
     return false;
   }
+}
+
+function getEndPosition(start: vscode.Position, text: string): vscode.Position {
+  const lines = text.split('\n');
+  return lines.length === 1
+    ? start.translate(0, text.length)
+    : new vscode.Position(
+        start.line + lines.length - 1,
+        lines[lines.length - 1].length,
+      );
 }
 
 function normalizeLineEndings(value: string): string {

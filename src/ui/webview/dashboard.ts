@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { PreferencesStore } from '../../core/storage/preferences';
+import { measure } from '../../core/timing';
 import {
   DashboardMode,
   DashboardColumnCount,
@@ -14,6 +15,11 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { toggleTask } from '../commands/taskActions';
+import {
+  moveTaskToColumn,
+  readTaskBoardOptions,
+} from '../commands/taskBoardActions';
+import { layoutTaskBoard } from '../state/taskBoardState';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
@@ -27,6 +33,8 @@ export class DashboardPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
+  /** Whether something changed while the panel was hidden. */
+  private isStale = false;
   private taskFilter: DashboardSnapshot['taskFilter'] = 'active';
   private selectedTaskTags: string[] = [];
   private selectedNoteTags: string[] = [];
@@ -83,7 +91,12 @@ export class DashboardPanel implements vscode.Disposable {
         if (themeChanged) {
           this.renderHtml();
         }
-        if (themeChanged || titleDisplayChanged) {
+        if (
+          themeChanged ||
+          titleDisplayChanged ||
+          event.affectsConfiguration('deckard.board') ||
+          event.affectsConfiguration('deckard.tasks')
+        ) {
           this.refresh();
         }
       }),
@@ -101,6 +114,20 @@ export class DashboardPanel implements vscode.Disposable {
     this.panel?.reveal(vscode.ViewColumn.Active);
     await this.indexer.ready;
     this.refresh();
+  }
+
+  /**
+   * Opens the dashboard for `deckard.dashboard.openOnStartup`.
+   *
+   * Waiting for the first index gives VS Code time to restore a dashboard from
+   * the last session, which is left as it is rather than opened twice, and
+   * shows whether the workspace has any notes worth opening it for.
+   */
+  public async showOnStartup(): Promise<void> {
+    await this.indexer.ready;
+    if (!this.panel && this.indexer.getSnapshot().files.size > 0) {
+      await this.show();
+    }
   }
 
   /**
@@ -163,6 +190,11 @@ export class DashboardPanel implements vscode.Disposable {
       panel.webview.onDidReceiveMessage((message) => {
         void this.handleMessage(message);
       }),
+      panel.onDidChangeViewState(() => {
+        if (panel.visible && this.isStale) {
+          this.refresh();
+        }
+      }),
     ];
   }
 
@@ -191,15 +223,30 @@ export class DashboardPanel implements vscode.Disposable {
     if (!this.panel) {
       return;
     }
+    // A hidden page keeps what it shows and catches up when shown again, so
+    // saving a note while the Dashboard is in the background costs nothing.
+    if (!this.panel.visible) {
+      this.isStale = true;
+      return;
+    }
 
+    this.isStale = false;
+    measure('Dashboard', () => this.publish());
+  }
+
+  private publish(): void {
+    if (!this.panel) {
+      return;
+    }
     const preferences = this.preferences.value;
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
       vscode.workspace
         .getConfiguration('deckard')
         .get<unknown>('tagTitleDisplayMode', 'inline'),
     );
+    const index = this.indexer.getSnapshot();
     const snapshot = createDashboardSnapshot(
-      this.indexer.getSnapshot(),
+      index,
       {
         ...preferences,
         dashboardTaskColumns: this.dashboardTaskColumns,
@@ -218,8 +265,31 @@ export class DashboardPanel implements vscode.Disposable {
       undefined,
       this.selectedNoteTags,
       tagTitleDisplayMode,
+      // Switching tabs asks the host again, so only the Notes tab gets notes.
+      this.dashboardMode === 'notes',
     );
-    void this.panel.webview.postMessage({ type: 'state', data: snapshot });
+    // The board lays out the same filtered tasks the list would show.
+    const taskLayout = preferences.dashboardTaskLayout ?? 'list';
+    const data: DashboardSnapshot = {
+      ...snapshot,
+      // The Markdown view shows each note's source, which its search also
+      // reads, so only the HTML view is sent each note rendered.
+      notes:
+        snapshot.renderMode === 'html'
+          ? snapshot.notes
+          : snapshot.notes.map((note) => ({ ...note, renderedHtml: '' })),
+      taskLayout,
+      taskBoard:
+        taskLayout === 'board'
+          ? layoutTaskBoard(
+              index,
+              snapshot.tasks.map((item) => item.task),
+              preferences.dashboardBoardGroup ?? 'status',
+              readTaskBoardOptions(),
+            )
+          : undefined,
+    };
+    void this.panel.webview.postMessage({ type: 'state', data });
   }
 
   /**
@@ -364,6 +434,19 @@ export class DashboardPanel implements vscode.Disposable {
           message.columns,
         );
         return;
+      case 'setDashboardTaskLayout':
+        await this.preferences.setDashboardTaskLayout(message.layout);
+        return;
+      case 'setBoardGroup':
+        await this.preferences.setDashboardBoardGroup(message.groupBy);
+        return;
+      case 'moveTask': {
+        const task = index.tasks.get(message.taskId);
+        if (!task || !(await moveTaskToColumn(task, message.column))) {
+          this.refresh();
+        }
+        return;
+      }
       case 'reorderTasks':
         if (this.preferences.value.taskSortMode === 'rank') {
           await this.preferences.setTaskOrder(
@@ -407,6 +490,7 @@ export class DashboardPanel implements vscode.Disposable {
         const replacement = await renameIndexedTag(
           this.indexer,
           message.tagKey,
+          this.preferences,
         );
         if (replacement) {
           await this.onOpenTag(replacement.key);

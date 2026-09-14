@@ -43,7 +43,7 @@ export function createNotesGraphSnapshot(
   const tagNodes = createTagNodes(index);
   const edgeMap = new Map<string, EdgeAccumulator>();
 
-  addWikiLinkEdges(sources, edgeMap);
+  addWikiLinkEdges(sources, edgeMap, index);
   addHeadingEdges(sources, sourceById, edgeMap);
   addAssociationEdges(index, tagNodes, edgeMap);
   addTagMembershipEdges(sources, tagNodes, edgeMap);
@@ -192,13 +192,21 @@ function createTagNodes(
 function addWikiLinkEdges(
   sources: GraphSource[],
   edgeMap: Map<string, EdgeAccumulator>,
+  index: WorkspaceIndex,
 ): void {
   const nodesByAlias = new Map<string, GraphSource[]>();
   sources.forEach((source) => {
     if (!source.node.filePath) {
       return;
     }
-    for (const alias of pathAliases(source.node.filePath)) {
+    // A note answers to its path, its file name, and its front-matter aliases.
+    const names = [
+      ...pathAliases(source.node.filePath),
+      ...(index.files.get(source.node.filePath)?.aliases ?? []).map((alias) =>
+        alias.trim().toLowerCase(),
+      ),
+    ];
+    for (const alias of new Set(names)) {
       const candidates = nodesByAlias.get(alias) ?? [];
       candidates.push(source);
       nodesByAlias.set(alias, candidates);

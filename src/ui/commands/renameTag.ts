@@ -8,6 +8,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
 } from '../../core/markdown/parser';
+import { PreferencesStore } from '../../core/storage/preferences';
 import {
   HeadingTagSpan,
   TagInfo,
@@ -41,18 +42,32 @@ interface RenamePlan {
 }
 
 /**
+ * What merging one tag into another does to the index.
+ */
+export interface TagMergeSummary {
+  source: TagInfo;
+  target: TagInfo;
+  /** Entries the kept tag will have, counted the way the index counts them. */
+  mergedCount: number;
+  /** Entries that already carry both tags. */
+  sharedCount: number;
+}
+
+/**
  * Prompts for an indexed tag when no source key is supplied, then applies a
  * source-safe rename to every parsed occurrence, including occurrences
- * represented by note-level front matter.
+ * represented by note-level front matter. Renaming into a tag that already
+ * exists is a merge, and is confirmed first.
  */
 export async function renameIndexedTag(
   indexer: WorkspaceIndexer,
   requestedTagKey?: string,
+  preferences?: PreferencesStore,
 ): Promise<TagReference | undefined> {
   try {
     await indexer.ready;
     const index = indexer.getSnapshot();
-    const sourceTag = await chooseIndexedTag(index, requestedTagKey);
+    const sourceTag = await chooseIndexedTag(index, requestedTagKey, 'rename');
     if (!sourceTag) {
       return undefined;
     }
@@ -66,75 +81,46 @@ export async function renameIndexedTag(
       return undefined;
     }
 
-    if (replacement.key === sourceTag.key) {
-      void vscode.window.showInformationMessage(
-        `${sourceTag.label} already uses that tag identity.`,
-      );
-      return undefined;
-    }
-
-    const plan = await createRenamePlan(index, sourceTag.key, replacement);
-    if (plan.staleFilePath) {
-      void vscode.window.showWarningMessage(
-        `Deckard could not rename ${sourceTag.label} because ${plan.staleFilePath} changed after indexing.`,
-      );
-      return undefined;
-    }
-    if (plan.occurrenceCount === 0) {
-      void vscode.window.showWarningMessage(
-        `Deckard could not find any current source occurrences of ${sourceTag.label}.`,
-      );
-      return undefined;
-    }
-
-    const edit = new vscode.WorkspaceEdit();
-    plan.files.forEach((file) => {
-      file.replacements.forEach((replacementEdit) => {
-        edit.replace(
-          file.document.uri,
-          new vscode.Range(
-            file.document.positionAt(replacementEdit.start),
-            file.document.positionAt(replacementEdit.end),
-          ),
-          replacementEdit.text,
-        );
-      });
-    });
-
-    if (!(await vscode.workspace.applyEdit(edit))) {
-      void vscode.window.showErrorMessage(
-        `Deckard could not rename ${sourceTag.label}. VS Code rejected the source edit.`,
-      );
-      return undefined;
-    }
-
-    for (const file of plan.files) {
-      if (!(await file.document.save())) {
-        void vscode.window.showErrorMessage(
-          `Deckard renamed ${sourceTag.label} in memory but could not save ${file.document.uri.fsPath}.`,
-        );
-        return undefined;
-      }
-    }
-
-    try {
-      await indexer.refresh();
-    } catch (error) {
-      void vscode.window.showWarningMessage(
-        `Renamed ${sourceTag.label} to ${replacement.label}, but Deckard could not refresh its index: ${String(error)}`,
-      );
-    }
-    void vscode.window.showInformationMessage(
-      `Renamed ${sourceTag.label} to ${replacement.label} in ${formatCount(
-        plan.occurrenceCount,
-        'occurrence',
-        'occurrences',
-      )}.`,
-    );
-    return replacement;
+    return await rewriteTag(indexer, index, sourceTag, replacement, preferences);
   } catch (error) {
     void vscode.window.showErrorMessage(
       `Deckard could not rename a tag: ${String(error)}`,
+    );
+    return undefined;
+  }
+}
+
+/**
+ * Merges one indexed tag into another, chosen from the tags that exist.
+ */
+export async function mergeIndexedTag(
+  indexer: WorkspaceIndexer,
+  requestedTagKey?: string,
+  preferences?: PreferencesStore,
+): Promise<TagReference | undefined> {
+  try {
+    await indexer.ready;
+    const index = indexer.getSnapshot();
+    const sourceTag = await chooseIndexedTag(index, requestedTagKey, 'merge');
+    if (!sourceTag) {
+      return undefined;
+    }
+
+    const targetTag = await chooseMergeTarget(index, sourceTag);
+    if (!targetTag) {
+      return undefined;
+    }
+
+    return await rewriteTag(
+      indexer,
+      index,
+      sourceTag,
+      { key: targetTag.key, label: targetTag.label },
+      preferences,
+    );
+  } catch (error) {
+    void vscode.window.showErrorMessage(
+      `Deckard could not merge a tag: ${String(error)}`,
     );
     return undefined;
   }
@@ -182,38 +168,267 @@ export function replaceIndexedTag(
   replacement: TagReference,
   options: RenameTagOptions = {},
 ): { content: string; occurrenceCount: number } {
-  const spans = getMatchingSpans(content, sourceKey, options);
-  if (spans.length === 0) {
-    return { content, occurrenceCount: 0 };
-  }
-
-  const replacements = spans
-    .map((span) => {
-      const range = getContentRange(content, span);
-      return {
-        ...range,
-        text: getReplacementText(content, span, replacement, options),
-      };
-    })
-    .sort((left, right) => right.start - left.start);
+  const { edits, occurrenceCount } = planTagEdits(
+    content,
+    sourceKey,
+    replacement,
+    options,
+  );
 
   let updatedContent = content;
-  replacements.forEach((replacementEdit) => {
-    updatedContent =
-      updatedContent.slice(0, replacementEdit.start) +
-      replacementEdit.text +
-      updatedContent.slice(replacementEdit.end);
+  [...edits]
+    .sort((left, right) => right.start - left.start)
+    .forEach((edit) => {
+      updatedContent =
+        updatedContent.slice(0, edit.start) +
+        edit.text +
+        updatedContent.slice(edit.end);
+    });
+
+  return { content: updatedContent, occurrenceCount };
+}
+
+/**
+ * Plans the edits that turn every parser-recognized occurrence of one tag
+ * into another.
+ *
+ * Where the new tag already sits in the same run of tags on a line, or in the
+ * same front-matter list, the old occurrence is removed instead, so a merge
+ * never leaves `#atlas #atlas` behind. A tag inside a sentence is always
+ * replaced, because removing it would change the sentence.
+ */
+export function planTagEdits(
+  content: string,
+  sourceKey: string,
+  replacement: TagReference,
+  options: RenameTagOptions = {},
+): { edits: ContentReplacement[]; occurrenceCount: number } {
+  const spans = extractTagSpans(
+    content,
+    true,
+    options.entityNamespaceAliases,
+    options.personMarker,
+  );
+  const sourceSpans = spans
+    .filter((span) => span.key === sourceKey)
+    .sort(
+      (left, right) =>
+        left.lineNumber - right.lineNumber ||
+        left.startColumn - right.startColumn,
+    );
+  if (sourceSpans.length === 0) {
+    return { edits: [], occurrenceCount: 0 };
+  }
+
+  const lines = content.split(/\r?\n/);
+  const lineStarts = getLineStarts(content);
+  // A tag's container is its front-matter field, or otherwise its line.
+  const containerOf = (span: HeadingTagSpan): string => {
+    const field = getFrontmatterField(content, span.lineNumber);
+    return field ? `field:${field}` : `line:${span.lineNumber}`;
+  };
+  // Only a copy of the new tag that was already written counts, so a plain
+  // rename still replaces every occurrence and keeps its source's shape.
+  const holdsReplacement = new Set(
+    spans.filter((span) => span.key === replacement.key).map(containerOf),
+  );
+  const removed = new Set<HeadingTagSpan>();
+
+  const edits = sourceSpans.map((span): ContentReplacement => {
+    const lineStart = lineStarts[span.lineNumber - 1];
+    if (lineStart === undefined) {
+      throw new Error(`Invalid tag line ${span.lineNumber}.`);
+    }
+    const removal = holdsReplacement.has(containerOf(span))
+      ? getRemovalRange(
+          lines[span.lineNumber - 1] ?? '',
+          lineStart,
+          lineStarts[span.lineNumber],
+          span,
+          spans,
+          removed,
+          getFrontmatterField(content, span.lineNumber) !== undefined,
+        )
+      : undefined;
+    if (removal) {
+      removed.add(span);
+      return { ...removal, text: '' };
+    }
+    return {
+      start: lineStart + span.startColumn,
+      end: lineStart + span.endColumn,
+      text: getReplacementText(content, span, replacement, options),
+    };
   });
 
   return {
-    content: updatedContent,
-    occurrenceCount: replacements.length,
+    edits: joinTouchingEdits(edits),
+    occurrenceCount: sourceSpans.length,
   };
+}
+
+/**
+ * Counts what merging one tag into another leaves the kept tag with.
+ */
+export function summarizeTagMerge(
+  index: WorkspaceIndex,
+  sourceKey: string,
+  targetKey: string,
+): TagMergeSummary | undefined {
+  const source = index.tags.get(sourceKey);
+  const target = index.tags.get(targetKey);
+  if (!source || !target || source.key === target.key) {
+    return undefined;
+  }
+
+  const sectionIds = new Set([...source.sectionIds, ...target.sectionIds]);
+  const taskIds = new Set([...source.taskIds, ...target.taskIds]);
+  const filePaths = new Set([...source.filePaths, ...target.filePaths]);
+  // A task inside a tagged section is already counted by its section.
+  const standaloneTasks = [...taskIds].filter((taskId) => {
+    const task = index.tasks.get(taskId);
+    return !task?.sectionId || !sectionIds.has(task.sectionId);
+  });
+  const mergedCount =
+    sectionIds.size + standaloneTasks.length + filePaths.size;
+
+  return {
+    source,
+    target,
+    mergedCount,
+    sharedCount: Math.max(0, source.count + target.count - mergedCount),
+  };
+}
+
+/**
+ * Rewrites every source occurrence of one tag as another. When the other tag
+ * already exists this is a merge, which is confirmed first because renaming
+ * back afterwards cannot separate the two tags again.
+ */
+async function rewriteTag(
+  indexer: WorkspaceIndexer,
+  index: WorkspaceIndex,
+  sourceTag: TagInfo,
+  replacement: TagReference,
+  preferences?: PreferencesStore,
+): Promise<TagReference | undefined> {
+  const targetKey = resolveIndexedTagKey(index.tags, replacement.key);
+  if (replacement.key === sourceTag.key || targetKey === sourceTag.key) {
+    void vscode.window.showInformationMessage(
+      `${sourceTag.label} already uses that tag identity.`,
+    );
+    return undefined;
+  }
+
+  const merge = targetKey
+    ? summarizeTagMerge(index, sourceTag.key, targetKey)
+    : undefined;
+  if (merge && !(await confirmMerge(merge))) {
+    return undefined;
+  }
+  const verb = merge ? 'merge' : 'rename';
+  const done = merge ? 'Merged' : 'Renamed';
+  const joiner = merge ? 'into' : 'to';
+
+  const plan = await createRenamePlan(index, sourceTag.key, replacement);
+  if (plan.staleFilePath) {
+    void vscode.window.showWarningMessage(
+      `Deckard could not ${verb} ${sourceTag.label} because ${plan.staleFilePath} changed after indexing.`,
+    );
+    return undefined;
+  }
+  if (plan.occurrenceCount === 0) {
+    void vscode.window.showWarningMessage(
+      `Deckard could not find any current source occurrences of ${sourceTag.label}.`,
+    );
+    return undefined;
+  }
+
+  const edit = new vscode.WorkspaceEdit();
+  plan.files.forEach((file) => {
+    file.replacements.forEach((replacementEdit) => {
+      edit.replace(
+        file.document.uri,
+        new vscode.Range(
+          file.document.positionAt(replacementEdit.start),
+          file.document.positionAt(replacementEdit.end),
+        ),
+        replacementEdit.text,
+      );
+    });
+  });
+
+  if (!(await vscode.workspace.applyEdit(edit))) {
+    void vscode.window.showErrorMessage(
+      `Deckard could not ${verb} ${sourceTag.label}. VS Code rejected the source edit.`,
+    );
+    return undefined;
+  }
+
+  for (const file of plan.files) {
+    if (!(await file.document.save())) {
+      void vscode.window.showErrorMessage(
+        `Deckard ${done.toLowerCase()} ${sourceTag.label} in memory but could not save ${file.document.uri.fsPath}.`,
+      );
+      return undefined;
+    }
+  }
+
+  // Favorites, ranking, and saved views follow the tag. This runs before the
+  // refresh so nothing prunes them while they still name the old key.
+  await preferences?.replaceTagKey(sourceTag.key, targetKey ?? replacement.key);
+
+  try {
+    await indexer.refresh();
+  } catch (error) {
+    void vscode.window.showWarningMessage(
+      `${done} ${sourceTag.label} ${joiner} ${replacement.label}, but Deckard could not refresh its index: ${String(error)}`,
+    );
+  }
+  void vscode.window.showInformationMessage(
+    `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
+      plan.occurrenceCount,
+      'occurrence',
+      'occurrences',
+    )}.`,
+  );
+  return replacement;
+}
+
+async function confirmMerge(summary: TagMergeSummary): Promise<boolean> {
+  const { source, target } = summary;
+  const shared =
+    summary.sharedCount === 0
+      ? 'None carry both'
+      : summary.sharedCount === 1
+        ? '1 carries both'
+        : `${summary.sharedCount} carry both`;
+  const hubFilePaths = [
+    ...(target.hubFilePaths ?? []),
+    ...(source.hubFilePaths ?? []),
+  ].sort((left, right) => left.localeCompare(right));
+  const detail = [
+    `${source.label} has ${formatEntries(source.count)} and ${target.label} has ${formatEntries(target.count)}. ${shared}, so ${target.label} will have ${formatEntries(summary.mergedCount)}.`,
+    `Every ${source.label} in your notes becomes ${target.label}, and renaming it back later cannot separate them.`,
+    ...(source.hubFilePaths?.length && target.hubFilePaths?.length
+      ? [
+          `Both tags have a hub note. ${hubFilePaths[0]} will lead the overview, and the others will be listed beside it.`,
+        ]
+      : []),
+  ].join('\n\n');
+
+  const choice = await vscode.window.showWarningMessage(
+    `Merge ${source.label} into ${target.label}?`,
+    { modal: true, detail },
+    'Merge',
+  );
+  return choice === 'Merge';
 }
 
 async function chooseIndexedTag(
   index: WorkspaceIndex,
-  requestedTagKey?: string,
+  requestedTagKey: string | undefined,
+  action: 'rename' | 'merge',
 ): Promise<TagInfo | undefined> {
   if (requestedTagKey !== undefined) {
     const canonicalTagKey = resolveIndexedTagKey(index.tags, requestedTagKey);
@@ -229,14 +444,10 @@ async function chooseIndexedTag(
     return undefined;
   }
 
-  const tags = [...index.tags.values()].sort(
-    (left, right) =>
-      left.label.localeCompare(right.label) ||
-      left.key.localeCompare(right.key),
-  );
+  const tags = sortTags([...index.tags.values()]);
   if (tags.length === 0) {
     void vscode.window.showInformationMessage(
-      'Deckard has no indexed tags to rename.',
+      `Deckard has no indexed tags to ${action}.`,
     );
     return undefined;
   }
@@ -250,7 +461,38 @@ async function chooseIndexedTag(
     })),
     {
       matchOnDescription: true,
-      placeHolder: 'Search for a tag to rename',
+      placeHolder:
+        action === 'merge'
+          ? 'Search for the tag to merge into another'
+          : 'Search for a tag to rename',
+    },
+  );
+  return picked?.tag;
+}
+
+async function chooseMergeTarget(
+  index: WorkspaceIndex,
+  sourceTag: TagInfo,
+): Promise<TagInfo | undefined> {
+  const tags = sortTags(
+    [...index.tags.values()].filter((tag) => tag.key !== sourceTag.key),
+  );
+  if (tags.length === 0) {
+    void vscode.window.showInformationMessage(
+      `Deckard has no other tag to merge ${sourceTag.label} into.`,
+    );
+    return undefined;
+  }
+
+  const picked = await vscode.window.showQuickPick(
+    tags.map((tag) => ({
+      label: tag.label,
+      description: formatCount(tag.count, 'indexed entry', 'indexed entries'),
+      tag,
+    })),
+    {
+      matchOnDescription: true,
+      placeHolder: `Merge ${sourceTag.label} into…`,
     },
   );
   return picked?.tag;
@@ -262,7 +504,8 @@ async function chooseReplacementTag(
 ): Promise<TagReference | undefined> {
   return vscode.window.showInputBox({
     prompt: `Rename ${sourceTag.label} to`,
-    placeHolder: 'Enter a complete tag or a new name in the same namespace',
+    placeHolder:
+      'Enter a complete tag or a new name in the same namespace. An existing tag merges into it.',
     validateInput: (value) =>
       parseRenameTag(
         value,
@@ -298,9 +541,13 @@ async function createRenamePlan(
       throw new Error(`Deckard could not resolve source file: ${filePath}`);
     }
 
-    const options = getParseOptions(uri);
-    const spans = getMatchingSpans(file.content, sourceKey, options);
-    if (spans.length === 0) {
+    const planned = planTagEdits(
+      file.content,
+      sourceKey,
+      replacement,
+      getParseOptions(uri),
+    );
+    if (planned.edits.length === 0) {
       continue;
     }
 
@@ -309,47 +556,100 @@ async function createRenamePlan(
       return { files: [], occurrenceCount: 0, staleFilePath: filePath };
     }
 
-    const replacements = spans.map((span) => {
-      const range = getContentRange(file.content, span);
-      return {
-        ...range,
-        text: getReplacementText(file.content, span, replacement, options),
-      };
-    });
-    occurrenceCount += replacements.length;
-    files.push({ document, replacements });
+    occurrenceCount += planned.occurrenceCount;
+    files.push({ document, replacements: planned.edits });
   }
 
   return { files, occurrenceCount };
 }
 
-function getMatchingSpans(
-  content: string,
-  sourceKey: string,
-  options: RenameTagOptions,
-): HeadingTagSpan[] {
-  return extractTagSpans(
-    content,
-    true,
-    options.entityNamespaceAliases,
-    options.personMarker,
-  ).filter((span) => span.key === sourceKey);
-}
-
-function getContentRange(
-  content: string,
+/**
+ * The range to delete when an occurrence repeats the tag it becomes, or
+ * undefined when deleting it would damage the text around it.
+ */
+function getRemovalRange(
+  line: string,
+  lineStart: number,
+  nextLineStart: number | undefined,
   span: HeadingTagSpan,
-): Pick<ContentReplacement, 'start' | 'end'> {
-  const lineStarts = getLineStarts(content);
-  const lineStart = lineStarts[span.lineNumber - 1];
-  if (lineStart === undefined) {
-    throw new Error(`Invalid tag line ${span.lineNumber}.`);
+  spans: readonly HeadingTagSpan[],
+  removed: ReadonlySet<HeadingTagSpan>,
+  inFrontmatter: boolean,
+): Pick<ContentReplacement, 'start' | 'end'> | undefined {
+  if (inFrontmatter) {
+    // A block list item goes with its whole line.
+    if (/^\s*-\s/.test(line)) {
+      return { start: lineStart, end: nextLineStart ?? lineStart + line.length };
+    }
+    // An inline list item goes with its quotes and one comma.
+    let start = span.startColumn;
+    let end = span.endColumn;
+    const quote = line[start - 1];
+    if ((quote === '"' || quote === "'") && line[end] === quote) {
+      start -= 1;
+      end += 1;
+    }
+    const commaBefore = line.slice(0, start).match(/,\s*$/);
+    if (commaBefore) {
+      return { start: lineStart + start - commaBefore[0].length, end: lineStart + end };
+    }
+    const commaAfter = line.slice(end).match(/^\s*,\s*/);
+    return commaAfter
+      ? { start: lineStart + start, end: lineStart + end + commaAfter[0].length }
+      : undefined;
   }
 
-  return {
-    start: lineStart + span.startColumn,
-    end: lineStart + span.endColumn,
-  };
+  // An inline tag goes only from a run of tags, with the space on one side.
+  const lineSpans = spans.filter(
+    (other) => other.lineNumber === span.lineNumber && other !== span,
+  );
+  const previous = lineSpans
+    .filter((other) => other.endColumn <= span.startColumn)
+    .sort((left, right) => right.endColumn - left.endColumn)[0];
+  const next = lineSpans
+    .filter((other) => other.startColumn >= span.endColumn)
+    .sort((left, right) => left.startColumn - right.startColumn)[0];
+  const joinsPrevious =
+    previous !== undefined &&
+    /^[ \t]+$/.test(line.slice(previous.endColumn, span.startColumn));
+  const joinsNext =
+    next !== undefined &&
+    /^[ \t]+$/.test(line.slice(span.endColumn, next.startColumn));
+  // Prefer the space before, unless that tag is itself being removed.
+  if (joinsPrevious && !removed.has(previous)) {
+    return {
+      start: lineStart + previous.endColumn,
+      end: lineStart + span.endColumn,
+    };
+  }
+  if (joinsNext) {
+    return {
+      start: lineStart + span.startColumn,
+      end: lineStart + next.startColumn,
+    };
+  }
+  return joinsPrevious
+    ? { start: lineStart + previous.endColumn, end: lineStart + span.endColumn }
+    : undefined;
+}
+
+/** Joins edits that touch or overlap, which VS Code would otherwise reject. */
+function joinTouchingEdits(edits: ContentReplacement[]): ContentReplacement[] {
+  return [...edits]
+    .sort((left, right) => left.start - right.start)
+    .reduce<ContentReplacement[]>((joined, edit) => {
+      const last = joined[joined.length - 1];
+      if (last && edit.start <= last.end) {
+        joined[joined.length - 1] = {
+          start: last.start,
+          end: Math.max(last.end, edit.end),
+          text: last.text + edit.text,
+        };
+      } else {
+        joined.push(edit);
+      }
+      return joined;
+    }, []);
 }
 
 function getReplacementText(
@@ -383,7 +683,11 @@ function getFrontmatterReplacement(
   options: RenameTagOptions,
 ): string {
   const normalizedField = field.toLowerCase();
-  if (normalizedField === 'tag' || normalizedField === 'tags') {
+  if (
+    normalizedField === 'tag' ||
+    normalizedField === 'tags' ||
+    normalizedField === 'describes'
+  ) {
     return replacement.key.startsWith('#')
       ? replacement.label.slice(1)
       : replacement.label;
@@ -506,6 +810,18 @@ function inferBareTag(
   const namespace =
     separator >= 0 ? sourceName.slice(0, separator) : undefined;
   return namespace ? `#${namespace}/${value}` : `#${value}`;
+}
+
+function sortTags(tags: TagInfo[]): TagInfo[] {
+  return tags.sort(
+    (left, right) =>
+      left.label.localeCompare(right.label) ||
+      left.key.localeCompare(right.key),
+  );
+}
+
+function formatEntries(count: number): string {
+  return formatCount(count, 'entry', 'entries');
 }
 
 function formatCount(count: number, singular: string, plural: string): string {

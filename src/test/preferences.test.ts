@@ -214,4 +214,33 @@ suite('Preferences store', () => {
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
     store.dispose();
   });
+
+  test('moves favorites, ranking, and saved views to a renamed or merged tag', async () => {
+    const memento = new MemoryMemento();
+    const store = new PreferencesStore(memento);
+
+    await store.toggleFavorite('#apollo');
+    await store.toggleFavorite('#atlas');
+    await store.recordTagAccess('#apollo');
+    await store.recordTagAccess('#apollo');
+    await store.recordTagAccess('#atlas');
+    await store.setDashboardTaskTags(['#apollo']);
+    await store.saveSavedFilter('Both', ['#apollo', '#atlas']);
+    await store.saveSavedFilter('Apollo follow-up', ['#apollo', '#follow-up']);
+
+    await store.replaceTagKey('#apollo', '#atlas');
+
+    assert.deepStrictEqual(store.value.favoriteTags, ['#atlas']);
+    assert.deepStrictEqual(store.value.tagAccessCounts, { '#atlas': 3 });
+    assert.deepStrictEqual(
+      store.value.dashboardViewState.selectedTaskTags,
+      ['#atlas'],
+    );
+    // A view left with one tag is no longer a filter, so it is dropped.
+    assert.deepStrictEqual(
+      store.value.savedFilters.map((filter) => [filter.name, filter.tagKeys]),
+      [['Apollo follow-up', ['#atlas', '#follow-up']]],
+    );
+    store.dispose();
+  });
 });

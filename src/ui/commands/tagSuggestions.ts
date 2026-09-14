@@ -7,6 +7,7 @@ import {
 } from '../../core/markdown/parser';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 
 interface TagIndexSource {
   readonly ready: Promise<void>;
@@ -89,11 +90,8 @@ export class TagCompletionProvider implements vscode.Disposable {
       return [];
     }
 
-    const fencedLines = findFencedLines(document.getText().split(/\r?\n/));
-    if (fencedLines.has(position.line)) {
-      return [];
-    }
-
+    // Punctuation such as `.` and `,` also triggers completion, so the cursor's
+    // line is checked for a tag before anything reads the whole document.
     const line = document.lineAt(position.line).text;
     const personMarker = getPersonMarker(
       vscode.workspace
@@ -106,6 +104,17 @@ export class TagCompletionProvider implements vscode.Disposable {
       personMarker,
     );
     if (!context) {
+      return [];
+    }
+
+    const text = document.getText();
+    const fencedLines = findFencedLines(text.split(/\r?\n/));
+    // Fenced code is ignored, except a query block, where tags are exactly
+    // what the author is writing.
+    if (
+      fencedLines.has(position.line) &&
+      !isQueryBlockLine(findQueryBlocks(text), position.line)
+    ) {
       return [];
     }
 

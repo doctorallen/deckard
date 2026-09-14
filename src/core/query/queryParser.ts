@@ -6,6 +6,7 @@ import {
   QueryNode,
   QueryOperator,
   QUERY_FIELD_OPERATORS,
+  QUERY_TASK_DATE_FIELDS,
 } from './queryTypes';
 
 /**
@@ -61,6 +62,13 @@ export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
   task: 'task',
   tasks: 'task',
   status: 'task',
+  due: 'due',
+  deadline: 'due',
+  scheduled: 'scheduled',
+  start: 'start',
+  starts: 'start',
+  done: 'done',
+  priority: 'priority',
   kind: 'kind',
   type: 'kind',
   namespace: 'kind',
@@ -89,6 +97,19 @@ const TASK_VALUE_ALIASES: Readonly<Record<string, string>> = {
   checked: 'done',
   any: 'any',
   all: 'any',
+};
+
+/**
+ * Priorities accepted in a query. `normal` is Tasks' name for no priority.
+ */
+const PRIORITY_VALUE_ALIASES: Readonly<Record<string, string>> = {
+  highest: 'highest',
+  high: 'high',
+  medium: 'medium',
+  none: 'none',
+  normal: 'none',
+  low: 'low',
+  lowest: 'lowest',
 };
 
 type TokenType =
@@ -576,6 +597,43 @@ class Parser {
       return { type: 'condition', field, operator, value: normalized, start, end };
     }
 
+    if (QUERY_TASK_DATE_FIELDS.includes(field)) {
+      const normalized = value.toLowerCase();
+      if (normalized === 'none' && operator !== 'eq' && operator !== 'neq') {
+        this.diagnostics.push({
+          message: `${field} compares with none only using = or !=.`,
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      if (normalized !== 'none' && !isDateValue(normalized)) {
+        this.diagnostics.push({
+          message: `${field} accepts a date such as 2026-09-13, today, tomorrow, a window such as 7d, or none.`,
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: normalized, start, end };
+    }
+
+    if (field === 'priority') {
+      const normalized = PRIORITY_VALUE_ALIASES[value.toLowerCase()];
+      if (!normalized) {
+        this.diagnostics.push({
+          message: `priority accepts highest, high, medium, none, low, or lowest — not "${value}".`,
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: normalized, start, end };
+    }
+
     if (field === 'created' || field === 'updated') {
       if (!isDateValue(value)) {
         this.diagnostics.push({
@@ -677,6 +735,7 @@ export function isDateValue(value: string): boolean {
     /^\d{4}-\d{2}-\d{2}$/.test(normalized) ||
     /^\d+[dwmy]$/.test(normalized) ||
     normalized === 'today' ||
-    normalized === 'yesterday'
+    normalized === 'yesterday' ||
+    normalized === 'tomorrow'
   );
 }

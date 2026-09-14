@@ -361,6 +361,66 @@ suite('Markdown parser', () => {
     ]);
   });
 
+  test('reads other names for a note from aliases front matter', () => {
+    const inline = parseMarkdown(
+      'notes/atlas.md',
+      '---\naliases: [Atlas Program, "AP"]\ntags: [planning]\n---\n# Atlas',
+    );
+    assert.deepStrictEqual(inline.aliases, ['Atlas Program', 'AP']);
+    assert.deepStrictEqual(
+      inline.frontmatterTags.map((tag) => tag.key),
+      ['#planning'],
+      'aliases are not tags',
+    );
+
+    const listed = parseMarkdown(
+      'notes/atlas.md',
+      '---\naliases:\n  - Atlas Program\n  - AP\nalias: Atlas\n---\n',
+    );
+    assert.deepStrictEqual(listed.aliases, ['Atlas Program', 'AP', 'Atlas']);
+    assert.strictEqual(parseMarkdown('notes/atlas.md', '# Atlas').aliases, undefined);
+  });
+
+  test("takes a note's created and updated dates from the note before its file", () => {
+    // A clone gives every file the same, later times.
+    const cloned = {
+      createdAt: new Date(2027, 2, 3).getTime(),
+      updatedAt: new Date(2027, 2, 4).getTime(),
+    };
+    const dayOf = (value: number | undefined) => new Date(value ?? 0).toDateString();
+    const on = (year: number, month: number, date: number) =>
+      new Date(year, month, date).toDateString();
+
+    const stated = parseMarkdown(
+      'atlas.md',
+      '---\ncreated: 2026-05-01\nupdated: 2026-06-02\n---\n# Atlas\n- [ ] Plan',
+      cloned,
+    );
+    assert.strictEqual(dayOf(stated.createdAt), on(2026, 4, 1));
+    assert.strictEqual(dayOf(stated.updatedAt), on(2026, 5, 2));
+    assert.strictEqual(dayOf(stated.sections[0].createdAt), on(2026, 4, 1));
+    assert.strictEqual(dayOf(stated.tasks[0].updatedAt), on(2026, 5, 2));
+    assert.deepStrictEqual(stated.fileTimes, cloned, 'the file times are kept');
+
+    const dated = parseMarkdown('atlas.md', '---\ndate: 2026-05-01\n---\n# Atlas', cloned);
+    assert.strictEqual(dayOf(dated.createdAt), on(2026, 4, 1));
+    assert.strictEqual(dated.updatedAt, cloned.updatedAt, 'date: is not an update');
+
+    const daily = parseMarkdown('journal/2026-08-25.md', '# Planning', cloned);
+    assert.strictEqual(dayOf(daily.createdAt), on(2026, 7, 25), 'a clone never moves it past its day');
+    assert.strictEqual(daily.updatedAt, cloned.updatedAt);
+
+    const planned = parseMarkdown('journal/2026-08-25.md', '# Planning', {
+      createdAt: new Date(2026, 7, 20).getTime(),
+      updatedAt: new Date(2026, 7, 26).getTime(),
+    });
+    assert.strictEqual(dayOf(planned.createdAt), on(2026, 7, 20), 'a plan written ahead keeps its own day');
+
+    const plain = parseMarkdown('atlas.md', '# Atlas', cloned);
+    assert.strictEqual(plain.createdAt, cloned.createdAt);
+    assert.strictEqual(plain.updatedAt, cloned.updatedAt);
+  });
+
   test('anchors common task dates to the saved note year', () => {
     const parsed = parseMarkdown(
       'atlas.md',
@@ -375,6 +435,38 @@ suite('Markdown parser', () => {
     assert.strictEqual(
       new Date(parsed.tasks[0].dueAt ?? 0).getFullYear(),
       2026,
+    );
+  });
+
+  test('reads loose task dates from the day a daily note is for', () => {
+    // Saved long afterwards, as after editing an old note or cloning the
+    // repository, which must not move its dates.
+    const edited = { updatedAt: new Date(2027, 2, 3).getTime() };
+    const friday = new Date(2026, 7, 28).toDateString();
+
+    const fromName = parseMarkdown(
+      'journal/2026-08-25.md',
+      '# Planning\n- [ ] Draft the agenda next Friday\n- [ ] Book the room Sep 16',
+      edited,
+    );
+    assert.strictEqual(new Date(fromName.tasks[0].dueAt ?? 0).toDateString(), friday);
+    assert.strictEqual(new Date(fromName.tasks[1].dueAt ?? 0).getFullYear(), 2026);
+
+    const fromHeading = parseMarkdown(
+      'journal/planning.md',
+      '# 2026-08-25\n- [ ] Draft the agenda next Friday',
+      edited,
+    );
+    assert.strictEqual(new Date(fromHeading.tasks[0].dueAt ?? 0).toDateString(), friday);
+
+    const fromFrontmatter = parseMarkdown(
+      'journal/planning.md',
+      '---\ndate: 2026-08-25\n---\n# Planning\n- [ ] Draft the agenda next Friday',
+      edited,
+    );
+    assert.strictEqual(
+      new Date(fromFrontmatter.tasks[0].dueAt ?? 0).toDateString(),
+      friday,
     );
   });
 
@@ -613,5 +705,40 @@ suite('Markdown parser', () => {
         endColumn: 20,
       },
     ]);
+  });
+
+  test('reads a hub note from describes front matter', () => {
+    const parsed = parseMarkdown(
+      'notes/atlas.md',
+      [
+        '---',
+        'describes: [project/atlas, "@dana"]',
+        'status: active',
+        'owner: "@dana"',
+        'tags: [planning]',
+        '---',
+        '# Atlas',
+      ].join('\n'),
+    );
+
+    assert.deepStrictEqual(parsed.hub, {
+      describes: [
+        { key: '#project/atlas', label: '#project/atlas' },
+        { key: '@dana', label: '@dana' },
+      ],
+      properties: [
+        { name: 'status', values: [{ text: 'active' }] },
+        {
+          name: 'owner',
+          values: [{ text: '@dana', tag: { key: '@dana', label: '@dana' } }],
+        },
+      ],
+    });
+    // The hub carries what it describes, so it belongs to that overview.
+    assert.ok(parsed.sections[0].tags.includes('#project/atlas'));
+    assert.strictEqual(
+      parseMarkdown('notes/plain.md', '---\ntags: [atlas]\n---\n# Plain').hub,
+      undefined,
+    );
   });
 });

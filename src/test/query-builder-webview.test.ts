@@ -286,7 +286,6 @@ function mountTagOverview(): MountedView {
   };
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 function createStubElement(tagName: string): any {
   return {
     tagName,
@@ -306,7 +305,6 @@ function createStubElement(tagName: string): any {
     getBoundingClientRect: () => ({ width: 0, height: 0 }),
   };
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Builds the smallest overview snapshot the script will render.

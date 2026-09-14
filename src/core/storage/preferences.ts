@@ -12,7 +12,9 @@ import {
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
+  DashboardTaskLayout,
   DashboardViewState,
+  TaskBoardGroupBy,
   TaskFilter,
 } from '../types';
 
@@ -50,6 +52,8 @@ const defaultPreferences: PersistedPreferences = {
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
+  dashboardTaskLayout: 'list',
+  dashboardBoardGroup: 'status',
 };
 
 /**
@@ -192,6 +196,21 @@ export class PreferencesStore implements vscode.Disposable {
     );
   }
 
+  /**
+   * Shows the Dashboard's Tasks tab as a list or as the task board.
+   */
+  public async setDashboardTaskLayout(
+    dashboardTaskLayout: DashboardTaskLayout,
+  ): Promise<void> {
+    await this.update({ dashboardTaskLayout });
+  }
+
+  public async setDashboardBoardGroup(
+    dashboardBoardGroup: TaskBoardGroupBy,
+  ): Promise<void> {
+    await this.update({ dashboardBoardGroup });
+  }
+
   public async setDashboardNoteSortMode(
     dashboardNoteSortMode: TagOverviewSortMode,
   ): Promise<void> {
@@ -314,6 +333,55 @@ export class PreferencesStore implements vscode.Disposable {
         : [...this.preferences.savedFilters, savedFilter],
     });
     return cloneSavedFilter(savedFilter);
+  }
+
+  /**
+   * Moves everything held under a renamed or merged tag to its new key, so
+   * favorites, ranking, Dashboard selections, and saved views follow the tag.
+   */
+  public async replaceTagKey(
+    sourceKey: string,
+    targetKey: string,
+  ): Promise<void> {
+    if (!sourceKey || !targetKey || sourceKey === targetKey) {
+      return;
+    }
+    const replaceKeys = (keys: readonly string[]): string[] => [
+      ...new Set(keys.map((key) => (key === sourceKey ? targetKey : key))),
+    ];
+    const moveCount = (
+      counts: Record<string, number>,
+    ): Record<string, number> => {
+      const { [sourceKey]: moved, ...rest } = counts;
+      return moved === undefined
+        ? rest
+        : { ...rest, [targetKey]: (rest[targetKey] ?? 0) + moved };
+    };
+    const viewState = this.preferences.dashboardViewState;
+
+    await this.update({
+      favoriteTags: replaceKeys(this.preferences.favoriteTags),
+      favoriteEntities: replaceKeys(this.preferences.favoriteEntities),
+      tagAccessOrder: replaceKeys(this.preferences.tagAccessOrder),
+      entityAccessOrder: replaceKeys(this.preferences.entityAccessOrder),
+      tagAccessCounts: moveCount(this.preferences.tagAccessCounts),
+      entityAccessCounts: moveCount(this.preferences.entityAccessCounts),
+      dashboardViewState: {
+        ...viewState,
+        selectedTaskTags: replaceKeys(viewState.selectedTaskTags),
+        selectedNoteTags: replaceKeys(viewState.selectedNoteTags),
+      },
+      // A tag-set view needs two tags; a query view keeps its own text.
+      savedFilters: this.preferences.savedFilters.flatMap((filter) => {
+        if (filter.query || !filter.tagKeys.includes(sourceKey)) {
+          return [filter];
+        }
+        const tagKeys = normalizeSavedFilterTagKeys(
+          replaceKeys(filter.tagKeys),
+        );
+        return tagKeys.length >= 2 ? [{ ...filter, tagKeys }] : [];
+      }),
+    });
   }
 
   /**
@@ -441,7 +509,7 @@ export class PreferencesStore implements vscode.Disposable {
         ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
         : [];
     });
-    await this.update({
+    const changes: Partial<PersistedPreferences> = {
       favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -465,7 +533,21 @@ export class PreferencesStore implements vscode.Disposable {
         ),
       ),
       savedFilters,
-    });
+    };
+    // Every index update prunes, and it rarely removes anything. Writing
+    // anyway would make every view that follows preferences refresh twice.
+    if (this.hasChanges(changes)) {
+      await this.update(changes);
+    }
+  }
+
+  private hasChanges(changes: Partial<PersistedPreferences>): boolean {
+    return (
+      Object.keys(changes) as Array<keyof PersistedPreferences>
+    ).some(
+      (key) =>
+        JSON.stringify(changes[key]) !== JSON.stringify(this.preferences[key]),
+    );
   }
 
   /**
@@ -570,6 +652,13 @@ function normalizePreferences(
         : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
+    dashboardTaskLayout:
+      value?.dashboardTaskLayout === 'board' ? 'board' : 'list',
+    dashboardBoardGroup:
+      value?.dashboardBoardGroup === 'priority' ||
+      value?.dashboardBoardGroup === 'due'
+        ? value.dashboardBoardGroup
+        : 'status',
   };
 }
 

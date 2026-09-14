@@ -3,12 +3,19 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
+// Every screenshot the README shows beside the section it illustrates.
 const views = [
   'dashboard',
   'related-notes',
   'tag-overview',
   'help',
   'notes-graph',
+  'stats',
+  'task-board',
+  'agenda',
+  'outline',
+  'query-blocks',
+  'editor-assistance',
 ];
 const themesSource = readFileSync(
   resolve(repositoryRoot, 'src/ui/webview/themes.ts'),

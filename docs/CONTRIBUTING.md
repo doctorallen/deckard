@@ -12,6 +12,14 @@ Also update `README.md` when the feature needs installation, configuration, or
 reference documentation. Help and README must describe the same current
 behavior before a change is merged.
 
+## Webview components
+
+Shared styling and page-script helpers live in `src/ui/webview/components.ts`,
+documented in [components.md](components.md). Reuse a component rather than
+restyling one locally, and add a new one there once a second page needs it.
+Run `npm run test:ui` after changing it: the webviews are built from template
+literals, so the compiler cannot see a broken style sheet or inline script.
+
 ## Running the development host
 
 The **Run Extension** launch configuration uses repository-local

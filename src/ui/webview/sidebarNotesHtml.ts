@@ -1,7 +1,12 @@
 import * as vscode from 'vscode';
 
+import {
+  createNonce,
+  getBaseCss,
+  getComponentScript,
+} from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
-import { notesGraphIcon } from './icons';
+import { notesGraphIcon, taskBoardIcon } from './icons';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -29,28 +34,9 @@ export function getSidebarNotesHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Deckard Related Notes</title>
-<style nonce="${nonce}">
-:root {
-  color-scheme: dark;
-  --bg: #050608;
-  --panel: #0D1017;
-  --panel-raised: #121620;
-  --panel-deep: #050608;
-  --text: #D9E0E4;
-  --muted: #7D8792;
-  --line: #212936;
-  --line-strong: #34445A;
-  --cyan: #00E5FF;
-  --green: #33FF33;
-  --amber: #FFB000;
-}
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 220px; background-color: var(--bg); background-image: linear-gradient(rgba(0, 229, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 255, .04) 1px, transparent 1px); background-size: 24px 24px; color: var(--text); font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); font-size: 12px; }
-main { width: 100%; padding: 12px; border-top: 2px solid var(--amber); }
-h2, .eyebrow, .source, .relevance-score, .version { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
-h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+<style nonce="${nonce}">${getBaseCss()}
+.relevance-score, .version { font-family: var(--font-mono); }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
-.eyebrow { min-width: 0; flex: 1 1 auto; margin: 0; overflow: hidden; color: var(--amber); font-size: 10px; letter-spacing: .15em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .version { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
@@ -70,13 +56,11 @@ h2 { margin: 0; color: var(--cyan); font-size: 13px; font-weight: 600; overflow-
 .related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 .related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
-.tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .active-tag.weighted-tag { display: inline-flex; align-items: center; gap: 5px; }
 .tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
 .tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .65; }
 .tag-weight-rail-segment.filled { background: var(--cyan); opacity: .95; }
 .active-tag.weighted-tag:hover .tag-weight-rail-segment.filled, .active-tag.weighted-tag:focus-visible .tag-weight-rail-segment.filled { background: currentColor; }
-button { border: 2px solid var(--line); background: var(--panel-deep); color: var(--cyan); padding: 4px 6px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
@@ -87,9 +71,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note:hover, .note:focus-within { z-index: 20; border-color: var(--line-strong); }
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
-.inline-tag { display: inline-block; margin-left: 3px; padding: 1px 4px; border-width: 1px; color: var(--cyan); font-size: .85em; vertical-align: 1px; }
 .note-title .inline-tag { color: var(--text); }
-.tag-namespace { opacity: .62; }
 .relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
 .relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
@@ -99,7 +81,6 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .relevance-tooltip li + li { margin-top: 3px; }
 .relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
 .relevance-weights strong { color: var(--green); font-weight: 600; }
-.source { margin-top: 4px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button { color: var(--text); }
 .active-file .tag-list button { color: var(--text); }
@@ -179,11 +160,17 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .sidebar-association-tooltip p { margin: 6px 0; }
 .sidebar-association-tooltip-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
 .sidebar-association-tooltip-weights strong { color: var(--green); font-weight: 600; }
-.empty { margin-top: 12px; border: 2px dashed var(--line); padding: 14px 10px; color: var(--muted); background: var(--panel-deep); line-height: 1.45; }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
-.tag-context-menu { position: fixed; z-index: 20; min-width: 150px; padding: 4px; border: 2px solid var(--amber); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
-.tag-context-menu[hidden] { display: none; }
-.tag-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; color: var(--text); text-align: left; text-transform: none; }
+
+/* The sidebar is narrow, so it runs tighter than a full-width page. */
+body { min-width: 220px; font-size: 12px; }
+main { width: 100%; max-width: none; padding: 12px; border-top: 2px solid var(--amber); }
+.eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.tag-list { display: flex; gap: 5px; margin: 8px 0 0; }
+button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
+.inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
+.source { margin-top: 4px; font-size: 10px; }
+.empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
@@ -192,51 +179,17 @@ ${getDeckardThemeCss(getDeckardTheme())}
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
+${getComponentScript()}
   console.log('[Deckard Related Notes] Webview script started.');
   let state;
-  let tagContextMenu;
-  let tagContextKey;
 
-  /** Escape note paths, titles, and labels before they become markup. */
-  function escapeHtml(value) {
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
+  
 
-  function closeTagContextMenu() {
-    if (tagContextMenu) tagContextMenu.hidden = true;
-    tagContextKey = undefined;
-  }
+  
 
-  function openTagContextMenu(event, target) {
-    const tagKey = target.dataset.tagKey;
-    if (!tagKey) return;
-    event.preventDefault();
-    closeTagContextMenu();
-    if (!tagContextMenu) {
-      tagContextMenu = document.createElement('div');
-      tagContextMenu.id = 'tag-context-menu';
-      tagContextMenu.className = 'tag-context-menu';
-      tagContextMenu.setAttribute('role', 'menu');
-      document.body.appendChild(tagContextMenu);
-    }
-    tagContextKey = tagKey;
-    tagContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>';
-    tagContextMenu.hidden = false;
-    const bounds = tagContextMenu.getBoundingClientRect();
-    tagContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
-    tagContextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
-    tagContextMenu.querySelector('button').focus();
-  }
+  
 
-  /** Render tag links through one delegated action shape for every sidebar state. */
-  function renderTagLabel(label) {
-    const value = String(label);
-    const match = value.match(/^([#@][^/]+\\/)(.*)$/);
-    if (!match) {
-      return '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
-    }
-    return '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>';
-  }
+  
 
   function getWeightLevel(weight) {
     const value = Number(weight);
@@ -317,37 +270,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<section class="sidebar-relationships" aria-label="Tag associations"><details class="sidebar-relationship-branch"><summary><span>Associated tags</span><span class="sidebar-relationship-count">' + associations.length + '</span></summary><div class="sidebar-relationship-items sidebar-association-items">' + renderSidebarAssociations(associations, snapshot.tagOverview.key) + '</div></details></section>';
   }
 
-  /** Replace source tag tokens with buttons without changing the title text. */
-  function renderInlineTitle(title, tags) {
-    const references = tags || [];
-    const labels = references.map(function (tag) { return tag.label; }).filter(Boolean).sort(function (left, right) { return right.length - left.length; });
-    if (!labels.length) return escapeHtml(title);
-    const pattern = new RegExp(labels.map(function (label) {
-      return String(label).split('').map(function (character) {
-        return '[]{}()|^$+*?.-'.indexOf(character) >= 0 || character === String.fromCharCode(92)
-          ? String.fromCharCode(92) + character
-          : character;
-      }).join('');
-    }).join('|'), 'g');
-    let rendered = '';
-    let offset = 0;
-    const matchedKeys = new Set();
-    title.replace(pattern, function (match, matchOffset) {
-      rendered += escapeHtml(title.slice(offset, matchOffset));
-      const tag = references.find(function (candidate) { return candidate.label === match; });
-      if (tag) {
-        matchedKeys.add(tag.key);
-      }
-      rendered += tag ? renderTag(tag, 'inline-tag') : escapeHtml(match);
-      offset = matchOffset + match.length;
-      return match;
-    });
-    const trailingTags = references
-      .filter(function (tag) { return !matchedKeys.has(tag.key); })
-      .map(function (tag) { return renderTag(tag, 'inline-tag'); })
-      .join('');
-    return rendered + escapeHtml(title.slice(offset)) + trailingTags;
-  }
+  
 
   /** Shared shell for Related Notes and graph-connected node cards. */
   function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
@@ -391,6 +314,23 @@ ${getDeckardThemeCss(getDeckardTheme())}
     return '<button type="button" class="active-file graph-selected-node" data-action="open-selected-graph-node" data-node-id="' + escapeHtml(node.id) + '" aria-label="Open selected ' + escapeHtml(node.kind) + ': ' + escapeHtml(node.title) + '"><span class="active-label">Selected graph node · open</span><span class="active-name">' + title + '</span></button>';
   }
 
+  // A long list is drawn a page at a time; Show more adds the next page. The
+  // count starts over whenever the sidebar shows a different list.
+  const NOTE_PAGE_SIZE = 50;
+  let visibleNoteLimit = NOTE_PAGE_SIZE;
+  let visibleNoteListKey = '';
+
+  function getNoteListKey() {
+    return JSON.stringify([
+      state.state,
+      state.activeFileName,
+      state.activeEntryTitle,
+      state.tagOverview && state.tagOverview.key,
+      state.tagOverviewQuery,
+      state.relatedNotesSortMode,
+    ]);
+  }
+
   /** Render explicit empty states so the sidebar explains why no notes appear. */
   function render() {
     if (!state) return;
@@ -410,7 +350,17 @@ ${getDeckardThemeCss(getDeckardTheme())}
         ? '<div class="empty">' + (tagOverviewFilters.length ? 'No notes currently carry all selected tags.' : 'No notes currently carry this tag.') + '</div>'
         : '<div class="empty">No other notes share its tags.</div>';
     } else {
-      content = '<div class="note-list">' + state.notes.map(function (note) {
+      const noteListKey = getNoteListKey();
+      if (noteListKey !== visibleNoteListKey) {
+        visibleNoteListKey = noteListKey;
+        visibleNoteLimit = NOTE_PAGE_SIZE;
+      }
+      const shownNotes = state.notes.slice(0, visibleNoteLimit);
+      const hiddenNoteCount = state.notes.length - shownNotes.length;
+      const showMore = hiddenNoteCount > 0
+        ? '<button type="button" class="show-more-notes" data-action="show-more-notes">' + (hiddenNoteCount > NOTE_PAGE_SIZE ? 'Show ' + NOTE_PAGE_SIZE + ' more of ' + hiddenNoteCount : 'Show ' + hiddenNoteCount + ' more') + '</button>'
+        : '';
+      content = '<div class="note-list">' + shownNotes.map(function (note) {
         const title = note.title || note.fileName || note.filePath;
         const titleHtml = state.tagTitleDisplayMode === 'inline'
           ? renderInlineTitle(title, note.titleTags)
@@ -459,7 +409,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
           '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
           (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
-      }).join('') + '</div>';
+      }).join('') + '</div>' + showMore;
     }
     const activeTags = state.activeTags.length
       ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>'
@@ -484,10 +434,20 @@ ${getDeckardThemeCss(getDeckardTheme())}
       ? '<span class="section-label">Matching notes</span>'
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
     const relationshipTree = state.state !== 'graph' && state.tagOverview ? renderSidebarRelationships(state) : '';
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
   }
 
   document.addEventListener('click', function (event) {
+    if (event.target.closest('[data-action="show-more-notes"]')) {
+      const firstNewNote = visibleNoteLimit;
+      visibleNoteLimit += NOTE_PAGE_SIZE;
+      render();
+      // Keyboard readers continue from the first card the button revealed.
+      const list = document.querySelector('.note-list');
+      const next = list && list.children[firstNewNote];
+      if (next && next.focus) next.focus();
+      return;
+    }
     const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
     if (contextAction) {
       const tagKey = tagContextKey;
@@ -533,6 +493,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });
       if (target.dataset.action === 'open-notes-graph') vscode.postMessage({ type: 'openNotesGraph' });
+      if (target.dataset.action === 'open-task-board') vscode.postMessage({ type: 'openTaskBoard' });
       if (target.dataset.action === 'open-selected-graph-node') {
         vscode.postMessage({
           type: 'activateNotesGraphNode',
@@ -625,15 +586,3 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </html>`;
 }
 
-/**
- * Creates a per-webview CSP nonce for the sidebar's inline style and script.
- */
-function createNonce(): string {
-  const alphabet =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let nonce = '';
-  for (let index = 0; index < 32; index += 1) {
-    nonce += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-  }
-  return nonce;
-}
