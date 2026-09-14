@@ -14,6 +14,7 @@ import {
   DashboardSearchField,
   TaskBoardGroupBy,
   TaskBoardMessage,
+  CalendarMessage,
   StatsMessage,
 } from '../../core/types';
 
@@ -402,6 +403,38 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
             line: value.line as number,
           }
         : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Accepts the calendar page's messages. Dates and months are checked for their
+ * shape; the host checks that each names a real day.
+ */
+export function parseCalendarMessage(
+  value: unknown,
+): CalendarMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+  const date = typeof value.date === 'string' ? value.date : '';
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+
+  switch (value.type) {
+    case 'ready':
+      return { type: 'ready' };
+    case 'openMonth':
+      return { type: 'openMonth' };
+    case 'showMonth':
+      return typeof value.month === 'string' &&
+        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month)
+        ? { type: 'showMonth', month: value.month }
+        : undefined;
+    case 'openDay':
+      return isDate ? { type: 'openDay', date } : undefined;
+    case 'openWeek':
+      return isDate ? { type: 'openWeek', date } : undefined;
     default:
       return undefined;
   }

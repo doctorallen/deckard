@@ -222,6 +222,12 @@
           "name": "Agenda",
           "icon": "resources/deckard.svg",
           "contextualTitle": "Deckard Agenda"
+        },
+        {
+          "id": "deckard.calendar",
+          "name": "Calendar",
+          "icon": "resources/deckard.svg",
+          "type": "webview"
         }
       ]
     },

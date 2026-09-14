@@ -171,7 +171,7 @@ Code, would need a separate local MCP server.
 3. ~~Quick capture and templates.~~ Shipped as `Deckard: Capture` and note templates.
 4. ~~Link health and aliases.~~ Shipped.
 5. ~~Reference counts, previews, and backlinks.~~ Shipped.
-6. Periodic notes and calendar. ~~Tag hub pages~~ shipped, with tag merging.
+6. ~~Periodic notes and calendar.~~ Shipped. ~~Tag hub pages~~ shipped, with tag merging.
 
 Typed schemas, block references, canvas, and Git-aware collaboration from the
 earlier roadmap follow once these are in place.

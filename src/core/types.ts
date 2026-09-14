@@ -488,6 +488,14 @@ export interface DeckardStatsSnapshot {
 /** Messages from the Stats page, which only opens what it lists. */
 export type StatsMessage = OpenTagMessage | OpenSourceMessage;
 
+/** Messages from the sidebar calendar. The host finds each note itself. */
+export type CalendarMessage =
+  | { type: 'ready' }
+  | { type: 'openMonth' }
+  | { type: 'showMonth'; month: string }
+  | { type: 'openDay'; date: string }
+  | { type: 'openWeek'; date: string };
+
 export interface SidebarNotesSnapshot {
   activeFileName?: string;
   activeEntryTitle?: string;

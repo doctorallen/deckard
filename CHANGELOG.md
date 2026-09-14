@@ -44,6 +44,12 @@
   `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. Templates
   can use `{week}`, `{month}`, and `{date}`.
 
+- **Calendar**: a Calendar view in the Deckard sidebar shows a month of ISO
+  weeks. A dot marks each day with a daily note, and a number counts the open
+  tasks due that day, in orange once it has passed. Selecting a day, a week
+  number, or the month's name opens its note, and a note that does not exist
+  yet is offered for creation from its template.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

@@ -27,6 +27,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
+| [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
@@ -464,6 +465,10 @@ Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut i
 `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the one in the editor, skipping days without a note. From any other note they start from today.
 
 `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week, named for its ISO week such as `2026-W37.md`, or for this month, such as `2026-09.md`. Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`, which can use `{week}`, `{month}`, and `{date}`: a week's Monday, or a month's first day.
+
+## Calendar
+
+The **Calendar** view in the Deckard sidebar shows a month of ISO weeks, Monday first. A dot marks a day with a daily note, and a number counts the open tasks due that day, in orange once the day has passed. Select a day to open its daily note, a week number to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month.
 
 ## Quick capture
 

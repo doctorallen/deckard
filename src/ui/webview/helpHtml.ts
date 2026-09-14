@@ -186,6 +186,7 @@ topics: [signal-integrity]
         <div class="card"><h3>AI assistants</h3><p>AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, can call <code>deckard_query</code> to run a Deckard query over your notes and tasks, and <code>deckard_list_tags</code> to find the exact tag to query. Results carry each note's path and line. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that asked, so VS Code asks you to allow the first call in each session. Set <code>deckard.assistantTools</code> to <code>false</code> to hide both tools.</p></div>
         <div class="card"><h3>Workspace search</h3><p>Run <code>Deckard: Search Workspace Knowledge</code> for local full-text results, matching entities, sections, and tasks with source links.</p></div>
         <div class="card"><h3>Stats</h3><p>Run <code>Deckard: Show Stats</code> for index totals and local view counts for tags, entities, and note entries. Select a counted tag to open its overview, or a note entry to open its note. It also lists the notes nothing links to, leaving out daily, weekly, and monthly notes.</p></div>
+        <div class="card"><h3>Calendar</h3><p>The <strong>Calendar</strong> view in the Deckard sidebar shows a month, Monday first. A dot marks a day with a daily note and a number counts its open tasks due. Select a day, a week number, or the month&apos;s name to open its note; Deckard offers to create one that does not exist yet.</p></div>
       </div>
     </section>
 

@@ -177,6 +177,7 @@ module.exports = {
     },
     showInputBox: () => Promise.resolve(inputBoxResponse),
     showQuickPick: () => Promise.resolve(undefined),
+    onDidChangeWindowState: new EventEmitter().event,
     onDidChangeActiveTextEditor: activeEditorEmitter.event,
     onDidChangeTextEditorSelection: selectionEmitter.event,
     onDidChangeVisibleTextEditors: visibleEditorsEmitter.event,

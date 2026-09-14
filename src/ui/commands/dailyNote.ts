@@ -200,39 +200,64 @@ export function fillPeriodicTemplate(
   );
 }
 
+/** A YYYY-MM-DD date as local midnight, or undefined when it is not a real day. */
+export function parseLocalDate(date: string): Date | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) {
+    return undefined;
+  }
+  const day = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return formatLocalDate(day) === date ? day : undefined;
+}
+
 /**
- * Creates the note for the period containing today from its template when it
- * does not exist yet, without opening it, and returns where it is.
+ * Where the note for the period containing a day belongs: the notes folder,
+ * named for the period.
  */
-export async function ensurePeriodicNote(
+export function getPeriodicNoteUri(
   targetFolder: vscode.WorkspaceFolder,
   period: NotePeriod,
-): Promise<vscode.Uri> {
-  const configuration = vscode.workspace.getConfiguration(
-    'deckard',
-    targetFolder.uri,
-  );
-  const notesFolder = configuration
+  day: Date,
+): vscode.Uri {
+  const notesFolder = vscode.workspace
+    .getConfiguration('deckard', targetFolder.uri)
     .get<string>('notesFolder', 'notes')
     .trim()
     .replaceAll('\\', '/')
     .replace(/^\/+|\/+$/g, '');
-  const { setting, fallback } = PERIOD_TEMPLATES[period];
-  const template = configuration.get<string>(setting, fallback);
   const notesUri = notesFolder
     ? vscode.Uri.joinPath(
         targetFolder.uri,
         ...notesFolder.split('/').filter(Boolean),
       )
     : targetFolder.uri;
-  const { name, variables } = getPeriodicNote(period, new Date());
-  const noteUri = vscode.Uri.joinPath(notesUri, `${name}.md`);
+  return vscode.Uri.joinPath(notesUri, `${getPeriodicNote(period, day).name}.md`);
+}
 
-  await vscode.workspace.fs.createDirectory(notesUri);
+/**
+ * Creates the note for the period containing a day, today by default, from its
+ * template when it does not exist yet, without opening it, and returns where
+ * it is.
+ */
+export async function ensurePeriodicNote(
+  targetFolder: vscode.WorkspaceFolder,
+  period: NotePeriod,
+  day: Date = new Date(),
+): Promise<vscode.Uri> {
+  const { setting, fallback } = PERIOD_TEMPLATES[period];
+  const template = vscode.workspace
+    .getConfiguration('deckard', targetFolder.uri)
+    .get<string>(setting, fallback);
+  const noteUri = getPeriodicNoteUri(targetFolder, period, day);
+
+  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(noteUri, '..'));
   try {
     await vscode.workspace.fs.stat(noteUri);
   } catch {
-    const content = fillPeriodicTemplate(template, variables);
+    const content = fillPeriodicTemplate(
+      template,
+      getPeriodicNote(period, day).variables,
+    );
     await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
   }
   return noteUri;

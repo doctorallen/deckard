@@ -20,6 +20,7 @@ const suites = [
   'stats.e2e.js',
   'sidebarNotes.e2e.js',
   'editorDecorations.e2e.js',
+  'calendar.e2e.js',
 ];
 
 const compiled = path.join(__dirname, '..', '..', 'out');

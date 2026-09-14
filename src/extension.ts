@@ -18,6 +18,7 @@ import {
   createLinkedNote,
   LinkHealth,
 } from './ui/commands/linkHealth';
+import { CalendarView } from './ui/webview/calendar';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
@@ -96,6 +97,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
+  const calendar = new CalendarView(indexer);
   const dashboard = new DashboardPanel(
     indexer,
     preferences,
@@ -166,6 +168,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskBoard,
     editorReferences,
     linkHealth,
+    calendar,
   };
 
   context.subscriptions.push(
@@ -189,6 +192,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskBoard,
     editorReferences,
     linkHealth,
+    calendar,
     assistantTools,
   );
   context.subscriptions.push(
@@ -208,6 +212,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       sidebarNotes,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
+    vscode.window.registerWebviewViewProvider('deckard.calendar', calendar, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
   );
   const outlineView = vscode.window.createTreeView('deckard.outline', {
     treeDataProvider: outline,
@@ -478,6 +485,7 @@ export function deactivate(): void {
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
   activeServices?.linkHealth.dispose();
+  activeServices?.calendar.dispose();
   activeServices = undefined;
 }
 
@@ -505,6 +513,7 @@ interface ExtensionServices {
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
   linkHealth: LinkHealth;
+  calendar: CalendarView;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {
