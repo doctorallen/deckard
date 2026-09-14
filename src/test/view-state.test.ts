@@ -739,6 +739,24 @@ suite('Dashboard state', () => {
     assert.strictEqual(unrelated?.relevanceEvidence?.lexicalWeight, 0);
   });
 
+  test("counts an entry link that names the note by an alias", () => {
+    const active = createFile(
+      'notes/current.md',
+      '# Current #work\n\n[[Program#Target]]',
+    );
+    const related = createFile(
+      'notes/related.md',
+      '---\naliases: [Program]\n---\n# Broad #other\n\n## Target #other\nNeural archive calibration.',
+    );
+    const target = createSidebarSnapshot(
+      createFileIndex([active, related]),
+      active.filePath,
+      active,
+    ).notes.find((note) => note.title.startsWith('Target'));
+
+    assert.strictEqual(target?.relevanceEvidence?.entryLinkWeight, 0.5);
+  });
+
   test('keeps optional recency disabled unless a half-life is configured', () => {
     const active = createFile('notes/current.md', '# Current #work');
     const daily = createFile('notes/2099-01-01.md', '# 2099-01-01 #work');

@@ -19,6 +19,11 @@
   that namespace, with `{tag}` filled in and the `describes:` front matter
   added.
 
+- **Aliases**: a note's `aliases:` front matter, or `alias:`, gives it other
+  names. `[[links]]` that use one open the note, count toward its references,
+  link it in the Notes Graph and Related Notes, and link completion offers
+  them. As with titles, a name two notes share opens neither.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

@@ -28,6 +28,35 @@ suite('Wiki link suggestions', () => {
     provider.dispose();
   });
 
+  test('resolves and completes a note by its aliases', async () => {
+    const index = indexOf({
+      'notes/Atlas.md': '---\naliases: [Atlas Program, atlas]\n---\n# Atlas',
+      'notes/Harbor.md': '---\naliases: [HQ]\n---\n',
+      'notes/Vendor.md': '---\naliases: [HQ]\n---\n',
+    });
+    assert.deepStrictEqual(
+      findWikiLinkTargets('[[atlas program]] [[HQ]] [[Atlas]]', index).map(
+        (link) => link.filePath,
+      ),
+      ['notes/Atlas.md', 'notes/Atlas.md'],
+      'an alias two notes share opens neither, and a title repeated as an alias is one note',
+    );
+
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+    });
+    const items = await provider.provideCompletionItems(
+      createDocument('/tmp/deckard/notes/case.md', 'See [[prog'),
+      new vscode.Position(0, 10),
+    );
+    assert.deepStrictEqual(
+      items.map((item) => [item.label, item.detail, item.insertText]),
+      [['Atlas Program', 'Alias of notes/Atlas.md', 'Atlas Program]]']],
+    );
+    provider.dispose();
+  });
+
   test('finds only an unfinished Wiki link target', () => {
     assert.deepStrictEqual(getWikiLinkCompletionContext('See [[Atlas', 11), {
       query: 'Atlas',
@@ -91,6 +120,19 @@ suite('Wiki links to headings', () => {
 function createIndex(paths: string[]): WorkspaceIndex {
   return {
     files: new Map(paths.map((path) => [path, parseMarkdown(path, '')])),
+    sections: new Map(),
+    tasks: new Map(),
+    tags: new Map(),
+    entities: new Map(),
+    updatedAt: Date.now(),
+  };
+}
+
+function indexOf(notes: Record<string, string>): WorkspaceIndex {
+  return {
+    files: new Map(
+      Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    ),
     sections: new Map(),
     tasks: new Map(),
     tags: new Map(),

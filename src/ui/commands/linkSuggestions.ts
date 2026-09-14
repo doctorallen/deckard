@@ -74,11 +74,20 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
 
     await this.indexer.ready;
     const query = context.query.toLowerCase();
-    return [...this.indexer.getSnapshot().files.keys()]
-      .map((filePath) => ({
-        filePath,
-        title: getNoteTitle(filePath),
-      }))
+    // A note is offered by its title and by each of its aliases.
+    return [...this.indexer.getSnapshot().files.values()]
+      .flatMap((file) => [
+        {
+          filePath: file.filePath,
+          title: getNoteTitle(file.filePath),
+          isAlias: false,
+        },
+        ...(file.aliases ?? []).map((alias) => ({
+          filePath: file.filePath,
+          title: alias,
+          isAlias: true,
+        })),
+      ])
       .filter((note) => note.title.toLowerCase().includes(query))
       .sort(
         (left, right) =>
@@ -88,9 +97,11 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
       .map((note) => {
         const item = new vscode.CompletionItem(
           note.title,
-          vscode.CompletionItemKind.File,
+          note.isAlias
+            ? vscode.CompletionItemKind.Reference
+            : vscode.CompletionItemKind.File,
         );
-        item.detail = note.filePath;
+        item.detail = note.isAlias ? `Alias of ${note.filePath}` : note.filePath;
         item.insertText = `${note.title}]]`;
         item.range = new vscode.Range(
           position.line,

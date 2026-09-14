@@ -607,10 +607,15 @@ function getLinkEvidence(
     activeFile.sections[0]?.heading ?? activeFile.tasks[0]?.title;
   const candidateMatchesActive = candidateLinks.some((link) =>
     activeEntryTitle !== undefined &&
-    linkTargetsEntry(link, activeFilePath ?? activeFile.filePath, activeEntryTitle),
+    linkTargetsEntry(
+      link,
+      activeFilePath ?? activeFile.filePath,
+      activeEntryTitle,
+      activeFile.aliases,
+    ),
   );
   const activeMatchesCandidate = activeFile.links.some((link) =>
-    linkTargetsEntry(link, candidateFile.filePath, candidateTitle),
+    linkTargetsEntry(link, candidateFile.filePath, candidateTitle, candidateFile.aliases),
   );
   if (candidateMatchesActive || activeMatchesCandidate) {
     return { entryWeight: 0.5, fileWeight: 0 };
@@ -621,8 +626,8 @@ function getLinkEvidence(
 }
 
 function filesAreLinked(left: ParsedFile, right: ParsedFile): boolean {
-  const leftNames = getLinkNames(left.filePath);
-  const rightNames = getLinkNames(right.filePath);
+  const leftNames = getLinkNames(left.filePath, left.aliases);
+  const rightNames = getLinkNames(right.filePath, right.aliases);
   return (
     left.links.some((link) => rightNames.has(getLinkFileTarget(link))) ||
     right.links.some((link) => leftNames.has(getLinkFileTarget(link)))
@@ -633,9 +638,10 @@ function linkTargetsEntry(
   link: string,
   filePath: string,
   title: string,
+  aliases?: readonly string[],
 ): boolean {
   const [fileTarget, headingTarget] = link.split('#', 2);
-  if (!getLinkNames(filePath).has(normalizeLink(fileTarget))) {
+  if (!getLinkNames(filePath, aliases).has(normalizeLink(fileTarget))) {
     return false;
   }
   return !headingTarget || normalizeHeadingTarget(headingTarget) ===
@@ -648,7 +654,10 @@ function linkTargetsEntry(
  */
 const linkNamesByPath = new Map<string, Set<string>>();
 
-function getLinkNames(filePath: string): Set<string> {
+function getLinkNames(
+  filePath: string,
+  aliases?: readonly string[],
+): Set<string> {
   let names = linkNamesByPath.get(filePath);
   if (!names) {
     const fileName = filePath.split('/').pop() ?? filePath;
@@ -663,7 +672,10 @@ function getLinkNames(filePath: string): Set<string> {
     }
     linkNamesByPath.set(filePath, names);
   }
-  return names;
+  // Aliases can change without the path changing, so they are not cached.
+  return aliases?.length
+    ? new Set([...names, ...aliases.map(normalizeLink)])
+    : names;
 }
 
 function getLinkFileTarget(link: string): string {

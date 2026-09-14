@@ -31,6 +31,28 @@ suite('Editor references', () => {
     );
   });
 
+  test("counts links that use a note's alias", () => {
+    const aliased = buildWorkspaceIndex(
+      new Map([
+        [
+          'notes/Atlas.md',
+          parseMarkdown('notes/Atlas.md', '---\naliases: [Atlas Program]\n---\n# Atlas'),
+        ],
+        [
+          'notes/Log.md',
+          parseMarkdown('notes/Log.md', '# Log\nSee [[Atlas Program]] and [[atlas program#Atlas]].'),
+        ],
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      buildBacklinkIndex(aliased)
+        .toNote('notes/Atlas.md')
+        .map((link) => link.sourcePath),
+      ['notes/Log.md', 'notes/Log.md'],
+    );
+  });
+
   test('matches heading links by text, ignoring tags and letter case', () => {
     assert.deepStrictEqual(
       backlinks

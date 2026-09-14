@@ -25,7 +25,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
-| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and open the note they name. |
+| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
@@ -99,6 +99,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 ## Markdown format
 
 Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled; consecutive tagged prose lines are grouped so wrapped explanations do not become truncated duplicate entries.
+
+A `[[link]]` names a note by its file name without `.md`, or by any name in the note's `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
 
 By default, use `@` for people and namespaced `#` tags for workspace entities:
 

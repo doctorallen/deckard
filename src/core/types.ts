@@ -143,6 +143,8 @@ export interface ParsedFile {
   tasks: Task[];
   frontmatterTags: TagReference[];
   links: string[];
+  /** Other names `[[links]]` can use for the note, from `aliases:` front matter. */
+  aliases?: string[];
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
   /**

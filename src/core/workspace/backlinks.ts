@@ -48,13 +48,38 @@ export function noteTitle(filePath: string): string {
   return (filePath.split('/').pop() ?? filePath).replace(/\.md$/i, '');
 }
 
-/** Note titles, lowercased, each with every file that carries it. */
-export function createNoteTitleMap(index: WorkspaceIndex): Map<string, string[]> {
+/**
+ * The names each index's notes go by. Links are resolved after every edit and
+ * on every hover, so the names are gathered once per index.
+ */
+const titleMaps = new WeakMap<WorkspaceIndex, Map<string, string[]>>();
+
+/**
+ * Note names, lowercased, each with every file that carries it: a note's
+ * title, and the aliases its front matter gives it.
+ */
+export function createNoteTitleMap(
+  index: WorkspaceIndex,
+): ReadonlyMap<string, readonly string[]> {
+  const cached = titleMaps.get(index);
+  if (cached) {
+    return cached;
+  }
   const titles = new Map<string, string[]>();
-  index.files.forEach((_file, filePath) => {
-    const title = noteTitle(filePath).toLocaleLowerCase();
-    titles.set(title, [...(titles.get(title) ?? []), filePath]);
+  const add = (name: string, filePath: string) => {
+    const key = name.trim().toLocaleLowerCase();
+    const paths = titles.get(key);
+    if (!paths) {
+      titles.set(key, [filePath]);
+    } else if (!paths.includes(filePath)) {
+      paths.push(filePath);
+    }
+  };
+  index.files.forEach((file, filePath) => {
+    add(noteTitle(filePath), filePath);
+    file.aliases?.forEach((alias) => add(alias, filePath));
   });
+  titleMaps.set(index, titles);
   return titles;
 }
 

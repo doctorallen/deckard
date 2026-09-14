@@ -62,6 +62,15 @@ suite('Notes graph state', () => {
     assert.strictEqual(edge.weight >= 2, true);
   });
 
+  test('resolves wiki links by a front-matter alias', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/source.md', '# Source #tag-a\n\nSee [[Atlas Program]].'),
+      parseMarkdown('other/atlas.md', '---\naliases: [Atlas Program]\n---\n# Atlas #tag-b'),
+    ]);
+
+    assert.ok(findEdgeByTypes(snapshot, 'wiki-link'), 'expected a wiki-link edge');
+  });
+
   test('links tasks and nested sections to their heading', () => {
     const snapshot = buildSnapshot([
       parseMarkdown(

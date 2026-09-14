@@ -361,6 +361,26 @@ suite('Markdown parser', () => {
     ]);
   });
 
+  test('reads other names for a note from aliases front matter', () => {
+    const inline = parseMarkdown(
+      'notes/atlas.md',
+      '---\naliases: [Atlas Program, "AP"]\ntags: [planning]\n---\n# Atlas',
+    );
+    assert.deepStrictEqual(inline.aliases, ['Atlas Program', 'AP']);
+    assert.deepStrictEqual(
+      inline.frontmatterTags.map((tag) => tag.key),
+      ['#planning'],
+      'aliases are not tags',
+    );
+
+    const listed = parseMarkdown(
+      'notes/atlas.md',
+      '---\naliases:\n  - Atlas Program\n  - AP\nalias: Atlas\n---\n',
+    );
+    assert.deepStrictEqual(listed.aliases, ['Atlas Program', 'AP', 'Atlas']);
+    assert.strictEqual(parseMarkdown('notes/atlas.md', '# Atlas').aliases, undefined);
+  });
+
   test("takes a note's created and updated dates from the note before its file", () => {
     // A clone gives every file the same, later times.
     const cloned = {

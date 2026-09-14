@@ -23,6 +23,8 @@ interface ListItemMatch {
 interface Frontmatter {
   tags: TagReference[];
   links: string[];
+  /** Other names for the note, from `aliases:` or `alias:`. */
+  aliases?: string[];
   tagSpans: HeadingTagSpan[];
   endLine?: number;
   hub?: NoteHub;
@@ -231,6 +233,7 @@ export function parseMarkdown(
     tasks,
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
+    ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
     ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
     createdAt: dates.createdAt,
     updatedAt: dates.updatedAt,
@@ -439,6 +442,9 @@ function formatTitlePart(value: string): string {
         fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
         return;
       }
+      if (key === 'aliases' || key === 'alias') {
+        return;
+      }
       fieldValues.forEach((value) => {
         const tag = frontmatterValueToTag(
           getTagField(key),
@@ -452,9 +458,18 @@ function formatTitlePart(value: string): string {
       });
     });
 
+    const aliases = [
+      ...new Set(
+        [...(values.get('aliases') ?? []), ...(values.get('alias') ?? [])]
+          .map((alias) => alias.trim())
+          .filter(Boolean),
+      ),
+    ];
+
     return {
       tags: deduplicateTagReferences(tags),
       links: [...new Set(links)],
+      ...(aliases.length > 0 ? { aliases } : {}),
       tagSpans,
       endLine: end,
       ...createHub(values, entityNamespaceAliases, personMarker),
