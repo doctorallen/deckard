@@ -90,6 +90,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
+| **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](#claude-code-and-other-mcp-clients) to Claude Code, offering to turn the server on first. |
+| **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
@@ -452,6 +454,19 @@ Any assistant that uses VS Code's language model tools can call them; in GitHub 
 
 Deckard itself sends nothing anywhere: the tools read the local index, and what they return goes to the assistant that asked, which may send it to its own model service. So the first time an assistant calls one of the tools in a session, VS Code asks you to allow it, saying that your notes will go to the assistant; later calls in that session go ahead. Set `deckard.assistantTools` to `false` to hide both tools. Each call is timed in [Deckard's log](#limitations-and-troubleshooting).
 
+### Claude Code and other MCP clients
+
+Deckard can offer the same two tools to Claude Code and other Model Context Protocol clients. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
+
+```bash
+claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Authorization: Bearer <token>"
+```
+
+- The server listens on `127.0.0.1` only, at `deckard.mcpServer.port`, so nothing off this computer can reach it.
+- Every request must carry the server's token, which Deckard keeps in VS Code's secret storage. `Deckard: Reset MCP Server Token` makes a new one, and every copied setup stops working.
+- Requests from web pages on other sites are refused, token or not, so a page open in a browser cannot read your notes through the server.
+- As with the tools in VS Code, Deckard sends nothing anywhere itself: what a tool returns goes to the client that asked, which may send it to its own model service. The server is off by default.
+
 ## Extracting headings
 
 Run `Deckard: Extract Tagged Heading` with the cursor inside a tagged heading section. Deckard moves the complete section, including nested headings and the original heading tags, into a new Markdown note in the configured notes folder or workspace root. In the source note, the extracted heading and its content are replaced by a `[[link]]` to the new note, keeping the blank lines around it. If the cursor is not inside a tagged section, Deckard offers a picker of tagged headings from the workspace.
@@ -519,6 +534,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.hoverPreviews": true,
 	"deckard.editor.linkDiagnostics": true,
 	"deckard.assistantTools": true,
+	"deckard.mcpServer.enabled": false,
+	"deckard.mcpServer.port": 39217,
 	"deckard.highlightNoteSections": true,
 	"deckard.autoSelectNoteSections": true,
 	"deckard.enableHeadingTagRelationships": true,
@@ -557,6 +574,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
 | `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks with Deckard queries and list tags, after you allow the first call in each session. See [AI assistants](#ai-assistants). |
+| `deckard.mcpServer.enabled` | `false` | Runs a Model Context Protocol server on 127.0.0.1 with the same tools, for Claude Code and other MCP clients that carry its token. See [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients). |
+| `deckard.mcpServer.port` | `39217` | The port the MCP server listens on, on 127.0.0.1. |
 | `deckard.highlightNoteSections` | `true` | Highlights tagged note sections in Markdown editors. Disable it to keep entry-level Related Notes cursor behavior without the editor highlight. |
 | `deckard.autoSelectNoteSections` | `true` | Automatically focuses Related Notes on the tagged entry under the cursor. Disable it to keep Related Notes scoped to the whole document unless you choose an entry manually. |
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, Tag Overview, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove overview tags from titles and show them as separate tag controls. |

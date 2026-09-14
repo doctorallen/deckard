@@ -50,6 +50,14 @@
   number, or the month's name opens its note, and a note that does not exist
   yet is offered for creation from its template.
 
+- **MCP server**: with `deckard.mcpServer.enabled`, Deckard runs a Model
+  Context Protocol server on this computer, so Claude Code and other MCP
+  clients get the same query and tag tools Copilot has. It listens on
+  127.0.0.1 only, answers only requests that carry its token, and refuses
+  requests from web pages on other sites. `Deckard: Copy MCP Server Setup`
+  copies the command that adds it to Claude Code, and `Deckard: Reset MCP
+  Server Token` retires every copied setup. It is off by default.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

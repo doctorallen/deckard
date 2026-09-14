@@ -91,6 +91,14 @@
         "title": "Deckard: New Note from Template"
       },
       {
+        "command": "deckard.copyMcpSetup",
+        "title": "Deckard: Copy MCP Server Setup"
+      },
+      {
+        "command": "deckard.resetMcpToken",
+        "title": "Deckard: Reset MCP Server Token"
+      },
+      {
         "command": "deckard.extractHeading",
         "title": "Deckard: Extract Tagged Heading"
       },
@@ -605,6 +613,20 @@
             "default": true,
             "description": "Let AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, search your notes and tasks with Deckard queries and list your tags. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that called it, which may send it to its own model service. VS Code asks you to allow the first call in each session.",
             "order": 0
+          },
+          "deckard.mcpServer.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Run a Model Context Protocol server on this computer, so Claude Code and other MCP clients can search your notes and tasks with Deckard queries and list your tags. It listens on 127.0.0.1 only and answers only requests that carry its token. Deckard: Copy MCP Server Setup copies the command that adds it to Claude Code.",
+            "order": 1
+          },
+          "deckard.mcpServer.port": {
+            "type": "integer",
+            "default": 39217,
+            "minimum": 1024,
+            "maximum": 65535,
+            "description": "The port Deckard's MCP server listens on, on 127.0.0.1.",
+            "order": 2
           }
         }
       }

@@ -187,6 +187,7 @@ topics: [signal-integrity]
         <div class="card"><h3>Workspace search</h3><p>Run <code>Deckard: Search Workspace Knowledge</code> for local full-text results, matching entities, sections, and tasks with source links.</p></div>
         <div class="card"><h3>Stats</h3><p>Run <code>Deckard: Show Stats</code> for index totals and local view counts for tags, entities, and note entries. Select a counted tag to open its overview, or a note entry to open its note. It also lists the notes nothing links to, leaving out daily, weekly, and monthly notes.</p></div>
         <div class="card"><h3>Calendar</h3><p>The <strong>Calendar</strong> view in the Deckard sidebar shows a month, Monday first. A dot marks a day with a daily note and a number counts its open tasks due. Select a day, a week number, or the month&apos;s name to open its note; Deckard offers to create one that does not exist yet.</p></div>
+        <div class="card"><h3>Claude Code and other MCP clients</h3><p>Turn on <code>deckard.mcpServer.enabled</code> to run a Model Context Protocol server on this computer with Deckard&apos;s query and tag tools. It listens on 127.0.0.1 only and needs its token; <code>Deckard: Copy MCP Server Setup</code> copies the command that adds it to Claude Code, and <code>Deckard: Reset MCP Server Token</code> retires old setups.</p></div>
       </div>
     </section>
 

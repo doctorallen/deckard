@@ -6,7 +6,6 @@
 - The first build of the search cache, in a new workspace or after the cache is cleared, still writes every note synchronously on the extension host: about 140 ms at 940 notes and 820 ms at 5,000. Rescans are incremental now. Move the store to a worker thread if that first build shows up as Slow in Deckard's log.
 
 # Features
-- A local MCP server, protected by a token, so Claude Code and other MCP clients can use the same query and tag tools Copilot has.
 
 # Themes
 interstellar - called "cooper"

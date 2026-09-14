@@ -19,6 +19,8 @@ import {
   LinkHealth,
 } from './ui/commands/linkHealth';
 import { CalendarView } from './ui/webview/calendar';
+import { readManifestTools } from './core/mcp/mcpProtocol';
+import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
@@ -94,6 +96,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const editorReferences = new EditorReferences(indexer);
   const assistantTools = new AssistantTools(indexer);
+  const mcpServer = new DeckardMcpServer(
+    indexer,
+    context.secrets,
+    readManifestTools(
+      context.extension.packageJSON.contributes?.languageModelTools,
+    ),
+    context.extension.packageJSON.version,
+  );
+  void mcpServer.restart();
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
@@ -194,6 +205,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     linkHealth,
     calendar,
     assistantTools,
+    mcpServer,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -349,6 +361,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
+      mcpServer.copySetup(),
+    ),
+    vscode.commands.registerCommand('deckard.resetMcpToken', () =>
+      mcpServer.resetTokenCommand(),
     ),
     vscode.commands.registerCommand(
       CREATE_LINKED_NOTE_COMMAND,
