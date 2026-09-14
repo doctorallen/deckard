@@ -22,7 +22,11 @@ import {
   WorkspaceIndex,
   DeckardStatsSnapshot,
 } from '../../core/types';
-import { findDailyNoteDate, stripTags } from '../../core/markdown/parser';
+import {
+  findDailyNoteDate,
+  isPeriodicNotePath,
+  stripTags,
+} from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import {
   buildTagIntersectionQuery,
@@ -259,8 +263,8 @@ export function createDeckardStatsSnapshot(
 const ORPHAN_NOTE_LIMIT = 50;
 
 /**
- * Notes no other note links to, by title. Daily notes are left out, since
- * they are found by their date rather than through links.
+ * Notes no other note links to, by title. Daily, weekly, and monthly notes are
+ * left out, since they are found by their date rather than through links.
  */
 function findOrphanNotes(
   index: WorkspaceIndex,
@@ -270,6 +274,7 @@ function findOrphanNotes(
     .filter(
       (file) =>
         backlinks.toNote(file.filePath).length === 0 &&
+        !isPeriodicNotePath(file.filePath) &&
         !findDailyNoteDate(
           file.filePath,
           file.sections

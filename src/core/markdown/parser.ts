@@ -1289,6 +1289,11 @@ function findTasks(
  * The day a daily note is for: a YYYY-MM-DD file name, or failing that a
  * top-level heading that holds such a date.
  */
+/** Whether a note is named for a week or a month, as `2026-W37.md` or `2026-09.md` are. */
+export function isPeriodicNotePath(filePath: string): boolean {
+  return /(?:^|\/)\d{4}-(?:W\d{2}|\d{2})\.md$/i.test(filePath);
+}
+
 export function findDailyNoteDate(
   filePath: string,
   topLevelHeadings: readonly string[],

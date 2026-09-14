@@ -181,13 +181,15 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('lists the notes nothing links to, leaving out daily notes', () => {
+  test('lists the notes nothing links to, leaving out periodic notes', () => {
     const first = createFile('notes/first.md', '# First\nSee [[Second]].');
     const second = createFile('notes/second.md', '# Second');
     const daily = createFile('notes/2026-09-13.md', '# 2026-09-13\nNotes.');
+    const weekly = createFile('notes/2026-W37.md', '# 2026-W37');
+    const monthly = createFile('notes/2026-09.md', '# 2026-09');
     const self = createFile('notes/self.md', '# Self\nSee [[self]].');
     const stats = createDeckardStatsSnapshot(
-      createFileIndex([self, first, second, daily]),
+      createFileIndex([self, first, second, daily, weekly, monthly]),
       defaultPreferences,
     );
 

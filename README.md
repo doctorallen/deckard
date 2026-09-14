@@ -84,6 +84,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
+| **Deckard: Open Weekly Note** | Creates or opens this week's note, such as `2026-W37.md`. |
+| **Deckard: Open Monthly Note** | Creates or opens this month's note, such as `2026-09.md`. |
 | **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
@@ -231,7 +233,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its overview, or a note entry to open its note at that line.
+Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its overview, or a note entry to open its note at that line.
 
 ![Deckard Stats showing index totals and the most-viewed tags, entities, and note entries.](docs/images/stats.png)
 
@@ -461,6 +463,8 @@ Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut i
 
 `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the one in the editor, skipping days without a note. From any other note they start from today.
 
+`Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week, named for its ISO week such as `2026-W37.md`, or for this month, such as `2026-09.md`. Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`, which can use `{week}`, `{month}`, and `{date}`: a week's Monday, or a month's first day.
+
 ## Quick capture
 
 Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
@@ -493,6 +497,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tagOverview.hubNoteExpanded": true,
 	"deckard.notesFolder": "notes",
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
+	"deckard.weeklyNoteTemplate": "# {week}\n\n",
+	"deckard.monthlyNoteTemplate": "# {month}\n\n",
 	"deckard.templatesFolder": "templates",
 	"deckard.parseInlineTags": true,
 	"deckard.outline.showTags": true,
@@ -529,6 +535,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
+| `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the ISO week, such as `2026-W37`, and `{date}` its Monday. |
+| `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `2026-09`, and `{date}` its first day. |
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](#templates), relative to the workspace folder. Deckard does not index it. Leave it empty to turn templates off. |
 | `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
 | `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |

@@ -8,6 +8,7 @@ import { capture } from './ui/commands/capture';
 import {
   createDailyNote,
   openAdjacentDailyNote,
+  openPeriodicNote,
 } from './ui/commands/dailyNote';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
@@ -328,6 +329,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.nextDailyNote', () =>
       openAdjacentDailyNote(indexer, 'next'),
+    ),
+    vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
+      openPeriodicNote('week'),
+    ),
+    vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
+      openPeriodicNote('month'),
     ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>

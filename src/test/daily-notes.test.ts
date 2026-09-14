@@ -2,7 +2,13 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
-import { findAdjacentDailyNote, listDailyNotes } from '../ui/commands/dailyNote';
+import {
+  fillPeriodicTemplate,
+  findAdjacentDailyNote,
+  getIsoWeek,
+  getPeriodicNote,
+  listDailyNotes,
+} from '../ui/commands/dailyNote';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return {
@@ -45,5 +51,43 @@ suite('Daily notes', () => {
     );
     assert.strictEqual(findAdjacentDailyNote(notes, '2026-09-08', 'previous'), undefined);
     assert.strictEqual(findAdjacentDailyNote(notes, '2026-09-13', 'next'), undefined);
+  });
+});
+
+suite('Weekly and monthly notes', () => {
+  test('numbers weeks as ISO weeks, across the turn of a year', () => {
+    assert.deepStrictEqual(getIsoWeek(new Date(2026, 8, 13)), { year: 2026, week: 37 });
+    assert.deepStrictEqual(getIsoWeek(new Date(2026, 8, 7)), { year: 2026, week: 37 });
+    assert.deepStrictEqual(
+      getIsoWeek(new Date(2027, 0, 1)),
+      { year: 2026, week: 53 },
+      'the first Friday of 2027 is in the last week of 2026',
+    );
+    assert.deepStrictEqual(
+      getIsoWeek(new Date(2024, 11, 30)),
+      { year: 2025, week: 1 },
+      'the last Monday of 2024 starts the first week of 2025',
+    );
+  });
+
+  test("names each period's note and the values its template can use", () => {
+    const sunday = new Date(2026, 8, 13);
+    assert.deepStrictEqual(getPeriodicNote('week', sunday), {
+      name: '2026-W37',
+      variables: { date: '2026-09-07', week: '2026-W37', month: '2026-09' },
+    });
+    assert.deepStrictEqual(getPeriodicNote('month', sunday), {
+      name: '2026-09',
+      variables: { date: '2026-09-01', week: '2026-W36', month: '2026-09' },
+    });
+    assert.strictEqual(getPeriodicNote('day', sunday).name, '2026-09-13');
+    assert.strictEqual(
+      fillPeriodicTemplate('# {week}\nFrom {date}, in {month}. {other}', {
+        date: '2026-09-07',
+        week: '2026-W37',
+        month: '2026-09',
+      }),
+      '# 2026-W37\nFrom 2026-09-07, in 2026-09. {other}',
+    );
   });
 });

@@ -479,7 +479,7 @@ export interface DeckardStatsSnapshot {
   tagViews: StatsAccessItem[];
   entityViews: StatsAccessItem[];
   sectionViews: StatsAccessItem[];
-  /** Notes no other note links to, daily notes aside: the first by title. */
+  /** Notes no other note links to, periodic notes aside: the first by title. */
   orphanNotes: StatsNoteItem[];
   /** How many such notes there are, listed or not. */
   orphanNoteCount: number;

@@ -102,8 +102,111 @@ export async function createDailyNote(
  * Creates today's note from the template when it does not exist yet, without
  * opening it, and returns where it is.
  */
-export async function ensureDailyNote(
+export function ensureDailyNote(
   targetFolder: vscode.WorkspaceFolder,
+): Promise<vscode.Uri> {
+  return ensurePeriodicNote(targetFolder, 'day');
+}
+
+/**
+ * Opens the note for this week or this month, creating it from its template
+ * when it does not exist yet.
+ */
+export async function openPeriodicNote(
+  period: 'week' | 'month',
+): Promise<vscode.Uri | undefined> {
+  const targetFolder = await chooseTargetFolder();
+  if (!targetFolder) {
+    return undefined;
+  }
+  const noteUri = await ensurePeriodicNote(targetFolder, period);
+  const document = await vscode.workspace.openTextDocument(noteUri);
+  await vscode.window.showTextDocument(document, { preview: false });
+  return noteUri;
+}
+
+/** A stretch of the calendar a note can be kept for. */
+export type NotePeriod = 'day' | 'week' | 'month';
+
+/** The values a periodic note's template can use. */
+export type PeriodicNoteVariables = Record<'date' | 'week' | 'month', string>;
+
+const PERIOD_TEMPLATES: Readonly<
+  Record<NotePeriod, { setting: string; fallback: string }>
+> = {
+  day: { setting: 'dailyNoteTemplate', fallback: '# {date}\n\n' },
+  week: { setting: 'weeklyNoteTemplate', fallback: '# {week}\n\n' },
+  month: { setting: 'monthlyNoteTemplate', fallback: '# {month}\n\n' },
+};
+
+/**
+ * The note for the period containing a day: its name, and the values its
+ * template can use. Weeks are ISO weeks, which start on Monday, so a week's
+ * `{date}` is its Monday; a month's is its first day.
+ */
+export function getPeriodicNote(
+  period: NotePeriod,
+  day: Date,
+): { name: string; variables: PeriodicNoteVariables } {
+  const start =
+    period === 'week'
+      ? new Date(day.getFullYear(), day.getMonth(), day.getDate() - getWeekday(day))
+      : period === 'month'
+        ? new Date(day.getFullYear(), day.getMonth(), 1)
+        : day;
+  const { year, week } = getIsoWeek(start);
+  const date = formatLocalDate(start);
+  const variables = {
+    date,
+    week: `${year}-W${String(week).padStart(2, '0')}`,
+    month: date.slice(0, 7),
+  };
+  return {
+    name: period === 'day' ? date : period === 'week' ? variables.week : variables.month,
+    variables,
+  };
+}
+
+/**
+ * The ISO week a day falls in. It is the week of that week's Thursday, so the
+ * first days of January can belong to the last week of the year before.
+ */
+export function getIsoWeek(day: Date): { year: number; week: number } {
+  const thursday = new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate() - getWeekday(day) + 3,
+  );
+  const year = thursday.getFullYear();
+  const january4 = new Date(year, 0, 4);
+  const firstThursday = new Date(year, 0, 4 - getWeekday(january4) + 3);
+  // Rounding absorbs the hour a daylight-saving change adds or removes.
+  const week =
+    1 +
+    Math.round(
+      (thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    );
+  return { year, week };
+}
+
+/** Fills `{date}`, `{week}`, and `{month}` in a periodic note's template. */
+export function fillPeriodicTemplate(
+  template: string,
+  variables: PeriodicNoteVariables,
+): string {
+  return template.replace(
+    /\{(date|week|month)\}/g,
+    (_placeholder, name: keyof PeriodicNoteVariables) => variables[name],
+  );
+}
+
+/**
+ * Creates the note for the period containing today from its template when it
+ * does not exist yet, without opening it, and returns where it is.
+ */
+export async function ensurePeriodicNote(
+  targetFolder: vscode.WorkspaceFolder,
+  period: NotePeriod,
 ): Promise<vscode.Uri> {
   const configuration = vscode.workspace.getConfiguration(
     'deckard',
@@ -114,27 +217,30 @@ export async function ensureDailyNote(
     .trim()
     .replaceAll('\\', '/')
     .replace(/^\/+|\/+$/g, '');
-  const template = configuration.get<string>(
-    'dailyNoteTemplate',
-    '# {date}\n\n',
-  );
+  const { setting, fallback } = PERIOD_TEMPLATES[period];
+  const template = configuration.get<string>(setting, fallback);
   const notesUri = notesFolder
     ? vscode.Uri.joinPath(
         targetFolder.uri,
         ...notesFolder.split('/').filter(Boolean),
       )
     : targetFolder.uri;
-  const date = formatLocalDate(new Date());
-  const noteUri = vscode.Uri.joinPath(notesUri, `${date}.md`);
+  const { name, variables } = getPeriodicNote(period, new Date());
+  const noteUri = vscode.Uri.joinPath(notesUri, `${name}.md`);
 
   await vscode.workspace.fs.createDirectory(notesUri);
   try {
     await vscode.workspace.fs.stat(noteUri);
   } catch {
-    const content = template.replaceAll('{date}', date);
+    const content = fillPeriodicTemplate(template, variables);
     await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
   }
   return noteUri;
+}
+
+/** Monday is 0 and Sunday is 6, as in an ISO week. */
+function getWeekday(day: Date): number {
+  return (day.getDay() + 6) % 7;
 }
 
 /**

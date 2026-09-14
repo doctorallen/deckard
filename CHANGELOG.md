@@ -30,13 +30,19 @@
   warning. `deckard.editor.linkDiagnostics` turns this off.
 
 - **Unlinked notes** in Stats: the page counts and lists the notes no other
-  note links to, leaving out daily notes, which are found by their date. Select
-  one to open it.
+  note links to, leaving out daily, weekly, and monthly notes, which are found
+  by their date. Select one to open it.
 
 - **Previous and next daily notes**: `Deckard: Open Previous Daily Note` and
   `Deckard: Open Next Daily Note` step to the nearest daily note before or
   after the one in the editor, skipping days without a note, or from today
   when the editor is on another note.
+
+- **Weekly and monthly notes**: `Deckard: Open Weekly Note` and `Deckard:
+  Open Monthly Note` create or open the note for this ISO week, such as
+  `2026-W37.md`, or this month, such as `2026-09.md`, from their own templates,
+  `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. Templates
+  can use `{week}`, `{month}`, and `{date}`.
 
 ### Changed
 

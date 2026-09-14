@@ -71,6 +71,14 @@
         "title": "Deckard: Open Next Daily Note"
       },
       {
+        "command": "deckard.openWeeklyNote",
+        "title": "Deckard: Open Weekly Note"
+      },
+      {
+        "command": "deckard.openMonthlyNote",
+        "title": "Deckard: Open Monthly Note"
+      },
+      {
         "command": "deckard.capture",
         "title": "Deckard: Capture"
       },
@@ -339,12 +347,24 @@
             "description": "Template used when creating a daily note.",
             "order": 3
           },
+          "deckard.weeklyNoteTemplate": {
+            "type": "string",
+            "default": "# {week}\n\n",
+            "description": "Template used when creating a weekly note. {week} becomes the ISO week, such as 2026-W37, {date} its Monday, and {month} that Monday's month.",
+            "order": 4
+          },
+          "deckard.monthlyNoteTemplate": {
+            "type": "string",
+            "default": "# {month}\n\n",
+            "description": "Template used when creating a monthly note. {month} becomes the month, such as 2026-09, and {date} its first day.",
+            "order": 5
+          },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
-            "order": 4
+            "order": 6
           }
         }
       },
