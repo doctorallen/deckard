@@ -131,6 +131,12 @@ export class StatsPanel implements vscode.Disposable {
     if (section) {
       await openSourceAt(section.filePath, section.startLine);
       await this.preferences.recordSectionAccess(section.id);
+      return;
+    }
+    // A note listed whole, such as one nothing links to, opens without
+    // counting as a view of one of its entries.
+    if (index.files.has(message.filePath)) {
+      await openSourceAt(message.filePath, message.line);
     }
   }
 

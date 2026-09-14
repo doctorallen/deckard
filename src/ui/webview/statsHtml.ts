@@ -60,7 +60,7 @@ ${getComponentScript()}
     if (!items.length) return '<p class="empty">' + escapeHtml(empty) + '</p>';
     return '<ol class="list">' + items.map(function (item, index) {
       const label = isTag ? renderTagLabel(item.label) : escapeHtml(item.label);
-      return '<li><div class="row stat-row" role="button" tabindex="0" title="' + escapeHtml(hint) + '" data-list="' + listName + '" data-index="' + index + '"><div><div class="label">' + label + '</div><div class="detail">' + escapeHtml(item.detail) + '</div></div><strong class="count">' + item.count + '</strong></div></li>';
+      return '<li><div class="row stat-row" role="button" tabindex="0" title="' + escapeHtml(hint) + '" data-list="' + listName + '" data-index="' + index + '"><div><div class="label">' + label + '</div><div class="detail">' + escapeHtml(item.detail) + '</div></div>' + (item.count === undefined ? '' : '<strong class="count">' + item.count + '</strong>') + '</div></li>';
     }).join('') + '</ol>';
   }
   // A row posts the message the host projected for it, so the page never
@@ -94,9 +94,12 @@ ${getComponentScript()}
       metric('Open tasks', state.activeTaskCount),
       metric('All tags', state.tagCount),
       metric('Canonical tags', state.entityCount),
-      metric('Wiki links', state.wikiLinkCount)
+      metric('Wiki links', state.wikiLinkCount),
+      metric('Unlinked notes', state.orphanNoteCount)
     ].join('');
-    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + '</p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>';
+    const unlisted = state.orphanNoteCount - state.orphanNotes.length;
+    const orphans = '<section class="views" aria-label="Link statistics"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article></section>';
+    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + '</p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') { state = event.data.data; render(); }

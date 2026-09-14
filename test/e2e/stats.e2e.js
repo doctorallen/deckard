@@ -142,6 +142,32 @@ test('clicking a most-viewed note entry opens its note and counts the view', asy
   assert.strictEqual(preferences.value.sectionAccessCounts[section.id], before + 1);
 });
 
+test('a note nothing links to is listed, and opens without counting a view', async () => {
+  const { view, panel, updates, index, preferences, rows } = await openStats();
+  const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+  // Front matter puts its heading below line 1, so no entry starts there.
+  const lonely = parseMarkdown('/notes/lonely.md', '---\ntags: [relay]\n---\n# Lonely');
+  index.files.set(lonely.filePath, lonely);
+  updates.fire(index);
+  panel._deliver(panel._toWebview[panel._toWebview.length - 1]);
+
+  const row = rows()[3];
+  assert.ok(row, 'the note is listed after the most-viewed rows');
+  assert.strictEqual(row.querySelector('.label').textContent, 'lonely');
+  assert.ok(!row.querySelector('.count'), 'with no view count');
+
+  const before = { ...preferences.value.sectionAccessCounts };
+  view.click(row);
+  await settle();
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], {
+    type: 'openSource',
+    filePath: '/notes/lonely.md',
+    line: 1,
+  });
+  assert.deepStrictEqual(opened, ['/notes/lonely.md']);
+  assert.deepStrictEqual(preferences.value.sectionAccessCounts, before, 'no entry view is counted');
+});
+
 test('a hidden Stats page skips updates and catches up when shown', async () => {
   const { panel, updates, index } = await openStats();
   panel._setVisible(false);

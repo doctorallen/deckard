@@ -460,6 +460,13 @@ export interface StatsAccessItem {
   open: OpenTagMessage | OpenSourceMessage;
 }
 
+/** A note the Stats page lists by name, which opens at its first line. */
+export interface StatsNoteItem {
+  label: string;
+  detail: string;
+  open: OpenSourceMessage;
+}
+
 export interface DeckardStatsSnapshot {
   updatedAt: number;
   fileCount: number;
@@ -472,6 +479,10 @@ export interface DeckardStatsSnapshot {
   tagViews: StatsAccessItem[];
   entityViews: StatsAccessItem[];
   sectionViews: StatsAccessItem[];
+  /** Notes no other note links to, daily notes aside: the first by title. */
+  orphanNotes: StatsNoteItem[];
+  /** How many such notes there are, listed or not. */
+  orphanNoteCount: number;
 }
 
 /** Messages from the Stats page, which only opens what it lists. */

@@ -29,6 +29,10 @@
   which creates it in the notes folder, and a name several notes share is a
   warning. `deckard.editor.linkDiagnostics` turns this off.
 
+- **Unlinked notes** in Stats: the page counts and lists the notes no other
+  note links to, leaving out daily notes, which are found by their date. Select
+  one to open it.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

@@ -181,6 +181,31 @@ suite('Dashboard state', () => {
     );
   });
 
+  test('lists the notes nothing links to, leaving out daily notes', () => {
+    const first = createFile('notes/first.md', '# First\nSee [[Second]].');
+    const second = createFile('notes/second.md', '# Second');
+    const daily = createFile('notes/2026-09-13.md', '# 2026-09-13\nNotes.');
+    const self = createFile('notes/self.md', '# Self\nSee [[self]].');
+    const stats = createDeckardStatsSnapshot(
+      createFileIndex([self, first, second, daily]),
+      defaultPreferences,
+    );
+
+    assert.strictEqual(stats.orphanNoteCount, 2);
+    assert.deepStrictEqual(stats.orphanNotes, [
+      {
+        label: 'first',
+        detail: 'notes/first.md',
+        open: { type: 'openSource', filePath: 'notes/first.md', line: 1 },
+      },
+      {
+        label: 'self',
+        detail: 'notes/self.md',
+        open: { type: 'openSource', filePath: 'notes/self.md', line: 1 },
+      },
+    ]);
+  });
+
   test('projects current index totals and valid view counts for stats', () => {
     const first = createFile(
       'notes/first.md',

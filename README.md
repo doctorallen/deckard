@@ -31,7 +31,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
 | [Workspace search](#commands) | Full-text search across saved notes, entities, and tasks from the Command Palette. |
-| [Stats](#stats) | Index totals and your most-viewed tags, entities, and notes. |
+| [Stats](#stats) | Index totals, the notes nothing links to, and your most-viewed tags, entities, and notes. |
 | [Themes](#themes) | Six visual styles for Deckard's pages, from the default Replicant to LCARS and Synthwave. |
 | [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine. |
 
@@ -229,7 +229,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its overview, or a note entry to open its note at that line.
+Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag overview or select a note entry in an overview, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its overview, or a note entry to open its note at that line.
 
 ![Deckard Stats showing index totals and the most-viewed tags, entities, and note entries.](docs/images/stats.png)
 

@@ -22,7 +22,7 @@ import {
   WorkspaceIndex,
   DeckardStatsSnapshot,
 } from '../../core/types';
-import { stripTags } from '../../core/markdown/parser';
+import { findDailyNoteDate, stripTags } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import {
   buildTagIntersectionQuery,
@@ -38,6 +38,7 @@ import {
   QUERY_FIELDS,
   QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
+import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 
@@ -250,6 +251,47 @@ export function createDeckardStatsSnapshot(
           : undefined;
       },
     ),
+    ...findOrphanNotes(index),
+  };
+}
+
+/** How many of the notes nothing links to the Stats page names. */
+const ORPHAN_NOTE_LIMIT = 50;
+
+/**
+ * Notes no other note links to, by title. Daily notes are left out, since
+ * they are found by their date rather than through links.
+ */
+function findOrphanNotes(
+  index: WorkspaceIndex,
+): Pick<DeckardStatsSnapshot, 'orphanNotes' | 'orphanNoteCount'> {
+  const backlinks = buildBacklinkIndex(index);
+  const orphans = [...index.files.values()]
+    .filter(
+      (file) =>
+        backlinks.toNote(file.filePath).length === 0 &&
+        !findDailyNoteDate(
+          file.filePath,
+          file.sections
+            .filter((section) => section.headingLevel === 1)
+            .map((section) => section.heading),
+        ),
+    )
+    .map((file) => ({ filePath: file.filePath, title: noteTitle(file.filePath) }))
+    .sort(
+      (left, right) =>
+        baseCollator.compare(left.title, right.title) ||
+        defaultCollator.compare(left.filePath, right.filePath),
+    );
+  return {
+    orphanNoteCount: orphans.length,
+    orphanNotes: orphans
+      .slice(0, ORPHAN_NOTE_LIMIT)
+      .map(({ filePath, title }) => ({
+        label: title,
+        detail: filePath,
+        open: { type: 'openSource' as const, filePath, line: 1 },
+      })),
   };
 }
 
