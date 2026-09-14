@@ -188,6 +188,12 @@
 
 ### Fixed
 
+- Starting VS Code, reindexing, or changing a setting that rescans the notes no
+  longer rewrites the whole search cache. Only notes that changed since the
+  cache was written are updated, and deleted notes are removed. At 5,000
+  notes an unchanged rescan now takes 29 ms of search-cache work instead of
+  most of a second.
+
 - A visible Dashboard no longer sends its page every note after each save.
   The Tasks and Tags tabs are sent no notes, and the Notes tab is sent each
   note's rendered HTML only in the HTML view. With 940 notes, an update
