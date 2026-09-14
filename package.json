@@ -63,6 +63,14 @@
         "title": "Deckard: Create Daily Note"
       },
       {
+        "command": "deckard.previousDailyNote",
+        "title": "Deckard: Open Previous Daily Note"
+      },
+      {
+        "command": "deckard.nextDailyNote",
+        "title": "Deckard: Open Next Daily Note"
+      },
+      {
         "command": "deckard.capture",
         "title": "Deckard: Capture"
       },

@@ -34,6 +34,8 @@ suite('Extension Test Suite', () => {
         'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createDailyNote',
+        'deckard.previousDailyNote',
+        'deckard.nextDailyNote',
         'deckard.capture',
         'deckard.captureUnderHeading',
         'deckard.newNoteFromTemplate',

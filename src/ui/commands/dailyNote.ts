@@ -1,5 +1,83 @@
 import * as vscode from 'vscode';
 
+import { findDailyNoteDate } from '../../core/markdown/parser';
+import { WorkspaceIndex } from '../../core/types';
+import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { resolveSourceUri } from './navigation';
+
+/** A daily note in the index, by the day it is for. */
+export interface DailyNoteEntry {
+  date: string;
+  filePath: string;
+}
+
+/**
+ * The index's daily notes, oldest first: notes named for a day, or whose top
+ * heading holds one.
+ */
+export function listDailyNotes(index: WorkspaceIndex): DailyNoteEntry[] {
+  return [...index.files.values()]
+    .flatMap((file) => {
+      const date = findDailyNoteDate(
+        file.filePath,
+        file.sections
+          .filter((section) => section.headingLevel === 1)
+          .map((section) => section.heading),
+      );
+      return date ? [{ date, filePath: file.filePath }] : [];
+    })
+    .sort(
+      (left, right) =>
+        left.date.localeCompare(right.date) ||
+        left.filePath.localeCompare(right.filePath),
+    );
+}
+
+/** The nearest daily note before or after a day, skipping days without one. */
+export function findAdjacentDailyNote(
+  notes: readonly DailyNoteEntry[],
+  from: string,
+  direction: 'previous' | 'next',
+): DailyNoteEntry | undefined {
+  return direction === 'previous'
+    ? [...notes].reverse().find((note) => note.date < from)
+    : notes.find((note) => note.date > from);
+}
+
+/**
+ * Opens the daily note before or after the one in the editor, or before or
+ * after today when the editor is not on a daily note.
+ */
+export async function openAdjacentDailyNote(
+  indexer: Pick<
+    WorkspaceIndexer,
+    'ready' | 'getSnapshot' | 'getFilePath' | 'isNotesFile'
+  >,
+  direction: 'previous' | 'next',
+): Promise<void> {
+  await indexer.ready;
+  const notes = listDailyNotes(indexer.getSnapshot());
+  const editorUri = vscode.window.activeTextEditor?.document.uri;
+  const editorPath =
+    editorUri && indexer.isNotesFile(editorUri)
+      ? indexer.getFilePath(editorUri)
+      : undefined;
+  const from =
+    notes.find((note) => note.filePath === editorPath)?.date ??
+    formatLocalDate(new Date());
+  const target = findAdjacentDailyNote(notes, from, direction);
+  if (!target) {
+    void vscode.window.showInformationMessage(
+      `There is no daily note ${direction === 'previous' ? 'before' : 'after'} ${from}.`,
+    );
+    return;
+  }
+  const uri = await resolveSourceUri(target.filePath);
+  if (uri) {
+    await vscode.window.showTextDocument(uri, { preview: false });
+  }
+}
+
 /**
  * Creates today's note idempotently and opens it in the editor.
  *

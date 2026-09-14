@@ -33,6 +33,11 @@
   note links to, leaving out daily notes, which are found by their date. Select
   one to open it.
 
+- **Previous and next daily notes**: `Deckard: Open Previous Daily Note` and
+  `Deckard: Open Next Daily Note` step to the nearest daily note before or
+  after the one in the editor, skipping days without a note, or from today
+  when the editor is on another note.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

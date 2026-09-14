@@ -119,6 +119,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
         <li><code>Deckard: Open Help</code> opens this guide.</li>
         <li><code>Deckard: Reindex Workspace</code> performs a full scan of the workspace Markdown scope.</li>
         <li><code>Deckard: Create Daily Note</code> creates or opens today&apos;s note.</li>
+        <li><code>Deckard: Open Previous Daily Note</code> and <code>Deckard: Open Next Daily Note</code> step to the nearest daily note before or after the one in the editor, or today.</li>
         <li><code>Deckard: Capture</code> adds a task to today&apos;s note without leaving your editor; typing <code>#</code> or <code>@</code> suggests tags. <code>Deckard: Capture Under a Heading</code> adds it under a heading you choose.</li>
         <li><code>Deckard: New Note from Template</code> creates a note from a Markdown file in the templates folder, filling in <code>{title}</code>, <code>{date}</code>, <code>{time}</code>, and an answer for each <code>{ask:Question}</code>. A template named after a namespace, such as <code>person.md</code>, starts new hub notes for that namespace.</li>
         <li><code>Deckard: Extract Tagged Heading</code> moves a tagged heading section into a new note and leaves a <code>[[link]]</code> to it.</li>
