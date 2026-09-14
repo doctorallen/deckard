@@ -27,6 +27,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and open the note they name. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
+| [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
 | [Workspace search](#commands) | Full-text search across saved notes, entities, and tasks from the Command Palette. |
 | [Stats](#stats) | Index totals and your most-viewed tags, entities, and notes. |
@@ -80,6 +81,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
+| **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
+| **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
 | **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
@@ -448,6 +451,12 @@ The note name is used as a single Markdown filename. Existing notes are never ov
 ## Daily notes
 
 Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut in Related Notes. Deckard creates a note named with the local date, such as `2026-08-30.md`, in your configured notes folder or workspace root and opens it. If today's note already exists, Deckard opens it without replacing its contents.
+
+## Quick capture
+
+Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
+
+A capture goes after the last list item already there, or after a blank line below the last text. A note open in an editor keeps its unsaved changes, and the note is saved.
 
 ## Settings
 

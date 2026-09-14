@@ -63,6 +63,14 @@
         "title": "Deckard: Create Daily Note"
       },
       {
+        "command": "deckard.capture",
+        "title": "Deckard: Capture"
+      },
+      {
+        "command": "deckard.captureUnderHeading",
+        "title": "Deckard: Capture Under a Heading"
+      },
+      {
         "command": "deckard.extractHeading",
         "title": "Deckard: Extract Tagged Heading"
       },

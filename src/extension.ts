@@ -4,6 +4,7 @@ import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
+import { capture } from './ui/commands/capture';
 import { createDailyNote } from './ui/commands/dailyNote';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -309,6 +310,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
       createDailyNote(),
+    ),
+    vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
+    vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
+      capture(indexer, 'heading'),
     ),
   );
   context.subscriptions.push(

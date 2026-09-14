@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **Quick capture**: `Deckard: Capture` adds a task to today's daily note
+  without leaving the current editor. Typing `#` or `@` suggests tags, most
+  used first. `Deckard: Capture Under a Heading`, or the list button in the
+  capture box, adds it under a heading you pick in any note instead. A note
+  open in an editor keeps its unsaved changes.
+
 ### Changed
 
 - A note's created and updated dates, used by the `created` and `updated`

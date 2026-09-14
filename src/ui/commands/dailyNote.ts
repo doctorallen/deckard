@@ -14,6 +14,19 @@ export async function createDailyNote(
     return undefined;
   }
 
+  const noteUri = await ensureDailyNote(targetFolder);
+  const document = await vscode.workspace.openTextDocument(noteUri);
+  await vscode.window.showTextDocument(document, { preview: false });
+  return noteUri;
+}
+
+/**
+ * Creates today's note from the template when it does not exist yet, without
+ * opening it, and returns where it is.
+ */
+export async function ensureDailyNote(
+  targetFolder: vscode.WorkspaceFolder,
+): Promise<vscode.Uri> {
   const configuration = vscode.workspace.getConfiguration(
     'deckard',
     targetFolder.uri,
@@ -43,16 +56,13 @@ export async function createDailyNote(
     const content = template.replaceAll('{date}', date);
     await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
   }
-
-  const document = await vscode.workspace.openTextDocument(noteUri);
-  await vscode.window.showTextDocument(document, { preview: false });
   return noteUri;
 }
 
 /**
  * Chooses a root only when multi-root ambiguity makes implicit selection unsafe.
  */
-async function chooseWorkspaceFolder(): Promise<
+export async function chooseWorkspaceFolder(): Promise<
   vscode.WorkspaceFolder | undefined
 > {
   const folders = vscode.workspace.workspaceFolders ?? [];
