@@ -274,12 +274,16 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const templatesFolderChanged = event.affectsConfiguration(
           'deckard.templatesFolder',
         );
+        const excludeChanged =
+          event.affectsConfiguration('deckard.exclude') ||
+          event.affectsConfiguration('files.exclude');
         if (
           notesFolderChanged ||
           inlineTagsChanged ||
           entityNamespaceAliasesChanged ||
           personMarkerChanged ||
-          templatesFolderChanged
+          templatesFolderChanged ||
+          excludeChanged
         ) {
           if (notesFolderChanged) {
             this.replaceWatchers();

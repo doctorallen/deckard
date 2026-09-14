@@ -27,7 +27,10 @@ export function getTagOverviewHtml(
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <title>Deckard Tag Overview</title>
 <style nonce="${nonce}">${getBaseCss()}
-header > .toolbar { padding-right: 36px; }
+/* The gear sits in the header's top-right corner with the sort control below
+   it, their right edges in line. The margin keeps a short header from
+   drawing the sort control over the gear. */
+header > .toolbar { margin-top: calc(var(--control-height) + 6px); }
 header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-title-filter { color: var(--text); }
 .overview-title-joiner { color: var(--amber); font-size: .72em; font-weight: 400; }
@@ -200,7 +203,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 @media (max-width: 900px) { .relationship-tree-columns { grid-template-columns: 1fr; } }
-@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; padding-right: 0; } .overview-split { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
 /* The amber rule above the page, and the containing block the gear is

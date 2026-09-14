@@ -230,7 +230,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 - **Tasks as a board**: open **View options** and set **Tasks** to **Board** to show the Tasks tab as the same Kanban board the [Task board](#task-board) uses, grouped by status, priority, or due date. The tab's **All**, **Open**, and **Done** filter, tag picker, and search still choose which tasks appear, and Deckard remembers the layout and grouping.
 - **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
 - **Notes** lists indexed note entries with a searchable multi-tag picker, text search, and **Sort: A-Z/Newest created/Recently updated/Most accessed**, matching the Notes tab in a tag overview. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. A note appears when it matches any selected tag; select a note entry to jump to its source line.
-- **Tags** shows namespaced and unnamespaced tags together. Search tags, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
+- **Tags** shows namespaced and unnamespaced tags together. Search tags, narrow them to one namespace, or to tags without one, with **Namespace**, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.
@@ -518,6 +518,9 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.dashboard.openOnStartup": false,
 	"deckard.tagOverview.hubNoteExpanded": true,
 	"deckard.notesFolder": "notes",
+	"deckard.exclude": {
+		"**/archive": true
+	},
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
 	"deckard.weeklyNoteTemplate": "# {week}\n\n",
 	"deckard.monthlyNoteTemplate": "# {month}\n\n",
@@ -555,6 +558,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | Setting | Default | Description |
 | --- | --- | --- |
 | `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
+| `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` hides. |
 | `deckard.theme` | `replicant` | Selects the Replicant, Oblivion, or LCARS visual style for Deckard webviews. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |

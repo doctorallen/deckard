@@ -381,6 +381,16 @@
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
             "order": 6
+          },
+          "deckard.exclude": {
+            "type": "object",
+            "scope": "resource",
+            "default": {},
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` hides.",
+            "order": 7
           }
         }
       },
@@ -636,6 +646,7 @@
   },
   "dependencies": {
     "markdown-it": "^14.1.0",
+    "picomatch": "^4.0.7",
     "sanitize-html": "^2.17.0"
   },
   "scripts": {
@@ -663,6 +674,7 @@
     "@types/markdown-it": "^14.2.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
+    "@types/picomatch": "^4.0.3",
     "@types/sanitize-html": "^2.16.1",
     "@types/vscode": "^1.134.0",
     "@vscode/test-cli": "^0.0.15",

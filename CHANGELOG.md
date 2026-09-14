@@ -4,6 +4,18 @@
 
 ### Added
 
+- **Leave files out of the index**: `deckard.exclude` takes glob patterns
+  written like VS Code's `files.exclude`, such as `{ "**/archive": true }`,
+  and Deckard does not index the files and folders they match. Deckard also
+  leaves out what `files.exclude` hides when a note there is saved or
+  created, not only when the workspace is reindexed. Changing either setting
+  reindexes the workspace.
+
+- **Filter tags by namespace**: the Dashboard's Tags tab has a **Namespace**
+  filter again, listing each namespace in use and **None** for tags without
+  one. It works together with tag search and is kept while the Dashboard is
+  open.
+
 - **Quick capture**: `Deckard: Capture` adds a task to today's daily note
   without leaving the current editor. Typing `#` or `@` suggests tags, most
   used first. `Deckard: Capture Under a Heading`, or the list button in the

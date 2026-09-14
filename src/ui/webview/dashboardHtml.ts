@@ -238,7 +238,11 @@ ${getComponentScript()}
     ? restoredViewState.noteColumns
     : undefined;
   let browseQuery = '';
-  let entityKindFilter = 'all';
+  // A namespace never contains "/", so this value cannot clash with one.
+  const noTagNamespace = '/';
+  let tagNamespaceFilter = restoredViewState && typeof restoredViewState.tagNamespaceFilter === 'string'
+    ? restoredViewState.tagNamespaceFilter
+    : '';
   let rankContextMenu;
   let rankContextKind;
   let rankContextKey;
@@ -255,16 +259,21 @@ ${getComponentScript()}
     return String(value).replace(/[-_]+/g, ' ').replace(/\\b[a-z]/g, function (character) { return character.toUpperCase(); });
   }
 
+  /** The namespace of a #namespace/name tag, as written in its key. */
+  function getTagNamespace(tag) {
+    const key = String(tag.key || '');
+    const keyValue = key.replace(/^[@#]/, '');
+    const separator = keyValue.indexOf('/');
+    return key.startsWith('#') && separator > 0 && keyValue.slice(0, separator).toLowerCase() !== 'tag-at'
+      ? keyValue.slice(0, separator)
+      : '';
+  }
+
   function formatTagDisplay(tag) {
     const label = String(tag.label || tag.key || '');
     const labelValue = label.replace(/^[@#]/, '');
     const name = labelValue.slice(labelValue.lastIndexOf('/') + 1).replace(/[-_]+/g, ' ');
-    const key = String(tag.key || '');
-    const keyValue = key.replace(/^[@#]/, '');
-    const separator = keyValue.indexOf('/');
-    const namespace = key.startsWith('#') && separator > 0 && keyValue.slice(0, separator).toLowerCase() !== 'tag-at'
-      ? keyValue.slice(0, separator).replace(/[-_]+/g, ' ')
-      : '';
+    const namespace = getTagNamespace(tag).replace(/[-_]+/g, ' ');
     return { name: name || label, namespace: namespace };
   }
 
@@ -282,6 +291,7 @@ ${getComponentScript()}
       taskSearchQuery: taskSearchQuery,
       noteSearchQuery: noteSearchQuery,
       browseQuery: browseQuery,
+      tagNamespaceFilter: tagNamespaceFilter,
       taskTagQuery: taskTagQuery,
       noteTagQuery: noteTagQuery,
       selectedTaskTags: state ? state.selectedTaskTags : [],
@@ -802,8 +812,17 @@ ${getComponentScript()}
     if (currentNoteTagFilter) noteTagFilterOpen = currentNoteTagFilter.open;
     const noteTagOptionsScrollTop = currentNoteTagOptions ? currentNoteTagOptions.scrollTop : 0;
     const normalizedBrowseQuery = browseQuery.trim().toLowerCase();
+    const tagNamespaces = Array.from(new Set(state.tags.map(getTagNamespace).filter(Boolean)))
+      .sort(function (left, right) { return left.localeCompare(right); });
+    const hasTagsWithoutNamespace = state.tags.some(function (tag) { return !getTagNamespace(tag); });
+    // A namespace no tag uses any more, after a rename, shows every tag.
+    const activeTagNamespace = tagNamespaces.indexOf(tagNamespaceFilter) >= 0 || (tagNamespaceFilter === noTagNamespace && hasTagsWithoutNamespace)
+      ? tagNamespaceFilter
+      : '';
     const filteredTags = state.tags.filter(function (tag) {
-      return !normalizedBrowseQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedBrowseQuery) >= 0;
+      const namespace = getTagNamespace(tag);
+      return (!activeTagNamespace || namespace === (activeTagNamespace === noTagNamespace ? '' : activeTagNamespace)) &&
+        (!normalizedBrowseQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedBrowseQuery) >= 0);
     });
     const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
     const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
@@ -962,6 +981,14 @@ ${getComponentScript()}
     const noteSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-note-sort" aria-label="Sort notes"><option value="alphabetical" ' + (state.noteSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.noteSortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.noteSortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.noteSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>' + sortIcon + '</span></label>';
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const tagSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></label>';
+    const tagNamespaceOptions = [{ value: '', label: 'All' }]
+      .concat(tagNamespaces.map(function (namespace) { return { value: namespace, label: formatEntityKindLabel(namespace) }; }))
+      .concat(hasTagsWithoutNamespace ? [{ value: noTagNamespace, label: 'None' }] : []);
+    const tagNamespaceControl = tagNamespaces.length
+      ? '<label class="control-label">Namespace:<span class="control-icon"><select data-action="set-tag-namespace" aria-label="Filter tags by namespace">' + tagNamespaceOptions.map(function (option) {
+          return '<option value="' + escapeHtml(option.value) + '" ' + (activeTagNamespace === option.value ? 'selected' : '') + '>' + escapeHtml(option.label) + '</option>';
+        }).join('') + '</select>' + filterIcon + '</span></label>'
+      : '';
     const columnControls = function (section, selectedColumns) {
       const label = section === 'tasks' ? 'Task' : section === 'notes' ? 'Note' : 'Tag';
       return '<div class="dashboard-column-options" role="group" aria-label="' + label + ' columns">' + [1, 2, 3, 4].map(function (columns) {
@@ -985,7 +1012,7 @@ ${getComponentScript()}
       '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Notes</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags</button></div></div>' +
       '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + (taskLayout === 'board' ? renderTaskBoardGroupSwitch(state.taskBoard.groupBy) : '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label>') + '<div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + taskContent + '</section>' +
       '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="task-toolbar"><div class="toolbar-controls">' + noteSearch + noteSortControl + '<div class="task-tag-filter-control">' + noteTagFilter + '</div></div></div>' + selectedNoteTagControls + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div></section>' +
-      '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search" data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagSortControl + '</div></div></div>' + tagContent + '</section>';
+      '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search" data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
     if (nextTagFilter) {
@@ -1181,6 +1208,13 @@ ${getComponentScript()}
   document.addEventListener('change', function (event) {
     const target = event.target;
     if (target.dataset.action === 'set-sort') send({ type: 'setTagSort', mode: target.value });
+    if (target.dataset.action === 'set-tag-namespace') {
+      tagNamespaceFilter = target.value;
+      saveDashboardViewState();
+      render();
+      const namespaceSelect = document.querySelector('select[data-action="set-tag-namespace"]');
+      if (namespaceSelect) namespaceSelect.focus();
+    }
     if (target.dataset.action === 'set-task-sort') send({ type: 'setTaskSort', mode: target.value });
     if (target.dataset.action === 'set-note-sort') send({ type: 'setNoteSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });

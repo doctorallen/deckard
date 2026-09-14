@@ -1,4 +1,5 @@
 import * as path from 'path';
+import picomatch = require('picomatch');
 
 import * as vscode from 'vscode';
 
@@ -52,10 +53,12 @@ export class WorkspaceScanner {
       const pattern = this.createPattern(workspaceFolder);
       const uris = await this.access.findFiles(pattern);
       const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
+      const isExcluded = this.getExcludeMatcher(workspaceFolder);
 
       uris
         .filter((uri) => isMarkdownFile(uri))
         .filter((uri) => !templatesUri || !isWithinWorkspace(uri, templatesUri))
+        .filter((uri) => !isExcluded(getRelativePath(uri, workspaceFolder)))
         .forEach((uri) => entries.push({ uri, workspaceFolder }));
     }
 
@@ -216,7 +219,8 @@ export class WorkspaceScanner {
   }
 
   /**
-   * Checks both the Markdown extension and configured-folder containment.
+   * Checks the Markdown extension, configured-folder containment, and
+   * `deckard.exclude`, so watchers and editors agree with the full scan.
    */
   public isNotesFile(uri: vscode.Uri): boolean {
     if (!isMarkdownFile(uri)) {
@@ -230,7 +234,10 @@ export class WorkspaceScanner {
     const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
     return (
       isWithinWorkspace(uri, this.getNotesFolderUri(workspaceFolder)) &&
-      !(templatesUri && isWithinWorkspace(uri, templatesUri))
+      !(templatesUri && isWithinWorkspace(uri, templatesUri)) &&
+      !this.getExcludeMatcher(workspaceFolder)(
+        getRelativePath(uri, workspaceFolder),
+      )
     );
   }
 
@@ -275,6 +282,25 @@ export class WorkspaceScanner {
     } catch {
       return undefined;
     }
+  }
+
+  /**
+   * Compiles the root's `deckard.exclude` and `files.exclude` patterns, so a
+   * note saved in a hidden folder stays out just as it does in the full scan.
+   *
+   * A `files.exclude` pattern with a `when` clause is left to `findFiles`,
+   * which applies it during the full scan, because checking for its sibling
+   * file would need a filesystem read on every call.
+   */
+  private getExcludeMatcher(
+    workspaceFolder: vscode.WorkspaceFolder,
+  ): ExcludeMatcher {
+    return createExcludeMatcher(
+      this.getConfiguration(workspaceFolder).get<unknown>('exclude', {}),
+      vscode.workspace
+        .getConfiguration('files', workspaceFolder.uri)
+        .get<unknown>('exclude', {}),
+    );
   }
 
   /**
@@ -349,6 +375,41 @@ function isWithinWorkspace(uri: vscode.Uri, workspaceUri: vscode.Uri): boolean {
   const uriPath = uri.path.replace(/\/+$/, '');
   const workspacePath = workspaceUri.path.replace(/\/+$/, '');
   return uriPath === workspacePath || uriPath.startsWith(`${workspacePath}/`);
+}
+
+/**
+ * Tells whether a workspace-relative path, with `/` separators, is excluded.
+ */
+export type ExcludeMatcher = (relativePath: string) => boolean;
+
+/**
+ * Reads exclude settings the way VS Code reads `files.exclude`: each key is a
+ * glob relative to the workspace folder, only keys set to `true` apply, and a
+ * pattern that matches a folder also leaves out everything inside it.
+ *
+ * Patterns from every setting apply together, so `false` in one setting never
+ * brings back what another leaves out.
+ */
+export function createExcludeMatcher(...settings: unknown[]): ExcludeMatcher {
+  const patterns = settings.flatMap((value) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.entries(value)
+          .filter(([pattern, enabled]) => enabled === true && pattern.trim() !== '')
+          .map(([pattern]) => pattern.trim())
+      : [],
+  );
+  if (patterns.length === 0) {
+    return () => false;
+  }
+
+  // VS Code's `*` also matches names that start with a dot.
+  const isMatch = picomatch(patterns, { dot: true });
+  return (relativePath) => {
+    const segments = relativePath.split('/');
+    return segments.some((_, index) =>
+      isMatch(segments.slice(0, index + 1).join('/')),
+    );
+  };
 }
 
 /**

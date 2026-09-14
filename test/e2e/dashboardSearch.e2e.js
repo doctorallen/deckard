@@ -144,6 +144,40 @@ test('only the Notes tab is sent notes, without HTML in the Markdown view', asyn
   assert.strictEqual(view.findAll('.note-row').length, 1, 'the card is drawn');
 });
 
+test('the namespace filter narrows the Tags tab and keeps its choice', async () => {
+  const note = parseMarkdown(
+    'notes/alpha.md',
+    '# Alpha #project/atlas #project/relay #topic/leadership #follow-up\nBody text.',
+    { createdAt: 1, updatedAt: 2 },
+    {},
+  );
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view, panel, lastState } = await openDashboard('list', index);
+  view.click(view.find('[data-dashboard-mode="browse"]'));
+  await delay(20);
+  const namespace = () => view.find('[data-action="set-tag-namespace"]');
+  const shownTags = () =>
+    Array.from(view.findAll('.tag-row')).map((row) => row.dataset.tagKey).sort();
+
+  assert.deepStrictEqual(
+    namespace().children.map((option) => option.getAttribute('value')),
+    ['', 'project', 'topic', '/'],
+    'each namespace in use, then None',
+  );
+  assert.strictEqual(shownTags().length, 4);
+
+  view.change(namespace(), 'project');
+  assert.deepStrictEqual(shownTags(), ['#project/atlas', '#project/relay']);
+  assert.strictEqual(view.document.activeElement, namespace(), 'the filter keeps focus');
+  assert.strictEqual(view.state.tagNamespaceFilter, 'project', 'the page keeps the choice');
+
+  panel._deliver(lastState());
+  assert.deepStrictEqual(shownTags(), ['#project/atlas', '#project/relay'], 'a host update keeps it');
+
+  view.change(namespace(), '/');
+  assert.deepStrictEqual(shownTags(), ['#follow-up'], 'None shows tags without a namespace');
+});
+
 test('typing a tag search keeps focus and text through a host update', async () => {
   const { view, panel, lastState, stored } = await openDashboard();
   view.click(view.find('[data-dashboard-mode="browse"]'));

@@ -644,6 +644,11 @@ suite('Webview contracts', () => {
       html.includes("display.namespace ? '<span class=\"entity-kind\">'"),
       true,
     );
+    assert.strictEqual(
+      html.includes('data-action="set-tag-namespace" aria-label="Filter tags by namespace"'),
+      true,
+    );
+    assert.strictEqual(html.includes('tagNamespaceFilter: tagNamespaceFilter'), true);
     assert.strictEqual(html.includes('data-browse-scope='), false);
     assert.strictEqual(
       html.includes('data-tag-group="favorites"><h3>Favorites <span class="tag-count">('),
@@ -1322,9 +1327,17 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    // The sort control ends in line with the gear above it, not short of it.
     assert.strictEqual(
       html.includes(
-        'header > .toolbar { width: 100%; padding-right: 0; }',
+        'header > .toolbar { margin-top: calc(var(--control-height) + 6px); }',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes('padding-right: 36px'), false);
+    assert.strictEqual(
+      html.includes(
+        'header > .toolbar { width: 100%; margin-top: 0; }',
       ),
       true,
     );
@@ -1731,6 +1744,7 @@ suite('Webview contracts', () => {
 
     for (const setting of [
       'deckard.notesFolder',
+      'deckard.exclude',
       'deckard.dailyNoteTemplate',
       'deckard.parseInlineTags',
       'deckard.highlightNoteSections',
