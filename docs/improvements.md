@@ -168,7 +168,7 @@ Code, would need a separate local MCP server.
 1. ~~Obsidian-compatible task metadata.~~ Shipped with the Agenda, which
    unblocks the calendar and board views.
 2. ~~Queries inside notes.~~ Shipped as query blocks.
-3. Quick capture and templates.
+3. ~~Quick capture and templates.~~ Shipped as `Deckard: Capture` and note templates.
 4. Link health and aliases.
 5. ~~Reference counts, previews, and backlinks.~~ Shipped.
 6. Periodic notes and calendar. ~~Tag hub pages~~ shipped, with tag merging.

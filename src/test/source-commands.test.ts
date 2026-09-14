@@ -14,7 +14,11 @@ import {
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createHubNoteContent, getHubNoteName } from '../ui/commands/hubNote';
+import {
+  applyHubTemplate,
+  createHubNoteContent,
+  getHubNoteName,
+} from '../ui/commands/hubNote';
 import {
   parseRenameTag,
   replaceIndexedTag,
@@ -292,6 +296,42 @@ suite('Source commands', () => {
         [tag],
       );
     }
+  });
+
+  test("starts a hub note from its namespace's template", () => {
+    const project = { key: '#project/atlas', label: '#project/atlas' };
+    const now = new Date(2026, 8, 3, 9, 5);
+    const template =
+      '---\ntags: [meeting]\nowner: {ask:Owner}\n---\n# {title}\nNotes on {tag} from {date}.\n';
+
+    const content = applyHubTemplate(template, project, 'Atlas', now, new Map([['Owner', 'Mara']]));
+    assert.strictEqual(
+      content,
+      '---\ndescribes: project/atlas\ntags: [meeting]\nowner: Mara\n---\n# Atlas\nNotes on #project/atlas from 2026-09-03.\n',
+    );
+    assert.deepStrictEqual(parseMarkdown('notes/atlas.md', content).hub?.describes, [project]);
+
+    assert.strictEqual(
+      applyHubTemplate('# {title}\n', project, 'Atlas', now),
+      '---\ndescribes: project/atlas\n---\n# Atlas\n',
+      'front matter is added when the template has none',
+    );
+    assert.strictEqual(
+      applyHubTemplate('---\n---\n# {title}\n', project, 'Atlas', now),
+      '---\ndescribes: project/atlas\n---\n# Atlas\n',
+      'empty front matter gains describes',
+    );
+    const ownDescribes = '---\ndescribes: project/atlas-program\n---\n# {title}\n';
+    assert.strictEqual(
+      applyHubTemplate(ownDescribes, project, 'Atlas', now),
+      '---\ndescribes: project/atlas-program\n---\n# Atlas\n',
+      "the template's own describes is kept",
+    );
+
+    const person = { key: '@dana', label: '@dana' };
+    const personNote = applyHubTemplate('# {title}\nRole: \n', person, 'Dana', now);
+    assert.ok(personNote.startsWith('---\ndescribes: "@dana"\n---\n'));
+    assert.deepStrictEqual(parseMarkdown('notes/dana.md', personNote).hub?.describes, [person]);
   });
 
   test('opens a source document at the requested one-based line', async () => {

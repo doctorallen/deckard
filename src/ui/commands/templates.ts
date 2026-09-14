@@ -50,6 +50,24 @@ export function getTemplateVariables(
   return { title, date: formatLocalDate(now), time: `${hours}:${minutes}` };
 }
 
+/**
+ * Asks each question a template holds, once. Undefined when one is dismissed.
+ */
+export async function askTemplateQuestions(
+  template: string,
+  title: string,
+): Promise<Map<string, string> | undefined> {
+  const answers = new Map<string, string>();
+  for (const question of findTemplatePrompts(template)) {
+    const answer = await vscode.window.showInputBox({ title, prompt: question });
+    if (answer === undefined) {
+      return undefined;
+    }
+    answers.set(question, answer);
+  }
+  return answers;
+}
+
 /** The Markdown files in a templates folder, by path. */
 export async function listTemplates(
   templatesUri: vscode.Uri,
@@ -116,13 +134,9 @@ export async function newNoteFromTemplate(
   const template = Buffer.from(
     await vscode.workspace.fs.readFile(picked.uri),
   ).toString('utf8');
-  const answers = new Map<string, string>();
-  for (const question of findTemplatePrompts(template)) {
-    const answer = await vscode.window.showInputBox({ title, prompt: question });
-    if (answer === undefined) {
-      return undefined;
-    }
-    answers.set(question, answer);
+  const answers = await askTemplateQuestions(template, title);
+  if (!answers) {
+    return undefined;
   }
 
   const notesUri = indexer.getNotesFolderUri(folder);

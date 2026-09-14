@@ -14,7 +14,10 @@
   Markdown file in the templates folder (`deckard.templatesFolder`,
   `templates` by default), filling in `{title}`, `{date}`, `{time}`, and an
   answer for each `{ask:Question}`. Deckard does not index the templates
-  folder, so a template's tags and tasks stay out of your notes.
+  folder, so a template's tags and tasks stay out of your notes. A template
+  named after a tag namespace, such as `person.md`, starts new hub notes for
+  that namespace, with `{tag}` filled in and the `describes:` front matter
+  added.
 
 ### Changed
 
