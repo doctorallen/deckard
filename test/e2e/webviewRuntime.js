@@ -55,6 +55,13 @@ class Element {
     return this.attributes[name] ?? null;
   }
 
+  removeAttribute(name) {
+    delete this.attributes[name];
+    if (name.startsWith('data-')) {
+      delete this.dataset[toCamel(name.slice(5))];
+    }
+  }
+
   setSelectionRange(start) {
     this.selectionStart = start;
   }

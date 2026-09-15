@@ -33,6 +33,7 @@ export const QUERY_SYNTAX_GUIDE = [
   'done = 7d matches tasks completed in the last seven days.',
   'priority takes highest, high, medium, none, low, or lowest, as in priority >= high.',
   'kind = project matches an entity namespace; file and path accept * and ? wildcards; created and updated take dates or windows such as 30d.',
+  'Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:task, is:note; has:due and no:due (also scheduled, start, done, priority); in:folder matches a folder and everything in it. Put - before one to negate it.',
   'Operators are = != ~ !~ > >= < <=.',
 ].join(' ');
 

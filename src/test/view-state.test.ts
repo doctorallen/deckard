@@ -52,12 +52,10 @@ const defaultPreferences: PersistedPreferences = {
     mode: 'tasks',
     taskFilter: 'active',
     selectedTaskTags: [],
-    selectedNoteTags: [],
     taskSearchQuery: '',
     noteSearchQuery: '',
     tagSearchQuery: '',
     taskTagQuery: '',
-    noteTagQuery: '',
   },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
@@ -264,7 +262,6 @@ suite('Dashboard state', () => {
       'active',
       [],
       undefined,
-      [],
       'inline',
       false,
     );
@@ -298,7 +295,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
-  test('filters and sorts dashboard notes with their own tag state', () => {
+  test('sorts dashboard notes with their own sort mode', () => {
     const first = parseMarkdown(
       'notes/first.md',
       '# First note #work\n\nFirst body',
@@ -316,14 +313,7 @@ suite('Dashboard state', () => {
       dashboardNoteSortMode: 'updated' as const,
       sectionAccessCounts: { [first.sections[0].id]: 2 },
     };
-    const snapshot = createDashboardSnapshot(
-      index,
-      preferences,
-      'active',
-      [],
-      undefined,
-      ['#work'],
-    );
+    const snapshot = createDashboardSnapshot(index, preferences, 'active');
 
     assert.strictEqual(snapshot.totalNoteCount, 2);
     assert.strictEqual(snapshot.noteColumns, 3);
@@ -331,10 +321,8 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.tagTitleDisplayMode, 'inline');
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.heading),
-      ['First note #work'],
+      ['Second note #home', 'First note #work'],
     );
-    assert.deepStrictEqual(snapshot.selectedNoteTags, ['#work']);
-    assert.strictEqual(snapshot.availableNoteTags.length, 2);
     assert.deepStrictEqual(
       sortDashboardNotes(
         [
@@ -364,7 +352,6 @@ suite('Dashboard state', () => {
       'active',
       [],
       undefined,
-      [],
       'separate',
     );
     assert.strictEqual(separateTitleSnapshot.renderMode, 'html');

@@ -33,7 +33,7 @@ import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
 import { EditorReferences } from './ui/commands/editorReferences';
 import { AssistantTools } from './ui/commands/assistantTools';
-import { searchWorkspace } from './ui/commands/workspaceSearch';
+import { QuickFind } from './ui/commands/quickFind';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
 import { NotesGraphPanel } from './ui/webview/notesGraph';
@@ -116,10 +116,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     async (tagKey, filterTagKeys = []) => {
       await tagPanels.show(tagKey, undefined, filterTagKeys);
     },
-    async (queryText) => {
-      await tagPanels.showQuery(queryText);
-    },
   );
+  const quickFind = new QuickFind(indexer, preferences, {
+    openTag: (tagKey) => tagPanels.show(tagKey),
+    openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
+    showSearch: (query) => dashboard.showSearch(query),
+  });
   const sidebarNotes = new SidebarNotesView(
     indexer,
     preferences,
@@ -180,6 +182,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     editorReferences,
     linkHealth,
     calendar,
+    quickFind,
   };
 
   context.subscriptions.push(
@@ -206,6 +209,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     calendar,
     assistantTools,
     mcpServer,
+    quickFind,
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -386,13 +390,18 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       'deckard.showTagOverview',
       (tagKey?: unknown) => showTagOverview(tagPanels, indexer, tagKey),
     ),
-    vscode.commands.registerCommand('deckard.searchWorkspace', () =>
-      searchWorkspace(indexer),
+    vscode.commands.registerCommand(
+      'deckard.searchWorkspace',
+      (initialQuery?: unknown) =>
+        quickFind.show(getCommandTagArgument(initialQuery) ?? ''),
+    ),
+    vscode.commands.registerCommand('deckard.quickFind.complete', () =>
+      quickFind.complete(),
     ),
     vscode.commands.registerCommand(
       'deckard.searchNotes',
       (requestedQuery?: unknown) =>
-        showQueryOverview(tagPanels, indexer, requestedQuery),
+        showQuerySearch(dashboard, indexer, requestedQuery),
     ),
     vscode.commands.registerCommand('deckard.linkCurrentHeading', () =>
       linkCurrentHeading(indexer),
@@ -504,6 +513,7 @@ export function deactivate(): void {
   activeServices?.editorReferences.dispose();
   activeServices?.linkHealth.dispose();
   activeServices?.calendar.dispose();
+  activeServices?.quickFind.dispose();
   activeServices = undefined;
 }
 
@@ -532,6 +542,7 @@ interface ExtensionServices {
   editorReferences: EditorReferences;
   linkHealth: LinkHealth;
   calendar: CalendarView;
+  quickFind: QuickFind;
 }
 
 function getCommandTagArgument(value: unknown): string | undefined {
@@ -554,13 +565,13 @@ function asOutlineNode(value: unknown): OutlineNode | undefined {
 }
 
 /**
- * Opens the overview on an advanced query.
+ * Opens the Dashboard's Search tab on a query.
  *
  * The command accepts a query argument so a link or another command can open a
  * saved search directly, and prompts for one otherwise.
  */
-async function showQueryOverview(
-  tagPanels: TagOverviewPanels,
+async function showQuerySearch(
+  dashboard: DashboardPanel,
   indexer: WorkspaceIndexer,
   requestedQuery: unknown,
 ): Promise<void> {
@@ -575,7 +586,7 @@ async function showQueryOverview(
     }));
 
   if (query?.trim()) {
-    await tagPanels.showQuery(query);
+    await dashboard.showSearch(query);
   }
 }
 

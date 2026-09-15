@@ -59,6 +59,22 @@ const viewConfiguration = {
     renderedAssertion:
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Related Notes' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app .sidebar-header'))",
   },
+  find: {
+    scene: `await run('deckard.searchWorkspace', 'meridian');`,
+    keepLayout: true,
+    target: 'workbench',
+    output: 'docs/images/find.png',
+    title: 'Find',
+    renderedAssertion:
+      "Boolean(document.querySelector('.quick-input-widget')) && document.querySelector('.quick-input-widget').style.display !== 'none' && document.querySelectorAll('.quick-input-list .monaco-list-row').length > 3",
+  },
+  'notes-search': {
+    scene: `await run('deckard.searchNotes', '#project/meridian-vault is:open');`,
+    output: 'docs/images/notes-search.png',
+    title: 'Notes search',
+    renderedAssertion:
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Dashboard' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#notes-panel:not([hidden]) .query-workspace'))",
+  },
   'tag-overview': {
     scene: `await run('deckard.showTagOverview', '#project/ghostline-relay');`,
     output: 'docs/images/tag-overview.png',

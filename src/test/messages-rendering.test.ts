@@ -244,9 +244,10 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'setTaskTags', tagKeys: ['work'] }),
       { type: 'setTaskTags', tagKeys: ['work'] },
     );
-    assert.deepStrictEqual(
+    // The Search tab narrows notes with its search, not a tag picker.
+    assert.strictEqual(
       parseDashboardMessage({ type: 'setNoteTags', tagKeys: ['work'] }),
-      { type: 'setNoteTags', tagKeys: ['work'] },
+      undefined,
     );
     assert.deepStrictEqual(
       parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
@@ -599,8 +600,18 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-tasks"'), true);
     assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
     assert.strictEqual(html.includes('class="task-search" type="search"'), true);
-    assert.strictEqual(html.includes('class="note-search" type="search"'), true);
+    // The Search tab's search is the shared search box, not a plain field.
+    assert.strictEqual(html.includes('class="note-search" type="search"'), false);
+    assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
     assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
+    // A search kept from an earlier visit says so above the list it narrows,
+    // outlines its box, and marks its tab.
+    assert.strictEqual(html.includes('function renderSearchNotice(shown, total, noun, query, action)'), true);
+    assert.strictEqual(html.includes("'clear-task-search'"), true);
+    assert.strictEqual(html.includes("'clear-tag-search'"), true);
+    assert.strictEqual(html.includes('input.task-search[data-has-query], input.catalog-search[data-has-query]'), true);
+    assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), true);
+    assert.strictEqual(html.includes('renderTabSearchMark(browseQuery)'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
     assert.strictEqual(
@@ -644,6 +655,11 @@ suite('Webview contracts', () => {
       html.includes("display.namespace ? '<span class=\"entity-kind\">'"),
       true,
     );
+    assert.strictEqual(
+      html.includes('data-action="set-tag-namespace" aria-label="Filter tags by namespace"'),
+      true,
+    );
+    assert.strictEqual(html.includes('tagNamespaceFilter: tagNamespaceFilter'), true);
     assert.strictEqual(html.includes('data-browse-scope='), false);
     assert.strictEqual(
       html.includes('data-tag-group="favorites"><h3>Favorites <span class="tag-count">('),
@@ -696,9 +712,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-browse"'), true);
     assert.strictEqual(html.includes('aria-label="Tag scope"'), false);
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
-    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(html.includes('Saved searches'), true);
     assert.strictEqual(
-      html.indexOf('Saved tag views') <
+      html.indexOf('Saved searches') <
         html.indexOf('role="tablist" aria-label="Dashboard mode"'),
       true,
     );
@@ -711,19 +727,44 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
     assert.strictEqual(html.includes('id="notes-panel"'), true);
     assert.strictEqual(html.includes('data-action="set-note-sort"'), true);
-    assert.strictEqual(html.includes('data-action="set-note-tag"'), true);
-    assert.strictEqual(html.includes('data-action="filter-note-tags"'), true);
-    assert.strictEqual(html.includes('data-action="search-notes"'), true);
+    assert.strictEqual(html.includes('data-action="set-note-tag"'), false);
+    assert.strictEqual(html.includes('data-action="filter-note-tags"'), false);
+    // Save sits in the search bar, beside the search it saves, and like
+    // Clear it is always there, disabled until there is text, so the bar
+    // never shifts under the pointer.
+    assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), true);
+    assert.strictEqual(html.includes("(hasText ? '' : ' disabled') + '>Save</button>'"), true);
+    assert.strictEqual(html.includes('data-action="clear-query" data-query-needs-text'), true);
+    // The Search tab's sort shares the line under the search box, so it takes no row of its own.
+    assert.strictEqual(html.includes('noteEditor.renderBar(noteSortControl)'), true);
+    assert.strictEqual(html.includes('dashboard-tabs-controls'), false);
+    assert.strictEqual(html.includes("+ status + (statusControls || '') + '</div>'"), true);
+    // The result count sits in the Refine box's corner, not under the search box.
+    assert.strictEqual(html.includes('<span class="query-facets-count" role="status">'), true);
+    assert.strictEqual(html.includes("+ '</div>' + count + '</section>'"), true);
+    assert.strictEqual(html.includes('.query-status .control-icon select { min-height: 24px'), false);
+    assert.strictEqual(html.includes("'</div><div class=\"task-toolbar\"><div class=\"toolbar-controls\">' + noteSortControl"), false);
+    // Search is the primary action; Save is an ordinary button beside it.
+    assert.strictEqual(html.includes('<button class="query-apply" data-action="apply-query"'), true);
+    assert.strictEqual(html.includes('.query-bar-row .query-apply:not(:hover):not(:focus-visible)'), true);
+    assert.strictEqual(html.includes('class="save-filter" data-action="save-note-search"'), false);
+    assert.strictEqual(html.includes('<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder"'), true);
+    assert.strictEqual(html.includes('actions: function (hasText)'), true);
+    assert.strictEqual(html.includes("+ (options.actions ? options.actions(hasText) : '')"), true);
+    assert.strictEqual(html.includes("dashboardMode === 'notes' ? 'Search'"), true);
+    assert.strictEqual(html.includes('data-action="query-input"'), true);
+    assert.strictEqual(html.includes("type: 'recordRecentQuery'"), true);
+    assert.strictEqual(html.includes('data-action="save-note-search"'), true);
     assert.strictEqual(html.includes('const noteSearchDebounceDelay = 350;'), true);
     assert.strictEqual(html.includes('const tagSearchDebounceDelay = 180;'), true);
     assert.strictEqual(html.includes('clearTimeout(noteSearchTimer)'), true);
     assert.strictEqual(html.includes('noteSearchTimer = setTimeout'), true);
     assert.strictEqual(html.includes('pendingNoteSearchQuery'), true);
-    assert.strictEqual(html.includes('function scheduleTagFilterSearch(kind)'), true);
+    assert.strictEqual(html.includes('function scheduleTaskTagSearch()'), true);
     assert.strictEqual(html.includes('taskTagSearchTimer'), true);
-    assert.strictEqual(html.includes('noteTagSearchTimer'), true);
+    assert.strictEqual(html.includes('noteTagSearchTimer'), false);
     assert.strictEqual(html.includes('pendingTaskTagQuery'), true);
-    assert.strictEqual(html.includes('pendingNoteTagQuery'), true);
+    assert.strictEqual(html.includes('pendingNoteTagQuery'), false);
     // Every search and tag-filter field keeps its focus through a redraw by
     // its action, rather than each field being listed by name.
     assert.strictEqual(html.includes('function renderKeepingFocus()'), true);
@@ -1289,18 +1330,20 @@ suite('Webview contracts', () => {
       html.includes('.segmented > .active { position: relative; z-index: 1; }'),
       true,
     );
-    assert.strictEqual(html.includes('data-action="search-notes"'), true);
-    assert.strictEqual(html.includes('data-action="search-tasks"'), true);
-    assert.strictEqual(html.includes('aria-label="Search current notes"'), true);
-    assert.strictEqual(html.includes('aria-label="Search current tasks"'), true);
-    assert.strictEqual(html.includes('function filterOverviewEntries(kind, query, total)'), true);
+    // One search box, always shown, replaces the per-tab search fields.
+    assert.strictEqual(html.includes('data-action="search-notes"'), false);
+    assert.strictEqual(html.includes('data-action="search-tasks"'), false);
+    assert.strictEqual(html.includes('data-action="toggle-query"'), false);
+    assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
+    assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), true);
+    assert.strictEqual(html.includes('function filterOverviewEntries(kind)'), true);
     assert.strictEqual(
       html.includes('.card[hidden], .task[hidden] { display: none; }'),
       true,
     );
     assert.strictEqual(html.includes('function updateTaskFilterCounts(query)'), true);
     assert.strictEqual(
-      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(normalizedQuery);'),
+      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(filtering);'),
       true,
     );
     assert.strictEqual(
@@ -1322,9 +1365,17 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    // The sort control ends in line with the gear above it, not short of it.
     assert.strictEqual(
       html.includes(
-        'header > .toolbar { width: 100%; padding-right: 0; }',
+        'header > .toolbar { margin-top: calc(var(--control-height) + 6px); }',
+      ),
+      true,
+    );
+    assert.strictEqual(html.includes('padding-right: 36px'), false);
+    assert.strictEqual(
+      html.includes(
+        'header > .toolbar { width: 100%; margin-top: 0; }',
       ),
       true,
     );
@@ -1722,7 +1773,7 @@ suite('Webview contracts', () => {
       'Deckard: Create Daily Note',
       'Deckard: Extract Tagged Heading',
       'Deckard: Show Tag Overview',
-      'Deckard: Search Workspace Knowledge',
+      'Deckard: Find',
       'Deckard: Link Current Heading to Entity',
       'Deckard: Move Inline Tags to Front Matter',
     ]) {
@@ -1731,6 +1782,7 @@ suite('Webview contracts', () => {
 
     for (const setting of [
       'deckard.notesFolder',
+      'deckard.exclude',
       'deckard.dailyNoteTemplate',
       'deckard.parseInlineTags',
       'deckard.highlightNoteSections',
@@ -1748,8 +1800,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Favorites always appear before'), true);
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
-    assert.strictEqual(html.includes('Saved tag views'), true);
-    assert.strictEqual(html.includes('Tasks/Notes/Tags tabs'), true);
+    assert.strictEqual(html.includes('Saved searches'), true);
+    assert.strictEqual(html.includes('Tasks/Search/Tags tabs'), true);
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);

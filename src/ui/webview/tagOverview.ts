@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
+import { extractTagTerms } from '../../core/query/queryEdit';
 import { getQueryTagIntersection } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { measure } from '../../core/timing';
@@ -146,6 +147,7 @@ export class TagOverviewPanels implements vscode.Disposable {
       }
       panel.setFilterTagKeys(effectiveFilterTagKeys);
       panel.clearQuery();
+      panel.clearRefinement();
       panel.show();
       this.setActiveTagOverview(canonicalTagKey, effectiveFilterTagKeys, undefined);
     } finally {
@@ -241,6 +243,10 @@ export class TagOverviewPanels implements vscode.Disposable {
     panel.setFilterTagKeys(filterTagKeys);
     if (serializedQuery) {
       panel.setQuery(serializedQuery);
+    }
+    const serializedRefinement = getSerializedRefinement(state);
+    if (serializedRefinement) {
+      panel.setRefinement(serializedRefinement);
     }
     panel.restore(webviewPanel);
     if (webviewPanel.active) {
@@ -450,6 +456,10 @@ class TagOverviewPanel implements vscode.Disposable {
    * the last query that did parse.
    */
   private invalidQueryText: string | undefined;
+  /** A search typed after the page's tags, narrowing its entries. */
+  private refinementText: string | undefined;
+  /** A refinement that does not parse, shown until it is fixed. */
+  private invalidRefinementText: string | undefined;
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
 
@@ -490,6 +500,15 @@ class TagOverviewPanel implements vscode.Disposable {
 
   public clearQuery(): void {
     this.queryText = undefined;
+  }
+
+  public setRefinement(text: string): void {
+    this.refinementText = text.trim() || undefined;
+  }
+
+  public clearRefinement(): void {
+    this.refinementText = undefined;
+    this.invalidRefinementText = undefined;
   }
 
   /**
@@ -586,18 +605,26 @@ class TagOverviewPanel implements vscode.Disposable {
    */
   private createSnapshot(): TagOverviewSnapshot | undefined {
     const snapshot = this.createResultsSnapshot();
-    if (!snapshot || this.invalidQueryText === undefined) {
+    const invalidText = this.queryText
+      ? this.invalidQueryText
+      : this.invalidRefinementText ?? this.invalidQueryText;
+    if (!snapshot || invalidText === undefined) {
       return snapshot;
     }
-    // The results come from the last query that parsed; only the editor shows
-    // the text that did not.
+    // The results come from the last search that parsed; only the editor
+    // shows the text that did not.
     return {
       ...snapshot,
       query: createQueryViewState(
         this.indexer.getSnapshot(),
-        parseQuery(this.invalidQueryText),
+        parseQuery(invalidText),
         snapshot.query?.matchCounts ?? { notes: 0, tasks: 0 },
         snapshot.query?.isAdvanced ?? true,
+        this.preferences.value.recentQueries ?? [],
+        {
+          scope: this.invalidRefinementText !== undefined ? snapshot.query?.scope : undefined,
+          facets: snapshot.query?.facets,
+        },
       ),
     };
   }
@@ -626,6 +653,7 @@ class TagOverviewPanel implements vscode.Disposable {
       this.areHeadingTagRelationshipsEnabled(),
       this.filterTagKeys[0],
       this.filterTagKeys,
+      this.refinementText ?? '',
     );
     return snapshot?.hub
       ? {
@@ -779,6 +807,10 @@ class TagOverviewPanel implements vscode.Disposable {
       await this.applyQuery(message.query);
       return;
     }
+    if (message.type === 'setOverviewRefinement') {
+      await this.applyRefinement(message.refinement);
+      return;
+    }
     if (message.type === 'clearOverviewQuery') {
       const hadError = this.invalidQueryText !== undefined;
       this.invalidQueryText = undefined;
@@ -889,6 +921,59 @@ class TagOverviewPanel implements vscode.Disposable {
     // standalone query view is identified by its query, so both need telling.
     this.onQueryChanged(text);
     this.refresh();
+    await this.preferences.recordRecentQuery(text);
+  }
+
+  /**
+   * Narrows the page by a search typed after its tags.
+   *
+   * Whole tags in it join the page's tag chips, as adding an associated tag
+   * does, so exploring and searching edit the same thing; the rest of the
+   * search stays in the box, as it was typed, and filters the entries.
+   */
+  private async applyRefinement(text: string): Promise<void> {
+    const trimmed = text.trim();
+    this.invalidRefinementText = undefined;
+    if (!trimmed) {
+      this.refinementText = undefined;
+      this.refresh();
+      return;
+    }
+    if (parseQuery(trimmed).node === undefined) {
+      this.invalidRefinementText = trimmed;
+      this.refresh();
+      return;
+    }
+    const index = this.indexer.getSnapshot();
+    const { tagKeys, rest } = extractTagTerms(trimmed, (tagKey) =>
+      resolveIndexedTagKey(index.tags, tagKey),
+    );
+    if (tagKeys.length > 0 && this.tagKey) {
+      this.setFilterTagKeys(
+        resolveFilterTagKeys(index.tags, this.tagKey, undefined, [
+          ...this.filterTagKeys,
+          ...tagKeys,
+        ]),
+      );
+      this.onQueryChanged(undefined);
+    }
+    this.refinementText = rest || undefined;
+    this.refresh();
+    await this.preferences.recordRecentQuery(this.describeSearch());
+  }
+
+  /**
+   * The page's whole search, written so it runs anywhere: its tags, then
+   * the refinement typed after them.
+   */
+  private describeSearch(): string {
+    const tags = [this.tagKey, ...this.filterTagKeys]
+      .filter((tagKey): tagKey is string => tagKey !== undefined)
+      .join(' ');
+    const refinement = this.refinementText ?? '';
+    const wrapped =
+      parseQuery(refinement).node?.type === 'or' ? `(${refinement})` : refinement;
+    return `${tags} ${wrapped}`.trim();
   }
 
   /**
@@ -896,11 +981,13 @@ class TagOverviewPanel implements vscode.Disposable {
    */
   private async saveCurrentFilter(): Promise<void> {
     const index = this.indexer.getSnapshot();
-    if (this.queryText) {
+    const queryText =
+      this.queryText ?? (this.refinementText ? this.describeSearch() : undefined);
+    if (queryText) {
       const name = await vscode.window.showInputBox({
         title: 'Save Deckard filter',
         prompt: 'Name this query',
-        value: this.queryText,
+        value: queryText,
         validateInput: (value) =>
           value.trim() ? undefined : 'A saved filter needs a name.',
       });
@@ -909,7 +996,7 @@ class TagOverviewPanel implements vscode.Disposable {
       }
       const savedQuery = await this.preferences.saveSavedQueryFilter(
         name,
-        this.queryText,
+        queryText,
       );
       if (savedQuery) {
         void vscode.window.showInformationMessage(
@@ -1005,6 +1092,20 @@ function getSerializedQuery(state: unknown): string | undefined {
   const query = (state as { query?: unknown }).query;
   return typeof query === 'string' && query.trim().length > 0
     ? query.trim()
+    : undefined;
+}
+
+/**
+ * Extracts a serialized refinement, ignoring malformed serializer state.
+ */
+function getSerializedRefinement(state: unknown): string | undefined {
+  if (typeof state !== 'object' || state === null) {
+    return undefined;
+  }
+
+  const refinement = (state as { refinement?: unknown }).refinement;
+  return typeof refinement === 'string' && refinement.trim().length > 0
+    ? refinement.trim()
     : undefined;
 }
 

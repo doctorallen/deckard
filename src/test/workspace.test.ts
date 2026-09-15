@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
+  createExcludeMatcher,
   WorkspaceFileAccess,
   WorkspaceScanner,
 } from '../core/workspace/scanner';
@@ -32,12 +33,10 @@ const defaultPreferences = {
     mode: 'tasks' as const,
     taskFilter: 'active' as const,
     selectedTaskTags: [],
-    selectedNoteTags: [],
     taskSearchQuery: '',
     noteSearchQuery: '',
     tagSearchQuery: '',
     taskTagQuery: '',
-    noteTagQuery: '',
   },
   renderMode: 'markdown' as const,
   tagOverviewSortMode: 'alphabetical' as const,
@@ -95,6 +94,82 @@ suite('Workspace scanner and index', () => {
       scanner.getTemplatesFolderUri(workspaceFolder)?.path,
       templateUri.path.replace(/\/meeting\.md$/, ''),
     );
+  });
+
+  test('reads exclude patterns the way VS Code reads files.exclude', () => {
+    const isExcluded = createExcludeMatcher({
+      '**/archive': true,
+      'drafts/*.md': true,
+      'scratch/*': true,
+      journal: false,
+      '': true,
+    });
+
+    assert.strictEqual(isExcluded('archive/old.md'), true);
+    assert.strictEqual(isExcluded('notes/archive/2024/old.md'), true);
+    assert.strictEqual(isExcluded('.trash/archive/old.md'), true);
+    assert.strictEqual(isExcluded('notes/archived.md'), false);
+    assert.strictEqual(isExcluded('drafts/idea.md'), true);
+    assert.strictEqual(isExcluded('drafts/nested/idea.md'), false);
+    assert.strictEqual(isExcluded('scratch/.todo.md'), true);
+    assert.strictEqual(isExcluded('journal/today.md'), false);
+    assert.strictEqual(createExcludeMatcher(undefined)('archive/old.md'), false);
+    assert.strictEqual(createExcludeMatcher(['archive'])('archive/old.md'), false);
+    assert.strictEqual(
+      createExcludeMatcher({ archive: false }, { '**/archive': true })('archive/old.md'),
+      true,
+    );
+  });
+
+  test('leaves out notes that deckard.exclude or files.exclude matches', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-exclude');
+    const noteUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'case.md');
+    const archivedUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'archive', 'old.md');
+    const hiddenUri = vscode.Uri.joinPath(workspaceUri, 'notes', 'hidden', 'secret.md');
+    const workspaceFolder = {
+      uri: workspaceUri,
+      name: 'deckard-exclude',
+      index: 0,
+    } as vscode.WorkspaceFolder;
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      // The fake returns every file, as a note saved in a hidden folder
+      // reaches the scanner through a watcher or save event.
+      findFiles: async () => [noteUri, archivedUri, hiddenUri],
+      readFile: async () => Buffer.from('# Case #project/atlas', 'utf8'),
+    });
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    const filesConfiguration = vscode.workspace.getConfiguration('files');
+    await configuration.update(
+      'exclude',
+      { '**/archive': true },
+      vscode.ConfigurationTarget.Global,
+    );
+    await filesConfiguration.update(
+      'exclude',
+      { '**/hidden': true },
+      vscode.ConfigurationTarget.Global,
+    );
+
+    try {
+      const files = await scanner.scan();
+
+      assert.deepStrictEqual(files.map((file) => file.filePath), ['notes/case.md']);
+      assert.strictEqual(scanner.isNotesFile(noteUri), true);
+      assert.strictEqual(scanner.isNotesFile(archivedUri), false);
+      assert.strictEqual(scanner.isNotesFile(hiddenUri), false);
+    } finally {
+      await configuration.update(
+        'exclude',
+        undefined,
+        vscode.ConfigurationTarget.Global,
+      );
+      await filesConfiguration.update(
+        'exclude',
+        undefined,
+        vscode.ConfigurationTarget.Global,
+      );
+    }
   });
 
   test('reads notes with workspace-relative paths', async () => {

@@ -37,7 +37,6 @@ export class DashboardPanel implements vscode.Disposable {
   private isStale = false;
   private taskFilter: DashboardSnapshot['taskFilter'] = 'active';
   private selectedTaskTags: string[] = [];
-  private selectedNoteTags: string[] = [];
   private dashboardMode: DashboardMode = 'tasks';
   private dashboardTaskColumns: DashboardColumnCount;
   private dashboardNoteColumns: DashboardColumnCount;
@@ -51,7 +50,6 @@ export class DashboardPanel implements vscode.Disposable {
       tagKey: string,
       filterTagKeys?: readonly string[],
     ) => void | Promise<void>,
-    private readonly onOpenQuery: (queryText: string) => void | Promise<void>,
   ) {
     const initialPreferences = preferences.value;
     this.dashboardTaskColumns = initialPreferences.dashboardTaskColumns;
@@ -61,9 +59,6 @@ export class DashboardPanel implements vscode.Disposable {
     this.taskFilter = initialPreferences.dashboardViewState.taskFilter;
     this.selectedTaskTags = [
       ...initialPreferences.dashboardViewState.selectedTaskTags,
-    ];
-    this.selectedNoteTags = [
-      ...initialPreferences.dashboardViewState.selectedNoteTags,
     ];
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(
@@ -75,9 +70,6 @@ export class DashboardPanel implements vscode.Disposable {
         this.taskFilter = nextPreferences.dashboardViewState.taskFilter;
         this.selectedTaskTags = [
           ...nextPreferences.dashboardViewState.selectedTaskTags,
-        ];
-        this.selectedNoteTags = [
-          ...nextPreferences.dashboardViewState.selectedNoteTags,
         ];
         this.refresh();
       }),
@@ -114,6 +106,41 @@ export class DashboardPanel implements vscode.Disposable {
     this.panel?.reveal(vscode.ViewColumn.Active);
     await this.indexer.ready;
     this.refresh();
+  }
+
+  /**
+   * Opens a saved view: a saved search on the Search tab, or a saved tag set
+   * as that tag intersection.
+   */
+  public async openSavedFilter(filterId: string): Promise<void> {
+    const savedFilter = this.preferences.value.savedFilters.find(
+      (filter) => filter.id === filterId,
+    );
+    if (!savedFilter) {
+      return;
+    }
+    if (savedFilter.query) {
+      await this.showSearch(savedFilter.query);
+      return;
+    }
+    const index = this.indexer.getSnapshot();
+    const tagKeys = savedFilter.tagKeys.filter((tagKey) =>
+      index.tags.has(tagKey),
+    );
+    if (tagKeys.length >= 2) {
+      await this.onOpenTag(tagKeys[0], tagKeys.slice(1));
+    }
+  }
+
+  /**
+   * Opens the Search tab on a search, which is where every search can be
+   * seen in full and refined.
+   */
+  public async showSearch(query: string): Promise<void> {
+    this.dashboardMode = 'notes';
+    await this.preferences.setDashboardSearch('notes', query.trim());
+    await this.preferences.setDashboardMode('notes');
+    await this.show();
   }
 
   /**
@@ -257,15 +284,13 @@ export class DashboardPanel implements vscode.Disposable {
           mode: this.dashboardMode,
           taskFilter: this.taskFilter,
           selectedTaskTags: [...this.selectedTaskTags],
-          selectedNoteTags: [...this.selectedNoteTags],
         },
       },
       this.taskFilter,
       this.selectedTaskTags,
       undefined,
-      this.selectedNoteTags,
       tagTitleDisplayMode,
-      // Switching tabs asks the host again, so only the Notes tab gets notes.
+      // Switching tabs asks the host again, so only the Search tab gets notes.
       this.dashboardMode === 'notes',
     );
     // The board lays out the same filtered tasks the list would show.
@@ -290,6 +315,32 @@ export class DashboardPanel implements vscode.Disposable {
           : undefined,
     };
     void this.panel.webview.postMessage({ type: 'state', data });
+  }
+
+  /**
+   * Names the Search tab's search and keeps it as a saved view.
+   */
+  private async saveSearch(): Promise<void> {
+    const query = this.preferences.value.dashboardViewState.noteSearchQuery.trim();
+    if (!query) {
+      return;
+    }
+    const name = await vscode.window.showInputBox({
+      title: 'Save Deckard filter',
+      prompt: 'Name this search',
+      value: query,
+      validateInput: (value) =>
+        value.trim() ? undefined : 'A saved filter needs a name.',
+    });
+    if (name === undefined) {
+      return;
+    }
+    const saved = await this.preferences.saveSavedQueryFilter(name, query);
+    if (saved) {
+      void vscode.window.showInformationMessage(
+        `Saved Deckard filter: ${saved.name}`,
+      );
+    }
   }
 
   /**
@@ -381,23 +432,6 @@ export class DashboardPanel implements vscode.Disposable {
         ];
         this.refresh();
         await this.preferences.setDashboardTaskTags(this.selectedTaskTags);
-        return;
-      }
-      case 'setNoteTags': {
-        const availableTags = new Set(
-          [...index.tags.values()]
-            .filter(
-              (tag) => tag.sectionIds.length > 0 || tag.filePaths.length > 0,
-            )
-            .map((tag) => tag.key),
-        );
-        this.selectedNoteTags = [
-          ...new Set(
-            message.tagKeys.filter((tagKey) => availableTags.has(tagKey)),
-          ),
-        ];
-        this.refresh();
-        await this.preferences.setDashboardNoteTags(this.selectedNoteTags);
         return;
       }
       case 'setTaskSort':
@@ -497,27 +531,17 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       }
-      case 'openSavedFilter': {
-        const savedFilter = this.preferences.value.savedFilters.find(
-          (filter) => filter.id === message.filterId,
-        );
-        if (!savedFilter) {
-          return;
-        }
-        if (savedFilter.query) {
-          await this.onOpenQuery(savedFilter.query);
-          return;
-        }
-        const tagKeys = savedFilter.tagKeys.filter((tagKey) =>
-          index.tags.has(tagKey),
-        );
-        if (tagKeys.length >= 2) {
-          await this.onOpenTag(tagKeys[0], tagKeys.slice(1));
-        }
+      case 'openSavedFilter':
+        await this.openSavedFilter(message.filterId);
         return;
-      }
       case 'removeSavedFilter':
         await this.preferences.removeSavedFilter(message.filterId);
+        return;
+      case 'recordRecentQuery':
+        await this.preferences.recordRecentQuery(message.query);
+        return;
+      case 'saveDashboardSearch':
+        await this.saveSearch();
         return;
     }
   }

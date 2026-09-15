@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import {
   Entity,
   ParsedFile,
-  SearchResult,
   Section,
   TagAssociation,
   TagInfo,
@@ -12,7 +11,11 @@ import {
   WorkspaceIndex,
 } from '../types';
 import { getEntityKind } from '../markdown/parser';
-import { SearchStore } from '../storage/searchStore';
+import {
+  EntrySearchOptions,
+  EntrySearchResult,
+  SearchStore,
+} from '../storage/searchStore';
 import { measure, measureAsync } from '../timing';
 import { ScanProgress, WorkspaceScanner } from './scanner';
 
@@ -92,66 +95,20 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   /**
-   * Returns source-backed search results using the local full-text cache to
-   * narrow candidates and the live parser index for exact navigation targets.
+   * Searches the local full-text cache for note entries and tasks, best
+   * first. The ids it returns are the live index's, so a caller can open or
+   * filter by them directly.
    */
-  public search(query: string): SearchResult[] {
-    const index = this.getSnapshot();
-    const matchingPaths = new Set(
-      this.searchStore?.search(query).map((result) => result.filePath) ?? [],
-    );
-    if (matchingPaths.size === 0) {
-      return [];
-    }
-
-    const terms = getMeaningfulTerms(query);
-    const taskQuery = /\b(task|tasks|todo|todos|owe|open|outstanding|completed)\b/i.test(
-      query,
-    );
-    const completedOnly = /\b(completed|done)\b/i.test(query);
-    const activeOnly = /\b(open|outstanding|owe)\b/i.test(query);
-    const since = /\blast week\b/i.test(query)
-      ? Date.now() - 7 * 24 * 60 * 60 * 1000
-      : undefined;
-    const results: SearchResult[] = [];
-
-    index.files.forEach((file, filePath) => {
-      if (!matchingPaths.has(filePath)) {
-        return;
+  public searchEntries(
+    query: string,
+    options?: EntrySearchOptions,
+  ): EntrySearchResult {
+    return (
+      this.searchStore?.searchEntries(query, options) ?? {
+        matches: [],
+        partial: false,
       }
-
-      if (!taskQuery) {
-        file.sections.forEach((section) => {
-          const result = createSectionSearchResult(section, index, terms);
-          if (result && (since === undefined || (result.updatedAt ?? 0) >= since)) {
-            results.push(result);
-          }
-        });
-      }
-
-      file.tasks.forEach((task) => {
-        if (
-          (completedOnly && !task.completed) ||
-          (activeOnly && task.completed)
-        ) {
-          return;
-        }
-        const result = createTaskSearchResult(task, index, terms);
-        if (result && (since === undefined || (result.updatedAt ?? 0) >= since)) {
-          results.push(result);
-        }
-      });
-    });
-
-    return results
-      .sort(
-        (left, right) =>
-          right.score - left.score ||
-          (right.updatedAt ?? 0) - (left.updatedAt ?? 0) ||
-          left.filePath.localeCompare(right.filePath) ||
-          left.line - right.line,
-      )
-      .slice(0, 50);
+    );
   }
 
   /**
@@ -274,12 +231,16 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const templatesFolderChanged = event.affectsConfiguration(
           'deckard.templatesFolder',
         );
+        const excludeChanged =
+          event.affectsConfiguration('deckard.exclude') ||
+          event.affectsConfiguration('files.exclude');
         if (
           notesFolderChanged ||
           inlineTagsChanged ||
           entityNamespaceAliasesChanged ||
           personMarkerChanged ||
-          templatesFolderChanged
+          templatesFolderChanged ||
+          excludeChanged
         ) {
           if (notesFolderChanged) {
             this.replaceWatchers();
@@ -415,114 +376,6 @@ interface PendingUpdate {
   uri: vscode.Uri;
   content?: string;
   deleted: boolean;
-}
-
-function getMeaningfulTerms(query: string): string[] {
-  const stopWords = new Set([
-    'what',
-    'did',
-    'with',
-    'about',
-    'the',
-    'are',
-    'latest',
-    'and',
-    'for',
-    'have',
-    'learned',
-    'written',
-    'happened',
-    'last',
-    'week',
-    'before',
-    'this',
-    'meeting',
-  ]);
-  return [
-    ...new Set(
-      query
-        .toLowerCase()
-        .match(/[a-z0-9][a-z0-9_-]*/g)
-        ?.filter((term) => term.length > 1 && !stopWords.has(term)) ?? [],
-    ),
-  ];
-}
-
-function createSectionSearchResult(
-  section: Section,
-  index: WorkspaceIndex,
-  terms: string[],
-): SearchResult | undefined {
-  const text = `${section.heading}\n${section.rawContent}`.toLowerCase();
-  const matchedEntities = getMatchedEntities(section.tags, index, terms);
-  const matchedTerms = terms.filter((term) => text.includes(term));
-  if (matchedEntities.length === 0 && matchedTerms.length === 0) {
-    return undefined;
-  }
-
-  return {
-    type: 'section',
-    id: section.id,
-    filePath: section.filePath,
-    line: section.startLine,
-    title: section.heading,
-    excerpt: getExcerpt(section.rawContent, matchedTerms),
-    matchedEntities,
-    updatedAt: section.updatedAt,
-    score: matchedEntities.length * 10 + matchedTerms.length,
-  };
-}
-
-function createTaskSearchResult(
-  task: Task,
-  index: WorkspaceIndex,
-  terms: string[],
-): SearchResult | undefined {
-  const text = task.title.toLowerCase();
-  const matchedEntities = getMatchedEntities(task.tags, index, terms);
-  const matchedTerms = terms.filter((term) => text.includes(term));
-  if (matchedEntities.length === 0 && matchedTerms.length === 0) {
-    return undefined;
-  }
-
-  return {
-    type: 'task',
-    id: task.id,
-    filePath: task.filePath,
-    line: task.lineNumber,
-    title: task.title,
-    excerpt: task.title,
-    matchedEntities,
-    updatedAt: task.updatedAt,
-    score: matchedEntities.length * 10 + matchedTerms.length,
-  };
-}
-
-function getMatchedEntities(
-  tagKeys: string[],
-  index: WorkspaceIndex,
-  terms: string[],
-): TagReference[] {
-  return tagKeys.flatMap((key) => {
-    const entity = index.entities.get(key);
-    if (!entity) {
-      return [];
-    }
-    const names = entity.name.toLowerCase().split(/[\s/-]+/);
-    return names.some((name) => terms.includes(name))
-      ? [{ key: entity.key, label: entity.label }]
-      : [];
-  });
-}
-
-function getExcerpt(content: string, terms: string[]): string {
-  const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  const matchingLine =
-    lines.find((line) => terms.some((term) => line.toLowerCase().includes(term))) ??
-    lines[1] ??
-    lines[0] ??
-    '';
-  return matchingLine.trim();
 }
 
 /**

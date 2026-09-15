@@ -4,6 +4,49 @@
 
 ### Added
 
+- **Leave files out of the index**: `deckard.exclude` takes glob patterns
+  written like VS Code's `files.exclude`, such as `{ "**/archive": true }`,
+  and Deckard does not index the files and folders they match. Deckard also
+  leaves out what `files.exclude` hides when a note there is saved or
+  created, not only when the workspace is reindexed. Changing either setting
+  reindexes the workspace.
+
+- **Filter tags by namespace**: the Dashboard's Tags tab has a **Namespace**
+  filter again, listing each namespace in use and **None** for tags without
+  one. It works together with tag search and is kept while the Dashboard is
+  open.
+
+- **Find**: `Deckard: Find` (<kbd>Cmd/Ctrl+Shift+Alt+F</kbd>) searches notes,
+  tasks, tags, and saved views as you type. Titles come first, then notes
+  that mention your words, ranked by relevance; the last word matches while
+  it is typed, `atlas` finds `#project/atlas`, and Tab completes a tag or
+  condition. A misspelled word gets a correction, and an empty search offers
+  recent searches, favorite and recent tags, saved views, and recently
+  opened notes. It replaces `Deckard: Search Workspace Knowledge`, and keeps
+  its command, so existing keybindings still work.
+
+- **Shorthands**: `is:open`, `is:done`, `is:overdue`, `is:due`, `is:task`,
+  `is:note`, `has:due` and `no:due` (also `scheduled`, `start`, `done`, and
+  `priority`), and `in:folder` work in every query, including query blocks
+  and AI assistant queries.
+
+- **The Search tab**: the Dashboard's Notes tab is now **Search**, Deckard's
+  search page. It has the full search box, with completions, the builder,
+  **Refine** counts, the tasks the search matches, and **Save** beside
+  the box. Its tag picker is gone, since tags are typed in the search or
+  chosen under **Refine**. `Deckard: Search Notes and Tasks`, **Show all** in
+  Find, a query block's **Open in search**, and saved searches open there.
+
+- **Refine**: under the search box, counts of open and done tasks, due
+  dates, tags, update dates, and folders in the results. Select one to
+  narrow, Alt-select to leave it out, or Shift-select to allow another value
+  of the same kind.
+
+- **Faster builder**: a new row starts from its value. Type a tag, a word,
+  or a value such as `open` and the row fills in its field and operator;
+  Enter opens the next row, Backspace removes an empty one, and Ctrl/Cmd+
+  Enter starts an OR group.
+
 - **Quick capture**: `Deckard: Capture` adds a task to today's daily note
   without leaving the current editor. Typing `#` or `@` suggests tags, most
   used first. `Deckard: Capture Under a Heading`, or the list button in the
@@ -64,6 +107,25 @@
   instrument buttons.
 
 ### Changed
+
+- The Dashboard's **Saved tag views** are now **Saved searches**, since they
+  hold saved searches as well as saved tag sets.
+
+- A Dashboard search kept from an earlier visit is no longer easy to miss.
+  When one is narrowing the Tasks or Tags list, a line above the list says
+  how many items match, with **Clear search**, the search box is outlined,
+  and a dot marks each tab whose search has text.
+
+- The search box is always shown in a tag overview, in place of the
+  **Advanced search** button and the separate notes and tasks search fields.
+  It narrows the tag's own entries, a whole `#tag` typed in it joins the
+  tags in the title, and `/` puts the caret in it. Each term of a longer
+  search is a chip that can be removed on its own.
+
+- Full-text search ranks each note section and task by relevance, weighting
+  titles, headings, and tags above body text, and requires every word rather
+  than any. The search cache is rebuilt once, on the first start after an
+  update.
 
 - A note's created and updated dates, used by the `created` and `updated`
   query fields and the Created and Updated sorts, now come from the note

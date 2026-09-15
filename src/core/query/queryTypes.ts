@@ -15,37 +15,72 @@
  * text. `due`, `scheduled`, `start`, `done`, and `priority` read a task's
  * Obsidian Tasks metadata, so only tasks can satisfy them. The remaining
  * fields describe the source unit itself.
+ *
+ * `is`, `has`, and `in` are shorthands for filters people reach for often,
+ * written GitHub-style as `is:open`, `has:due`, `no:due`, or `in:notes/work`.
+ * Each is one short token for something that otherwise takes one or two
+ * conditions.
  */
 export type QueryField =
   | 'tag'
   | 'text'
+  | 'is'
   | 'task'
   | 'due'
   | 'scheduled'
   | 'start'
   | 'done'
   | 'priority'
+  | 'has'
   | 'kind'
   | 'file'
   | 'path'
+  | 'in'
   | 'created'
   | 'updated';
 
 export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',
   'text',
+  'is',
   'task',
   'due',
   'scheduled',
   'start',
   'done',
   'priority',
+  'has',
   'kind',
   'file',
   'path',
+  'in',
   'created',
   'updated',
 ];
+
+/**
+ * Fields written as one `field:value` token rather than `field = value`.
+ */
+export const QUERY_SHORTHAND_FIELDS: readonly QueryField[] = ['is', 'has', 'in'];
+
+/** Values `is:` accepts. */
+export const QUERY_IS_VALUES = [
+  'open',
+  'done',
+  'task',
+  'note',
+  'overdue',
+  'due',
+] as const;
+
+/** Values `has:` and `no:` accept: a task date, or a priority. */
+export const QUERY_HAS_VALUES = [
+  'due',
+  'scheduled',
+  'start',
+  'done',
+  'priority',
+] as const;
 
 /** Task date fields. Each also accepts `none`, meaning no date is written. */
 export const QUERY_TASK_DATE_FIELDS: readonly QueryField[] = [
@@ -86,15 +121,18 @@ export const QUERY_FIELD_OPERATORS: Readonly<
 > = {
   tag: ['eq', 'neq'],
   text: ['contains', 'notContains', 'eq', 'neq'],
+  is: ['eq', 'neq'],
   task: ['eq', 'neq'],
   due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  has: ['eq', 'neq'],
   kind: ['eq', 'neq'],
   file: ['eq', 'neq', 'contains', 'notContains'],
   path: ['eq', 'neq', 'contains', 'notContains'],
+  in: ['eq', 'neq'],
   created: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   updated: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
 };
@@ -186,12 +224,46 @@ export interface QueryBuilderGroup {
   rows: QueryBuilderRow[];
 }
 
+/** One term of a query, and the query it leaves behind when removed. */
+export interface QueryTermChip {
+  text: string;
+  without: string;
+}
+
+export interface QueryFacetValue {
+  label: string;
+  /** How many of the current results this value keeps. */
+  count: number;
+  /** The query text that narrows to this value. */
+  clause: string;
+}
+
+/** One way the current results could be narrowed, with its counts. */
+export interface QueryFacet {
+  id: 'status' | 'due' | 'tags' | 'updated' | 'folder';
+  label: string;
+  values: QueryFacetValue[];
+  /** This facet's clauses the query already has, as written. */
+  applied: string[];
+}
+
 /**
  * Everything the webview needs to render the query bar and its builder.
  */
 export interface QueryViewState {
   /** Canonical query text; the source of truth for both editing surfaces. */
   text: string;
+  /**
+   * The tag intersection a tag overview's search refines. When set, `text`,
+   * `groups`, and `terms` describe only the refinement typed after it.
+   */
+  scope?: string;
+  /** The terms joined by AND at the top of `text`, each removable alone. */
+  terms: QueryTermChip[];
+  /** Whether a term can be added to `text` as another AND. */
+  canAppend: boolean;
+  /** What the current results could still be narrowed by. */
+  facets: QueryFacet[];
   /**
    * False when the query is a flat intersection of positive tag conditions,
    * which the overview still renders with its original tag chips.
@@ -236,6 +308,19 @@ export interface QuerySuggestions {
   fields: QuerySuggestion[];
   /** Values known to be valid for a field. */
   values: Partial<Record<QueryField, QuerySuggestion[]>>;
+  /**
+   * The operators each field accepts, in the order the builder offers them,
+   * so a page never keeps its own copy of the parser's rules.
+   */
+  operators: Record<QueryField, readonly QueryOperator[]>;
+  /**
+   * Whole conditions offered when the author types a value without its field,
+   * such as `open` for `is:open` or `#atl` for a tag. `value` is the condition
+   * written as query text.
+   */
+  conditions: QuerySuggestion[];
+  /** Queries run recently, newest first, offered when the bar is empty. */
+  recent: QuerySuggestion[];
   /**
    * Every spelling that names a field, so the query bar can tell which field
    * the caret sits in without keeping its own copy of the parser's aliases.

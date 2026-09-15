@@ -218,6 +218,12 @@ function matchesCondition(
       return matchesText(condition, unit);
     case 'task':
       return applyNegation(condition, matchesTaskState(condition.value, unit));
+    case 'is':
+      return applyNegation(condition, matchesIs(condition.value, unit));
+    case 'has':
+      return matchesHas(condition, unit);
+    case 'in':
+      return applyNegation(condition, isInFolder(condition.value, unit.filePath));
     case 'kind':
       return applyNegation(condition, matchesKind(condition.value, unit));
     case 'file':
@@ -290,6 +296,93 @@ function matchesTaskState(value: string, unit: QueryUnit): boolean {
     return true;
   }
   return value === 'done' ? unit.completed === true : unit.completed !== true;
+}
+
+/**
+ * Answers `is:`. `note` is anything that is not a task; the rest are tasks.
+ * `due` means open and due within the next seven days, overdue included.
+ */
+function matchesIs(
+  value: string,
+  unit: QueryUnit,
+  now: number = Date.now(),
+): boolean {
+  if (value === 'note') {
+    return unit.kind !== 'task';
+  }
+  if (unit.kind !== 'task') {
+    return false;
+  }
+  const open = unit.completed !== true;
+  switch (value) {
+    case 'open':
+      return open;
+    case 'done':
+      return !open;
+    case 'task':
+      return true;
+    case 'overdue':
+      return open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now);
+    case 'due':
+      return (
+        open &&
+        unit.dueAt !== undefined &&
+        unit.dueAt < startOfDay(now) + 7 * DAY
+      );
+    default:
+      return false;
+  }
+}
+
+/**
+ * Answers `has:` and `no:`. Like the task date fields themselves, only tasks
+ * can satisfy either, so `no:due` lists tasks without a due date rather than
+ * every note as well.
+ */
+function matchesHas(condition: QueryConditionNode, unit: QueryUnit): boolean {
+  if (unit.kind !== 'task') {
+    return false;
+  }
+  const present =
+    condition.value === 'priority'
+      ? unit.priority !== undefined
+      : getTaskDate(unit, condition.value) !== undefined;
+  return condition.operator === 'neq' ? !present : present;
+}
+
+function getTaskDate(unit: QueryUnit, field: string): number | undefined {
+  switch (field) {
+    case 'due':
+      return unit.dueAt;
+    case 'scheduled':
+      return unit.scheduledAt;
+    case 'start':
+      return unit.startAt;
+    case 'done':
+      return unit.doneAt;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Answers `in:`, which matches a folder and everything beneath it. A folder
+ * with `*` or `?` is matched against each folder above the file.
+ */
+export function isInFolder(folder: string, filePath: string): boolean {
+  const wanted = folder.replace(/^\.\//, '').replace(/\/+$/, '').toLowerCase();
+  const candidate = filePath.toLowerCase();
+  if (!wanted) {
+    return false;
+  }
+  if (wanted.includes('*') || wanted.includes('?')) {
+    const pattern = createGlob(wanted, true);
+    const parts = candidate.split('/').slice(0, -1);
+    return parts.some((_, index) =>
+      pattern.test(parts.slice(0, index + 1).join('/')),
+    );
+  }
+  return candidate.startsWith(`${wanted}/`);
 }
 
 /**

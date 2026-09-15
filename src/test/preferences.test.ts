@@ -67,7 +67,6 @@ suite('Preferences store', () => {
     await store.setDashboardMode('notes');
     await store.setDashboardTaskFilter('completed');
     await store.setDashboardTaskTags(['#work']);
-    await store.setDashboardNoteTags(['#project/atlas']);
     await store.setDashboardSearch('notes', 'atlas');
     await store.recordSectionAccess('section-1');
     await store.recordSectionAccess('missing-section');
@@ -90,12 +89,10 @@ suite('Preferences store', () => {
       mode: 'notes',
       taskFilter: 'completed',
       selectedTaskTags: ['#work'],
-      selectedNoteTags: ['#project/atlas'],
       taskSearchQuery: '',
       noteSearchQuery: 'atlas',
       tagSearchQuery: '',
       taskTagQuery: '',
-      noteTagQuery: '',
     });
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);

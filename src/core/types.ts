@@ -24,19 +24,16 @@ export type DashboardSearchField =
   | 'tasks'
   | 'notes'
   | 'tags'
-  | 'taskTags'
-  | 'noteTags';
+  | 'taskTags';
 
 export interface DashboardViewState {
   mode: DashboardMode;
   taskFilter: TaskFilter;
   selectedTaskTags: string[];
-  selectedNoteTags: string[];
   taskSearchQuery: string;
   noteSearchQuery: string;
   tagSearchQuery: string;
   taskTagQuery: string;
-  noteTagQuery: string;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
@@ -245,6 +242,12 @@ export interface PersistedPreferences {
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
+  /** When each tag was last opened, in epoch milliseconds, for frecency. */
+  tagAccessTimes?: Record<string, number>;
+  /** When each note section was last opened, in epoch milliseconds. */
+  sectionAccessTimes?: Record<string, number>;
+  /** Searches run recently, newest first. */
+  recentQueries?: string[];
   /** Absent in preferences saved before the Dashboard had a board layout. */
   dashboardTaskLayout?: DashboardTaskLayout;
   dashboardBoardGroup?: TaskBoardGroupBy;
@@ -305,9 +308,7 @@ export interface DashboardSnapshot {
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   availableTaskTags: TagInfo[];
-  availableNoteTags: TagInfo[];
   selectedTaskTags: string[];
-  selectedNoteTags: string[];
   selectedTag?: string;
   viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
@@ -316,10 +317,16 @@ export interface DashboardSnapshot {
   /** The filtered tasks as a board, present when `taskLayout` is `board`. */
   taskBoard?: TaskBoardLayout;
   /**
-   * True when `notes` was left empty because the Notes tab is not showing.
+   * True when `notes` was left empty because the Search tab is not showing.
    * Notes are most of what the page is sent, so other tabs are sent none.
    */
   notesOmitted?: boolean;
+  /** The Search tab's search, sent while the Search tab is shown. */
+  noteQuery?: QueryViewState;
+  /** Tasks the Search tab's search matches, open and soonest due first. */
+  noteQueryTasks?: DashboardTask[];
+  /** Every task the search matches, before `noteQueryTasks` was cut short. */
+  noteQueryTaskCount?: number;
 }
 
 export interface TagOverviewSnapshot {
@@ -438,18 +445,6 @@ export interface RankedNote {
     lexicalTerms: Array<{ term: string; contribution: number }>;
   };
   reasons?: string[];
-}
-
-export interface SearchResult {
-  type: 'section' | 'task';
-  id: string;
-  filePath: string;
-  line: number;
-  title: string;
-  excerpt: string;
-  matchedEntities: TagReference[];
-  updatedAt?: number;
-  score: number;
 }
 
 export interface StatsAccessItem {
@@ -648,11 +643,6 @@ export interface SetTaskTagsMessage {
   tagKeys: string[];
 }
 
-export interface SetNoteTagsMessage {
-  type: 'setNoteTags';
-  tagKeys: string[];
-}
-
 export interface ReorderTasksMessage {
   type: 'reorderTasks';
   taskIds: string[];
@@ -747,6 +737,26 @@ export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
 }
 
+/**
+ * Narrows a tag overview by a search typed after its tags. Whole tags in it
+ * join the page's tag chips; the rest filters the page's entries.
+ */
+export interface SetOverviewRefinementMessage {
+  type: 'setOverviewRefinement';
+  refinement: string;
+}
+
+/** Remembers a search that was run, for Find and the search boxes. */
+export interface RecordRecentQueryMessage {
+  type: 'recordRecentQuery';
+  query: string;
+}
+
+/** Saves the Dashboard's current note search as a named view. */
+export interface SaveDashboardSearchMessage {
+  type: 'saveDashboardSearch';
+}
+
 export interface SetTagOverviewSortMessage {
   type: 'setTagOverviewSort';
   mode: TagOverviewSortMode;
@@ -815,7 +825,6 @@ export type DashboardMessage =
   | SetEntitySortMessage
   | SetTaskFilterMessage
   | SetTaskTagsMessage
-  | SetNoteTagsMessage
   | SetTaskSortMessage
   | SetRenderModeMessage
   | SetNoteSortMessage
@@ -831,7 +840,9 @@ export type DashboardMessage =
   | RemoveSavedFilterMessage
   | SetDashboardTaskLayoutMessage
   | SetBoardGroupMessage
-  | MoveTaskMessage;
+  | MoveTaskMessage
+  | RecordRecentQueryMessage
+  | SaveDashboardSearchMessage;
 
 export type TagOverviewMessage =
   | OpenSourceMessage
@@ -845,6 +856,7 @@ export type TagOverviewMessage =
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
+  | SetOverviewRefinementMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =

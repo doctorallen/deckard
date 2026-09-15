@@ -27,24 +27,33 @@ import {
   isPeriodicNotePath,
   stripTags,
 } from '../../core/markdown/parser';
+import {
+  canAppendTerm,
+  getPlainTextTerms,
+  getTopLevelTerms,
+} from '../../core/query/queryEdit';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import {
   buildTagIntersectionQuery,
   collectQueryTagKeys,
+  quoteValue,
   toBuilderGroups,
 } from '../../core/query/queryFormat';
 import { FIELD_ALIASES, parseQuery } from '../../core/query/queryParser';
 import {
   ParsedQuery,
+  QueryFacet,
   QuerySuggestion,
   QuerySuggestions,
   QueryViewState,
+  QUERY_FIELD_OPERATORS,
   QUERY_FIELDS,
   QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
 import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
+import { buildSearchFacets } from './searchFacets';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -58,7 +67,6 @@ export function createDashboardSnapshot(
   taskFilter: TaskFilter,
   selectedTaskTags: string[] = [],
   selectedTag?: string,
-  selectedNoteTags: string[] = [],
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   includeNotes = true,
 ): DashboardSnapshot {
@@ -71,16 +79,6 @@ export function createDashboardSnapshot(
   const normalizedTaskTags = normalizeTaskTags(
     selectedTaskTags,
     availableTaskTags,
-  );
-  const availableNoteTags = sortTags(
-    [...index.tags.values()].filter(
-      (tag) => tag.sectionIds.length > 0 || tag.filePaths.length > 0,
-    ),
-    preferences,
-  );
-  const normalizedNoteTags = normalizeTaskTags(
-    selectedNoteTags,
-    availableNoteTags,
   );
   // Every section becomes a note card, so a page that is not showing notes
   // is spared building them.
@@ -102,7 +100,10 @@ export function createDashboardSnapshot(
         .map((file) => createDashboardFileNote(file)),
     ],
     preferences.dashboardNoteSortMode,
-  ).filter((note) => matchesNoteFilter(note, normalizedNoteTags));
+  );
+  const noteSearch = includeNotes
+    ? createNoteSearch(index, preferences, notes)
+    : undefined;
   const tasks = sortTasks(
     [...index.tasks.values()],
     preferences.taskOrder,
@@ -113,9 +114,16 @@ export function createDashboardSnapshot(
 
   return {
     ...(includeNotes ? {} : { notesOmitted: true }),
+    ...(noteSearch
+      ? {
+          noteQuery: noteSearch.query,
+          noteQueryTasks: noteSearch.tasks,
+          noteQueryTaskCount: noteSearch.taskCount,
+        }
+      : {}),
     tags,
     entities,
-    notes,
+    notes: noteSearch?.notes ?? notes,
     tasks,
     totalSectionCount: index.sections.size,
     totalNoteCount:
@@ -138,16 +146,13 @@ export function createDashboardSnapshot(
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
     availableTaskTags,
-    availableNoteTags,
     selectedTaskTags: normalizedTaskTags,
-    selectedNoteTags: normalizedNoteTags,
     selectedTag,
     viewState: {
       ...preferences.dashboardViewState,
       taskFilter,
       selectedTaskTags: normalizedTaskTags,
-      selectedNoteTags: normalizedNoteTags,
-    },
+      },
     savedFilters: preferences.savedFilters.flatMap((filter) => {
       if (filter.query) {
         // A saved query keeps its place in the rail even when the tags it
@@ -170,6 +175,99 @@ export function createDashboardSnapshot(
         : [];
     }),
   };
+}
+
+/** How many matching tasks the Search tab lists under a search. */
+const NOTE_SEARCH_TASK_LIMIT = 50;
+
+/**
+ * Runs the Search tab's search.
+ *
+ * A search of plain words matches each note's title, file name, body, and
+ * tags, the same places the page matches words while they are typed, so a
+ * file name still finds its note and the counts agree with what is shown.
+ * Any other search is answered by the query evaluator, exactly as it is
+ * everywhere else. Either way the tasks it matches and the facets that could
+ * narrow it are computed here.
+ */
+function createNoteSearch(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  notes: DashboardNote[],
+): {
+  query: QueryViewState;
+  notes: DashboardNote[];
+  tasks: DashboardTask[];
+  taskCount: number;
+} {
+  const text = preferences.dashboardViewState.noteSearchQuery.trim();
+  const parsed = parseQuery(text);
+  const recent = preferences.recentQueries ?? [];
+  if (!parsed.node) {
+    return {
+      query: createQueryViewState(
+        index,
+        parsed,
+        { notes: notes.length, tasks: 0 },
+        true,
+        recent,
+      ),
+      notes,
+      tasks: [],
+      taskCount: 0,
+    };
+  }
+  const results = evaluateQuery(index, parsed.node);
+  const plainTerms = getPlainTextTerms(parsed.node);
+  const matchedNotes = plainTerms
+    ? notes.filter((note) => matchesNoteWords(note, plainTerms))
+    : (() => {
+        const ids = new Set([
+          ...results.sections.map((section) => section.id),
+          ...results.files.map((file) => `frontmatter:${file.filePath}`),
+        ]);
+        return notes.filter((note) => ids.has(note.id));
+      })();
+  const tasks = [...results.tasks].sort(compareSearchTasks);
+  return {
+    query: createQueryViewState(
+      index,
+      parsed,
+      { notes: matchedNotes.length, tasks: tasks.length },
+      true,
+      recent,
+      { facets: buildSearchFacets(index, results, text) },
+    ),
+    notes: matchedNotes,
+    tasks: tasks
+      .slice(0, NOTE_SEARCH_TASK_LIMIT)
+      .map((task) => createDashboardTask(task, index.sections)),
+    taskCount: tasks.length,
+  };
+}
+
+/**
+ * Whether a note card has every word in its title, file name, body, or tags.
+ */
+function matchesNoteWords(note: DashboardNote, words: readonly string[]): boolean {
+  const text = [
+    note.heading,
+    note.fileName,
+    note.rawContent,
+    ...note.tags.map((tag) => tag.label),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return words.every((word) => text.includes(word.toLowerCase()));
+}
+
+/** Open tasks first, then the soonest due, then in title order. */
+function compareSearchTasks(left: Task, right: Task): number {
+  return (
+    Number(left.completed) - Number(right.completed) ||
+    (left.dueAt ?? Number.MAX_SAFE_INTEGER) - (right.dueAt ?? Number.MAX_SAFE_INTEGER) ||
+    left.title.localeCompare(right.title)
+  );
 }
 
 function createDashboardNote(
@@ -387,18 +485,6 @@ function compareTagLabels(left: TagInfo, right: TagInfo): number {
   );
 }
 
-function matchesNoteFilter(
-  note: DashboardNote,
-  selectedNoteTags: string[],
-): boolean {
-  return (
-    selectedNoteTags.length === 0 ||
-    selectedNoteTags.some((tagKey) =>
-      note.tags.some((tag) => tag.key === tagKey),
-    )
-  );
-}
-
 function getTagDisplayName(tag: TagInfo): string {
   const label = String(tag.label || tag.key).replace(/^[@#]/, '');
   return label.slice(label.lastIndexOf('/') + 1).replace(/[-_]+/g, ' ');
@@ -491,11 +577,26 @@ export function createTagOverviewSnapshot(
   enableHeadingTagRelationships = true,
   filterTagKey?: string,
   filterTagKeys: string[] = [],
+  refinementText = '',
 ): TagOverviewSnapshot | undefined {
   const tag = index.tags.get(tagKey);
   if (!tag) {
     return undefined;
   }
+  // A search typed after the tags narrows the page's own entries.
+  const refinement = parseQuery(refinementText);
+  const refined = refinement.node
+    ? evaluateQuery(index, refinement.node)
+    : undefined;
+  const refinedSectionIds = refined
+    ? new Set(refined.sections.map((section) => section.id))
+    : undefined;
+  const refinedTaskIds = refined
+    ? new Set(refined.tasks.map((task) => task.id))
+    : undefined;
+  const refinedFilePaths = refined
+    ? new Set(refined.files.map((file) => file.filePath))
+    : undefined;
   const effectiveFilterTags = getOverviewFilterTags(
     index,
     tag.key,
@@ -542,12 +643,20 @@ export function createTagOverviewSnapshot(
         effectiveFilterTags.every((filterTag) =>
           fileIncludesTag(index, file, filterTag.key),
         ),
+    )
+    .filter((file) => refinedFilePaths?.has(file.filePath) ?? true);
+  if (refinedSectionIds) {
+    sectionCandidates = sectionCandidates.filter((section) =>
+      refinedSectionIds.has(section.id),
     );
+  }
 
   // A plain overview leads with the tag's hub note, so the hub's own entries
   // are not listed again below it.
   const hubFile =
-    effectiveFilterTags.length === 0 && tag.hubFilePaths?.length
+    effectiveFilterTags.length === 0 &&
+    !refinement.node &&
+    tag.hubFilePaths?.length
       ? index.files.get(tag.hubFilePaths[0])
       : undefined;
   const sections = sectionCandidates
@@ -585,6 +694,9 @@ export function createTagOverviewSnapshot(
         ].every((activeTagKey) => taskIncludesTag(index, task, activeTagKey)),
     );
   }
+  if (refinedTaskIds) {
+    taskCandidates = taskCandidates.filter((task) => refinedTaskIds.has(task.id));
+  }
   const taskCounts = {
     all: taskCandidates.length,
     active: taskCandidates.filter((task) => !task.completed).length,
@@ -604,15 +716,28 @@ export function createTagOverviewSnapshot(
       filePaths: [...tag.filePaths],
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
-    // A tag overview still publishes the query that expresses its own
-    // intersection, so opening the advanced editor starts from what is on
-    // screen rather than from an empty bar.
+    // The tag chips set this page's scope, and the search box refines it, so
+    // the box holds only what was typed after the tags.
     query: createQueryViewState(
       index,
-      parseQuery(buildTagIntersectionQuery(activeTagKeys)),
+      refinement,
       { notes: sections.length, tasks: taskCandidates.length },
-      // Tag chips drive this page, so the query bar stays a refinement of it.
       false,
+      preferences.recentQueries ?? [],
+      {
+        scope: buildTagIntersectionQuery(activeTagKeys),
+        facets: buildSearchFacets(
+          index,
+          {
+            sections: sectionCandidates,
+            tasks: taskCandidates,
+            files: fileCandidates,
+          },
+          refinementText,
+          // The page already lists the tags associated with its own.
+          { includeTags: false },
+        ),
+      },
     ),
     entity: index.entities.get(tagKey),
     ...(hubFile
@@ -1310,6 +1435,13 @@ export function createQueryOverviewSnapshot(
       parsed,
       { notes: sections.length, tasks: results.tasks.length },
       true,
+      preferences.recentQueries ?? [],
+      {
+        facets: buildSearchFacets(index, results, queryText, {
+          // A query naming one tag keeps that tag's association suggestions.
+          includeTags: queryTags.length !== 1,
+        }),
+      },
     ),
     entity: focusTag ? index.entities.get(focusTag.key) : undefined,
     filterTags: [],
@@ -1348,10 +1480,16 @@ export function createQueryViewState(
   parsed: ParsedQuery,
   matchCounts: { notes: number; tasks: number },
   isAdvanced: boolean,
+  recentQueries: readonly string[] = [],
+  extras: { scope?: string; facets?: QueryFacet[] } = {},
 ): QueryViewState {
   const groups = toBuilderGroups(parsed.node);
   return {
     text: parsed.text,
+    ...(extras.scope !== undefined ? { scope: extras.scope } : {}),
+    terms: getTopLevelTerms(parsed),
+    canAppend: canAppendTerm(parsed),
+    facets: extras.facets ?? [],
     isAdvanced,
     isBuildable: groups.every((group) =>
       group.rows.every((row) => row.supported),
@@ -1359,7 +1497,7 @@ export function createQueryViewState(
     diagnostics: parsed.diagnostics,
     groups,
     tags: resolveQueryTags(index, parsed),
-    suggestions: createQuerySuggestions(index),
+    suggestions: createQuerySuggestions(index, recentQueries),
     matchCounts,
   };
 }
@@ -1397,7 +1535,10 @@ const QUERY_PATH_SUGGESTION_LIMIT = 200;
  * can complete a value once it knows which field the caret is in, and a
  * builder row can complete its own value field with the same list.
  */
-function createQuerySuggestions(index: WorkspaceIndex): QuerySuggestions {
+export function createQuerySuggestions(
+  index: WorkspaceIndex,
+  recentQueries: readonly string[] = [],
+): QuerySuggestions {
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
     label: field,
@@ -1454,20 +1595,31 @@ function createQuerySuggestions(index: WorkspaceIndex): QuerySuggestions {
     value,
     label: value,
   }));
+  const folders: QuerySuggestion[] = collectFolders(filePaths)
+    .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
+    .map((folder) => ({ value: folder, label: folder }));
 
   return {
     fields,
     aliases: { ...FIELD_ALIASES },
+    operators: { ...QUERY_FIELD_OPERATORS },
     values: {
       tag: tags,
       kind: kinds,
+      is: IS_SUGGESTIONS.map((item) => ({
+        value: item.value.slice('is:'.length),
+        label: item.value.slice('is:'.length),
+        detail: item.detail,
+      })),
       task: [
         { value: 'open', label: 'open' },
         { value: 'done', label: 'done' },
         { value: 'any', label: 'any' },
       ],
+      has: HAS_SUGGESTIONS.map((value) => ({ value, label: value })),
       file: files,
       path: paths,
+      in: folders,
       due: taskDates,
       scheduled: taskDates,
       start: taskDates,
@@ -1476,7 +1628,51 @@ function createQuerySuggestions(index: WorkspaceIndex): QuerySuggestions {
       created: dates,
       updated: dates,
     },
+    conditions: [
+      ...IS_SUGGESTIONS.map((item) => ({ ...item, label: item.value })),
+      ...HAS_SUGGESTIONS.flatMap((value) => [
+        { value: `has:${value}`, label: `has:${value}`, detail: `Tasks with a ${value === 'priority' ? 'priority' : `${value} date`}` },
+        { value: `no:${value}`, label: `no:${value}`, detail: `Tasks without a ${value === 'priority' ? 'priority' : `${value} date`}` },
+      ]),
+      { value: 'priority >= high', label: 'priority >= high', detail: 'High or highest priority tasks' },
+      { value: 'updated >= 7d', label: 'updated >= 7d', detail: 'Updated in the last seven days' },
+      { value: 'created = today', label: 'created = today', detail: 'Created today' },
+      ...folders.slice(0, 20).map((folder) => ({
+        value: `in:${quoteValue(folder.value)}`,
+        label: `in:${folder.value}`,
+        detail: 'Notes in this folder',
+      })),
+    ],
+    recent: recentQueries.map((query) => ({
+      value: query,
+      label: query,
+      detail: 'Recent search',
+    })),
   };
+}
+
+/** Whole `is:` conditions, with what each finds. */
+const IS_SUGGESTIONS: QuerySuggestion[] = [
+  { value: 'is:open', label: 'is:open', detail: 'Open tasks' },
+  { value: 'is:done', label: 'is:done', detail: 'Completed tasks' },
+  { value: 'is:overdue', label: 'is:overdue', detail: 'Open tasks past their due date' },
+  { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
+  { value: 'is:task', label: 'is:task', detail: 'Every task' },
+  { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
+];
+
+const HAS_SUGGESTIONS = ['due', 'scheduled', 'start', 'done', 'priority'];
+
+/**
+ * Every folder that holds a note, parents before their children.
+ */
+function collectFolders(filePaths: readonly string[]): string[] {
+  const folders = new Set<string>();
+  filePaths.forEach((filePath) => {
+    const parts = filePath.split('/').slice(0, -1);
+    parts.forEach((_, index) => folders.add(parts.slice(0, index + 1).join('/')));
+  });
+  return [...folders].sort((left, right) => left.localeCompare(right));
 }
 
 /**
@@ -1488,6 +1684,12 @@ export function describeQueryField(field: string): string {
       return 'A tag, including tags inherited from a parent heading';
     case 'text':
       return 'Words in the note, task, or file body';
+    case 'is':
+      return 'is:open, is:done, is:overdue, is:due, is:task, or is:note';
+    case 'has':
+      return 'has:due or no:due, and the same for scheduled, start, done, and priority';
+    case 'in':
+      return 'A folder and everything in it, as in in:notes/projects';
     case 'task':
       return 'open, done, or any';
     case 'due':
