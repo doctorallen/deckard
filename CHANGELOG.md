@@ -108,13 +108,19 @@
 
 ### Changed
 
+- The tags chosen on the Dashboard's Tasks tab sit in a dashed box headed
+  **Tags**, like **Refine** on the Search tab, with **Clear filters** at its
+  right.
+
 - The Dashboard's **Saved tag views** are now **Saved searches**, since they
   hold saved searches as well as saved tag sets.
 
 - A Dashboard search kept from an earlier visit is no longer easy to miss.
   When one is narrowing the Tasks or Tags list, a line above the list says
   how many items match, with **Clear search**, the search box is outlined,
-  and a dot marks each tab whose search has text.
+  and a dot marks each tab whose search has text. A **Namespace** filter on
+  the Tags tab counts as a search: it gets the same line and dot, and
+  **Clear search** clears it too.
 
 - The search box is always shown in a tag overview, in place of the
   **Advanced search** button and the separate notes and tasks search fields.
@@ -133,6 +139,16 @@
   daily note counts as created on its day, or earlier if its file is older.
   A git clone resets every file's times, so these dates used to be the day of
   the clone.
+
+### Fixed
+
+- A person's `@` tag, such as `@ren-kade`, shows as a **person** in the
+  Dashboard's Tags tab, and the **Namespace** filter's **Person** lists it
+  with the `#person/` tags, rather than under **None**.
+
+- Task titles on the task board, on the Dashboard and in **Deckard: Task
+  Board**, show their Markdown rendered, as the task list does, rather than
+  as raw `**bold**` and `[links](...)`.
 
 ## 1.9.0 - 2026-09-13
 

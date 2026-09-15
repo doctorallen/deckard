@@ -882,6 +882,8 @@ export interface TaskBoardCard {
   title: string;
   /** Tags written inside the title, rendered as controls where they appear. */
   titleTags: TagReference[];
+  /** The title as sanitized inline Markdown, as the task list shows it. */
+  renderedTitle: string;
   completed: boolean;
   filePath: string;
   line: number;

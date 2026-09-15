@@ -182,8 +182,55 @@ test('the namespace filter narrows the Tags tab and keeps its choice', async () 
   panel._deliver(lastState());
   assert.deepStrictEqual(shownTags(), ['#project/atlas', '#project/relay'], 'a host update keeps it');
 
+  const notice = () => view.find('#browse-panel .search-notice');
+  assert.ok(notice(), 'a namespace alone says it is narrowing the tags');
+  assert.strictEqual(notice().querySelector('strong').textContent, '2');
+  assert.match(notice().textContent, /of 4 tags, in project/i);
+  assert.doesNotMatch(notice().textContent, /matching/);
+  assert.ok(view.find('select[data-action="set-tag-namespace"][data-has-query]'), 'the filter is marked');
+  assert.ok(view.find('#browse-tab .tab-search-mark'), 'the tab is marked');
+
   view.change(namespace(), '/');
   assert.deepStrictEqual(shownTags(), ['#follow-up'], 'None shows tags without a namespace');
+  assert.match(notice().textContent, /of 4 tags, without a namespace/);
+
+  view.click(view.find('[data-action="clear-tag-search"]'));
+  assert.strictEqual(notice(), null);
+  assert.strictEqual(view.find('#browse-tab .tab-search-mark'), null);
+  assert.strictEqual(view.find('select[data-action="set-tag-namespace"][data-has-query]'), null);
+  assert.strictEqual(view.state.tagNamespaceFilter, '', 'clearing lifts the filter');
+  assert.strictEqual(shownTags().length, 4);
+});
+
+test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
+  const note = parseMarkdown(
+    'notes/alpha.md',
+    '# Alpha @ren-kade #person/mara-vale #follow-up\nBody text.',
+    { createdAt: 1, updatedAt: 2 },
+    {},
+  );
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view } = await openDashboard('list', index);
+  view.click(view.find('[data-dashboard-mode="browse"]'));
+  await delay(20);
+  const namespace = () => view.find('[data-action="set-tag-namespace"]');
+  const shownTags = () =>
+    Array.from(view.findAll('.tag-row')).map((row) => row.dataset.tagKey).sort();
+
+  assert.deepStrictEqual(
+    namespace().children.map((option) => option.getAttribute('value')),
+    ['', 'person', '/'],
+    'people under one Person namespace, not None',
+  );
+  const ren = view.find('.tag-row[data-tag-key="@ren-kade"]');
+  assert.ok(ren, 'the @ tag is listed');
+  assert.strictEqual(ren.querySelector('.entity-kind').textContent, 'person');
+  assert.strictEqual(ren.querySelector('.tag-name').textContent, 'ren kade');
+
+  view.change(namespace(), 'person');
+  assert.deepStrictEqual(shownTags(), ['#person/mara-vale', '@ren-kade']);
+  view.change(namespace(), '/');
+  assert.deepStrictEqual(shownTags(), ['#follow-up'], 'None leaves people out');
 });
 
 test('a task search kept from an earlier visit says so above the list', async () => {
@@ -231,9 +278,15 @@ test('a tag search kept from an earlier visit says so above the tags', async () 
   assert.match(notice.textContent, /of 4 tags matching “proj”/);
   assert.ok(view.find('#browse-tab .tab-search-mark'), 'the tab is marked');
 
+  view.change(view.find('[data-action="set-tag-namespace"]'), 'topic');
+  const both = view.find('#browse-panel .search-notice');
+  assert.strictEqual(both.querySelector('strong').textContent, '0');
+  assert.match(both.textContent, /of 4 tags, in topic matching “proj”/i);
+
   view.click(view.find('[data-action="clear-tag-search"]'));
 
   assert.strictEqual(view.find('.search-notice'), null);
+  assert.strictEqual(view.state.tagNamespaceFilter, '', 'the namespace clears with the search');
   assert.strictEqual(view.findAll('.tag-row').length, 4);
 });
 

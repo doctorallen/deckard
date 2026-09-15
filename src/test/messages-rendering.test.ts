@@ -611,7 +611,16 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("'clear-tag-search'"), true);
     assert.strictEqual(html.includes('input.task-search[data-has-query], input.catalog-search[data-has-query]'), true);
     assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), true);
-    assert.strictEqual(html.includes('renderTabSearchMark(browseQuery)'), true);
+    assert.strictEqual(html.includes("renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '')"), true);
+    // A namespace filter alone narrows the tags, so it gets the notice too.
+    assert.strictEqual(html.includes('const tagNotice = normalizedBrowseQuery || activeTagNamespace'), true);
+    assert.strictEqual(html.includes('select[data-action="set-tag-namespace"][data-has-query]'), true);
+    // Board cards show their title as rendered Markdown, like task rows.
+    assert.strictEqual(html.includes("renderTaskTitle(card.renderedTitle, card.titleTags)"), true);
+    assert.strictEqual(html.includes("renderInlineTitle(card.title, card.titleTags, false)"), false);
+    // The chosen task tags sit in a dashed, headed box like Refine.
+    assert.strictEqual(html.includes('<div class="selected-task-tags" aria-label="Selected task tags"><span class="query-facets-heading">Tags</span>'), true);
+    assert.strictEqual(html.includes('padding: 10px; border: 1px dashed var(--line-strong); }'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
     assert.strictEqual(
@@ -649,6 +658,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
     assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
     assert.strictEqual(html.includes('function formatTagDisplay(tag)'), true);
+    // An @ tag is a person, as the indexer counts it, so it joins #person/ tags.
+    assert.strictEqual(html.includes("if (key.startsWith('@')) return 'person';"), true);
     assert.strictEqual(html.includes('const display = formatTagDisplay(tag);'), true);
     assert.strictEqual(html.includes("escapeHtml(display.name)"), true);
     assert.strictEqual(
@@ -656,7 +667,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('data-action="set-tag-namespace" aria-label="Filter tags by namespace"'),
+      html.includes('data-action="set-tag-namespace"\' + (activeTagNamespace ? \' data-has-query\' : \'\') + \' aria-label="Filter tags by namespace"'),
       true,
     );
     assert.strictEqual(html.includes('tagNamespaceFilter: tagNamespaceFilter'), true);
