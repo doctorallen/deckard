@@ -142,6 +142,9 @@
 
 ### Fixed
 
+- In the Cooper theme, the gold glow no longer repeats in bands down a panel
+  taller than its content, such as the Related Notes sidebar.
+
 - A person's `@` tag, such as `@ren-kade`, shows as a **person** in the
   Dashboard's Tags tab, and the **Namespace** filter's **Person** lists it
   with the `#person/` tags, rather than under **None**.

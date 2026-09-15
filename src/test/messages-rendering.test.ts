@@ -1146,6 +1146,9 @@ suite('Webview contracts', () => {
     const cooper = getDeckardThemeCss('cooper');
     assert.strictEqual(cooper.includes('--bg-dark: #030405'), true);
     assert.strictEqual(cooper.includes('--amber: #dca24a'), true, "Gargantua's gold");
+    // The glow is drawn once over the whole panel, not tiled down a short page.
+    assert.strictEqual(cooper.includes('html { min-height: 100%; }'), true);
+    assert.strictEqual(cooper.includes('background-repeat: no-repeat, repeat, repeat;'), true);
     assert.strictEqual(
       cooper.includes('radial-gradient(circle at 1px 1px'),
       true,

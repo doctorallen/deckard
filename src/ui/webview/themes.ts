@@ -212,11 +212,15 @@ button:hover, button.active, select:hover, .tag-open:hover { border-color: var(-
   --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
+/* The gold glow is drawn once over the whole panel; on a page shorter than
+   its panel, such as the sidebar, it would otherwise tile in bands. */
+html { min-height: 100%; }
 body {
   background-color: var(--bg-dark);
   background-image: radial-gradient(ellipse at 88% -8%, rgba(220, 162, 74, .16), transparent 42%), radial-gradient(circle at 1px 1px, rgba(235, 232, 225, .22) 1px, transparent 1.5px), radial-gradient(circle at 1px 1px, rgba(159, 191, 212, .14) 1px, transparent 1.5px);
   background-size: 100% 100%, 97px 89px, 53px 61px;
   background-position: 0 0, 13px 21px, 37px 7px;
+  background-repeat: no-repeat, repeat, repeat;
 }
 main { border-color: var(--slate-border); border-top-color: var(--line-strong); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 header { border-color: var(--line); }
