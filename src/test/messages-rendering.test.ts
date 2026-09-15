@@ -729,9 +729,15 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-note-sort"'), true);
     assert.strictEqual(html.includes('data-action="set-note-tag"'), false);
     assert.strictEqual(html.includes('data-action="filter-note-tags"'), false);
-    // Save search sits in the search bar, beside the search it saves.
-    assert.strictEqual(html.includes('actions: function ()'), true);
-    assert.strictEqual(html.includes("+ (options.actions ? options.actions() : '')"), true);
+    // Save sits in the search bar, beside the search it saves, and like
+    // Clear it is always there, disabled until there is text, so the bar
+    // never shifts under the pointer.
+    assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), true);
+    assert.strictEqual(html.includes("(hasText ? '' : ' disabled') + '>Save</button>'"), true);
+    assert.strictEqual(html.includes('data-action="clear-query" data-query-needs-text'), true);
+    assert.strictEqual(html.includes('<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder"'), true);
+    assert.strictEqual(html.includes('actions: function (hasText)'), true);
+    assert.strictEqual(html.includes("+ (options.actions ? options.actions(hasText) : '')"), true);
     assert.strictEqual(html.includes("dashboardMode === 'notes' ? 'Search'"), true);
     assert.strictEqual(html.includes('data-action="query-input"'), true);
     assert.strictEqual(html.includes("type: 'recordRecentQuery'"), true);

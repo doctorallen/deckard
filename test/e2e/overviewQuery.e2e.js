@@ -157,6 +157,18 @@ test('the search box is shown without a toggle', async () => {
   assert.strictEqual(view.find('[data-action="toggle-query"]'), null);
 });
 
+test('Clear holds its place and is enabled as a search is typed', async () => {
+  const { view } = await openOverview();
+  const clear = () => view.find('[data-action="clear-query"]');
+  assert.ok(clear(), 'Clear is on the page before anything is typed');
+  assert.notStrictEqual(clear().getAttribute('disabled'), null, 'and disabled');
+
+  view.type(view.find('[data-action="query-input"]'), 'planning');
+
+  assert.strictEqual(clear().getAttribute('disabled'), null, 'typing enables it in place');
+  assert.strictEqual(clear().disabled, false);
+});
+
 test('plain words narrow the page as they are typed', async () => {
   const { view } = await openOverview();
   view.posted.length = 0;

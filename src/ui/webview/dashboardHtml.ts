@@ -276,10 +276,8 @@ ${getQueryEditorScript()}
     placeholder: function () { return 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…'; },
     label: 'Search notes and tasks',
     // Saving sits with the search it saves.
-    actions: function () {
-      return noteEditor.currentText().trim()
-        ? '<button class="save-filter" data-action="save-note-search" title="Save this search as a view">Save search</button>'
-        : '';
+    actions: function (hasText) {
+      return '<button class="save-filter" data-action="save-note-search" data-query-needs-text title="Save this search as a view"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
 

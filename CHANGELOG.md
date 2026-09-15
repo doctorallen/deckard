@@ -32,7 +32,7 @@
 
 - **The Search tab**: the Dashboard's Notes tab is now **Search**, Deckard's
   search page. It has the full search box, with completions, the builder,
-  **Refine** counts, the tasks the search matches, and **Save search** beside
+  **Refine** counts, the tasks the search matches, and **Save** beside
   the box. Its tag picker is gone, since tags are typed in the search or
   chosen under **Refine**. `Deckard: Search Notes and Tasks`, **Show all** in
   Find, a query block's **Open in search**, and saved searches open there.

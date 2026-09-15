@@ -7,7 +7,7 @@ as recommended below. Where the implementation departs from the plan:
 
 - **Search lives on the Dashboard's Search tab**, which was the Notes tab.
   It is the search page: it has the full search box, the builder, the facets, the tasks the
-  search matches, and **Save search**. Find's **Show all**, `Deckard: Search
+  search matches, and **Save**. Find's **Show all**, `Deckard: Search
   Notes and Tasks`, a query block's CodeLens (now **Open in search**), and
   saved searches open there. Tag overviews keep the same search box to
   narrow their own entries.

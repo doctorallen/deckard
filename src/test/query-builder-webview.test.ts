@@ -268,6 +268,25 @@ suite('Tag overview query builder', () => {
     assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
   });
 
+  test('keeps the bar in place while a search is typed', () => {
+    const view = mountTagOverview();
+    view.send(createState('', { scope: 'tag = #project/atlas' }));
+    const html = view.html();
+
+    // Clear is always drawn, disabled while the box is empty, so nothing
+    // appears beside the box when typing starts.
+    assert.match(html, /data-action="clear-query" data-query-needs-text[^>]*disabled/);
+    // Builder sits under the box, not beside it.
+    assert.ok(
+      html.indexOf('data-action="toggle-builder"') > html.indexOf('class="query-status"'),
+      'the builder toggle is on the line under the box',
+    );
+
+    view.posted.length = 0;
+    view.type({ dataset: { action: 'query-input', suggestKey: 'query' } }, 'vendor');
+    assert.strictEqual(view.html(), html, 'typing does not redraw the bar');
+  });
+
   test('sends the query when a condition is removed', () => {
     const view = mountTagOverview();
     view.send(createState());

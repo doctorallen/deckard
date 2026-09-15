@@ -752,6 +752,8 @@ export function getQueryEditorCss(): string {
 .query-suggestion:hover, .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
 .query-suggestion-detail { color: var(--muted); font-size: 10px; }
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
+.query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
+.query-status .query-builder-toggle { min-height: 24px; padding: 2px 8px; font-size: 11px; }
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 .query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
@@ -809,7 +811,11 @@ export function getQueryEditorScript(): string {
    *                  what it already shows by the plain words being typed
    *   placeholder()  the empty box's hint
    *   label          what the box searches, for assistive technology
-   *   actions()      optional; the page's own buttons for the bar, such as Save
+   *   actions(hasText) optional; the page's own buttons for the bar, such as
+   *                  Save. A button that needs text carries
+   *                  data-query-needs-text, and is always drawn, disabled
+   *                  until there is text, so the bar never shifts under the
+   *                  pointer while a search is typed.
    */
   function createQueryEditor(options) {
     const DEFAULT_OPERATORS = {
@@ -880,6 +886,7 @@ export function getQueryEditorScript(): string {
     /** The bar, its status line, the search's terms, and the builder. */
     function renderBar() {
       const value = currentText();
+      const hasText = Boolean(String(value).trim());
       const errors = (query().diagnostics || []).filter(function (diagnostic) { return diagnostic.severity === 'error'; });
       const counts = query().matchCounts || { notes: 0, tasks: 0 };
       const status = errors.length
@@ -893,14 +900,26 @@ export function getQueryEditorScript(): string {
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell"><input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(label) + '" placeholder="' + escapeHtml(placeholder()) + '" value="' + escapeHtml(value) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
         + '<button data-action="apply-query" title="Run this search">Search</button>'
-        + '<button data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>'
-        + (value ? '<button data-action="clear-query" title="Clear the search">Clear</button>' : '')
-        + (options.actions ? options.actions() : '')
+        + '<button data-action="clear-query" data-query-needs-text title="Clear the search"' + (hasText ? '' : ' disabled') + '>Clear</button>'
+        + (options.actions ? options.actions(hasText) : '')
         + '</div>'
-        + '<div class="query-status">' + status + summary + '</div>'
+        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + summary + '</div>'
         + renderTerms()
         + renderBuilder()
         + '</section>';
+    }
+
+    /**
+     * Enable the bar's buttons that need text as soon as there is some, in
+     * place, rather than redrawing the bar while a search is typed.
+     */
+    function syncTextButtons(text) {
+      const hasText = Boolean(String(text || '').trim());
+      document.querySelectorAll('[data-query-needs-text]').forEach(function (button) {
+        button.disabled = !hasText;
+        if (hasText) button.removeAttribute('disabled');
+        else button.setAttribute('disabled', '');
+      });
     }
 
     /** Each term of a search of several, removable on its own. */
@@ -1322,6 +1341,7 @@ export function getQueryEditorScript(): string {
         closeSuggestions();
         input.setSelectionRange(nextCaret, nextCaret);
         draft = input.value;
+        syncTextButtons(draft);
         if (options.onDraft) options.onDraft(draft);
         input.focus();
         return;
@@ -1486,6 +1506,8 @@ export function getQueryEditorScript(): string {
         }
         const target = event.target.closest ? event.target.closest('[data-action]') : undefined;
         if (!target) return false;
+        // A disabled button in the bar is there to hold its place, not to act.
+        if (target.disabled === true || (target.getAttribute && target.getAttribute('disabled') !== null)) return true;
         const action = target.dataset.action;
         if (action === 'toggle-builder') {
           builderOpen = !builderOpen;
@@ -1620,6 +1642,7 @@ export function getQueryEditorScript(): string {
             // Escape with no completions open abandons the edit.
             draft = undefined;
             input.value = appliedText();
+            syncTextButtons(input.value);
             if (options.onDraft) options.onDraft(input.value);
           }
           return true;
@@ -1631,6 +1654,7 @@ export function getQueryEditorScript(): string {
         const target = event.target;
         if (target.dataset.action === 'query-input') {
           draft = target.value;
+          syncTextButtons(draft);
           openSuggestions(target);
           if (options.onDraft) options.onDraft(draft);
           return true;
