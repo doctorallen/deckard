@@ -108,6 +108,9 @@
 
 ### Changed
 
+- The Dashboard's **Saved tag views** are now **Saved searches**, since they
+  hold saved searches as well as saved tag sets.
+
 - A Dashboard search kept from an earlier visit is no longer easy to miss.
   When one is narrowing the Tasks or Tags list, a line above the list says
   how many items match, with **Clear search**, the search box is outlined,

@@ -183,11 +183,12 @@ const NOTE_SEARCH_TASK_LIMIT = 50;
 /**
  * Runs the Search tab's search.
  *
- * A search of plain words is left to the page, which already filters its
- * notes as they are typed and also matches file names and tags, so nothing
- * it showed before is lost. Any other search is answered by the query
- * evaluator, exactly as it is everywhere else. Either way the tasks it
- * matches and the facets that could narrow it are computed here.
+ * A search of plain words matches each note's title, file name, body, and
+ * tags, the same places the page matches words while they are typed, so a
+ * file name still finds its note and the counts agree with what is shown.
+ * Any other search is answered by the query evaluator, exactly as it is
+ * everywhere else. Either way the tasks it matches and the facets that could
+ * narrow it are computed here.
  */
 function createNoteSearch(
   index: WorkspaceIndex,
@@ -217,8 +218,9 @@ function createNoteSearch(
     };
   }
   const results = evaluateQuery(index, parsed.node);
-  const matchedNotes = getPlainTextTerms(parsed.node)
-    ? notes
+  const plainTerms = getPlainTextTerms(parsed.node);
+  const matchedNotes = plainTerms
+    ? notes.filter((note) => matchesNoteWords(note, plainTerms))
     : (() => {
         const ids = new Set([
           ...results.sections.map((section) => section.id),
@@ -242,6 +244,21 @@ function createNoteSearch(
       .map((task) => createDashboardTask(task, index.sections)),
     taskCount: tasks.length,
   };
+}
+
+/**
+ * Whether a note card has every word in its title, file name, body, or tags.
+ */
+function matchesNoteWords(note: DashboardNote, words: readonly string[]): boolean {
+  const text = [
+    note.heading,
+    note.fileName,
+    note.rawContent,
+    ...note.tags.map((tag) => tag.label),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return words.every((word) => text.includes(word.toLowerCase()));
 }
 
 /** Open tasks first, then the soonest due, then in title order. */

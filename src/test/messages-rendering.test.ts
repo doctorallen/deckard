@@ -712,9 +712,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-browse"'), true);
     assert.strictEqual(html.includes('aria-label="Tag scope"'), false);
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
-    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(html.includes('Saved searches'), true);
     assert.strictEqual(
-      html.indexOf('Saved tag views') <
+      html.indexOf('Saved searches') <
         html.indexOf('role="tablist" aria-label="Dashboard mode"'),
       true,
     );
@@ -735,6 +735,19 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), true);
     assert.strictEqual(html.includes("(hasText ? '' : ' disabled') + '>Save</button>'"), true);
     assert.strictEqual(html.includes('data-action="clear-query" data-query-needs-text'), true);
+    // The Search tab's sort shares the line under the search box, so it takes no row of its own.
+    assert.strictEqual(html.includes('noteEditor.renderBar(noteSortControl)'), true);
+    assert.strictEqual(html.includes('dashboard-tabs-controls'), false);
+    assert.strictEqual(html.includes("+ status + (statusControls || '') + '</div>'"), true);
+    // The result count sits in the Refine box's corner, not under the search box.
+    assert.strictEqual(html.includes('<span class="query-facets-count" role="status">'), true);
+    assert.strictEqual(html.includes("+ '</div>' + count + '</section>'"), true);
+    assert.strictEqual(html.includes('.query-status .control-icon select { min-height: 24px'), false);
+    assert.strictEqual(html.includes("'</div><div class=\"task-toolbar\"><div class=\"toolbar-controls\">' + noteSortControl"), false);
+    // Search is the primary action; Save is an ordinary button beside it.
+    assert.strictEqual(html.includes('<button class="query-apply" data-action="apply-query"'), true);
+    assert.strictEqual(html.includes('.query-bar-row .query-apply:not(:hover):not(:focus-visible)'), true);
+    assert.strictEqual(html.includes('class="save-filter" data-action="save-note-search"'), false);
     assert.strictEqual(html.includes('<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder"'), true);
     assert.strictEqual(html.includes('actions: function (hasText)'), true);
     assert.strictEqual(html.includes("+ (options.actions ? options.actions(hasText) : '')"), true);
@@ -1787,7 +1800,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Favorites always appear before'), true);
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
-    assert.strictEqual(html.includes('Saved tag views'), true);
+    assert.strictEqual(html.includes('Saved searches'), true);
     assert.strictEqual(html.includes('Tasks/Search/Tags tabs'), true);
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);

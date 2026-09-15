@@ -753,7 +753,9 @@ export function getQueryEditorCss(): string {
 .query-suggestion-detail { color: var(--muted); font-size: 10px; }
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
-.query-status .query-builder-toggle { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+/* Search is the bar's primary action in every theme; hover and focus keep
+   the theme's own look. */
+.query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--amber); color: var(--amber); }
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 .query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
@@ -778,7 +780,11 @@ export function getQueryEditorCss(): string {
 .query-builder-actions button { font-size: 11px; }
 .query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
 .query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
-.query-facets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 12px; padding: 10px; border: 1px dashed var(--line-strong); }
+/* The facets wrap on the left; the result count holds the top-right corner. */
+.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 18px; margin: 12px 0; padding: 10px; border: 1px dashed var(--line-strong); }
+.query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.query-facets-count { color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
+.query-facets-empty { color: var(--muted); font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -884,26 +890,26 @@ export function getQueryEditorScript(): string {
     }
 
     /** The bar, its status line, the search's terms, and the builder. */
-    function renderBar() {
+    /**
+     * statusControls is the page's own HTML for the line under the box, such
+     * as a sort control, kept there so it takes no row of its own.
+     */
+    function renderBar(statusControls) {
       const value = currentText();
       const hasText = Boolean(String(value).trim());
       const errors = (query().diagnostics || []).filter(function (diagnostic) { return diagnostic.severity === 'error'; });
-      const counts = query().matchCounts || { notes: 0, tasks: 0 };
       const status = errors.length
         ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
         : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
-      const summary = appliedText().trim()
-        ? '<span>' + counts.notes + ' ' + (counts.notes === 1 ? 'note' : 'notes') + ' &middot; ' + counts.tasks + ' ' + (counts.tasks === 1 ? 'task' : 'tasks') + '</span>'
-        : '';
       const label = options.label || 'Search';
       return '<section class="query-workspace" aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell"><input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(label) + '" placeholder="' + escapeHtml(placeholder()) + '" value="' + escapeHtml(value) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
-        + '<button data-action="apply-query" title="Run this search">Search</button>'
+        + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
         + '<button data-action="clear-query" data-query-needs-text title="Clear the search"' + (hasText ? '' : ' disabled') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
         + '</div>'
-        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + summary + '</div>'
+        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
         + renderTerms()
         + renderBuilder()
         + '</section>';
@@ -934,12 +940,21 @@ export function getQueryEditorScript(): string {
     /** What the results could still be narrowed by, with counts. */
     function renderFacets() {
       const facets = query().facets || [];
-      if (!facets.length) return '';
-      return '<section class="query-facets" aria-label="Refine these results"><span class="query-facets-heading">Refine</span>' + facets.map(function (facet) {
+      const count = renderMatchCount();
+      if (!facets.length && !count) return '';
+      const empty = facets.length ? '' : '<span class="query-facets-empty">Nothing left to narrow by.</span>';
+      return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
         return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
           return '<button class="query-facet-value" data-action="facet" data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '" title="Show only these. Alt-click to leave them out; Shift-click to allow them as well." aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '">' + (facet.id === 'tags' ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>';
         }).join('') + '</div>';
-      }).join('') + '</section>';
+      }).join('') + '</div>' + count + '</section>';
+    }
+
+    /** How many notes and tasks the applied search matches. */
+    function renderMatchCount() {
+      if (!appliedText().trim()) return '';
+      const counts = query().matchCounts || { notes: 0, tasks: 0 };
+      return '<span class="query-facets-count" role="status">' + counts.notes + ' ' + (counts.notes === 1 ? 'note' : 'notes') + ' &middot; ' + counts.tasks + ' ' + (counts.tasks === 1 ? 'task' : 'tasks') + '</span>';
     }
 
     /** OR groups of AND rows over the host's parse of the search. */

@@ -1,5 +1,7 @@
 import * as assert from 'assert';
 
+import * as vscode from 'vscode';
+
 import { parseMarkdown } from '../core/markdown/parser';
 import { evaluateQuery } from '../core/query/queryEvaluator';
 import {
@@ -9,8 +11,28 @@ import {
 } from '../core/query/queryEdit';
 import { parseQuery } from '../core/query/queryParser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { PreferencesStore } from '../core/storage/preferences';
 import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
+import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
+
+class MemoryMemento implements vscode.Memento {
+  private readonly values = new Map<string, unknown>();
+
+  public keys(): readonly string[] {
+    return [...this.values.keys()];
+  }
+
+  public get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.values.has(key) ? this.values.get(key) : defaultValue) as
+      | T
+      | undefined;
+  }
+
+  public async update(key: string, value: unknown): Promise<void> {
+    this.values.set(key, value);
+  }
+}
 
 suite('Refining a search', () => {
   test('lists the terms of a query as they were written', () => {
@@ -122,5 +144,22 @@ suite('Refining a search', () => {
     );
     const status = facets.find((facet) => facet.id === 'status');
     assert.deepStrictEqual(status?.values.map((value) => value.clause), ['is:done']);
+  });
+
+  test('a search of words narrows the Search tab by title, file name, body, and tags', async () => {
+    const files = [
+      parseMarkdown('notes/vault.md', '# Plan\nNothing else.'),
+      parseMarkdown('notes/door.md', '# Other\nThe vault door.'),
+      parseMarkdown('notes/unrelated.md', '# Third\nUnrelated.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+    // Written with its field, a text condition is still a search of words.
+    await store.setDashboardSearch('notes', 'text ~ "vault"');
+
+    const snapshot = createDashboardSnapshot(index, store.value, 'active');
+
+    assert.deepStrictEqual(snapshot.notes.map((note) => note.heading).sort(), ['Other', 'Plan']);
+    assert.strictEqual(snapshot.noteQuery?.matchCounts.notes, 2);
   });
 });

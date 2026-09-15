@@ -276,7 +276,7 @@ export function toPickItems(
   group('Complete', results.conditions.map(row));
   group('Recent searches', results.recent.map(row));
   group('Tags', results.tags.map(row));
-  group('Saved views', results.savedViews.map(row));
+  group('Saved searches', results.savedViews.map(row));
   group(value.trim() ? 'Notes' : 'Recently opened', results.notes.map(row));
   group('Tasks', results.tasks.map(row));
 

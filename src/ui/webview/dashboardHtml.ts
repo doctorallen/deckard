@@ -34,7 +34,6 @@ export function getDashboardHtml(
 <style nonce="${nonce}">${getBaseCss()}
 ${getQueryEditorCss()}
 .notes-search .query-workspace { margin-top: 0; margin-bottom: 10px; }
-.save-filter { border-color: var(--amber-bright); color: var(--amber-bright); }
 .note-search-tasks { margin-top: 18px; }
 .note-search-tasks .section-heading h2 { font-size: 13px; }
 .tag-name, .task-meta, .telemetry-line, .section-readout { font-family: var(--font-mono); }
@@ -277,7 +276,7 @@ ${getQueryEditorScript()}
     label: 'Search notes and tasks',
     // Saving sits with the search it saves.
     actions: function (hasText) {
-      return '<button class="save-filter" data-action="save-note-search" data-query-needs-text title="Save this search as a view"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-note-search" data-query-needs-text title="Save this search as a view"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
 
@@ -902,9 +901,9 @@ ${getQueryEditorScript()}
         : '') + (otherTags.length ? '<div class="tag-group" data-tag-group="other"><h3>Other tags <span class="tag-count">(' + otherTags.length + ')</span></h3><div class="tag-list" style="grid-template-columns: repeat(' + selectedTagColumns + ', 1fr);">' + otherTags.map(renderTag).join('') + '</div></div>' : '')
       : '<div class="empty">No tags match your search.</div>';
     const savedFilters = state.savedFilters.length
-      ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved tag views <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) {
+      ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved searches <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) {
           const tagCount = filter.tags.length;
-          return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved tag view ' + escapeHtml(filter.name) + '">Remove</button></div>';
+          return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button></div>';
         }).join('') + '</div></section>'
       : '';
     /** Writes a task timestamp as the YYYY-MM-DD form the note uses. */
@@ -1071,7 +1070,7 @@ ${getQueryEditorScript()}
       savedFilters +
       '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks' + renderTabSearchMark(taskSearchQuery) + '</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Search' + renderTabSearchMark(noteEditor.currentText()) + '</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery) + '</button></div></div>' +
       '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + (taskLayout === 'board' ? renderTaskBoardGroupSwitch(state.taskBoard.groupBy) : '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label>') + '<div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + taskNotice + taskContent + '</section>' +
-      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar() + '</div><div class="task-toolbar"><div class="toolbar-controls">' + noteSortControl + '</div></div>' + noteEditor.renderFacets() + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div>' + noteSearchTasks + '</section>' +
+      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar(noteSortControl) + '</div>' + noteEditor.renderFacets() + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div>' + noteSearchTasks + '</section>' +
       '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search"' + (normalizedBrowseQuery ? ' data-has-query' : '') + ' data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagNotice + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
