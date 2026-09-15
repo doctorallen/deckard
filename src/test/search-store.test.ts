@@ -167,4 +167,102 @@ suite('Local search store', () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  test('ranks an entry titled with a word above one that only mentions it', () => {
+    const store = new SearchStore(undefined);
+    try {
+      store.replace([
+        parseMarkdown('a.md', '# Weekly review\nThe vendor sent the elevator quote.', { updatedAt: 1 }),
+        parseMarkdown('b.md', '# Vendor contract\nSigned today.', { updatedAt: 1 }),
+      ]);
+
+      const result = store.searchEntries('vendor');
+      assert.deepStrictEqual(
+        result.matches.map((match) => match.filePath),
+        ['b.md', 'a.md'],
+      );
+      assert.strictEqual(result.matches[0].kind, 'section');
+      assert.strictEqual(result.matches[0].line, 1);
+      assert.strictEqual(result.partial, false);
+    } finally {
+      store.dispose();
+    }
+  });
+
+  test('requires every word, and falls back to any word as a partial match', () => {
+    const store = new SearchStore(undefined);
+    try {
+      store.replace([
+        parseMarkdown('a.md', '# Vendor\nRisk of delay.', { updatedAt: 1 }),
+        parseMarkdown('b.md', '# Vendor\nOn schedule.', { updatedAt: 1 }),
+      ]);
+
+      const both = store.searchEntries('vendor risk');
+      assert.deepStrictEqual(both.matches.map((match) => match.filePath), ['a.md']);
+      assert.strictEqual(both.partial, false);
+
+      const either = store.searchEntries('vendor budget');
+      assert.deepStrictEqual(
+        either.matches.map((match) => match.filePath).sort(),
+        ['a.md', 'b.md'],
+      );
+      assert.strictEqual(either.partial, true);
+    } finally {
+      store.dispose();
+    }
+  });
+
+  test('matches the last word as it is being typed', () => {
+    const store = new SearchStore(undefined);
+    try {
+      store.replace([parseMarkdown('a.md', '# Elevator\nQuote received.', { updatedAt: 1 })]);
+
+      assert.strictEqual(store.searchEntries('eleva').matches.length, 1);
+      assert.strictEqual(
+        store.searchEntries('eleva', { prefixLastTerm: false }).matches.length,
+        0,
+      );
+    } finally {
+      store.dispose();
+    }
+  });
+
+  test('indexes tasks and front-matter-only files as their own entries', () => {
+    const store = new SearchStore(undefined);
+    try {
+      store.replace([
+        parseMarkdown('a.md', '# Plan\n- [ ] Send the manifest to Ren', { updatedAt: 1 }),
+        parseMarkdown('b.md', '---\ntags: [harbor]\n---\nDock schedule.', { updatedAt: 1 }),
+      ]);
+
+      const task = store.searchEntries('manifest').matches.find((match) => match.kind === 'task');
+      assert.strictEqual(task?.filePath, 'a.md');
+      assert.strictEqual(task?.line, 2);
+      const file = store.searchEntries('dock').matches[0];
+      assert.deepStrictEqual([file.kind, file.id], ['file', 'b.md']);
+    } finally {
+      store.dispose();
+    }
+  });
+
+  test('suggests a close spelling when nothing matches', () => {
+    const store = new SearchStore(undefined);
+    try {
+      store.replace([parseMarkdown('a.md', '# Vendor\nElevator contract.', { updatedAt: 1 })]);
+
+      // One word matches, so the entry is offered as a partial match, with
+      // the misspelled word corrected beside it.
+      const result = store.searchEntries('elevatr contract', { prefixLastTerm: false });
+      assert.strictEqual(result.partial, true);
+      assert.strictEqual(result.matches.length, 1);
+      assert.strictEqual(result.suggestion, 'elevator contract');
+
+      const nothing = store.searchEntries('elevatr', { prefixLastTerm: false });
+      assert.deepStrictEqual(nothing.matches, []);
+      assert.strictEqual(nothing.suggestion, 'elevator');
+      assert.strictEqual(store.searchEntries('zzzz').suggestion, undefined);
+    } finally {
+      store.dispose();
+    }
+  });
 });

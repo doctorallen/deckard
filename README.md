@@ -14,7 +14,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
 | [Dashboard](#dashboard) | One page for workspace totals and every task, note, and tag, with filters, sorting, favorites, and saved views. |
 | [Tag overviews](#tag-overviews) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. |
-| [Advanced search](#advanced-filtering) | A small query language with a visual builder combines tags, text, task state, dates, and priorities using `AND`, `OR`, and `NOT`. |
+| [Search](#search) | `Deckard: Find` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on the Dashboard's Notes tab and in every tag overview. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace. |
@@ -31,7 +31,6 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
-| [Workspace search](#commands) | Full-text search across saved notes, entities, and tasks from the Command Palette. |
 | [Stats](#stats) | Index totals, the notes nothing links to, and your most-viewed tags, entities, and notes. |
 | [Themes](#themes) | Six visual styles for Deckard's pages, from the default Replicant to LCARS and Synthwave. |
 | [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine. |
@@ -96,8 +95,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Show Tag Overview** | Opens a tag overview, or shows a tag picker when no tag is supplied. |
-| **Deckard: Search Workspace Knowledge** | Searches saved notes, entities, and tasks from the Command Palette. |
-| **Deckard: Search Notes and Tasks** | Opens an overview on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
+| **Deckard: Find** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved views as you type; see [Find](#find). |
+| **Deckard: Search Notes and Tasks** | Opens the Dashboard's Notes tab on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
@@ -225,11 +224,11 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 ![Deckard Dashboard showing workspace totals, saved views, and active tasks.](docs/images/dashboard.png)
 
-- **Saved tag views** appear above the Dashboard's Tasks/Notes/Tags tabs, so they remain available in any mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it.
+- **Saved tag views** appear above the Dashboard's Tasks/Notes/Tags tabs, so they remain available in any mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it. A saved search opens on the Notes tab.
 - The Dashboard title identifies the active mode as **Dashboard: Tasks**, **Dashboard: Notes**, or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task, note, and tag cards; Deckard saves all three choices for future Dashboard sessions.
 - **Tasks as a board**: open **View options** and set **Tasks** to **Board** to show the Tasks tab as the same Kanban board the [Task board](#task-board) uses, grouped by status, priority, or due date. The tab's **All**, **Open**, and **Done** filter, tag picker, and search still choose which tasks appear, and Deckard remembers the layout and grouping.
 - **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
-- **Notes** lists indexed note entries with a searchable multi-tag picker, text search, and **Sort: A-Z/Newest created/Recently updated/Most accessed**, matching the Notes tab in a tag overview. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. A note appears when it matches any selected tag; select a note entry to jump to its source line.
+- **Notes** is Deckard's search page. It lists indexed note entries under the [search box](#the-search-box), with a searchable multi-tag picker and **Sort: A-Z/Newest created/Recently updated/Most accessed**, matching the Notes tab in a tag overview. Plain words filter the notes as you type, including their file names and tags; tags and conditions such as `is:open` apply when you press Enter. Below the notes, **Matching tasks** lists the tasks the search finds, and **Save search** keeps it as a saved view. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. A note appears when it matches any selected tag; select a note entry to jump to its source line.
 - **Tags** shows namespaced and unnamespaced tags together. Search tags, narrow them to one namespace, or to tags without one, with **Namespace**, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
@@ -344,7 +343,7 @@ Each overview collects the matching sections from your notes. You can:
 
 - see the active tag intersection, each removable tag condition, and the matching note and task totals at a glance;
 - sort entries alphabetically, by creation date, by update date, or by most accessed;
-- search Notes and Tasks independently within the active tag intersection;
+- narrow the entries with the [search box](#the-search-box): plain words hide what they do not match as you type, and a whole `#tag` typed there joins the tags in the title, just as adding an associated tag does;
 - use **Save filter** beside the Tag Overview label to name a combined view, then open the **View options** gear to switch between the original Markdown source and a rendered view or choose **Tabs** or **Side by side**;
 - see the matching saved view name above the entity title whenever the active tag intersection corresponds to a saved view; and
 - filter overview tasks with the grouped **All**, **Open**, and **Done** controls (which default to **Open**), then use a checkbox to safely update the original Markdown task; and
@@ -385,15 +384,76 @@ Rename a tag to one that already exists, or run `Deckard: Merge Tag…` and pick
 - Where the kept tag already sits beside the old one on a heading or task line, or in the same front-matter list, the old tag is removed rather than repeated. Inside a sentence it is replaced, so the sentence still reads.
 - Favorites, access counts, Dashboard tag selections, and saved views move to the kept tag. A plain rename moves them too.
 
-### Advanced filtering
+Set `deckard.enableHeadingTagRelationships` to `false` when you want to hide Associated tags suggestions, including the sidebar list, while keeping ordinary tag indexing and note content unchanged.
 
-Selecting a tag and adding a related tag from the sidebar is the quickest way to narrow an overview, and it is unchanged. When an intersection is not enough, open **Advanced search** in the overview header to write a Deckard query.
+## Search
+
+Deckard has one search language everywhere: `Deckard: Find` for getting to something quickly, the search box on the Dashboard's Notes tab for seeing everything a search finds, and the same box in every tag overview for narrowing what that tag collects.
+
+### Find
+
+Run `Deckard: Find`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on Windows and Linux), and start typing. Results appear as you type.
+
+![Deckard Find listing the notes titled Meridian first, then the tags that match, then notes that mention the word.](docs/images/find.png)
+
+- Plain words are searched in every note section, task, and front-matter-only note. An entry titled with your words comes first, then titles that contain every word or match them loosely, such as `vcon` for *Vendor contract*, then entries whose text mentions them, ranked by relevance. The last word matches while you are still typing it.
+- `#tags`, `@people`, and the rest of the [query language](#query-language), such as `is:open` or `in:notes/work`, narrow the results exactly as they would anywhere else.
+- A word also finds tags by their last part, so `atlas` offers `#project/atlas`, and a value finds its condition, so `overd` offers `is:overdue`. <kbd>Tab</kbd> completes the highlighted tag or condition into the search, as does the **+** button beside a tag.
+- <kbd>Enter</kbd> opens the note or task at its line, a tag in its overview, or a saved view. **Show all results on the Dashboard**, or the list button in the title bar, opens the search on the Notes tab.
+- When no note has every word, Find says so and shows the notes with some of them. A misspelled word gets a **Search for … instead** row with the closest word your notes contain.
+- With nothing typed, Find offers your recent searches, favorite and recently opened tags, saved views, and the notes you opened last. A recent search has a button to save it as a view.
+
+Ties are broken by how often and how recently you opened something, so a note you opened yesterday comes before one you opened often last year. This is kept in VS Code's preferences, beside the access counts, and never in your notes.
+
+### The search box
+
+The Dashboard's Notes tab and every tag overview have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it.
+
+![The Dashboard's Notes tab searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](docs/images/notes-search.png)
+
+- Plain words filter what is on the page as you type. <kbd>Enter</kbd> runs the whole search, including tags and conditions.
+- Completions appear as you type: field names, the values a field accepts once the caret is in one, tags, whole conditions such as `is:open`, and, in an empty box, your recent searches. Nothing is preselected, so <kbd>Enter</kbd> always runs what you typed; <kbd>Tab</kbd> completes, arrow keys move through the list, and <kbd>Escape</kbd> abandons the edit.
+- In a tag overview the box narrows the tag's own entries, and the tags stay in the title. A whole `#tag` typed in the box moves into the title as another tag, as adding an associated tag does, and the rest of what you typed stays in the box as you wrote it.
+- A search of several terms shows each as a chip under the box; the **×** on a chip removes that term and keeps the rest as you wrote it.
+- A parse error is reported under the box and the previous results stay on screen, so a half-typed search never empties the page.
+- **Save filter** in an overview, or **Save search** on the Notes tab, stores the search under a name. Saved searches appear in the Dashboard's saved views, open on the Notes tab, and survive tags being renamed or removed from the index.
+
+**Builder** edits the same search as OR groups of AND rows. **Add condition** starts a row from its value: type a tag, a word, or a value such as `open`, and choose a completion or press <kbd>Enter</kbd>, and the row fills in its field and operator. <kbd>Enter</kbd> then opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) starts a new OR group. A finished row keeps its field, operator, and value dropdowns for editing. The operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so there is no separate negate control to disagree with a row, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The search box remains the source of truth, so a condition the builder cannot represent, such as a negated group, is shown as read-only text rather than rewritten.
+
+### Refine
+
+Under the search box, **Refine** counts what the results could still be narrowed by: open and done tasks, due dates (overdue, the next seven days, later, or none), the tags the results carry, when notes were last updated, and the folders they are in. Each value shows how many of the current results it keeps, and a value that would keep all of them, or none, is not offered.
+
+- Select a value to add it to the search.
+- <kbd>Alt</kbd>-select it to leave those results out instead.
+- <kbd>Shift</kbd>-select a second value of the same kind to allow either, such as open *or* done tasks.
+
+Every value adds ordinary query text, so a refined search can be saved, copied into a query block, or edited in the builder. A single tag's overview lists its associated tags instead of counting tags, since associations are ranked better than a count can be.
+
+### Query language
+
+A Deckard query is what you type into Find, the search box, a [query block](#query-blocks), or an [AI assistant](#ai-assistants):
 
 ```
 (tag = #project/atlas AND tag = @ren-kade) OR (tag = #risk/vendor AND text ~ "elevator")
 ```
 
 Terms combine with `AND`, `OR`, `NOT`, and parentheses. `AND` binds tighter than `OR`, adjacent terms are joined by an implicit `AND`, and `-` or `!` in front of a term negates it. A bare `#tag` or `@person` is a tag condition and a bare or quoted word is a text condition, so `#project/atlas "vendor risk"` is a complete query.
+
+Common filters have one-token shorthands, written the way GitHub writes them:
+
+| Shorthand | Finds |
+| --- | --- |
+| `is:open`, `is:done` | Open or completed tasks. |
+| `is:overdue` | Open tasks past their due date. |
+| `is:due` | Open tasks due within the next seven days, overdue ones included. |
+| `is:task`, `is:note` | Every task, or note sections without tasks. |
+| `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, and `priority` work the same way. |
+| `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
+
+Put `-` in front of a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as you wrote it when it saves or formats a query.
+
+The fields:
 
 | Field | Matches | Example |
 | --- | --- | --- |
@@ -412,15 +472,7 @@ A note's created date is its `created:` or `date:` front matter. Without either,
 
 Operators are `=` for is, `!=` for is not, `~` for contains, `!~` for does not contain, and `>`, `>=`, `<`, `<=` for dates and priorities. A window such as `7d` is compared by its far end: `updated > 7d` means updated within the last seven days, and `due < 7d` means due within the next seven days, overdue tasks included. `:` is accepted everywhere `=` is, so queries written with `tag:#atlas` keep working, but Deckard writes `=` when it formats a query back. A comparison can follow the operator, so `updated:>2026-01-01` and `updated > 2026-01-01` mean the same thing. Every operator has an opposite, so any single condition can be negated without `NOT`; `NOT` is for negating a whole parenthesized group.
 
-- The query bar completes field names and, once it can see which field the caret is in, that field's values — indexed tags, task states, entity namespaces, file names, and date shorthands. Nothing is preselected, so Enter always runs the query you typed; Tab completes, arrow keys move through the list, and Escape abandons the edit.
-- A builder row's value field offers the same completions for its own field, so a tag row completes tags and a task row offers `open`, `done`, and `any`. Choosing one applies the query immediately.
-- **Builder** edits the same query as OR groups of AND rows, using dropdowns instead of syntax. Its operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so a row reads the way the query is written. A row says everything with its operator, so there is no separate negate control to disagree with it, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The query bar remains the source of truth, so a condition the builder cannot represent, such as a negated group, is shown as read-only text rather than rewritten.
-- The Related Notes sidebar follows the query. It identifies the scope as **Advanced search**, shows the query, lists what it matched, and returns to the ordinary tag view when the query is cleared. A query naming exactly one tag keeps that tag's association suggestions.
-- Editing a query never moves you to a different page. When a query narrows to an intersection led by the tag the page was opened on, the page returns to its ordinary chips in place; otherwise it keeps showing the query and its results. Opening a saved query or `Deckard: Search Notes and Tasks` on a plain intersection still lands on the ordinary tag overview, with its usual chips, association suggestions, and title.
-- **Save filter** stores a query under a name. Saved queries appear in the Dashboard's saved views beside saved tag intersections, and they survive tags being renamed or removed from the index.
-- A parse error is reported under the query bar and the previous results stay on screen, so a half-typed query never empties the page.
-
-Set `deckard.enableHeadingTagRelationships` to `false` when you want to hide Associated tags suggestions, including the sidebar list, while keeping ordinary tag indexing and note content unchanged.
+The Related Notes sidebar follows a query opened in an overview. It identifies the scope as **Advanced search**, shows the query, lists what it matched, and returns to the ordinary tag view when the query is cleared. A query naming exactly one tag keeps that tag's association suggestions.
 
 ## Query blocks
 
@@ -437,7 +489,7 @@ tag = #project/atlas AND task = open
 - The Markdown preview replaces the fence with what the query matches, notes first and then tasks. Each result is its own row: a title that links to its source line, and beneath it the headings above it and its file name. The file name is left out when the first heading already names it, as a daily note's date heading does. Tags written after a title are removed from it, while tags inside the sentence, such as the people in a task, are kept. Following a link behaves like any other link to a note, so `markdown.preview.openMarkdownLinks` decides whether it opens in the preview or the editor.
 - Notes are listed alphabetically. Tasks are listed open first, soonest due date first, then in source order; completed tasks are struck through and overdue due dates are highlighted.
 - After `deckard`, `sort=title`, `sort=created`, or `sort=updated` reorders both lists, and date sorts put the newest first. `limit=10` shows at most ten notes and ten tasks, while the header still reports the full totals.
-- In the editor, the line above the fence shows the totals and **Open in overview**, which opens the same query in an overview where you can refine it.
+- In the editor, the line above the fence shows the totals and **Open in search**, which opens the same query on the Dashboard's Notes tab, where you can refine it.
 - Results refresh when any note in the workspace changes, not only the note that holds the block.
 - A query that does not parse shows its error in place of results. An unknown option is reported as a warning, and the rest of the block still runs.
 
@@ -447,7 +499,7 @@ The fence is ordinary Markdown, so other editors and Git show the query text its
 
 Deckard gives AI assistants in VS Code two read-only tools through VS Code's language model tool API, so an assistant can answer questions about your notes from the index Deckard already keeps:
 
-- **Search Deckard notes and tasks** (`deckard_query`, or `#deckardQuery` in a chat prompt) runs a [Deckard query](#advanced-filtering) and returns the matching note sections and tasks, each with its workspace-relative path, line, and headings. Tasks also show whether they are done, their due and scheduled dates, priority, and repeat rule. Asking "what are my open tasks for Atlas?" leads the assistant to run `tag = #project/atlas AND task = open`.
+- **Search Deckard notes and tasks** (`deckard_query`, or `#deckardQuery` in a chat prompt) runs a [Deckard query](#query-language) and returns the matching note sections and tasks, each with its workspace-relative path, line, and headings. Tasks also show whether they are done, their due and scheduled dates, priority, and repeat rule. Asking "what are my open tasks for Atlas?" leads the assistant to run `tag = #project/atlas AND task = open`.
 - **List Deckard tags** (`deckard_list_tags`, or `#deckardTags`) lists tags with how many entries use each, most used first, optionally narrowed by a search, so the assistant queries the exact tag rather than a guess.
 
 A query returns at most 25 notes and 25 tasks unless the assistant asks for more, up to 200, and always reports the full totals. A query that does not parse returns its error with a short guide to the syntax, so the assistant can correct it and try again.

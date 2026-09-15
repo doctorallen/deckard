@@ -599,7 +599,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-tasks"'), true);
     assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
     assert.strictEqual(html.includes('class="task-search" type="search"'), true);
-    assert.strictEqual(html.includes('class="note-search" type="search"'), true);
+    // The Notes tab's search is the shared search box, not a plain field.
+    assert.strictEqual(html.includes('class="note-search" type="search"'), false);
+    assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
     assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
@@ -718,7 +720,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-note-sort"'), true);
     assert.strictEqual(html.includes('data-action="set-note-tag"'), true);
     assert.strictEqual(html.includes('data-action="filter-note-tags"'), true);
-    assert.strictEqual(html.includes('data-action="search-notes"'), true);
+    assert.strictEqual(html.includes('data-action="query-input"'), true);
+    assert.strictEqual(html.includes("type: 'recordRecentQuery'"), true);
+    assert.strictEqual(html.includes('data-action="save-note-search"'), true);
     assert.strictEqual(html.includes('const noteSearchDebounceDelay = 350;'), true);
     assert.strictEqual(html.includes('const tagSearchDebounceDelay = 180;'), true);
     assert.strictEqual(html.includes('clearTimeout(noteSearchTimer)'), true);
@@ -1294,18 +1298,20 @@ suite('Webview contracts', () => {
       html.includes('.segmented > .active { position: relative; z-index: 1; }'),
       true,
     );
-    assert.strictEqual(html.includes('data-action="search-notes"'), true);
-    assert.strictEqual(html.includes('data-action="search-tasks"'), true);
-    assert.strictEqual(html.includes('aria-label="Search current notes"'), true);
-    assert.strictEqual(html.includes('aria-label="Search current tasks"'), true);
-    assert.strictEqual(html.includes('function filterOverviewEntries(kind, query, total)'), true);
+    // One search box, always shown, replaces the per-tab search fields.
+    assert.strictEqual(html.includes('data-action="search-notes"'), false);
+    assert.strictEqual(html.includes('data-action="search-tasks"'), false);
+    assert.strictEqual(html.includes('data-action="toggle-query"'), false);
+    assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
+    assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), true);
+    assert.strictEqual(html.includes('function filterOverviewEntries(kind)'), true);
     assert.strictEqual(
       html.includes('.card[hidden], .task[hidden] { display: none; }'),
       true,
     );
     assert.strictEqual(html.includes('function updateTaskFilterCounts(query)'), true);
     assert.strictEqual(
-      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(normalizedQuery);'),
+      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(filtering);'),
       true,
     );
     assert.strictEqual(
@@ -1735,7 +1741,7 @@ suite('Webview contracts', () => {
       'Deckard: Create Daily Note',
       'Deckard: Extract Tagged Heading',
       'Deckard: Show Tag Overview',
-      'Deckard: Search Workspace Knowledge',
+      'Deckard: Find',
       'Deckard: Link Current Heading to Entity',
       'Deckard: Move Inline Tags to Front Matter',
     ]) {

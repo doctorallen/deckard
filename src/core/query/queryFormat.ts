@@ -6,6 +6,7 @@ import {
   QueryField,
   QueryNode,
   QUERY_OPERATOR_INVERSES,
+  QUERY_SHORTHAND_FIELDS,
 } from './queryTypes';
 
 /**
@@ -46,8 +47,17 @@ function formatNode(node: QueryNode, context: FormatContext): string {
  * Writes one condition, quoting values that would otherwise re-tokenize.
  */
 export function formatCondition(condition: QueryConditionNode): string {
-  const operator = describeOperator(condition.operator);
   const value = quoteValue(condition.value);
+  if (QUERY_SHORTHAND_FIELDS.includes(condition.field)) {
+    // A shorthand is written the way people type it, so a saved query or a
+    // builder row reads `is:open` rather than `is = open`.
+    const negated = condition.operator === 'neq';
+    if (condition.field === 'has') {
+      return `${negated ? 'no' : 'has'}:${value}`;
+    }
+    return `${negated ? '-' : ''}${condition.field}:${value}`;
+  }
+  const operator = describeOperator(condition.operator);
   return `${condition.field} ${operator} ${value}`;
 }
 

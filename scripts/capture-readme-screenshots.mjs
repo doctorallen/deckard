@@ -7,6 +7,8 @@ const repositoryRoot = resolve(import.meta.dirname, '..');
 const views = [
   'dashboard',
   'related-notes',
+  'find',
+  'notes-search',
   'tag-overview',
   'help',
   'notes-graph',

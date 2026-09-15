@@ -46,6 +46,7 @@ suite('Extension Test Suite', () => {
         'deckard.extractHeading',
         'deckard.showTagOverview',
         'deckard.searchWorkspace',
+        'deckard.quickFind.complete',
         'deckard.searchNotes',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',

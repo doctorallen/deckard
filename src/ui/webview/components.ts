@@ -734,6 +734,946 @@ export function getComponentScript(): string {
 }
 
 /**
+ * The search box every search page shares: the query bar and its
+ * completions, the builder, the removable terms, and the facets.
+ */
+export function getQueryEditorCss(): string {
+  return `
+.query-workspace { margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+.query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
+.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 12px var(--font-mono); }
+.query-input:focus { border-color: var(--amber); outline: none; }
+.query-input:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.query-input.invalid { border-color: #FF5555; }
+.query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
+.query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); }
+.query-suggestions[hidden] { display: none; }
+.query-suggestion { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; border: 0; background: transparent; padding: 6px 9px; text-align: left; font: 12px var(--font-mono); }
+.query-suggestion:hover, .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
+.query-suggestion-detail { color: var(--muted); font-size: 10px; }
+.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
+.query-error { color: #FF8080; font: 11px var(--font-mono); }
+.query-hint { color: var(--muted); font: 11px var(--font-mono); }
+.query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
+.query-term { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 2px 1px 8px; }
+.query-term code { color: var(--cyan); font-size: 11px; }
+.query-term-remove { min-height: 22px; border: 0; background: transparent; color: var(--muted); padding: 0 6px; font-size: 13px; line-height: 1; }
+.query-term-remove:hover, .query-term-remove:focus-visible { border: 0; background: transparent; color: var(--amber); }
+.query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
+.query-builder-group { border: var(--edge) solid var(--line); background: var(--panel); padding: 10px; }
+.query-builder-group + .query-builder-or { display: block; margin: 8px 0; color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-align: center; text-transform: uppercase; }
+.query-builder-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.query-builder-row + .query-builder-row { margin-top: 6px; }
+.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: 12px; }
+.query-builder-row .query-builder-operator { font-family: var(--font-mono); }
+.query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
+.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); }
+.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
+.query-builder-row .query-builder-pending { border-style: dashed; }
+.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.query-builder-remove { min-height: 28px; padding: 4px 8px; }
+.query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.query-builder-actions button { font-size: 11px; }
+.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
+.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.query-facets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 12px; padding: 10px; border: 1px dashed var(--line-strong); }
+.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.query-facet-value { display: inline-flex; align-items: baseline; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
+.query-facet-count { color: var(--muted); font-size: 10px; }`;
+}
+
+/**
+ * The search box's behaviour, inserted in a page script after
+ * getComponentScript(), whose helpers it uses.
+ *
+ * Like getComponentScript(), this string is interpolated into a template
+ * literal, so a backslash meant for the output is written doubled here.
+ */
+export function getQueryEditorScript(): string {
+  return `
+  /**
+   * One search box: the query bar and its completions, the builder, the
+   * search's removable terms, and the facets that narrow its results.
+   *
+   * The host owns the applied search. The editor keeps only what is being
+   * typed and any builder rows not finished yet, and hands a finished search
+   * back through options.apply.
+   *
+   *   getState()     the host's QueryViewState for this search, if any
+   *   render()       redraws the page, which draws the editor's parts
+   *   apply(text)    runs a search typed, built, or refined here
+   *   clear()        empties the search
+   *   onDraft(text)  optional; hears every keystroke, so a page can filter
+   *                  what it already shows by the plain words being typed
+   *   placeholder()  the empty box's hint
+   *   label          what the box searches, for assistive technology
+   */
+  function createQueryEditor(options) {
+    const DEFAULT_OPERATORS = {
+      tag: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],
+      task: ['eq', 'neq'], due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+      start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+      priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], has: ['eq', 'neq'], kind: ['eq', 'neq'],
+      file: ['eq', 'neq', 'contains', 'notContains'], path: ['eq', 'neq', 'contains', 'notContains'], in: ['eq', 'neq'],
+      created: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], updated: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+    };
+    const SYMBOL_OPERATORS = { '=': 'eq', '!=': 'neq', '~': 'contains', '!~': 'notContains', '>': 'gt', '>=': 'gte', '<': 'lt', '<=': 'lte' };
+    const OPERATOR_LABELS = { eq: '=', neq: '!=', contains: '~', notContains: '!~', gt: '>', gte: '>=', lt: '<', lte: '<=' };
+    /** Hover text, since a symbol alone does not say what it compares. */
+    const OPERATOR_DESCRIPTIONS = { eq: 'is', neq: 'is not', contains: 'contains', notContains: 'does not contain', gt: 'after', gte: 'on or after', lt: 'before', lte: 'on or before' };
+    /** The text field matches whole words with = and any substring with ~. */
+    const TEXT_OPERATOR_DESCRIPTIONS = { eq: 'is the whole word', neq: 'does not have the whole word' };
+    /** Priority compares rank, not time. */
+    const PRIORITY_OPERATOR_DESCRIPTIONS = { gt: 'above', gte: 'at or above', lt: 'below', lte: 'at or below' };
+    const FIELD_PLACEHOLDERS = {
+      tag: '#project/atlas', text: 'vendor review', is: 'open', task: 'open', due: 'today', scheduled: 'today',
+      start: 'today', done: '7d', priority: 'high', has: 'due', kind: 'project', file: '2026-09-*.md',
+      path: 'notes/*', in: 'notes/projects', created: '2026-09-13', updated: '30d',
+    };
+    /** Fields written as one field:value token. */
+    const SHORTHAND_FIELDS = ['is', 'has', 'in'];
+
+    /** Text being typed; undefined means the box shows the applied search. */
+    let draft;
+    /** The applied search the editor last saw. */
+    let appliedSeen;
+    /** Set between applying a search and seeing the host's answer. */
+    let awaitingApply = false;
+    let builderOpen = false;
+    /**
+     * Local builder rows. A row not finished yet contributes nothing to the
+     * search text, so the rows cannot come straight from the host's parse;
+     * the draft owns them until they turn into text the host can parse.
+     */
+    let builderDraft;
+    /** The applied search the rows were last reconciled with. */
+    let builderSourceText;
+    /** A builder value input to focus once the next render settles. */
+    let pendingBuilderFocus;
+    let restoreFocus = false;
+    let suggestionItems = [];
+    let suggestionIndex = -1;
+    /** Which input the completion list belongs to, if any. */
+    let suggestionHostKey;
+    /** The partial text the completion list is filtering on. */
+    let suggestionToken = '';
+
+    function query() { return options.getState() || {}; }
+    function suggestions() { return query().suggestions || {}; }
+    function appliedText() { return query().text || ''; }
+    function currentText() { return draft === undefined ? appliedText() : draft; }
+    function operatorsFor(field) {
+      const table = suggestions().operators || DEFAULT_OPERATORS;
+      return table[field] || DEFAULT_OPERATORS[field] || ['eq'];
+    }
+    function fieldNames() {
+      const listed = (suggestions().fields || []).map(function (field) { return field.value; });
+      return listed.length ? listed : Object.keys(DEFAULT_OPERATORS);
+    }
+    function placeholder() {
+      return typeof options.placeholder === 'function' ? options.placeholder() : (options.placeholder || '');
+    }
+
+    /** The bar, its status line, the search's terms, and the builder. */
+    function renderBar() {
+      const value = currentText();
+      const errors = (query().diagnostics || []).filter(function (diagnostic) { return diagnostic.severity === 'error'; });
+      const counts = query().matchCounts || { notes: 0, tasks: 0 };
+      const status = errors.length
+        ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
+        : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
+      const summary = appliedText().trim()
+        ? '<span>' + counts.notes + ' ' + (counts.notes === 1 ? 'note' : 'notes') + ' &middot; ' + counts.tasks + ' ' + (counts.tasks === 1 ? 'task' : 'tasks') + '</span>'
+        : '';
+      const label = options.label || 'Search';
+      return '<section class="query-workspace" aria-label="' + escapeHtml(label) + '">'
+        + '<div class="query-bar-row">'
+        + '<span class="query-input-shell"><input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(label) + '" placeholder="' + escapeHtml(placeholder()) + '" value="' + escapeHtml(value) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
+        + '<button data-action="apply-query" title="Run this search">Search</button>'
+        + '<button data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>'
+        + (value ? '<button data-action="clear-query" title="Clear the search">Clear</button>' : '')
+        + '</div>'
+        + '<div class="query-status">' + status + summary + '</div>'
+        + renderTerms()
+        + renderBuilder()
+        + '</section>';
+    }
+
+    /** Each term of a search of several, removable on its own. */
+    function renderTerms() {
+      const terms = query().terms || [];
+      if (terms.length < 2) return '';
+      return '<div class="query-terms" aria-label="Search terms">' + terms.map(function (term) {
+        return '<span class="query-term"><code>' + escapeHtml(term.text) + '</code><button class="query-term-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(term.text) + '" title="Remove ' + escapeHtml(term.text) + '">&#215;</button></span>';
+      }).join('') + '</div>';
+    }
+
+    /** What the results could still be narrowed by, with counts. */
+    function renderFacets() {
+      const facets = query().facets || [];
+      if (!facets.length) return '';
+      return '<section class="query-facets" aria-label="Refine these results"><span class="query-facets-heading">Refine</span>' + facets.map(function (facet) {
+        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
+          return '<button class="query-facet-value" data-action="facet" data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '" title="Show only these. Alt-click to leave them out; Shift-click to allow them as well." aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '">' + (facet.id === 'tags' ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+        }).join('') + '</div>';
+      }).join('') + '</section>';
+    }
+
+    /** OR groups of AND rows over the host's parse of the search. */
+    function renderBuilder() {
+      if (!builderOpen) return '';
+      const draftGroups = builderGroups();
+      const groups = draftGroups.length ? draftGroups : [{ rows: [] }];
+      const groupsHtml = groups.map(function (group, groupIndex) {
+        const rows = group.rows.length
+          ? group.rows.map(function (row, rowIndex) { return renderBuilderRow(row, groupIndex, rowIndex); }).join('')
+          : '<p class="query-builder-note">This group is empty. Add a condition to start it.</p>';
+        return (groupIndex > 0 ? '<span class="query-builder-or">or</span>' : '')
+          + '<div class="query-builder-group" data-group-index="' + groupIndex + '">' + rows
+          + '<div class="query-builder-actions"><button data-action="builder-add-row" data-group-index="' + groupIndex + '">Add condition</button>'
+          + (groups.length > 1 ? '<button data-action="builder-remove-group" data-group-index="' + groupIndex + '">Remove group</button>' : '')
+          + '</div></div>';
+      }).join('');
+      const note = query().isBuildable === false
+        ? '<p class="query-builder-note">Some conditions were written by hand and are shown as text. Editing them in the search box keeps them exactly as written.</p>'
+        : '';
+      return '<div class="query-builder">' + groupsHtml
+        + '<div class="query-builder-actions"><button data-action="builder-add-group">Add OR group</button></div>'
+        + note
+        + '<p class="query-builder-note">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter starts an OR group.</p>'
+        + '</div>';
+    }
+
+    function renderBuilderRow(row, groupIndex, rowIndex) {
+      const position = ' data-group-index="' + groupIndex + '" data-row-index="' + rowIndex + '"';
+      const suggestKey = 'g' + groupIndex + 'r' + rowIndex;
+      const joiner = '<span class="query-builder-and">' + (rowIndex === 0 ? 'where' : 'and') + '</span>';
+      const remove = '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button>';
+      if (row.pending) {
+        return '<div class="query-builder-row">' + joiner
+          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+          + remove + '</div>';
+      }
+      if (!row.supported) {
+        return '<div class="query-builder-row">' + joiner
+          + '<code class="query-builder-readonly">' + escapeHtml(row.text) + '</code>' + remove + '</div>';
+      }
+      const fields = fieldNames().map(function (field) {
+        return '<option value="' + escapeHtml(field) + '"' + (field === row.field ? ' selected' : '') + '>' + escapeHtml(field) + '</option>';
+      }).join('');
+      const descriptions = row.field === 'text'
+        ? Object.assign({}, OPERATOR_DESCRIPTIONS, TEXT_OPERATOR_DESCRIPTIONS)
+        : row.field === 'priority'
+          ? Object.assign({}, OPERATOR_DESCRIPTIONS, PRIORITY_OPERATOR_DESCRIPTIONS)
+          : OPERATOR_DESCRIPTIONS;
+      const operators = operatorsFor(row.field).map(function (operator) {
+        return '<option value="' + operator + '" title="' + escapeHtml(descriptions[operator] || '') + '"' + (operator === row.operator ? ' selected' : '') + '>' + escapeHtml(OPERATOR_LABELS[operator] || operator) + '</option>';
+      }).join('');
+      const operatorTitle = descriptions[row.operator] || 'Operator';
+      return '<div class="query-builder-row">' + joiner
+        + '<select data-action="builder-set-field"' + position + ' aria-label="Field">' + fields + '</select>'
+        + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" title="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
+        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+        + remove + '</div>';
+    }
+
+    /** A row waiting for a value, which then decides its field. */
+    function pendingRow() {
+      return { pending: true, field: 'text', operator: 'contains', value: '', supported: true, text: '' };
+    }
+
+    /**
+     * Read the builder's rows, seeding them from the host's parse on first
+     * use. Returns a copy a caller can change and hand to applyBuilderGroups.
+     */
+    function builderGroups() {
+      if (!builderDraft) {
+        builderDraft = (query().groups || []).map(function (group) {
+          return { rows: group.rows.map(function (row) { return Object.assign({}, row); }) };
+        });
+        builderSourceText = appliedText();
+      }
+      return builderDraft.map(function (group) {
+        return { rows: group.rows.map(function (row) { return Object.assign({}, row); }) };
+      });
+    }
+
+    /**
+     * Adopt edited rows, then run the search they describe. A row still
+     * empty changes the rows without changing the search, so that case
+     * redraws locally instead of making a round trip that would drop it.
+     */
+    function applyBuilderGroups(groups) {
+      builderDraft = groups;
+      const text = buildQueryFromGroups(groups);
+      if (text === appliedText()) {
+        options.render();
+        return;
+      }
+      builderSourceText = text;
+      draft = text;
+      run(text);
+    }
+
+    /** Write rows as search text, skipping rows with no value yet. */
+    function buildQueryFromGroups(groups) {
+      const branches = groups.map(function (group) {
+        return group.rows.map(function (row) {
+          if (row.pending) return '';
+          if (!row.supported) return row.text.trim();
+          if (!String(row.value).trim()) return '';
+          return formatBuilderCondition(row);
+        }).filter(Boolean).join(' AND ');
+      }).filter(Boolean);
+      return branches.length <= 1
+        ? (branches[0] || '')
+        : branches.map(function (branch) {
+          return branch.indexOf(' AND ') >= 0 ? '(' + branch + ')' : branch;
+        }).join(' OR ');
+    }
+
+    /** One row as text, with shorthands written the way they are typed. */
+    function formatBuilderCondition(row) {
+      const value = quoteQueryValue(String(row.value).trim());
+      if (row.field === 'has') return (row.operator === 'neq' ? 'no' : 'has') + ':' + value;
+      if (SHORTHAND_FIELDS.indexOf(row.field) >= 0) return (row.operator === 'neq' ? '-' : '') + row.field + ':' + value;
+      return row.field + ' ' + (OPERATOR_LABELS[row.operator] || '=') + ' ' + value;
+    }
+
+    function quoteQueryValue(value) {
+      return /[\\s:=<>~!()"']/.test(value) || !value
+        ? '"' + value.replace(/(["\\\\])/g, '\\\\$1') + '"'
+        : value;
+    }
+
+    /** The field a word names, from the host's spellings or the built-in names. */
+    function fieldFor(word) {
+      const aliases = suggestions().aliases || {};
+      const name = String(word).toLowerCase();
+      if (aliases[name]) return aliases[name];
+      if (name === 'no') return 'has';
+      return DEFAULT_OPERATORS[name] ? name : undefined;
+    }
+
+    function unquote(value) {
+      const text = String(value).trim();
+      return /^(["']).*\\1$/.test(text) ? text.slice(1, -1) : text;
+    }
+
+    /**
+     * Read one condition as it would be typed, such as is:open,
+     * priority >= high, #project/atlas, or a plain word, into a builder row.
+     */
+    function parseConditionText(text) {
+      const value = String(text).trim();
+      const row = function (field, operator, rowValue) {
+        return { field: field, operator: operator, value: rowValue, supported: true, text: '' };
+      };
+      let match = /^(-?)([A-Za-z]+):(.+)$/.exec(value);
+      if (match && fieldFor(match[2])) {
+        const word = match[2].toLowerCase();
+        const field = fieldFor(word);
+        const negated = (match[1] === '-') !== (word === 'no');
+        const rest = unquote(match[3]);
+        const comparison = /^(>=|<=|!=|!~|>|<|~)/.exec(rest);
+        if (comparison && SHORTHAND_FIELDS.indexOf(field) < 0) {
+          return row(field, SYMBOL_OPERATORS[comparison[1]], unquote(rest.slice(comparison[1].length)));
+        }
+        return row(field, negated ? 'neq' : (field === 'text' ? 'contains' : 'eq'), rest);
+      }
+      match = /^([A-Za-z]+)\\s*(!=|!~|>=|<=|=|~|>|<)\\s*(.+)$/.exec(value);
+      if (match && fieldFor(match[1])) {
+        return row(fieldFor(match[1]), SYMBOL_OPERATORS[match[2]], unquote(match[3]));
+      }
+      if (/^-?[#@]/.test(value)) return row('tag', value.charAt(0) === '-' ? 'neq' : 'eq', value.replace(/^-/, ''));
+      return row('text', 'contains', unquote(value));
+    }
+
+    function run(text) {
+      awaitingApply = true;
+      options.apply(String(text).trim());
+    }
+
+    /**
+     * Narrow by a facet value: add it, leave it out with Alt, or with Shift
+     * allow it as well as the value of the same facet already chosen.
+     */
+    function refine(clause, facetId, mode) {
+      const text = appliedText().trim();
+      if (mode === 'or') {
+        const facet = (query().facets || []).find(function (candidate) { return candidate.id === facetId; });
+        const existing = facet && facet.applied && facet.applied[0];
+        const merged = existing ? mergeAlternative(text, existing, clause) : undefined;
+        if (merged !== undefined) {
+          run(merged);
+          return;
+        }
+      }
+      const term = mode === 'exclude' ? '-' + clause : clause;
+      if (!text) run(term);
+      else if (query().canAppend === false) run('(' + text + ') ' + term);
+      else run(text + ' ' + term);
+    }
+
+    /** Put a clause beside an existing one as an alternative. */
+    function mergeAlternative(text, existing, clause) {
+      const escaped = existing.replace(/[.*+?^$(){}|[\\]\\\\]/g, '\\\\$&');
+      const match = new RegExp('(^|[\\\\s(])' + escaped + '(?=$|[\\\\s)])', 'i').exec(text);
+      if (!match) return undefined;
+      const start = match.index + match[1].length;
+      const end = start + existing.length;
+      let depth = 0;
+      for (let position = 0; position < start; position += 1) {
+        if (text.charAt(position) === '(') depth += 1;
+        if (text.charAt(position) === ')') depth -= 1;
+      }
+      return depth > 0
+        ? text.slice(0, end) + ' OR ' + clause + text.slice(end)
+        : text.slice(0, start) + '(' + existing + ' OR ' + clause + ')' + text.slice(end);
+    }
+
+    /**
+     * Completions for the word under the caret in the bar. After a field
+     * and its operator they are that field's values; otherwise conditions,
+     * field names, and tags, each of which stands on its own. An empty bar
+     * offers recent searches.
+     */
+    function queryBarSuggestions(input) {
+      const all = suggestions();
+      if (!input.value.trim()) {
+        return {
+          token: '',
+          showAll: true,
+          items: (all.recent || []).slice(0, 8).map(function (item) {
+            return { value: item.value, label: item.label, detail: item.detail, insert: item.value, replaceAll: true };
+          }),
+        };
+      }
+      const caret = caretPosition(input);
+      const prefix = input.value.slice(0, caret);
+      const context = valueContext(prefix, all.aliases || {});
+      if (context) {
+        const values = (all.values || {})[context.field] || [];
+        return {
+          token: context.token,
+          items: values.map(function (item) {
+            return { value: item.value, label: item.label, detail: item.detail, insert: quoteQueryValue(item.value) + ' ' };
+          }),
+        };
+      }
+      const token = (prefix.match(/[^\\s()]*$/) || [''])[0];
+      const conditions = (all.conditions || []).map(function (item) {
+        return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ' };
+      });
+      const fields = (all.fields || []).map(function (item) {
+        const shorthand = SHORTHAND_FIELDS.indexOf(item.value) >= 0;
+        return { value: item.value, label: item.label + (shorthand ? ':' : ' ='), detail: item.detail, insert: item.value + (shorthand ? ':' : ' = ') };
+      });
+      const tags = ((all.values || {}).tag || []).map(function (item) {
+        return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ' };
+      });
+      return { token: token, items: conditions.concat(fields, tags) };
+    }
+
+    /** Where the caret sits, defaulting to the end of the value. */
+    function caretPosition(input) {
+      return typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+    }
+
+    /** Detect a caret in the value of a field condition, such as is:ov. */
+    function valueContext(prefix, aliases) {
+      const match = prefix.match(/([A-Za-z]+)\\s*(!=|!~|>=|<=|[:=~<>])\\s*([^\\s()]*)$/);
+      if (!match) return undefined;
+      const field = aliases[match[1].toLowerCase()];
+      return field ? { field: field, token: match[3] } : undefined;
+    }
+
+    /** Completions for one builder row's value. */
+    function builderValueSuggestions(field, token) {
+      const values = (suggestions().values || {})[field] || [];
+      return {
+        token: token,
+        items: values.map(function (item) {
+          return { value: item.value, label: item.label, detail: item.detail, insert: item.value };
+        }),
+      };
+    }
+
+    /**
+     * Completions for a new row, which starts from a value: a condition, a
+     * tag, a field to fill in, or failing those the words themselves.
+     */
+    function pendingRowSuggestions(token) {
+      const all = suggestions();
+      const conditions = (all.conditions || []).map(function (item) {
+        return { value: item.value, label: item.label, detail: item.detail, condition: item.value };
+      });
+      const tags = ((all.values || {}).tag || []).map(function (item) {
+        return { value: item.value, label: item.label, detail: item.detail, condition: item.value };
+      });
+      const fields = (all.fields || []).map(function (item) {
+        return { value: item.value, label: item.label + (SHORTHAND_FIELDS.indexOf(item.value) >= 0 ? ':' : ' =') + ' …', detail: item.detail, field: item.value };
+      });
+      const words = token && !/^-?[#@]/.test(token)
+        ? [{ value: token, label: 'text ~ ' + quoteQueryValue(token), detail: 'Entries containing these words', condition: 'text ~ ' + quoteQueryValue(token), always: true }]
+        : [];
+      return { token: token, items: conditions.concat(tags, fields, words) };
+    }
+
+    /** Populate and show the list attached to an input. */
+    function openSuggestions(input) {
+      const key = input.dataset.suggestKey;
+      if (!key) return;
+      const source = key === 'query'
+        ? queryBarSuggestions(input)
+        : input.dataset.pending
+          ? pendingRowSuggestions(input.value.trim())
+          : builderValueSuggestions(input.dataset.field, input.value);
+      const token = String(source.token || '').toLowerCase();
+      suggestionItems = source.showAll
+        ? source.items
+        : !token
+          ? []
+          : source.items.filter(function (item) {
+            return item.always
+              || String(item.value).toLowerCase().indexOf(token) >= 0
+              || String(item.label).toLowerCase().indexOf(token) >= 0;
+          }).slice(0, 12);
+      suggestionToken = String(source.token || '');
+      suggestionHostKey = key;
+      // Nothing is highlighted until the author arrows into the list, so
+      // Enter runs what they typed instead of silently taking a completion.
+      suggestionIndex = -1;
+      renderSuggestions(input);
+    }
+
+    function suggestionContainer(key) {
+      return document.querySelector('[data-suggestions="' + key + '"]');
+    }
+
+    function renderSuggestions(input) {
+      const container = suggestionContainer(suggestionHostKey);
+      if (!container) return;
+      if (!suggestionItems.length) {
+        container.hidden = true;
+        container.innerHTML = '';
+        if (input) input.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      container.innerHTML = suggestionItems.map(function (item, index) {
+        return '<button type="button" role="option" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span>' + escapeHtml(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
+      }).join('');
+      container.hidden = false;
+      if (input) input.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeSuggestions() {
+      suggestionItems = [];
+      suggestionIndex = -1;
+      const container = suggestionContainer(suggestionHostKey);
+      if (container) {
+        container.hidden = true;
+        container.innerHTML = '';
+      }
+      suggestionHostKey = undefined;
+    }
+
+    function rowAt(groups, input) {
+      const group = groups[Number(input.dataset.groupIndex)];
+      return group ? group.rows[Number(input.dataset.rowIndex)] : undefined;
+    }
+
+    /**
+     * Turn a new row into the condition it was given, and open another new
+     * row after it so the next condition can be typed straight away.
+     */
+    function commitPendingRow(input, conditionText) {
+      const text = String(conditionText).trim();
+      if (!text) return;
+      const groups = builderGroups();
+      const groupIndex = Number(input.dataset.groupIndex);
+      const rowIndex = Number(input.dataset.rowIndex);
+      const group = groups[groupIndex];
+      if (!group || !group.rows[rowIndex]) return;
+      group.rows[rowIndex] = parseConditionText(text);
+      group.rows.push(pendingRow());
+      pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: group.rows.length - 1 };
+      applyBuilderGroups(groups);
+    }
+
+    /** Replace the word being completed with the chosen suggestion. */
+    function acceptSuggestion(index) {
+      const item = suggestionItems[index];
+      if (!item) return;
+      const key = suggestionHostKey;
+      const input = document.querySelector('[data-suggest-key="' + key + '"]');
+      if (!input) return;
+
+      if (key === 'query') {
+        const caret = caretPosition(input);
+        const start = item.replaceAll ? 0 : caret - suggestionToken.length;
+        const end = item.replaceAll ? input.value.length : caret;
+        input.value = input.value.slice(0, start) + item.insert + input.value.slice(end);
+        const nextCaret = start + item.insert.length;
+        closeSuggestions();
+        input.setSelectionRange(nextCaret, nextCaret);
+        draft = input.value;
+        if (options.onDraft) options.onDraft(draft);
+        input.focus();
+        return;
+      }
+
+      closeSuggestions();
+      if (input.dataset.pending) {
+        if (item.field) {
+          // A field chosen without a value becomes an ordinary row to fill in.
+          const groups = builderGroups();
+          const groupIndex = Number(input.dataset.groupIndex);
+          const rowIndex = Number(input.dataset.rowIndex);
+          groups[groupIndex].rows[rowIndex] = { field: item.field, operator: operatorsFor(item.field)[0], value: '', supported: true, text: '' };
+          pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: rowIndex };
+          builderDraft = groups;
+          options.render();
+          return;
+        }
+        commitPendingRow(input, item.condition);
+        return;
+      }
+      // A builder value is committed as soon as it is chosen, so the results
+      // update without waiting for the field to lose focus.
+      input.value = item.insert;
+      commitBuilderValue(input);
+    }
+
+    function commitBuilderValue(input) {
+      const groups = builderGroups();
+      const row = rowAt(groups, input);
+      if (!row) return;
+      row.value = input.value;
+      pendingBuilderFocus = { groupIndex: Number(input.dataset.groupIndex), rowIndex: Number(input.dataset.rowIndex) };
+      applyBuilderGroups(groups);
+    }
+
+    function removeRow(input) {
+      const groups = builderGroups();
+      const groupIndex = Number(input.dataset.groupIndex);
+      const rowIndex = Number(input.dataset.rowIndex);
+      const group = groups[groupIndex];
+      if (!group) return;
+      group.rows.splice(rowIndex, 1);
+      if (rowIndex > 0) pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: rowIndex - 1 };
+      applyBuilderGroups(groups);
+    }
+
+    function addGroup() {
+      const groups = builderGroups();
+      groups.push({ rows: [pendingRow()] });
+      pendingBuilderFocus = { groupIndex: groups.length - 1, rowIndex: 0 };
+      applyBuilderGroups(groups);
+    }
+
+    function isEditable(target) {
+      return Boolean(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
+    }
+
+    return {
+      renderBar: renderBar,
+      renderFacets: renderFacets,
+      currentText: currentText,
+
+      /**
+       * The plain words of a search, which a page can match at once because
+       * every one of them must appear. A field, its operator, and its value
+       * are a condition rather than words, and a search with OR, NOT, or
+       * parentheses is not only words, so it waits for the host.
+       */
+      previewWords: function (text) {
+        const value = String(text || '');
+        if (/(^|\\s)(or|not)(\\s|$)|\\|\\||[()]/i.test(value)) return [];
+        const tokens = value.split(/\\s+/).filter(Boolean);
+        const words = [];
+        let lastWordIndex = -2;
+        for (let index = 0; index < tokens.length; index += 1) {
+          const token = tokens[index];
+          const operator = /^(!=|!~|>=|<=|=|~|>|<)/.exec(token);
+          if (operator) {
+            if (lastWordIndex === index - 1) words.pop();
+            if (token === operator[1]) index += 1;
+            continue;
+          }
+          if (!/^[-!#@"']/.test(token) && !/[:=<>~]/.test(token) && !/^(and|&&)$/i.test(token)) {
+            words.push(token.toLowerCase());
+            lastWordIndex = index;
+          }
+        }
+        return words;
+      },
+
+      /** Reconcile with a fresh host state, before the page redraws. */
+      receive: function () {
+        const text = appliedText();
+        // The answer to a search this editor ran replaces what was typed even
+        // when the text comes back the same, as when a typed tag moves into
+        // the page's title and leaves nothing behind.
+        if (text !== appliedSeen || awaitingApply) {
+          const input = document.activeElement;
+          const typing = Boolean(input && input.dataset && input.dataset.action === 'query-input');
+          // A search this editor ran replaces what was typed. Any other
+          // change, such as a save elsewhere, leaves a search being typed.
+          if (awaitingApply || !typing || draft === undefined) draft = undefined;
+          appliedSeen = text;
+          awaitingApply = false;
+        }
+        if (text !== builderSourceText) {
+          builderDraft = undefined;
+          builderSourceText = text;
+        }
+      },
+
+      /** Restore focus and any open completion list after a redraw. */
+      afterRender: function () {
+        if (restoreFocus) {
+          restoreFocus = false;
+          const bar = document.querySelector('[data-suggest-key="query"]');
+          if (bar && bar.focus) {
+            bar.focus();
+            const caret = bar.value ? bar.value.length : 0;
+            if (bar.setSelectionRange) bar.setSelectionRange(caret, caret);
+          }
+        }
+        if (pendingBuilderFocus) {
+          const target = document.querySelector('[data-action="builder-set-value"][data-group-index="' + pendingBuilderFocus.groupIndex + '"][data-row-index="' + pendingBuilderFocus.rowIndex + '"]');
+          pendingBuilderFocus = undefined;
+          if (target && target.focus) target.focus();
+        }
+        if (suggestionHostKey && suggestionItems.length) {
+          renderSuggestions(document.querySelector('[data-suggest-key="' + suggestionHostKey + '"]'));
+        }
+      },
+
+      /** Put the caret in the search box. */
+      focus: function () {
+        restoreFocus = true;
+        options.render();
+      },
+
+      handleMousedown: function (event) {
+        // Pressing on a completion must not move focus out of its field: a
+        // builder value commits on blur, which would redraw the row and
+        // destroy the completion before its click could land.
+        if (event.target.closest && event.target.closest('[data-action="query-suggestion"]')) {
+          event.preventDefault();
+          return true;
+        }
+        return false;
+      },
+
+      handleFocusIn: function (event) {
+        const target = event.target;
+        if (target && target.dataset && target.dataset.action === 'query-input' && !target.value) {
+          openSuggestions(target);
+        }
+      },
+
+      /** Returns true when the click belonged to the editor. */
+      handleClick: function (event) {
+        if (suggestionItems.length && !(event.target.closest && event.target.closest('.query-input-shell'))) {
+          closeSuggestions();
+        }
+        const target = event.target.closest ? event.target.closest('[data-action]') : undefined;
+        if (!target) return false;
+        const action = target.dataset.action;
+        if (action === 'toggle-builder') {
+          builderOpen = !builderOpen;
+          const groups = builderGroups();
+          if (builderOpen && groups.every(function (group) { return !group.rows.length; })) {
+            builderDraft = [{ rows: [pendingRow()] }];
+            pendingBuilderFocus = { groupIndex: 0, rowIndex: 0 };
+          }
+          options.render();
+          return true;
+        }
+        if (action === 'apply-query') {
+          closeSuggestions();
+          run(currentText());
+          return true;
+        }
+        if (action === 'clear-query') {
+          draft = '';
+          closeSuggestions();
+          awaitingApply = true;
+          if (options.onDraft) options.onDraft('');
+          options.clear();
+          return true;
+        }
+        if (action === 'query-suggestion') {
+          acceptSuggestion(Number(target.dataset.suggestionIndex));
+          return true;
+        }
+        if (action === 'remove-term') {
+          run(target.dataset.without || '');
+          return true;
+        }
+        if (action === 'facet') {
+          refine(target.dataset.clause, target.dataset.facetId, event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and');
+          return true;
+        }
+        if (action === 'builder-add-group') {
+          addGroup();
+          return true;
+        }
+        if (action === 'builder-add-row') {
+          const groups = builderGroups();
+          const groupIndex = Number(target.dataset.groupIndex);
+          const group = groups[groupIndex];
+          if (group) {
+            group.rows.push(pendingRow());
+            pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: group.rows.length - 1 };
+            applyBuilderGroups(groups);
+          }
+          return true;
+        }
+        if (action === 'builder-remove-group') {
+          const groups = builderGroups();
+          groups.splice(Number(target.dataset.groupIndex), 1);
+          applyBuilderGroups(groups);
+          return true;
+        }
+        if (action === 'builder-remove-row') {
+          const groups = builderGroups();
+          const group = groups[Number(target.dataset.groupIndex)];
+          if (group) {
+            group.rows.splice(Number(target.dataset.rowIndex), 1);
+            applyBuilderGroups(groups);
+          }
+          return true;
+        }
+        return false;
+      },
+
+      /** Returns true when the key belonged to the editor. */
+      handleKeydown: function (event) {
+        const input = event.target.closest ? event.target.closest('[data-suggest-key]') : undefined;
+        if (!input) {
+          if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditable(event.target)) {
+            event.preventDefault();
+            restoreFocus = true;
+            options.render();
+            return true;
+          }
+          return false;
+        }
+        const isBar = input.dataset.suggestKey === 'query';
+        if (event.key === 'ArrowDown' && suggestionItems.length) {
+          event.preventDefault();
+          suggestionIndex = (suggestionIndex + 1) % suggestionItems.length;
+          renderSuggestions(input);
+          return true;
+        }
+        if (event.key === 'ArrowUp' && suggestionItems.length) {
+          event.preventDefault();
+          suggestionIndex = (suggestionIndex - 1 + suggestionItems.length) % suggestionItems.length;
+          renderSuggestions(input);
+          return true;
+        }
+        if (event.key === 'Tab' && suggestionItems.length) {
+          // Tab means "complete this", so it takes the first entry when the
+          // author has not picked one.
+          event.preventDefault();
+          acceptSuggestion(suggestionIndex >= 0 ? suggestionIndex : 0);
+          return true;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          if (!isBar && (event.metaKey || event.ctrlKey)) {
+            closeSuggestions();
+            addGroup();
+            return true;
+          }
+          if (suggestionItems.length && suggestionIndex >= 0) {
+            acceptSuggestion(suggestionIndex);
+            return true;
+          }
+          closeSuggestions();
+          if (isBar) run(input.value);
+          else if (input.dataset.pending) commitPendingRow(input, input.value);
+          else commitBuilderValue(input);
+          return true;
+        }
+        if (event.key === 'Backspace' && !isBar && !input.value) {
+          event.preventDefault();
+          closeSuggestions();
+          removeRow(input);
+          return true;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          if (suggestionItems.length) {
+            closeSuggestions();
+            return true;
+          }
+          if (isBar) {
+            // Escape with no completions open abandons the edit.
+            draft = undefined;
+            input.value = appliedText();
+            if (options.onDraft) options.onDraft(input.value);
+          }
+          return true;
+        }
+        return true;
+      },
+
+      handleInput: function (event) {
+        const target = event.target;
+        if (target.dataset.action === 'query-input') {
+          draft = target.value;
+          openSuggestions(target);
+          if (options.onDraft) options.onDraft(draft);
+          return true;
+        }
+        if (target.dataset.action === 'builder-set-value') {
+          if (target.dataset.pending) {
+            const groups = builderGroups();
+            const row = rowAt(groups, target);
+            if (row) {
+              row.value = target.value;
+              builderDraft = groups;
+            }
+          }
+          openSuggestions(target);
+          return true;
+        }
+        return false;
+      },
+
+      handleChange: function (event) {
+        const target = event.target;
+        const action = target.dataset.action;
+        if (action !== 'builder-set-field' && action !== 'builder-set-operator' && action !== 'builder-set-value') return false;
+        // A new row waits for Enter or a completion; leaving it is not a choice.
+        if (target.dataset.pending) return true;
+        const groups = builderGroups();
+        const row = rowAt(groups, target);
+        if (!row) return true;
+        if (action === 'builder-set-field') {
+          row.field = target.value;
+          // Keep the operator valid for the new field.
+          const allowed = operatorsFor(row.field);
+          if (allowed.indexOf(row.operator) < 0) row.operator = allowed[0];
+        }
+        if (action === 'builder-set-operator') row.operator = target.value;
+        if (action === 'builder-set-value') row.value = target.value;
+        applyBuilderGroups(groups);
+        return true;
+      },
+    };
+  }
+`;
+}
+
+/**
  * A per-webview nonce for the inline style and script.
  */
 export function createNonce(): string {

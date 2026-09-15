@@ -14,7 +14,6 @@ suite('Tag overview query builder', () => {
   test('adds a condition row without waiting for the host', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
     assert.strictEqual(view.countRows(), 1);
 
@@ -34,7 +33,6 @@ suite('Tag overview query builder', () => {
   test('adds an OR group without waiting for the host', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
 
     view.click({ action: 'builder-add-group' });
@@ -45,7 +43,6 @@ suite('Tag overview query builder', () => {
   test('keeps in-progress rows across an unrelated refresh', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
     view.click({ action: 'builder-add-row', groupIndex: '0' });
 
@@ -59,7 +56,6 @@ suite('Tag overview query builder', () => {
   test('rebuilds its rows when the query changes elsewhere', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
     view.click({ action: 'builder-add-row', groupIndex: '0' });
 
@@ -71,7 +67,6 @@ suite('Tag overview query builder', () => {
   test('completes tag values in a builder row', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
 
     view.type(
@@ -95,7 +90,6 @@ suite('Tag overview query builder', () => {
   test('offers a builder row only the values its field accepts', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
 
     view.type(
@@ -119,7 +113,6 @@ suite('Tag overview query builder', () => {
   test('completes a value in the query bar once the field is known', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
 
     view.type(
       { dataset: { action: 'query-input', suggestKey: 'query' } },
@@ -135,7 +128,6 @@ suite('Tag overview query builder', () => {
   test('offers field names in the query bar outside a value', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
 
     view.type(
       { dataset: { action: 'query-input', suggestKey: 'query' } },
@@ -145,10 +137,140 @@ suite('Tag overview query builder', () => {
     assert.match(view.suggestionsFor('query'), /updated =/);
   });
 
+  test('shows the search box without a toggle', () => {
+    const view = mountTagOverview();
+    view.send(createState());
+    assert.match(view.html(), /data-action="query-input"/);
+    assert.doesNotMatch(view.html(), /toggle-query/);
+  });
+
+  test('turns a value typed in a new row into the condition it names', () => {
+    const view = mountTagOverview();
+    view.send(createState());
+    view.click({ action: 'toggle-builder' });
+    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    view.posted.length = 0;
+
+    const input = view.type(
+      {
+        dataset: {
+          action: 'builder-set-value',
+          suggestKey: 'g0r1',
+          pending: 'true',
+          groupIndex: '0',
+          rowIndex: '1',
+        },
+      },
+      'open',
+    );
+    assert.match(view.suggestionsFor('g0r1'), /is:open/);
+    view.key(input, 'Tab');
+
+    assert.deepStrictEqual(view.posted, [
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND is:open' },
+    ]);
+  });
+
+  test('removes an empty row with Backspace', () => {
+    const view = mountTagOverview();
+    view.send(createState());
+    view.click({ action: 'toggle-builder' });
+    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    assert.strictEqual(view.countRows(), 2);
+
+    const input = view.type(
+      {
+        dataset: {
+          action: 'builder-set-value',
+          suggestKey: 'g0r1',
+          pending: 'true',
+          groupIndex: '0',
+          rowIndex: '1',
+        },
+      },
+      '',
+    );
+    view.key(input, 'Backspace');
+
+    assert.strictEqual(view.countRows(), 1);
+  });
+
+  test('narrows by a facet, or leaves it out with Alt', () => {
+    const facets = [
+      {
+        id: 'status',
+        label: 'Tasks',
+        values: [{ label: 'Open', count: 2, clause: 'is:open' }],
+        applied: [],
+      },
+    ];
+    const view = mountTagOverview();
+    view.send(createState('tag = #project/atlas', { facets, canAppend: true }));
+    assert.match(view.html(), /data-action="facet"/);
+
+    view.posted.length = 0;
+    view.click({ action: 'facet', clause: 'is:open', facetId: 'status' });
+    view.click({ action: 'facet', clause: 'is:open', facetId: 'status' }, { altKey: true });
+
+    assert.deepStrictEqual(view.posted, [
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas is:open' },
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas -is:open' },
+    ]);
+  });
+
+  test('allows another value of a facet with Shift', () => {
+    const facets = [
+      {
+        id: 'status',
+        label: 'Tasks',
+        values: [{ label: 'Done', count: 1, clause: 'is:done' }],
+        applied: ['is:open'],
+      },
+    ];
+    const view = mountTagOverview();
+    view.send(createState('#project/atlas is:open', { facets, canAppend: true }));
+
+    view.posted.length = 0;
+    view.click({ action: 'facet', clause: 'is:done', facetId: 'status' }, { shiftKey: true });
+
+    assert.deepStrictEqual(view.posted, [
+      { type: 'setOverviewQuery', query: '#project/atlas (is:open OR is:done)' },
+    ]);
+  });
+
+  test('refines a tag overview rather than replacing its tags', () => {
+    const view = mountTagOverview();
+    view.send(createState('', { scope: 'tag = #project/atlas' }));
+    view.posted.length = 0;
+
+    const input = view.type(
+      { dataset: { action: 'query-input', suggestKey: 'query' } },
+      'vendor',
+    );
+    view.key(input, 'Enter');
+
+    assert.deepStrictEqual(view.posted, [
+      { type: 'setOverviewRefinement', refinement: 'vendor' },
+    ]);
+  });
+
+  test('offers recent searches in an empty search box', () => {
+    const view = mountTagOverview();
+    view.send(
+      createState('', {
+        scope: 'tag = #project/atlas',
+        recent: [{ value: '#project/atlas is:open', label: '#project/atlas is:open', detail: 'Recent search' }],
+      }),
+    );
+
+    view.focus({ dataset: { action: 'query-input', suggestKey: 'query' } }, '');
+
+    assert.match(view.suggestionsFor('query'), /#project\/atlas is:open/);
+  });
+
   test('sends the query when a condition is removed', () => {
     const view = mountTagOverview();
     view.send(createState());
-    view.click({ action: 'toggle-query' });
     view.click({ action: 'toggle-builder' });
 
     view.posted.length = 0;
@@ -164,7 +286,10 @@ suite('Tag overview query builder', () => {
 interface MountedView {
   posted: Array<Record<string, unknown>>;
   send: (state: unknown) => void;
-  click: (dataset: Record<string, string>) => void;
+  click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
+  key: (input: Record<string, unknown>, key: string) => void;
+  focus: (input: Record<string, unknown>, value: string) => void;
+  html: () => string;
   countRows: () => number;
   countGroups: () => number;
   type: (
@@ -259,7 +384,7 @@ function mountTagOverview(): MountedView {
   return {
     posted,
     send: (state) => dispatch('message', { data: { type: 'state', data: state } }),
-    click: (dataset) => {
+    click: (dataset, modifiers = {}) => {
       const target = Object.assign(createStubElement('button'), { dataset });
       dispatch('click', {
         target: {
@@ -267,8 +392,25 @@ function mountTagOverview(): MountedView {
             selector === '[data-action]' ? target : null,
         },
         preventDefault: () => undefined,
+        ...modifiers,
       });
     },
+    key: (input, key) => {
+      const target = Object.assign(input, {
+        closest: (selector: string) =>
+          selector === '[data-suggest-key]' ? input : null,
+      });
+      dispatch('keydown', { target, key, preventDefault: () => undefined });
+    },
+    focus: (input, value) => {
+      const target = Object.assign(createStubElement('input'), input, { value });
+      registry.set(
+        `[data-suggest-key="${String((input.dataset as Record<string, string>).suggestKey)}"]`,
+        target,
+      );
+      dispatch('focusin', { target });
+    },
+    html: () => app.innerHTML,
     countRows: () => (app.innerHTML.match(/builder-set-value/g) ?? []).length,
     countGroups: () =>
       (app.innerHTML.match(/class="query-builder-group"/g) ?? []).length,
@@ -309,8 +451,16 @@ function createStubElement(tagName: string): any {
 /**
  * Builds the smallest overview snapshot the script will render.
  */
-function createState(queryText = 'tag = #project/atlas'): unknown {
-  const value = queryText.replace(/^tag = /, '');
+function createState(
+  queryText = 'tag = #project/atlas',
+  extras: {
+    scope?: string;
+    facets?: unknown[];
+    canAppend?: boolean;
+    recent?: Array<{ value: string; label: string; detail?: string }>;
+  } = {},
+): unknown {
+  const value = (extras.scope ?? queryText).replace(/^tag = /, '').split(' ')[0];
   return {
     tag: {
       key: value,
@@ -334,6 +484,10 @@ function createState(queryText = 'tag = #project/atlas'): unknown {
     sharedAssociatedTags: [],
     query: {
       text: queryText,
+      ...(extras.scope !== undefined ? { scope: extras.scope } : {}),
+      terms: [],
+      canAppend: extras.canAppend ?? true,
+      facets: extras.facets ?? [],
       isAdvanced: false,
       isBuildable: true,
       diagnostics: [],
@@ -365,6 +519,11 @@ function createState(queryText = 'tag = #project/atlas'): unknown {
             { value: 'done', label: 'done' },
           ],
         },
+        conditions: [
+          { value: 'is:open', label: 'is:open', detail: 'Open tasks' },
+          { value: 'is:done', label: 'is:done', detail: 'Completed tasks' },
+        ],
+        recent: extras.recent ?? [],
       },
       matchCounts: { notes: 0, tasks: 0 },
     },

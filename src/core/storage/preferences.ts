@@ -54,7 +54,13 @@ const defaultPreferences: PersistedPreferences = {
   savedFilters: [],
   dashboardTaskLayout: 'list',
   dashboardBoardGroup: 'status',
+  tagAccessTimes: {},
+  sectionAccessTimes: {},
+  recentQueries: [],
 };
+
+/** How many recent searches are kept. */
+export const RECENT_QUERY_LIMIT = 20;
 
 /**
  * Persists UI-only state without adding metadata to Markdown notes.
@@ -148,14 +154,41 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
-   * Increments usage counts so access sorting reflects actual navigation.
+   * Increments usage counts so access sorting reflects actual navigation, and
+   * notes the time so recently opened tags rank first in search.
    */
-  public async recordTagAccess(tagKey: string): Promise<void> {
+  public async recordTagAccess(tagKey: string, now = Date.now()): Promise<void> {
     const tagAccessCounts = {
       ...this.preferences.tagAccessCounts,
       [tagKey]: (this.preferences.tagAccessCounts[tagKey] ?? 0) + 1,
     };
-    await this.update({ tagAccessCounts });
+    const tagAccessTimes = {
+      ...this.preferences.tagAccessTimes,
+      [tagKey]: now,
+    };
+    await this.update({ tagAccessCounts, tagAccessTimes });
+  }
+
+  /**
+   * Keeps a search at the front of the recent list, without duplicates.
+   */
+  public async recordRecentQuery(query: string): Promise<void> {
+    const normalized = query.trim();
+    if (!normalized) {
+      return;
+    }
+    const recentQueries = [
+      normalized,
+      ...(this.preferences.recentQueries ?? []).filter(
+        (existing) => existing !== normalized,
+      ),
+    ].slice(0, RECENT_QUERY_LIMIT);
+    if (
+      JSON.stringify(recentQueries) !==
+      JSON.stringify(this.preferences.recentQueries)
+    ) {
+      await this.update({ recentQueries });
+    }
   }
 
   public async recordEntityAccess(entityKey: string): Promise<void> {
@@ -295,12 +328,19 @@ export class PreferencesStore implements vscode.Disposable {
   /**
    * Increments section usage counts for the overview's access sort.
    */
-  public async recordSectionAccess(sectionId: string): Promise<void> {
+  public async recordSectionAccess(
+    sectionId: string,
+    now = Date.now(),
+  ): Promise<void> {
     const sectionAccessCounts = {
       ...this.preferences.sectionAccessCounts,
       [sectionId]: (this.preferences.sectionAccessCounts[sectionId] ?? 0) + 1,
     };
-    await this.update({ sectionAccessCounts });
+    const sectionAccessTimes = {
+      ...this.preferences.sectionAccessTimes,
+      [sectionId]: now,
+    };
+    await this.update({ sectionAccessCounts, sectionAccessTimes });
   }
 
   /**
@@ -358,6 +398,8 @@ export class PreferencesStore implements vscode.Disposable {
         : { ...rest, [targetKey]: (rest[targetKey] ?? 0) + moved };
     };
     const viewState = this.preferences.dashboardViewState;
+    const { [sourceKey]: movedTime, ...tagAccessTimes } =
+      this.preferences.tagAccessTimes ?? {};
 
     await this.update({
       favoriteTags: replaceKeys(this.preferences.favoriteTags),
@@ -366,6 +408,13 @@ export class PreferencesStore implements vscode.Disposable {
       entityAccessOrder: replaceKeys(this.preferences.entityAccessOrder),
       tagAccessCounts: moveCount(this.preferences.tagAccessCounts),
       entityAccessCounts: moveCount(this.preferences.entityAccessCounts),
+      tagAccessTimes:
+        movedTime === undefined
+          ? tagAccessTimes
+          : {
+              ...tagAccessTimes,
+              [targetKey]: Math.max(movedTime, tagAccessTimes[targetKey] ?? 0),
+            },
       dashboardViewState: {
         ...viewState,
         selectedTaskTags: replaceKeys(viewState.selectedTaskTags),
@@ -498,6 +547,18 @@ export class PreferencesStore implements vscode.Disposable {
         validTags.has(tagKey),
       ),
     );
+    const tagAccessTimes = Object.fromEntries(
+      Object.entries(this.preferences.tagAccessTimes ?? {}).filter(([tagKey]) =>
+        validTags.has(tagKey),
+      ),
+    );
+    const sectionAccessTimes = validSections
+      ? Object.fromEntries(
+          Object.entries(this.preferences.sectionAccessTimes ?? {}).filter(
+            ([sectionId]) => validSections.has(sectionId),
+          ),
+        )
+      : this.preferences.sectionAccessTimes;
     const savedFilters = this.preferences.savedFilters.flatMap((filter) => {
       // A saved query can name tags that do not exist yet, or none at all, so
       // only tag-set filters are pruned against the index.
@@ -520,10 +581,12 @@ export class PreferencesStore implements vscode.Disposable {
         validTags.has(tagKey),
       ),
       tagAccessCounts,
+      tagAccessTimes,
       taskOrder: this.preferences.taskOrder.filter((taskId) =>
         validTasks.has(taskId),
       ),
       sectionAccessCounts,
+      sectionAccessTimes,
       entityAccessOrder: this.preferences.entityAccessOrder.filter(
         (entityKey) => validEntities?.has(entityKey) ?? true,
       ),
@@ -659,7 +722,30 @@ function normalizePreferences(
       value?.dashboardBoardGroup === 'due'
         ? value.dashboardBoardGroup
         : 'status',
+    tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
+    sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
+    recentQueries: uniqueStrings(
+      (Array.isArray(value?.recentQueries) ? value.recentQueries : [])
+        .filter((query): query is string => typeof query === 'string')
+        .map((query) => query.trim()),
+    ).slice(0, RECENT_QUERY_LIMIT),
   };
+}
+
+/**
+ * Keeps only positive, finite timestamps.
+ */
+function normalizeAccessTimes(
+  values: Record<string, number> | undefined,
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(
+      typeof values === 'object' && values !== null ? values : {},
+    ).filter(
+      ([key, time]) =>
+        key.length > 0 && typeof time === 'number' && Number.isFinite(time) && time > 0,
+    ),
+  );
 }
 
 function isDashboardColumnCount(
@@ -822,5 +908,8 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     },
     sectionAccessCounts: { ...value.sectionAccessCounts },
     savedFilters: value.savedFilters.map(cloneSavedFilter),
+    tagAccessTimes: { ...value.tagAccessTimes },
+    sectionAccessTimes: { ...value.sectionAccessTimes },
+    recentQueries: [...(value.recentQueries ?? [])],
   };
 }

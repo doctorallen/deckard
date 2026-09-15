@@ -69,7 +69,6 @@ suite('Dashboard navigation', () => {
       async (tagKey) => {
         opened.push(tagKey);
       },
-      async () => undefined,
     );
 
     try {
@@ -122,7 +121,6 @@ suite('Dashboard navigation', () => {
       async (tagKey, filterTagKeys) => {
         opened.push({ tagKey, filterTagKeys });
       },
-      async () => undefined,
     );
 
     try {
@@ -140,6 +138,57 @@ suite('Dashboard navigation', () => {
           filterTagKeys: ['#project/atlas', '#urgent'],
         },
       ]);
+    } finally {
+      dashboard.dispose();
+    }
+  });
+
+  test('opens a saved search on the Notes tab, the search page', async () => {
+    const workspaceIndex = buildWorkspaceIndex(new Map());
+    const index = {
+      onDidUpdate: () => ({ dispose: () => undefined }),
+      getSnapshot: () => workspaceIndex,
+      ready: Promise.resolve(),
+    } as unknown as WorkspaceIndexer;
+    const calls: string[] = [];
+    const preferences = {
+      onDidChange: () => ({ dispose: () => undefined }),
+      value: {
+        ...defaultPreferences,
+        savedFilters: [
+          { id: 'open-atlas', name: 'Open Atlas', tagKeys: [], query: '#project/atlas is:open' },
+        ],
+      },
+      setDashboardSearch: async (field: string, query: string) => {
+        calls.push(`${field}: ${query}`);
+      },
+      setDashboardMode: async (mode: string) => {
+        calls.push(`mode: ${mode}`);
+      },
+    } as unknown as PreferencesStore;
+    const opened: string[] = [];
+    const dashboard = new DashboardPanel(
+      index,
+      preferences,
+      vscode.Uri.file(process.cwd()),
+      async (tagKey) => {
+        opened.push(tagKey);
+      },
+    );
+
+    // Only where the search goes is under test, so no panel is opened.
+    (dashboard as unknown as { show: () => Promise<void> }).show = async () => {
+      calls.push('show');
+    };
+
+    try {
+      await dashboard.openSavedFilter('open-atlas');
+      assert.deepStrictEqual(calls, [
+        'notes: #project/atlas is:open',
+        'mode: notes',
+        'show',
+      ]);
+      assert.deepStrictEqual(opened, []);
     } finally {
       dashboard.dispose();
     }
@@ -166,7 +215,6 @@ suite('Dashboard navigation', () => {
       index,
       preferences,
       vscode.Uri.file(process.cwd()),
-      async () => undefined,
       async () => undefined,
     );
 

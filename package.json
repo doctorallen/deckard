@@ -108,7 +108,11 @@
       },
       {
         "command": "deckard.searchWorkspace",
-        "title": "Deckard: Search Workspace Knowledge"
+        "title": "Deckard: Find"
+      },
+      {
+        "command": "deckard.quickFind.complete",
+        "title": "Deckard: Complete the Word in Find"
       },
       {
         "command": "deckard.searchNotes",
@@ -170,6 +174,10 @@
         {
           "command": "deckard.outline.renameTag",
           "when": "false"
+        },
+        {
+          "command": "deckard.quickFind.complete",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -202,6 +210,18 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "deckard.searchWorkspace",
+        "key": "ctrl+shift+alt+f",
+        "mac": "cmd+shift+alt+f"
+      },
+      {
+        "command": "deckard.quickFind.complete",
+        "key": "tab",
+        "when": "inQuickOpen && deckard.quickFindOpen"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -256,7 +276,7 @@
           "tasks"
         ],
         "userDescription": "Search the workspace's Markdown notes and tasks with a Deckard query.",
-        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates or windows such as 30d). Operators are = != ~ !~ > >= < <=. If you do not know a tag's exact name, call deckard_list_tags first.",
+        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates or windows such as 30d). Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:task, is:note, has:due and no:due (also scheduled, start, done, priority), and in:folder for a folder and everything in it. Operators are = != ~ !~ > >= < <=. If you do not know a tag's exact name, call deckard_list_tags first.",
         "inputSchema": {
           "type": "object",
           "properties": {

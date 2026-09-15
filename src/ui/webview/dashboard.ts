@@ -51,7 +51,6 @@ export class DashboardPanel implements vscode.Disposable {
       tagKey: string,
       filterTagKeys?: readonly string[],
     ) => void | Promise<void>,
-    private readonly onOpenQuery: (queryText: string) => void | Promise<void>,
   ) {
     const initialPreferences = preferences.value;
     this.dashboardTaskColumns = initialPreferences.dashboardTaskColumns;
@@ -114,6 +113,41 @@ export class DashboardPanel implements vscode.Disposable {
     this.panel?.reveal(vscode.ViewColumn.Active);
     await this.indexer.ready;
     this.refresh();
+  }
+
+  /**
+   * Opens a saved view: a saved search on the Notes tab, or a saved tag set
+   * as that tag intersection.
+   */
+  public async openSavedFilter(filterId: string): Promise<void> {
+    const savedFilter = this.preferences.value.savedFilters.find(
+      (filter) => filter.id === filterId,
+    );
+    if (!savedFilter) {
+      return;
+    }
+    if (savedFilter.query) {
+      await this.showSearch(savedFilter.query);
+      return;
+    }
+    const index = this.indexer.getSnapshot();
+    const tagKeys = savedFilter.tagKeys.filter((tagKey) =>
+      index.tags.has(tagKey),
+    );
+    if (tagKeys.length >= 2) {
+      await this.onOpenTag(tagKeys[0], tagKeys.slice(1));
+    }
+  }
+
+  /**
+   * Opens the Notes tab on a search, which is where every search can be
+   * seen in full and refined.
+   */
+  public async showSearch(query: string): Promise<void> {
+    this.dashboardMode = 'notes';
+    await this.preferences.setDashboardSearch('notes', query.trim());
+    await this.preferences.setDashboardMode('notes');
+    await this.show();
   }
 
   /**
@@ -290,6 +324,32 @@ export class DashboardPanel implements vscode.Disposable {
           : undefined,
     };
     void this.panel.webview.postMessage({ type: 'state', data });
+  }
+
+  /**
+   * Names the Notes tab's search and keeps it as a saved view.
+   */
+  private async saveSearch(): Promise<void> {
+    const query = this.preferences.value.dashboardViewState.noteSearchQuery.trim();
+    if (!query) {
+      return;
+    }
+    const name = await vscode.window.showInputBox({
+      title: 'Save Deckard filter',
+      prompt: 'Name this search',
+      value: query,
+      validateInput: (value) =>
+        value.trim() ? undefined : 'A saved filter needs a name.',
+    });
+    if (name === undefined) {
+      return;
+    }
+    const saved = await this.preferences.saveSavedQueryFilter(name, query);
+    if (saved) {
+      void vscode.window.showInformationMessage(
+        `Saved Deckard filter: ${saved.name}`,
+      );
+    }
   }
 
   /**
@@ -497,27 +557,17 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       }
-      case 'openSavedFilter': {
-        const savedFilter = this.preferences.value.savedFilters.find(
-          (filter) => filter.id === message.filterId,
-        );
-        if (!savedFilter) {
-          return;
-        }
-        if (savedFilter.query) {
-          await this.onOpenQuery(savedFilter.query);
-          return;
-        }
-        const tagKeys = savedFilter.tagKeys.filter((tagKey) =>
-          index.tags.has(tagKey),
-        );
-        if (tagKeys.length >= 2) {
-          await this.onOpenTag(tagKeys[0], tagKeys.slice(1));
-        }
+      case 'openSavedFilter':
+        await this.openSavedFilter(message.filterId);
         return;
-      }
       case 'removeSavedFilter':
         await this.preferences.removeSavedFilter(message.filterId);
+        return;
+      case 'recordRecentQuery':
+        await this.preferences.recordRecentQuery(message.query);
+        return;
+      case 'saveDashboardSearch':
+        await this.saveSearch();
         return;
     }
   }

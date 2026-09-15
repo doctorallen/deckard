@@ -6,6 +6,7 @@ import {
   QueryNode,
   QueryOperator,
   QUERY_FIELD_OPERATORS,
+  QUERY_OPERATOR_INVERSES,
   QUERY_TASK_DATE_FIELDS,
 } from './queryTypes';
 
@@ -30,6 +31,9 @@ import {
  *
  * `=` is the equality operator. `:` is still accepted as a synonym so queries
  * written before `=` became canonical keep working.
+ *
+ * `is:open`, `has:due`, `no:due`, and `in:notes/work` are shorthands. `no:` is
+ * `has:` with its meaning reversed, so it needs no field of its own.
  */
 export function parseQuery(text: string): ParsedQuery {
   const diagnostics: QueryDiagnostic[] = [];
@@ -80,6 +84,47 @@ export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
   created: 'created',
   updated: 'updated',
   modified: 'updated',
+  is: 'is',
+  has: 'has',
+  no: 'has',
+  in: 'in',
+};
+
+/** The spelling of `has:` that means "has no". */
+const NEGATED_HAS = 'no';
+
+/**
+ * Values `is:` accepts, mapped to their canonical value.
+ */
+const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
+  open: 'open',
+  todo: 'open',
+  active: 'open',
+  done: 'done',
+  complete: 'done',
+  completed: 'done',
+  task: 'task',
+  tasks: 'task',
+  note: 'note',
+  notes: 'note',
+  overdue: 'overdue',
+  late: 'overdue',
+  due: 'due',
+  soon: 'due',
+};
+
+/**
+ * Values `has:` and `no:` accept, mapped to their canonical value.
+ */
+const HAS_VALUE_ALIASES: Readonly<Record<string, string>> = {
+  due: 'due',
+  deadline: 'due',
+  scheduled: 'scheduled',
+  start: 'start',
+  starts: 'start',
+  done: 'done',
+  completed: 'done',
+  priority: 'priority',
 };
 
 /**
@@ -516,6 +561,9 @@ class Parser {
       this.next();
       operator = readOperator(chained.value, field);
     }
+    if (word.value.toLowerCase() === NEGATED_HAS) {
+      operator = QUERY_OPERATOR_INVERSES[operator];
+    }
 
     const valueToken = this.consumeValueToken();
     if (!valueToken) {
@@ -581,6 +629,48 @@ class Parser {
         end,
       });
       return undefined;
+    }
+
+    if (field === 'is') {
+      const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
+      if (!normalized) {
+        this.diagnostics.push({
+          message: `is: accepts open, done, task, note, overdue, or due — not "${value}".`,
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: normalized, start, end };
+    }
+
+    if (field === 'has') {
+      const normalized = HAS_VALUE_ALIASES[value.toLowerCase()];
+      if (!normalized) {
+        this.diagnostics.push({
+          message: `has: and no: accept due, scheduled, start, done, or priority — not "${value}".`,
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: normalized, start, end };
+    }
+
+    if (field === 'in') {
+      const folder = value.replace(/^\.\//, '').replace(/\/+$/, '');
+      if (!folder) {
+        this.diagnostics.push({
+          message: 'in: needs a folder, such as in:notes/projects.',
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: folder, start, end };
     }
 
     if (field === 'task') {

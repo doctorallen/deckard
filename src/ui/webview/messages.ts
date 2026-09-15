@@ -140,6 +140,15 @@ export function parseDashboardMessage(
       return isSavedFilterMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'recordRecentQuery':
+      return typeof value.query === 'string' &&
+        value.query.length <= MAX_QUERY_LENGTH
+        ? { type: 'recordRecentQuery', query: value.query }
+        : undefined;
+    case 'saveDashboardSearch':
+      return Object.keys(value).length === 1
+        ? { type: 'saveDashboardSearch' }
+        : undefined;
     default:
       return undefined;
   }
@@ -207,6 +216,14 @@ export function parseTagOverviewMessage(
     Object.keys(value).length === 1
   ) {
     return { type: 'clearOverviewQuery' };
+  }
+  if (
+    value.type === 'setOverviewRefinement' &&
+    Object.keys(value).length === 2 &&
+    typeof value.refinement === 'string' &&
+    value.refinement.length <= MAX_QUERY_LENGTH
+  ) {
+    return { type: 'setOverviewRefinement', refinement: value.refinement };
   }
   return undefined;
 }

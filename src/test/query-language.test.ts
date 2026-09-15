@@ -400,7 +400,101 @@ suite('Deckard query overview state', () => {
     );
 
     assert.strictEqual(snapshot?.query?.isAdvanced, false);
-    assert.strictEqual(snapshot?.query?.text, 'tag = #project/atlas');
+    // The search box refines the tags on screen, so it starts empty and
+    // names the tags it refines as its scope.
+    assert.strictEqual(snapshot?.query?.scope, 'tag = #project/atlas');
+    assert.strictEqual(snapshot?.query?.text, '');
+  });
+
+  test('reads is:, has:, no:, and in: as shorthand conditions', () => {
+    const conditions = (text: string) => {
+      const parsed = parseQuery(text);
+      assert.deepStrictEqual(parsed.diagnostics, [], text);
+      const found: string[] = [];
+      const visit = (node: typeof parsed.node): void => {
+        if (!node) {
+          return;
+        }
+        if (node.type === 'condition') {
+          found.push(`${node.field} ${node.operator} ${node.value}`);
+        } else if (node.type === 'not') {
+          found.push('NOT');
+          visit(node.child);
+        } else {
+          node.children.forEach(visit);
+        }
+      };
+      visit(parsed.node);
+      return found;
+    };
+
+    assert.deepStrictEqual(conditions('is:open'), ['is eq open']);
+    assert.deepStrictEqual(conditions('is:todo'), ['is eq open']);
+    assert.deepStrictEqual(conditions('has:due no:priority'), [
+      'has eq due',
+      'has neq priority',
+    ]);
+    assert.deepStrictEqual(conditions('-is:done'), ['NOT', 'is eq done']);
+    assert.deepStrictEqual(conditions('in:./notes/work/'), ['in eq notes/work']);
+  });
+
+  test('rejects a shorthand value it does not know', () => {
+    assert.match(parseQuery('is:maybe').diagnostics[0].message, /is: accepts/);
+    assert.match(parseQuery('no:colour').diagnostics[0].message, /has: and no: accept/);
+  });
+
+  test('writes shorthands back the way they are typed', () => {
+    assert.strictEqual(
+      formatQuery(parseQuery('is:open no:due in:notes #project/atlas').node),
+      'is:open AND no:due AND in:notes AND tag = #project/atlas',
+    );
+    // The builder folds NOT into the operator, and still writes a shorthand.
+    assert.strictEqual(
+      fromBuilderGroups(toBuilderGroups(parseQuery('-is:open').node)),
+      '-is:open',
+    );
+    assert.strictEqual(
+      fromBuilderGroups(toBuilderGroups(parseQuery('NOT has:due').node)),
+      'no:due',
+    );
+  });
+
+  test('evaluates is:, has:, and no: against tasks and notes', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const index = createIndex();
+    index.tasks.set('late', createTask({ id: 'late', dueAt: now - 2 * day }));
+    index.tasks.set('soon', createTask({ id: 'soon', dueAt: now + 2 * day }));
+    index.tasks.set('later', createTask({ id: 'later', dueAt: now + 20 * day }));
+    const taskIds = (text: string) =>
+      evaluateQuery(index, parseQuery(text).node).tasks.map((task) => task.id);
+
+    assert.deepStrictEqual(taskIds('is:open'), ['task-open', 'late', 'soon', 'later']);
+    assert.deepStrictEqual(taskIds('is:done'), ['task-done']);
+    assert.deepStrictEqual(taskIds('is:overdue'), ['late']);
+    assert.deepStrictEqual(taskIds('is:due'), ['late', 'soon']);
+    assert.deepStrictEqual(taskIds('has:due'), ['late', 'soon', 'later']);
+    assert.deepStrictEqual(taskIds('no:due'), ['task-open', 'task-done']);
+
+    // no:due answers for tasks only, as due = none does, rather than
+    // listing every note that has no due date.
+    assert.deepStrictEqual(evaluateQuery(index, parseQuery('no:due').node).sections, []);
+    const notes = evaluateQuery(index, parseQuery('is:note').node);
+    assert.strictEqual(notes.tasks.length, 0);
+    assert.strictEqual(notes.sections.length, 5);
+  });
+
+  test('matches in: against whole folders', () => {
+    const index = createIndex();
+    const sectionCount = (text: string) =>
+      evaluateQuery(index, parseQuery(text).node).sections.length;
+
+    assert.strictEqual(sectionCount('in:notes'), 5);
+    // A folder is matched whole, so a name that only starts the same way
+    // does not count.
+    assert.strictEqual(sectionCount('in:note'), 0);
+    assert.strictEqual(sectionCount('-in:notes'), 0);
+    assert.strictEqual(sectionCount('in:no*'), 5);
   });
 });
 
