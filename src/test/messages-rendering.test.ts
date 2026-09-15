@@ -244,9 +244,10 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'setTaskTags', tagKeys: ['work'] }),
       { type: 'setTaskTags', tagKeys: ['work'] },
     );
-    assert.deepStrictEqual(
+    // The Search tab narrows notes with its search, not a tag picker.
+    assert.strictEqual(
       parseDashboardMessage({ type: 'setNoteTags', tagKeys: ['work'] }),
-      { type: 'setNoteTags', tagKeys: ['work'] },
+      undefined,
     );
     assert.deepStrictEqual(
       parseDashboardMessage({ type: 'renameTag', tagKey: '#project/atlas' }),
@@ -599,10 +600,18 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-tasks"'), true);
     assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
     assert.strictEqual(html.includes('class="task-search" type="search"'), true);
-    // The Notes tab's search is the shared search box, not a plain field.
+    // The Search tab's search is the shared search box, not a plain field.
     assert.strictEqual(html.includes('class="note-search" type="search"'), false);
     assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
     assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
+    // A search kept from an earlier visit says so above the list it narrows,
+    // outlines its box, and marks its tab.
+    assert.strictEqual(html.includes('function renderSearchNotice(shown, total, noun, query, action)'), true);
+    assert.strictEqual(html.includes("'clear-task-search'"), true);
+    assert.strictEqual(html.includes("'clear-tag-search'"), true);
+    assert.strictEqual(html.includes('input.task-search[data-has-query], input.catalog-search[data-has-query]'), true);
+    assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), true);
+    assert.strictEqual(html.includes('renderTabSearchMark(browseQuery)'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
     assert.strictEqual(
@@ -718,8 +727,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
     assert.strictEqual(html.includes('id="notes-panel"'), true);
     assert.strictEqual(html.includes('data-action="set-note-sort"'), true);
-    assert.strictEqual(html.includes('data-action="set-note-tag"'), true);
-    assert.strictEqual(html.includes('data-action="filter-note-tags"'), true);
+    assert.strictEqual(html.includes('data-action="set-note-tag"'), false);
+    assert.strictEqual(html.includes('data-action="filter-note-tags"'), false);
+    // Save search sits in the search bar, beside the search it saves.
+    assert.strictEqual(html.includes('actions: function ()'), true);
+    assert.strictEqual(html.includes("+ (options.actions ? options.actions() : '')"), true);
+    assert.strictEqual(html.includes("dashboardMode === 'notes' ? 'Search'"), true);
     assert.strictEqual(html.includes('data-action="query-input"'), true);
     assert.strictEqual(html.includes("type: 'recordRecentQuery'"), true);
     assert.strictEqual(html.includes('data-action="save-note-search"'), true);
@@ -728,11 +741,11 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('clearTimeout(noteSearchTimer)'), true);
     assert.strictEqual(html.includes('noteSearchTimer = setTimeout'), true);
     assert.strictEqual(html.includes('pendingNoteSearchQuery'), true);
-    assert.strictEqual(html.includes('function scheduleTagFilterSearch(kind)'), true);
+    assert.strictEqual(html.includes('function scheduleTaskTagSearch()'), true);
     assert.strictEqual(html.includes('taskTagSearchTimer'), true);
-    assert.strictEqual(html.includes('noteTagSearchTimer'), true);
+    assert.strictEqual(html.includes('noteTagSearchTimer'), false);
     assert.strictEqual(html.includes('pendingTaskTagQuery'), true);
-    assert.strictEqual(html.includes('pendingNoteTagQuery'), true);
+    assert.strictEqual(html.includes('pendingNoteTagQuery'), false);
     // Every search and tag-filter field keeps its focus through a redraw by
     // its action, rather than each field being listed by name.
     assert.strictEqual(html.includes('function renderKeepingFocus()'), true);
@@ -1769,7 +1782,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
     assert.strictEqual(html.includes('Saved tag views'), true);
-    assert.strictEqual(html.includes('Tasks/Notes/Tags tabs'), true);
+    assert.strictEqual(html.includes('Tasks/Search/Tags tabs'), true);
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);

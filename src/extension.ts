@@ -565,7 +565,7 @@ function asOutlineNode(value: unknown): OutlineNode | undefined {
 }
 
 /**
- * Opens the Dashboard's Notes tab, Deckard's search page, on a query.
+ * Opens the Dashboard's Search tab on a query.
  *
  * The command accepts a query argument so a link or another command can open a
  * saved search directly, and prompts for one otherwise.

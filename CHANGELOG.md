@@ -30,11 +30,12 @@
   `priority`), and `in:folder` work in every query, including query blocks
   and AI assistant queries.
 
-- **The Notes tab is the search page**: the Dashboard's Notes tab has the
-  full search box, with completions, the builder, **Refine** counts, the
-  tasks the search matches, and **Save search**. `Deckard: Search Notes and
-  Tasks`, **Show all** in Find, a query block's **Open in search**, and saved
-  searches open there.
+- **The Search tab**: the Dashboard's Notes tab is now **Search**, Deckard's
+  search page. It has the full search box, with completions, the builder,
+  **Refine** counts, the tasks the search matches, and **Save search** beside
+  the box. Its tag picker is gone, since tags are typed in the search or
+  chosen under **Refine**. `Deckard: Search Notes and Tasks`, **Show all** in
+  Find, a query block's **Open in search**, and saved searches open there.
 
 - **Refine**: under the search box, counts of open and done tasks, due
   dates, tags, update dates, and folders in the results. Select one to
@@ -106,6 +107,11 @@
   instrument buttons.
 
 ### Changed
+
+- A Dashboard search kept from an earlier visit is no longer easy to miss.
+  When one is narrowing the Tasks or Tags list, a line above the list says
+  how many items match, with **Clear search**, the search box is outlined,
+  and a dot marks each tab whose search has text.
 
 - The search box is always shown in a tag overview, in place of the
   **Advanced search** button and the separate notes and tasks search fields.

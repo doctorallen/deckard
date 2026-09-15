@@ -67,7 +67,6 @@ export function createDashboardSnapshot(
   taskFilter: TaskFilter,
   selectedTaskTags: string[] = [],
   selectedTag?: string,
-  selectedNoteTags: string[] = [],
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   includeNotes = true,
 ): DashboardSnapshot {
@@ -80,16 +79,6 @@ export function createDashboardSnapshot(
   const normalizedTaskTags = normalizeTaskTags(
     selectedTaskTags,
     availableTaskTags,
-  );
-  const availableNoteTags = sortTags(
-    [...index.tags.values()].filter(
-      (tag) => tag.sectionIds.length > 0 || tag.filePaths.length > 0,
-    ),
-    preferences,
-  );
-  const normalizedNoteTags = normalizeTaskTags(
-    selectedNoteTags,
-    availableNoteTags,
   );
   // Every section becomes a note card, so a page that is not showing notes
   // is spared building them.
@@ -111,7 +100,7 @@ export function createDashboardSnapshot(
         .map((file) => createDashboardFileNote(file)),
     ],
     preferences.dashboardNoteSortMode,
-  ).filter((note) => matchesNoteFilter(note, normalizedNoteTags));
+  );
   const noteSearch = includeNotes
     ? createNoteSearch(index, preferences, notes)
     : undefined;
@@ -157,16 +146,13 @@ export function createDashboardSnapshot(
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
     availableTaskTags,
-    availableNoteTags,
     selectedTaskTags: normalizedTaskTags,
-    selectedNoteTags: normalizedNoteTags,
     selectedTag,
     viewState: {
       ...preferences.dashboardViewState,
       taskFilter,
       selectedTaskTags: normalizedTaskTags,
-      selectedNoteTags: normalizedNoteTags,
-    },
+      },
     savedFilters: preferences.savedFilters.flatMap((filter) => {
       if (filter.query) {
         // A saved query keeps its place in the rail even when the tags it
@@ -191,11 +177,11 @@ export function createDashboardSnapshot(
   };
 }
 
-/** How many matching tasks the Notes tab lists under a search. */
+/** How many matching tasks the Search tab lists under a search. */
 const NOTE_SEARCH_TASK_LIMIT = 50;
 
 /**
- * Runs the Notes tab's search.
+ * Runs the Search tab's search.
  *
  * A search of plain words is left to the page, which already filters its
  * notes as they are typed and also matches file names and tags, so nothing
@@ -479,18 +465,6 @@ function compareTagLabels(left: TagInfo, right: TagInfo): number {
   return (
     labelComparison ||
     baseCollator.compare(left.label, right.label)
-  );
-}
-
-function matchesNoteFilter(
-  note: DashboardNote,
-  selectedNoteTags: string[],
-): boolean {
-  return (
-    selectedNoteTags.length === 0 ||
-    selectedNoteTags.some((tagKey) =>
-      note.tags.some((tag) => tag.key === tagKey),
-    )
   );
 }
 

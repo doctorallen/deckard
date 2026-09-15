@@ -5,8 +5,8 @@
 Sections 1–7 are implemented; section 8 (natural language to DQL) is not,
 as recommended below. Where the implementation departs from the plan:
 
-- **Search lives on the Dashboard's Notes tab.** The Notes tab is the search
-  page: it has the full search box, the builder, the facets, the tasks the
+- **Search lives on the Dashboard's Search tab**, which was the Notes tab.
+  It is the search page: it has the full search box, the builder, the facets, the tasks the
   search matches, and **Save search**. Find's **Show all**, `Deckard: Search
   Notes and Tasks`, a query block's CodeLens (now **Open in search**), and
   saved searches open there. Tag overviews keep the same search box to
@@ -29,7 +29,7 @@ as recommended below. Where the implementation departs from the plan:
 - **Most accessed** sorting still uses plain counts. Frecency ranks Find's
   results and its empty state; changing what an existing sort means was
   left for a separate decision.
-- **Plain words on the Notes tab are matched by the page**, which also
+- **Plain words on the Search tab are matched by the page**, which also
   matches file names and tags, as it did before; tags and conditions apply
   on Enter so a half-typed tag never empties the list.
 

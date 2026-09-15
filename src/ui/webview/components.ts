@@ -809,6 +809,7 @@ export function getQueryEditorScript(): string {
    *                  what it already shows by the plain words being typed
    *   placeholder()  the empty box's hint
    *   label          what the box searches, for assistive technology
+   *   actions()      optional; the page's own buttons for the bar, such as Save
    */
   function createQueryEditor(options) {
     const DEFAULT_OPERATORS = {
@@ -894,6 +895,7 @@ export function getQueryEditorScript(): string {
         + '<button data-action="apply-query" title="Run this search">Search</button>'
         + '<button data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>'
         + (value ? '<button data-action="clear-query" title="Clear the search">Clear</button>' : '')
+        + (options.actions ? options.actions() : '')
         + '</div>'
         + '<div class="query-status">' + status + summary + '</div>'
         + renderTerms()

@@ -39,12 +39,10 @@ const defaultPreferences: PersistedPreferences = {
     mode: 'tasks',
     taskFilter: 'active',
     selectedTaskTags: [],
-    selectedNoteTags: [],
     taskSearchQuery: '',
     noteSearchQuery: '',
     tagSearchQuery: '',
     taskTagQuery: '',
-    noteTagQuery: '',
   },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
@@ -262,10 +260,6 @@ export class PreferencesStore implements vscode.Disposable {
     await this.updateDashboardViewState({ selectedTaskTags });
   }
 
-  public async setDashboardNoteTags(selectedNoteTags: string[]): Promise<void> {
-    await this.updateDashboardViewState({ selectedNoteTags });
-  }
-
   public async setDashboardSearch(
     field: DashboardSearchField,
     query: string,
@@ -275,7 +269,6 @@ export class PreferencesStore implements vscode.Disposable {
       notes: 'noteSearchQuery',
       tags: 'tagSearchQuery',
       taskTags: 'taskTagQuery',
-      noteTags: 'noteTagQuery',
     };
     await this.updateDashboardViewState({ [fieldMap[field]]: query });
   }
@@ -418,7 +411,6 @@ export class PreferencesStore implements vscode.Disposable {
       dashboardViewState: {
         ...viewState,
         selectedTaskTags: replaceKeys(viewState.selectedTaskTags),
-        selectedNoteTags: replaceKeys(viewState.selectedNoteTags),
       },
       // A tag-set view needs two tags; a query view keeps its own text.
       savedFilters: this.preferences.savedFilters.flatMap((filter) => {
@@ -770,12 +762,10 @@ function normalizeDashboardViewState(
         ? taskFilter
         : 'active',
     selectedTaskTags: uniqueStrings(value?.selectedTaskTags),
-    selectedNoteTags: uniqueStrings(value?.selectedNoteTags),
     taskSearchQuery: normalizeSearchQuery(value?.taskSearchQuery),
     noteSearchQuery: normalizeSearchQuery(value?.noteSearchQuery),
     tagSearchQuery: normalizeSearchQuery(value?.tagSearchQuery),
     taskTagQuery: normalizeSearchQuery(value?.taskTagQuery),
-    noteTagQuery: normalizeSearchQuery(value?.noteTagQuery),
   };
 }
 
@@ -904,7 +894,6 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     dashboardViewState: {
       ...value.dashboardViewState,
       selectedTaskTags: [...value.dashboardViewState.selectedTaskTags],
-      selectedNoteTags: [...value.dashboardViewState.selectedNoteTags],
     },
     sectionAccessCounts: { ...value.sectionAccessCounts },
     savedFilters: value.savedFilters.map(cloneSavedFilter),

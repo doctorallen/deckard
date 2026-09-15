@@ -126,6 +126,14 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .browse-scope { display: inline-flex; }
 .browse-scope button + button { margin-left: -1px; }
 .catalog-search, .task-search, .note-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
+/* A kept search stands out from an empty box, whatever the theme. */
+input.task-search[data-has-query], input.catalog-search[data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--amber-bright); }
+.search-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--amber-bright); border-left-width: 4px; background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
+.search-notice strong { color: var(--amber-bright); }
+.search-notice button { min-height: 26px; color: var(--amber-bright); text-transform: none; }
+.tab-search-mark { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--amber-bright); vertical-align: middle; }
+.dashboard-tabs button[aria-selected="true"] .tab-search-mark { background: var(--panel-deep); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tag-filter { position: relative; }
 .tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }
 .tag-filter summary .control-icon-svg { color: inherit; }
@@ -216,8 +224,6 @@ ${getQueryEditorScript()}
   let taskTagQuery = '';
   let taskTagFilterOpen = false;
   let noteSearchQuery = '';
-  let noteTagQuery = '';
-  let noteTagFilterOpen = false;
   const noteSearchDebounceDelay = 350;
   const tagSearchDebounceDelay = 180;
   /** Task and tag searches wait as long as note searches before telling the host. */
@@ -226,9 +232,7 @@ ${getQueryEditorScript()}
   let noteSearchTimer;
   let pendingNoteSearchQuery;
   let taskTagSearchTimer;
-  let noteTagSearchTimer;
   let pendingTaskTagQuery;
-  let pendingNoteTagQuery;
   const restoredViewState = vscode.getState();
   let dashboardMode = restoredViewState && (
     restoredViewState.dashboardMode === 'notes' ||
@@ -256,7 +260,7 @@ ${getQueryEditorScript()}
   let rankContextKey;
 
   /**
-   * The Notes tab is Deckard's search page. Plain words filter its notes as
+   * The Search tab is Deckard's search page. Plain words filter its notes as
    * they are typed; tags, shorthands, and the builder run when applied.
    */
   const noteEditor = createQueryEditor({
@@ -269,8 +273,14 @@ ${getQueryEditorScript()}
       saveDashboardViewState();
       scheduleNoteSearch();
     },
-    placeholder: function () { return 'Search notes: words, #tags, is:open, has:due, in:folder, updated >= 7d…'; },
-    label: 'Search notes',
+    placeholder: function () { return 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…'; },
+    label: 'Search notes and tasks',
+    // Saving sits with the search it saves.
+    actions: function () {
+      return noteEditor.currentText().trim()
+        ? '<button class="save-filter" data-action="save-note-search" title="Save this search as a view">Save search</button>'
+        : '';
+    },
   });
 
   /** Run a note search now, and remember it when it was asked for. */
@@ -338,9 +348,7 @@ ${getQueryEditorScript()}
       browseQuery: browseQuery,
       tagNamespaceFilter: tagNamespaceFilter,
       taskTagQuery: taskTagQuery,
-      noteTagQuery: noteTagQuery,
       selectedTaskTags: state ? state.selectedTaskTags : [],
-      selectedNoteTags: state ? state.selectedNoteTags : [],
     });
   }
 
@@ -413,39 +421,14 @@ ${getQueryEditorScript()}
   }
 
   /** Keep tag-picker filtering local, then persist it after typing settles. */
-  function scheduleTagFilterSearch(kind) {
-    const isNoteFilter = kind === 'note';
-    const timer = isNoteFilter ? noteTagSearchTimer : taskTagSearchTimer;
-    if (timer) clearTimeout(timer);
-    if (isNoteFilter) {
-      pendingNoteTagQuery = noteTagQuery;
-    } else {
-      pendingTaskTagQuery = taskTagQuery;
-    }
-    const nextTimer = setTimeout(function () {
-      if (isNoteFilter) {
-        noteTagSearchTimer = undefined;
-        if (pendingNoteTagQuery === undefined) return;
-        send({
-          type: 'setDashboardSearch',
-          field: 'noteTags',
-          query: noteTagQuery,
-        });
-      } else {
-        taskTagSearchTimer = undefined;
-        if (pendingTaskTagQuery === undefined) return;
-        send({
-          type: 'setDashboardSearch',
-          field: 'taskTags',
-          query: taskTagQuery,
-        });
-      }
+  function scheduleTaskTagSearch() {
+    if (taskTagSearchTimer) clearTimeout(taskTagSearchTimer);
+    pendingTaskTagQuery = taskTagQuery;
+    taskTagSearchTimer = setTimeout(function () {
+      taskTagSearchTimer = undefined;
+      if (pendingTaskTagQuery === undefined) return;
+      send({ type: 'setDashboardSearch', field: 'taskTags', query: taskTagQuery });
     }, tagSearchDebounceDelay);
-    if (isNoteFilter) {
-      noteTagSearchTimer = nextTimer;
-    } else {
-      taskTagSearchTimer = nextTimer;
-    }
   }
 
   function setDashboardMode(mode, focusTab) {
@@ -836,6 +819,22 @@ ${getQueryEditorScript()}
     pointerDrag = undefined;
   }
 
+  /**
+   * The line above a list a search is narrowing. Searches are kept between
+   * visits, so a list that comes back narrowed says so, with a way out.
+   */
+  function renderSearchNotice(shown, total, noun, query, action) {
+    return '<div class="search-notice" role="status"><span>Showing <strong>' + shown + '</strong> of ' + total + ' ' + escapeHtml(noun) + ' matching “' + escapeHtml(query.trim()) + '”</span><button data-action="' + action + '">Clear search</button></div>';
+  }
+
+  /** A dot on a tab whose search has text, seen from any tab. */
+  function renderTabSearchMark(query) {
+    const text = String(query || '').trim();
+    return text
+      ? '<span class="tab-search-mark" title="Searching “' + escapeHtml(text) + '”"></span><span class="visually-hidden">, searching</span>'
+      : '';
+  }
+
   /** Re-render from a snapshot while preserving scroll and filter affordances. */
   function render() {
     if (!state) return;
@@ -858,11 +857,6 @@ ${getQueryEditorScript()}
     const hasRenderedTagFilter = Boolean(currentTagFilter);
     if (currentTagFilter) taskTagFilterOpen = currentTagFilter.open;
     const tagOptionsScrollTop = currentTagOptions ? currentTagOptions.scrollTop : 0;
-    const currentNoteTagFilter = document.querySelector('.note-tag-filter');
-    const currentNoteTagOptions = document.querySelector('.note-tag-filter-options');
-    const hasRenderedNoteTagFilter = Boolean(currentNoteTagFilter);
-    if (currentNoteTagFilter) noteTagFilterOpen = currentNoteTagFilter.open;
-    const noteTagOptionsScrollTop = currentNoteTagOptions ? currentNoteTagOptions.scrollTop : 0;
     const normalizedBrowseQuery = browseQuery.trim().toLowerCase();
     const tagNamespaces = Array.from(new Set(state.tags.map(getTagNamespace).filter(Boolean)))
       .sort(function (left, right) { return left.localeCompare(right); });
@@ -876,6 +870,18 @@ ${getQueryEditorScript()}
       return (!activeTagNamespace || namespace === (activeTagNamespace === noTagNamespace ? '' : activeTagNamespace)) &&
         (!normalizedBrowseQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedBrowseQuery) >= 0);
     });
+    const namespaceTagCount = state.tags.filter(function (tag) {
+      return !activeTagNamespace || getTagNamespace(tag) === (activeTagNamespace === noTagNamespace ? '' : activeTagNamespace);
+    }).length;
+    const tagNotice = normalizedBrowseQuery
+      ? renderSearchNotice(
+        filteredTags.length,
+        namespaceTagCount,
+        !activeTagNamespace ? 'tags' : activeTagNamespace === noTagNamespace ? 'tags without a namespace' : 'tags in ' + formatEntityKindLabel(activeTagNamespace),
+        browseQuery,
+        'clear-tag-search',
+      )
+      : '';
     const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
     const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
     const renderEntity = function (entity) {
@@ -943,10 +949,21 @@ ${getQueryEditorScript()}
     const tasks = filteredTasks.length
       ? filteredTasks.map(function (item) { return renderTaskRow(item, false); }).join('')
       : '<div class="empty">No tasks match this filter.</div>';
-    // The board is the shared task board component, fed the same filtered tasks.
+    const taskNotice = normalizedTaskSearchQuery
+      ? renderSearchNotice(
+        filteredTasks.length,
+        state.tasks.length,
+        state.taskFilter === 'active' ? 'open tasks' : state.taskFilter === 'completed' ? 'done tasks' : 'tasks',
+        taskSearchQuery,
+        'clear-task-search',
+      )
+      : '';
+    // The board is the shared task board component, fed the same filtered tasks,
+    // and a search shows the same cards on it as it does in the list.
     const taskLayout = state.taskLayout === 'board' && state.taskBoard ? 'board' : 'list';
+    const searchedTaskIds = new Set(filteredTasks.map(function (item) { return item.task.id; }));
     const isBoardCardVisible = function (card) {
-      return !normalizedTaskSearchQuery || (card.title + ' ' + card.filePath).toLowerCase().indexOf(normalizedTaskSearchQuery) >= 0;
+      return !normalizedTaskSearchQuery || searchedTaskIds.has(card.taskId);
     };
     const taskContent = taskLayout === 'board'
       ? '<div class="dashboard-board">' + renderTaskBoard(state.taskBoard, isBoardCardVisible) + '</div>'
@@ -968,10 +985,7 @@ ${getQueryEditorScript()}
     const noteSearchTasks = searchTasks.length
       ? '<section class="note-search-tasks" aria-labelledby="note-search-tasks-heading"><div class="section-heading"><h2 id="note-search-tasks-heading">Matching tasks <span class="tag-count">' + searchTaskCount + '</span></h2></div><div class="task-list">' + searchTasks.map(function (item) { return renderTaskRow(item, true); }).join('') + '</div>' + (searchTaskCount > searchTasks.length ? '<p class="source">Showing the first ' + searchTasks.length + '.</p>' : '') + '</section>'
       : '';
-    const saveNoteSearch = noteEditor.currentText().trim()
-      ? '<button class="save-filter" data-action="save-note-search" title="Save this search as a view">Save search</button>'
-      : '';
-    // Notes arrive only once the Notes tab asks the host for them.
+    // Notes arrive only once the Search tab asks the host for them.
     const notes = state.notesOmitted
       ? '<div class="empty">Loading notes…</div>'
       : filteredNotes.length ? filteredNotes.map(function (note) {
@@ -1018,32 +1032,13 @@ ${getQueryEditorScript()}
       : '';
     const selectedTagSummary = state.selectedTaskTags.length ? state.selectedTaskTags.length + ' selected' : 'all tags';
     const taskTagFilter = '<span class="control-label">Tags:</span><details class="tag-filter" ' + (taskTagFilterOpen || (!hasRenderedTagFilter && state.selectedTaskTags.length) ? 'open' : '') + '><summary>' + selectedTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-task-tags" value="' + escapeHtml(taskTagQuery) + '" placeholder="Filter tags" aria-label="Filter task tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options">' + tagOptions + '</div>' + noMatchingTags + '</div></details>';
-    const taskSearch = '<input class="task-search" type="search" data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search tasks" autocomplete="off">';
+    const taskSearch = '<input class="task-search" type="search"' + (normalizedTaskSearchQuery ? ' data-has-query' : '') + ' data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search tasks" autocomplete="off">';
     const selectedTaskTags = state.selectedTaskTags.map(function (tagKey) {
       const tag = state.availableTaskTags.find(function (candidate) { return candidate.key === tagKey; });
       return tag ? '<button class="selected-task-tag" data-action="remove-task-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Remove task tag ' + escapeHtml(tag.label) + '">' + renderTagLabel(tag.label) + '</button>' : '';
     }).join('');
     const selectedTaskTagControls = selectedTaskTags
       ? '<div class="selected-task-tags" aria-label="Selected task tags">' + selectedTaskTags + '<button class="clear-task-filters" data-action="clear-task-tags">Clear filters</button></div>'
-      : '';
-    const normalizedNoteTagQuery = noteTagQuery.trim().toLowerCase();
-    const filteredNoteTags = state.availableNoteTags.filter(function (tag) {
-      return !normalizedNoteTagQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedNoteTagQuery) >= 0;
-    });
-    const noteTagOptions = state.availableNoteTags.length ? filteredNoteTags.map(function (tag) {
-      return '<label class="tag-filter-option note-tag-filter-option" data-filter-text="' + escapeHtml((tag.label + ' ' + tag.key).toLowerCase()) + '"><input type="checkbox" data-action="set-note-tag" data-tag-key="' + escapeHtml(tag.key) + '" ' + (state.selectedNoteTags.indexOf(tag.key) >= 0 ? 'checked' : '') + '>' + renderTagLabel(tag.label) + '</label>';
-    }).join('') : '<span class="empty">No note tags.</span>';
-    const noMatchingNoteTags = state.availableNoteTags.length
-      ? '<span class="tag-filter-no-results note-tag-filter-no-results"' + (normalizedNoteTagQuery && !filteredNoteTags.length ? '' : ' hidden') + '>No note tags match your search.</span>'
-      : '';
-    const selectedNoteTagSummary = state.selectedNoteTags.length ? state.selectedNoteTags.length + ' selected' : 'all tags';
-    const noteTagFilter = '<span class="control-label">Tags:</span><details class="tag-filter note-tag-filter" ' + (noteTagFilterOpen || (!hasRenderedNoteTagFilter && state.selectedNoteTags.length) ? 'open' : '') + '><summary>' + selectedNoteTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-note-tags" value="' + escapeHtml(noteTagQuery) + '" placeholder="Filter tags" aria-label="Filter note tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options note-tag-filter-options">' + noteTagOptions + '</div>' + noMatchingNoteTags + '</div></details>';
-    const selectedNoteTags = state.selectedNoteTags.map(function (tagKey) {
-      const tag = state.availableNoteTags.find(function (candidate) { return candidate.key === tagKey; });
-      return tag ? '<button class="selected-task-tag" data-action="remove-note-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Remove note tag ' + escapeHtml(tag.label) + '">' + renderTagLabel(tag.label) + '</button>' : '';
-    }).join('');
-    const selectedNoteTagControls = selectedNoteTags
-      ? '<div class="selected-task-tags" aria-label="Selected note tags">' + selectedNoteTags + '<button class="clear-task-filters" data-action="clear-note-tags">Clear filters</button></div>'
       : '';
     const noteSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-note-sort" aria-label="Sort notes"><option value="alphabetical" ' + (state.noteSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.noteSortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.noteSortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.noteSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>' + sortIcon + '</span></label>';
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
@@ -1074,12 +1069,12 @@ ${getQueryEditorScript()}
     const dashboardOptions = '<details class="dashboard-view-options"' + (viewOptionsWereOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">${settingsIcon}</summary><div class="dashboard-view-options-menu"><div class="dashboard-view-options-group"><span>Tasks</span>' + layoutControls + '</div><div class="dashboard-view-options-group"><span>Task columns</span>' + columnControls('tasks', state.taskColumns) + '</div><div class="dashboard-view-options-group"><span>Note columns</span>' + columnControls('notes', state.noteColumns) + '</div><div class="dashboard-view-options-group"><span>Tag columns</span>' + columnControls('tags', state.tagColumns) + '</div><div class="dashboard-view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
 
     document.getElementById('app').innerHTML =
-      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : dashboardMode === 'notes' ? 'Notes' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
+      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : dashboardMode === 'notes' ? 'Search' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
       savedFilters +
-      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Notes</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags</button></div></div>' +
-      '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + (taskLayout === 'board' ? renderTaskBoardGroupSwitch(state.taskBoard.groupBy) : '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label>') + '<div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + taskContent + '</section>' +
-      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar() + '</div><div class="task-toolbar"><div class="toolbar-controls">' + noteSortControl + '<div class="task-tag-filter-control">' + noteTagFilter + '</div>' + saveNoteSearch + '</div></div>' + selectedNoteTagControls + noteEditor.renderFacets() + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div>' + noteSearchTasks + '</section>' +
-      '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search" data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagContent + '</section>';
+      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks' + renderTabSearchMark(taskSearchQuery) + '</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Search' + renderTabSearchMark(noteEditor.currentText()) + '</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery) + '</button></div></div>' +
+      '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + (taskLayout === 'board' ? renderTaskBoardGroupSwitch(state.taskBoard.groupBy) : '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label>') + '<div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + taskNotice + taskContent + '</section>' +
+      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar() + '</div><div class="task-toolbar"><div class="toolbar-controls">' + noteSortControl + '</div></div>' + noteEditor.renderFacets() + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div>' + noteSearchTasks + '</section>' +
+      '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search"' + (normalizedBrowseQuery ? ' data-has-query' : '') + ' data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagNotice + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
     if (nextTagFilter) {
@@ -1088,14 +1083,6 @@ ${getQueryEditorScript()}
       });
     }
     if (nextTagOptions) nextTagOptions.scrollTop = tagOptionsScrollTop;
-    const nextNoteTagFilter = document.querySelector('.note-tag-filter');
-    const nextNoteTagOptions = document.querySelector('.note-tag-filter-options');
-    if (nextNoteTagFilter) {
-      nextNoteTagFilter.addEventListener('toggle', function () {
-        noteTagFilterOpen = nextNoteTagFilter.open;
-      });
-    }
-    if (nextNoteTagOptions) nextNoteTagOptions.scrollTop = noteTagOptionsScrollTop;
     bindDashboardColumnControls();
     applyDashboardColumns('tasks', selectedTaskColumns);
     applyDashboardColumns('notes', selectedNoteColumns);
@@ -1145,11 +1132,7 @@ ${getQueryEditorScript()}
     document.querySelectorAll('.tag-filter').forEach(function (tagFilter) {
       if (tagFilter.open && !event.target.closest('.tag-filter')) {
         tagFilter.open = false;
-        if (tagFilter.classList.contains('note-tag-filter')) {
-          noteTagFilterOpen = false;
-        } else {
-          taskTagFilterOpen = false;
-        }
+        taskTagFilterOpen = false;
       }
     });
     const dashboardOptions = document.querySelector('.dashboard-view-options');
@@ -1162,6 +1145,20 @@ ${getQueryEditorScript()}
       const action = target.dataset.action;
       if (action === 'save-note-search') {
         send({ type: 'saveDashboardSearch' });
+        return;
+      }
+      if (action === 'clear-task-search' || action === 'clear-tag-search') {
+        const isTaskSearch = action === 'clear-task-search';
+        if (isTaskSearch) {
+          taskSearchQuery = '';
+        } else {
+          browseQuery = '';
+        }
+        saveDashboardViewState();
+        scheduleSearch(isTaskSearch ? 'tasks' : 'tags', '');
+        render();
+        const field = document.querySelector('input[data-action="' + (isTaskSearch ? 'search-tasks' : 'search-browse') + '"]');
+        if (field) field.focus();
         return;
       }
       if (action === 'set-dashboard-mode') {
@@ -1187,22 +1184,12 @@ ${getQueryEditorScript()}
       if (action === 'remove-task-tag') {
         send({ type: 'setTaskTags', tagKeys: state.selectedTaskTags.filter(function (tagKey) { return tagKey !== target.dataset.tagKey; }) });
       }
-      if (action === 'remove-note-tag') {
-        send({ type: 'setNoteTags', tagKeys: state.selectedNoteTags.filter(function (tagKey) { return tagKey !== target.dataset.tagKey; }) });
-      }
       if (action === 'clear-task-tags') {
         taskTagQuery = '';
         taskTagFilterOpen = false;
-        const tagFilter = document.querySelector('.tag-filter:not(.note-tag-filter)');
+        const tagFilter = document.querySelector('.tag-filter');
         if (tagFilter) tagFilter.open = false;
         send({ type: 'setTaskTags', tagKeys: [] });
-      }
-      if (action === 'clear-note-tags') {
-        noteTagQuery = '';
-        noteTagFilterOpen = false;
-        const tagFilter = document.querySelector('.note-tag-filter');
-        if (tagFilter) tagFilter.open = false;
-        send({ type: 'setNoteTags', tagKeys: [] });
       }
       if (action === 'open-source') send({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
       return;
@@ -1308,12 +1295,6 @@ ${getQueryEditorScript()}
       saveDashboardViewState();
       send({ type: 'setTaskTags', tagKeys: selectedTags });
     }
-    if (target.dataset.action === 'set-note-tag') {
-      const selectedTags = Array.from(document.querySelectorAll('input[data-action="set-note-tag"]:checked')).map(function (input) { return input.dataset.tagKey; });
-      state.selectedNoteTags = selectedTags;
-      saveDashboardViewState();
-      send({ type: 'setNoteTags', tagKeys: selectedTags });
-    }
   });
 
   document.addEventListener('input', function (event) {
@@ -1336,15 +1317,9 @@ ${getQueryEditorScript()}
     if (target.dataset.action === 'filter-task-tags') {
       taskTagQuery = target.value;
       saveDashboardViewState();
-      scheduleTagFilterSearch('task');
-      filterTagOptions('.tag-filter-option:not(.note-tag-filter-option)', taskTagQuery, '.tag-filter-no-results:not(.note-tag-filter-no-results)');
-      return;
+      scheduleTaskTagSearch();
+      filterTagOptions('.tag-filter-option', taskTagQuery, '.tag-filter-no-results');
     }
-    if (target.dataset.action !== 'filter-note-tags') return;
-    noteTagQuery = target.value;
-    saveDashboardViewState();
-    scheduleTagFilterSearch('note');
-    filterTagOptions('.note-tag-filter-option', noteTagQuery, '.note-tag-filter-no-results');
   });
 
   document.addEventListener('contextmenu', function (event) {
@@ -1419,16 +1394,6 @@ ${getQueryEditorScript()}
         ) {
           taskTagQuery = incomingState.viewState.taskTagQuery;
           pendingTaskTagQuery = undefined;
-        }
-        if (
-          pendingNoteTagQuery === undefined ||
-          (
-            noteTagSearchTimer === undefined &&
-            incomingState.viewState.noteTagQuery === pendingNoteTagQuery
-          )
-        ) {
-          noteTagQuery = incomingState.viewState.noteTagQuery;
-          pendingNoteTagQuery = undefined;
         }
         browseQuery = acceptHostSearch('tags', incomingState.viewState.tagSearchQuery, browseQuery);
       }

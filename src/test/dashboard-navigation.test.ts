@@ -28,12 +28,10 @@ const defaultPreferences: PersistedPreferences = {
     mode: 'tasks',
     taskFilter: 'active',
     selectedTaskTags: [],
-    selectedNoteTags: [],
     taskSearchQuery: '',
     noteSearchQuery: '',
     tagSearchQuery: '',
     taskTagQuery: '',
-    noteTagQuery: '',
   },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
@@ -143,7 +141,7 @@ suite('Dashboard navigation', () => {
     }
   });
 
-  test('opens a saved search on the Notes tab, the search page', async () => {
+  test('opens a saved search on the Search tab, the search page', async () => {
     const workspaceIndex = buildWorkspaceIndex(new Map());
     const index = {
       onDidUpdate: () => ({ dispose: () => undefined }),

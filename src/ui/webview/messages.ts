@@ -65,10 +65,6 @@ export function parseDashboardMessage(
       return isStringArray(value.tagKeys)
         ? (value as unknown as DashboardMessage)
         : undefined;
-    case 'setNoteTags':
-      return isStringArray(value.tagKeys)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
     case 'setTaskSort':
       return isTaskSortMode(value.mode)
         ? (value as unknown as DashboardMessage)
@@ -538,8 +534,7 @@ function isDashboardSearchField(
     value === 'tasks' ||
     value === 'notes' ||
     value === 'tags' ||
-    value === 'taskTags' ||
-    value === 'noteTags'
+    value === 'taskTags'
   );
 }
 

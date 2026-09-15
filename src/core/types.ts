@@ -24,19 +24,16 @@ export type DashboardSearchField =
   | 'tasks'
   | 'notes'
   | 'tags'
-  | 'taskTags'
-  | 'noteTags';
+  | 'taskTags';
 
 export interface DashboardViewState {
   mode: DashboardMode;
   taskFilter: TaskFilter;
   selectedTaskTags: string[];
-  selectedNoteTags: string[];
   taskSearchQuery: string;
   noteSearchQuery: string;
   tagSearchQuery: string;
   taskTagQuery: string;
-  noteTagQuery: string;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
@@ -311,9 +308,7 @@ export interface DashboardSnapshot {
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   availableTaskTags: TagInfo[];
-  availableNoteTags: TagInfo[];
   selectedTaskTags: string[];
-  selectedNoteTags: string[];
   selectedTag?: string;
   viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
@@ -322,13 +317,13 @@ export interface DashboardSnapshot {
   /** The filtered tasks as a board, present when `taskLayout` is `board`. */
   taskBoard?: TaskBoardLayout;
   /**
-   * True when `notes` was left empty because the Notes tab is not showing.
+   * True when `notes` was left empty because the Search tab is not showing.
    * Notes are most of what the page is sent, so other tabs are sent none.
    */
   notesOmitted?: boolean;
-  /** The Notes tab's search, sent while the Notes tab is shown. */
+  /** The Search tab's search, sent while the Search tab is shown. */
   noteQuery?: QueryViewState;
-  /** Tasks the Notes tab's search matches, open and soonest due first. */
+  /** Tasks the Search tab's search matches, open and soonest due first. */
   noteQueryTasks?: DashboardTask[];
   /** Every task the search matches, before `noteQueryTasks` was cut short. */
   noteQueryTaskCount?: number;
@@ -648,11 +643,6 @@ export interface SetTaskTagsMessage {
   tagKeys: string[];
 }
 
-export interface SetNoteTagsMessage {
-  type: 'setNoteTags';
-  tagKeys: string[];
-}
-
 export interface ReorderTasksMessage {
   type: 'reorderTasks';
   taskIds: string[];
@@ -835,7 +825,6 @@ export type DashboardMessage =
   | SetEntitySortMessage
   | SetTaskFilterMessage
   | SetTaskTagsMessage
-  | SetNoteTagsMessage
   | SetTaskSortMessage
   | SetRenderModeMessage
   | SetNoteSortMessage
