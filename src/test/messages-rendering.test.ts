@@ -886,7 +886,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes('#70e1dc'),
+      getDeckardThemeCss('oblivion').includes('#3fb6c9'),
       true,
     );
     assert.strictEqual(

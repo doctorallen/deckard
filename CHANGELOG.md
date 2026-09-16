@@ -113,6 +113,13 @@
 
 ### Changed
 
+- **Oblivion** is redrawn after the film's light-table screens: a near-black
+  ground ruled with faint teal graph paper, pages framed by corner brackets
+  rather than filled panels, wide letter-spaced headings, and an orange rule
+  under the live tab or filter in place of a filled block. Its palette is the
+  screens' own: cyan-teal for the data, warm sand in the readouts, and
+  red-orange kept for alerts.
+
 - A search term chip is removed by clicking anywhere on it, not only on its
   cross, and it lights up under the pointer like the other controls.
 

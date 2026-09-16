@@ -335,6 +335,91 @@ ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
 `;
   }
 
+  // Oblivion, after the film's light table and bubbleship HUDs: a black ground
+  // under a faint graph grid, hairline steel frames with bracket corners,
+  // thin tracked-out readouts, and one warm orange kept for alerts.
+  if (theme === 'oblivion') {
+    return `
+:root {
+  --bg-dark: #04080b;
+  --bg: #04080b;
+  --panel-bg: #081115;
+  --panel: #081115;
+  --panel-raised: #0f1d24;
+  --panel-deep: #020608;
+  --text: #dce6ea;
+  --muted: #6f8a95;
+  --slate-border: #12262e;
+  --line: #1b3a45;
+  --line-strong: #3f8296;
+  --cyan-bright: #5fd3e4;
+  --cyan: #3fb6c9;
+  --amber-bright: #ff6a35;
+  --amber: #e8562a;
+  --amber-dim: #8c4326;
+  --green: #cdbe95;
+  --toxic-green: #cdbe95;
+  --favorite-red: #ff5a30;
+  --warning-orange: #ff9a3c;
+  --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+/* Graph paper rather than a dot screen: a fine grid inside a coarser one, both
+   faint enough that the black ground still reads as empty space. */
+body {
+  background-color: var(--bg-dark);
+  background-image:
+    linear-gradient(rgba(95, 211, 228, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 211, 228, .05) 1px, transparent 1px),
+    linear-gradient(rgba(95, 211, 228, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 211, 228, .025) 1px, transparent 1px);
+  background-size: 96px 96px, 96px 96px, 16px 16px, 16px 16px;
+}
+/* The page is a frame drawn on the grid, marked at two corners the way the
+   film's panels are, rather than a filled surface. */
+main { border-color: var(--slate-border); border-top-color: var(--line-strong); background: transparent; box-shadow: none; }
+main::before, main::after { content: ''; position: absolute; width: 16px; height: 16px; pointer-events: none; }
+main::before { top: -1px; left: -1px; border-top: 2px solid var(--line-strong); border-left: 2px solid var(--line-strong); }
+main::after { right: -1px; bottom: -1px; border-right: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); }
+header { position: relative; border-color: var(--line); }
+header::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 4px; background-image: repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 12px); opacity: .45; }
+h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font-display); font-weight: 300; letter-spacing: .2em; text-transform: uppercase; }
+h1 { font-weight: 200; letter-spacing: .32em; }
+.metric-value { font-family: var(--font-display); font-weight: 200; letter-spacing: .02em; }
+.eyebrow { color: var(--muted); letter-spacing: .26em; }
+.source, .metric-label { color: var(--muted); letter-spacing: .16em; }
+.section-heading { border-bottom: 1px solid var(--slate-border); padding-bottom: 6px; }
+button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
+button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
+/* An orange rule under the live control, in place of a filled button. */
+button.active { border-color: var(--line-strong); background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
+input[type='checkbox'] { accent-color: var(--cyan); }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(8, 17, 21, .55); box-shadow: none; }
+.metric::before { border-bottom-color: var(--line-strong); }
+.metric:nth-child(3n)::before { border-bottom-color: var(--amber); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .06); box-shadow: inset 2px 0 0 var(--amber); }
+.tag-name, .task-title a { color: var(--cyan-bright); }
+.tag-namespace { color: var(--muted); }
+.empty { border-color: var(--slate-border); background: transparent; }
+.favorite-toggle { border-color: var(--slate-border); background: transparent; color: var(--amber); }
+.favorite-toggle.favorite { border-color: var(--amber); background: transparent; color: var(--amber-bright); }
+.favorite-toggle .favorite-heart { color: var(--amber); }
+.favorite-toggle.favorite .favorite-heart { color: var(--amber-bright); }
+.favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--amber); background: rgba(232, 86, 42, .12); color: var(--amber-bright); }
+/* The live tab and filter are marked by an orange rule, the way the film's
+   panels mark a selection, rather than by a filled block. */
+.dashboard-tabs button[aria-selected="true"] { background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
+.dashboard-tabs button[aria-selected="true"] .tab-search-mark { background: var(--amber); }
+.task-filter-toggle button.active { border-color: var(--line-strong); box-shadow: inset 0 -2px 0 var(--amber); }
+/* Body blocks and hub notes are marked with a thin steel rule; orange stays
+   with the alerts. */
+.markdown, .note-row .markdown { border-left: 2px solid var(--line-strong); background: rgba(2, 6, 8, .75); }
+.hub { border-left: 2px solid var(--line-strong); background: transparent; }
+.hub-toggle { border-left-color: var(--line-strong); }
+${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
+`;
+  }
+
   return `
 :root {
   --bg-dark: ${themeValue(theme, '#080a0b', '#050505')};
@@ -360,7 +445,6 @@ ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
   --font-display: ${theme === 'lcars' ? "'Arial Narrow', var(--vscode-font-family, sans-serif)" : 'var(--vscode-font-family, sans-serif)'};
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
-${theme === 'oblivion' ? `body { background-image: radial-gradient(circle at 1px 1px, rgba(112, 225, 220, .2) 1px, transparent 0); background-size: 18px 18px; } ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }` : ''}
 ${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } .related-notes-sort { background: var(--cyan); color: #050505; } .task-filter-toggle button { border-radius: 0; } .task-filter-toggle button:first-child { border-radius: 0 0 0 15px; } .task-filter-toggle button:last-child { border-radius: 0 15px 15px 0; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, button .task-filter-icon, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } .task-filter-toggle button { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, .related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .note .tag-list button { color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
 ${theme === 'lcars' ? '.active-file .tag-list button { color: #050505; }' : ''}
 ${theme === 'lcars' ? '.favorite-toggle { background: var(--cyan); color: #7a1f1f; } .favorite-toggle .favorite-heart { color: #7a1f1f; } .favorite-toggle:hover, .favorite-toggle:focus-visible, .favorite-toggle.favorite { background: #f5cc72; color: #7a1f1f; }' : ''}
