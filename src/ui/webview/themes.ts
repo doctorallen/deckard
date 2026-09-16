@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 export const deckardThemes = [
+  'corpo',
   'replicant',
   'oblivion',
   'lcars',
@@ -12,22 +13,111 @@ export const deckardThemes = [
 
 export type DeckardTheme = (typeof deckardThemes)[number];
 
+// Rows lift onto the raised panel on hover. Tags only slide: they are buttons,
+// so each theme's button hover colors them, and a shared dark ground under a
+// theme's inverted button text would hide it.
 const contentHoverCss =
-  '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
+  '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
 
 const replicantHoverCss = `${contentHoverCss} .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open, .note-row .tag-open { color: var(--text); }`;
+
+/**
+ * Corpo, the plain default: every token comes from the VS Code color theme in
+ * use, light or dark, and the page drops Deckard's grid, glows, clipped
+ * corners, and uppercase monospace labels, so its views read like the rest of
+ * the editor. The page itself is transparent, so VS Code's own editor or side
+ * bar background shows through.
+ */
+const corpoCss = `
+:root {
+  --bg: var(--vscode-editor-background);
+  --bg-dark: var(--vscode-editor-background);
+  --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --panel-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --panel-raised: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
+  --panel-deep: var(--vscode-input-background, var(--vscode-editor-background));
+  --text: var(--vscode-foreground);
+  --muted: var(--vscode-descriptionForeground);
+  --line: var(--vscode-widget-border, var(--vscode-panel-border));
+  --slate-border: var(--vscode-widget-border, var(--vscode-panel-border));
+  --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
+  --cyan: var(--vscode-textLink-foreground);
+  --cyan-bright: var(--vscode-textLink-foreground);
+  --amber: var(--vscode-focusBorder);
+  --amber-bright: var(--vscode-focusBorder);
+  --amber-dim: var(--vscode-descriptionForeground);
+  --green: var(--vscode-charts-green);
+  --toxic-green: var(--vscode-charts-green);
+  --favorite-red: var(--vscode-charts-red);
+  --warning-orange: var(--vscode-editorWarning-foreground);
+  --slate-olive: var(--vscode-panel-border);
+  --grid-line: transparent;
+  --font-display: var(--vscode-font-family, system-ui, sans-serif);
+  --font-mono: var(--vscode-font-family, system-ui, sans-serif);
+  --edge: 1px;
+  --control-height: 26px;
+}
+/* A transparent page shows VS Code's own background only while its color
+   scheme matches the editor's; otherwise the browser paints a dark backdrop. */
+:root:has(> body.vscode-light), :root:has(> body.vscode-high-contrast-light) { color-scheme: light; }
+:root:has(> body.vscode-dark), :root:has(> body.vscode-high-contrast) { color-scheme: dark; }
+/* The page paints its own background: VS Code gives some webviews no backdrop
+   of their own, where a transparent page composites to nothing. */
+body { background: var(--vscode-editor-background); }
+body:has(.sidebar-header) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
+main { border: 0; box-shadow: none; }
+header { border-bottom: 1px solid var(--line); }
+/* Labels read as written, not as uppercase spaced-out readouts. */
+body * { text-transform: none !important; letter-spacing: normal !important; }
+h1 { font-size: 20px; font-weight: 600; }
+.eyebrow { color: var(--muted); }
+code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monospace); }
+.metric::before { display: none; }
+.metric-value { color: var(--text); font-weight: 600; }
+.task-meta { color: var(--muted); }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
+.tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
+.tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
+button, select, input[type="text"], input[type="search"], .view-options summary, .tag-filter summary { border-radius: 2px; }
+button, .view-options summary, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+button:hover, .view-options summary:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
+button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+/* A count inside a chosen button follows its text, not the muted color. */
+.active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
+.query-bar-row .query-apply:hover { background: var(--vscode-button-hoverBackground); color: var(--vscode-button-foreground); }
+input[type="text"], input[type="search"], textarea { border: 1px solid var(--vscode-input-border, transparent); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
+input[type="text"]:focus, input[type="search"]:focus { border-color: var(--vscode-focusBorder); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
+input::placeholder, textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
+select, select:hover { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+input[type="checkbox"], .task input { accent-color: var(--vscode-button-background); }
+/* A tag in a card title is text, so the title line keeps the height it would
+   have without it and cards stay aligned with each other. */
+.card-title .tag-open, .note-row .card-title .tag-open { min-height: 0; padding: 0 3px; }
+/* Tags read as links, as VS Code shows references, and a tag written inside
+   a title keeps a hairline so it stays distinct from the words around it. */
+.tag-open, .inline-tag, .task-title .inline-tag { background: transparent; color: var(--vscode-textLink-foreground); }
+.tag-open { border-color: transparent; }
+.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 3px; }
+.tag-open:hover, .inline-tag:hover, .task-title .inline-tag:hover { border-color: transparent; background: var(--vscode-list-hoverBackground); color: var(--vscode-textLink-activeForeground); }
+.zoom-controls button, .zoom-readout, .reset-graph-settings { background: var(--vscode-editorWidget-background); }
+`;
 
 /** Returns the configured theme, falling back when workspace settings are stale. */
 export function getDeckardTheme(): DeckardTheme {
   const configuredTheme = vscode.workspace
     .getConfiguration('deckard')
-    .get<string>('theme', 'replicant');
+    .get<string>('theme', 'corpo');
 
-  return isDeckardTheme(configuredTheme) ? configuredTheme : 'replicant';
+  return isDeckardTheme(configuredTheme) ? configuredTheme : 'corpo';
 }
 
 /** Provides theme-level tokens after a webview's local layout styles. */
 export function getDeckardThemeCss(theme: DeckardTheme): string {
+  if (theme === 'corpo') {
+    return corpoCss;
+  }
+
   if (theme === 'replicant') {
     return replicantHoverCss;
   }

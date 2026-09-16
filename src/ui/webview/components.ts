@@ -759,10 +759,11 @@ export function getQueryEditorCss(): string {
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 .query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
-.query-term { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 2px 1px 8px; }
+.query-term { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 6px 1px 8px; cursor: pointer; }
 .query-term code { color: var(--cyan); font-size: 11px; }
-.query-term-remove { min-height: 22px; border: 0; background: transparent; color: var(--muted); padding: 0 6px; font-size: 13px; line-height: 1; }
-.query-term-remove:hover, .query-term-remove:focus-visible { border: 0; background: transparent; color: var(--amber); }
+.query-term:hover code, .query-term:focus-visible code { color: inherit; }
+.query-term-remove { color: var(--muted); font-size: 13px; line-height: 1; }
+.query-term:hover .query-term-remove, .query-term:focus-visible .query-term-remove { color: inherit; }
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line); background: var(--panel); padding: 10px; }
 .query-builder-group + .query-builder-or { display: block; margin: 8px 0; color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-align: center; text-transform: uppercase; }
@@ -788,7 +789,7 @@ export function getQueryEditorCss(): string {
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.query-facet-value { display: inline-flex; align-items: baseline; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
+.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: 10px; }`;
 }
 
@@ -933,7 +934,8 @@ export function getQueryEditorScript(): string {
       const terms = query().terms || [];
       if (terms.length < 2) return '';
       return '<div class="query-terms" aria-label="Search terms">' + terms.map(function (term) {
-        return '<span class="query-term"><code>' + escapeHtml(term.text) + '</code><button class="query-term-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(term.text) + '" title="Remove ' + escapeHtml(term.text) + '">&#215;</button></span>';
+        // The whole chip removes its term; the cross stays as the affordance.
+        return '<button class="query-term" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(term.text) + '" title="Remove ' + escapeHtml(term.text) + '"><code>' + escapeHtml(term.text) + '</code><span class="query-term-remove" aria-hidden="true">&#215;</span></button>';
       }).join('') + '</div>';
     }
 

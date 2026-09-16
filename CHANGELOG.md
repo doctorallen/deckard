@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Corpo theme**: a plain style that takes its colors and fonts from your
+  VS Code theme, light or dark. It leaves out the grid, glows, clipped
+  corners, and uppercase readouts of Deckard's other themes, and its buttons,
+  fields, and links look like VS Code's own.
+
 - **Leave files out of the index**: `deckard.exclude` takes glob patterns
   written like VS Code's `files.exclude`, such as `{ "**/archive": true }`,
   and Deckard does not index the files and folders they match. Deckard also
@@ -108,6 +113,15 @@
 
 ### Changed
 
+- A search term chip is removed by clicking anywhere on it, not only on its
+  cross, and it lights up under the pointer like the other controls.
+
+- The mark on a Dashboard tab whose search has text is a filter icon rather
+  than a dot, and the **Search** tab keeps its mark while another tab is open.
+
+- Corpo is the default theme, in place of Replicant. To keep the previous
+  look, set `deckard.theme` to `replicant`.
+
 - The tags chosen on the Dashboard's Tasks tab sit in a dashed box headed
   **Tags**, like **Refine** on the Search tab, with **Clear filters** at its
   right.
@@ -141,6 +155,15 @@
   the clone.
 
 ### Fixed
+
+- Pages in the Corpo theme paint their own background, so a view VS Code gives
+  no backdrop of its own, such as a tag overview, no longer renders blank.
+
+- A **Refine** chip's text lines up with the group label beside it, rather
+  than sitting a few pixels above it.
+
+- A hovered tag in the Cooper and Synthwave themes keeps its light hover
+  background, so its dark text no longer disappears into a dark panel.
 
 - In the Cooper theme, the gold glow no longer repeats in bands down a panel
   taller than its content, such as the Related Notes sidebar.

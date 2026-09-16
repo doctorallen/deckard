@@ -114,6 +114,9 @@ export function createDashboardSnapshot(
 
   return {
     ...(includeNotes ? {} : { notesOmitted: true }),
+    // Every tab marks the Search tab when a search is kept there.
+    noteQueryText:
+      preferences.dashboardViewState.noteSearchQuery.trim() || undefined,
     ...(noteSearch
       ? {
           noteQuery: noteSearch.query,

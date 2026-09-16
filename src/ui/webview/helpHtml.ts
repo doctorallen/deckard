@@ -194,7 +194,7 @@ topics: [signal-integrity]
     <section id="advanced">
       <h2>Settings</h2>
       <div class="cards">
-        <div class="card"><h3>Choose a theme</h3><p><code>deckard.theme</code> defaults to <code>replicant</code>. Choose <code>oblivion</code>, <code>lcars</code>, <code>synthwave</code>, <code>tomcat</code>, <code>fellowship</code>, or <code>cooper</code> to restyle all Deckard views.</p></div>
+        <div class="card"><h3>Choose a theme</h3><p><code>deckard.theme</code> defaults to <code>corpo</code>, a plain style that follows your VS Code colors. Choose <code>replicant</code>, <code>oblivion</code>, <code>lcars</code>, <code>synthwave</code>, <code>tomcat</code>, <code>fellowship</code>, or <code>cooper</code> for one of Deckard's film-inspired styles.</p></div>
         <div class="card"><h3>Open the Dashboard on startup</h3><p><code>deckard.dashboard.openOnStartup</code> defaults to <code>false</code>. Turn it on to open the Dashboard when VS Code starts in a workspace where Deckard has indexed notes.</p></div>
         <div class="card"><h3>Control the note scope</h3><p><code>deckard.notesFolder</code> is optional. Leave it empty to index all workspace Markdown, or set a workspace-relative folder to limit the index. <code>deckard.exclude</code> leaves files and folders out by glob pattern, written like VS Code&apos;s <code>files.exclude</code>: <code>{ "**/archive": true }</code> leaves out every <code>archive</code> folder and the notes in it.</p></div>
         <div class="card"><h3>Set the daily note template</h3><p><code>deckard.dailyNoteTemplate</code> supplies the text for new daily notes. It defaults to <code># {date}\\n\\n</code>; <code>{date}</code> becomes the local <code>YYYY-MM-DD</code> date.</p></div>

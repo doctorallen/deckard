@@ -13,7 +13,7 @@ import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getTagOverviewHtml } from '../ui/webview/tagOverviewHtml';
-import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
+import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
 
 function assertWebviewScriptParses(html: string): void {
   const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
@@ -611,6 +611,11 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("'clear-tag-search'"), true);
     assert.strictEqual(html.includes('input.task-search[data-has-query], input.catalog-search[data-has-query]'), true);
     assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), true);
+    // The mark is a filter icon, and the Search tab keeps it from another tab.
+    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span>'), true);
+    assert.strictEqual(html.includes("renderTabSearchMark(noteEditor.currentText() || state.noteQueryText || '')"), true);
+    // A term chip removes its own term, so the whole chip is the control.
+    assert.strictEqual(html.includes('<button class="query-term" data-action="remove-term"'), true);
     assert.strictEqual(html.includes("renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '')"), true);
     // A namespace filter alone narrows the tags, so it gets the notice too.
     assert.strictEqual(html.includes('const tagNotice = normalizedBrowseQuery || activeTagNamespace'), true);
@@ -824,8 +829,30 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("event.key === 'ArrowLeft'"), true);
   });
 
+  test('Corpo takes every color from the VS Code theme and drops the chrome', () => {
+    const corpo = getDeckardThemeCss('corpo');
+    assert.strictEqual(corpo.includes('--bg: var(--vscode-editor-background);'), true);
+    assert.strictEqual(corpo.includes('--text: var(--vscode-foreground);'), true);
+    assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
+    assert.strictEqual(corpo.includes('body { background: var(--vscode-editor-background); }'), true);
+    // A page VS Code gives no backdrop paints its own, or it renders blank.
+    assert.strictEqual(corpo.includes('body:has(.sidebar-header)'), true);
+    assert.strictEqual(corpo.includes('.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border'), true);
+    // The page's color scheme follows VS Code's, or a light theme gets a dark backdrop.
+    assert.strictEqual(corpo.includes(':root:has(> body.vscode-light)'), true);
+    // A chosen tab takes VS Code's button colors, which are readable together.
+    assert.strictEqual(corpo.includes('.dashboard-tabs button[aria-selected="true"]'), true);
+    assert.strictEqual(corpo.includes('.card-title .tag-open, .note-row .card-title .tag-open { min-height: 0;'), true);
+    assert.strictEqual(corpo.includes('.metric::before { display: none; }'), true);
+    assert.strictEqual(corpo.includes('background: var(--vscode-button-background); color: var(--vscode-button-foreground);'), true);
+    // Nothing is fixed to a color, so light and dark VS Code themes both work.
+    assert.doesNotMatch(corpo, /#[0-9a-f]{3,8}\b|rgba?\(/i);
+    assert.strictEqual(corpo.includes('translateX'), false, 'rows do not slide on hover');
+  });
+
   test('defines theme overrides for each selectable webview theme', () => {
     assert.deepStrictEqual(deckardThemes, [
+      'corpo',
       'replicant',
       'oblivion',
       'lcars',
@@ -836,7 +863,7 @@ suite('Webview contracts', () => {
     ]);
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
-        '.entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
+        '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
@@ -864,7 +891,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('oblivion').includes(
-        '.entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
+        '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
@@ -1146,6 +1173,9 @@ suite('Webview contracts', () => {
     const cooper = getDeckardThemeCss('cooper');
     assert.strictEqual(cooper.includes('--bg-dark: #030405'), true);
     assert.strictEqual(cooper.includes('--amber: #dca24a'), true, "Gargantua's gold");
+    // A hovered tag keeps Cooper's inverted button colors, not a dark ground under dark text.
+    assert.strictEqual(cooper.includes('.tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); }'), true);
+    assert.strictEqual(/\.tag-open:hover[^{]*\{[^}]*background: var\(--panel-raised\)/.test(cooper), false);
     // The glow is drawn once over the whole panel, not tiled down a short page.
     assert.strictEqual(cooper.includes('html { min-height: 100%; }'), true);
     assert.strictEqual(cooper.includes('background-repeat: no-repeat, repeat, repeat;'), true);
@@ -1188,8 +1218,12 @@ suite('Webview contracts', () => {
       html.includes('main { width: 100%; max-width: 1180px; }'),
       true,
     );
+    // A theme may restyle main; the page and the shared sheet give it no frame.
+    const themeCss = getDeckardThemeCss(getDeckardTheme());
+    assert.strictEqual(html.includes(themeCss), true);
+    const pageCss = html.replace(themeCss, '');
     assert.strictEqual(
-      /(^|[\s}])main\s*\{[^}]*\bborder(-[a-z]+)?\s*:/.test(html),
+      /(^|[\s}])main\s*\{[^}]*\bborder(-[a-z]+)?\s*:/.test(pageCss),
       false,
     );
   });

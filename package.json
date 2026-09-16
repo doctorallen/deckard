@@ -350,6 +350,7 @@
           "deckard.theme": {
             "type": "string",
             "enum": [
+              "corpo",
               "replicant",
               "oblivion",
               "lcars",
@@ -359,6 +360,7 @@
               "cooper"
             ],
             "enumDescriptions": [
+              "A plain interface that takes its colors and fonts from your VS Code theme, light or dark.",
               "Deckard's original replicant terminal interface.",
               "A dark technical operations interface inspired by the Oblivion reference screens.",
               "A warm, high-contrast interface inspired by LCARS from Star Trek: The Next Generation.",
@@ -367,7 +369,7 @@
               "A woodland travel-journal interface inspired by The Lord of the Rings.",
               "A spare mission-control interface inspired by the Endurance and TARS in Interstellar."
             ],
-            "default": "replicant",
+            "default": "corpo",
             "description": "Visual theme used by Deckard webviews.",
             "order": 1
           },

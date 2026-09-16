@@ -233,6 +233,17 @@ test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
   assert.deepStrictEqual(shownTags(), ['#follow-up'], 'None leaves people out');
 });
 
+test('a kept Search tab search marks its tab from another tab', async () => {
+  const { view } = await openDashboard('list', createIndex(), (preferences) =>
+    preferences.setDashboardSearch('notes', 'vault'),
+  );
+
+  // The Tasks tab is open, so the host sends no notes; the mark still shows.
+  const mark = view.find('#notes-tab .tab-search-mark');
+  assert.ok(mark, 'the Search tab keeps its mark while another tab is open');
+  assert.match(mark.getAttribute('title') || '', /vault/);
+});
+
 test('a task search kept from an earlier visit says so above the list', async () => {
   const { view } = await openDashboard('list', createIndex(), (preferences) =>
     preferences.setDashboardSearch('tasks', 'review'),
