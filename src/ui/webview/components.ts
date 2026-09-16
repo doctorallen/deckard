@@ -215,7 +215,14 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 export function getTagCss(): string {
   return `
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
+/* A tag reads as written wherever it sits: text-transform inherits, so a
+   heading or a control a theme shouts would otherwise shout the tag too. */
+.tag-open, .inline-tag { text-transform: none; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
+/* A tag in a title opens that tag rather than controlling the view, so it is
+   drawn as a hairline with no fill and no control height: the boxes a reader
+   sees elsewhere mean "this changes what is listed". */
+.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }
 .inline-tag {
   min-height: 24px;
   margin-left: 3px;
@@ -614,7 +621,7 @@ export function getComponentScript(): string {
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
       + '<input type="checkbox" data-action="board-toggle-task" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
-      + '<div class="task-summary"><div class="task-title">' + renderInlineTitle(card.title, card.titleTags, false) + '</div>'
+      + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
       + '<select class="board-move" data-action="board-move" title="Move to another column" aria-label="Move this task to another column"><option value="" selected hidden>⋯</option>' + moves + '</select>'
       + '</div></article>';
@@ -759,10 +766,15 @@ export function getQueryEditorCss(): string {
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 .query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
-.query-term { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 2px 1px 8px; }
-.query-term code { color: var(--cyan); font-size: 11px; }
-.query-term-remove { min-height: 22px; border: 0; background: transparent; color: var(--muted); padding: 0 6px; font-size: 13px; line-height: 1; }
-.query-term-remove:hover, .query-term-remove:focus-visible { border: 0; background: transparent; color: var(--amber); }
+/* The chip is the box. VS Code's own webview styles give every <code> a
+   background, padding and a 4px radius, which would draw a second rounded box
+   inside it, and a term echoes the text typed in the box, so it is never
+   recased by a theme that shouts its controls. */
+.query-term { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 6px 1px 8px; cursor: pointer; text-transform: none; }
+.query-term code { background: none; border-radius: 0; padding: 0; color: var(--cyan); font-size: 11px; }
+.query-term:hover code, .query-term:focus-visible code { color: inherit; }
+.query-term-remove { color: var(--muted); font-size: 13px; line-height: 1; }
+.query-term:hover .query-term-remove, .query-term:focus-visible .query-term-remove { color: inherit; }
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line); background: var(--panel); padding: 10px; }
 .query-builder-group + .query-builder-or { display: block; margin: 8px 0; color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-align: center; text-transform: uppercase; }
@@ -788,7 +800,7 @@ export function getQueryEditorCss(): string {
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.query-facet-value { display: inline-flex; align-items: baseline; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
+.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: 10px; }`;
 }
 
@@ -933,7 +945,8 @@ export function getQueryEditorScript(): string {
       const terms = query().terms || [];
       if (terms.length < 2) return '';
       return '<div class="query-terms" aria-label="Search terms">' + terms.map(function (term) {
-        return '<span class="query-term"><code>' + escapeHtml(term.text) + '</code><button class="query-term-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(term.text) + '" title="Remove ' + escapeHtml(term.text) + '">&#215;</button></span>';
+        // The whole chip removes its term; the cross stays as the affordance.
+        return '<button class="query-term" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(term.text) + '" title="Remove ' + escapeHtml(term.text) + '"><code>' + escapeHtml(term.text) + '</code><span class="query-term-remove" aria-hidden="true">&#215;</span></button>';
       }).join('') + '</div>';
     }
 
@@ -1183,7 +1196,8 @@ export function getQueryEditorScript(): string {
           token: '',
           showAll: true,
           items: (all.recent || []).slice(0, 8).map(function (item) {
-            return { value: item.value, label: item.label, detail: item.detail, insert: item.value, replaceAll: true };
+            // A recent search is a whole search, so choosing one runs it.
+            return { value: item.value, label: item.label, detail: item.detail, insert: item.value, replaceAll: true, apply: true };
           }),
         };
       }
@@ -1358,6 +1372,10 @@ export function getQueryEditorScript(): string {
         draft = input.value;
         syncTextButtons(draft);
         if (options.onDraft) options.onDraft(draft);
+        if (item.apply) {
+          run(input.value);
+          return;
+        }
         input.focus();
         return;
       }
@@ -1527,9 +1545,16 @@ export function getQueryEditorScript(): string {
         if (action === 'toggle-builder') {
           builderOpen = !builderOpen;
           const groups = builderGroups();
-          if (builderOpen && groups.every(function (group) { return !group.rows.length; })) {
-            builderDraft = [{ rows: [pendingRow()] }];
-            pendingBuilderFocus = { groupIndex: 0, rowIndex: 0 };
+          if (builderOpen) {
+            // The builder always opens with an empty row to type in, even when
+            // the search already has conditions, such as a page's own tags.
+            const next = groups.length ? groups : [{ rows: [] }];
+            const last = next[next.length - 1];
+            if (!last.rows.some(function (row) { return row.pending; })) {
+              last.rows.push(pendingRow());
+            }
+            builderDraft = next;
+            pendingBuilderFocus = { groupIndex: next.length - 1, rowIndex: last.rows.length - 1 };
           }
           options.render();
           return true;

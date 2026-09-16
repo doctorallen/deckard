@@ -400,10 +400,11 @@ suite('Deckard query overview state', () => {
     );
 
     assert.strictEqual(snapshot?.query?.isAdvanced, false);
-    // The search box refines the tags on screen, so it starts empty and
-    // names the tags it refines as its scope.
+    // The page's tags are written in the box, so they can be edited or
+    // dropped there; the scope still travels with the state, which is what
+    // tells the page it refines its tags rather than replacing them.
     assert.strictEqual(snapshot?.query?.scope, 'tag = #project/atlas');
-    assert.strictEqual(snapshot?.query?.text, '');
+    assert.strictEqual(snapshot?.query?.text, '#project/atlas');
   });
 
   test('reads is:, has:, no:, and in: as shorthand conditions', () => {

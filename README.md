@@ -32,7 +32,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
 | [Stats](#stats) | Index totals, the notes nothing links to, and your most-viewed tags, entities, and notes. |
-| [Themes](#themes) | Six visual styles for Deckard's pages, from the default Replicant to LCARS and Synthwave. |
+| [Themes](#themes) | Eight visual styles for Deckard's pages, from the plain default, Corpo, to Replicant, LCARS, and Synthwave. |
 | [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine. |
 
 ## Requirements
@@ -48,10 +48,12 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 ## Themes
 
-Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `replicant`.
+Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase readouts of the others. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo.
 
-| **Replicant** | **Oblivion** | **LCARS** |
+| **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |
+| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Dashboard in a dark VS Code theme." width="220"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Dashboard in a light VS Code theme." width="220"> | |
+| **Replicant** | **Oblivion** | **LCARS** |
 | <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |
 | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220"> | <img src="docs/images/dashboard-synthwave.png" alt="Synthwave theme Dashboard." width="220"> |
@@ -229,8 +231,8 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 - **Tasks as a board**: open **View options** and set **Tasks** to **Board** to show the Tasks tab as the same Kanban board the [Task board](#task-board) uses, grouped by status, priority, or due date. The tab's **All**, **Open**, and **Done** filter, tag picker, and search still choose which tasks appear, and Deckard remembers the layout and grouping.
 - **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
 - **Search** is Deckard's search page. It lists indexed note entries under the [search box](#the-search-box), with **Sort: A-Z/Newest created/Recently updated/Most accessed** on the line under the search box. Plain words filter the notes as you type, including their file names and tags; tags and conditions such as `is:open` apply when you press Enter. To narrow by tags, type them in the search box or select them under **Refine**. Below the notes, **Matching tasks** lists the tasks the search finds, and **Save**, beside the search box, keeps it as a saved view. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. Select a note entry to jump to its source line.
-- **Tags** shows namespaced and unnamespaced tags together. Search tags, narrow them to one namespace, or to tags without one, with **Namespace**, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
-- **Searches are kept** between visits. When a search is narrowing the Tasks or Tags list, a line above the list says so, such as *Showing 3 of 42 open tasks matching “vendor”*, with **Clear search**, and the search box is outlined. A dot on the **Tasks**, **Search**, or **Tags** tab marks a tab whose search has text, so a search is never hidden on a tab you are not looking at.
+- **Tags** shows namespaced and unnamespaced tags together. Search tags, narrow them to one namespace, or to tags without one, with **Namespace**, where a person's `@` tag counts as **Person**, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
+- **Searches are kept** between visits. When a search is narrowing the Tasks or Tags list, a line above the list says so, such as *Showing 3 of 42 open tasks matching “vendor”*, with **Clear search**, and the search box is outlined. A **Namespace** filter on the Tags tab counts too, such as *Showing 12 of 90 tags, in Person*, and **Clear search** clears it along with the text. A dot on the **Tasks**, **Search**, or **Tags** tab marks a tab whose search has text, so a search is never hidden on a tab you are not looking at.
 - Select a tag to open its [tag overview](#tag-overviews).
 - Select a task to jump to its exact source line.
 - Use a task checkbox to update the checklist marker in the original note.
@@ -567,7 +569,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ```json
 {
-	"deckard.theme": "replicant",
+	"deckard.theme": "corpo",
 	"deckard.dashboard.openOnStartup": false,
 	"deckard.tagOverview.hubNoteExpanded": true,
 	"deckard.notesFolder": "notes",
@@ -612,7 +614,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | --- | --- | --- |
 | `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
 | `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` hides. |
-| `deckard.theme` | `replicant` | Selects the Replicant, Oblivion, or LCARS visual style for Deckard webviews. |
+| `deckard.theme` | `corpo` | Selects the visual style for Deckard webviews: `corpo`, which follows your VS Code theme, or one of `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |

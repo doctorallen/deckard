@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Corpo theme**: a plain style that takes its colors and fonts from your
+  VS Code theme, light or dark. It leaves out the grid, glows, clipped
+  corners, and uppercase readouts of Deckard's other themes, and its buttons,
+  fields, and links look like VS Code's own.
+
 - **Leave files out of the index**: `deckard.exclude` takes glob patterns
   written like VS Code's `files.exclude`, such as `{ "**/archive": true }`,
   and Deckard does not index the files and folders they match. Deckard also
@@ -108,13 +113,51 @@
 
 ### Changed
 
+- A tag overview writes its own tags in its search box rather than holding
+  them apart from it. The page reads as the search it is: its tags can be
+  edited or dropped there like any other term, adding one from the sidebar
+  writes it into the box, and the entries, hub note, and chips are unchanged.
+
+- Choosing a recent search runs it, instead of only filling the search box.
+
+- The builder opens with an empty row to type in even when the search already
+  has conditions, such as a page's tags.
+
+- A tag reads as it was written wherever it appears, in every theme: a theme
+  that shouts its controls no longer shouts the tags inside them, and a tag in
+  a heading no longer inherits the heading's case. A tag beside a title is
+  drawn as a hairline with no fill, so a boxed tag means a control that
+  changes what is listed.
+
+- **Oblivion** is redrawn after the film's light-table screens: a near-black
+  ground ruled with faint teal graph paper, pages framed by corner brackets
+  rather than filled panels, wide letter-spaced headings, and an orange rule
+  under the live tab or filter in place of a filled block. Its palette is the
+  screens' own: cyan-teal for the data, warm sand in the readouts, and
+  red-orange kept for alerts.
+
+- A search term chip is removed by clicking anywhere on it, not only on its
+  cross, and it lights up under the pointer like the other controls.
+
+- The mark on a Dashboard tab whose search has text is a filter icon rather
+  than a dot, and the **Search** tab keeps its mark while another tab is open.
+
+- Corpo is the default theme, in place of Replicant. To keep the previous
+  look, set `deckard.theme` to `replicant`.
+
+- The tags chosen on the Dashboard's Tasks tab sit in a dashed box headed
+  **Tags**, like **Refine** on the Search tab, with **Clear filters** at its
+  right.
+
 - The Dashboard's **Saved tag views** are now **Saved searches**, since they
   hold saved searches as well as saved tag sets.
 
 - A Dashboard search kept from an earlier visit is no longer easy to miss.
   When one is narrowing the Tasks or Tags list, a line above the list says
   how many items match, with **Clear search**, the search box is outlined,
-  and a dot marks each tab whose search has text.
+  and a dot marks each tab whose search has text. A **Namespace** filter on
+  the Tags tab counts as a search: it gets the same line and dot, and
+  **Clear search** clears it too.
 
 - The search box is always shown in a tag overview, in place of the
   **Advanced search** button and the separate notes and tasks search fields.
@@ -133,6 +176,35 @@
   daily note counts as created on its day, or earlier if its file is older.
   A git clone resets every file's times, so these dates used to be the day of
   the clone.
+
+### Fixed
+
+- A search term in the search bar sits in one box: VS Code styles every
+  `<code>` element with a background and rounded corners, which drew a second
+  box inside each chip, and a term now keeps the case it was typed in.
+
+- The mark on a chosen tab in the Oblivion theme is the filter icon itself
+  rather than the icon inside a filled orange block.
+
+- Pages in the Corpo theme paint their own background, so a view VS Code gives
+  no backdrop of its own, such as a tag overview, no longer renders blank.
+
+- A **Refine** chip's text lines up with the group label beside it, rather
+  than sitting a few pixels above it.
+
+- A hovered tag in the Cooper and Synthwave themes keeps its light hover
+  background, so its dark text no longer disappears into a dark panel.
+
+- In the Cooper theme, the gold glow no longer repeats in bands down a panel
+  taller than its content, such as the Related Notes sidebar.
+
+- A person's `@` tag, such as `@ren-kade`, shows as a **person** in the
+  Dashboard's Tags tab, and the **Namespace** filter's **Person** lists it
+  with the `#person/` tags, rather than under **None**.
+
+- Task titles on the task board, on the Dashboard and in **Deckard: Task
+  Board**, show their Markdown rendered, as the task list does, rather than
+  as raw `**bold**` and `[links](...)`.
 
 ## 1.9.0 - 2026-09-13
 

@@ -17,6 +17,19 @@ Module._resolveFilename = function patched(request, ...rest) {
   }
   return resolveFilename.call(this, request, ...rest);
 };
+// The layout checks describe the pages under Replicant, which declares no
+// tokens of its own. Every other theme, the default Corpo included, re-declares
+// the tokens and restyles surfaces on purpose, so the pages render as Replicant.
+const vscodeStub = require(path.join(__dirname, '..', 'e2e', 'vscodeStub.js'));
+const getConfiguration = vscodeStub.workspace.getConfiguration;
+vscodeStub.workspace.getConfiguration = (section) => {
+  const configuration = getConfiguration(section);
+  return {
+    ...configuration,
+    get: (key, fallback) =>
+      section === 'deckard' && key === 'theme' ? 'replicant' : configuration.get(key, fallback),
+  };
+};
 const webview = {
   cspSource: 'vscode-webview://deckard',
   asWebviewUri: (uri) => ({ toString: () => 'vscode-webview://deckard/asset' }),

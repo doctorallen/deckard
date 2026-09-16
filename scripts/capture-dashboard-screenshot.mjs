@@ -16,6 +16,8 @@ const repositoryRoot = resolve(import.meta.dirname, '..');
 const requestedPort = process.env.DECKARD_CDP_PORT;
 let port;
 const theme = process.env.DECKARD_SCREENSHOT_THEME ?? 'replicant';
+// A VS Code color theme, such as "Default Light Modern", for themes that follow it.
+const colorTheme = process.env.DECKARD_SCREENSHOT_COLOR_THEME;
 const view = process.env.DECKARD_SCREENSHOT_VIEW ?? 'dashboard';
 
 // A side bar pane, such as a tree view, that is expanded and lists rows.
@@ -80,7 +82,9 @@ const viewConfiguration = {
     output: 'docs/images/tag-overview.png',
     title: 'Tag Overview',
     renderedAssertion:
-      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Tag Overview' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
+      // The shell exists before the page script fills it, so wait for content
+      // it renders, or the capture can catch an unpainted page.
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Tag Overview' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1')?.textContent?.trim()) && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.query-workspace'))",
   },
   help: {
     command: 'deckard.showHelp',
@@ -279,6 +283,7 @@ function writeFixture() {
     join(workspace, '.vscode', 'settings.json'),
     JSON.stringify({
       'deckard.theme': theme,
+      ...(colorTheme ? { 'workbench.colorTheme': colorTheme } : {}),
       'workbench.secondarySideBar.defaultVisibility': false,
       'workbench.startupEditor': 'none',
     }),

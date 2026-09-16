@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 export const deckardThemes = [
+  'corpo',
   'replicant',
   'oblivion',
   'lcars',
@@ -12,22 +13,109 @@ export const deckardThemes = [
 
 export type DeckardTheme = (typeof deckardThemes)[number];
 
+// Rows lift onto the raised panel on hover. Tags only slide: they are buttons,
+// so each theme's button hover colors them, and a shared dark ground under a
+// theme's inverted button text would hide it.
 const contentHoverCss =
-  '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
+  '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
 
-const replicantHoverCss = `${contentHoverCss} .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open, .note-row .tag-open { color: var(--text); }`;
+const replicantHoverCss = `${contentHoverCss} .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }`;
+
+/**
+ * Corpo, the plain default: every token comes from the VS Code color theme in
+ * use, light or dark, and the page drops Deckard's grid, glows, clipped
+ * corners, and uppercase monospace labels, so its views read like the rest of
+ * the editor. The page itself is transparent, so VS Code's own editor or side
+ * bar background shows through.
+ */
+const corpoCss = `
+:root {
+  --bg: var(--vscode-editor-background);
+  --bg-dark: var(--vscode-editor-background);
+  --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --panel-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --panel-raised: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
+  --panel-deep: var(--vscode-input-background, var(--vscode-editor-background));
+  --text: var(--vscode-foreground);
+  --muted: var(--vscode-descriptionForeground);
+  --line: var(--vscode-widget-border, var(--vscode-panel-border));
+  --slate-border: var(--vscode-widget-border, var(--vscode-panel-border));
+  --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
+  --cyan: var(--vscode-textLink-foreground);
+  --cyan-bright: var(--vscode-textLink-foreground);
+  --amber: var(--vscode-focusBorder);
+  --amber-bright: var(--vscode-focusBorder);
+  --amber-dim: var(--vscode-descriptionForeground);
+  --green: var(--vscode-charts-green);
+  --toxic-green: var(--vscode-charts-green);
+  --favorite-red: var(--vscode-charts-red);
+  --warning-orange: var(--vscode-editorWarning-foreground);
+  --slate-olive: var(--vscode-panel-border);
+  --grid-line: transparent;
+  --font-display: var(--vscode-font-family, system-ui, sans-serif);
+  --font-mono: var(--vscode-font-family, system-ui, sans-serif);
+  --edge: 1px;
+  --control-height: 26px;
+}
+/* A transparent page shows VS Code's own background only while its color
+   scheme matches the editor's; otherwise the browser paints a dark backdrop. */
+:root:has(> body.vscode-light), :root:has(> body.vscode-high-contrast-light) { color-scheme: light; }
+:root:has(> body.vscode-dark), :root:has(> body.vscode-high-contrast) { color-scheme: dark; }
+/* The page paints its own background: VS Code gives some webviews no backdrop
+   of their own, where a transparent page composites to nothing. */
+body { background: var(--vscode-editor-background); }
+body:has(.sidebar-header) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
+main { border: 0; box-shadow: none; }
+header { border-bottom: 1px solid var(--line); }
+/* Labels read as written, not as uppercase spaced-out readouts. */
+body * { text-transform: none !important; letter-spacing: normal !important; }
+h1 { font-size: 20px; font-weight: 600; }
+.eyebrow { color: var(--muted); }
+code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monospace); }
+.metric::before { display: none; }
+.metric-value { color: var(--text); font-weight: 600; }
+.task-meta { color: var(--muted); }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
+.tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
+.tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
+button, select, input[type="text"], input[type="search"], .view-options summary, .tag-filter summary { border-radius: 2px; }
+button, .view-options summary, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+button:hover, .view-options summary:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
+button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+/* A count inside a chosen button follows its text, not the muted color. */
+.active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
+.query-bar-row .query-apply:hover { background: var(--vscode-button-hoverBackground); color: var(--vscode-button-foreground); }
+input[type="text"], input[type="search"], textarea { border: 1px solid var(--vscode-input-border, transparent); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
+input[type="text"]:focus, input[type="search"]:focus { border-color: var(--vscode-focusBorder); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
+input::placeholder, textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
+select, select:hover { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+input[type="checkbox"], .task input { accent-color: var(--vscode-button-background); }
+/* Tags read as links, as VS Code shows references, and a tag written inside
+   a title keeps a hairline so it stays distinct from the words around it. */
+.tag-open, .inline-tag, .task-title .inline-tag { background: transparent; color: var(--vscode-textLink-foreground); }
+.tag-open { border-color: transparent; }
+.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 3px; }
+.tag-open:hover, .inline-tag:hover, .task-title .inline-tag:hover { border-color: transparent; background: var(--vscode-list-hoverBackground); color: var(--vscode-textLink-activeForeground); }
+.query-suggestion:hover, .query-suggestion.active { background: var(--vscode-list-hoverBackground); color: var(--vscode-foreground); }
+.zoom-controls button, .zoom-readout, .reset-graph-settings { background: var(--vscode-editorWidget-background); }
+`;
 
 /** Returns the configured theme, falling back when workspace settings are stale. */
 export function getDeckardTheme(): DeckardTheme {
   const configuredTheme = vscode.workspace
     .getConfiguration('deckard')
-    .get<string>('theme', 'replicant');
+    .get<string>('theme', 'corpo');
 
-  return isDeckardTheme(configuredTheme) ? configuredTheme : 'replicant';
+  return isDeckardTheme(configuredTheme) ? configuredTheme : 'corpo';
 }
 
 /** Provides theme-level tokens after a webview's local layout styles. */
 export function getDeckardThemeCss(theme: DeckardTheme): string {
+  if (theme === 'corpo') {
+    return corpoCss;
+  }
+
   if (theme === 'replicant') {
     return replicantHoverCss;
   }
@@ -98,7 +186,7 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 .favorite-toggle.favorite .favorite-heart { color: var(--bg-dark); }
 .favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }
 .favorite-toggle:hover .favorite-heart, .favorite-toggle:focus-visible .favorite-heart { color: var(--bg-dark); }
-${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
+${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
 `;
   }
 
@@ -132,7 +220,8 @@ body { background-image: repeating-linear-gradient(0deg, rgba(118, 255, 99, .025
 main { border-color: var(--line); box-shadow: 0 0 22px rgba(41, 165, 47, .08); }
 header { border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(118, 255, 99, .2); }
 h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-button, select, .tag-open { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+button, select, .tag-open { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
+button, select { text-transform: uppercase; }
 button:hover, button.active, select:hover, .tag-open:hover { background: var(--green); border-color: var(--green); color: #071006; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(3, 12, 3, .9); box-shadow: inset 2px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
@@ -212,11 +301,15 @@ button:hover, button.active, select:hover, .tag-open:hover { border-color: var(-
   --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
+/* The gold glow is drawn once over the whole panel; on a page shorter than
+   its panel, such as the sidebar, it would otherwise tile in bands. */
+html { min-height: 100%; }
 body {
   background-color: var(--bg-dark);
   background-image: radial-gradient(ellipse at 88% -8%, rgba(220, 162, 74, .16), transparent 42%), radial-gradient(circle at 1px 1px, rgba(235, 232, 225, .22) 1px, transparent 1.5px), radial-gradient(circle at 1px 1px, rgba(159, 191, 212, .14) 1px, transparent 1.5px);
   background-size: 100% 100%, 97px 89px, 53px 61px;
   background-position: 0 0, 13px 21px, 37px 7px;
+  background-repeat: no-repeat, repeat, repeat;
 }
 main { border-color: var(--slate-border); border-top-color: var(--line-strong); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 header { border-color: var(--line); }
@@ -224,7 +317,8 @@ h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font
 h1 { font-weight: 200; letter-spacing: .3em; }
 .metric-value { font-family: var(--font-display); font-weight: 300; letter-spacing: .04em; }
 .eyebrow { color: var(--amber); letter-spacing: .28em; }
-button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
+button, select { text-transform: uppercase; }
 button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
 input[type='checkbox'] { accent-color: var(--amber); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(13, 16, 19, .92); box-shadow: inset 2px 0 0 var(--cyan); }
@@ -237,7 +331,93 @@ input[type='checkbox'] { accent-color: var(--amber); }
 .favorite-toggle.favorite { border-color: var(--amber); background: var(--amber); color: var(--bg-dark); }
 .favorite-toggle .favorite-heart { color: var(--amber); }
 .favorite-toggle.favorite .favorite-heart { color: var(--bg-dark); }
-${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
+${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
+`;
+  }
+
+  // Oblivion, after the film's light table and bubbleship HUDs: a black ground
+  // under a faint graph grid, hairline steel frames with bracket corners,
+  // thin tracked-out readouts, and one warm orange kept for alerts.
+  if (theme === 'oblivion') {
+    return `
+:root {
+  --bg-dark: #04080b;
+  --bg: #04080b;
+  --panel-bg: #081115;
+  --panel: #081115;
+  --panel-raised: #0f1d24;
+  --panel-deep: #020608;
+  --text: #dce6ea;
+  --muted: #6f8a95;
+  --slate-border: #12262e;
+  --line: #1b3a45;
+  --line-strong: #3f8296;
+  --cyan-bright: #5fd3e4;
+  --cyan: #3fb6c9;
+  --amber-bright: #ff6a35;
+  --amber: #e8562a;
+  --amber-dim: #8c4326;
+  --green: #cdbe95;
+  --toxic-green: #cdbe95;
+  --favorite-red: #ff5a30;
+  --warning-orange: #ff9a3c;
+  --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+/* Graph paper rather than a dot screen: a fine grid inside a coarser one, both
+   faint enough that the black ground still reads as empty space. */
+body {
+  background-color: var(--bg-dark);
+  background-image:
+    linear-gradient(rgba(95, 211, 228, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 211, 228, .05) 1px, transparent 1px),
+    linear-gradient(rgba(95, 211, 228, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 211, 228, .025) 1px, transparent 1px);
+  background-size: 96px 96px, 96px 96px, 16px 16px, 16px 16px;
+}
+/* The page is a frame drawn on the grid, marked at two corners the way the
+   film's panels are, rather than a filled surface. */
+main { border-color: var(--slate-border); border-top-color: var(--line-strong); background: transparent; box-shadow: none; }
+main::before, main::after { content: ''; position: absolute; width: 16px; height: 16px; pointer-events: none; }
+main::before { top: -1px; left: -1px; border-top: 2px solid var(--line-strong); border-left: 2px solid var(--line-strong); }
+main::after { right: -1px; bottom: -1px; border-right: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); }
+header { position: relative; border-color: var(--line); }
+header::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 4px; background-image: repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 12px); opacity: .45; }
+h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font-display); font-weight: 300; letter-spacing: .2em; text-transform: uppercase; }
+h1 { font-weight: 200; letter-spacing: .32em; }
+.metric-value { font-family: var(--font-display); font-weight: 200; letter-spacing: .02em; }
+.eyebrow { color: var(--muted); letter-spacing: .26em; }
+.source, .metric-label { color: var(--muted); letter-spacing: .16em; }
+.section-heading { border-bottom: 1px solid var(--slate-border); padding-bottom: 6px; }
+button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; }
+button, select { text-transform: uppercase; }
+button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
+/* An orange rule under the live control, in place of a filled button. */
+button.active { border-color: var(--line-strong); background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
+input[type='checkbox'] { accent-color: var(--cyan); }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(8, 17, 21, .55); box-shadow: none; }
+.metric::before { border-bottom-color: var(--line-strong); }
+.metric:nth-child(3n)::before { border-bottom-color: var(--amber); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .06); box-shadow: inset 2px 0 0 var(--amber); }
+.tag-name, .task-title a { color: var(--cyan-bright); }
+.tag-namespace { color: var(--muted); }
+.empty { border-color: var(--slate-border); background: transparent; }
+.favorite-toggle { border-color: var(--slate-border); background: transparent; color: var(--amber); }
+.favorite-toggle.favorite { border-color: var(--amber); background: transparent; color: var(--amber-bright); }
+.favorite-toggle .favorite-heart { color: var(--amber); }
+.favorite-toggle.favorite .favorite-heart { color: var(--amber-bright); }
+.favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--amber); background: rgba(232, 86, 42, .12); color: var(--amber-bright); }
+/* The live tab and filter are marked by an orange rule, the way the film's
+   panels mark a selection, rather than by a filled block. */
+.dashboard-tabs button[aria-selected="true"] { background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
+.dashboard-tabs button[aria-selected="true"] .tab-search-mark { color: var(--amber); }
+.task-filter-toggle button.active { border-color: var(--line-strong); box-shadow: inset 0 -2px 0 var(--amber); }
+/* Body blocks and hub notes are marked with a thin steel rule; orange stays
+   with the alerts. */
+.markdown, .note-row .markdown { border-left: 2px solid var(--line-strong); background: rgba(2, 6, 8, .75); }
+.hub { border-left: 2px solid var(--line-strong); background: transparent; }
+.hub-toggle { border-left-color: var(--line-strong); }
+${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
 `;
   }
 
@@ -266,7 +446,6 @@ ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
   --font-display: ${theme === 'lcars' ? "'Arial Narrow', var(--vscode-font-family, sans-serif)" : 'var(--vscode-font-family, sans-serif)'};
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
-${theme === 'oblivion' ? `body { background-image: radial-gradient(circle at 1px 1px, rgba(112, 225, 220, .2) 1px, transparent 0); background-size: 18px 18px; } ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }` : ''}
 ${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } .related-notes-sort { background: var(--cyan); color: #050505; } .task-filter-toggle button { border-radius: 0; } .task-filter-toggle button:first-child { border-radius: 0 0 0 15px; } .task-filter-toggle button:last-child { border-radius: 0 15px 15px 0; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, button .task-filter-icon, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } .task-filter-toggle button { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, .related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .note .tag-list button { color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
 ${theme === 'lcars' ? '.active-file .tag-list button { color: #050505; }' : ''}
 ${theme === 'lcars' ? '.favorite-toggle { background: var(--cyan); color: #7a1f1f; } .favorite-toggle .favorite-heart { color: #7a1f1f; } .favorite-toggle:hover, .favorite-toggle:focus-visible, .favorite-toggle.favorite { background: #f5cc72; color: #7a1f1f; }' : ''}

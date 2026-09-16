@@ -948,12 +948,11 @@ class TagOverviewPanel implements vscode.Disposable {
     const { tagKeys, rest } = extractTagTerms(trimmed, (tagKey) =>
       resolveIndexedTagKey(index.tags, tagKey),
     );
-    if (tagKeys.length > 0 && this.tagKey) {
+    if (this.tagKey) {
+      // The box holds the page's whole search, so the tags it names are the
+      // page's tags: one deleted there is one dropped from the page.
       this.setFilterTagKeys(
-        resolveFilterTagKeys(index.tags, this.tagKey, undefined, [
-          ...this.filterTagKeys,
-          ...tagKeys,
-        ]),
+        resolveFilterTagKeys(index.tags, this.tagKey, undefined, tagKeys),
       );
       this.onQueryChanged(undefined);
     }

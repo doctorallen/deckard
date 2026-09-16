@@ -93,6 +93,26 @@ suite('Task board', () => {
     );
   });
 
+  test('renders a card title as Markdown, as the task list does', () => {
+    const index = createIndex();
+    const task = createTask(
+      'read',
+      '- [ ] Read **the brief**, `notes.md`, and [the spec](https://example.com) <b>now</b> #project/atlas',
+      {},
+    );
+    index.tasks.set(task.id, task);
+    const card = createTaskBoard(index, 'status', '', options)
+      .columns.flatMap((column) => column.cards)
+      .find((candidate) => candidate.taskId === 'read');
+    assert.ok(card);
+    assert.match(card.renderedTitle, /<strong>the brief<\/strong>/);
+    assert.match(card.renderedTitle, /<code>notes\.md<\/code>/);
+    assert.match(card.renderedTitle, /<a href="https:\/\/example\.com">the spec<\/a>/);
+    // Raw HTML in a task line stays text.
+    assert.doesNotMatch(card.renderedTitle, /<b>/);
+    assert.match(card.title, /\*\*the brief\*\*/, 'the plain title is kept for search');
+  });
+
   test('accepts the Dashboard’s layout, grouping, and move messages', () => {
     assert.deepStrictEqual(
       parseDashboardMessage({ type: 'setDashboardTaskLayout', layout: 'board' }),

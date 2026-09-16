@@ -22,6 +22,7 @@ import {
   TaskPriority,
   WorkspaceIndex,
 } from '../../core/types';
+import { renderMarkdownInline } from '../webview/rendering';
 import { stripTrailingTags } from './queryBlockState';
 
 /**
@@ -390,6 +391,7 @@ function createCard(
   return {
     taskId: task.id,
     title,
+    renderedTitle: renderMarkdownInline(title),
     titleTags: task.tags
       .map((key) => ({ key, label: task.tagLabels[key] ?? key }))
       .filter((tag) => title.includes(tag.label)),

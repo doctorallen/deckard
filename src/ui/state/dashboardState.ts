@@ -114,6 +114,9 @@ export function createDashboardSnapshot(
 
   return {
     ...(includeNotes ? {} : { notesOmitted: true }),
+    // Every tab marks the Search tab when a search is kept there.
+    noteQueryText:
+      preferences.dashboardViewState.noteSearchQuery.trim() || undefined,
     ...(noteSearch
       ? {
           noteQuery: noteSearch.query,
@@ -716,11 +719,18 @@ export function createTagOverviewSnapshot(
       filePaths: [...tag.filePaths],
       isFavorite: preferences.favoriteTags.includes(tag.key),
     },
-    // The tag chips set this page's scope, and the search box refines it, so
-    // the box holds only what was typed after the tags.
+    // The page's tags are written in the search box rather than held apart
+    // from it, so they read as the search this page is: a reader can edit or
+    // drop one like any other term. The scope still travels with the state,
+    // which is what tells the page it refines its tags rather than replacing
+    // them, and the results are unchanged.
     query: createQueryViewState(
       index,
-      refinement,
+      parseQuery(
+        [activeTagKeys.join(' AND '), refinementText.trim()]
+          .filter((part) => part.length > 0)
+          .join(' AND '),
+      ),
       { notes: sections.length, tasks: taskCandidates.length },
       false,
       preferences.recentQueries ?? [],

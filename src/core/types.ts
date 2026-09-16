@@ -323,6 +323,8 @@ export interface DashboardSnapshot {
   notesOmitted?: boolean;
   /** The Search tab's search, sent while the Search tab is shown. */
   noteQuery?: QueryViewState;
+  /** The Search tab's applied text, sent even when its notes are left out. */
+  noteQueryText?: string;
   /** Tasks the Search tab's search matches, open and soonest due first. */
   noteQueryTasks?: DashboardTask[];
   /** Every task the search matches, before `noteQueryTasks` was cut short. */
@@ -882,6 +884,8 @@ export interface TaskBoardCard {
   title: string;
   /** Tags written inside the title, rendered as controls where they appear. */
   titleTags: TagReference[];
+  /** The title as sanitized inline Markdown, as the task list shows it. */
+  renderedTitle: string;
   completed: boolean;
   filePath: string;
   line: number;
