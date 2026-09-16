@@ -613,7 +613,14 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), true);
     // The mark is a filter icon, and the Search tab keeps it from another tab.
     assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span>'), true);
+    // A tag reads as written, whatever the heading or theme around it does.
+    assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
+    // A tag in a title is a hairline link, not a control chip.
+    assert.strictEqual(html.includes('.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }'), true);
     assert.strictEqual(html.includes("renderTabSearchMark(noteEditor.currentText() || state.noteQueryText || '')"), true);
+    // One box per chip: VS Code's default <code> styling would draw a second.
+    assert.strictEqual(html.includes('.query-term code { background: none; border-radius: 0; padding: 0;'), true);
+    assert.strictEqual(html.includes('cursor: pointer; text-transform: none; }'), true);
     // A term chip removes its own term, so the whole chip is the control.
     assert.strictEqual(html.includes('<button class="query-term" data-action="remove-term"'), true);
     assert.strictEqual(html.includes("renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '')"), true);
@@ -829,6 +836,18 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("event.key === 'ArrowLeft'"), true);
   });
 
+  test('draws a tag the same way in every theme', () => {
+    // A tag is a button, so a theme that shouts its controls shouted its tags.
+    for (const theme of deckardThemes) {
+      const shouting = (getDeckardThemeCss(theme).match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
+        (rule) =>
+          /\.tag-open|\.inline-tag/.test(rule.slice(0, rule.indexOf('{'))) &&
+          /text-transform:\s*uppercase/.test(rule.slice(rule.indexOf('{'))),
+      );
+      assert.deepStrictEqual(shouting, [], `${theme} uppercases a tag`);
+    }
+  });
+
   test('Corpo takes every color from the VS Code theme and drops the chrome', () => {
     const corpo = getDeckardThemeCss('corpo');
     assert.strictEqual(corpo.includes('--bg: var(--vscode-editor-background);'), true);
@@ -842,7 +861,6 @@ suite('Webview contracts', () => {
     assert.strictEqual(corpo.includes(':root:has(> body.vscode-light)'), true);
     // A chosen tab takes VS Code's button colors, which are readable together.
     assert.strictEqual(corpo.includes('.dashboard-tabs button[aria-selected="true"]'), true);
-    assert.strictEqual(corpo.includes('.card-title .tag-open, .note-row .card-title .tag-open { min-height: 0;'), true);
     assert.strictEqual(corpo.includes('.metric::before { display: none; }'), true);
     assert.strictEqual(corpo.includes('background: var(--vscode-button-background); color: var(--vscode-button-foreground);'), true);
     // Nothing is fixed to a color, so light and dark VS Code themes both work.

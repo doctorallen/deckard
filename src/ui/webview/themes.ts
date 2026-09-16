@@ -91,9 +91,6 @@ input::placeholder, textarea::placeholder { color: var(--vscode-input-placeholde
 select, select:hover { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
 button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 input[type="checkbox"], .task input { accent-color: var(--vscode-button-background); }
-/* A tag in a card title is text, so the title line keeps the height it would
-   have without it and cards stay aligned with each other. */
-.card-title .tag-open, .note-row .card-title .tag-open { min-height: 0; padding: 0 3px; }
 /* Tags read as links, as VS Code shows references, and a tag written inside
    a title keeps a hairline so it stays distinct from the words around it. */
 .tag-open, .inline-tag, .task-title .inline-tag { background: transparent; color: var(--vscode-textLink-foreground); }
@@ -222,7 +219,8 @@ body { background-image: repeating-linear-gradient(0deg, rgba(118, 255, 99, .025
 main { border-color: var(--line); box-shadow: 0 0 22px rgba(41, 165, 47, .08); }
 header { border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(118, 255, 99, .2); }
 h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-button, select, .tag-open { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+button, select, .tag-open { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
+button, select { text-transform: uppercase; }
 button:hover, button.active, select:hover, .tag-open:hover { background: var(--green); border-color: var(--green); color: #071006; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(3, 12, 3, .9); box-shadow: inset 2px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
@@ -318,7 +316,8 @@ h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font
 h1 { font-weight: 200; letter-spacing: .3em; }
 .metric-value { font-family: var(--font-display); font-weight: 300; letter-spacing: .04em; }
 .eyebrow { color: var(--amber); letter-spacing: .28em; }
-button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
+button, select { text-transform: uppercase; }
 button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
 input[type='checkbox'] { accent-color: var(--amber); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(13, 16, 19, .92); box-shadow: inset 2px 0 0 var(--cyan); }
@@ -389,7 +388,8 @@ h1 { font-weight: 200; letter-spacing: .32em; }
 .eyebrow { color: var(--muted); letter-spacing: .26em; }
 .source, .metric-label { color: var(--muted); letter-spacing: .16em; }
 .section-heading { border-bottom: 1px solid var(--slate-border); padding-bottom: 6px; }
-button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
+button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; }
+button, select { text-transform: uppercase; }
 button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
 /* An orange rule under the live control, in place of a filled button. */
 button.active { border-color: var(--line-strong); background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
@@ -409,7 +409,7 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 /* The live tab and filter are marked by an orange rule, the way the film's
    panels mark a selection, rather than by a filled block. */
 .dashboard-tabs button[aria-selected="true"] { background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
-.dashboard-tabs button[aria-selected="true"] .tab-search-mark { background: var(--amber); }
+.dashboard-tabs button[aria-selected="true"] .tab-search-mark { color: var(--amber); }
 .task-filter-toggle button.active { border-color: var(--line-strong); box-shadow: inset 0 -2px 0 var(--amber); }
 /* Body blocks and hub notes are marked with a thin steel rule; orange stays
    with the alerts. */

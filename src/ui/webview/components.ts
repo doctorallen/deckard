@@ -215,7 +215,14 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 export function getTagCss(): string {
   return `
 .tag-list { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 8px; vertical-align: middle; }
+/* A tag reads as written wherever it sits: text-transform inherits, so a
+   heading or a control a theme shouts would otherwise shout the tag too. */
+.tag-open, .inline-tag { text-transform: none; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
+/* A tag in a title opens that tag rather than controlling the view, so it is
+   drawn as a hairline with no fill and no control height: the boxes a reader
+   sees elsewhere mean "this changes what is listed". */
+.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }
 .inline-tag {
   min-height: 24px;
   margin-left: 3px;
@@ -759,8 +766,12 @@ export function getQueryEditorCss(): string {
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 .query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
-.query-term { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 6px 1px 8px; cursor: pointer; }
-.query-term code { color: var(--cyan); font-size: 11px; }
+/* The chip is the box. VS Code's own webview styles give every <code> a
+   background, padding and a 4px radius, which would draw a second rounded box
+   inside it, and a term echoes the text typed in the box, so it is never
+   recased by a theme that shouts its controls. */
+.query-term { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 6px 1px 8px; cursor: pointer; text-transform: none; }
+.query-term code { background: none; border-radius: 0; padding: 0; color: var(--cyan); font-size: 11px; }
 .query-term:hover code, .query-term:focus-visible code { color: inherit; }
 .query-term-remove { color: var(--muted); font-size: 13px; line-height: 1; }
 .query-term:hover .query-term-remove, .query-term:focus-visible .query-term-remove { color: inherit; }

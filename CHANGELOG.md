@@ -113,6 +113,12 @@
 
 ### Changed
 
+- A tag reads as it was written wherever it appears, in every theme: a theme
+  that shouts its controls no longer shouts the tags inside them, and a tag in
+  a heading no longer inherits the heading's case. A tag beside a title is
+  drawn as a hairline with no fill, so a boxed tag means a control that
+  changes what is listed.
+
 - **Oblivion** is redrawn after the film's light-table screens: a near-black
   ground ruled with faint teal graph paper, pages framed by corner brackets
   rather than filled panels, wide letter-spaced headings, and an orange rule
@@ -162,6 +168,13 @@
   the clone.
 
 ### Fixed
+
+- A search term in the search bar sits in one box: VS Code styles every
+  `<code>` element with a background and rounded corners, which drew a second
+  box inside each chip, and a term now keeps the case it was typed in.
+
+- The mark on a chosen tab in the Oblivion theme is the filter icon itself
+  rather than the icon inside a filled orange block.
 
 - Pages in the Corpo theme paint their own background, so a view VS Code gives
   no backdrop of its own, such as a tag overview, no longer renders blank.
