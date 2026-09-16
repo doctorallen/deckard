@@ -142,7 +142,8 @@ function search(view, text) {
 /** Opens the builder and returns its first row's value field. */
 function openBuilder(view) {
   view.click(view.find('[data-action="toggle-builder"]'));
-  return view.find('[data-action="builder-set-value"]');
+  const rows = view.findAll('[data-action="builder-set-value"]');
+  return rows[rows.length - 1];
 }
 
 const tests = [];
@@ -157,15 +158,20 @@ test('the search box is shown without a toggle', async () => {
   assert.strictEqual(view.find('[data-action="toggle-query"]'), null);
 });
 
-test('Clear holds its place and is enabled as a search is typed', async () => {
+test('Clear holds its place, enabled by the tags already in the box', async () => {
   const { view } = await openOverview();
   const clear = () => view.find('[data-action="clear-query"]');
-  assert.ok(clear(), 'Clear is on the page before anything is typed');
-  assert.notStrictEqual(clear().getAttribute('disabled'), null, 'and disabled');
+  assert.ok(clear(), 'Clear is on the page');
+  assert.strictEqual(
+    view.find('[data-action="query-input"]').value,
+    '#project/atlas',
+    "the page's tag is written in the box",
+  );
+  assert.strictEqual(clear().getAttribute('disabled'), null, 'so Clear is live');
 
   view.type(view.find('[data-action="query-input"]'), 'planning');
 
-  assert.strictEqual(clear().getAttribute('disabled'), null, 'typing enables it in place');
+  assert.strictEqual(clear().getAttribute('disabled'), null, 'and stays live as it is typed');
   assert.strictEqual(clear().disabled, false);
 });
 
@@ -183,7 +189,7 @@ test('Enter narrows the entries within the tag', async () => {
   search(view, 'text ~ telemetry');
 
   assert.deepStrictEqual(visibleTitles(view), ['Shutdown telemetry audit']);
-  assert.strictEqual(view.state.refinement, 'text ~ telemetry');
+  assert.strictEqual(view.state.refinement, '#project/atlas AND text ~ telemetry');
   assert.strictEqual(view.state.tagKey, '#project/atlas', 'the tag stays the page');
 });
 
@@ -192,7 +198,11 @@ test('a tag typed in the search box joins the tags in the title', async () => {
   search(view, '@ren-kade');
 
   assert.deepStrictEqual(view.state.filterTagKeys, ['@ren-kade']);
-  assert.strictEqual(view.find('[data-action="query-input"]').value, '');
+  assert.strictEqual(
+    view.find('[data-action="query-input"]').value,
+    '#project/atlas AND @ren-kade',
+    'both tags stay in the box',
+  );
   assert.deepStrictEqual(visibleTitles(view), ['Shutdown telemetry audit']);
 });
 
@@ -218,12 +228,17 @@ test('a parse error is reported and the results stay put', async () => {
 test('removing a term keeps the rest of the search as typed', async () => {
   const { view } = await openOverview();
   search(view, 'telemetry is:open');
-  const remove = view.find('[data-action="remove-term"][data-without="telemetry"]');
+  const remove = view
+    .findAll('[data-action="remove-term"]')
+    .find((button) => button.getAttribute('data-without') === '#project/atlas AND telemetry');
   assert.ok(remove, 'each term has its own remove button');
 
   view.click(remove);
 
-  assert.strictEqual(view.find('[data-action="query-input"]').value, 'telemetry');
+  assert.strictEqual(
+    view.find('[data-action="query-input"]').value,
+    '#project/atlas AND telemetry',
+  );
   assert.deepStrictEqual(visibleTitles(view), ['Shutdown telemetry audit']);
 });
 
@@ -234,7 +249,7 @@ test('a facet value narrows the page', async () => {
 
   view.click(open);
 
-  assert.strictEqual(view.state.refinement, 'is:open');
+  assert.strictEqual(view.state.refinement, '#project/atlas AND is:open');
   assert.deepStrictEqual(visibleTitles(view), [], 'is:open keeps only tasks');
 });
 
@@ -289,9 +304,11 @@ test('a field chosen in a new row offers the operators themselves', async () => 
   view.type(openBuilder(view), 'tag');
   view.press(view.find('[data-action="query-suggestion"]'));
 
-  const options = view
-    .findAll('[data-action="builder-set-operator"] option')
-    .map((option) => option.textContent.trim());
+  // The page's own tag fills the first row, so the chosen field is the last.
+  const selects = view.findAll('[data-action="builder-set-operator"]');
+  const options = [...selects[selects.length - 1].children].map((option) =>
+    option.textContent.trim(),
+  );
   assert.deepStrictEqual(options, ['=', '!=']);
 });
 
@@ -300,7 +317,10 @@ test('typing a value and leaving the field applies it, and again', async () => {
   view.type(openBuilder(view), 'text');
   view.press(view.find('[data-action="query-suggestion"]'));
 
-  const value = () => view.find('[data-action="builder-set-value"]');
+  const value = () => {
+    const rows = view.findAll('[data-action="builder-set-value"]');
+    return rows[rows.length - 1];
+  };
   view.change(value(), 'telemetry');
   assert.deepStrictEqual(visibleTitles(view), ['Shutdown telemetry audit']);
 

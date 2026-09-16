@@ -113,6 +113,16 @@
 
 ### Changed
 
+- A tag overview writes its own tags in its search box rather than holding
+  them apart from it. The page reads as the search it is: its tags can be
+  edited or dropped there like any other term, adding one from the sidebar
+  writes it into the box, and the entries, hub note, and chips are unchanged.
+
+- Choosing a recent search runs it, instead of only filling the search box.
+
+- The builder opens with an empty row to type in even when the search already
+  has conditions, such as a page's tags.
+
 - A tag reads as it was written wherever it appears, in every theme: a theme
   that shouts its controls no longer shouts the tags inside them, and a tag in
   a heading no longer inherits the heading's case. A tag beside a title is

@@ -621,6 +621,9 @@ suite('Webview contracts', () => {
     // One box per chip: VS Code's default <code> styling would draw a second.
     assert.strictEqual(html.includes('.query-term code { background: none; border-radius: 0; padding: 0;'), true);
     assert.strictEqual(html.includes('cursor: pointer; text-transform: none; }'), true);
+    // Choosing a recent search runs it rather than only filling the box.
+    assert.strictEqual(html.includes('replaceAll: true, apply: true'), true);
+    assert.strictEqual(html.includes('if (item.apply) {'), true);
     // A term chip removes its own term, so the whole chip is the control.
     assert.strictEqual(html.includes('<button class="query-term" data-action="remove-term"'), true);
     assert.strictEqual(html.includes("renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '')"), true);

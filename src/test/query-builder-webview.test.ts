@@ -15,14 +15,15 @@ suite('Tag overview query builder', () => {
     const view = mountTagOverview();
     view.send(createState());
     view.click({ action: 'toggle-builder' });
-    assert.strictEqual(view.countRows(), 1);
+    // The builder opens with the query's own row and an empty one to type in.
+    assert.strictEqual(view.countRows(), 2);
 
     view.posted.length = 0;
     view.click({ action: 'builder-add-row', groupIndex: '0' });
 
     assert.strictEqual(
       view.countRows(),
-      2,
+      3,
       'the new row should render immediately',
     );
     // An empty row does not change the query, and a round trip through the
@@ -50,7 +51,7 @@ suite('Tag overview query builder', () => {
     // survive it.
     view.send(createState());
 
-    assert.strictEqual(view.countRows(), 2);
+    assert.strictEqual(view.countRows(), 3);
   });
 
   test('rebuilds its rows when the query changes elsewhere', () => {
@@ -176,7 +177,7 @@ suite('Tag overview query builder', () => {
     view.send(createState());
     view.click({ action: 'toggle-builder' });
     view.click({ action: 'builder-add-row', groupIndex: '0' });
-    assert.strictEqual(view.countRows(), 2);
+    assert.strictEqual(view.countRows(), 3);
 
     const input = view.type(
       {
@@ -192,7 +193,7 @@ suite('Tag overview query builder', () => {
     );
     view.key(input, 'Backspace');
 
-    assert.strictEqual(view.countRows(), 1);
+    assert.strictEqual(view.countRows(), 2);
   });
 
   test('narrows by a facet, or leaves it out with Alt', () => {

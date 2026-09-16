@@ -1196,7 +1196,8 @@ export function getQueryEditorScript(): string {
           token: '',
           showAll: true,
           items: (all.recent || []).slice(0, 8).map(function (item) {
-            return { value: item.value, label: item.label, detail: item.detail, insert: item.value, replaceAll: true };
+            // A recent search is a whole search, so choosing one runs it.
+            return { value: item.value, label: item.label, detail: item.detail, insert: item.value, replaceAll: true, apply: true };
           }),
         };
       }
@@ -1371,6 +1372,10 @@ export function getQueryEditorScript(): string {
         draft = input.value;
         syncTextButtons(draft);
         if (options.onDraft) options.onDraft(draft);
+        if (item.apply) {
+          run(input.value);
+          return;
+        }
         input.focus();
         return;
       }
@@ -1540,9 +1545,16 @@ export function getQueryEditorScript(): string {
         if (action === 'toggle-builder') {
           builderOpen = !builderOpen;
           const groups = builderGroups();
-          if (builderOpen && groups.every(function (group) { return !group.rows.length; })) {
-            builderDraft = [{ rows: [pendingRow()] }];
-            pendingBuilderFocus = { groupIndex: 0, rowIndex: 0 };
+          if (builderOpen) {
+            // The builder always opens with an empty row to type in, even when
+            // the search already has conditions, such as a page's own tags.
+            const next = groups.length ? groups : [{ rows: [] }];
+            const last = next[next.length - 1];
+            if (!last.rows.some(function (row) { return row.pending; })) {
+              last.rows.push(pendingRow());
+            }
+            builderDraft = next;
+            pendingBuilderFocus = { groupIndex: next.length - 1, rowIndex: last.rows.length - 1 };
           }
           options.render();
           return true;
