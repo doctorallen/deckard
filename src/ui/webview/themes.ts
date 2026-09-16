@@ -341,26 +341,26 @@ ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
   if (theme === 'oblivion') {
     return `
 :root {
-  --bg-dark: #05070a;
-  --bg: #05070a;
-  --panel-bg: #0a0e12;
-  --panel: #0a0e12;
-  --panel-raised: #121a21;
-  --panel-deep: #030507;
+  --bg-dark: #04080b;
+  --bg: #04080b;
+  --panel-bg: #081115;
+  --panel: #081115;
+  --panel-raised: #0f1d24;
+  --panel-deep: #020608;
   --text: #dce6ea;
-  --muted: #7f939b;
-  --slate-border: #1b262c;
-  --line: #223039;
-  --line-strong: #5d7683;
-  --cyan-bright: #cfe3ea;
-  --cyan: #9fc0cc;
+  --muted: #6f8a95;
+  --slate-border: #12262e;
+  --line: #1b3a45;
+  --line-strong: #3f8296;
+  --cyan-bright: #5fd3e4;
+  --cyan: #3fb6c9;
   --amber-bright: #ff6a35;
   --amber: #e8562a;
   --amber-dim: #8c4326;
-  --green: #b9ccd2;
-  --toxic-green: #b9ccd2;
-  --favorite-red: #e8562a;
-  --warning-orange: #ff6a35;
+  --green: #cdbe95;
+  --toxic-green: #cdbe95;
+  --favorite-red: #ff5a30;
+  --warning-orange: #ff9a3c;
   --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
@@ -369,10 +369,10 @@ ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
 body {
   background-color: var(--bg-dark);
   background-image:
-    linear-gradient(rgba(159, 192, 204, .05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(159, 192, 204, .05) 1px, transparent 1px),
-    linear-gradient(rgba(159, 192, 204, .025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(159, 192, 204, .025) 1px, transparent 1px);
+    linear-gradient(rgba(95, 211, 228, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 211, 228, .05) 1px, transparent 1px),
+    linear-gradient(rgba(95, 211, 228, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 211, 228, .025) 1px, transparent 1px);
   background-size: 96px 96px, 96px 96px, 16px 16px, 16px 16px;
 }
 /* The page is a frame drawn on the grid, marked at two corners the way the
@@ -390,14 +390,14 @@ h1 { font-weight: 200; letter-spacing: .32em; }
 .source, .metric-label { color: var(--muted); letter-spacing: .16em; }
 .section-heading { border-bottom: 1px solid var(--slate-border); padding-bottom: 6px; }
 button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; text-transform: uppercase; }
-button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(159, 192, 204, .08); color: var(--cyan-bright); }
+button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
 /* An orange rule under the live control, in place of a filled button. */
 button.active { border-color: var(--line-strong); background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); }
 input[type='checkbox'] { accent-color: var(--cyan); }
-.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(10, 14, 18, .55); box-shadow: none; }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(8, 17, 21, .55); box-shadow: none; }
 .metric::before { border-bottom-color: var(--line-strong); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--amber); }
-.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--line-strong); background: rgba(159, 192, 204, .06); box-shadow: inset 2px 0 0 var(--amber); }
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .06); box-shadow: inset 2px 0 0 var(--amber); }
 .tag-name, .task-title a { color: var(--cyan-bright); }
 .tag-namespace { color: var(--muted); }
 .empty { border-color: var(--slate-border); background: transparent; }
@@ -413,7 +413,7 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 .task-filter-toggle button.active { border-color: var(--line-strong); box-shadow: inset 0 -2px 0 var(--amber); }
 /* Body blocks and hub notes are marked with a thin steel rule; orange stays
    with the alerts. */
-.markdown, .note-row .markdown { border-left: 2px solid var(--line-strong); background: rgba(3, 5, 7, .75); }
+.markdown, .note-row .markdown { border-left: 2px solid var(--line-strong); background: rgba(2, 6, 8, .75); }
 .hub { border-left: 2px solid var(--line-strong); background: transparent; }
 .hub-toggle { border-left-color: var(--line-strong); }
 ${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }

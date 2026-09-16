@@ -826,6 +826,7 @@ suite('Webview contracts', () => {
 
   test('defines theme overrides for each selectable webview theme', () => {
     assert.deepStrictEqual(deckardThemes, [
+      'corpo',
       'replicant',
       'oblivion',
       'lcars',
@@ -836,7 +837,7 @@ suite('Webview contracts', () => {
     ]);
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
-        '.entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
+        '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
@@ -859,12 +860,12 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('oblivion').includes('#9fc0cc'),
+      getDeckardThemeCss('oblivion').includes('#3fb6c9'),
       true,
     );
     assert.strictEqual(
       getDeckardThemeCss('oblivion').includes(
-        '.entity-row:hover, .tag-row:hover, .tag-open:hover, .note .tag-list button:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
+        '.entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover',
       ),
       true,
     );
