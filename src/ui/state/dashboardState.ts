@@ -626,9 +626,13 @@ export function createTagOverviewSnapshot(
       .map((sectionId) => index.sections.get(sectionId))
       .filter((section): section is Section => section !== undefined);
   } else if (effectiveFilterTagKey === undefined) {
-    sectionCandidates = tag.sectionIds
-      .map((sectionId) => index.sections.get(sectionId))
-      .filter((section): section is Section => section !== undefined);
+    // A tag is carried by the headings under it as well as by the entries
+    // that write it, which is what the evaluator answers for `tag:`. Listing
+    // only the entries that write it gave this page fewer results than the
+    // same search run from the Dashboard.
+    sectionCandidates = [...index.sections.values()].filter((section) =>
+      sectionIncludesTag(index, section, tag.key),
+    );
   } else {
     sectionCandidates = [...index.sections.values()].filter(
       (section) =>
@@ -685,9 +689,9 @@ export function createTagOverviewSnapshot(
       .map((taskId) => index.tasks.get(taskId))
       .filter((task): task is Task => task !== undefined);
   } else if (effectiveFilterTagKey === undefined) {
-    taskCandidates = tag.taskIds
-      .map((taskId) => index.tasks.get(taskId))
-      .filter((task): task is Task => task !== undefined);
+    taskCandidates = [...index.tasks.values()].filter((task) =>
+      taskIncludesTag(index, task, tag.key),
+    );
   } else {
     taskCandidates = [...index.tasks.values()].filter(
       (task) =>
@@ -750,6 +754,9 @@ export function createTagOverviewSnapshot(
       },
     ),
     entity: index.entities.get(tagKey),
+    // The page's own tags are written in its box, so the box holding text is
+    // no longer a sign that the page is narrowed; only a refinement is.
+    narrowed: Boolean(refinement.node),
     ...(hubFile
       ? {
           hub: createTagOverviewHub(

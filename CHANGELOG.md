@@ -113,6 +113,11 @@
 
 ### Changed
 
+- A tag overview and the Dashboard's **Search** tab are laid out the same way:
+  **Save** sits beside Search and Clear in the bar, **Sort** sits under it, and
+  both pages list their results under **Notes** and **Tasks** tabs. The tag
+  overview's title and its tag are no longer underlined.
+
 - A tag overview writes its own tags in its search box rather than holding
   them apart from it. The page reads as the search it is: its tags can be
   edited or dropped there like any other term, adding one from the sidebar
@@ -178,6 +183,17 @@
   the clone.
 
 ### Fixed
+
+- A tag overview shows its hub note again. The page's tags moved into its
+  search box, and text in the box was read as narrowing the page, which hides
+  the hub; only a search typed beyond the tags counts now.
+
+- A tag overview lists the same entries as the same search run from the
+  Dashboard. It listed only the entries that write its tag, while a search
+  answers with the headings that carry it as well.
+
+- A tag overview reopened from a previous session reads its tags back out of
+  the search it saved, rather than narrowing the page by them a second time.
 
 - A search term in the search bar sits in one box: VS Code styles every
   `<code>` element with a background and rounded corners, which drew a second

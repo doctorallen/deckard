@@ -246,7 +246,7 @@ export class TagOverviewPanels implements vscode.Disposable {
     }
     const serializedRefinement = getSerializedRefinement(state);
     if (serializedRefinement) {
-      panel.setRefinement(serializedRefinement);
+      panel.restoreSearchText(serializedRefinement);
     }
     panel.restore(webviewPanel);
     if (webviewPanel.active) {
@@ -504,6 +504,30 @@ class TagOverviewPanel implements vscode.Disposable {
 
   public setRefinement(text: string): void {
     this.refinementText = text.trim() || undefined;
+  }
+
+  /**
+   * Restores a search the page persisted. The box holds the page's tags as
+   * well as anything typed after them, so the tags are read back out of it:
+   * left in the refinement they would narrow the page a second time, and a
+   * refinement hides the hub note.
+   */
+  public restoreSearchText(text: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return;
+    }
+    const index = this.indexer.getSnapshot();
+    const { tagKeys, rest } = extractTagTerms(trimmed, (tagKey) =>
+      resolveIndexedTagKey(index.tags, tagKey),
+    );
+    if (this.tagKey) {
+      this.filterTagKeys = resolveFilterTagKeys(index.tags, this.tagKey, undefined, [
+        ...this.filterTagKeys,
+        ...tagKeys,
+      ]);
+    }
+    this.refinementText = rest || undefined;
   }
 
   public clearRefinement(): void {

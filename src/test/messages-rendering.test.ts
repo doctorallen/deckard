@@ -635,7 +635,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("renderInlineTitle(card.title, card.titleTags, false)"), false);
     // The chosen task tags sit in a dashed, headed box like Refine.
     assert.strictEqual(html.includes('<div class="selected-task-tags" aria-label="Selected task tags"><span class="query-facets-heading">Tags</span>'), true);
-    assert.strictEqual(html.includes('padding: 10px; border: 1px dashed var(--line-strong); }'), true);
+    assert.strictEqual(html.includes('padding: 10px 12px; border: 1px dashed var(--line-strong); }'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
     assert.strictEqual(
@@ -1477,7 +1477,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('note entries'), false);
     assert.strictEqual(html.includes('data-action="save-filter"'), true);
     assert.strictEqual(
-      html.includes('aria-label="Save this view"'),
+      html.includes('data-action="save-filter" data-query-needs-text'),
       true,
     );
     assert.strictEqual(html.includes("type: 'saveTagOverviewFilter'"), true);
