@@ -351,6 +351,8 @@ export interface TagOverviewSnapshot {
   query?: QueryViewState;
   /** @deprecated Use filterTags to support every active overview filter. */
   filterTag?: TagReference;
+  /** Whether a search beyond the page's own tags is narrowing it. */
+  narrowed?: boolean;
   filterTags: TagReference[];
   savedViewName?: string;
   associatedTags: TagAssociation[];

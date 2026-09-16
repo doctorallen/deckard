@@ -146,6 +146,18 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 }
 .control-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
+/* A labelled control, such as a sort, drawn the same way on every page. */
+.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.control-icon { position: relative; display: inline-block; }
+.control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
+.control-icon select:hover + .control-icon-svg { color: var(--amber-bright); }
+.control-icon select { padding-left: 29px; }
+
+/* Notes and Tasks tabs over a set of results, on a page that lists both. */
+.overview-tabs-row { margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
+.overview-tabs button { border-bottom-color: var(--line); }
+.overview-tab-panel { margin-top: 12px; }
+
 /* A row of buttons that reads as one control. */
 .segmented { display: inline-flex; }
 .segmented > * + * { margin-left: calc(var(--edge) * -1); }
@@ -793,9 +805,9 @@ export function getQueryEditorCss(): string {
 .query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
 .query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
 /* The facets wrap on the left; the result count holds the top-right corner. */
-.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 18px; margin: 12px 0; padding: 10px; border: 1px dashed var(--line-strong); }
+.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 18px; margin: 12px 0; padding: 10px 12px; border: 1px dashed var(--line-strong); }
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
-.query-facets-count { color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
+.query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }

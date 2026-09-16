@@ -69,11 +69,6 @@ ${getQueryEditorCss()}
 section { min-width: 0; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .control-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
-.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
-.control-icon { position: relative; display: inline-block; }
-.control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
-.control-icon select:hover + .control-icon-svg { color: var(--amber-bright); }
-.control-icon select { padding-left: 29px; }
 button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
 button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
@@ -224,6 +219,8 @@ ${getQueryEditorScript()}
   let taskSearchQuery = '';
   let taskTagQuery = '';
   let taskTagFilterOpen = false;
+  /** Which half of the Search tab's results is shown, as a tag overview does. */
+  let noteSearchTab = 'notes';
   let noteSearchQuery = '';
   const noteSearchDebounceDelay = 350;
   const tagSearchDebounceDelay = 180;
@@ -983,6 +980,10 @@ ${getQueryEditorScript()}
     });
     const searchTasks = state.noteQueryTasks || [];
     const searchTaskCount = state.noteQueryTaskCount || searchTasks.length;
+    const searchResultTabs = '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="Search results">'
+      + '<button class="' + (noteSearchTab === 'notes' ? 'active' : '') + '" data-action="set-search-tab" data-tab="notes" role="tab" aria-selected="' + (noteSearchTab === 'notes') + '">Notes (' + state.notes.length + ')</button>'
+      + '<button class="' + (noteSearchTab === 'tasks' ? 'active' : '') + '" data-action="set-search-tab" data-tab="tasks" role="tab" aria-selected="' + (noteSearchTab === 'tasks') + '">Tasks (' + (state.noteQueryTaskCount ?? searchTasks.length) + ')</button>'
+      + '</div></div>';
     const noteSearchTasks = searchTasks.length
       ? '<section class="note-search-tasks" aria-labelledby="note-search-tasks-heading"><div class="section-heading"><h2 id="note-search-tasks-heading">Matching tasks <span class="tag-count">' + searchTaskCount + '</span></h2></div><div class="task-list">' + searchTasks.map(function (item) { return renderTaskRow(item, true); }).join('') + '</div>' + (searchTaskCount > searchTasks.length ? '<p class="source">Showing the first ' + searchTasks.length + '.</p>' : '') + '</section>'
       : '';
@@ -1074,7 +1075,7 @@ ${getQueryEditorScript()}
       savedFilters +
       '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks' + renderTabSearchMark(taskSearchQuery) + '</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Search' + renderTabSearchMark(noteEditor.currentText() || state.noteQueryText || '') + '</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '') + '</button></div></div>' +
       '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + (taskLayout === 'board' ? renderTaskBoardGroupSwitch(state.taskBoard.groupBy) : '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label>') + '<div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + taskNotice + taskContent + '</section>' +
-      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar(noteSortControl) + '</div>' + noteEditor.renderFacets() + '<div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div>' + noteSearchTasks + '</section>' +
+      '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar(noteSortControl) + '</div>' + noteEditor.renderFacets() + searchResultTabs + '<div class="overview-tab-panel"' + (noteSearchTab === 'notes' ? '' : ' hidden') + '><div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div></div><div class="overview-tab-panel"' + (noteSearchTab === 'tasks' ? '' : ' hidden') + '>' + noteSearchTasks + '</div></section>' +
       '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search"' + (normalizedBrowseQuery ? ' data-has-query' : '') + ' data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagNotice + tagContent + '</section>';
     const nextTagFilter = document.querySelector('.tag-filter');
     const nextTagOptions = document.querySelector('.tag-filter-options');
@@ -1162,6 +1163,11 @@ ${getQueryEditorScript()}
         render();
         const field = document.querySelector('input[data-action="' + (isTaskSearch ? 'search-tasks' : 'search-browse') + '"]');
         if (field) field.focus();
+        return;
+      }
+      if (action === 'set-search-tab') {
+        noteSearchTab = target.dataset.tab === 'tasks' ? 'tasks' : 'notes';
+        render();
         return;
       }
       if (action === 'set-dashboard-mode') {
