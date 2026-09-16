@@ -153,7 +153,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .relationship-count { color: var(--muted); font-size: 10px; }
 .query-summary { color: var(--cyan); font: 12px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .overview-filter-tag { display: inline-flex; align-items: baseline; gap: 5px; }
-.title-filter-remove { min-height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--muted); padding: 0 4px; font-size: 12px; line-height: 16px; vertical-align: middle; }
+.title-filter-remove { min-height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--text); padding: 0 4px; font-size: 12px; line-height: 16px; vertical-align: middle; }
 .title-filter-remove:hover, .title-filter-remove:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }

@@ -19,7 +19,7 @@ export type DeckardTheme = (typeof deckardThemes)[number];
 const contentHoverCss =
   '.entity-row, .tag-row, .tag-open, .note .tag-list button, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .tag-open, .note .tag-list button { display: inline-block; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); } .inline-tag, .inline-tag:hover, .inline-tag:focus-visible { transform: none; }';
 
-const replicantHoverCss = `${contentHoverCss} .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open, .note-row .tag-open { color: var(--text); }`;
+const replicantHoverCss = `${contentHoverCss} .note:hover, .note-row:hover { border-color: var(--amber); } .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }`;
 
 /**
  * Corpo, the plain default: every token comes from the VS Code color theme in
@@ -77,7 +77,7 @@ code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monosp
 .task-meta { color: var(--muted); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
 .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
-.tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
+.tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
 button, select, input[type="text"], input[type="search"], .view-options summary, .tag-filter summary { border-radius: 2px; }
 button, .view-options summary, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 button:hover, .view-options summary:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
@@ -97,6 +97,7 @@ input[type="checkbox"], .task input { accent-color: var(--vscode-button-backgrou
 .tag-open { border-color: transparent; }
 .inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 3px; }
 .tag-open:hover, .inline-tag:hover, .task-title .inline-tag:hover { border-color: transparent; background: var(--vscode-list-hoverBackground); color: var(--vscode-textLink-activeForeground); }
+.query-suggestion:hover, .query-suggestion.active { background: var(--vscode-list-hoverBackground); color: var(--vscode-foreground); }
 .zoom-controls button, .zoom-readout, .reset-graph-settings { background: var(--vscode-editorWidget-background); }
 `;
 
@@ -185,7 +186,7 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 .favorite-toggle.favorite .favorite-heart { color: var(--bg-dark); }
 .favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--favorite-red); background: var(--favorite-red); color: var(--bg-dark); }
 .favorite-toggle:hover .favorite-heart, .favorite-toggle:focus-visible .favorite-heart { color: var(--bg-dark); }
-${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
+${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
 `;
   }
 
@@ -330,7 +331,7 @@ input[type='checkbox'] { accent-color: var(--amber); }
 .favorite-toggle.favorite { border-color: var(--amber); background: var(--amber); color: var(--bg-dark); }
 .favorite-toggle .favorite-heart { color: var(--amber); }
 .favorite-toggle.favorite .favorite-heart { color: var(--bg-dark); }
-${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
+${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
 `;
   }
 
@@ -416,7 +417,7 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 .markdown, .note-row .markdown { border-left: 2px solid var(--line-strong); background: rgba(2, 6, 8, .75); }
 .hub { border-left: 2px solid var(--line-strong); background: transparent; }
 .hub-toggle { border-left-color: var(--line-strong); }
-${contentHoverCss} .card .tag-open, .note-row .tag-open { color: var(--text); }
+${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
 `;
   }
 

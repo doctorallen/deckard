@@ -854,6 +854,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(corpo.includes('--text: var(--vscode-foreground);'), true);
     assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
     assert.strictEqual(corpo.includes('body { background: var(--vscode-editor-background); }'), true);
+    // Every overlay is opaque: VS Code's hover color is often semi-transparent.
+    assert.strictEqual(corpo.includes('.sidebar-association-tooltip, .query-suggestions { clip-path: none;'), true);
     // A page VS Code gives no backdrop paints its own, or it renders blank.
     assert.strictEqual(corpo.includes('body:has(.sidebar-header)'), true);
     assert.strictEqual(corpo.includes('.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border'), true);
@@ -899,7 +901,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('replicant').includes(
-        '.card .tag-open, .note-row .tag-open { color: var(--text); }',
+        '.card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }',
       ),
       true,
     );
@@ -915,7 +917,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('oblivion').includes(
-        '.card .tag-open, .note-row .tag-open { color: var(--text); }',
+        '.card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }',
       ),
       true,
     );
@@ -1191,6 +1193,8 @@ suite('Webview contracts', () => {
     const cooper = getDeckardThemeCss('cooper');
     assert.strictEqual(cooper.includes('--bg-dark: #030405'), true);
     assert.strictEqual(cooper.includes('--amber: #dca24a'), true, "Gargantua's gold");
+    // A tag's resting color never outranks the fill a theme gives it on hover.
+    assert.strictEqual(/\.card \.tag-open, \.note-row \.tag-open \{ color/.test(cooper), false);
     // A hovered tag keeps Cooper's inverted button colors, not a dark ground under dark text.
     assert.strictEqual(cooper.includes('.tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); }'), true);
     assert.strictEqual(/\.tag-open:hover[^{]*\{[^}]*background: var\(--panel-raised\)/.test(cooper), false);
@@ -1613,7 +1617,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('.active-file .tag-list button { color: var(--text); }'),
+      html.includes('.active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }'),
       true,
     );
     assert.strictEqual(

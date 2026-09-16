@@ -82,8 +82,8 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
 .relevance-weights strong { color: var(--green); font-weight: 600; }
 .note .tag-list { margin-top: 7px; }
-.note .tag-list button { color: var(--text); }
-.active-file .tag-list button { color: var(--text); }
+.note .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
+.active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: 9px var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
 .graph-kind.task { color: var(--amber); }
 .graph-kind.tag { color: var(--green); }
