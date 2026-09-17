@@ -37,8 +37,12 @@ export function getSidebarNotesHtml(
 <style nonce="${nonce}">${getBaseCss()}
 .relevance-score, .version { font-family: var(--font-mono); }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
+.sidebar-header .eyebrow { flex: 0 0 auto; }
+/* The selected entry is context for the list, not the subject of the pane:
+   two lines of it, so the related notes start above the fold. */
+.active-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .version { flex: 0 0 auto; color: var(--green); font-size: 10px; }
-.active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
+.active-file { margin-top: 8px; padding: 7px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
 .graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
@@ -59,7 +63,7 @@ button:hover { border-color: var(--amber); color: var(--amber); background: var(
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
-.section-label { display: block; margin: 16px 0 7px; padding-left: 6px; border-left: 2px solid var(--amber); }
+.section-label { display: block; margin: 10px 0 6px; padding-left: 6px; border-left: 2px solid var(--amber); }
 .note-list { display: grid; gap: 8px; }
 .note { position: relative; border: 2px solid var(--line); background: var(--panel); padding: 9px; cursor: pointer; }
 .note:hover, .note:focus-within { z-index: 20; border-color: var(--line-strong); }
@@ -249,6 +253,9 @@ ${getComponentScript()}
   // count starts over whenever the sidebar shows a different list.
   const NOTE_PAGE_SIZE = 50;
   let visibleNoteLimit = NOTE_PAGE_SIZE;
+  /** How many of the note's own tags are listed before the rest are folded. */
+  const ACTIVE_TAG_PAGE_SIZE = 4;
+  let showEveryActiveTag = false;
   let visibleNoteListKey = '';
 
   function getNoteListKey() {
@@ -339,8 +346,19 @@ ${getComponentScript()}
         );
       }).join('') + '</div>' + showMore;
     }
+    // The note's own tags are context for the list below them, so only the
+    // first few are kept on screen; the rest are one press away. A note with
+    // a dozen tags used to push every related note out of view.
+    const shownActiveTags = showEveryActiveTag
+      ? state.activeTags
+      : state.activeTags.slice(0, ACTIVE_TAG_PAGE_SIZE);
+    const hiddenActiveTagCount = state.activeTags.length - shownActiveTags.length;
     const activeTags = state.activeTags.length
-      ? '<div class="active-tag-list" aria-label="Active note tags">' + state.activeTags.map(renderActiveTag).join('') + '</div>'
+      ? '<div class="active-tag-list" aria-label="Active note tags">' + shownActiveTags.map(renderActiveTag).join('')
+        + (hiddenActiveTagCount > 0
+          ? '<button type="button" class="clear-entry-context" data-action="show-every-active-tag">Show ' + hiddenActiveTagCount + ' more ' + (hiddenActiveTagCount === 1 ? 'tag' : 'tags') + '</button>'
+          : '')
+        + '</div>'
       : '';
     const context = state.state === 'refine'
       ? ''
@@ -385,6 +403,11 @@ ${getComponentScript()}
     }
     const target = event.target.closest('[data-action]');
     if (target) {
+      if (target.dataset.action === 'show-every-active-tag') {
+        showEveryActiveTag = true;
+        render();
+        return;
+      }
       if (target.dataset.action === 'show-relevance') {
         // Pressing the score opens the panel that hovering shows, so the
         // reasons are reachable without a pointer.
