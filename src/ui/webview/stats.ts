@@ -123,6 +123,19 @@ export class StatsPanel implements vscode.Disposable {
       return;
     }
 
+    // A total opens the notes and tasks it counted, so the page is a way in
+    // rather than a list of numbers.
+    if (message.type === 'openSearch') {
+      await vscode.commands.executeCommand('deckard.search', message.query);
+      return;
+    }
+
+    // The page is where staleness shows, so it is also where it is fixed.
+    if (message.type === 'reindexWorkspace') {
+      await vscode.commands.executeCommand('deckard.reindexWorkspace');
+      return;
+    }
+
     const section = [...index.sections.values()].find(
       (candidate) =>
         candidate.filePath === message.filePath &&

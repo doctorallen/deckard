@@ -323,6 +323,10 @@ export function getSurfaceCss(): string {
   margin-top: 20px;
 }
 .metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: 12px; }
+/* A metric that opens what it counts keeps the tile's look, and gains the
+   hover and focus treatment every other control has. */
+.metric-open { display: grid; gap: 4px; justify-items: start; text-align: left; font: inherit; cursor: pointer; }
+.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: inherit; }
 .metric-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
 .metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
 

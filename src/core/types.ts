@@ -585,7 +585,16 @@ export interface DeckardStatsSnapshot {
 }
 
 /** Messages from the Stats page, which only opens what it lists. */
-export type StatsMessage = OpenTagMessage | OpenSourceMessage;
+/** Asks the host to read every note again. */
+export interface ReindexWorkspaceMessage {
+  type: 'reindexWorkspace';
+}
+
+export type StatsMessage =
+  | OpenTagMessage
+  | OpenSourceMessage
+  | OpenSearchMessage
+  | ReindexWorkspaceMessage;
 
 /** Messages from the sidebar calendar. The host finds each note itself. */
 export type CalendarMessage =

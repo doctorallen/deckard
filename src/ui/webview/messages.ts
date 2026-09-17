@@ -473,6 +473,15 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
             line: value.line as number,
           }
         : undefined;
+    case 'openSearch':
+      return typeof value.query === 'string' &&
+        value.query.length <= MAX_QUERY_LENGTH
+        ? { type: 'openSearch', query: value.query }
+        : undefined;
+    case 'reindexWorkspace':
+      return Object.keys(value).length === 1
+        ? { type: 'reindexWorkspace' }
+        : undefined;
     default:
       return undefined;
   }

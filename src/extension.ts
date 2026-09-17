@@ -360,6 +360,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.reindexWorkspace', async () => {
       await indexer.ready;
       await indexer.refresh();
+      // Reindexing looked like it did nothing: a status-bar spinner, then
+      // silence. Asked for by hand, it says what it found.
+      const index = indexer.getSnapshot();
+      void vscode.window.showInformationMessage(
+        `Deckard indexed ${index.files.size} ${
+          index.files.size === 1 ? 'note' : 'notes'
+        }, ${index.tasks.size} ${
+          index.tasks.size === 1 ? 'task' : 'tasks'
+        }, and ${index.tags.size} ${index.tags.size === 1 ? 'tag' : 'tags'}.`,
+      );
     }),
   );
   context.subscriptions.push(

@@ -25,7 +25,8 @@ export function getStatsHtml(webview: vscode.Webview): string {
 <title>Deckard Stats</title>
 <style nonce="${nonce}">${getBaseCss()}
 .updated, .count { font-family: var(--font-mono); }
-.updated { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.reindex { min-height: 22px; padding: 2px 8px; font-size: 10px; text-transform: uppercase; }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
 .view-panel h2 { padding: 12px; border-bottom: 2px solid var(--line); color: var(--cyan); }
@@ -51,8 +52,15 @@ ${getDeckardThemeCss(getDeckardTheme())}
   const vscode = acquireVsCodeApi();
   let state;
 ${getComponentScript()}
-  function metric(label, value) {
-    return '<article class="metric"><span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong></article>';
+  /**
+   * One number. Given a search, it becomes a button that opens the notes and
+   * tasks behind it: the totals were a dead end, even where a page existed
+   * that listed exactly what was being counted.
+   */
+  function metric(label, value, query, hint) {
+    const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>';
+    if (!query) return '<article class="metric">' + body + '</article>';
+    return '<button type="button" class="metric metric-open" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '">' + body + '</button>';
   }
   // isTag draws the label as a tag, with its namespace dimmed as everywhere
   // else a tag is shown.
@@ -75,6 +83,15 @@ ${getComponentScript()}
     return event.target && event.target.closest ? event.target.closest('.stat-row') : null;
   }
   document.addEventListener('click', function (event) {
+    const action = event.target.closest ? event.target.closest('[data-action]') : null;
+    if (action && action.dataset.action === 'open-search') {
+      vscode.postMessage({ type: 'openSearch', query: action.dataset.query });
+      return;
+    }
+    if (action && action.dataset.action === 'reindex') {
+      vscode.postMessage({ type: 'reindexWorkspace' });
+      return;
+    }
     const row = findRow(event);
     if (row) openRow(row);
   });
@@ -90,9 +107,9 @@ ${getComponentScript()}
     const updated = state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'Not indexed yet';
     const metrics = [
       metric('Markdown files', state.fileCount),
-      metric('Note entries', state.sectionCount),
-      metric('Tasks', state.taskCount),
-      metric('Open tasks', state.activeTaskCount),
+      metric('Note entries', state.sectionCount, '', ''),
+      metric('Tasks', state.taskCount, 'has:task', 'Open a search for every task'),
+      metric('Open tasks', state.activeTaskCount, 'is:open', 'Open a search for every open task'),
       metric('All tags', state.tagCount),
       metric('Canonical tags', state.entityCount),
       metric('Wiki links', state.wikiLinkCount),
@@ -100,7 +117,7 @@ ${getComponentScript()}
     ].join('');
     const unlisted = state.orphanNoteCount - state.orphanNotes.length;
     const orphans = '<section class="views" aria-label="Link statistics"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article></section>';
-    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + '</p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
+    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + ' <button type="button" class="reindex" data-action="reindex" title="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') { state = event.data.data; render(); }
