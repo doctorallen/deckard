@@ -1020,6 +1020,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | SetTaskFilterMessage
@@ -1157,6 +1158,7 @@ export interface ShowColumnRestMessage {
 }
 
 export type TaskBoardMessage =
+  | OpenHelpMessage
   | ShowColumnRestMessage
   | SaveBoardSearchMessage
   | SidebarReadyMessage

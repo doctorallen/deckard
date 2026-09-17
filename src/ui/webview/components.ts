@@ -836,6 +836,19 @@ export function getComponentScript(): string {
    * { label, html, stacked }, one row of the menu each. A menu that was open
    * before a redraw is open after it.
    */
+  /**
+   * The way to Help from any page. Help was reachable only from one icon in
+   * the Related Notes sidebar, or the command palette, so the pages a reader
+   * gets stuck on offered no route to it.
+   */
+  function renderHelpButton(anchor) {
+    return '<button type="button" class="icon-button help-button" data-action="open-help"'
+      + (anchor ? ' data-help-anchor="' + escapeHtml(anchor) + '"' : '')
+      + ' aria-label="Open Help" title="Open Help">'
+      + '<svg class="toolbar-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg>'
+      + '</button>';
+  }
+
   function renderViewOptions(groups) {
     const wasOpen = Boolean(document.querySelector('.view-options[open]'));
     return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">' + '${settingsIcon}' + '</summary>'

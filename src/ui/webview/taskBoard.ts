@@ -303,6 +303,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'ready':
         this.refresh();
         return;
+      case 'openHelp':
+        await vscode.commands.executeCommand('deckard.showHelp');
+        return;
       case 'setBoardGroup':
         // A different grouping is a different board, so the Done column goes
         // back to its short form.

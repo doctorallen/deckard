@@ -532,6 +532,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
           message.columns,
         );
         return;
+      case 'openHelp':
+        await vscode.commands.executeCommand('deckard.showHelp');
+        return;
       case 'saveTagOverviewFilter':
         await this.saveSearch();
         return;

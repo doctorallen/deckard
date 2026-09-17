@@ -331,7 +331,7 @@ ${getQueryEditorScript()}
     const staleNotice = invalid
       ? '<p class="stale-results">The search above has not run. These are the results of the last one that did.</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + layoutContent;
     applyColumns();
     filterEntries('notes');
     filterEntries('tasks');
@@ -392,6 +392,7 @@ ${getQueryEditorScript()}
         saveState();
         render();
       }
+      if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
       if (action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });

@@ -59,7 +59,7 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 11px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; cursor: pointer; list-style: none; user-select: none; }
 .control-group summary::before { content: '▸ '; color: var(--muted); }
 .control-group[open] summary::before { content: '▾ '; }
-.control-group summary:hover, .control-group summary:focus-visible { background: var(--panel-raised); outline: none; }
+.control-group summary:hover, .control-group summary:focus-visible { background: var(--panel-raised); }
 .control-body { display: flex; flex-direction: column; gap: 8px; padding: 4px 10px 10px; border-top: 1px solid var(--slate-border); }
 .control-row { display: flex; flex-direction: column; gap: 3px; }
 .control-row label { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; }
@@ -70,7 +70,7 @@ input[type='checkbox'] { accent-color: var(--amber-bright); }
 .toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: 11px var(--font-mono); cursor: pointer; }
 .graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: 11px var(--font-mono); }
 input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
-.graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); outline: none; }
+.graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); }
 .tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
 .tag-list .toggle-row { padding: 2px 4px; font-size: 10px; }
 .tag-list .toggle-row:hover { background: var(--panel-raised); }
@@ -78,17 +78,27 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .tag-list-note { color: var(--muted); font: 10px var(--font-mono); padding: 2px 4px; }
 .relationship-note { margin: 0; color: var(--muted); font: 10px/1.45 var(--font-mono); }
 .clear-tags { align-self: flex-start; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 10px var(--font-mono); text-transform: uppercase; cursor: pointer; }
-.clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); outline: none; }
+.clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .zoom-controls { display: inline-flex; }
 .zoom-controls button { min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
-.zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); outline: none; position: relative; }
+.zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: 10px var(--font-mono); }
 .reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 10px var(--font-mono); text-transform: uppercase; cursor: pointer; }
-.reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); outline: none; }
+.reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
+.graph-legend { display: flex; align-items: center; gap: 5px; }
+.graph-legend .legend-swatch { width: 8px; height: 8px; border-radius: 50%; }
+.graph-legend .legend-swatch + .legend-swatch, .graph-legend .legend-swatch:not(:first-child) { margin-left: 7px; }
+.legend-note { background: var(--cyan-bright); }
+.legend-task { background: var(--amber-bright); }
+.legend-tag { background: var(--toxic-green); }
+/* The panels follow the theme rather than a fixed near-black, which was
+   unreadable when corpo took its text colour from a light VS Code theme. */
+.control-group { background: var(--panel); }
+.tooltip { background: var(--panel-raised); }
 .tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
 .tooltip .tooltip-title { color: var(--text); font: 700 11px var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: 10px var(--font-mono); margin-top: 2px; }
@@ -97,7 +107,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
-<canvas id="graph" aria-label="Notes graph"></canvas>
+<canvas id="graph" tabindex="0" role="application" aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Escape to clear." aria-describedby="graph-legend"></canvas>
 <div class="empty-state" id="empty-state">No indexed notes yet — save a Markdown file with tags or links.</div>
 <div class="overlay" role="group" aria-label="Graph controls">
   <details class="control-group" open>
@@ -154,7 +164,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   </div>
   <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph settings</button>
 </div>
-<div class="status-line"><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
+<div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>
 <script nonce="${nonce}">
 (function () {
@@ -1442,7 +1452,11 @@ ${getDeckardThemeCss(getDeckardTheme())}
     var visibleEdgeCount = edges.filter(function (edge) {
       return isRendered(edge.a) && isRendered(edge.b);
     }).length;
-    statusCounts.textContent = snapshot.totalNoteCount + ' notes · ' +
+    var matchCount = matchSet ? Object.keys(matchSet).length : -1;
+    var searchNote = matchCount >= 0
+      ? matchCount + (matchCount === 1 ? ' match' : ' matches') + ' · '
+      : '';
+    statusCounts.textContent = searchNote + snapshot.totalNoteCount + ' notes · ' +
       snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount +
       ' strong links / ' + snapshot.edges.length + ' indexed · ' +
       communityCount + ' communities';
@@ -1651,6 +1665,55 @@ ${getDeckardThemeCss(getDeckardTheme())}
       scheduleFrame();
     }
   }
+  /**
+   * Move the selection between nodes without a pointer.
+   *
+   * The graph is a canvas, so there is nothing for Tab to land on inside it:
+   * without this the whole view could be looked at but never used from the
+   * keyboard. Nodes are visited in the order they are drawn, and the camera
+   * follows the selection so it is never off screen.
+   */
+  canvas.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      setSelectedIndex(-1);
+      vscode.postMessage({ type: 'selectNode', nodeId: null });
+      scheduleFrame();
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (selectedIndex >= 0) {
+        event.preventDefault();
+        openNode(selectedIndex);
+      }
+      return;
+    }
+    var forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
+    var backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+    if (!forward && !backward) { return; }
+    event.preventDefault();
+    var visible = [];
+    for (var i = 0; i < nodes.length; i += 1) {
+      if (isRendered(i)) { visible.push(i); }
+    }
+    if (!visible.length) { return; }
+    var current = visible.indexOf(selectedIndex);
+    var next = current < 0
+      ? (forward ? 0 : visible.length - 1)
+      : (current + (forward ? 1 : -1) + visible.length) % visible.length;
+    selectNode(visible[next]);
+    centerOnNode(visible[next]);
+  });
+
+  /** Bring a node into view, keeping the current zoom. */
+  function centerOnNode(index) {
+    var width = canvas.clientWidth || 800;
+    var height = canvas.clientHeight || 600;
+    camera.x = width / 2 - px[index] * camera.k;
+    camera.y = height / 2 - py[index] * camera.k;
+    persist();
+    scheduleFrame();
+  }
+
   canvas.addEventListener('pointerup', endPointer);
   canvas.addEventListener('pointercancel', endPointer);
   canvas.addEventListener('pointerleave', function () {

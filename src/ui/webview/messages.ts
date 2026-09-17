@@ -209,6 +209,7 @@ export function parseSearchPageMessage(
     case 'saveTagOverviewFilter':
     case 'createHubNote':
     case 'clearOverviewQuery':
+    case 'openHelp':
       return Object.keys(value).length === 1 ? { type: value.type } : undefined;
     case 'setOverviewQuery':
       return isOverviewQueryMessage(value)
@@ -396,6 +397,10 @@ export function parseTaskBoardMessage(
     case 'showColumnRest':
       return typeof value.columnId === 'string' && value.columnId.length > 0
         ? { type: 'showColumnRest', columnId: value.columnId }
+        : undefined;
+    case 'openHelp':
+      return Object.keys(value).length === 1
+        ? { type: 'openHelp' }
         : undefined;
     case 'setBoardQuery':
       return typeof value.query === 'string' &&
