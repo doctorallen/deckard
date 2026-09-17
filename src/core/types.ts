@@ -18,22 +18,15 @@ export type TaskFilter = 'all' | 'active' | 'completed';
 /** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
 export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 
-export type DashboardMode = 'tasks' | 'notes' | 'browse';
+/** The Dashboard's tabs: Search, and Tags. Tasks have the Task Board. */
+export type DashboardMode = 'notes' | 'browse';
 
-export type DashboardSearchField =
-  | 'tasks'
-  | 'notes'
-  | 'tags'
-  | 'taskTags';
+export type DashboardSearchField = 'notes' | 'tags';
 
 export interface DashboardViewState {
   mode: DashboardMode;
-  taskFilter: TaskFilter;
-  selectedTaskTags: string[];
-  taskSearchQuery: string;
   noteSearchQuery: string;
   tagSearchQuery: string;
-  taskTagQuery: string;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
@@ -248,9 +241,12 @@ export interface PersistedPreferences {
   sectionAccessTimes?: Record<string, number>;
   /** Searches run recently, newest first. */
   recentQueries?: string[];
-  /** Absent in preferences saved before the Dashboard had a board layout. */
-  dashboardTaskLayout?: DashboardTaskLayout;
-  dashboardBoardGroup?: TaskBoardGroupBy;
+  /** How the Task Board shows its tasks. */
+  taskBoardLayout: TaskLayout;
+  /** What the Task Board's columns group tasks by. */
+  taskBoardGroup: TaskBoardGroupBy;
+  /** Which tasks the Task Board's list shows. */
+  taskBoardTaskFilter: TaskFilter;
 }
 
 /**
@@ -292,13 +288,10 @@ export interface DashboardSnapshot {
   tags: TagInfo[];
   entities: Entity[];
   notes: DashboardNote[];
-  tasks: DashboardTask[];
   totalSectionCount: number;
   totalNoteCount: number;
   totalTaskCount: number;
-  activeTaskCount: number;
-  taskFilter: TaskFilter;
-  taskSortMode: TaskSortMode;
+  /** Columns of the tasks a search matches. */
   taskColumns: DashboardColumnCount;
   noteColumns: DashboardColumnCount;
   tagColumns: DashboardColumnCount;
@@ -307,15 +300,9 @@ export interface DashboardSnapshot {
   tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
-  availableTaskTags: TagInfo[];
-  selectedTaskTags: string[];
   selectedTag?: string;
   viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
-  /** List when absent. */
-  taskLayout?: DashboardTaskLayout;
-  /** The filtered tasks as a board, present when `taskLayout` is `board`. */
-  taskBoard?: TaskBoardLayout;
   /**
    * True when `notes` was left empty because the Search tab is not showing.
    * Notes are most of what the page is sent, so other tabs are sent none.
@@ -642,11 +629,6 @@ export interface SetTaskFilterMessage {
   filter: TaskFilter;
 }
 
-export interface SetTaskTagsMessage {
-  type: 'setTaskTags';
-  tagKeys: string[];
-}
-
 export interface ReorderTasksMessage {
   type: 'reorderTasks';
   taskIds: string[];
@@ -827,24 +809,17 @@ export type DashboardMessage =
   | ToggleFavoriteEntityMessage
   | SetTagSortMessage
   | SetEntitySortMessage
-  | SetTaskFilterMessage
-  | SetTaskTagsMessage
-  | SetTaskSortMessage
   | SetRenderModeMessage
   | SetNoteSortMessage
   | SetDashboardModeMessage
   | SetDashboardSearchMessage
   | SetDashboardColumnsMessage
-  | ReorderTasksMessage
   | ReorderTagsMessage
   | ReorderEntitiesMessage
   | OpenTagMessage
   | RenameTagMessage
   | OpenSavedFilterMessage
   | RemoveSavedFilterMessage
-  | SetDashboardTaskLayoutMessage
-  | SetBoardGroupMessage
-  | MoveTaskMessage
   | RecordRecentQueryMessage
   | SaveDashboardSearchMessage;
 
@@ -914,20 +889,34 @@ export interface TaskBoardLayout {
   taskCount: number;
 }
 
-/** The Task Board page, which chooses its tasks with a query. */
+/** The Task Board page, which chooses its tasks with a search. */
 export interface TaskBoardSnapshot extends TaskBoardLayout {
-  /** The query narrowing the board, or empty for every task. */
-  query: string;
-  /** Why the last query typed could not be applied. */
-  queryError?: string;
+  /** The search narrowing the tasks, as every search box shows one. */
+  query: QueryViewState;
+  layout: TaskLayout;
+  /** The searched tasks as a list, present when `layout` is `list`. */
+  tasks?: DashboardTask[];
+  /** How many searched tasks each of All, Open, and Done keeps. */
+  taskCounts: { all: number; active: number; completed: number };
+  taskFilter: TaskFilter;
+  taskSortMode: TaskSortMode;
+  tagTitleDisplayMode: TagTitleDisplayMode;
+  /** The board settings the page's view options edit. */
+  settings: TaskBoardSettings;
 }
 
-/** How the Dashboard's Tasks tab lays out its tasks. */
-export type DashboardTaskLayout = 'list' | 'board';
+/** The `deckard.board` settings, as the Task Board's view options show them. */
+export interface TaskBoardSettings {
+  statuses: string[];
+  statusNamespace: string;
+}
 
-export interface SetDashboardTaskLayoutMessage {
-  type: 'setDashboardTaskLayout';
-  layout: DashboardTaskLayout;
+/** Whether the Task Board shows its tasks as a list or as columns. */
+export type TaskLayout = 'list' | 'board';
+
+export interface SetTaskLayoutMessage {
+  type: 'setTaskLayout';
+  layout: TaskLayout;
 }
 
 export interface MoveTaskMessage {
@@ -946,6 +935,17 @@ export interface SetBoardQueryMessage {
   query: string;
 }
 
+/** Replaces the status columns, in order. */
+export interface SetBoardStatusesMessage {
+  type: 'setBoardStatuses';
+  statuses: string[];
+}
+
+export interface SetBoardStatusNamespaceMessage {
+  type: 'setBoardStatusNamespace';
+  namespace: string;
+}
+
 export type TaskBoardMessage =
   | SidebarReadyMessage
   | OpenSourceMessage
@@ -953,4 +953,10 @@ export type TaskBoardMessage =
   | ToggleTaskMessage
   | MoveTaskMessage
   | SetBoardGroupMessage
-  | SetBoardQueryMessage;
+  | SetBoardQueryMessage
+  | SetTaskLayoutMessage
+  | SetTaskFilterMessage
+  | SetTaskSortMessage
+  | ReorderTasksMessage
+  | SetBoardStatusesMessage
+  | SetBoardStatusNamespaceMessage;

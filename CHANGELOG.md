@@ -113,6 +113,21 @@
 
 ### Changed
 
+- The Dashboard no longer has a **Tasks** tab; tasks have the **Task Board**.
+  The Dashboard opens on **Search**, and one left on Tasks reopens there.
+
+- The Task Board searches with the same search box as the Dashboard and tag
+  overviews, in place of its query field: completions, the builder, removable
+  terms, and **Refine**, counting tasks alone. Plain words hide cards as they
+  are typed, and a search that does not parse keeps the board as it was.
+
+- The Task Board has a **View options** gear, like the Dashboard's. It
+  switches between the board and a list, which has **All**, **Open**, and
+  **Done** counts, **Sort: Rank/Created/Updated**, and ranking by drag or by
+  right-click, as the Dashboard's Tasks tab had. The gear also edits the
+  status columns, which you drag into order, and their tag namespace, saving
+  them to `deckard.board.statuses` and `deckard.board.statusNamespace`.
+
 - A tag overview and the Dashboard's **Search** tab are laid out the same way:
   **Save** sits beside Search and Clear in the bar, **Sort** sits under it, and
   both pages list their results under **Notes** and **Tasks** tabs. The tag
@@ -183,6 +198,22 @@
   the clone.
 
 ### Fixed
+
+- **Clear** in a tag overview's search box does something: it returns the page
+  to its own tag, dropping tags added to it and words typed after them. It
+  used to clear only the words, and stayed enabled with nothing to clear.
+
+- A tag suggested in a search box, or in Find, says how many notes and tasks
+  searching for it finds, such as *2 notes · 3 tasks*, rather than a count of
+  entries that could disagree with the search.
+
+- A tag overview's **View options** gear looks like the Dashboard's. The Corpo
+  theme drew it as a button, with a blue border.
+
+- The Dashboard keeps a search of plain words as soon as typing settles,
+  whatever the words. Its check for plain words split the search on the
+  letter `s` rather than on spaces, so a search of several words, or of a
+  word with an `s` in it, waited for Enter.
 
 - A tag overview shows its hub note again. The page's tags moved into its
   search box, and text in the box was read as narrowing the page, which hides

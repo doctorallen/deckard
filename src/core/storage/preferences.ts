@@ -12,10 +12,10 @@ import {
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
-  DashboardTaskLayout,
   DashboardViewState,
   TaskBoardGroupBy,
   TaskFilter,
+  TaskLayout,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -36,13 +36,9 @@ const defaultPreferences: PersistedPreferences = {
   dashboardTagColumns: 2,
   dashboardNoteSortMode: 'alphabetical',
   dashboardViewState: {
-    mode: 'tasks',
-    taskFilter: 'active',
-    selectedTaskTags: [],
-    taskSearchQuery: '',
+    mode: 'notes',
     noteSearchQuery: '',
     tagSearchQuery: '',
-    taskTagQuery: '',
   },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
@@ -50,8 +46,9 @@ const defaultPreferences: PersistedPreferences = {
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
-  dashboardTaskLayout: 'list',
-  dashboardBoardGroup: 'status',
+  taskBoardLayout: 'board',
+  taskBoardGroup: 'status',
+  taskBoardTaskFilter: 'active',
   tagAccessTimes: {},
   sectionAccessTimes: {},
   recentQueries: [],
@@ -228,18 +225,22 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
-   * Shows the Dashboard's Tasks tab as a list or as the task board.
+   * Shows the Task Board's tasks as a list or as columns.
    */
-  public async setDashboardTaskLayout(
-    dashboardTaskLayout: DashboardTaskLayout,
-  ): Promise<void> {
-    await this.update({ dashboardTaskLayout });
+  public async setTaskBoardLayout(taskBoardLayout: TaskLayout): Promise<void> {
+    await this.update({ taskBoardLayout });
   }
 
-  public async setDashboardBoardGroup(
-    dashboardBoardGroup: TaskBoardGroupBy,
+  public async setTaskBoardGroup(
+    taskBoardGroup: TaskBoardGroupBy,
   ): Promise<void> {
-    await this.update({ dashboardBoardGroup });
+    await this.update({ taskBoardGroup });
+  }
+
+  public async setTaskBoardTaskFilter(
+    taskBoardTaskFilter: TaskFilter,
+  ): Promise<void> {
+    await this.update({ taskBoardTaskFilter });
   }
 
   public async setDashboardNoteSortMode(
@@ -252,23 +253,13 @@ export class PreferencesStore implements vscode.Disposable {
     await this.updateDashboardViewState({ mode });
   }
 
-  public async setDashboardTaskFilter(taskFilter: TaskFilter): Promise<void> {
-    await this.updateDashboardViewState({ taskFilter });
-  }
-
-  public async setDashboardTaskTags(selectedTaskTags: string[]): Promise<void> {
-    await this.updateDashboardViewState({ selectedTaskTags });
-  }
-
   public async setDashboardSearch(
     field: DashboardSearchField,
     query: string,
   ): Promise<void> {
     const fieldMap: Record<DashboardSearchField, keyof DashboardViewState> = {
-      tasks: 'taskSearchQuery',
       notes: 'noteSearchQuery',
       tags: 'tagSearchQuery',
-      taskTags: 'taskTagQuery',
     };
     await this.updateDashboardViewState({ [fieldMap[field]]: query });
   }
@@ -390,7 +381,6 @@ export class PreferencesStore implements vscode.Disposable {
         ? rest
         : { ...rest, [targetKey]: (rest[targetKey] ?? 0) + moved };
     };
-    const viewState = this.preferences.dashboardViewState;
     const { [sourceKey]: movedTime, ...tagAccessTimes } =
       this.preferences.tagAccessTimes ?? {};
 
@@ -408,10 +398,6 @@ export class PreferencesStore implements vscode.Disposable {
               ...tagAccessTimes,
               [targetKey]: Math.max(movedTime, tagAccessTimes[targetKey] ?? 0),
             },
-      dashboardViewState: {
-        ...viewState,
-        selectedTaskTags: replaceKeys(viewState.selectedTaskTags),
-      },
       // A tag-set view needs two tags; a query view keeps its own text.
       savedFilters: this.preferences.savedFilters.flatMap((filter) => {
         if (filter.query || !filter.tagKeys.includes(sourceKey)) {
@@ -707,13 +693,16 @@ function normalizePreferences(
         : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
-    dashboardTaskLayout:
-      value?.dashboardTaskLayout === 'board' ? 'board' : 'list',
-    dashboardBoardGroup:
-      value?.dashboardBoardGroup === 'priority' ||
-      value?.dashboardBoardGroup === 'due'
-        ? value.dashboardBoardGroup
+    taskBoardLayout: value?.taskBoardLayout === 'list' ? 'list' : 'board',
+    taskBoardGroup:
+      value?.taskBoardGroup === 'priority' || value?.taskBoardGroup === 'due'
+        ? value.taskBoardGroup
         : 'status',
+    taskBoardTaskFilter:
+      value?.taskBoardTaskFilter === 'all' ||
+      value?.taskBoardTaskFilter === 'completed'
+        ? value.taskBoardTaskFilter
+        : 'active',
     tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
     sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
     recentQueries: uniqueStrings(
@@ -749,23 +738,12 @@ function isDashboardColumnCount(
 function normalizeDashboardViewState(
   value: Partial<DashboardViewState> | undefined,
 ): DashboardViewState {
-  const mode = value?.mode;
-  const taskFilter = value?.taskFilter;
+  // The Tasks tab moved to the Task Board, so a Dashboard left on it opens
+  // on Search.
   return {
-    mode:
-      mode === 'notes' || mode === 'browse'
-        ? mode
-        : 'tasks',
-    taskFilter:
-      taskFilter === 'all' ||
-      taskFilter === 'completed'
-        ? taskFilter
-        : 'active',
-    selectedTaskTags: uniqueStrings(value?.selectedTaskTags),
-    taskSearchQuery: normalizeSearchQuery(value?.taskSearchQuery),
+    mode: value?.mode === 'browse' ? 'browse' : 'notes',
     noteSearchQuery: normalizeSearchQuery(value?.noteSearchQuery),
     tagSearchQuery: normalizeSearchQuery(value?.tagSearchQuery),
-    taskTagQuery: normalizeSearchQuery(value?.taskTagQuery),
   };
 }
 
@@ -891,10 +869,7 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     entityAccessOrder: [...value.entityAccessOrder],
     entityAccessCounts: { ...value.entityAccessCounts },
     taskOrder: [...value.taskOrder],
-    dashboardViewState: {
-      ...value.dashboardViewState,
-      selectedTaskTags: [...value.dashboardViewState.selectedTaskTags],
-    },
+    dashboardViewState: { ...value.dashboardViewState },
     sectionAccessCounts: { ...value.sectionAccessCounts },
     savedFilters: value.savedFilters.map(cloneSavedFilter),
     tagAccessTimes: { ...value.tagAccessTimes },

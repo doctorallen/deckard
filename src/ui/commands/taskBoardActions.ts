@@ -38,6 +38,24 @@ export function readTaskBoardOptions(): TaskBoardOptions {
 }
 
 /**
+ * Writes one of the `deckard.board` settings from the Task Board's view
+ * options, where the reader already chose it. The value goes where it is
+ * already set, so a workspace that sets its own columns keeps them there.
+ */
+export async function updateTaskBoardSetting(
+  key: 'statuses' | 'statusNamespace',
+  value: string[] | string,
+): Promise<void> {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  const current = configuration.inspect(`board.${key}`);
+  const target =
+    current?.workspaceValue !== undefined
+      ? vscode.ConfigurationTarget.Workspace
+      : vscode.ConfigurationTarget.Global;
+  await configuration.update(`board.${key}`, value, target);
+}
+
+/**
  * Writes a card's move to another column into its task line.
  *
  * Returns false when nothing was saved, so the page can redraw the board and

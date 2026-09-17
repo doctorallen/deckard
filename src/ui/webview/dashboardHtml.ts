@@ -8,7 +8,7 @@ import {
   getQueryEditorScript,
 } from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
-import { getFavoriteHeartAssetUris, settingsIcon } from './icons';
+import { getFavoriteHeartAssetUris } from './icons';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -36,27 +36,13 @@ ${getQueryEditorCss()}
 .notes-search .query-workspace { margin-top: 0; margin-bottom: 10px; }
 .note-search-tasks { margin-top: 18px; }
 .note-search-tasks .section-heading h2 { font-size: 13px; }
-.tag-name, .task-meta, .telemetry-line, .section-readout { font-family: var(--font-mono); }
+.tag-name, .telemetry-line, .section-readout { font-family: var(--font-mono); }
 .telemetry-line { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 10px; text-transform: uppercase; }
 .telemetry-line span:first-child { color: var(--cyan-bright); }
 .telemetry-line span:last-child { color: var(--toxic-green); }
 .metric::before { content: attr(data-code); display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: 9px var(--font-mono); text-transform: uppercase; }
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
-.dashboard-view-options { position: relative; flex: 0 0 auto; order: 2; }
-.dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
-.dashboard-view-options summary::-webkit-details-marker { display: none; }
-.dashboard-view-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
-.dashboard-view-options summary:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 2px; }
-.dashboard-view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
-.dashboard-view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
-.dashboard-column-options { display: inline-flex; }
-.dashboard-column-options button { width: 28px; min-height: 28px; padding: 4px; }
-.dashboard-column-options button + button { margin-left: -1px; }
-.dashboard-column-options button:first-child { border-radius: 2px 0 0 2px; }
-.dashboard-column-options button:last-child { border-radius: 0 2px 2px 0; }
-.dashboard-column-options button.active { position: relative; z-index: 1; }
-.dashboard-layout-options button { width: auto; padding: 4px 8px; }
-.dashboard-board { margin-top: 12px; }
+.dashboard-header-actions .view-options { order: 2; }
 .saved-filters { padding-top: 16px; }
 .dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
@@ -70,7 +56,7 @@ section { min-width: 0; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .control-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
 button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
-button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
@@ -82,18 +68,12 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .saved-filter-remove { min-height: 26px; color: var(--muted); text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
-.entity-row.is-draggable { cursor: grab; touch-action: none; }
 .entity-kind { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; }
 .tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }
 .tag-group h3 { margin: 0 0 7px; color: var(--amber-bright); font-size: 11px; font-weight: 500; text-transform: uppercase; }
 .section-readout { color: var(--muted); font-size: 9px; text-transform: uppercase; }
-.tag-row, .task-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); cursor: pointer; }
+.tag-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); cursor: pointer; }
 .tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
-.tag-row.is-draggable { cursor: grab; touch-action: none; }
-.tag-row.is-draggable:active, .entity-row.is-draggable:active, .task-row.is-draggable:active { cursor: grabbing; }
-.tag-row.is-dragging, .entity-row.is-dragging, .task-row.is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
-.drag-ghost { position: fixed; z-index: 10; top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
-.drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
 .tag-main { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .tag-name { overflow-wrap: anywhere; color: var(--cyan-bright); }
 .tag-count { color: var(--muted); font-family: var(--font-mono); }
@@ -103,51 +83,21 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .favorite-toggle:hover, .favorite-toggle:focus-visible { color: var(--favorite-red); }
 .favorite-heart { display: block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; }
 .favorite-toggle.favorite .favorite-heart { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
-.task-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding-bottom: 2px; margin-bottom: 8px; }
-.task-toolbar > * { flex: 0 0 auto; }
-.toolbar-controls { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
-.toolbar-controls > * { flex: 0 0 auto; }
-.task-tag-filter-control { display: flex; align-items: center; gap: 6px; }
-.task-filter-toggle button { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 5px 8px; }
-/* The chosen task tags sit in a dashed box, like Refine on the Search tab. */
-.selected-task-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 12px; padding: 10px; border: 1px dashed var(--line-strong); }
-.selected-task-tags .clear-task-filters { margin-left: auto; }
-.selected-task-tag { min-height: 26px; color: var(--cyan-bright); text-transform: none; }
-.selected-task-tag::after { content: " ×"; color: var(--muted); }
-.clear-task-filters { color: var(--amber-bright); }
 .browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
 .browse-toolbar > * { flex: 0 0 auto; }
 .browse-toolbar-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .browse-toolbar-controls > * { flex: 0 0 auto; }
 .browse-scope { display: inline-flex; }
 .browse-scope button + button { margin-left: -1px; }
-.catalog-search, .task-search, .note-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
+.catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
 /* A kept search stands out from an empty box, whatever the theme. */
-input.task-search[data-has-query], input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--amber-bright); }
+input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--amber-bright); }
 .search-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--amber-bright); border-left-width: 4px; background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
 .search-notice strong { color: var(--amber-bright); }
 .search-notice button { min-height: 26px; color: var(--amber-bright); text-transform: none; }
 .tab-search-mark { display: inline-block; width: 11px; height: 11px; margin-left: 6px; vertical-align: -2px; }
 .tab-search-mark svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.tag-filter { position: relative; }
-.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }
-.tag-filter summary .control-icon-svg { color: inherit; }
-.tag-filter summary::-webkit-details-marker { display: none; }
-.tag-filter summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); }
-.tag-filter-menu { position: absolute; z-index: 2; top: calc(100% + 5px); right: 0; min-width: 210px; max-width: min(300px, 80vw); padding: 9px; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-raised); }
-.tag-filter-search-control { display: flex; align-items: center; margin-bottom: 10px; }
-.tag-filter-search { display: block; width: 100%; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 7px 5px 29px; font: 11px var(--font-mono); }
-input.tag-filter-search { padding: 5px 7px 5px 29px; }
-.tag-filter-options { display: grid; gap: 7px; max-height: 220px; overflow-y: auto; }
-.tag-filter-option { display: flex; align-items: center; gap: 7px; overflow-wrap: anywhere; }
-.tag-filter-option input { flex: 0 0 auto; accent-color: var(--toxic-green); }
-.tag-filter-no-results { display: block; margin-top: 8px; color: var(--muted); }
-.tag-filter-no-results[hidden] { display: none; }
-.tag-filter-clear { margin-top: 9px; color: var(--amber-bright); }
-.task-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; padding: 10px; cursor: pointer; }
-.task-row.is-draggable { cursor: grab; touch-action: none; }
-.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
 .note-row { min-width: 0; border: 2px solid var(--slate-border); padding: 14px; background: var(--panel-bg); cursor: pointer; }
 .note-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .note-row .card-header { display: block; }
@@ -161,21 +111,12 @@ input.tag-filter-search { padding: 5px 7px 5px 29px; }
 .note-row .rendered code, .note-row .rendered pre { font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .note-row .rendered pre { overflow-x: auto; padding: 10px; border: 2px solid var(--slate-border); background: var(--panel-deep); }
 .note-row .rendered a { color: var(--cyan-bright); }
-.task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #3d4145; font-size: 11px; margin-top: 5px; }
-.due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
-.due-date.overdue { color: var(--favorite-red); }
-.task-detail { letter-spacing: .03em; }
-.task-detail.priority-highest, .task-detail.priority-high { color: var(--favorite-red); font-weight: 700; }
-.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
-.rank-context-menu[hidden] { display: none; }
-.rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .error { color: var(--warning-orange); }
 @media (max-width: 720px) {
   main { padding: 16px; }
   header { align-items: start; flex-direction: column; }
   .dashboard-header-actions { width: 100%; flex-direction: column; align-items: stretch; }
-  .dashboard-header-actions .dashboard-view-options { align-self: flex-end; order: -1; }
+  .dashboard-header-actions .view-options { align-self: flex-end; order: -1; }
   .metrics { width: 100%; min-width: 0; }
   .tag-list, .task-list, .note-list { grid-template-columns: 1fr; }
 }
@@ -191,7 +132,6 @@ h2 { margin: 0 0 4px; }
 .metric { position: relative; clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 10px 12px; }
 .metric-label { margin-top: 3px; }
 .metric-value { font-size: 20px; margin-top: 0; }
-.settings-icon { width: 16px; height: 16px; }
 .empty { clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); padding: 18px; }
 @media (max-width: 700px) {
   .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
@@ -207,37 +147,19 @@ ${getDeckardThemeCss(getDeckardTheme())}
 ${getComponentScript()}
 ${getQueryEditorScript()}
   let state;
-  let draggedTask;
-  let draggedTag;
-  let draggedEntity;
-  let dragGhost;
-  let dragPlaceholder;
-  let dropTarget;
-  let dropBefore = true;
-  let pointerDrag;
-  let suppressDragClick = false;
-  let taskSearchQuery = '';
-  let taskTagQuery = '';
-  let taskTagFilterOpen = false;
   /** Which half of the Search tab's results is shown, as a tag overview does. */
   let noteSearchTab = 'notes';
   let noteSearchQuery = '';
   const noteSearchDebounceDelay = 350;
-  const tagSearchDebounceDelay = 180;
-  /** Task and tag searches wait as long as note searches before telling the host. */
+  /** Tag searches wait as long as note searches before telling the host. */
   const searchDebounceDelay = noteSearchDebounceDelay;
   const pendingSearches = {};
   let noteSearchTimer;
   let pendingNoteSearchQuery;
-  let taskTagSearchTimer;
-  let pendingTaskTagQuery;
   const restoredViewState = vscode.getState();
-  let dashboardMode = restoredViewState && (
-    restoredViewState.dashboardMode === 'notes' ||
-    restoredViewState.dashboardMode === 'browse'
-  )
-    ? restoredViewState.dashboardMode
-    : 'tasks';
+  let dashboardMode = restoredViewState && restoredViewState.dashboardMode === 'browse'
+    ? 'browse'
+    : 'notes';
   let taskColumns = restoredViewState && [1, 2, 3, 4].indexOf(restoredViewState.taskColumns) >= 0
     ? restoredViewState.taskColumns
     : undefined;
@@ -253,9 +175,6 @@ ${getQueryEditorScript()}
   let tagNamespaceFilter = restoredViewState && typeof restoredViewState.tagNamespaceFilter === 'string'
     ? restoredViewState.tagNamespaceFilter
     : '';
-  let rankContextMenu;
-  let rankContextKind;
-  let rankContextKey;
 
   /**
    * The Search tab is Deckard's search page. Plain words filter its notes as
@@ -294,17 +213,9 @@ ${getQueryEditorScript()}
 
   /** Whether a search is only plain words, which the page matches itself. */
   function isPlainWords(text) {
-    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+    const words = String(text || '').trim().split(/\\s+/).filter(Boolean);
     return words.length === noteEditor.previewWords(text).length;
   }
-
-  
-
-  
-
-  
-
-  
 
   function formatEntityKindLabel(value) {
     return String(value).replace(/[-_]+/g, ' ').replace(/\\b[a-z]/g, function (character) { return character.toUpperCase(); });
@@ -329,8 +240,6 @@ ${getQueryEditorScript()}
     return { name: name || label, namespace: namespace };
   }
 
-  
-
   function send(message) { vscode.postMessage(message); }
 
   /** Store only presentation state locally so data refreshes retain the active mode. */
@@ -340,12 +249,9 @@ ${getQueryEditorScript()}
       taskColumns: taskColumns,
       tagColumns: tagColumns,
       noteColumns: noteColumns,
-      taskSearchQuery: taskSearchQuery,
       noteSearchQuery: noteSearchQuery,
       browseQuery: browseQuery,
       tagNamespaceFilter: tagNamespaceFilter,
-      taskTagQuery: taskTagQuery,
-      selectedTaskTags: state ? state.selectedTaskTags : [],
     });
   }
 
@@ -371,7 +277,7 @@ ${getQueryEditorScript()}
   }
 
   /**
-   * Tell the host about a task or tag search once typing settles.
+   * Tell the host about a tag search once typing settles.
    *
    * The page filters at once on its own; the host only stores the query. Each
    * store sends the whole state back, so storing every keystroke would redraw
@@ -417,19 +323,8 @@ ${getQueryEditorScript()}
     }, noteSearchDebounceDelay);
   }
 
-  /** Keep tag-picker filtering local, then persist it after typing settles. */
-  function scheduleTaskTagSearch() {
-    if (taskTagSearchTimer) clearTimeout(taskTagSearchTimer);
-    pendingTaskTagQuery = taskTagQuery;
-    taskTagSearchTimer = setTimeout(function () {
-      taskTagSearchTimer = undefined;
-      if (pendingTaskTagQuery === undefined) return;
-      send({ type: 'setDashboardSearch', field: 'taskTags', query: taskTagQuery });
-    }, tagSearchDebounceDelay);
-  }
-
   function setDashboardMode(mode, focusTab) {
-    dashboardMode = mode === 'notes' || mode === 'browse' ? mode : 'tasks';
+    dashboardMode = mode === 'browse' ? 'browse' : 'notes';
     saveDashboardViewState();
     send({ type: 'setDashboardMode', mode: dashboardMode });
     render();
@@ -460,7 +355,7 @@ ${getQueryEditorScript()}
       grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)';
     });
     document.querySelectorAll('[data-action="set-columns"][data-section="' + section + '"]').forEach(function (button) {
-      const selected = Number(button.dataset.columns) === columns;
+      const selected = Number(button.dataset.value) === columns;
       button.classList.toggle('active', selected);
       button.setAttribute('aria-pressed', String(selected));
     });
@@ -469,114 +364,62 @@ ${getQueryEditorScript()}
   /** Ranked modes alone have a meaningful user-controlled display order. */
   function canRank(kind) {
     return Boolean(state) && (
-      kind === 'tag' ? state.tagSortMode === 'custom' :
-      kind === 'entity' ? state.entitySortMode === 'custom' :
-      state.taskSortMode === 'rank'
+      kind === 'tag' ? state.tagSortMode === 'custom' : state.entitySortMode === 'custom'
     );
   }
 
-  /** Keep the transient context menu from surviving a state refresh. */
-  function closeRankContextMenu() {
-    if (rankContextMenu) rankContextMenu.hidden = true;
-    rankContextKind = undefined;
-    rankContextKey = undefined;
-  }
-
-  /** Provide a keyboard/mouse alternative to drag reordering. */
-  function openRankContextMenu(event, row) {
-    const kind = row.dataset.entityKey ? 'entity' : row.dataset.tagKey ? 'tag' : 'task';
-    const key = row.dataset.entityKey || row.dataset.tagKey || row.dataset.taskId;
-    if (!key || (kind === 'task' && !canRank(kind))) return;
-    event.preventDefault();
-    closeRankContextMenu();
-    if (!rankContextMenu) {
-      rankContextMenu = document.createElement('div');
-      rankContextMenu.id = 'rank-context-menu';
-      rankContextMenu.className = 'rank-context-menu';
-      rankContextMenu.setAttribute('role', 'menu');
-      document.body.appendChild(rankContextMenu);
-    }
-    rankContextKind = kind;
-    rankContextKey = key;
-    const actions = [];
-    if (kind === 'tag' || kind === 'entity') {
-      actions.push('<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>');
-    }
-    if (canRank(kind)) {
-      actions.push('<button type="button" role="menuitem" data-context-action="top">Move to top</button>');
-      actions.push('<button type="button" role="menuitem" data-context-action="bottom">Move to bottom</button>');
-    }
-    if (!actions.length) return;
-    rankContextMenu.innerHTML = actions.join('');
-    rankContextMenu.hidden = false;
-    const bounds = rankContextMenu.getBoundingClientRect();
-    rankContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
-    rankContextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
-    rankContextMenu.querySelector('button').focus();
-  }
-
-  /** Rebuild a complete order from the current visible group before sending it. */
-  function moveContextItem(toTop) {
-    if (!state || !rankContextKind || !rankContextKey || !canRank(rankContextKind)) return;
-    const contextKey = rankContextKey;
-    if (rankContextKind === 'task') {
-      const ids = state.tasks.map(function (item) { return item.task.id; });
-      const index = ids.indexOf(contextKey);
-      if (index < 0) return;
-      ids.splice(index, 1);
-      ids.splice(toTop ? 0 : ids.length, 0, contextKey);
-      closeRankContextMenu();
-      send({ type: 'reorderTasks', taskIds: ids });
-      return;
-    }
-    if (rankContextKind === 'entity') {
-      const keys = state.entities.map(function (entity) { return entity.key; });
-      const index = keys.indexOf(contextKey);
-      if (index < 0) return;
-      keys.splice(index, 1);
-      keys.splice(toTop ? 0 : keys.length, 0, contextKey);
-      closeRankContextMenu();
-      send({ type: 'reorderEntities', entityKeys: keys });
-      return;
-    }
-
-    const selectedTag = state.tags.find(function (tag) { return tag.key === contextKey; });
-    if (!selectedTag) return;
-    const groupKeys = state.tags.filter(function (tag) { return tag.isFavorite === selectedTag.isFavorite; }).map(function (tag) { return tag.key; });
-    const groupIndex = groupKeys.indexOf(contextKey);
-    if (groupIndex < 0) return;
-    groupKeys.splice(groupIndex, 1);
-    groupKeys.splice(toTop ? 0 : groupKeys.length, 0, contextKey);
+  /** The tags a drag or a menu reorders: its own favorites group, in place. */
+  function rankTag(tagKey, reorder) {
+    const selectedTag = state.tags.find(function (tag) { return tag.key === tagKey; });
+    if (!selectedTag) return false;
+    const groupKeys = reorder(state.tags.filter(function (tag) { return tag.isFavorite === selectedTag.isFavorite; }).map(function (tag) { return tag.key; }));
+    if (!groupKeys) return false;
     let groupPosition = 0;
     const keys = state.tags.map(function (tag) {
       return tag.isFavorite === selectedTag.isFavorite ? groupKeys[groupPosition++] : tag.key;
     });
-    closeRankContextMenu();
-    send({ type: 'reorderTags', tagKeys: keys, tagKey: contextKey, isFavorite: selectedTag.isFavorite });
+    send({ type: 'reorderTags', tagKeys: keys, tagKey: tagKey, isFavorite: selectedTag.isFavorite });
+    return true;
   }
 
-  /** Remove the insertion marker before a drag starts or ends. */
-  function clearDropTarget() {
-    if (!dropTarget) return;
-    dropTarget.classList.remove('is-drop-target', 'is-drop-before', 'is-drop-after');
-    dropTarget = undefined;
+  function rankEntity(entityKey, reorder) {
+    const keys = reorder(state.entities.map(function (entity) { return entity.key; }));
+    if (!keys) return false;
+    send({ type: 'reorderEntities', entityKeys: keys });
+    return true;
   }
 
-  /** Restore all temporary drag DOM state on every completion path. */
-  function clearDragPreview() {
-    if (dragGhost) {
-      dragGhost.remove();
-      dragGhost = undefined;
-    }
-    if (dragPlaceholder) {
-      dragPlaceholder.remove();
-      dragPlaceholder = undefined;
-    }
-    clearDropTarget();
-    document.querySelectorAll('.tag-row.is-dragging, .entity-row.is-dragging, .task-row.is-dragging').forEach(function (row) {
-      row.classList.remove('is-dragging');
-    });
-  }
+  // Tags and entities are ranked by dragging, or from their context menu,
+  // which also renames a tag.
+  installRankedRows({
+    kinds: {
+      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },
+      entity: { selector: '.entity-row[data-entity-key]', key: 'entityKey' },
+    },
+    canRank: canRank,
+    reorder: function (kind, key, targetKey, before, placeholder) {
+      if (kind === 'entity') {
+        return rankEntity(key, function (keys) { return rankKeys(keys, key, targetKey, before); });
+      }
+      // A tag dropped into the other group moves between favorites and the rest.
+      const keys = rankKeys(state.tags.map(function (tag) { return tag.key; }), key, targetKey, before);
+      if (!keys) return false;
+      const group = placeholder ? placeholder.closest('.tag-group') : undefined;
+      send({ type: 'reorderTags', tagKeys: keys, tagKey: key, isFavorite: Boolean(group && group.dataset.tagGroup === 'favorites') });
+      return true;
+    },
+    move: function (kind, key, toTop) {
+      const reorder = function (keys) { return moveKeyToEdge(keys, key, toTop); };
+      if (kind === 'entity') rankEntity(key, reorder);
+      else rankTag(key, reorder);
+    },
+    menuActions: function () {
+      return ['<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>'];
+    },
+    onMenuAction: function (action, kind, key) {
+      if (action === 'rename-tag') send({ type: 'renameTag', tagKey: key });
+    },
+  });
 
   /** Bind directly because the controls live inside a native details menu. */
   function bindDashboardColumnControls() {
@@ -587,7 +430,7 @@ ${getQueryEditorScript()}
           event.preventDefault();
           event.stopPropagation();
           const section = button.dataset.section;
-          const columns = Number(button.dataset.columns);
+          const columns = Number(button.dataset.value);
           if (
             (section !== 'tasks' && section !== 'notes' && section !== 'tags') ||
             columns < 1 ||
@@ -604,216 +447,6 @@ ${getQueryEditorScript()}
           });
         });
       });
-  }
-
-  /** Keep the dragged row's dimensions while the original row is hidden. */
-  function createDragGhost(row) {
-    const ghost = row.cloneNode(true);
-    ghost.classList.remove('is-dragging', 'is-drop-target', 'is-drop-before', 'is-drop-after');
-    ghost.classList.add('drag-ghost');
-    ghost.removeAttribute('data-tag-key');
-    ghost.removeAttribute('data-entity-key');
-    ghost.removeAttribute('data-task-id');
-    ghost.removeAttribute('data-file-path');
-    ghost.removeAttribute('data-line');
-    ghost.removeAttribute('draggable');
-    ghost.setAttribute('aria-hidden', 'true');
-    const bounds = row.getBoundingClientRect();
-    ghost.style.width = bounds.width + 'px';
-    ghost.style.height = bounds.height + 'px';
-    document.body.appendChild(ghost);
-    dragGhost = ghost;
-  }
-
-  /** Follow the pointer without reflowing the source list. */
-  function moveDragGhost(clientX, clientY) {
-    if (!dragGhost) return;
-    dragGhost.style.left = clientX + 12 + 'px';
-    dragGhost.style.top = clientY + 12 + 'px';
-  }
-
-  /** Reserve the row's space so the list does not jump during reordering. */
-  function createDragPlaceholder(row) {
-    const placeholder = row.cloneNode(true);
-    placeholder.classList.remove('is-dragging', 'is-drop-target', 'is-drop-before', 'is-drop-after');
-    placeholder.classList.add('drag-placeholder');
-    placeholder.removeAttribute('data-tag-key');
-    placeholder.removeAttribute('data-entity-key');
-    placeholder.removeAttribute('data-task-id');
-    placeholder.removeAttribute('data-file-path');
-    placeholder.removeAttribute('data-line');
-    placeholder.removeAttribute('draggable');
-    placeholder.removeAttribute('tabindex');
-    placeholder.setAttribute('aria-hidden', 'true');
-    placeholder.querySelectorAll('[data-action], [data-tag-key], [data-entity-key], [data-task-id], button, input').forEach(function (element) {
-      element.removeAttribute('data-action');
-      element.removeAttribute('data-tag-key');
-      element.removeAttribute('data-entity-key');
-      element.removeAttribute('data-task-id');
-      element.setAttribute('tabindex', '-1');
-    });
-    dragPlaceholder = placeholder;
-  }
-
-  /** Move the reserved space to show the exact before/after insertion point. */
-  function moveDragPlaceholder(row, before) {
-    if (!dragPlaceholder || !row.parentElement) return;
-    const insertionPoint = before ? row : row.nextSibling;
-    if (insertionPoint === dragPlaceholder) return;
-    row.parentElement.insertBefore(dragPlaceholder, insertionPoint);
-  }
-
-  /** Convert the pointer's vertical position into a stable insertion side. */
-  function updateDropTarget(row, event) {
-    const bounds = row.getBoundingClientRect();
-    const before = event.clientY < bounds.top + bounds.height / 2;
-    if (dropTarget === row && dropBefore === before) return;
-    clearDropTarget();
-    dropTarget = row;
-    dropBefore = before;
-    moveDragPlaceholder(row, before);
-  }
-
-  /** Resolve the row under the pointer even when the document owns the listener. */
-  function updateDropTargetAtPoint(clientX, clientY) {
-    if (!pointerDrag) return;
-    const element = document.elementFromPoint(clientX, clientY);
-    const selector = pointerDrag.kind === 'tag'
-      ? '.tag-row[data-tag-key]'
-      : pointerDrag.kind === 'entity'
-        ? '.entity-row[data-entity-key]'
-        : '.task-row[data-task-id]';
-    const row = element ? element.closest(selector) : undefined;
-    const keyAttribute = pointerDrag.kind === 'tag'
-      ? 'tagKey'
-      : pointerDrag.kind === 'entity'
-        ? 'entityKey'
-        : 'taskId';
-    const draggedKey = pointerDrag.kind === 'tag'
-      ? draggedTag
-      : pointerDrag.kind === 'entity'
-        ? draggedEntity
-        : draggedTask;
-    if (!row || !draggedKey || row.dataset[keyAttribute] === draggedKey) return;
-    updateDropTarget(row, { clientY: clientY });
-  }
-
-  /** Send tag order only in custom mode, preserving favorite-group semantics. */
-  function reorderDraggedTag() {
-    if (!draggedTag || !dropTarget || state.tagSortMode !== 'custom') return false;
-    const targetTag = dropTarget.dataset.tagKey;
-    if (!targetTag || draggedTag === targetTag) return false;
-    const keys = state.tags.map(function (tag) { return tag.key; });
-    const from = keys.indexOf(draggedTag);
-    const to = keys.indexOf(targetTag);
-    const insertionIndex = to + (dropBefore ? 0 : 1);
-    const adjustedIndex = insertionIndex > from ? insertionIndex - 1 : insertionIndex;
-    if (from >= 0 && to >= 0) {
-      keys.splice(from, 1);
-      keys.splice(adjustedIndex, 0, draggedTag);
-      const group = dragPlaceholder ? dragPlaceholder.closest('.tag-group') : undefined;
-      const isFavorite = Boolean(group && group.dataset.tagGroup === 'favorites');
-      send({ type: 'reorderTags', tagKeys: keys, tagKey: draggedTag, isFavorite: isFavorite });
-      return true;
-    }
-    return false;
-  }
-
-  /** Send task order only in rank mode; date modes remain intentionally fixed. */
-  function reorderDraggedTask() {
-    if (!draggedTask || !dropTarget || !state || state.taskSortMode !== 'rank') return false;
-    const targetTask = dropTarget.dataset.taskId;
-    if (!targetTask || draggedTask === targetTask) return false;
-    const ids = state.tasks.map(function (item) { return item.task.id; });
-    const from = ids.indexOf(draggedTask);
-    const to = ids.indexOf(targetTask);
-    const insertionIndex = to + (dropBefore ? 0 : 1);
-    const adjustedIndex = insertionIndex > from ? insertionIndex - 1 : insertionIndex;
-    if (from >= 0 && to >= 0) {
-      ids.splice(from, 1);
-      ids.splice(adjustedIndex, 0, draggedTask);
-      send({ type: 'reorderTasks', taskIds: ids });
-      return true;
-    }
-    return false;
-  }
-
-  /** Send canonical tag order only while custom rank is active. */
-  function reorderDraggedEntity() {
-    if (!draggedEntity || !dropTarget || !state || state.entitySortMode !== 'custom') return false;
-    const targetEntity = dropTarget.dataset.entityKey;
-    if (!targetEntity || draggedEntity === targetEntity) return false;
-    const keys = state.entities.map(function (entity) { return entity.key; });
-    const from = keys.indexOf(draggedEntity);
-    const to = keys.indexOf(targetEntity);
-    const insertionIndex = to + (dropBefore ? 0 : 1);
-    const adjustedIndex = insertionIndex > from ? insertionIndex - 1 : insertionIndex;
-    if (from >= 0 && to >= 0) {
-      keys.splice(from, 1);
-      keys.splice(adjustedIndex, 0, draggedEntity);
-      send({ type: 'reorderEntities', entityKeys: keys });
-      return true;
-    }
-    return false;
-  }
-
-  /** Dispatch the appropriate reorder algorithm for the active row type. */
-  function reorderDraggedItem() {
-    if (!pointerDrag) return false;
-    if (pointerDrag.kind === 'tag') return reorderDraggedTag();
-    if (pointerDrag.kind === 'entity') return reorderDraggedEntity();
-    return reorderDraggedTask();
-  }
-
-  /** Put the real row back where the placeholder was before cleanup. */
-  function settleDragAtDrop(row) {
-    if (!dragPlaceholder || !dragPlaceholder.parentElement) return;
-    dragPlaceholder.parentElement.insertBefore(row, dragPlaceholder);
-    dragPlaceholder.remove();
-    dragPlaceholder = undefined;
-    row.classList.remove('is-dragging');
-  }
-
-  /** Delay drag activation until movement passes a threshold so clicks survive. */
-  function beginPointerDrag(drag, event) {
-    clearDragPreview();
-    draggedTask = drag.kind === 'task' ? drag.row.dataset.taskId : undefined;
-    draggedTag = drag.kind === 'tag' ? drag.row.dataset.tagKey : undefined;
-    draggedEntity = drag.kind === 'entity' ? drag.row.dataset.entityKey : undefined;
-    createDragGhost(drag.row);
-    createDragPlaceholder(drag.row);
-    if (drag.row.parentElement && dragPlaceholder) {
-      drag.row.parentElement.insertBefore(dragPlaceholder, drag.row);
-    }
-    drag.row.classList.add('is-dragging');
-    drag.active = true;
-    moveDragGhost(event.clientX, event.clientY);
-    updateDropTargetAtPoint(event.clientX, event.clientY);
-  }
-
-  /** Release pointer capture and suppress the synthetic click after a drag. */
-  function finishPointerDrag(event, cancelled) {
-    const drag = pointerDrag;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    if (drag.row.hasPointerCapture(event.pointerId)) {
-      drag.row.releasePointerCapture(event.pointerId);
-    }
-    if (!drag.active) {
-      pointerDrag = undefined;
-      return;
-    }
-    let dropped = false;
-    if (!cancelled) {
-      updateDropTargetAtPoint(event.clientX, event.clientY);
-      dropped = reorderDraggedItem();
-      suppressDragClick = true;
-    }
-    if (dropped) settleDragAtDrop(drag.row);
-    clearDragPreview();
-    draggedTask = undefined;
-    draggedTag = undefined;
-    draggedEntity = undefined;
-    pointerDrag = undefined;
   }
 
   /**
@@ -846,16 +479,9 @@ ${getQueryEditorScript()}
     state.taskColumns = selectedTaskColumns;
     state.noteColumns = selectedNoteColumns;
     state.tagColumns = selectedTagColumns;
-    closeRankContextMenu();
-    // Switching the task layout redraws the page; keep View options open across it.
-    const viewOptionsWereOpen = Boolean(document.querySelector('.dashboard-view-options[open]'));
+    closeRankMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
-    const currentTagFilter = document.querySelector('.tag-filter');
-    const currentTagOptions = document.querySelector('.tag-filter-options');
-    const hasRenderedTagFilter = Boolean(currentTagFilter);
-    if (currentTagFilter) taskTagFilterOpen = currentTagFilter.open;
-    const tagOptionsScrollTop = currentTagOptions ? currentTagOptions.scrollTop : 0;
     const normalizedBrowseQuery = browseQuery.trim().toLowerCase();
     const tagNamespaces = Array.from(new Set(state.tags.map(getTagNamespace).filter(Boolean)))
       .sort(function (left, right) { return left.localeCompare(right); });
@@ -907,65 +533,6 @@ ${getQueryEditorScript()}
           return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + tagCount + ' tags</div></div><button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button></div>';
         }).join('') + '</div></section>'
       : '';
-    /** Writes a task timestamp as the YYYY-MM-DD form the note uses. */
-    function formatTaskDate(timestamp) {
-      const date = new Date(timestamp);
-      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-    }
-    const normalizedTaskSearchQuery = taskSearchQuery.trim().toLowerCase();
-    const filteredTasks = state.tasks.filter(function (item) {
-      const searchableText = [
-        item.task.title,
-        item.fileName,
-        item.sectionHeading || '',
-      ].join(' ').toLowerCase();
-      return !normalizedTaskSearchQuery || searchableText.indexOf(normalizedTaskSearchQuery) >= 0;
-    });
-    /** One task row. A search's matching tasks are not reordered by drag. */
-    const renderTaskRow = function (item, isSearchResult) {
-      const task = item.task;
-      const draggable = !isSearchResult && state.taskSortMode === 'rank';
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const dueDate = task.dueText
-        ? '<span class="due-date ' + (task.dueAt !== undefined && task.dueAt < startOfToday.getTime() ? 'overdue' : '') + '">DUE ' + escapeHtml(task.dueText) + '</span>'
-        : '';
-      const scheduled = task.scheduledAt !== undefined
-        ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
-        : '';
-      const priority = task.priority
-        ? '<span class="task-detail priority-' + escapeHtml(task.priority) + '">' + escapeHtml(task.priority.toUpperCase()) + ' PRIORITY</span>'
-        : '';
-      const recurrence = task.recurrence
-        ? '<span class="task-detail">REPEATS ' + escapeHtml(task.recurrence.toUpperCase()) + '</span>'
-        : '';
-      return '<div class="row task-row ' + (isSearchResult ? 'search-task-row ' : '') + (task.completed ? 'completed ' : '') + (draggable ? 'is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">' +
-        '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">' +
-        '<div><div class="task-title">' + (state.tagTitleDisplayMode === 'inline' ? renderTaskTitle(item.renderedTitle, item.titleTags) : item.renderedTitle) + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>' +
-        '</div>';
-    };
-    const tasks = filteredTasks.length
-      ? filteredTasks.map(function (item) { return renderTaskRow(item, false); }).join('')
-      : '<div class="empty">No tasks match this filter.</div>';
-    const taskNotice = normalizedTaskSearchQuery
-      ? renderSearchNotice(
-        filteredTasks.length,
-        state.tasks.length,
-        state.taskFilter === 'active' ? 'open tasks' : state.taskFilter === 'completed' ? 'done tasks' : 'tasks',
-        taskSearchQuery,
-        'clear-task-search',
-      )
-      : '';
-    // The board is the shared task board component, fed the same filtered tasks,
-    // and a search shows the same cards on it as it does in the list.
-    const taskLayout = state.taskLayout === 'board' && state.taskBoard ? 'board' : 'list';
-    const searchedTaskIds = new Set(filteredTasks.map(function (item) { return item.task.id; }));
-    const isBoardCardVisible = function (card) {
-      return !normalizedTaskSearchQuery || searchedTaskIds.has(card.taskId);
-    };
-    const taskContent = taskLayout === 'board'
-      ? '<div class="dashboard-board">' + renderTaskBoard(state.taskBoard, isBoardCardVisible) + '</div>'
-      : '<div class="task-list" style="grid-template-columns: repeat(' + state.taskColumns + ', 1fr);">' + tasks + '</div>';
     // Plain words match here, including file names and tags, as they are
     // typed; the host has already applied everything else in the search.
     const noteWords = noteEditor.previewWords(noteEditor.currentText());
@@ -980,12 +547,12 @@ ${getQueryEditorScript()}
     });
     const searchTasks = state.noteQueryTasks || [];
     const searchTaskCount = state.noteQueryTaskCount || searchTasks.length;
-    const searchResultTabs = '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="Search results">'
-      + '<button class="' + (noteSearchTab === 'notes' ? 'active' : '') + '" data-action="set-search-tab" data-tab="notes" role="tab" aria-selected="' + (noteSearchTab === 'notes') + '">Notes (' + state.notes.length + ')</button>'
-      + '<button class="' + (noteSearchTab === 'tasks' ? 'active' : '') + '" data-action="set-search-tab" data-tab="tasks" role="tab" aria-selected="' + (noteSearchTab === 'tasks') + '">Tasks (' + (state.noteQueryTaskCount ?? searchTasks.length) + ')</button>'
-      + '</div></div>';
+    const searchResultTabs = renderResultTabs([
+      { id: 'notes', label: 'Notes', count: state.notes.length },
+      { id: 'tasks', label: 'Tasks', count: state.noteQueryTaskCount ?? searchTasks.length },
+    ], noteSearchTab, 'Search results');
     const noteSearchTasks = searchTasks.length
-      ? '<section class="note-search-tasks" aria-labelledby="note-search-tasks-heading"><div class="section-heading"><h2 id="note-search-tasks-heading">Matching tasks <span class="tag-count">' + searchTaskCount + '</span></h2></div><div class="task-list">' + searchTasks.map(function (item) { return renderTaskRow(item, true); }).join('') + '</div>' + (searchTaskCount > searchTasks.length ? '<p class="source">Showing the first ' + searchTasks.length + '.</p>' : '') + '</section>'
+      ? '<section class="note-search-tasks" aria-labelledby="note-search-tasks-heading"><div class="section-heading"><h2 id="note-search-tasks-heading">Matching tasks <span class="tag-count">' + searchTaskCount + '</span></h2></div><div class="task-list">' + searchTasks.map(function (item) { return renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode }); }).join('') + '</div>' + (searchTaskCount > searchTasks.length ? '<p class="source">Showing the first ' + searchTasks.length + '.</p>' : '') + '</section>'
       : '';
     // Notes arrive only once the Search tab asks the host for them.
     const notes = state.notesOmitted
@@ -1009,39 +576,6 @@ ${getQueryEditorScript()}
     }).join('') : '<div class="empty">' + (searchTaskCount && noteEditor.currentText().trim()
       ? 'No notes match this search. The tasks it matches are listed below.'
       : 'No notes match this filter.') + '</div>';
-    const taskCounts = {
-      all: normalizedTaskSearchQuery ? filteredTasks.length : state.totalTaskCount,
-      active: normalizedTaskSearchQuery
-        ? filteredTasks.filter(function (item) { return !item.task.completed; }).length
-        : state.activeTaskCount,
-      completed: normalizedTaskSearchQuery
-        ? filteredTasks.filter(function (item) { return item.task.completed; }).length
-        : state.totalTaskCount - state.activeTaskCount
-    };
-    const filters = ['all', 'active', 'completed'].map(function (filter) {
-      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
-      return '<button class="' + (state.taskFilter === filter ? 'active' : '') + '" data-action="set-filter" data-filter="' + filter + '" aria-label="' + label + ' tasks, ' + taskCounts[filter] + '" aria-pressed="' + (state.taskFilter === filter) + '">' + taskFilterIcon(filter) + '<span>' + label + '</span><span class="filter-count">' + taskCounts[filter] + '</span></button>';
-    }).join('');
-    const normalizedTagQuery = taskTagQuery.trim().toLowerCase();
-    const filteredTaskTags = state.availableTaskTags.filter(function (tag) {
-      return !normalizedTagQuery || (tag.label + ' ' + tag.key).toLowerCase().indexOf(normalizedTagQuery) >= 0;
-    });
-    const tagOptions = state.availableTaskTags.length ? filteredTaskTags.map(function (tag) {
-      return '<label class="tag-filter-option" data-filter-text="' + escapeHtml((tag.label + ' ' + tag.key).toLowerCase()) + '"><input type="checkbox" data-action="set-task-tag" data-tag-key="' + escapeHtml(tag.key) + '" ' + (state.selectedTaskTags.indexOf(tag.key) >= 0 ? 'checked' : '') + '>' + renderTagLabel(tag.label) + '</label>';
-    }).join('') : '<span class="empty">No task tags.</span>';
-    const noMatchingTags = state.availableTaskTags.length
-      ? '<span class="tag-filter-no-results"' + (normalizedTagQuery && !filteredTaskTags.length ? '' : ' hidden') + '>No task tags match your search.</span>'
-      : '';
-    const selectedTagSummary = state.selectedTaskTags.length ? state.selectedTaskTags.length + ' selected' : 'all tags';
-    const taskTagFilter = '<span class="control-label">Tags:</span><details class="tag-filter" ' + (taskTagFilterOpen || (!hasRenderedTagFilter && state.selectedTaskTags.length) ? 'open' : '') + '><summary>' + selectedTagSummary + filterIcon + '</summary><div class="tag-filter-menu"><span class="control-icon tag-filter-search-control"><input class="tag-filter-search" type="search" data-action="filter-task-tags" value="' + escapeHtml(taskTagQuery) + '" placeholder="Filter tags" aria-label="Filter task tags" autocomplete="off">' + filterIcon + '</span><div class="tag-filter-options">' + tagOptions + '</div>' + noMatchingTags + '</div></details>';
-    const taskSearch = '<input class="task-search" type="search"' + (normalizedTaskSearchQuery ? ' data-has-query' : '') + ' data-action="search-tasks" value="' + escapeHtml(taskSearchQuery) + '" placeholder="Search tasks" aria-label="Search tasks" autocomplete="off">';
-    const selectedTaskTags = state.selectedTaskTags.map(function (tagKey) {
-      const tag = state.availableTaskTags.find(function (candidate) { return candidate.key === tagKey; });
-      return tag ? '<button class="selected-task-tag" data-action="remove-task-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Remove task tag ' + escapeHtml(tag.label) + '">' + renderTagLabel(tag.label) + '</button>' : '';
-    }).join('');
-    const selectedTaskTagControls = selectedTaskTags
-      ? '<div class="selected-task-tags" aria-label="Selected task tags"><span class="query-facets-heading">Tags</span>' + selectedTaskTags + '<button class="clear-task-filters" data-action="clear-task-tags">Clear filters</button></div>'
-      : '';
     const noteSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-note-sort" aria-label="Sort notes"><option value="alphabetical" ' + (state.noteSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="created" ' + (state.noteSortMode === 'created' ? 'selected' : '') + '>Newest created</option><option value="updated" ' + (state.noteSortMode === 'updated' ? 'selected' : '') + '>Recently updated</option><option value="access" ' + (state.noteSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>' + sortIcon + '</span></label>';
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const tagSortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort tags"><option value="alphabetical" ' + (state.tagSortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option><option value="count" ' + (state.tagSortMode === 'count' ? 'selected' : '') + '>Entry Count</option><option value="access" ' + (state.tagSortMode === 'access' ? 'selected' : '') + '>Most accessed</option><option value="custom" ' + (state.tagSortMode === 'custom' ? 'selected' : '') + '>Rank</option></select>' + sortIcon + '</span></label>';
@@ -1055,36 +589,28 @@ ${getQueryEditorScript()}
       : '';
     const columnControls = function (section, selectedColumns) {
       const label = section === 'tasks' ? 'Task' : section === 'notes' ? 'Note' : 'Tag';
-      return '<div class="dashboard-column-options" role="group" aria-label="' + label + ' columns">' + [1, 2, 3, 4].map(function (columns) {
-        return '<button class="' + (columns === selectedColumns ? 'active' : '') + '" data-action="set-columns" data-section="' + section + '" data-columns="' + columns + '" aria-label="' + columns + ' columns" aria-pressed="' + (columns === selectedColumns) + '">' + columns + '</button>';
-      }).join('') + '</div>';
+      const choices = [1, 2, 3, 4].map(function (columns) { return [columns, String(columns), columns + ' columns']; });
+      // Each button names its grid, which the column binding reads.
+      return renderViewOptionChoices('set-columns', choices, selectedColumns, label + ' columns', 'data-section="' + section + '"');
     };
-    const layoutControls = '<div class="dashboard-column-options dashboard-layout-options" role="group" aria-label="Task layout">' + [['list', 'List'], ['board', 'Board']].map(function (option) {
-      const selected = option[0] === taskLayout;
-      return '<button class="' + (selected ? 'active' : '') + '" data-action="set-task-layout" data-layout="' + option[0] + '" aria-pressed="' + selected + '">' + option[1] + '</button>';
-    }).join('') + '</div>';
     const metrics = '<div class="metrics" aria-label="Workspace totals">' +
       '<div class="metric" data-code="SYS.ENT // 1982-AZ"><span class="metric-value">' + state.entities.length + '</span><span class="metric-label">entities</span></div>' +
       '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
       '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
       '</div>';
-    const dashboardOptions = '<details class="dashboard-view-options"' + (viewOptionsWereOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">${settingsIcon}</summary><div class="dashboard-view-options-menu"><div class="dashboard-view-options-group"><span>Tasks</span>' + layoutControls + '</div><div class="dashboard-view-options-group"><span>Task columns</span>' + columnControls('tasks', state.taskColumns) + '</div><div class="dashboard-view-options-group"><span>Note columns</span>' + columnControls('notes', state.noteColumns) + '</div><div class="dashboard-view-options-group"><span>Tag columns</span>' + columnControls('tags', state.tagColumns) + '</div><div class="dashboard-view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
+    const dashboardOptions = renderViewOptions([
+      { label: 'Task columns', html: columnControls('tasks', state.taskColumns) },
+      { label: 'Note columns', html: columnControls('notes', state.noteColumns) },
+      { label: 'Tag columns', html: columnControls('tags', state.tagColumns) },
+      { label: 'Format', html: formatControls },
+    ]);
 
     document.getElementById('app').innerHTML =
-      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'tasks' ? 'Tasks' : dashboardMode === 'notes' ? 'Search' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
+      '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'notes' ? 'Search' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
       savedFilters +
-      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="tasks-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="tasks" aria-selected="' + (dashboardMode === 'tasks') + '" aria-controls="tasks-panel" tabindex="' + (dashboardMode === 'tasks' ? '0' : '-1') + '">Tasks' + renderTabSearchMark(taskSearchQuery) + '</button><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Search' + renderTabSearchMark(noteEditor.currentText() || state.noteQueryText || '') + '</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '') + '</button></div></div>' +
-      '<section id="tasks-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="tasks-tab"' + (dashboardMode === 'tasks' ? '' : ' hidden') + '><div class="task-toolbar"><div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">' + filters + '</div><div class="toolbar-controls">' + taskSearch + (taskLayout === 'board' ? renderTaskBoardGroupSwitch(state.taskBoard.groupBy) : '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks"><option value="rank" ' + (state.taskSortMode === 'rank' ? 'selected' : '') + '>Rank</option><option value="created" ' + (state.taskSortMode === 'created' ? 'selected' : '') + '>Created</option><option value="updated" ' + (state.taskSortMode === 'updated' ? 'selected' : '') + '>Updated</option></select>' + sortIcon + '</span></label>') + '<div class="task-tag-filter-control">' + taskTagFilter + '</div></div></div>' + selectedTaskTagControls + taskNotice + taskContent + '</section>' +
+      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="notes-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="notes" aria-selected="' + (dashboardMode === 'notes') + '" aria-controls="notes-panel" tabindex="' + (dashboardMode === 'notes' ? '0' : '-1') + '">Search' + renderTabSearchMark(noteEditor.currentText() || state.noteQueryText || '') + '</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '') + '</button></div></div>' +
       '<section id="notes-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="notes-tab"' + (dashboardMode === 'notes' ? '' : ' hidden') + '><div class="notes-search">' + noteEditor.renderBar(noteSortControl) + '</div>' + noteEditor.renderFacets() + searchResultTabs + '<div class="overview-tab-panel"' + (noteSearchTab === 'notes' ? '' : ' hidden') + '><div class="note-list" style="grid-template-columns: repeat(' + state.noteColumns + ', 1fr);">' + notes + '</div></div><div class="overview-tab-panel"' + (noteSearchTab === 'tasks' ? '' : ' hidden') + '>' + noteSearchTasks + '</div></section>' +
       '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search"' + (normalizedBrowseQuery ? ' data-has-query' : '') + ' data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagNotice + tagContent + '</section>';
-    const nextTagFilter = document.querySelector('.tag-filter');
-    const nextTagOptions = document.querySelector('.tag-filter-options');
-    if (nextTagFilter) {
-      nextTagFilter.addEventListener('toggle', function () {
-        taskTagFilterOpen = nextTagFilter.open;
-      });
-    }
-    if (nextTagOptions) nextTagOptions.scrollTop = tagOptionsScrollTop;
     bindDashboardColumnControls();
     applyDashboardColumns('tasks', selectedTaskColumns);
     applyDashboardColumns('notes', selectedNoteColumns);
@@ -1093,54 +619,9 @@ ${getQueryEditorScript()}
     window.scrollTo(scrollX, scrollY);
   }
 
-  function filterTagOptions(optionSelector, rawQuery, noResultsSelector) {
-    const query = rawQuery.trim().toLowerCase();
-    let visibleCount = 0;
-    document.querySelectorAll(optionSelector).forEach(function (option) {
-      const visible = !query || option.dataset.filterText.indexOf(query) >= 0;
-      option.hidden = !visible;
-      option.style.display = visible ? 'flex' : 'none';
-      if (visible) visibleCount += 1;
-    });
-    const noResults = document.querySelector(noResultsSelector);
-    if (noResults) noResults.hidden = visibleCount > 0 || !query;
-  }
-
-  // The board layout's cards, menus, and drag and drop.
-  installTaskBoard(send);
+  installViewOptions();
 
   document.addEventListener('click', function (event) {
-    const contextAction = event.target.closest('#rank-context-menu [data-context-action]');
-    if (contextAction) {
-      if (contextAction.dataset.contextAction === 'rename-tag') {
-        const tagKey = rankContextKind === 'tag' || rankContextKind === 'entity'
-          ? rankContextKey
-          : undefined;
-        closeRankContextMenu();
-        if (tagKey) send({ type: 'renameTag', tagKey: tagKey });
-      } else {
-        moveContextItem(contextAction.dataset.contextAction === 'top');
-      }
-      return;
-    }
-    if (rankContextMenu && !event.target.closest('#rank-context-menu')) closeRankContextMenu();
-    if (suppressDragClick) {
-      suppressDragClick = false;
-      if (event.target.closest('.tag-row[data-tag-key], .entity-row[data-entity-key], .task-row[data-task-id]')) {
-        event.preventDefault();
-        return;
-      }
-    }
-    document.querySelectorAll('.tag-filter').forEach(function (tagFilter) {
-      if (tagFilter.open && !event.target.closest('.tag-filter')) {
-        tagFilter.open = false;
-        taskTagFilterOpen = false;
-      }
-    });
-    const dashboardOptions = document.querySelector('.dashboard-view-options');
-    if (dashboardOptions && dashboardOptions.open && !event.target.closest('.dashboard-view-options')) {
-      dashboardOptions.open = false;
-    }
     if (noteEditor.handleClick(event)) return;
     const target = event.target.closest('[data-action]');
     if (target) {
@@ -1149,23 +630,18 @@ ${getQueryEditorScript()}
         send({ type: 'saveDashboardSearch' });
         return;
       }
-      if (action === 'clear-task-search' || action === 'clear-tag-search') {
-        const isTaskSearch = action === 'clear-task-search';
-        if (isTaskSearch) {
-          taskSearchQuery = '';
-        } else {
-          // The namespace filter is part of the Tags search, so it clears too.
-          browseQuery = '';
-          tagNamespaceFilter = '';
-        }
+      if (action === 'clear-tag-search') {
+        // The namespace filter is part of the Tags search, so it clears too.
+        browseQuery = '';
+        tagNamespaceFilter = '';
         saveDashboardViewState();
-        scheduleSearch(isTaskSearch ? 'tasks' : 'tags', '');
+        scheduleSearch('tags', '');
         render();
-        const field = document.querySelector('input[data-action="' + (isTaskSearch ? 'search-tasks' : 'search-browse') + '"]');
+        const field = document.querySelector('input[data-action="search-browse"]');
         if (field) field.focus();
         return;
       }
-      if (action === 'set-search-tab') {
+      if (action === 'set-result-tab') {
         noteSearchTab = target.dataset.tab === 'tasks' ? 'tasks' : 'notes';
         render();
         return;
@@ -1181,25 +657,10 @@ ${getQueryEditorScript()}
         send({ type: 'setRenderMode', mode: target.dataset.mode });
         return;
       }
-      if (action === 'set-task-layout') {
-        send({ type: 'setDashboardTaskLayout', layout: target.dataset.layout });
-        return;
-      }
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
-      if (action === 'set-filter') send({ type: 'setTaskFilter', filter: target.dataset.filter });
-      if (action === 'remove-task-tag') {
-        send({ type: 'setTaskTags', tagKeys: state.selectedTaskTags.filter(function (tagKey) { return tagKey !== target.dataset.tagKey; }) });
-      }
-      if (action === 'clear-task-tags') {
-        taskTagQuery = '';
-        taskTagFilterOpen = false;
-        const tagFilter = document.querySelector('.tag-filter');
-        if (tagFilter) tagFilter.open = false;
-        send({ type: 'setTaskTags', tagKeys: [] });
-      }
       if (action === 'open-source') send({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
       return;
     }
@@ -1232,22 +693,10 @@ ${getQueryEditorScript()}
     // The search box takes / only where it is on screen.
     const inSearch = Boolean(event.target.closest && event.target.closest('[data-suggest-key]'));
     if ((inSearch || dashboardMode === 'notes') && noteEditor.handleKeydown(event)) return;
-    if (event.key === 'Escape') {
-      const dashboardOptions = document.querySelector('.dashboard-view-options');
-      if (dashboardOptions && dashboardOptions.open) {
-        dashboardOptions.open = false;
-        dashboardOptions.querySelector('summary').focus();
-        return;
-      }
-    }
-    if (event.key === 'Escape' && rankContextMenu && !rankContextMenu.hidden) {
-      closeRankContextMenu();
-      return;
-    }
     const dashboardTab = event.target.closest('[role="tab"][data-dashboard-mode]');
     if (dashboardTab && (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End')) {
       event.preventDefault();
-      const modes = ['tasks', 'notes', 'browse'];
+      const modes = ['notes', 'browse'];
       const currentIndex = modes.indexOf(dashboardMode);
       const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? modes.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : modes.length - 1)) % modes.length;
       setDashboardMode(modes[nextIndex], true);
@@ -1295,15 +744,8 @@ ${getQueryEditorScript()}
       const namespaceSelect = document.querySelector('select[data-action="set-tag-namespace"]');
       if (namespaceSelect) namespaceSelect.focus();
     }
-    if (target.dataset.action === 'set-task-sort') send({ type: 'setTaskSort', mode: target.value });
     if (target.dataset.action === 'set-note-sort') send({ type: 'setNoteSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
-    if (target.dataset.action === 'set-task-tag') {
-      const selectedTags = Array.from(document.querySelectorAll('input[data-action="set-task-tag"]:checked')).map(function (input) { return input.dataset.tagKey; });
-      state.selectedTaskTags = selectedTags;
-      saveDashboardViewState();
-      send({ type: 'setTaskTags', tagKeys: selectedTags });
-    }
   });
 
   document.addEventListener('input', function (event) {
@@ -1314,65 +756,7 @@ ${getQueryEditorScript()}
       saveDashboardViewState();
       scheduleSearch('tags', browseQuery);
       renderKeepingFocus();
-      return;
     }
-    if (target.dataset.action === 'search-tasks') {
-      taskSearchQuery = target.value;
-      saveDashboardViewState();
-      scheduleSearch('tasks', taskSearchQuery);
-      renderKeepingFocus();
-      return;
-    }
-    if (target.dataset.action === 'filter-task-tags') {
-      taskTagQuery = target.value;
-      saveDashboardViewState();
-      scheduleTaskTagSearch();
-      filterTagOptions('.tag-filter-option', taskTagQuery, '.tag-filter-no-results');
-    }
-  });
-
-  document.addEventListener('contextmenu', function (event) {
-    const row = event.target.closest('.tag-row[data-tag-key], .entity-row[data-entity-key], .task-row[data-task-id]');
-    if (row) openRankContextMenu(event, row);
-  });
-
-  document.addEventListener('pointerdown', function (event) {
-    suppressDragClick = false;
-    const row = event.target.closest('.tag-row[data-tag-key], .entity-row[data-entity-key], .task-row[data-task-id]');
-    if (!row || !state || event.button !== 0 || pointerDrag) return;
-    if (row.classList.contains('search-task-row')) return;
-    if (event.target.closest('button, input, select, textarea, a, [data-action]')) return;
-    const kind = row.dataset.entityKey ? 'entity' : row.dataset.tagKey ? 'tag' : 'task';
-    if (!canRank(kind)) return;
-    pointerDrag = {
-      row: row,
-      kind: kind,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      active: false,
-    };
-    row.setPointerCapture(event.pointerId);
-  });
-  document.addEventListener('pointermove', function (event) {
-    const drag = pointerDrag;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    if (!drag.active) {
-      const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-      if (distance < 5) return;
-      event.preventDefault();
-      beginPointerDrag(drag, event);
-    }
-    if (!drag.active) return;
-    event.preventDefault();
-    moveDragGhost(event.clientX, event.clientY);
-    updateDropTargetAtPoint(event.clientX, event.clientY);
-  });
-  document.addEventListener('pointerup', function (event) {
-    finishPointerDrag(event, false);
-  });
-  document.addEventListener('pointercancel', function (event) {
-    finishPointerDrag(event, true);
   });
 
   window.addEventListener('message', function (event) {
@@ -1383,7 +767,6 @@ ${getQueryEditorScript()}
       tagColumns = incomingState.tagColumns ?? tagColumns ?? 2;
       if (incomingState.viewState) {
         dashboardMode = incomingState.viewState.mode;
-        taskSearchQuery = acceptHostSearch('tasks', incomingState.viewState.taskSearchQuery, taskSearchQuery);
         if (
           pendingNoteSearchQuery === undefined ||
           (
@@ -1393,16 +776,6 @@ ${getQueryEditorScript()}
         ) {
           noteSearchQuery = incomingState.viewState.noteSearchQuery;
           pendingNoteSearchQuery = undefined;
-        }
-        if (
-          pendingTaskTagQuery === undefined ||
-          (
-            taskTagSearchTimer === undefined &&
-            incomingState.viewState.taskTagQuery === pendingTaskTagQuery
-          )
-        ) {
-          taskTagQuery = incomingState.viewState.taskTagQuery;
-          pendingTaskTagQuery = undefined;
         }
         browseQuery = acceptHostSearch('tags', incomingState.viewState.tagSearchQuery, browseQuery);
       }

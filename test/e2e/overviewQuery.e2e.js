@@ -158,7 +158,7 @@ test('the search box is shown without a toggle', async () => {
   assert.strictEqual(view.find('[data-action="toggle-query"]'), null);
 });
 
-test('Clear holds its place, enabled by the tags already in the box', async () => {
+test('Clear holds its place, and waits for more than the page\'s own tag', async () => {
   const { view } = await openOverview();
   const clear = () => view.find('[data-action="clear-query"]');
   assert.ok(clear(), 'Clear is on the page');
@@ -167,12 +167,30 @@ test('Clear holds its place, enabled by the tags already in the box', async () =
     '#project/atlas',
     "the page's tag is written in the box",
   );
-  assert.strictEqual(clear().getAttribute('disabled'), null, 'so Clear is live');
+  assert.notStrictEqual(clear().getAttribute('disabled'), null, 'with nothing else, there is nothing to clear');
 
-  view.type(view.find('[data-action="query-input"]'), 'planning');
-
-  assert.strictEqual(clear().getAttribute('disabled'), null, 'and stays live as it is typed');
+  view.type(view.find('[data-action="query-input"]'), '#project/atlas planning');
+  assert.strictEqual(clear().getAttribute('disabled'), null, 'typing more makes it live');
   assert.strictEqual(clear().disabled, false);
+
+  view.type(view.find('[data-action="query-input"]'), '#project/atlas');
+  assert.strictEqual(clear().disabled, true, 'and back to the tag alone, it waits again');
+});
+
+test('Clear returns the page to its own tag, dropping added tags and words', async () => {
+  const { view } = await openOverview();
+  search(view, '#project/atlas @ren-kade text ~ telemetry');
+  assert.deepStrictEqual(view.state.filterTagKeys, ['@ren-kade']);
+  assert.deepStrictEqual(visibleTitles(view), ['Shutdown telemetry audit']);
+
+  view.click(view.find('[data-action="clear-query"]'));
+
+  assert.strictEqual(view.find('[data-action="query-input"]').value, '#project/atlas');
+  assert.deepStrictEqual(view.state.filterTagKeys, [], 'the added tag is gone');
+  assert.strictEqual(view.state.refinement, '#project/atlas', 'and so are the words');
+  assert.strictEqual(view.state.tagKey, '#project/atlas', 'the page keeps its tag');
+  assert.deepStrictEqual(visibleTitles(view).sort(), ['Atlas planning', 'Shutdown telemetry audit']);
+  assert.notStrictEqual(view.find('[data-action="clear-query"]').getAttribute('disabled'), null);
 });
 
 test('plain words narrow the page as they are typed', async () => {
@@ -389,7 +407,7 @@ test('the sidebar keeps the tag while its entries are narrowed', async () => {
       pass += 1;
       console.log('  ok   ' + entry.name);
     } catch (error) {
-      failures.push(entry.name + '\n       ' + String(error.message).split('\n')[0]);
+      failures.push(entry.name + '\n       ' + String(error.message).split('\n').slice(0, 8).join('\n       '));
       console.log('  FAIL ' + entry.name);
     }
   }

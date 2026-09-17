@@ -153,6 +153,29 @@ function createWebviewView() {
 const shown = { info: [], warning: [] };
 let inputBoxResponse;
 
+// Settings a test sets or the extension writes, by their full name.
+const settings = new Map();
+const configurationUpdates = [];
+const configurationEmitter = new EventEmitter();
+
+function getConfiguration(section) {
+  const fullName = (key) => (section ? `${section}.${key}` : key);
+  return {
+    get: (key, fallback) =>
+      settings.has(fullName(key)) ? settings.get(fullName(key)) : fallback,
+    inspect: (key) => ({ key: fullName(key), globalValue: settings.get(fullName(key)) }),
+    update: (key, value, target) => {
+      const name = fullName(key);
+      settings.set(name, value);
+      configurationUpdates.push({ name, value, target });
+      configurationEmitter.fire({
+        affectsConfiguration: (changed) => name === changed || name.startsWith(`${changed}.`),
+      });
+      return Promise.resolve();
+    },
+  };
+}
+
 module.exports = {
   EventEmitter,
   Range,
@@ -194,8 +217,8 @@ module.exports = {
     registerDocumentLinkProvider: () => ({ dispose: () => undefined }),
   },
   workspace: {
-    getConfiguration: () => ({ get: (_key, fallback) => fallback }),
-    onDidChangeConfiguration: new EventEmitter().event,
+    getConfiguration,
+    onDidChangeConfiguration: configurationEmitter.event,
     onDidChangeTextDocument: textDocumentEmitter.event,
     onDidSaveTextDocument: new EventEmitter().event,
     onDidOpenTextDocument: new EventEmitter().event,
@@ -204,9 +227,12 @@ module.exports = {
     textDocuments: [],
     asRelativePath: (value) => String(value),
   },
+  ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
   commands: { registerCommand: () => ({ dispose: () => undefined }) },
   _test: {
     createdPanels,
+    settings,
+    configurationUpdates,
     createWebviewView,
     shown,
     emitters: {

@@ -12,14 +12,10 @@ import {
 } from '../../core/types';
 import {
   createDashboardSnapshot,
+  mergeOrder,
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { toggleTask } from '../commands/taskActions';
-import {
-  moveTaskToColumn,
-  readTaskBoardOptions,
-} from '../commands/taskBoardActions';
-import { layoutTaskBoard } from '../state/taskBoardState';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
@@ -35,9 +31,7 @@ export class DashboardPanel implements vscode.Disposable {
   private panelDisposables: vscode.Disposable[] = [];
   /** Whether something changed while the panel was hidden. */
   private isStale = false;
-  private taskFilter: DashboardSnapshot['taskFilter'] = 'active';
-  private selectedTaskTags: string[] = [];
-  private dashboardMode: DashboardMode = 'tasks';
+  private dashboardMode: DashboardMode = 'notes';
   private dashboardTaskColumns: DashboardColumnCount;
   private dashboardNoteColumns: DashboardColumnCount;
   private dashboardTagColumns: DashboardColumnCount;
@@ -56,10 +50,6 @@ export class DashboardPanel implements vscode.Disposable {
     this.dashboardNoteColumns = initialPreferences.dashboardNoteColumns;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
-    this.taskFilter = initialPreferences.dashboardViewState.taskFilter;
-    this.selectedTaskTags = [
-      ...initialPreferences.dashboardViewState.selectedTaskTags,
-    ];
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(
       preferences.onDidChange((nextPreferences) => {
@@ -67,10 +57,6 @@ export class DashboardPanel implements vscode.Disposable {
         this.dashboardNoteColumns = nextPreferences.dashboardNoteColumns;
         this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
         this.dashboardMode = nextPreferences.dashboardViewState.mode;
-        this.taskFilter = nextPreferences.dashboardViewState.taskFilter;
-        this.selectedTaskTags = [
-          ...nextPreferences.dashboardViewState.selectedTaskTags,
-        ];
         this.refresh();
       }),
     );
@@ -83,12 +69,7 @@ export class DashboardPanel implements vscode.Disposable {
         if (themeChanged) {
           this.renderHtml();
         }
-        if (
-          themeChanged ||
-          titleDisplayChanged ||
-          event.affectsConfiguration('deckard.board') ||
-          event.affectsConfiguration('deckard.tasks')
-        ) {
+        if (themeChanged || titleDisplayChanged) {
           this.refresh();
         }
       }),
@@ -282,19 +263,13 @@ export class DashboardPanel implements vscode.Disposable {
         dashboardViewState: {
           ...preferences.dashboardViewState,
           mode: this.dashboardMode,
-          taskFilter: this.taskFilter,
-          selectedTaskTags: [...this.selectedTaskTags],
         },
       },
-      this.taskFilter,
-      this.selectedTaskTags,
       undefined,
       tagTitleDisplayMode,
       // Switching tabs asks the host again, so only the Search tab gets notes.
       this.dashboardMode === 'notes',
     );
-    // The board lays out the same filtered tasks the list would show.
-    const taskLayout = preferences.dashboardTaskLayout ?? 'list';
     const data: DashboardSnapshot = {
       ...snapshot,
       // The Markdown view shows each note's source, which its search also
@@ -303,16 +278,6 @@ export class DashboardPanel implements vscode.Disposable {
         snapshot.renderMode === 'html'
           ? snapshot.notes
           : snapshot.notes.map((note) => ({ ...note, renderedHtml: '' })),
-      taskLayout,
-      taskBoard:
-        taskLayout === 'board'
-          ? layoutTaskBoard(
-              index,
-              snapshot.tasks.map((item) => item.task),
-              preferences.dashboardBoardGroup ?? 'status',
-              readTaskBoardOptions(),
-            )
-          : undefined,
     };
     void this.panel.webview.postMessage({ type: 'state', data });
   }
@@ -414,29 +379,6 @@ export class DashboardPanel implements vscode.Disposable {
       case 'setEntitySort':
         await this.preferences.setEntitySortMode(message.mode);
         return;
-      case 'setTaskFilter':
-        this.taskFilter = message.filter;
-        this.refresh();
-        await this.preferences.setDashboardTaskFilter(message.filter);
-        return;
-      case 'setTaskTags': {
-        const availableTags = new Set(
-          [...index.tags.values()]
-            .filter((tag) => tag.taskIds.length > 0)
-            .map((tag) => tag.key),
-        );
-        this.selectedTaskTags = [
-          ...new Set(
-            message.tagKeys.filter((tagKey) => availableTags.has(tagKey)),
-          ),
-        ];
-        this.refresh();
-        await this.preferences.setDashboardTaskTags(this.selectedTaskTags);
-        return;
-      }
-      case 'setTaskSort':
-        await this.preferences.setTaskSortMode(message.mode);
-        return;
       case 'setRenderMode':
         await this.preferences.setRenderMode(message.mode);
         return;
@@ -467,26 +409,6 @@ export class DashboardPanel implements vscode.Disposable {
           message.section,
           message.columns,
         );
-        return;
-      case 'setDashboardTaskLayout':
-        await this.preferences.setDashboardTaskLayout(message.layout);
-        return;
-      case 'setBoardGroup':
-        await this.preferences.setDashboardBoardGroup(message.groupBy);
-        return;
-      case 'moveTask': {
-        const task = index.tasks.get(message.taskId);
-        if (!task || !(await moveTaskToColumn(task, message.column))) {
-          this.refresh();
-        }
-        return;
-      }
-      case 'reorderTasks':
-        if (this.preferences.value.taskSortMode === 'rank') {
-          await this.preferences.setTaskOrder(
-            mergeOrder(message.taskIds, index.tasks.keys()),
-          );
-        }
         return;
       case 'reorderTags':
         if (
@@ -545,22 +467,4 @@ export class DashboardPanel implements vscode.Disposable {
         return;
     }
   }
-}
-
-/**
- * Merges a requested order with current IDs so a stale drag result cannot lose
- * entries created or removed since the webview rendered its list.
- */
-function mergeOrder(
-  requested: string[],
-  available: Iterable<string>,
-): string[] {
-  const availableIds = [...available];
-  const availableSet = new Set(availableIds);
-  const requestedIds = requested.filter((id) => availableSet.has(id));
-  const requestedSet = new Set(requestedIds);
-  return [
-    ...requestedIds,
-    ...availableIds.filter((id) => !requestedSet.has(id)),
-  ];
 }

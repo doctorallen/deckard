@@ -13,7 +13,10 @@ import { parseQuery } from '../core/query/queryParser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { PreferencesStore } from '../core/storage/preferences';
 import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
-import { createDashboardSnapshot } from '../ui/state/dashboardState';
+import {
+  createDashboardSnapshot,
+  createQuerySuggestions,
+} from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
 
 class MemoryMemento implements vscode.Memento {
@@ -157,9 +160,28 @@ suite('Refining a search', () => {
     // Written with its field, a text condition is still a search of words.
     await store.setDashboardSearch('notes', 'text ~ "vault"');
 
-    const snapshot = createDashboardSnapshot(index, store.value, 'active');
+    const snapshot = createDashboardSnapshot(index, store.value);
 
     assert.deepStrictEqual(snapshot.notes.map((note) => note.heading).sort(), ['Other', 'Plan']);
     assert.strictEqual(snapshot.noteQuery?.matchCounts.notes, 2);
+  });
+  test('a suggested tag counts the notes and tasks its search finds', () => {
+    const files = [
+      parseMarkdown(
+        'notes/plan.md',
+        '# Plan #project/atlas\nIntro.\n## Details\nMore.\n- [ ] Book the room\n- [ ] Call Ren',
+      ),
+      parseMarkdown('notes/other.md', '# Other\n- [ ] Ship it #project/atlas'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const atlas = createQuerySuggestions(index).values.tag?.find(
+      (suggestion) => suggestion.value === '#project/atlas',
+    );
+    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node);
+
+    // The nested Details section and its tasks inherit the heading's tag.
+    assert.strictEqual(results.sections.length + results.files.length, 2);
+    assert.strictEqual(results.tasks.length, 3);
+    assert.strictEqual(atlas?.detail, '2 notes · 3 tasks');
   });
 });

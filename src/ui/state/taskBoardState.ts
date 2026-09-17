@@ -13,6 +13,8 @@ import {
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
+  PersistedPreferences,
+  TagTitleDisplayMode,
   Task,
   TaskBoardCard,
   TaskBoardColumn,
@@ -23,7 +25,14 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { renderMarkdownInline } from '../webview/rendering';
+import {
+  createDashboardTask,
+  createQueryViewState,
+  matchesTaskFilter,
+  sortTasks,
+} from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
+import { buildSearchFacets } from './searchFacets';
 
 /**
  * The task board lays tasks out as a Kanban board. Its columns come from what
@@ -89,21 +98,71 @@ export function isValidStatusName(value: string): boolean {
   return STATUS_NAME.test(value);
 }
 
+/** The Task Board's search: the one applied, and one typed that could not be. */
+export interface TaskBoardSearch {
+  query: string;
+  /** Shown in the box with its error; the board keeps the applied search. */
+  invalidQuery?: string;
+}
+
 /**
- * Lays out the board. `query` narrows the tasks it shows; one that does not
- * parse is ignored, because the host reports its error separately.
+ * Builds the Task Board page: the tasks its search finds, as columns or as a
+ * list, with the same search box state every search page shows. Only tasks
+ * are searched, so the box counts and refines tasks alone.
  */
 export function createTaskBoard(
   index: WorkspaceIndex,
-  groupBy: TaskBoardGroupBy,
-  query: string,
+  preferences: PersistedPreferences,
+  search: TaskBoardSearch,
   options: TaskBoardOptions,
-  queryError?: string,
+  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): TaskBoardSnapshot {
+  const tasks = selectTasks(index, search.query);
+  const layout = preferences.taskBoardLayout;
+  const groupBy = preferences.taskBoardGroup;
+  const taskFilter = preferences.taskBoardTaskFilter;
+  const shownText = search.invalidQuery ?? search.query;
+  const board: TaskBoardLayout =
+    layout === 'board'
+      ? layoutTaskBoard(index, tasks, groupBy, options)
+      : { groupBy, columns: [], taskCount: tasks.length };
   return {
-    ...layoutTaskBoard(index, selectTasks(index, query), groupBy, options),
-    query,
-    queryError,
+    ...board,
+    query: createQueryViewState(
+      index,
+      parseQuery(shownText),
+      { notes: 0, tasks: tasks.length },
+      true,
+      preferences.recentQueries ?? [],
+      {
+        facets: search.query.trim()
+          ? buildSearchFacets(
+              index,
+              { sections: [], files: [], tasks },
+              search.query,
+            )
+          : [],
+      },
+    ),
+    layout,
+    tasks:
+      layout === 'list'
+        ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
+            .filter((task) => matchesTaskFilter(task, taskFilter))
+            .map((task) => createDashboardTask(task, index.sections))
+        : undefined,
+    taskCounts: {
+      all: tasks.length,
+      active: tasks.filter((task) => !task.completed).length,
+      completed: tasks.filter((task) => task.completed).length,
+    },
+    taskFilter,
+    taskSortMode: preferences.taskSortMode,
+    tagTitleDisplayMode,
+    settings: {
+      statuses: [...options.statuses],
+      statusNamespace: options.statusNamespace,
+    },
   };
 }
 

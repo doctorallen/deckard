@@ -5,6 +5,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
   createDeckardStatsSnapshot,
   createDashboardSnapshot,
+  createDashboardTask,
   createTagOverviewSnapshot,
   createTagOverviewSidebarSnapshot,
   matchesTaskFilter,
@@ -14,6 +15,7 @@ import {
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
+import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import {
   createSidebarSnapshot,
   rankRelatedNotes,
@@ -49,20 +51,26 @@ const defaultPreferences: PersistedPreferences = {
   dashboardTagColumns: 2,
   dashboardNoteSortMode: 'alphabetical',
   dashboardViewState: {
-    mode: 'tasks',
-    taskFilter: 'active',
-    selectedTaskTags: [],
-    taskSearchQuery: '',
+    mode: 'notes',
     noteSearchQuery: '',
     tagSearchQuery: '',
-    taskTagQuery: '',
   },
+  taskBoardLayout: 'board',
+  taskBoardGroup: 'status',
+  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
+};
+
+const boardOptions: TaskBoardOptions = {
+  now: Date.now(),
+  statusNamespace: 'status',
+  statuses: ['todo', 'doing'],
+  format: 'emoji',
 };
 
 suite('Dashboard state', () => {
@@ -252,15 +260,13 @@ suite('Dashboard state', () => {
       createFile('notes/alpha.md', '# Alpha #work\nBody text.'),
     ]);
 
-    const withNotes = createDashboardSnapshot(index, defaultPreferences, 'active');
+    const withNotes = createDashboardSnapshot(index, defaultPreferences);
     assert.strictEqual(withNotes.notes.length, 1);
     assert.strictEqual(withNotes.notesOmitted, undefined);
 
     const withoutNotes = createDashboardSnapshot(
       index,
       defaultPreferences,
-      'active',
-      [],
       undefined,
       'inline',
       false,
@@ -270,7 +276,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(withoutNotes.totalNoteCount, 1, 'the count still covers every note');
   });
 
-  test('filters tasks and preserves explicit task display order', () => {
+  test('lists the Task Board\'s tasks filtered, in their explicit order', () => {
     const tasks = [
       createTask('first', false, 1, ['#work']),
       createTask('second', true, 2),
@@ -280,13 +286,15 @@ suite('Dashboard state', () => {
     const preferences = {
       ...defaultPreferences,
       taskOrder: [tasks[2].id, tasks[0].id, tasks[1].id],
+      taskBoardLayout: 'list' as const,
     };
-    const snapshot = createDashboardSnapshot(index, preferences, 'active');
+    const board = createTaskBoard(index, preferences, { query: '' }, boardOptions);
 
-    assert.strictEqual(snapshot.totalTaskCount, 3);
-    assert.strictEqual(snapshot.activeTaskCount, 2);
+    assert.strictEqual(createDashboardSnapshot(index, preferences).totalTaskCount, 3);
+    assert.deepStrictEqual(board.taskCounts, { all: 3, active: 2, completed: 1 });
+    assert.deepStrictEqual(board.columns, [], 'a list lays out no columns');
     assert.deepStrictEqual(
-      snapshot.tasks.map((item) => item.task.title),
+      board.tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
     assert.strictEqual(matchesTaskFilter(tasks[1], 'completed'), true);
@@ -313,7 +321,7 @@ suite('Dashboard state', () => {
       dashboardNoteSortMode: 'updated' as const,
       sectionAccessCounts: { [first.sections[0].id]: 2 },
     };
-    const snapshot = createDashboardSnapshot(index, preferences, 'active');
+    const snapshot = createDashboardSnapshot(index, preferences);
 
     assert.strictEqual(snapshot.totalNoteCount, 2);
     assert.strictEqual(snapshot.noteColumns, 3);
@@ -349,8 +357,6 @@ suite('Dashboard state', () => {
     const separateTitleSnapshot = createDashboardSnapshot(
       index,
       { ...preferences, renderMode: 'html' },
-      'active',
-      [],
       undefined,
       'separate',
     );
@@ -370,7 +376,7 @@ suite('Dashboard state', () => {
       '# Project #project-name #project/project-name #management/performance',
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createDashboardSnapshot(index, defaultPreferences, 'active');
+    const snapshot = createDashboardSnapshot(index, defaultPreferences);
 
     assert.strictEqual(
       snapshot.tags.some((tag) => tag.key === '#project-name'),
@@ -466,38 +472,32 @@ suite('Dashboard state', () => {
 
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
-    const snapshot = createDashboardSnapshot(
-      createIndex([createTask(title, false, 1)]),
-      defaultPreferences,
-      'active',
-    );
+    const index = createIndex([createTask(title, false, 1)]);
+    const item = createDashboardTask([...index.tasks.values()][0], index.sections);
 
     assert.ok(
-      snapshot.tasks[0].renderedTitle.includes(
+      item.renderedTitle.includes(
         '<a href="https://example.com/docs">Read the docs</a>',
       ),
     );
-    assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
-    assert.strictEqual(snapshot.tasks[0].renderedTitle.includes(title), false);
+    assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
+    assert.strictEqual(item.renderedTitle.includes(title), false);
   });
 
   test('projects task title tags alongside rendered Markdown', () => {
     const title = '[Review the plan](https://example.com/plan) #project/atlas **now**';
-    const snapshot = createDashboardSnapshot(
-      createIndex([createTask(title, false, 1, ['project/atlas'])]),
-      defaultPreferences,
-      'active',
-    );
+    const index = createIndex([createTask(title, false, 1, ['project/atlas'])]);
+    const item = createDashboardTask([...index.tasks.values()][0], index.sections);
 
-    assert.deepStrictEqual(snapshot.tasks[0].titleTags, [
+    assert.deepStrictEqual(item.titleTags, [
       { key: 'project/atlas', label: '#project/atlas' },
     ]);
     assert.ok(
-      snapshot.tasks[0].renderedTitle.includes(
+      item.renderedTitle.includes(
         '<a href="https://example.com/plan">Review the plan</a>',
       ),
     );
-    assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
+    assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
   });
 
   test('sorts tasks by rank, creation date, and update date', () => {

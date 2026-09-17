@@ -57,6 +57,50 @@ export function evaluateQuery(
   return { sections, tasks, files };
 }
 
+/** How many notes and tasks a search for a tag finds. */
+export interface TagMatchCount {
+  notes: number;
+  tasks: number;
+}
+
+const tagMatchCounts = new WeakMap<WorkspaceIndex, Map<string, TagMatchCount>>();
+
+/**
+ * Counts, for every tag, the notes and tasks `tag = <tag>` finds: the same
+ * units the evaluator tests, with the tags they inherit, so a count shown
+ * beside a tag agrees with the search it starts. Counted once per index.
+ */
+export function countTagMatches(
+  index: WorkspaceIndex,
+): ReadonlyMap<string, TagMatchCount> {
+  const cached = tagMatchCounts.get(index);
+  if (cached) {
+    return cached;
+  }
+  const counts = new Map<string, TagMatchCount>();
+  const add = (tagKeys: Set<string>, kind: keyof TagMatchCount): void => {
+    tagKeys.forEach((tagKey) => {
+      const count = counts.get(tagKey) ?? { notes: 0, tasks: 0 };
+      count[kind] += 1;
+      counts.set(tagKey, count);
+    });
+  };
+  const membership = buildTagMembership(index);
+  index.sections.forEach((section) =>
+    add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
+  );
+  index.tasks.forEach((task) =>
+    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
+  );
+  index.files.forEach((file) => {
+    if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
+      add(createFileUnit(membership, file).tagKeys, 'notes');
+    }
+  });
+  tagMatchCounts.set(index, counts);
+  return counts;
+}
+
 /**
  * One thing a condition can be tested against.
  */

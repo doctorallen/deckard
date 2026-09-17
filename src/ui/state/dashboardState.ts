@@ -32,7 +32,10 @@ import {
   getPlainTextTerms,
   getTopLevelTerms,
 } from '../../core/query/queryEdit';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
+import {
+  countTagMatches,
+  evaluateQuery,
+} from '../../core/query/queryEvaluator';
 import {
   buildTagIntersectionQuery,
   collectQueryTagKeys,
@@ -57,29 +60,16 @@ import { buildSearchFacets } from './searchFacets';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
- *
- * Filtering happens after ordering so ranked tasks retain their intended
- * relative order even when the user narrows the visible set.
  */
 export function createDashboardSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  taskFilter: TaskFilter,
-  selectedTaskTags: string[] = [],
   selectedTag?: string,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
   includeNotes = true,
 ): DashboardSnapshot {
   const tags = sortTags(index.tags.values(), preferences);
   const entities = sortEntities(index.entities.values(), preferences);
-  const availableTaskTags = sortTags(
-    [...index.tags.values()].filter((tag) => tag.taskIds.length > 0),
-    preferences,
-  );
-  const normalizedTaskTags = normalizeTaskTags(
-    selectedTaskTags,
-    availableTaskTags,
-  );
   // Every section becomes a note card, so a page that is not showing notes
   // is spared building them.
   const notes = !includeNotes ? [] : sortDashboardNotes(
@@ -104,13 +94,6 @@ export function createDashboardSnapshot(
   const noteSearch = includeNotes
     ? createNoteSearch(index, preferences, notes)
     : undefined;
-  const tasks = sortTasks(
-    [...index.tasks.values()],
-    preferences.taskOrder,
-    preferences.taskSortMode,
-  )
-    .filter((task) => matchesTaskFilter(task, taskFilter, normalizedTaskTags))
-    .map((task) => createDashboardTask(task, index.sections));
 
   return {
     ...(includeNotes ? {} : { notesOmitted: true }),
@@ -127,7 +110,6 @@ export function createDashboardSnapshot(
     tags,
     entities,
     notes: noteSearch?.notes ?? notes,
-    tasks,
     totalSectionCount: index.sections.size,
     totalNoteCount:
       index.sections.size +
@@ -136,10 +118,6 @@ export function createDashboardSnapshot(
           file.sections.length === 0 && file.frontmatterTags.length > 0,
       ).length,
     totalTaskCount: index.tasks.size,
-    activeTaskCount: [...index.tasks.values()].filter((task) => !task.completed)
-      .length,
-    taskFilter,
-    taskSortMode: preferences.taskSortMode,
     taskColumns: preferences.dashboardTaskColumns,
     noteColumns: preferences.dashboardNoteColumns,
     tagColumns: preferences.dashboardTagColumns,
@@ -148,14 +126,8 @@ export function createDashboardSnapshot(
     tagTitleDisplayMode,
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
-    availableTaskTags,
-    selectedTaskTags: normalizedTaskTags,
     selectedTag,
-    viewState: {
-      ...preferences.dashboardViewState,
-      taskFilter,
-      selectedTaskTags: normalizedTaskTags,
-      },
+    viewState: { ...preferences.dashboardViewState },
     savedFilters: preferences.savedFilters.flatMap((filter) => {
       if (filter.query) {
         // A saved query keeps its place in the rail even when the tags it
@@ -533,6 +505,24 @@ export function sortTasks(
       left.lineNumber - right.lineNumber
     );
   });
+}
+
+/**
+ * Merges a requested order with current IDs so a stale drag result cannot lose
+ * entries created or removed since the webview rendered its list.
+ */
+export function mergeOrder(
+  requested: string[],
+  available: Iterable<string>,
+): string[] {
+  const availableIds = [...available];
+  const availableSet = new Set(availableIds);
+  const requestedIds = requested.filter((id) => availableSet.has(id));
+  const requestedSet = new Set(requestedIds);
+  return [
+    ...requestedIds,
+    ...availableIds.filter((id) => !requestedSet.has(id)),
+  ];
 }
 
 /**
@@ -1152,7 +1142,7 @@ export function getHeadingPath(
 /**
  * Adds rendered task text and source context without changing the domain task.
  */
-function createDashboardTask(
+export function createDashboardTask(
   task: Task,
   sections: Map<string, Section>,
 ): DashboardTask {
@@ -1266,19 +1256,6 @@ export function getInlineSource(section: Section): string {
   return section.isInline && section.rawContent
     ? section.rawContent
     : section.heading;
-}
-
-/**
- * Discards selected tags that no longer exist or no longer apply to tasks.
- */
-function normalizeTaskTags(
-  selectedTaskTags: string[],
-  availableTaskTags: TagInfo[],
-): string[] {
-  const available = new Set(availableTaskTags.map((tag) => tag.key));
-  return [...new Set(selectedTaskTags)].filter((tagKey) =>
-    available.has(tagKey),
-  );
 }
 
 /**
@@ -1546,6 +1523,18 @@ const QUERY_TAG_SUGGESTION_LIMIT = 400;
 const QUERY_PATH_SUGGESTION_LIMIT = 200;
 
 /**
+ * What searching for a tag finds, such as "2 notes · 3 tasks", written the
+ * way a search's own result count is, so the two agree.
+ */
+export function describeTagMatches(
+  index: WorkspaceIndex,
+  tagKey: string,
+): string {
+  const count = countTagMatches(index).get(tagKey) ?? { notes: 0, tasks: 0 };
+  return `${count.notes} ${count.notes === 1 ? 'note' : 'notes'} · ${count.tasks} ${count.tasks === 1 ? 'task' : 'tasks'}`;
+}
+
+/**
  * Builds the completions both editing surfaces use.
  *
  * Values are grouped by field rather than pre-joined to one, so the query bar
@@ -1568,7 +1557,7 @@ export function createQuerySuggestions(
     .map((tag) => ({
       value: tag.key,
       label: tag.label,
-      detail: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
+      detail: describeTagMatches(index, tag.key),
     }));
 
   const kinds: QuerySuggestion[] = [

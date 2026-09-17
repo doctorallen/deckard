@@ -11,6 +11,8 @@
  * Changing a component here changes it everywhere.
  */
 
+import { settingsIcon } from './icons';
+
 /**
  * The palette every webview starts from.
  *
@@ -177,44 +179,24 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .settings-icon { fill: currentColor; stroke: none; }
 .filter-count { color: var(--muted); font-size: 10px; }
 
-/* The gear disclosure used for per-page view options. */
-.view-options { position: relative; }
-.view-options summary {
-  display: grid;
-  width: var(--control-height);
-  min-height: var(--control-height);
-  place-items: center;
-  border: var(--edge) solid var(--line);
-  background: var(--panel-deep);
-  color: var(--text);
-  padding: 5px;
-  cursor: pointer;
-  list-style: none;
-}
+/* The gear that holds a page's view options, drawn the same on every page. */
+.view-options { position: relative; flex: 0 0 auto; }
+.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
-.view-options summary:hover { border-color: var(--amber); background: var(--panel-raised); color: var(--amber); }
-.view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
-.view-options-menu {
-  position: absolute;
-  z-index: 3;
-  top: calc(100% + 5px);
-  right: 0;
-  display: grid;
-  gap: 10px;
-  min-width: 230px;
-  padding: 10px;
-  border: var(--edge) solid var(--line);
-  background: var(--panel-raised);
-}
-.view-options-group {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
+.view-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
+.view-options summary:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 2px; }
+.view-options .settings-icon { width: 16px; height: 16px; }
+.view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
+.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+/* A group whose control is taller than a row, such as a list, sits under its label. */
+.view-options-group.is-stacked { display: grid; justify-content: stretch; }
+/* A row of small numbered or named choices inside the menu. */
+.view-options-choices { display: inline-flex; }
+.view-options-choices button { min-width: 28px; min-height: 28px; padding: 4px 8px; }
+.view-options-choices button + button { margin-left: -1px; }
+.view-options-choices button:first-child { border-radius: 2px 0 0 2px; }
+.view-options-choices button:last-child { border-radius: 0 2px 2px 0; }
+.view-options-choices button.active { position: relative; z-index: 1; }
 }`;
 }
 
@@ -422,6 +404,34 @@ export function getTaskBoardCss(): string {
 }
 
 /**
+ * A list of task rows, with their due dates and details, and the drag that
+ * ranks them. The Dashboard's search results and the Task Board's list both
+ * draw it.
+ */
+export function getTaskListCss(): string {
+  return `
+.task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: 7px; }
+.task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: 10px; cursor: pointer; }
+.task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
+.task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
+.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #3d4145; font: 11px var(--font-mono); margin-top: 5px; }
+.due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
+.due-date.overdue { color: var(--favorite-red); }
+.task-detail { letter-spacing: .03em; }
+.task-detail.priority-highest, .task-detail.priority-high { color: var(--favorite-red); font-weight: 700; }
+.is-draggable { cursor: grab; touch-action: none; }
+.is-draggable:active { cursor: grabbing; }
+.is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.drag-ghost { position: fixed; z-index: 10; top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
+.drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
+.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.rank-context-menu[hidden] { display: none; }
+.rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
+@media (max-width: 720px) { .task-list { grid-template-columns: 1fr; } }`;
+}
+
+/**
  * The complete base sheet, in cascade order.
  *
  * A page includes this first, then its own rules, then the theme sheet.
@@ -435,6 +445,7 @@ export function getBaseCss(): string {
     getTagCss(),
     getSurfaceCss(),
     getTaskBoardCss(),
+    getTaskListCss(),
   ].join('\n');
 }
 
@@ -749,6 +760,340 @@ export function getComponentScript(): string {
       clearDropTargets();
     });
   }
+
+  /**
+   * The gear that holds a page's view options. groups is a list of
+   * { label, html, stacked }, one row of the menu each. A menu that was open
+   * before a redraw is open after it.
+   */
+  function renderViewOptions(groups) {
+    const wasOpen = Boolean(document.querySelector('.view-options[open]'));
+    return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">' + '${settingsIcon}' + '</summary>'
+      + '<div class="view-options-menu">' + groups.map(function (group) {
+        return '<div class="view-options-group' + (group.stacked ? ' is-stacked' : '') + '"><span>' + escapeHtml(group.label) + '</span>' + group.html + '</div>';
+      }).join('') + '</div></details>';
+  }
+
+  /**
+   * A row of choices for the gear's menu, such as List and Board. choices
+   * is a list of [value, text, ariaLabel]. Each button carries data-action,
+   * data-value, and any attributes given.
+   */
+  function renderViewOptionChoices(action, choices, selected, label, attributes) {
+    return '<div class="segmented view-options-choices" role="group" aria-label="' + escapeHtml(label) + '">' + choices.map(function (choice) {
+      const value = String(choice[0]);
+      const active = value === String(selected);
+      return '<button type="button" class="' + (active ? 'active' : '') + '" data-action="' + escapeHtml(action) + '" data-value="' + escapeHtml(value) + '"' + (attributes ? ' ' + attributes : '') + ' aria-pressed="' + active + '"' + (choice[2] ? ' aria-label="' + escapeHtml(choice[2]) + '"' : '') + '>' + escapeHtml(choice[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * Close the gear's menu on a click outside it, and on Escape, handing focus
+   * back to the gear. Call once, before the page's own listeners, so a click
+   * that redraws the page is seen while its target is still in the menu.
+   */
+  function installViewOptions() {
+    document.addEventListener('click', function (event) {
+      const inside = event.target && event.target.closest ? event.target.closest('.view-options') : undefined;
+      document.querySelectorAll('.view-options[open]').forEach(function (options) {
+        if (options !== inside) options.open = false;
+      });
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      const options = document.querySelector('.view-options[open]');
+      if (!options) return;
+      options.open = false;
+      options.querySelector('summary').focus();
+    });
+  }
+
+  /** Writes a task timestamp as the YYYY-MM-DD form the note uses. */
+  function formatTaskDate(timestamp) {
+    const date = new Date(timestamp);
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
+
+  /**
+   * One task in a task list: its checkbox, title, and where it is written.
+   * item is a DashboardTask. options.draggable marks a row that can be
+   * ranked; options.titleDisplay is the tagTitleDisplayMode.
+   */
+  function renderTaskListRow(item, options) {
+    const task = item.task;
+    const settings = options || {};
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const dueDate = task.dueText
+      ? '<span class="due-date ' + (task.dueAt !== undefined && task.dueAt < startOfToday.getTime() ? 'overdue' : '') + '">DUE ' + escapeHtml(task.dueText) + '</span>'
+      : '';
+    const scheduled = task.scheduledAt !== undefined
+      ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
+      : '';
+    const priority = task.priority
+      ? '<span class="task-detail priority-' + escapeHtml(task.priority) + '">' + escapeHtml(task.priority.toUpperCase()) + ' PRIORITY</span>'
+      : '';
+    const recurrence = task.recurrence
+      ? '<span class="task-detail">REPEATS ' + escapeHtml(task.recurrence.toUpperCase()) + '</span>'
+      : '';
+    const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
+    return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
+      + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>'
+      + '</div>';
+  }
+
+  /**
+   * The Notes and Tasks tabs over a search's results. tabs is a list of
+   * { id, label, count }; each button carries data-action="set-result-tab".
+   */
+  function renderResultTabs(tabs, active, label) {
+    return '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="' + escapeHtml(label) + '">' + tabs.map(function (tab) {
+      const selected = tab.id === active;
+      return '<button class="' + (selected ? 'active' : '') + '" data-action="set-result-tab" data-tab="' + escapeHtml(tab.id) + '" role="tab" aria-selected="' + selected + '">' + escapeHtml(tab.label) + ' (<span data-search-count="' + escapeHtml(tab.id) + '">' + tab.count + '</span>)</button>';
+    }).join('') + '</div></div>';
+  }
+
+  /** The All, Open, and Done switch over a list of tasks. */
+  function renderTaskFilterSwitch(selected, counts, action) {
+    return '<div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">' + ['all', 'active', 'completed'].map(function (filter) {
+      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
+      const description = label + ' tasks, ' + counts[filter];
+      return '<button class="' + (selected === filter ? 'active' : '') + '" data-action="' + escapeHtml(action) + '" data-filter="' + filter + '" aria-label="' + description + '" aria-pressed="' + (selected === filter) + '" title="' + description + '">' + taskFilterIcon(filter) + '<span>' + label + '</span><span class="filter-count">' + counts[filter] + '</span></button>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * Rows a reader ranks by dragging them, or by Move to top and Move to
+   * bottom on their context menu. Call once; listeners sit on the document,
+   * so a page may redraw its rows freely.
+   *
+   *   kinds       { name: { selector, key, edgeLabels } }: a row's
+   *               selector, the dataset key that names it, such as taskId,
+   *               and optionally the menu's two labels, first then last
+   *   canRank(kind)          whether rows of this kind can be ranked now
+   *   reorder(kind, key, targetKey, before, placeholder)
+   *               ranks key next to targetKey; returns true when it did
+   *   move(kind, key, toTop) ranks key first or last
+   *   menuActions(kind, key) optional; more menu buttons, each with
+   *               data-context-action
+   *   onMenuAction(action, kind, key) optional; runs one of those
+   */
+  let rankMenu;
+  let rankMenuKind;
+  let rankMenuKey;
+
+  function closeRankMenu() {
+    if (rankMenu) rankMenu.hidden = true;
+    rankMenuKind = undefined;
+    rankMenuKey = undefined;
+  }
+
+  function installRankedRows(options) {
+    const names = Object.keys(options.kinds);
+    const rowSelector = names.map(function (name) { return options.kinds[name].selector; }).join(', ');
+    const keyAttributes = names.map(function (name) {
+      return 'data-' + options.kinds[name].key.replace(/[A-Z]/g, function (letter) { return '-' + letter.toLowerCase(); });
+    }).concat(['data-file-path', 'data-line']);
+    let drag;
+    let ghost;
+    let placeholder;
+    let dropTarget;
+    let dropBefore = true;
+    let suppressClick = false;
+
+    function kindOf(row) {
+      return names.find(function (name) { return row.matches(options.kinds[name].selector); });
+    }
+    function keyOf(row, kind) {
+      return row.dataset[options.kinds[kind].key];
+    }
+    function strip(element) {
+      element.classList.remove('is-dragging');
+      element.removeAttribute('draggable');
+      keyAttributes.forEach(function (attribute) { element.removeAttribute(attribute); });
+      element.setAttribute('aria-hidden', 'true');
+    }
+    function clearPreview() {
+      if (ghost) ghost.remove();
+      if (placeholder) placeholder.remove();
+      ghost = undefined;
+      placeholder = undefined;
+      dropTarget = undefined;
+      document.querySelectorAll('.is-dragging').forEach(function (row) { row.classList.remove('is-dragging'); });
+    }
+    function begin(event) {
+      clearPreview();
+      const row = drag.row;
+      ghost = row.cloneNode(true);
+      strip(ghost);
+      ghost.classList.add('drag-ghost');
+      const bounds = row.getBoundingClientRect();
+      ghost.style.width = bounds.width + 'px';
+      ghost.style.height = bounds.height + 'px';
+      document.body.appendChild(ghost);
+      placeholder = row.cloneNode(true);
+      strip(placeholder);
+      placeholder.removeAttribute('tabindex');
+      placeholder.classList.add('drag-placeholder');
+      placeholder.querySelectorAll('[data-action], button, input, [tabindex]').forEach(function (element) {
+        element.removeAttribute('data-action');
+        keyAttributes.forEach(function (attribute) { element.removeAttribute(attribute); });
+        element.setAttribute('tabindex', '-1');
+      });
+      if (row.parentElement) row.parentElement.insertBefore(placeholder, row);
+      row.classList.add('is-dragging');
+      drag.active = true;
+      follow(event.clientX, event.clientY);
+    }
+    function follow(clientX, clientY) {
+      if (ghost) {
+        ghost.style.left = clientX + 12 + 'px';
+        ghost.style.top = clientY + 12 + 'px';
+      }
+      const element = document.elementFromPoint(clientX, clientY);
+      const row = element ? element.closest(options.kinds[drag.kind].selector) : undefined;
+      if (!row || row === drag.row || keyOf(row, drag.kind) === drag.key) return;
+      const bounds = row.getBoundingClientRect();
+      const before = clientY < bounds.top + bounds.height / 2;
+      if (dropTarget === row && dropBefore === before) return;
+      dropTarget = row;
+      dropBefore = before;
+      const insertionPoint = before ? row : row.nextSibling;
+      if (placeholder && row.parentElement && insertionPoint !== placeholder) row.parentElement.insertBefore(placeholder, insertionPoint);
+    }
+    function finish(event, cancelled) {
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const current = drag;
+      if (current.row.hasPointerCapture && current.row.hasPointerCapture(event.pointerId)) current.row.releasePointerCapture(event.pointerId);
+      if (!current.active) {
+        drag = undefined;
+        return;
+      }
+      let dropped = false;
+      if (!cancelled) {
+        follow(event.clientX, event.clientY);
+        const targetKey = dropTarget ? keyOf(dropTarget, current.kind) : undefined;
+        dropped = Boolean(targetKey) && targetKey !== current.key && options.canRank(current.kind)
+          && options.reorder(current.kind, current.key, targetKey, dropBefore, placeholder) === true;
+        suppressClick = true;
+      }
+      // A dropped row takes the placeholder's place until the host answers.
+      if (dropped && placeholder && placeholder.parentElement) {
+        placeholder.parentElement.insertBefore(current.row, placeholder);
+        current.row.classList.remove('is-dragging');
+      }
+      clearPreview();
+      drag = undefined;
+    }
+    function openMenu(event, row) {
+      const kind = kindOf(row);
+      const key = kind ? keyOf(row, kind) : undefined;
+      if (!key) return;
+      const actions = options.menuActions ? options.menuActions(kind, key) : [];
+      if (options.canRank(kind)) {
+        const labels = options.kinds[kind].edgeLabels || ['Move to top', 'Move to bottom'];
+        actions.push('<button type="button" role="menuitem" data-context-action="top">' + escapeHtml(labels[0]) + '</button>');
+        actions.push('<button type="button" role="menuitem" data-context-action="bottom">' + escapeHtml(labels[1]) + '</button>');
+      }
+      if (!actions.length) return;
+      event.preventDefault();
+      closeRankMenu();
+      if (!rankMenu) {
+        rankMenu = document.createElement('div');
+        rankMenu.setAttribute('id', 'rank-context-menu');
+        rankMenu.setAttribute('class', 'rank-context-menu');
+        rankMenu.setAttribute('role', 'menu');
+        document.body.appendChild(rankMenu);
+      }
+      rankMenuKind = kind;
+      rankMenuKey = key;
+      rankMenu.innerHTML = actions.join('');
+      rankMenu.hidden = false;
+      const bounds = rankMenu.getBoundingClientRect();
+      rankMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
+      rankMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
+      rankMenu.querySelector('button').focus();
+    }
+
+    document.addEventListener('click', function (event) {
+      const chosen = event.target.closest('#rank-context-menu [data-context-action]');
+      if (chosen) {
+        const kind = rankMenuKind;
+        const key = rankMenuKey;
+        const action = chosen.dataset.contextAction;
+        closeRankMenu();
+        if (!kind || !key) return;
+        if (action === 'top' || action === 'bottom') {
+          if (options.canRank(kind)) options.move(kind, key, action === 'top');
+        } else if (options.onMenuAction) {
+          options.onMenuAction(action, kind, key);
+        }
+        return;
+      }
+      if (rankMenu && !event.target.closest('#rank-context-menu')) closeRankMenu();
+      // The click a drag ends with is not a click on the row.
+      if (suppressClick) {
+        suppressClick = false;
+        if (event.target.closest(rowSelector)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }
+    }, true);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) closeRankMenu();
+    });
+    document.addEventListener('contextmenu', function (event) {
+      const row = event.target.closest(rowSelector);
+      if (row) openMenu(event, row);
+    });
+    document.addEventListener('pointerdown', function (event) {
+      suppressClick = false;
+      const row = event.target.closest(rowSelector);
+      if (!row || event.button !== 0 || drag) return;
+      if (event.target.closest('button, input, select, textarea, a, [data-action]')) return;
+      const kind = kindOf(row);
+      if (!kind || !row.classList.contains('is-draggable') || !options.canRank(kind)) return;
+      drag = { row: row, kind: kind, key: keyOf(row, kind), pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false };
+      if (row.setPointerCapture) row.setPointerCapture(event.pointerId);
+    });
+    document.addEventListener('pointermove', function (event) {
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      if (!drag.active) {
+        if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return;
+        begin(event);
+      }
+      event.preventDefault();
+      follow(event.clientX, event.clientY);
+    });
+    document.addEventListener('pointerup', function (event) { finish(event, false); });
+    document.addEventListener('pointercancel', function (event) { finish(event, true); });
+  }
+
+  /**
+   * Moves key before or after targetKey in keys, for a drag that ranked it.
+   * Returns the new order, or undefined when either is missing.
+   */
+  function rankKeys(keys, key, targetKey, before) {
+    const from = keys.indexOf(key);
+    const to = keys.indexOf(targetKey);
+    if (from < 0 || to < 0) return undefined;
+    const next = keys.slice();
+    const insertion = to + (before ? 0 : 1);
+    next.splice(from, 1);
+    next.splice(insertion > from ? insertion - 1 : insertion, 0, key);
+    return next;
+  }
+
+  /** Moves key to the start or end of keys. */
+  function moveKeyToEdge(keys, key, toTop) {
+    if (keys.indexOf(key) < 0) return undefined;
+    const next = keys.filter(function (candidate) { return candidate !== key; });
+    if (toTop) next.unshift(key);
+    else next.push(key);
+    return next;
+  }
 `;
 }
 
@@ -841,6 +1186,11 @@ export function getQueryEditorScript(): string {
    *                  what it already shows by the plain words being typed
    *   placeholder()  the empty box's hint
    *   label          what the box searches, for assistive technology
+   *   clearedText()  optional; what Clear leaves in the box, such as the
+   *                  page's own tag on a tag overview. Empty unless given;
+   *                  Clear is disabled while the box holds only this.
+   *   resultKinds    optional; what the search can find, notes and tasks
+   *                  unless a page lists only one, such as ['tasks']
    *   actions(hasText) optional; the page's own buttons for the bar, such as
    *                  Save. A button that needs text carries
    *                  data-query-needs-text, and is always drawn, disabled
@@ -909,6 +1259,13 @@ export function getQueryEditorScript(): string {
       const listed = (suggestions().fields || []).map(function (field) { return field.value; });
       return listed.length ? listed : Object.keys(DEFAULT_OPERATORS);
     }
+    function clearedText() {
+      return options.clearedText ? String(options.clearedText() || '') : '';
+    }
+    /** Whether Clear would change the search. */
+    function canClear(text) {
+      return String(text || '').trim() !== clearedText().trim();
+    }
     function placeholder() {
       return typeof options.placeholder === 'function' ? options.placeholder() : (options.placeholder || '');
     }
@@ -930,7 +1287,7 @@ export function getQueryEditorScript(): string {
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell"><input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(label) + '" placeholder="' + escapeHtml(placeholder()) + '" value="' + escapeHtml(value) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
         + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
-        + '<button data-action="clear-query" data-query-needs-text title="Clear the search"' + (hasText ? '' : ' disabled') + '>Clear</button>'
+        + '<button data-action="clear-query" data-query-clears title="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
         + '</div>'
         + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
@@ -945,11 +1302,13 @@ export function getQueryEditorScript(): string {
      */
     function syncTextButtons(text) {
       const hasText = Boolean(String(text || '').trim());
-      document.querySelectorAll('[data-query-needs-text]').forEach(function (button) {
-        button.disabled = !hasText;
-        if (hasText) button.removeAttribute('disabled');
+      const enable = function (button, enabled) {
+        button.disabled = !enabled;
+        if (enabled) button.removeAttribute('disabled');
         else button.setAttribute('disabled', '');
-      });
+      };
+      document.querySelectorAll('[data-query-needs-text]').forEach(function (button) { enable(button, hasText); });
+      document.querySelectorAll('[data-query-clears]').forEach(function (button) { enable(button, canClear(text)); });
     }
 
     /** Each term of a search of several, removable on its own. */
@@ -975,11 +1334,15 @@ export function getQueryEditorScript(): string {
       }).join('') + '</div>' + count + '</section>';
     }
 
-    /** How many notes and tasks the applied search matches. */
+    /** How many of each kind of result the applied search matches. */
     function renderMatchCount() {
       if (!appliedText().trim()) return '';
       const counts = query().matchCounts || { notes: 0, tasks: 0 };
-      return '<span class="query-facets-count" role="status">' + counts.notes + ' ' + (counts.notes === 1 ? 'note' : 'notes') + ' &middot; ' + counts.tasks + ' ' + (counts.tasks === 1 ? 'task' : 'tasks') + '</span>';
+      const nouns = { notes: ['note', 'notes'], tasks: ['task', 'tasks'] };
+      return '<span class="query-facets-count" role="status">' + (options.resultKinds || ['notes', 'tasks']).map(function (kind) {
+        const count = counts[kind] || 0;
+        return count + ' ' + nouns[kind][count === 1 ? 0 : 1];
+      }).join(' &middot; ') + '</span>';
     }
 
     /** OR groups of AND rows over the host's parse of the search. */
@@ -1577,10 +1940,11 @@ export function getQueryEditorScript(): string {
           return true;
         }
         if (action === 'clear-query') {
-          draft = '';
+          draft = clearedText();
           closeSuggestions();
           awaitingApply = true;
-          if (options.onDraft) options.onDraft('');
+          syncTextButtons(draft);
+          if (options.onDraft) options.onDraft(draft);
           options.clear();
           return true;
         }

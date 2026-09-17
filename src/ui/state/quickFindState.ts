@@ -17,7 +17,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
-import { getHeadingPath } from './dashboardState';
+import { describeTagMatches, getHeadingPath } from './dashboardState';
 import { frecencyScore } from './frecency';
 
 /**
@@ -469,7 +469,7 @@ function matchTags(
         right.score - left.score || left.tag.label.localeCompare(right.tag.label),
     )
     .slice(0, TAG_LIMIT)
-    .map(({ tag }) => createTagItem(tag, `${prefix}${tag.key} `));
+    .map(({ tag }) => createTagItem(index, tag, `${prefix}${tag.key} `));
 }
 
 /**
@@ -550,7 +550,7 @@ function buildEmptyResults(
         right.score - left.score || left.tag.label.localeCompare(right.tag.label),
     )
     .slice(0, EMPTY_LIST_LIMIT)
-    .map(({ tag }) => createTagItem(tag, `${tag.key} `));
+    .map(({ tag }) => createTagItem(index, tag, `${tag.key} `));
   const savedViews = preferences.savedFilters.map((filter) =>
     createSavedViewItem(index, filter),
   );
@@ -580,11 +580,15 @@ function buildEmptyResults(
   };
 }
 
-function createTagItem(tag: TagInfo, completion: string): QuickFindItem {
+function createTagItem(
+  index: WorkspaceIndex,
+  tag: TagInfo,
+  completion: string,
+): QuickFindItem {
   return {
     kind: 'tag',
     label: tag.label,
-    description: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
+    description: describeTagMatches(index, tag.key),
     tagKey: tag.key,
     completion,
   };

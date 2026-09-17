@@ -12,15 +12,15 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | --- | --- |
 | [Tags and entities](#markdown-format) | `#tags`, `@people`, and namespaced entities such as `#project/atlas` on headings, tasks, and lines become one workspace-wide index. |
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
-| [Dashboard](#dashboard) | One page for workspace totals and every task, note, and tag, with filters, sorting, favorites, and saved views. |
+| [Dashboard](#dashboard) | One page for workspace totals, searching notes and tasks, and every tag, with sorting, favorites, and saved views. |
 | [Tag overviews](#tag-overviews) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. |
-| [Search](#search) | `Deckard: Find` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on the Dashboard's Search tab and in every tag overview. |
+| [Search](#search) | `Deckard: Find` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on the Dashboard's Search tab, in every tag overview, and on the Task board. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace. |
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
 | [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
-| [Task board](#task-board) | A Kanban board of tasks by status, priority, or due date, where dragging a card rewrites the task in its note. |
+| [Task board](#task-board) | Your tasks as a Kanban board by status, priority, or due date, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, and dependencies, written in either Obsidian Tasks format. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
@@ -222,21 +222,18 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 
 ## Dashboard
 
-Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Tasks**, **Search**, and **Tags** tabs. The Dashboard opens on **Tasks**; use Left/Right Arrow while the tab control is focused to switch modes. Dashboard tab, search, status, and tag-filter choices are restored when you close and reopen the Dashboard.
+Run `Deckard: Open Dashboard` to see compact workspace totals and switch between the **Search** and **Tags** tabs. The Dashboard opens on **Search**; use Left/Right Arrow while the tab control is focused to switch tabs. The Dashboard's tab and searches are restored when you close and reopen it. Tasks have their own page, the [Task board](#task-board).
 
 ![Deckard Dashboard showing workspace totals, saved views, and active tasks.](docs/images/dashboard.png)
 
-- **Saved searches** appear above the Dashboard's Tasks/Search/Tags tabs, so they remain available in any mode. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it. A saved search opens on the Search tab.
-- The Dashboard title identifies the active mode as **Dashboard: Tasks**, **Dashboard: Search**, or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for task, note, and tag cards; Deckard saves all three choices for future Dashboard sessions.
-- **Tasks as a board**: open **View options** and set **Tasks** to **Board** to show the Tasks tab as the same Kanban board the [Task board](#task-board) uses, grouped by status, priority, or due date. The tab's **All**, **Open**, and **Done** filter, tag picker, and search still choose which tasks appear, and Deckard remembers the layout and grouping.
-- **Task controls** provide visible **All**, **Open**, and **Done** counts, text search, plus **Sort: Rank/Created/Updated**. Open the labeled searchable tag picker to select task tags; selected tags appear as removable chips, with **Clear filters** available when tags are selected. A task appears when it matches any selected tag. Rank is the default; date sorting uses the source file's filesystem timestamps.
+- **Saved searches** appear above the Dashboard's Search and Tags tabs, so they remain available on either. In a combined Tag Overview, use **Save filter** to name its active tags; select a saved view to reopen that exact intersection, or use **Remove** to delete it. A saved search opens on the Search tab.
+- The Dashboard title identifies the active tab as **Dashboard: Search** or **Dashboard: Tags**. Use the View options gear to choose independent one-through-four column limits for the tasks a search matches, notes, and tags; Deckard saves all three choices for future Dashboard sessions.
 - **Search** is Deckard's search page. It lists indexed note entries under the [search box](#the-search-box), with **Sort: A-Z/Newest created/Recently updated/Most accessed** on the line under the search box. Plain words filter the notes as you type, including their file names and tags; tags and conditions such as `is:open` apply when you press Enter. To narrow by tags, type them in the search box or select them under **Refine**. Below the notes, **Matching tasks** lists the tasks the search finds, and **Save**, beside the search box, keeps it as a saved view. Notes use the same full-card presentation and View options format toggle as tag overviews, so you can switch between original Markdown and rendered HTML; the choice is shared with Entity Overview. Select a note entry to jump to its source line.
 - **Tags** shows namespaced and unnamespaced tags together. Search tags, narrow them to one namespace, or to tags without one, with **Namespace**, where a person's `@` tag counts as **Person**, then sort alphabetically, by entry count, by most accessed, or by custom rank. Favorite important items; in Rank mode, drag a row or use its context menu to move it to the top or bottom. Wherever a namespaced tag is shown inline, its `#namespace/` prefix is muted while the tag value keeps the surrounding view's normal color.
-- **Searches are kept** between visits. When a search is narrowing the Tasks or Tags list, a line above the list says so, such as *Showing 3 of 42 open tasks matching “vendor”*, with **Clear search**, and the search box is outlined. A **Namespace** filter on the Tags tab counts too, such as *Showing 12 of 90 tags, in Person*, and **Clear search** clears it along with the text. A dot on the **Tasks**, **Search**, or **Tags** tab marks a tab whose search has text, so a search is never hidden on a tab you are not looking at.
+- **Searches are kept** between visits. When a search is narrowing the Tags list, a line above the list says so, such as *Showing 3 of 42 tags matching “vendor”*, with **Clear search**, and the search box is outlined. A **Namespace** filter on the Tags tab counts too, such as *Showing 12 of 90 tags, in Person*, and **Clear search** clears it along with the text. A dot on the **Search** or **Tags** tab marks a tab whose search has text, so a search is never hidden on a tab you are not looking at.
 - Select a tag to open its [tag overview](#tag-overviews).
-- Select a task to jump to its exact source line.
-- Use a task checkbox to update the checklist marker in the original note.
-- Right-click any tag or entity row to choose **Rename tag**. When tags use custom rank or tasks use Rank, drag rows or right-click a row to move it to the top or bottom. Date-sorted tasks cannot be dragged. Display order changes do not reorder text in your Markdown files.
+- Select a task to jump to its exact source line, or use its checkbox to update the checklist marker in the original note.
+- Right-click any tag or entity row to choose **Rename tag**. When tags use custom rank, drag rows or right-click a row to move it to the top or bottom. Display order changes do not reorder text in your Markdown files.
 
 ## Stats
 
@@ -288,7 +285,7 @@ Open **Agenda** from the Deckard Activity Bar to see the open tasks that need at
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Agenda's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard.
+Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Agenda's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 
@@ -296,7 +293,9 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 - **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
 - **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
 - Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
-- Filter the board with a Deckard query, such as `tag = #project/atlas` or `priority >= high`.
+- Search the tasks with the same [search box](#the-search-box) as the Dashboard and tag overviews, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks, and a search you run is added to your recent searches.
+- **List** shows the same tasks as rows, with **All**, **Open**, and **Done** counts and **Sort: Rank/Created/Updated**. In Rank, drag a row or right-click it to move it to the top or bottom; date sorting uses the source file's timestamps. The status grouping switch sits under the search box while the board is shown, and the sort while the list is.
+- **Status columns** in the gear lists the status columns in order. Drag a column's row to reorder it, or right-click it to move it first or last; add one, remove one with its **×**, and set the tag namespace a status is written with. Deckard saves these to `deckard.board.statuses` and `deckard.board.statusNamespace`, in the workspace's settings when it already sets them and in your user settings otherwise.
 - Select a card to open its line, or one of its tags to open that tag's overview. Only a status written on the task line counts, not one inherited from a heading, because moving the card could not change it.
 - Every move is checked against the indexed line first, like a checkbox, so an edit made since the board last refreshed is never overwritten.
 
@@ -410,7 +409,7 @@ Ties are broken by how often and how recently you opened something, so a note yo
 
 ### The search box
 
-The Dashboard's Search tab and every tag overview have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it.
+The Dashboard's Search tab, every tag overview, and the Task board have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it. The Task board's box searches tasks alone.
 
 ![The Dashboard's Search tab searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](docs/images/notes-search.png)
 

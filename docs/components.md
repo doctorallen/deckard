@@ -137,7 +137,7 @@ treatment, so a toolbar reads as one row of controls.
 | `.segmented` | **A row of buttons that reads as one control.** Collapses the borders between children and rounds the outer corners. |
 | `.icon-button` | A square icon-only control at `--control-height`. |
 | `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. |
-| `.view-options` | The gear `<details>` disclosure and its `.view-options-menu` / `.view-options-group` panel. |
+| `.view-options` | **The gear every page's view options sit behind**, drawn by `renderViewOptions()`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. |
 | `.filter-count` | Small muted count inside a filter button. |
 
 ### `.segmented`
@@ -195,8 +195,8 @@ the tag-association view switch.
 
 ### Task board
 
-`getTaskBoardCss()` and four script helpers draw the Kanban board on both the
-Task Board page and the Dashboard's board layout, so the two cannot drift.
+`getTaskBoardCss()` and four script helpers draw the Task Board page's
+Kanban board.
 
 | Piece | What it is |
 | --- | --- |
@@ -210,6 +210,19 @@ Task Board page and the Dashboard's board layout, so the two cannot drift.
 The board's controls use their own `data-action` names (`board-toggle-task`,
 `board-move`, `set-board-group`), so a page's handlers for its other rows never
 act on a board card as well.
+
+### Task list
+
+`getTaskListCss()` and the helpers below draw a list of tasks: the Dashboard's
+search results and the Task Board's list layout.
+
+| Piece | What it is |
+| --- | --- |
+| `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
+| `renderTaskListRow(item, options)` | One row from a `DashboardTask`. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
+| `renderTaskFilterSwitch(filter, counts, action)` | The All / Open / Done `.segmented` switch with counts, as a tag overview's Tasks pane and the Task Board's list show it. |
+| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. The Dashboard ranks tags and entities with it, the Task Board its tasks. |
+| `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
 ### `.row`
 
@@ -244,6 +257,25 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `formatEntityTitle(kind, name)` | `project` + `skybridge-signal` → `Project: Skybridge Signal`. |
 | `taskFilterIcon(filter)` | The `all` / `active` / `completed` icons. |
 | `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. |
+| `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
+| `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
+| `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
+| `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. |
+
+### The search box
+
+`getQueryEditorCss()` and `getQueryEditorScript()` are the one search box the
+Dashboard's Search tab, every tag overview, and the Task Board use, so a
+search looks and behaves the same everywhere: the bar and its completions,
+the builder, removable terms, and **Refine**. A page creates it with
+`createQueryEditor(options)`, draws `renderBar(statusControls)` and
+`renderFacets()`, and passes its events through. `options.resultKinds` names
+what the page can find, such as `['tasks']` on the Task Board, so the result
+count names only those.
+
+On the host, every page builds the box's state with `createQueryViewState()`
+and its **Refine** counts with `buildSearchFacets()`, from the results that
+page shows.
 
 ### Host-side helpers
 

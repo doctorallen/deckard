@@ -30,10 +30,9 @@ export function getTagOverviewHtml(
 <title>Deckard Tag Overview</title>
 <style nonce="${nonce}">${getBaseCss()}
 ${getQueryEditorCss()}
-/* The gear sits in the header's top-right corner with the sort control below
-   it, their right edges in line. The margin keeps a short header from
-   drawing the sort control over the gear. */
-header > .toolbar { margin-top: calc(var(--control-height) + 6px); }
+/* The gear sits in the header's top-right corner. The margin keeps a short
+   header tall enough to hold it. */
+header > .toolbar { margin-top: 36px; }
 header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-title-filter { color: var(--text); }
 .overview-title-joiner { color: var(--amber); font-size: .72em; font-weight: 400; }
@@ -194,6 +193,11 @@ ${getQueryEditorScript()}
   function isRefinement() {
     return Boolean(state && state.query && typeof state.query.scope === 'string');
   }
+  /** The tag the page is about, as its search box writes it. */
+  function ownTag() {
+    const focus = state && (state.entity || state.tag);
+    return focus ? String(focus.key) : '';
+  }
   const editor = createQueryEditor({
     getState: function () { return state && state.query; },
     render: function () { render(); },
@@ -201,10 +205,13 @@ ${getQueryEditorScript()}
       if (isRefinement()) vscode.postMessage({ type: 'setOverviewRefinement', refinement: text });
       else vscode.postMessage({ type: 'setOverviewQuery', query: text });
     },
+    // Clearing returns the page to its own tag: tags added to it, and words
+    // typed after them, go, and the tag the page is about stays.
     clear: function () {
-      if (isRefinement()) vscode.postMessage({ type: 'setOverviewRefinement', refinement: '' });
+      if (isRefinement()) vscode.postMessage({ type: 'setOverviewRefinement', refinement: ownTag() });
       else vscode.postMessage({ type: 'clearOverviewQuery' });
     },
+    clearedText: function () { return isRefinement() ? ownTag() : ''; },
     // Plain words hide what they do not match at once; the rest waits for Enter.
     onDraft: function () {
       filterOverviewEntries('notes');
@@ -552,22 +559,23 @@ ${getQueryEditorScript()}
       active: state.tasks.filter(function (item) { return !item.task.completed; }).length,
       completed: state.tasks.filter(function (item) { return item.task.completed; }).length,
     };
-    const taskFilters = ['all', 'active', 'completed'].map(function (filter) {
-      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
-      const description = label + ' tasks, ' + taskCounts[filter];
-      return '<button class="' + (state.taskFilter === filter ? 'active' : '') + '" data-action="set-task-filter" data-filter="' + filter + '" aria-label="' + description + '" aria-pressed="' + (state.taskFilter === filter) + '" title="' + description + '">' + taskFilterIcon(filter) + '<span>' + label + '</span><span class="filter-count">' + taskCounts[filter] + '</span></button>';
-    }).join('');
     const notesCount = state.sections.length;
     const tasksCount = state.tasks.length;
     const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '<div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></div></section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls"><div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">' + taskFilters + '</div></div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, taskCounts, 'set-task-filter') + '</div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
-      : '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="Tag overview content"><button class="' + (activeTab === 'notes' ? 'active' : '') + '" data-action="set-tab" data-tab="notes" role="tab" aria-selected="' + (activeTab === 'notes') + '">Notes (<span data-search-count="notes">' + notesCount + '</span>)</button><button class="' + (activeTab === 'tasks' ? 'active' : '') + '" data-action="set-tab" data-tab="tasks" role="tab" aria-selected="' + (activeTab === 'tasks') + '">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</button></div></div><div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
+      : renderResultTabs([
+        { id: 'notes', label: 'Notes', count: notesCount },
+        { id: 'tasks', label: 'Tasks', count: tasksCount },
+      ], activeTab, 'Tag overview content') + '<div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const hub = renderHub(isQueryView, filterTags);
     const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
-    const viewOptions = '<details class="view-options"><summary aria-label="View options" title="View options"><svg class="toolbar-icon settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"/></svg></summary><div class="view-options-menu"><div class="view-options-group"><span>Layout</span>' + layoutControls + '</div><div class="view-options-group"><span>Format</span>' + formatControls + '</div></div></details>';
+    const viewOptions = renderViewOptions([
+      { label: 'Layout', html: layoutControls },
+      { label: 'Format', html: formatControls },
+    ]);
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort tag entries">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span></label>';
     const headerControls = '<div class="toolbar" role="group" aria-label="Tag entry view controls">' + viewOptions + '</div>';
     const savedViewName = state.savedViewName
@@ -581,6 +589,8 @@ ${getQueryEditorScript()}
     filterOverviewEntries('tasks');
     editor.afterRender();
   }
+
+  installViewOptions();
 
   document.addEventListener('mousedown', function (event) {
     editor.handleMousedown(event);
@@ -601,10 +611,6 @@ ${getQueryEditorScript()}
     if (tagContextMenu && !event.target.closest('#tag-context-menu')) {
       closeTagContextMenu();
     }
-    const viewOptions = document.querySelector('.view-options');
-    if (viewOptions && viewOptions.open && !event.target.closest('.view-options')) {
-      viewOptions.open = false;
-    }
     if (editor.handleClick(event)) return;
     const target = event.target.closest('[data-action]');
     if (target) {
@@ -615,7 +621,7 @@ ${getQueryEditorScript()}
         relationshipView = target.dataset.view === 'graph' ? 'graph' : 'tree';
         render();
       }
-      if (target.dataset.action === 'set-tab') {
+      if (target.dataset.action === 'set-result-tab') {
         activeTab = target.dataset.tab;
         render();
       }
@@ -644,14 +650,6 @@ ${getQueryEditorScript()}
   });
   document.addEventListener('keydown', function (event) {
     if (editor.handleKeydown(event)) return;
-    if (event.key === 'Escape') {
-      const viewOptions = document.querySelector('.view-options');
-      if (viewOptions && viewOptions.open) {
-        viewOptions.open = false;
-        viewOptions.querySelector('summary').focus();
-        return;
-      }
-    }
     if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
       closeTagContextMenu();
       return;

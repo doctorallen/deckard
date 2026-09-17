@@ -1,22 +1,28 @@
 import * as vscode from 'vscode';
 
 import { parseQuery } from '../../core/query/queryParser';
+import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
-import { TaskBoardGroupBy } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openSourceAt } from '../commands/navigation';
 import { toggleTask } from '../commands/taskActions';
 import {
   moveTaskToColumn,
   readTaskBoardOptions,
+  updateTaskBoardSetting,
 } from '../commands/taskBoardActions';
+import {
+  mergeOrder,
+  normalizeTagTitleDisplayMode,
+} from '../state/dashboardState';
 import { createTaskBoard } from '../state/taskBoardState';
-import { isTaskBoardGroupBy, parseTaskBoardMessage } from './messages';
+import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
 
 /**
- * Shows tasks as a Kanban board, and turns a card moved between columns into
- * an edit to its task line.
+ * Shows tasks as a Kanban board or as a list, narrowed by the search box
+ * every search page shares, and turns a card moved between columns into an
+ * edit to its task line.
  *
  * The page moves a dropped card at once; the host then writes the change,
  * and the reindex that follows sends the saved state back. A move that cannot
@@ -26,18 +32,20 @@ export class TaskBoardPanel implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
-  private groupBy: TaskBoardGroupBy = 'status';
   private query = '';
-  private queryError: string | undefined;
+  /** A search typed that does not parse, shown with its error. */
+  private invalidQuery: string | undefined;
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
+    private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly openTag: (tagKey: string) => Promise<void>,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.theme')) {
@@ -45,7 +53,8 @@ export class TaskBoardPanel implements vscode.Disposable {
           this.renderHtml();
         } else if (
           event.affectsConfiguration('deckard.board') ||
-          event.affectsConfiguration('deckard.tasks')
+          event.affectsConfiguration('deckard.tasks') ||
+          event.affectsConfiguration('deckard.tagTitleDisplayMode')
         ) {
           this.refresh();
         }
@@ -63,7 +72,7 @@ export class TaskBoardPanel implements vscode.Disposable {
   }
 
   /**
-   * Reopens a board VS Code kept across a reload, with its grouping and query.
+   * Reopens a board VS Code kept across a reload, with its search.
    */
   public async restore(
     panel: vscode.WebviewPanel,
@@ -74,10 +83,7 @@ export class TaskBoardPanel implements vscode.Disposable {
       return;
     }
     if (typeof state === 'object' && state !== null) {
-      const saved = state as { groupBy?: unknown; query?: unknown };
-      if (isTaskBoardGroupBy(saved.groupBy)) {
-        this.groupBy = saved.groupBy;
-      }
+      const saved = state as { query?: unknown };
       if (typeof saved.query === 'string') {
         this.applyQuery(saved.query);
       }
@@ -150,40 +156,38 @@ export class TaskBoardPanel implements vscode.Disposable {
       return;
     }
     this.isStale = false;
+    const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
+      vscode.workspace
+        .getConfiguration('deckard')
+        .get<unknown>('tagTitleDisplayMode', 'inline'),
+    );
     void this.panel.webview.postMessage({
       type: 'state',
       data: measure('Task board', () =>
         createTaskBoard(
           this.indexer.getSnapshot(),
-          this.groupBy,
-          this.query,
+          this.preferences.value,
+          { query: this.query, invalidQuery: this.invalidQuery },
           readTaskBoardOptions(),
-          this.queryError,
+          tagTitleDisplayMode,
         ),
       ),
     });
   }
 
   /**
-   * Applies a query, or keeps the previous one and reports why a query that
-   * does not parse could not be used.
+   * Applies a search, or keeps the previous one and shows the search that
+   * does not parse with its error, as a tag overview does.
    */
-  private applyQuery(text: string): void {
+  private applyQuery(text: string): boolean {
     const query = text.trim();
-    if (!query) {
-      this.query = '';
-      this.queryError = undefined;
-      return;
+    this.invalidQuery = undefined;
+    if (query && !parseQuery(query).node) {
+      this.invalidQuery = query;
+      return false;
     }
-    const parsed = parseQuery(query);
-    if (parsed.node) {
-      this.query = query;
-      this.queryError = undefined;
-      return;
-    }
-    this.queryError =
-      parsed.diagnostics.find((diagnostic) => diagnostic.severity === 'error')
-        ?.message ?? 'Deckard could not read this query.';
+    this.query = query;
+    return true;
   }
 
   /**
@@ -202,12 +206,42 @@ export class TaskBoardPanel implements vscode.Disposable {
         this.refresh();
         return;
       case 'setBoardGroup':
-        this.groupBy = message.groupBy;
-        this.refresh();
+        await this.preferences.setTaskBoardGroup(message.groupBy);
         return;
-      case 'setBoardQuery':
-        this.applyQuery(message.query);
+      case 'setTaskLayout':
+        await this.preferences.setTaskBoardLayout(message.layout);
+        return;
+      case 'setTaskFilter':
+        await this.preferences.setTaskBoardTaskFilter(message.filter);
+        return;
+      case 'setTaskSort':
+        await this.preferences.setTaskSortMode(message.mode);
+        return;
+      case 'reorderTasks':
+        if (this.preferences.value.taskSortMode === 'rank') {
+          await this.preferences.setTaskOrder(
+            mergeOrder(message.taskIds, index.tasks.keys()),
+          );
+        }
+        return;
+      case 'setBoardQuery': {
+        const applied = this.applyQuery(message.query);
         this.refresh();
+        if (applied && this.query) {
+          await this.preferences.recordRecentQuery(this.query);
+        }
+        return;
+      }
+      case 'setBoardStatuses':
+        await updateTaskBoardSetting('statuses', [
+          ...new Set(message.statuses.map((status) => status.toLowerCase())),
+        ]);
+        return;
+      case 'setBoardStatusNamespace':
+        await updateTaskBoardSetting(
+          'statusNamespace',
+          message.namespace.toLowerCase(),
+        );
         return;
       case 'openSource': {
         const known = [...index.tasks.values()].some(

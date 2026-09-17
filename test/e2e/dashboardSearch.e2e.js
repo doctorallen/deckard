@@ -54,7 +54,6 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * `prepare` sets preferences first, as an earlier visit would have.
  */
 async function openDashboard(
-  taskLayout = 'list',
   index = createIndex(),
   prepare = async () => undefined,
 ) {
@@ -66,7 +65,6 @@ async function openDashboard(
     onDidUpdate: updates.event,
   };
   const preferences = new PreferencesStore(createGlobalState());
-  await preferences.setDashboardTaskLayout(taskLayout);
   await prepare(preferences);
   const dashboard = new DashboardPanel(
     indexer,
@@ -95,29 +93,39 @@ function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
-for (const [layout, cardSelector] of [['list', '.task-row'], ['board', '.board-card']]) {
-  test(`${layout} layout: typing a task search keeps focus and text through a host update`, async () => {
-    const { view, panel, lastState, stored } = await openDashboard(layout);
-    const search = () => view.find('[data-action="search-tasks"]');
-
-    view.type(search(), 'a');
-    view.type(search(), 'au');
-    view.type(search(), 'aud');
-    assert.deepStrictEqual(stored('tasks'), [], 'nothing is stored while typing');
-
-    // A host update arrives mid-word, still carrying the older stored query.
-    panel._deliver(lastState());
-    assert.strictEqual(search().value, 'aud', 'the newer typing must survive');
-    assert.strictEqual(view.document.activeElement, search(), 'the field must keep focus');
-    assert.strictEqual(view.findAll(cardSelector).length, 1, 'the page filters at once');
-
-    await delay(SETTLE_MS);
-    assert.deepStrictEqual(stored('tasks'), ['aud'], 'the query is stored once typing settles');
-    // The host's own echo of the stored query keeps the field as well.
-    assert.strictEqual(search().value, 'aud');
-    assert.strictEqual(view.document.activeElement, search());
+test('opens on Search with no Tasks tab, even when it was left on Tasks', async () => {
+  const globalState = createGlobalState();
+  // Preferences saved while the Dashboard still had a Tasks tab.
+  await globalState.update('deckard.preferences', {
+    version: 1,
+    dashboardViewState: { mode: 'tasks', taskSearchQuery: 'audit', noteSearchQuery: '', tagSearchQuery: '' },
+    dashboardTaskLayout: 'board',
   });
-}
+  vscode._test.createdPanels.length = 0;
+  const updates = new vscode.EventEmitter();
+  const index = createIndex();
+  const dashboard = new DashboardPanel(
+    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
+    new PreferencesStore(globalState),
+    { fsPath: '/ext' },
+    () => undefined,
+  );
+  await dashboard.show();
+  const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+
+  assert.deepStrictEqual(
+    view.findAll('[role="tab"][data-dashboard-mode]').map((tab) => tab.dataset.dashboardMode),
+    ['notes', 'browse'],
+  );
+  assert.strictEqual(view.find('[data-dashboard-mode="notes"]').getAttribute('aria-selected'), 'true');
+  assert.strictEqual(view.find('#tasks-panel'), null);
+  assert.strictEqual(view.find('h1').textContent, 'Dashboard: Search');
+  // The gear keeps the Dashboard's own options, without a task layout.
+  const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
+  assert.deepStrictEqual(labels, ['Task columns', 'Note columns', 'Tag columns', 'Format']);
+});
 
 test('a hidden Dashboard skips updates and catches up when shown', async () => {
   const { panel, updates } = await openDashboard();
@@ -139,8 +147,10 @@ test('only the Search tab is sent notes, without HTML in the Markdown view', asy
     {},
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
-  const { view, lastState } = await openDashboard('list', index);
-  assert.strictEqual(lastState().data.notesOmitted, true, 'the Tasks tab is sent no notes');
+  const { view, lastState } = await openDashboard(index, (preferences) =>
+    preferences.setDashboardMode('browse'),
+  );
+  assert.strictEqual(lastState().data.notesOmitted, true, 'the Tags tab is sent no notes');
   assert.deepStrictEqual(lastState().data.notes, []);
 
   view.click(view.find('[data-dashboard-mode="notes"]'));
@@ -160,7 +170,7 @@ test('the namespace filter narrows the Tags tab and keeps its choice', async () 
     {},
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
-  const { view, panel, lastState } = await openDashboard('list', index);
+  const { view, panel, lastState } = await openDashboard(index);
   view.click(view.find('[data-dashboard-mode="browse"]'));
   await delay(20);
   const namespace = () => view.find('[data-action="set-tag-namespace"]');
@@ -210,7 +220,7 @@ test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
     {},
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
-  const { view } = await openDashboard('list', index);
+  const { view } = await openDashboard(index);
   view.click(view.find('[data-dashboard-mode="browse"]'));
   await delay(20);
   const namespace = () => view.find('[data-action="set-tag-namespace"]');
@@ -234,40 +244,15 @@ test('an @ tag is a person in the Tags tab, beside #person/ tags', async () => {
 });
 
 test('a kept Search tab search marks its tab from another tab', async () => {
-  const { view } = await openDashboard('list', createIndex(), (preferences) =>
-    preferences.setDashboardSearch('notes', 'vault'),
-  );
+  const { view } = await openDashboard(createIndex(), async (preferences) => {
+    await preferences.setDashboardSearch('notes', 'vault');
+    await preferences.setDashboardMode('browse');
+  });
 
-  // The Tasks tab is open, so the host sends no notes; the mark still shows.
+  // The Tags tab is open, so the host sends no notes; the mark still shows.
   const mark = view.find('#notes-tab .tab-search-mark');
   assert.ok(mark, 'the Search tab keeps its mark while another tab is open');
   assert.match(mark.getAttribute('title') || '', /vault/);
-});
-
-test('a task search kept from an earlier visit says so above the list', async () => {
-  const { view } = await openDashboard('list', createIndex(), (preferences) =>
-    preferences.setDashboardSearch('tasks', 'review'),
-  );
-
-  const notice = view.find('#tasks-panel .search-notice');
-  assert.ok(notice, 'the list says a search is narrowing it');
-  assert.strictEqual(notice.querySelector('strong').textContent, '1');
-  assert.match(notice.textContent, /of 3 open tasks matching “review”/);
-  assert.ok(view.find('input[data-action="search-tasks"][data-has-query]'), 'the box is marked');
-  assert.ok(view.find('#tasks-tab .tab-search-mark'), 'the tab is marked');
-  assert.strictEqual(view.findAll('.task-row').length, 1);
-
-  view.click(view.find('[data-action="clear-task-search"]'));
-
-  assert.strictEqual(view.find('.search-notice'), null);
-  assert.strictEqual(view.find('#tasks-tab .tab-search-mark'), null);
-  assert.strictEqual(view.find('input[data-action="search-tasks"]').value, '');
-  assert.strictEqual(view.findAll('.task-row').length, 3);
-  assert.strictEqual(
-    view.document.activeElement,
-    view.find('input[data-action="search-tasks"]'),
-    'the box keeps focus for a new search',
-  );
 });
 
 test('a tag search kept from an earlier visit says so above the tags', async () => {
@@ -278,7 +263,7 @@ test('a tag search kept from an earlier visit says so above the tags', async () 
     {},
   );
   const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
-  const { view } = await openDashboard('list', index, async (preferences) => {
+  const { view } = await openDashboard(index, async (preferences) => {
     await preferences.setDashboardSearch('tags', 'proj');
     await preferences.setDashboardMode('browse');
   });
@@ -299,6 +284,46 @@ test('a tag search kept from an earlier visit says so above the tags', async () 
   assert.strictEqual(view.find('.search-notice'), null);
   assert.strictEqual(view.state.tagNamespaceFilter, '', 'the namespace clears with the search');
   assert.strictEqual(view.findAll('.tag-row').length, 4);
+});
+
+test('ranked tags move by drag or from their menu, which also renames', async () => {
+  const note = parseMarkdown(
+    'notes/alpha.md',
+    '# Alpha #alpha #beta #gamma\nBody text.',
+    { createdAt: 1, updatedAt: 2 },
+    {},
+  );
+  const index = buildWorkspaceIndex(new Map([[note.filePath, note]]));
+  const { view } = await openDashboard(index, async (preferences) => {
+    await preferences.setDashboardMode('browse');
+    await preferences.setTagSortMode('custom');
+  });
+  const row = (key) => view.find(`.tag-row[data-tag-key="${key}"]`);
+  const sent = (type) => view.posted.filter((message) => message.type === type);
+  const order = () => view.findAll('.tag-row').map((tag) => tag.dataset.tagKey);
+  assert.deepStrictEqual(order(), ['#alpha', '#beta', '#gamma']);
+  assert.ok(row('#alpha').classList.contains('is-draggable'));
+
+  view.fire('pointerdown', row('#alpha').children[0], { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+  view.document.pointerTarget = row('#gamma');
+  view.fire('pointermove', row('#alpha'), { pointerId: 1, clientX: 10, clientY: 40 });
+  view.fire('pointerup', row('#alpha'), { pointerId: 1, clientX: 10, clientY: 40 });
+  view.click(row('#alpha'));
+  assert.deepStrictEqual(sent('reorderTags').map((message) => message.tagKeys), [['#beta', '#gamma', '#alpha']]);
+  assert.strictEqual(sent('openTag').length, 0, 'the click a drag ends with opens nothing');
+  await delay(20);
+
+  view.fire('contextmenu', row('#beta'));
+  assert.deepStrictEqual(
+    view.findAll('#rank-context-menu button').map((button) => button.textContent),
+    ['Rename tag', 'Move to top', 'Move to bottom'],
+  );
+  view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
+  assert.deepStrictEqual(sent('reorderTags')[1].tagKeys.slice(-1), ['#beta']);
+
+  view.fire('contextmenu', row('#gamma'));
+  view.click(view.find('#rank-context-menu [data-context-action="rename-tag"]'));
+  assert.deepStrictEqual(sent('renameTag'), [{ type: 'renameTag', tagKey: '#gamma' }]);
 });
 
 test('typing a tag search keeps focus and text through a host update', async () => {

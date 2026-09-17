@@ -212,12 +212,9 @@ suite('Webview contracts', () => {
   });
 
   test('accepts valid dashboard messages and rejects malformed payloads', () => {
-    assert.deepStrictEqual(
+    assert.strictEqual(
       parseDashboardMessage({ type: 'setTaskFilter', filter: 'active' }),
-      {
-        type: 'setTaskFilter',
-        filter: 'active',
-      },
+      undefined,
     );
     assert.strictEqual(
       parseDashboardMessage({
@@ -240,9 +237,10 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'setTagSort', mode: 'custom' }),
       { type: 'setTagSort', mode: 'custom' },
     );
-    assert.deepStrictEqual(
+    // Tasks are chosen on the Task Board now, not with a Dashboard tag picker.
+    assert.strictEqual(
       parseDashboardMessage({ type: 'setTaskTags', tagKeys: ['work'] }),
-      { type: 'setTaskTags', tagKeys: ['work'] },
+      undefined,
     );
     // The Search tab narrows notes with its search, not a tag picker.
     assert.strictEqual(
@@ -283,9 +281,9 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'renameTag', tagKey: '' }),
       undefined,
     );
-    assert.deepStrictEqual(
+    assert.strictEqual(
       parseDashboardMessage({ type: 'setTaskSort', mode: 'updated' }),
-      { type: 'setTaskSort', mode: 'updated' },
+      undefined,
     );
     assert.deepStrictEqual(
       parseDashboardMessage({ type: 'setNoteSort', mode: 'access' }),
@@ -504,7 +502,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
   });
 
-  test('renders accessible Tasks and Tags dashboard modes with focused controls', () => {
+  test('renders accessible Search and Tags dashboard modes with focused controls', () => {
     const html = getDashboardHtml(
       {
         cspSource: 'vscode-webview://deckard',
@@ -529,11 +527,11 @@ suite('Webview contracts', () => {
       html.includes('.row:hover, .card:hover, .task:hover { border-color: var(--amber); }'),
       true,
     );
-    assert.strictEqual(html.includes('class="row task-row '), true);
-    assert.strictEqual(
-      html.includes('.task-row.is-draggable { cursor: grab;'),
-      true,
-    );
+    // A matching task is the shared task row, and ranked rows share one drag.
+    assert.strictEqual(html.includes('function renderTaskListRow(item, options)'), true);
+    assert.strictEqual(html.includes('\'<div class="row task-row\' + (task.completed'), true);
+    assert.strictEqual(html.includes('.is-draggable { cursor: grab; touch-action: none; }'), true);
+    assert.strictEqual(html.includes('function installRankedRows(options)'), true);
     assert.strictEqual(html.includes('class="row entity-row '), true);
     assert.strictEqual(html.includes('class="row saved-filter-row"'), true);
     assert.strictEqual(
@@ -542,12 +540,8 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes(
-        '<div class="segmented task-filter-toggle" role="group" aria-label="Task completion filter">',
-      ),
-      true,
-    );
+    // The Tasks tab moved to the Task Board.
+    assert.strictEqual(html.includes('Task completion filter'), false);
     assert.strictEqual(html.includes('class="task-filter-icon"'), true);
     assert.strictEqual(
       html.includes('function renderTaskTitle(renderedTitle, references)'),
@@ -580,26 +574,12 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(html.includes("const taskCounts = {"), true);
-    assert.strictEqual(
-      html.includes(
-        'all: normalizedTaskSearchQuery ? filteredTasks.length : state.totalTaskCount,',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        'completed: normalizedTaskSearchQuery',
-      ),
-      true,
-    );
+    assert.strictEqual(html.includes('normalizedTaskSearchQuery'), false);
     assert.strictEqual(html.includes("'<span>' + label + '</span>"), true);
     assert.strictEqual(html.includes('Sort:<span class="control-icon">'), true);
-    assert.strictEqual(html.includes('class="toolbar-controls"'), true);
     assert.strictEqual(html.includes('class="browse-toolbar-controls"'), true);
-    assert.strictEqual(html.includes('data-action="search-tasks"'), true);
-    assert.strictEqual(html.includes('aria-label="Search tasks"'), true);
-    assert.strictEqual(html.includes('class="task-search" type="search"'), true);
+    assert.strictEqual(html.includes('data-action="search-tasks"'), false);
+    assert.strictEqual(html.includes('class="task-search" type="search"'), false);
     // The Search tab's search is the shared search box, not a plain field.
     assert.strictEqual(html.includes('class="note-search" type="search"'), false);
     assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
@@ -607,10 +587,11 @@ suite('Webview contracts', () => {
     // A search kept from an earlier visit says so above the list it narrows,
     // outlines its box, and marks its tab.
     assert.strictEqual(html.includes('function renderSearchNotice(shown, total, noun, query, action)'), true);
-    assert.strictEqual(html.includes("'clear-task-search'"), true);
+    assert.strictEqual(html.includes("'clear-task-search'"), false);
     assert.strictEqual(html.includes("'clear-tag-search'"), true);
-    assert.strictEqual(html.includes('input.task-search[data-has-query], input.catalog-search[data-has-query]'), true);
-    assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), true);
+    assert.strictEqual(html.includes('input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query]'), true);
+    assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), false);
+    assert.strictEqual(html.includes('id="tasks-tab"'), false);
     // The mark is a filter icon, and the Search tab keeps it from another tab.
     assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span>'), true);
     // A tag reads as written, whatever the heading or theme around it does.
@@ -633,24 +614,28 @@ suite('Webview contracts', () => {
     // Board cards show their title as rendered Markdown, like task rows.
     assert.strictEqual(html.includes("renderTaskTitle(card.renderedTitle, card.titleTags)"), true);
     assert.strictEqual(html.includes("renderInlineTitle(card.title, card.titleTags, false)"), false);
-    // The chosen task tags sit in a dashed, headed box like Refine.
-    assert.strictEqual(html.includes('<div class="selected-task-tags" aria-label="Selected task tags"><span class="query-facets-heading">Tags</span>'), true);
+    assert.strictEqual(html.includes('class="selected-task-tags"'), false);
     assert.strictEqual(html.includes('padding: 10px 12px; border: 1px dashed var(--line-strong); }'), true);
     assert.strictEqual(html.includes('<h1>Dashboard: '), true);
     assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
+    // The gear is the one every page draws, after the totals.
     assert.strictEqual(
-      html.indexOf('class="metrics"') <
-        html.indexOf('class="dashboard-view-options"'),
+      html.indexOf("const metrics = '<div class=\"metrics\"") <
+        html.indexOf('const dashboardOptions = renderViewOptions(['),
       true,
     );
+    assert.strictEqual(html.includes('<div class="dashboard-header-actions">\' + metrics + dashboardOptions'), true);
     assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
-    assert.strictEqual(html.includes('class="dashboard-view-options"'), true);
+    assert.strictEqual(html.includes('dashboard-view-options'), false);
     assert.strictEqual(
       html.includes(
-        '.dashboard-view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border);',
+        '.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border);',
       ),
       true,
     );
+    assert.strictEqual(html.includes('.dashboard-header-actions .view-options { order: 2; }'), true);
+    // The task layout moved to the Task Board's gear.
+    assert.strictEqual(html.includes('set-task-layout'), false);
     assert.strictEqual(html.includes('data-action="set-columns"'), true);
     assert.strictEqual(html.includes('Task columns'), true);
     assert.strictEqual(html.includes('Note columns'), true);
@@ -668,7 +653,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('style="grid-template-columns: repeat('), true);
     assert.strictEqual(html.includes('Search:<input class="task-search"'), false);
-    assert.strictEqual(html.includes('.catalog-search, .task-search, .note-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
+    assert.strictEqual(html.includes('.catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
     assert.strictEqual(html.includes('.tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
     assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
     assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
@@ -709,26 +694,17 @@ suite('Webview contracts', () => {
       html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; color: var(--panel-deep); background: var(--amber-bright); }'),
       true,
     );
-    assert.strictEqual(html.includes('<span class="control-label">Tags:</span>'), true);
-    assert.strictEqual(html.includes('class="selected-task-tag"'), true);
-    assert.strictEqual(html.includes('data-action="remove-task-tag"'), true);
-    assert.strictEqual(html.includes('Clear filters'), true);
+    // The task tag picker went with the Tasks tab; a search names its tags.
+    assert.strictEqual(html.includes('<span class="control-label">Tags:</span>'), false);
+    assert.strictEqual(html.includes('data-action="remove-task-tag"'), false);
     assert.strictEqual(html.includes('class="rename-tag"'), false);
     assert.strictEqual(
       html.includes('data-context-action="rename-tag"'),
       true,
     );
-    assert.strictEqual(html.includes('openRankContextMenu(event, row)'), true);
-    assert.strictEqual(
-      html.includes(
-        '.tag-filter summary { position: relative; display: flex; align-items: center; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 9px 5px 29px; cursor: pointer; list-style: none; font: 11px var(--font-mono); font-weight: 700; text-transform: uppercase; }',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('input.tag-filter-search { padding: 5px 7px 5px 29px; }'),
-      true,
-    );
+    assert.strictEqual(html.includes("onMenuAction: function (action, kind, key) {"), true);
+    assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
+    assert.strictEqual(html.includes('data-action="set-task-tag"'), false);
     assert.strictEqual(html.includes('class="tag-open"'), true);
     assert.strictEqual(
       html.includes("const entityRow = event.target.closest('.entity-row');"),
@@ -748,7 +724,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("type: 'openSavedFilter'"), true);
     assert.strictEqual(html.includes('role="tablist" aria-label="Dashboard mode"'), true);
     assert.strictEqual(html.includes('role="tab" data-action="set-dashboard-mode"'), true);
-    assert.strictEqual(html.includes('aria-controls="tasks-panel"'), true);
+    assert.strictEqual(html.includes('aria-controls="tasks-panel"'), false);
     assert.strictEqual(html.includes('aria-controls="notes-panel"'), true);
     assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
     assert.strictEqual(html.includes('id="notes-panel"'), true);
@@ -756,11 +732,12 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="set-note-tag"'), false);
     assert.strictEqual(html.includes('data-action="filter-note-tags"'), false);
     // Save sits in the search bar, beside the search it saves, and like
-    // Clear it is always there, disabled until there is text, so the bar
-    // never shifts under the pointer.
+    // Clear it is always there, disabled until it would do something, so the
+    // bar never shifts under the pointer.
     assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), true);
     assert.strictEqual(html.includes("(hasText ? '' : ' disabled') + '>Save</button>'"), true);
-    assert.strictEqual(html.includes('data-action="clear-query" data-query-needs-text'), true);
+    assert.strictEqual(html.includes('data-action="clear-query" data-query-clears'), true);
+    assert.strictEqual(html.includes("(canClear(value) ? '' : ' disabled') + '>Clear</button>'"), true);
     // The Search tab's sort shares the line under the search box, so it takes no row of its own.
     assert.strictEqual(html.includes('noteEditor.renderBar(noteSortControl)'), true);
     assert.strictEqual(html.includes('dashboard-tabs-controls'), false);
@@ -782,14 +759,14 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("type: 'recordRecentQuery'"), true);
     assert.strictEqual(html.includes('data-action="save-note-search"'), true);
     assert.strictEqual(html.includes('const noteSearchDebounceDelay = 350;'), true);
-    assert.strictEqual(html.includes('const tagSearchDebounceDelay = 180;'), true);
+    assert.strictEqual(html.includes('const tagSearchDebounceDelay = 180;'), false);
     assert.strictEqual(html.includes('clearTimeout(noteSearchTimer)'), true);
     assert.strictEqual(html.includes('noteSearchTimer = setTimeout'), true);
     assert.strictEqual(html.includes('pendingNoteSearchQuery'), true);
-    assert.strictEqual(html.includes('function scheduleTaskTagSearch()'), true);
-    assert.strictEqual(html.includes('taskTagSearchTimer'), true);
+    assert.strictEqual(html.includes('function scheduleTaskTagSearch()'), false);
+    assert.strictEqual(html.includes('taskTagSearchTimer'), false);
     assert.strictEqual(html.includes('noteTagSearchTimer'), false);
-    assert.strictEqual(html.includes('pendingTaskTagQuery'), true);
+    assert.strictEqual(html.includes('pendingTaskTagQuery'), false);
     assert.strictEqual(html.includes('pendingNoteTagQuery'), false);
     // Every search and tag-filter field keeps its focus through a redraw by
     // its action, rather than each field being listed by name.
@@ -871,6 +848,8 @@ suite('Webview contracts', () => {
     // Nothing is fixed to a color, so light and dark VS Code themes both work.
     assert.doesNotMatch(corpo, /#[0-9a-f]{3,8}\b|rgba?\(/i);
     assert.strictEqual(corpo.includes('translateX'), false, 'rows do not slide on hover');
+    // The gear keeps the look every page shares rather than a button's.
+    assert.strictEqual(corpo.includes('.view-options summary'), false);
   });
 
   test('defines theme overrides for each selectable webview theme', () => {
@@ -1384,7 +1363,10 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('>Source</button>'), false);
     assert.strictEqual(html.includes('>Rendered</button>'), false);
-    assert.strictEqual(html.includes('data-action="set-tab"'), true);
+    // The Notes and Tasks tabs are the shared result tabs.
+    assert.strictEqual(html.includes("renderResultTabs([\n        { id: 'notes', label: 'Notes', count: notesCount },"), true);
+    assert.strictEqual(html.includes("data-action=\"set-result-tab\""), true);
+    assert.strictEqual(html.includes("if (target.dataset.action === 'set-result-tab') {"), true);
     assert.strictEqual(
       html.includes('.segmented { display: inline-flex; }'),
       true,
@@ -1438,13 +1420,8 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    // The sort control ends in line with the gear above it, not short of it.
-    assert.strictEqual(
-      html.includes(
-        'header > .toolbar { margin-top: calc(var(--control-height) + 6px); }',
-      ),
-      true,
-    );
+    // A short header is tall enough to hold the gear.
+    assert.strictEqual(html.includes('header > .toolbar { margin-top: 36px; }'), true);
     assert.strictEqual(html.includes('padding-right: 36px'), false);
     assert.strictEqual(
       html.includes(
@@ -1462,14 +1439,15 @@ suite('Webview contracts', () => {
       html.includes('<summary aria-label="View options" title="View options">'),
       true,
     );
+    // The gear is the one the Dashboard draws, closed the same way.
+    assert.strictEqual(html.includes("const viewOptions = renderViewOptions(["), true);
+    assert.strictEqual(html.includes('  installViewOptions();\n'), true);
+    assert.strictEqual(html.includes("options.querySelector('summary').focus();"), true);
     assert.strictEqual(
-      html.includes("viewOptions && viewOptions.open && !event.target.closest('.view-options')"),
+      html.includes('.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border);'),
       true,
     );
-    assert.strictEqual(
-      html.includes("viewOptions.querySelector('summary').focus()"),
-      true,
-    );
+    assert.strictEqual(html.includes('<details class="view-options">'), false, 'the gear is not drawn by hand');
     assert.strictEqual(
       html.includes('.toolbar { display: flex; justify-content: flex-end;'),
       true,
@@ -1571,7 +1549,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(html.includes("type: 'toggleTask'"), true);
-    assert.strictEqual(html.includes('data-action="set-task-filter"'), true);
+    assert.strictEqual(html.includes("renderTaskFilterSwitch(state.taskFilter, taskCounts, 'set-task-filter')"), true);
     assert.strictEqual(
       html.includes(
         '<div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">',
@@ -1874,7 +1852,9 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
     assert.strictEqual(html.includes('Saved searches'), true);
-    assert.strictEqual(html.includes('Tasks/Search/Tags tabs'), true);
+    assert.strictEqual(html.includes('Search/Tags tabs'), true);
+    assert.strictEqual(html.includes('Tasks/Search/Tags tabs'), false);
+    assert.strictEqual(html.includes('<h3>Task list</h3>'), true);
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);
     assert.strictEqual(html.includes('resources/deckard.svg'), true);

@@ -138,8 +138,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       await tagPanels.show(tagKey);
     },
   );
-  const taskBoard = new TaskBoardPanel(indexer, context.extensionUri, (tagKey) =>
-    tagPanels.show(tagKey),
+  const taskBoard = new TaskBoardPanel(
+    indexer,
+    preferences,
+    context.extensionUri,
+    (tagKey) => tagPanels.show(tagKey),
   );
   const help = new HelpPanel(context.extensionUri);
   const notesGraph = new NotesGraphPanel(

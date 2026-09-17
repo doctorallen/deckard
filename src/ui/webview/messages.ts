@@ -57,18 +57,6 @@ export function parseDashboardMessage(
       return isTagSortMode(value.mode)
         ? (value as unknown as DashboardMessage)
         : undefined;
-    case 'setTaskFilter':
-      return isTaskFilter(value.filter)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setTaskTags':
-      return isStringArray(value.tagKeys)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setTaskSort':
-      return isTaskSortMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
     case 'setRenderMode':
       return isRenderMode(value.mode)
         ? (value as unknown as DashboardMessage)
@@ -95,10 +83,6 @@ export function parseDashboardMessage(
       )
         ? (value as unknown as DashboardMessage)
         : undefined;
-    case 'reorderTasks':
-      return isStringArray(value.taskIds)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
     case 'reorderTags':
       return isStringArray(value.tagKeys) &&
         typeof value.tagKey === 'string' &&
@@ -116,20 +100,6 @@ export function parseDashboardMessage(
     case 'renameTag':
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setDashboardTaskLayout':
-      return value.layout === 'list' || value.layout === 'board'
-        ? { type: 'setDashboardTaskLayout', layout: value.layout }
-        : undefined;
-    case 'setBoardGroup':
-      return isTaskBoardGroupBy(value.groupBy)
-        ? { type: 'setBoardGroup', groupBy: value.groupBy }
-        : undefined;
-    case 'moveTask':
-      return typeof value.taskId === 'string' &&
-        typeof value.column === 'string' &&
-        value.column.length > 0
-        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
         : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
@@ -379,10 +349,44 @@ export function parseTaskBoardMessage(
         value.query.length <= MAX_QUERY_LENGTH
         ? { type: 'setBoardQuery', query: value.query }
         : undefined;
+    case 'setTaskLayout':
+      return value.layout === 'list' || value.layout === 'board'
+        ? { type: 'setTaskLayout', layout: value.layout }
+        : undefined;
+    case 'setTaskFilter':
+      return isTaskFilter(value.filter)
+        ? { type: 'setTaskFilter', filter: value.filter }
+        : undefined;
+    case 'setTaskSort':
+      return isTaskSortMode(value.mode)
+        ? { type: 'setTaskSort', mode: value.mode }
+        : undefined;
+    case 'reorderTasks':
+      return isStringArray(value.taskIds)
+        ? { type: 'reorderTasks', taskIds: [...value.taskIds] }
+        : undefined;
+    case 'setBoardStatuses':
+      return Array.isArray(value.statuses) &&
+        value.statuses.length <= MAX_BOARD_STATUSES &&
+        value.statuses.every(
+          (status) => typeof status === 'string' && BOARD_NAME.test(status),
+        )
+        ? { type: 'setBoardStatuses', statuses: [...value.statuses] }
+        : undefined;
+    case 'setBoardStatusNamespace':
+      return typeof value.namespace === 'string' &&
+        BOARD_NAMESPACE.test(value.namespace)
+        ? { type: 'setBoardStatusNamespace', namespace: value.namespace }
+        : undefined;
     default:
       return undefined;
   }
 }
+
+/** The patterns `deckard.board.statuses` and `statusNamespace` allow. */
+const BOARD_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const BOARD_NAMESPACE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+const MAX_BOARD_STATUSES = 50;
 
 /**
  * Keeps the task board's grouping to the three it can lay out.
@@ -524,18 +528,13 @@ function isDashboardColumnCount(value: unknown): boolean {
 }
 
 function isDashboardMode(value: unknown): value is DashboardMode {
-  return value === 'tasks' || value === 'notes' || value === 'browse';
+  return value === 'notes' || value === 'browse';
 }
 
 function isDashboardSearchField(
   value: unknown,
 ): value is DashboardSearchField {
-  return (
-    value === 'tasks' ||
-    value === 'notes' ||
-    value === 'tags' ||
-    value === 'taskTags'
-  );
+  return value === 'notes' || value === 'tags';
 }
 
 /**

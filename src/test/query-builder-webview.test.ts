@@ -271,12 +271,12 @@ suite('Tag overview query builder', () => {
 
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
-    view.send(createState('', { scope: 'tag = #project/atlas' }));
+    view.send(createState('#project/atlas', { scope: 'tag = #project/atlas' }));
     const html = view.html();
 
-    // Clear is always drawn, disabled while the box is empty, so nothing
-    // appears beside the box when typing starts.
-    assert.match(html, /data-action="clear-query" data-query-needs-text[^>]*disabled/);
+    // Clear is always drawn, disabled while the box holds only the page's
+    // own tag, so nothing appears beside the box when typing starts.
+    assert.match(html, /data-action="clear-query" data-query-clears[^>]*disabled/);
     // Builder sits under the box, not beside it.
     assert.ok(
       html.indexOf('data-action="toggle-builder"') > html.indexOf('class="query-status"'),

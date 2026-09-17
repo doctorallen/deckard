@@ -71,10 +71,43 @@ class Element {
   }
 
   appendChild(child) {
+    if (child.parentElement) child.remove();
     child.parentElement = this;
     child.ownerDocument = this.ownerDocument;
     this.children.push(child);
     return child;
+  }
+
+  insertBefore(child, reference) {
+    if (child.parentElement) child.remove();
+    const index = reference ? this.children.indexOf(reference) : -1;
+    child.parentElement = this;
+    child.ownerDocument = this.ownerDocument;
+    this.children.splice(index < 0 ? this.children.length : index, 0, child);
+    return child;
+  }
+
+  remove() {
+    if (this.parentElement) {
+      this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
+      this.parentElement = undefined;
+    }
+  }
+
+  get nextSibling() {
+    if (!this.parentElement) return null;
+    const siblings = this.parentElement.children;
+    return siblings[siblings.indexOf(this) + 1] ?? null;
+  }
+
+  cloneNode(deep) {
+    const copy = new Element(this.tagName, { ...this.attributes });
+    copy.ownerDocument = this.ownerDocument;
+    copy.text = this.text;
+    if (deep) {
+      this.children.forEach((child) => copy.appendChild(child.cloneNode(true)));
+    }
+    return copy;
   }
 
   get innerHTML() {
@@ -290,6 +323,8 @@ function mountWebview(html, panel) {
   document.getElementById = (id) =>
     id === 'app' ? app : root.querySelector(`#${id}`);
   document.querySelector = (selector) => root.querySelector(selector);
+  // A test says which element is under the pointer.
+  document.elementFromPoint = () => document.pointerTarget ?? null;
   document.querySelectorAll = (selector) => root.querySelectorAll(selector);
 
   const posted = [];
@@ -354,9 +389,13 @@ function mountWebview(html, panel) {
     }
   };
 
+  // A listener that stops the event keeps the ones after it from hearing it.
   const dispatch = (type, event) =>
     run(() => {
-      [...(document.listeners[type] ?? [])].forEach((handler) => handler(event));
+      for (const handler of [...(document.listeners[type] ?? [])]) {
+        handler(event);
+        if (event.propagationStopped) break;
+      }
     });
 
   // The host pushes state into this webview.
@@ -377,6 +416,13 @@ function mountWebview(html, panel) {
         clientY: 10,
         preventDefault: () => {
           defaultPrevented = true;
+        },
+        propagationStopped: false,
+        stopPropagation() {
+          this.propagationStopped = true;
+        },
+        stopImmediatePropagation() {
+          this.propagationStopped = true;
         },
         get defaultPrevented() {
           return defaultPrevented;
@@ -421,6 +467,10 @@ function mountWebview(html, panel) {
       if (value !== undefined) element.value = value;
       dispatch('change', makeEvent(element).event);
     },
+    submit: (form) => dispatch('submit', makeEvent(form).event),
+    /** Any other event, such as a pointer or context menu event. */
+    fire: (type, target, values = {}) =>
+      dispatch(type, Object.assign(makeEvent(target).event, values)),
     keydown: (element, key) =>
       dispatch('keydown', Object.assign(makeEvent(element).event, { key })),
   };
