@@ -481,9 +481,27 @@ export class DashboardPanel implements vscode.Disposable {
       case 'openSavedFilter':
         await this.openSavedFilter(message.filterId);
         return;
-      case 'removeSavedFilter':
-        await this.preferences.removeSavedFilter(message.filterId);
+      case 'removeSavedFilter': {
+        // Removing a saved search also removes any Home widget bound to it,
+        // and nothing could bring either back, so it asks first.
+        const saved = this.preferences.value.savedFilters.find(
+          (filter) => filter.id === message.filterId,
+        );
+        const widgets = this.preferences.value.dashboardWidgets.filter(
+          (widget) => widget.filterId === message.filterId,
+        ).length;
+        const confirm = await vscode.window.showWarningMessage(
+          `Remove the saved search "${saved?.name ?? 'this search'}"?${
+            widgets ? ' Its widget leaves Home with it.' : ''
+          }`,
+          { modal: true },
+          'Remove',
+        );
+        if (confirm === 'Remove') {
+          await this.preferences.removeSavedFilter(message.filterId);
+        }
         return;
+      }
       case 'recordRecentQuery':
         await this.preferences.recordRecentQuery(message.query);
         return;
