@@ -46,6 +46,10 @@ export function getSidebarNotesHtml(
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
 .graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
+.active-summary::-webkit-details-marker { display: none; }
+.active-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.active-file[open] .active-name { -webkit-line-clamp: 3; }
 .sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
@@ -256,6 +260,8 @@ ${getComponentScript()}
   /** How many of the note's own tags are listed before the rest are folded. */
   const ACTIVE_TAG_PAGE_SIZE = 4;
   let showEveryActiveTag = false;
+  /** Whether the selected-entry context is unfolded, kept across redraws. */
+  let contextOpen = false;
   let visibleNoteListKey = '';
 
   function getNoteListKey() {
@@ -366,7 +372,14 @@ ${getComponentScript()}
       ? (state.graph.selectedNode
         ? renderSelectedGraphNode(state.graph.selectedNode)
         : '<div class="active-file"><div class="active-label">Notes Graph</div><div class="active-name">Connected nodes</div></div>')
-      : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
+      : (state.activeFileName
+        // The entry being ranked from, and its tags, are context: folded by
+        // default so the related notes start at the top of a short pane, and
+        // the fold is remembered.
+        ? '<details class="active-file"' + (contextOpen ? ' open' : '') + '><summary class="active-summary"><span class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</span><span class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</span></summary>'
+          + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '')
+          + activeTags + '</details>'
+        : '');
     const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
@@ -378,6 +391,11 @@ ${getComponentScript()}
     document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow" title="Deckard v${escapedExtensionVersion}">DECKARD</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
   }
 
+  document.addEventListener('toggle', function (event) {
+    if (event.target.classList && event.target.classList.contains('active-file')) {
+      contextOpen = event.target.open;
+    }
+  }, true);
   document.addEventListener('click', function (event) {
     if (event.target.closest('[data-action="show-more-notes"]')) {
       const firstNewNote = visibleNoteLimit;
