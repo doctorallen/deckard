@@ -26,6 +26,12 @@ export interface TaskLineContext {
 export async function updateTaskLine(
   task: Task,
   transform: (line: string, context: TaskLineContext) => string,
+  /**
+   * What to tell the reader was written, such as "Completed 'Send proposal'".
+   * An edit that says what it did is offered with an Undo; one that passes
+   * nothing is silent, for edits the reader is already watching happen.
+   */
+  description?: string,
 ): Promise<boolean> {
   const uri = await resolveSourceUri(task.filePath);
   if (!uri) {
@@ -72,12 +78,83 @@ export async function updateTaskLine(
         (openDocument) => openDocument.uri.toString() === uri.toString(),
       ) ?? (await vscode.workspace.openTextDocument(uri));
     await updatedDocument.save();
+    if (description) {
+      offerUndo(description, uri, task.lineNumber, replacement, line);
+    }
     return true;
   } catch (error) {
     void vscode.window.showErrorMessage(
       `Deckard could not update this task: ${String(error)}`,
     );
     return false;
+  }
+}
+
+/**
+ * Says what was written to a note, and offers to put it back.
+ *
+ * A board move or a checkbox writes to a file the reader may not have open,
+ * saves it, and leaves no trace on screen. The message is the only account of
+ * the edit, so it carries the way out of it.
+ */
+function offerUndo(
+  description: string,
+  uri: vscode.Uri,
+  lineNumber: number,
+  replacement: string,
+  original: string,
+): void {
+  void vscode.window
+    .showInformationMessage(description, 'Undo')
+    .then((choice) => {
+      if (choice === 'Undo') {
+        void revertTaskLine(uri, lineNumber, replacement, original);
+      }
+    });
+}
+
+/**
+ * Puts a task line back the way it was.
+ *
+ * The edit may have added a line, such as the next occurrence of a repeating
+ * task, so the whole written range goes back. Anything that has changed the
+ * range since is left alone rather than overwritten.
+ */
+async function revertTaskLine(
+  uri: vscode.Uri,
+  lineNumber: number,
+  replacement: string,
+  original: string,
+): Promise<void> {
+  try {
+    const document = await vscode.workspace.openTextDocument(uri);
+    const writtenLines = replacement.split(/\r?\n/).length;
+    const lastLine = lineNumber - 2 + writtenLines;
+    if (lineNumber < 1 || lastLine >= document.lineCount) {
+      void vscode.window.showWarningMessage(
+        'Deckard could not undo this task edit because the note changed.',
+      );
+      return;
+    }
+    const range = new vscode.Range(
+      new vscode.Position(lineNumber - 1, 0),
+      document.lineAt(lastLine).range.end,
+    );
+    if (document.getText(range) !== replacement) {
+      void vscode.window.showWarningMessage(
+        'Deckard could not undo this task edit because the note changed.',
+      );
+      return;
+    }
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, range, original);
+    if (await vscode.workspace.applyEdit(edit)) {
+      await document.save();
+    }
+  } catch (error) {
+    void vscode.window.showErrorMessage(
+      `Deckard could not undo this task edit: ${String(error)}`,
+    );
   }
 }
 
@@ -93,32 +170,47 @@ export async function toggleTask(
   task: Task,
   completed: boolean,
 ): Promise<boolean> {
-  return updateTaskLine(task, (line, { uri, eol }) => {
-    const now = Date.now();
-    const configuration = vscode.workspace.getConfiguration('deckard', uri);
-    const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
-    const replacement = setTaskLineCompletion(
-      line,
-      task.checkboxColumn,
-      completed,
-      addDoneDate ? formatIsoDate(now) : undefined,
-      readTaskMetadataFormat(configuration),
-    );
-    if (!completed || task.completed) {
-      return replacement;
-    }
-
-    const nextOccurrence = createNextOccurrence(line, task.checkboxColumn, now);
-    if (nextOccurrence !== undefined) {
-      return `${nextOccurrence}${eol}${replacement}`;
-    }
-    if (task.recurrence) {
-      void vscode.window.showWarningMessage(
-        `Deckard completed the task but could not read its repeat rule "${task.recurrence}", so it did not add the next occurrence.`,
+  const description = `${completed ? 'Completed' : 'Reopened'} ${quoteTaskTitle(task)}`;
+  return updateTaskLine(
+    task,
+    (line, { uri, eol }) => {
+      const now = Date.now();
+      const configuration = vscode.workspace.getConfiguration('deckard', uri);
+      const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
+      const replacement = setTaskLineCompletion(
+        line,
+        task.checkboxColumn,
+        completed,
+        addDoneDate ? formatIsoDate(now) : undefined,
+        readTaskMetadataFormat(configuration),
       );
-    }
-    return replacement;
-  });
+      if (!completed || task.completed) {
+        return replacement;
+      }
+
+      const nextOccurrence = createNextOccurrence(
+        line,
+        task.checkboxColumn,
+        now,
+      );
+      if (nextOccurrence !== undefined) {
+        return `${nextOccurrence}${eol}${replacement}`;
+      }
+      if (task.recurrence) {
+        void vscode.window.showWarningMessage(
+          `Deckard completed the task but could not read its repeat rule "${task.recurrence}", so it did not add the next occurrence.`,
+        );
+      }
+      return replacement;
+    },
+    description,
+  );
+}
+
+/** A task's title, short enough to sit in a notification. */
+export function quoteTaskTitle(task: Task): string {
+  const title = task.title.trim();
+  return `"${title.length > 60 ? `${title.slice(0, 57)}…` : title}"`;
 }
 
 /**

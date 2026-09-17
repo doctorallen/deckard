@@ -214,6 +214,12 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     this.activeSearch.notifyChanged(this);
   }
 
+  /**
+   * Whether the Done column is showing every completed task. It holds the
+   * most recent handful otherwise, and the column says how many are left.
+   */
+  private showEveryDoneTask = false;
+
   private createSnapshot(): TaskBoardSnapshot {
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
       vscode.workspace
@@ -225,7 +231,12 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         this.indexer.getSnapshot(),
         this.preferences.value,
         { query: this.query, invalidQuery: this.invalidQuery },
-        readTaskBoardOptions(),
+        {
+          ...readTaskBoardOptions(),
+          ...(this.showEveryDoneTask
+            ? { doneLimit: Number.MAX_SAFE_INTEGER }
+            : {}),
+        },
         tagTitleDisplayMode,
       ),
       refineInSidebar: this.activeSearch.isRefineInSidebar(this),
@@ -293,7 +304,14 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         this.refresh();
         return;
       case 'setBoardGroup':
+        // A different grouping is a different board, so the Done column goes
+        // back to its short form.
+        this.showEveryDoneTask = false;
         await this.preferences.setTaskBoardGroup(message.groupBy);
+        return;
+      case 'showColumnRest':
+        this.showEveryDoneTask = true;
+        this.refresh();
         return;
       case 'setTaskLayout':
         await this.preferences.setTaskBoardLayout(message.layout);

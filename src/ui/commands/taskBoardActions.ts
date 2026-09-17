@@ -9,6 +9,7 @@ import {
 import {
   readTaskMetadataFormat,
   toggleTask,
+  quoteTaskTitle,
   updateTaskLine,
 } from './taskActions';
 
@@ -20,8 +21,14 @@ const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
  */
 export function readTaskBoardOptions(): TaskBoardOptions {
   const configuration = vscode.workspace.getConfiguration('deckard');
-  const namespace = configuration.get<string>('board.statusNamespace', 'status');
-  const statuses = configuration.get<unknown>('board.statuses', DEFAULT_STATUSES);
+  const namespace = configuration.get<string>(
+    'board.statusNamespace',
+    'status',
+  );
+  const statuses = configuration.get<unknown>(
+    'board.statuses',
+    DEFAULT_STATUSES,
+  );
   return {
     now: Date.now(),
     statusNamespace: /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace)
@@ -72,7 +79,11 @@ export async function moveTaskToColumn(
     case 'complete':
       return toggleTask(task, true);
     case 'edit':
-      return updateTaskLine(task, (line) => move.edit(line));
+      return updateTaskLine(
+        task,
+        (line) => move.edit(line),
+        `Moved ${quoteTaskTitle(task)} to ${move.label}`,
+      );
     case 'refused':
       void vscode.window.showInformationMessage(move.reason);
       return false;
