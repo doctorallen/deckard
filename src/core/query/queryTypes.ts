@@ -227,6 +227,8 @@ export interface QueryBuilderGroup {
 /** One term of a query, and the query it leaves behind when removed. */
 export interface QueryTermChip {
   text: string;
+  /** The term as the condition it runs, such as `text ~ vendor` for a word. */
+  label?: string;
   without: string;
 }
 
@@ -236,11 +238,18 @@ export interface QueryFacetValue {
   count: number;
   /** The query text that narrows to this value. */
   clause: string;
+  /**
+   * How strongly a related tag is associated with the search's tags, from 0
+   * to 1, relative to the strongest one listed.
+   */
+  strength?: number;
+  /** Why the value is offered, such as how often two tags are written together. */
+  detail?: string;
 }
 
 /** One way the current results could be narrowed, with its counts. */
 export interface QueryFacet {
-  id: 'status' | 'due' | 'tags' | 'updated' | 'folder';
+  id: 'related' | 'status' | 'due' | 'tags' | 'updated' | 'folder';
   label: string;
   values: QueryFacetValue[];
   /** This facet's clauses the query already has, as written. */
@@ -253,11 +262,6 @@ export interface QueryFacet {
 export interface QueryViewState {
   /** Canonical query text; the source of truth for both editing surfaces. */
   text: string;
-  /**
-   * The tag intersection a tag overview's search refines. When set, `text`,
-   * `groups`, and `terms` describe only the refinement typed after it.
-   */
-  scope?: string;
   /** The terms joined by AND at the top of `text`, each removable alone. */
   terms: QueryTermChip[];
   /** Whether a term can be added to `text` as another AND. */
@@ -272,6 +276,11 @@ export interface QueryViewState {
   /** True when the builder can represent every condition in the query. */
   isBuildable: boolean;
   diagnostics: QueryDiagnostic[];
+  /**
+   * A search that was typed and does not parse. `text` and the rest describe
+   * the last search that did, and `diagnostics` say what is wrong with this.
+   */
+  pending?: string;
   groups: QueryBuilderGroup[];
   /** Tags named by the query, resolved against the index for display. */
   tags: TagReferenceLike[];

@@ -320,6 +320,8 @@ h1 { font-weight: 200; letter-spacing: .3em; }
 button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
 button, select { text-transform: uppercase; }
 button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
+/* A tag's weight reads as a gold instrument, against faint empty steps. */
+.tag-weight-rail-segment.filled { background: var(--amber); }
 input[type='checkbox'] { accent-color: var(--amber); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(13, 16, 19, .92); box-shadow: inset 2px 0 0 var(--cyan); }
 .metric:nth-child(3n), .card:nth-child(3n), .note-row:nth-child(3n), .task-row:nth-child(3n), .view-panel:nth-child(3n) { box-shadow: inset 2px 0 0 var(--amber); }

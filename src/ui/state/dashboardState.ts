@@ -1,10 +1,12 @@
 import {
+  DashboardSavedFilter,
   DashboardSnapshot,
   DashboardNote,
   DashboardTask,
   Entity,
   ParsedFile,
   PersistedPreferences,
+  SearchPageSnapshot,
   Section,
   StatsAccessItem,
   TagInfo,
@@ -14,11 +16,9 @@ import {
   TagOverviewCard,
   TagOverviewHub,
   TagOverviewSortMode,
-  TagOverviewSnapshot,
   TagReference,
   TagAssociation,
   TaskSortMode,
-  SidebarNotesSnapshot,
   WorkspaceIndex,
   DeckardStatsSnapshot,
 } from '../../core/types';
@@ -37,8 +37,8 @@ import {
   evaluateQuery,
 } from '../../core/query/queryEvaluator';
 import {
-  buildTagIntersectionQuery,
   collectQueryTagKeys,
+  getQueryTagIntersection,
   quoteValue,
   toBuilderGroups,
 } from '../../core/query/queryFormat';
@@ -56,7 +56,7 @@ import {
 import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
-import { buildSearchFacets } from './searchFacets';
+import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -66,205 +66,320 @@ export function createDashboardSnapshot(
   preferences: PersistedPreferences,
   selectedTag?: string,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  includeNotes = true,
 ): DashboardSnapshot {
-  const tags = sortTags(index.tags.values(), preferences);
-  const entities = sortEntities(index.entities.values(), preferences);
-  // Every section becomes a note card, so a page that is not showing notes
-  // is spared building them.
-  const notes = !includeNotes ? [] : sortDashboardNotes(
-    [
-      ...[...index.sections.values()].map((section) =>
-        createDashboardNote(
-          section,
-          preferences.sectionAccessCounts,
-          tagTitleDisplayMode,
-        ),
-      ),
-      ...[...index.files.values()]
-        .filter(
-          (file) =>
-            file.sections.length === 0 &&
-            file.frontmatterTags.length > 0,
-        )
-        .map((file) => createDashboardFileNote(file)),
-    ],
-    preferences.dashboardNoteSortMode,
-  );
-  const noteSearch = includeNotes
-    ? createNoteSearch(index, preferences, notes)
-    : undefined;
-
   return {
-    ...(includeNotes ? {} : { notesOmitted: true }),
-    // Every tab marks the Search tab when a search is kept there.
-    noteQueryText:
-      preferences.dashboardViewState.noteSearchQuery.trim() || undefined,
-    ...(noteSearch
-      ? {
-          noteQuery: noteSearch.query,
-          noteQueryTasks: noteSearch.tasks,
-          noteQueryTaskCount: noteSearch.taskCount,
-        }
-      : {}),
-    tags,
-    entities,
-    notes: noteSearch?.notes ?? notes,
+    tags: sortTags(index.tags.values(), preferences),
+    entities: sortEntities(index.entities.values(), preferences),
     totalSectionCount: index.sections.size,
-    totalNoteCount:
-      index.sections.size +
-      [...index.files.values()].filter(
-        (file) =>
-          file.sections.length === 0 && file.frontmatterTags.length > 0,
-      ).length,
+    totalNoteCount: index.sections.size + listFrontmatterOnlyFiles(index).length,
     totalTaskCount: index.tasks.size,
-    taskColumns: preferences.dashboardTaskColumns,
-    noteColumns: preferences.dashboardNoteColumns,
     tagColumns: preferences.dashboardTagColumns,
-    noteSortMode: preferences.dashboardNoteSortMode,
-    renderMode: preferences.renderMode,
     tagTitleDisplayMode,
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
     selectedTag,
     viewState: { ...preferences.dashboardViewState },
-    savedFilters: preferences.savedFilters.flatMap((filter) => {
-      if (filter.query) {
-        // A saved query keeps its place in the rail even when the tags it
-        // names are not in the index yet.
-        return [
-          {
-            id: filter.id,
-            name: filter.name,
-            tags: resolveQueryTags(index, parseQuery(filter.query)),
-            query: filter.query,
-          },
-        ];
-      }
-      const tags = filter.tagKeys
-        .map((tagKey) => index.tags.get(tagKey))
-        .filter((tag): tag is TagInfo => tag !== undefined)
-        .map((tag) => ({ key: tag.key, label: tag.label }));
-      return tags.length >= 2
-        ? [{ id: filter.id, name: filter.name, tags }]
-        : [];
-    }),
+    savedFilters: createDashboardSavedFilters(index, preferences),
+    widgetConfig: preferences.dashboardWidgets.map((widget) => ({ ...widget })),
   };
 }
 
-/** How many matching tasks the Search tab lists under a search. */
-const NOTE_SEARCH_TASK_LIMIT = 50;
-
 /**
- * Runs the Search tab's search.
- *
- * A search of plain words matches each note's title, file name, body, and
- * tags, the same places the page matches words while they are typed, so a
- * file name still finds its note and the counts agree with what is shown.
- * Any other search is answered by the query evaluator, exactly as it is
- * everywhere else. Either way the tasks it matches and the facets that could
- * narrow it are computed here.
+ * The saved views, with their tags resolved against the index. A saved query
+ * keeps its place even when the tags it names are not in the index yet; a
+ * saved tag set needs two tags that still exist.
  */
-function createNoteSearch(
+export function createDashboardSavedFilters(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  notes: DashboardNote[],
-): {
-  query: QueryViewState;
-  notes: DashboardNote[];
-  tasks: DashboardTask[];
-  taskCount: number;
-} {
-  const text = preferences.dashboardViewState.noteSearchQuery.trim();
-  const parsed = parseQuery(text);
-  const recent = preferences.recentQueries ?? [];
-  if (!parsed.node) {
-    return {
-      query: createQueryViewState(
-        index,
-        parsed,
-        { notes: notes.length, tasks: 0 },
-        true,
-        recent,
-      ),
-      notes,
-      tasks: [],
-      taskCount: 0,
-    };
+): DashboardSavedFilter[] {
+  return preferences.savedFilters.flatMap((filter) => {
+    if (filter.query) {
+      return [
+        {
+          id: filter.id,
+          name: filter.name,
+          tags: resolveQueryTags(index, parseQuery(filter.query)),
+          query: filter.query,
+          ...(filter.page ? { page: filter.page } : {}),
+        },
+      ];
+    }
+    const tags = filter.tagKeys
+      .map((tagKey) => index.tags.get(tagKey))
+      .filter((tag): tag is TagInfo => tag !== undefined)
+      .map((tag) => ({ key: tag.key, label: tag.label }));
+    return tags.length >= 2 ? [{ id: filter.id, name: filter.name, tags }] : [];
+  });
+}
+
+/** Files known only by their front matter tags, which list as one note each. */
+function listFrontmatterOnlyFiles(index: WorkspaceIndex): ParsedFile[] {
+  return [...index.files.values()].filter(
+    (file) => file.sections.length === 0 && file.frontmatterTags.length > 0,
+  );
+}
+
+/**
+ * The search a saved view runs: its query, or its tags joined by AND.
+ */
+export function getSavedFilterQuery(filter: {
+  tagKeys?: readonly string[];
+  tags?: readonly TagReference[];
+  query?: string;
+}): string {
+  if (filter.query) {
+    return filter.query;
   }
-  const results = evaluateQuery(index, parsed.node);
+  const tagKeys = filter.tagKeys ?? (filter.tags ?? []).map((tag) => tag.key);
+  return tagKeys.join(' AND ');
+}
+
+/** Options for a search page's projection. */
+export interface SearchPageOptions {
+  /** The search the page was opened with, which Clear returns to. */
+  originQuery?: string;
+  taskFilter?: TaskFilter;
+  tagTitleDisplayMode?: TagTitleDisplayMode;
+  /** Whether tags are related by their headings as well as written together. */
+  enableHeadingTagRelationships?: boolean;
+  now?: number;
+}
+
+/**
+ * Projects a search page: the notes and tasks one search finds.
+ *
+ * An empty search lists every note. A search of plain words matches each
+ * note's title, file name, body, and tags, the same places the page matches
+ * words while they are typed, so a file name still finds its note and the
+ * counts agree with what is shown. Any other search is answered by the query
+ * evaluator, exactly as it is everywhere else, which includes the tags a note
+ * inherits from the headings above it.
+ *
+ * A search of exactly one tag is that tag's overview: it carries the tag, its
+ * entity, and the hub note that describes it, and the hub's own entries are
+ * not listed again below it. A search of only tags joined by AND is refined
+ * by the tags associated with all of them, ranked by how strongly; any other
+ * search is refined by the tags its results carry, ranked by how many.
+ */
+export function createSearchPageSnapshot(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  queryText: string,
+  options: SearchPageOptions = {},
+): SearchPageSnapshot {
+  const text = queryText.trim();
+  const parsed = parseQuery(text);
+  const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
+  const taskFilter = options.taskFilter ?? 'active';
+  const tagKeys = resolveQueryTagIntersection(index, parsed);
+  const focusTag =
+    tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
+  const hubFile = focusTag?.hubFilePaths?.length
+    ? index.files.get(focusTag.hubFilePaths[0])
+    : undefined;
+
+  const results = parsed.node
+    ? evaluateQuery(index, parsed.node)
+    : {
+        sections: [...index.sections.values()],
+        tasks: [...index.tasks.values()],
+        files: listFrontmatterOnlyFiles(index),
+      };
+  const cardFor = (section: Section): TagOverviewCard =>
+    createTagOverviewCard(
+      section,
+      preferences.sectionAccessCounts,
+      tagTitleDisplayMode,
+    );
   const plainTerms = getPlainTextTerms(parsed.node);
-  const matchedNotes = plainTerms
-    ? notes.filter((note) => matchesNoteWords(note, plainTerms))
-    : (() => {
-        const ids = new Set([
-          ...results.sections.map((section) => section.id),
-          ...results.files.map((file) => `frontmatter:${file.filePath}`),
-        ]);
-        return notes.filter((note) => ids.has(note.id));
-      })();
-  const tasks = [...results.tasks].sort(compareSearchTasks);
+  const cards = plainTerms
+    ? [
+        ...[...index.sections.values()].map(cardFor),
+        ...listFrontmatterOnlyFiles(index).map(createFileOverviewCard),
+      ].filter((card) => matchesNoteWords(card, plainTerms))
+    : [
+        ...results.sections
+          .filter((section) => section.filePath !== hubFile?.filePath)
+          .map(cardFor),
+        ...results.files
+          .filter((file) => file.filePath !== hubFile?.filePath)
+          .map(createFileOverviewCard),
+      ];
+  const sections = cards.sort((left, right) =>
+    compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
+  );
+  const tasks = sortTasks(
+    [...results.tasks],
+    preferences.taskOrder,
+    preferences.taskSortMode,
+  );
+  const related =
+    tagKeys && (options.enableHeadingTagRelationships ?? true)
+      ? createRelatedFacetValues(index, tagKeys, results)
+      : undefined;
+
   return {
+    ...(focusTag
+      ? {
+          tag: {
+            ...focusTag,
+            sectionIds: [...focusTag.sectionIds],
+            taskIds: [...focusTag.taskIds],
+            filePaths: [...focusTag.filePaths],
+            isFavorite: preferences.favoriteTags.includes(focusTag.key),
+          },
+          entity: index.entities.get(focusTag.key),
+          ...(hubFile
+            ? {
+                hub: createTagOverviewHub(
+                  hubFile,
+                  focusTag.hubFilePaths?.slice(1) ?? [],
+                ),
+              }
+            : {}),
+        }
+      : {}),
     query: createQueryViewState(
       index,
       parsed,
-      { notes: matchedNotes.length, tasks: tasks.length },
+      { notes: sections.length, tasks: tasks.length },
       true,
-      recent,
-      { facets: buildSearchFacets(index, results, text) },
+      preferences.recentQueries ?? [],
+      {
+        facets: parsed.node
+          ? buildSearchFacets(index, results, text, {
+              related,
+              now: options.now,
+            })
+          : [],
+      },
     ),
-    notes: matchedNotes,
+    originQuery: options.originQuery?.trim() ?? '',
+    savedViewName:
+      tagKeys && tagKeys.length >= 2
+        ? findMatchingSavedViewName(preferences.savedFilters, tagKeys) ??
+          findMatchingSavedQueryName(preferences.savedFilters, parsed)
+        : findMatchingSavedQueryName(preferences.savedFilters, parsed),
+    sections,
     tasks: tasks
-      .slice(0, NOTE_SEARCH_TASK_LIMIT)
+      .filter((task) => matchesTaskFilter(task, taskFilter))
       .map((task) => createDashboardTask(task, index.sections)),
-    taskCount: tasks.length,
+    taskCounts: {
+      all: tasks.length,
+      active: tasks.filter((task) => !task.completed).length,
+      completed: tasks.filter((task) => task.completed).length,
+    },
+    taskFilter,
+    renderMode: preferences.renderMode,
+    sortMode: preferences.tagOverviewSortMode,
+    layout: preferences.tagOverviewLayout,
+    noteColumns: preferences.dashboardNoteColumns,
+    taskColumns: preferences.dashboardTaskColumns,
+    tagTitleDisplayMode,
   };
+}
+
+/**
+ * The canonical keys of a search made only of tags joined by AND, each of
+ * which is in the index, or undefined for any other search.
+ */
+export function resolveQueryTagIntersection(
+  index: WorkspaceIndex,
+  parsed: ParsedQuery,
+): string[] | undefined {
+  const intersection = getQueryTagIntersection(parsed.node);
+  if (!intersection || intersection.length === 0) {
+    return undefined;
+  }
+  const tagKeys: string[] = [];
+  for (const tagKey of intersection) {
+    const canonical = resolveIndexedTagKey(index.tags, tagKey);
+    if (!canonical) {
+      return undefined;
+    }
+    if (!tagKeys.includes(canonical)) {
+      tagKeys.push(canonical);
+    }
+  }
+  return tagKeys;
+}
+
+/**
+ * The tags associated with every one of a search's tags, as Refine offers
+ * them: each keeps as many results as carry it, and its strength is its
+ * association relative to the strongest listed.
+ */
+function createRelatedFacetValues(
+  index: WorkspaceIndex,
+  tagKeys: readonly string[],
+  results: { sections: Section[]; tasks: Task[]; files: ParsedFile[] },
+): SearchFacetValue[] {
+  const associations = (
+    tagKeys.length === 1
+      ? index.tagAssociations?.get(tagKeys[0]) ?? []
+      : getSharedTagAssociations(index, [...tagKeys])
+  ).filter((association) => !tagKeys.includes(association.associatedTag.key));
+  const strongest = Math.max(
+    0,
+    ...associations.map((association) => association.normalizedWeight),
+  );
+  return associations
+    .map((association) => {
+      const tagKey = association.associatedTag.key;
+      return {
+        label: index.tags.get(tagKey)?.label ?? association.associatedTag.label,
+        clause: tagKey,
+        count:
+          results.sections.filter((section) =>
+            sectionIncludesTag(index, section, tagKey),
+          ).length +
+          results.tasks.filter((task) => taskIncludesTag(index, task, tagKey))
+            .length +
+          results.files.filter((file) => fileIncludesTag(index, file, tagKey))
+            .length,
+        strength:
+          strongest > 0 ? association.normalizedWeight / strongest : 0,
+        detail: describeAssociation(association),
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.strength - left.strength ||
+        right.count - left.count ||
+        baseCollator.compare(left.label, right.label),
+    );
+}
+
+/**
+ * Why two tags are related, such as "Written together 16 times; heading
+ * context 3 times".
+ */
+export function describeAssociation(association: TagAssociation): string {
+  const times = (count: number): string =>
+    `${count} time${count === 1 ? '' : 's'}`;
+  const heading = association.headingRelationshipCount
+    ? `heading context ${times(association.headingRelationshipCount)}`
+    : '';
+  if (!association.coOccurrenceCount) {
+    return heading ? heading.charAt(0).toUpperCase() + heading.slice(1) : '';
+  }
+  return `Written together ${times(association.coOccurrenceCount)}${heading ? `; ${heading}` : ''}`;
 }
 
 /**
  * Whether a note card has every word in its title, file name, body, or tags.
  */
-function matchesNoteWords(note: DashboardNote, words: readonly string[]): boolean {
+function matchesNoteWords(card: TagOverviewCard, words: readonly string[]): boolean {
   const text = [
-    note.heading,
-    note.fileName,
-    note.rawContent,
-    ...note.tags.map((tag) => tag.label),
+    card.heading,
+    getFileName(card.filePath) ?? card.filePath,
+    card.rawContent,
+    ...card.tags.map((tag) => tag.label),
   ]
     .join(' ')
     .toLowerCase();
   return words.every((word) => text.includes(word.toLowerCase()));
-}
-
-/** Open tasks first, then the soonest due, then in title order. */
-function compareSearchTasks(left: Task, right: Task): number {
-  return (
-    Number(left.completed) - Number(right.completed) ||
-    (left.dueAt ?? Number.MAX_SAFE_INTEGER) - (right.dueAt ?? Number.MAX_SAFE_INTEGER) ||
-    left.title.localeCompare(right.title)
-  );
-}
-
-function createDashboardNote(
-  section: Section,
-  sectionAccessCounts: Record<string, number>,
-  tagTitleDisplayMode: TagTitleDisplayMode,
-): DashboardNote {
-  return {
-    ...createTagOverviewCard(
-      section,
-      sectionAccessCounts,
-      tagTitleDisplayMode,
-    ),
-    fileName: section.filePath.split('/').pop() ?? section.filePath,
-  };
-}
-
-function createDashboardFileNote(file: ParsedFile): DashboardNote {
-  return {
-    ...createFileOverviewCard(file),
-    fileName: file.filePath.split('/').pop() ?? file.filePath,
-  };
 }
 
 /**
@@ -558,254 +673,6 @@ export function filterTasksByTags(
   );
 }
 
-/**
- * Builds the entries for one tag while dropping references removed by a refresh.
- */
-export function createTagOverviewSnapshot(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  tagKey: string,
-  taskFilter: TaskFilter = 'active',
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  enableHeadingTagRelationships = true,
-  filterTagKey?: string,
-  filterTagKeys: string[] = [],
-  refinementText = '',
-): TagOverviewSnapshot | undefined {
-  const tag = index.tags.get(tagKey);
-  if (!tag) {
-    return undefined;
-  }
-  // A search typed after the tags narrows the page's own entries.
-  const refinement = parseQuery(refinementText);
-  const refined = refinement.node
-    ? evaluateQuery(index, refinement.node)
-    : undefined;
-  const refinedSectionIds = refined
-    ? new Set(refined.sections.map((section) => section.id))
-    : undefined;
-  const refinedTaskIds = refined
-    ? new Set(refined.tasks.map((task) => task.id))
-    : undefined;
-  const refinedFilePaths = refined
-    ? new Set(refined.files.map((file) => file.filePath))
-    : undefined;
-  const effectiveFilterTags = getOverviewFilterTags(
-    index,
-    tag.key,
-    filterTagKey,
-    filterTagKeys,
-  );
-  const savedViewName = findMatchingSavedViewName(preferences.savedFilters, [
-    tag.key,
-    ...effectiveFilterTags.map((filterTag) => filterTag.key),
-  ]);
-  const effectiveFilterTagKey = effectiveFilterTags[0]?.key;
-  const association =
-    effectiveFilterTags.length !== 1 || effectiveFilterTagKey === undefined
-      ? undefined
-      : findTagAssociation(index, tag.key, effectiveFilterTagKey);
-  const associationSectionIds = association
-    ? new Set(association.sectionIds)
-    : undefined;
-  const associationTaskIds = association ? new Set(association.taskIds) : undefined;
-
-  let sectionCandidates: Section[];
-  if (associationSectionIds) {
-    sectionCandidates = [...associationSectionIds]
-      .map((sectionId) => index.sections.get(sectionId))
-      .filter((section): section is Section => section !== undefined);
-  } else if (effectiveFilterTagKey === undefined) {
-    // A tag is carried by the headings under it as well as by the entries
-    // that write it, which is what the evaluator answers for `tag:`. Listing
-    // only the entries that write it gave this page fewer results than the
-    // same search run from the Dashboard.
-    sectionCandidates = [...index.sections.values()].filter((section) =>
-      sectionIncludesTag(index, section, tag.key),
-    );
-  } else {
-    sectionCandidates = [...index.sections.values()].filter(
-      (section) =>
-        [
-          tag.key,
-          ...effectiveFilterTags.map((filterTag) => filterTag.key),
-        ].every((activeTagKey) => sectionIncludesTag(index, section, activeTagKey)),
-    );
-  }
-  const fileCandidates = (association ? [] : tag.filePaths)
-    .map((filePath) => index.files.get(filePath))
-    .filter((file): file is ParsedFile => file !== undefined)
-    .filter(
-      (file) =>
-        effectiveFilterTags.every((filterTag) =>
-          fileIncludesTag(index, file, filterTag.key),
-        ),
-    )
-    .filter((file) => refinedFilePaths?.has(file.filePath) ?? true);
-  if (refinedSectionIds) {
-    sectionCandidates = sectionCandidates.filter((section) =>
-      refinedSectionIds.has(section.id),
-    );
-  }
-
-  // A plain overview leads with the tag's hub note, so the hub's own entries
-  // are not listed again below it.
-  const hubFile =
-    effectiveFilterTags.length === 0 &&
-    !refinement.node &&
-    tag.hubFilePaths?.length
-      ? index.files.get(tag.hubFilePaths[0])
-      : undefined;
-  const sections = sectionCandidates
-    .filter((section) => section.filePath !== hubFile?.filePath)
-    .map((section) =>
-      createTagOverviewCard(
-        section,
-        preferences.sectionAccessCounts,
-        tagTitleDisplayMode,
-      ),
-    )
-    .concat(
-      fileCandidates
-        .filter((file) => file.filePath !== hubFile?.filePath)
-        .map((file) => createFileOverviewCard(file)),
-    )
-    .sort((left, right) =>
-      compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
-    );
-  let taskCandidates: Task[];
-  if (associationTaskIds) {
-    taskCandidates = [...associationTaskIds]
-      .map((taskId) => index.tasks.get(taskId))
-      .filter((task): task is Task => task !== undefined);
-  } else if (effectiveFilterTagKey === undefined) {
-    taskCandidates = [...index.tasks.values()].filter((task) =>
-      taskIncludesTag(index, task, tag.key),
-    );
-  } else {
-    taskCandidates = [...index.tasks.values()].filter(
-      (task) =>
-        [
-          tag.key,
-          ...effectiveFilterTags.map((filterTag) => filterTag.key),
-        ].every((activeTagKey) => taskIncludesTag(index, task, activeTagKey)),
-    );
-  }
-  if (refinedTaskIds) {
-    taskCandidates = taskCandidates.filter((task) => refinedTaskIds.has(task.id));
-  }
-  const taskCounts = {
-    all: taskCandidates.length,
-    active: taskCandidates.filter((task) => !task.completed).length,
-    completed: taskCandidates.filter((task) => task.completed).length,
-  };
-
-  const activeTagKeys = [
-    tag.key,
-    ...effectiveFilterTags.map((filterTag) => filterTag.key),
-  ];
-
-  return {
-    tag: {
-      ...tag,
-      sectionIds: [...tag.sectionIds],
-      taskIds: [...tag.taskIds],
-      filePaths: [...tag.filePaths],
-      isFavorite: preferences.favoriteTags.includes(tag.key),
-    },
-    // The page's tags are written in the search box rather than held apart
-    // from it, so they read as the search this page is: a reader can edit or
-    // drop one like any other term. The scope still travels with the state,
-    // which is what tells the page it refines its tags rather than replacing
-    // them, and the results are unchanged.
-    query: createQueryViewState(
-      index,
-      parseQuery(
-        [activeTagKeys.join(' AND '), refinementText.trim()]
-          .filter((part) => part.length > 0)
-          .join(' AND '),
-      ),
-      { notes: sections.length, tasks: taskCandidates.length },
-      false,
-      preferences.recentQueries ?? [],
-      {
-        scope: buildTagIntersectionQuery(activeTagKeys),
-        facets: buildSearchFacets(
-          index,
-          {
-            sections: sectionCandidates,
-            tasks: taskCandidates,
-            files: fileCandidates,
-          },
-          refinementText,
-          // The page already lists the tags associated with its own.
-          { includeTags: false },
-        ),
-      },
-    ),
-    entity: index.entities.get(tagKey),
-    // The page's own tags are written in its box, so the box holding text is
-    // no longer a sign that the page is narrowed; only a refinement is.
-    narrowed: Boolean(refinement.node),
-    ...(hubFile
-      ? {
-          hub: createTagOverviewHub(
-            hubFile,
-            tag.hubFilePaths?.slice(1) ?? [],
-          ),
-        }
-      : {}),
-    filterTag: effectiveFilterTags[0],
-    filterTags: effectiveFilterTags,
-    savedViewName,
-    associatedTags: enableHeadingTagRelationships
-      ? cloneTagAssociations(index.tagAssociations?.get(tagKey) ?? [])
-      : [],
-    sharedAssociatedTags:
-      enableHeadingTagRelationships && effectiveFilterTags.length > 0
-        ? getSharedTagAssociations(index, [
-            tag.key,
-            ...effectiveFilterTags.map((filterTag) => filterTag.key),
-          ])
-        : [],
-    sections,
-    tasks: taskCandidates
-      .filter((task) => matchesTaskFilter(task, taskFilter))
-      .map((task) => createDashboardTask(task, index.sections)),
-    taskCounts,
-    taskFilter,
-    renderMode: preferences.renderMode,
-    sortMode: preferences.tagOverviewSortMode,
-    layout: preferences.tagOverviewLayout,
-    tagTitleDisplayMode,
-  };
-}
-
-/**
- * Canonicalizes all usable filters while retaining the legacy single-filter
- * argument for callers restored from earlier webview state.
- */
-function getOverviewFilterTags(
-  index: WorkspaceIndex,
-  focusTagKey: string,
-  filterTagKey: string | undefined,
-  filterTagKeys: string[],
-): TagReference[] {
-  const seen = new Set<string>();
-  const focusLabel = index.tags.get(focusTagKey)?.label;
-  return [...filterTagKeys, ...(filterTagKey ? [filterTagKey] : [])]
-    .map((key) => index.tags.get(key))
-    .filter((tag): tag is TagInfo => tag !== undefined)
-    .filter(
-      (tag) =>
-        tag.key !== focusTagKey &&
-        tag.label !== focusLabel &&
-        !seen.has(tag.key) &&
-        (seen.add(tag.key), true),
-    )
-    .map((tag) => ({ key: tag.key, label: tag.label }));
-}
-
 function findMatchingSavedViewName(
   savedFilters: PersistedPreferences['savedFilters'],
   activeTagKeys: readonly string[],
@@ -820,24 +687,6 @@ function findMatchingSavedViewName(
       )
     );
   })?.name;
-}
-
-function cloneTagAssociations(
-  relationships: TagAssociation[],
-): TagAssociation[] {
-  return relationships.map((relationship) => ({
-    associatedTag: { ...relationship.associatedTag },
-    sectionIds: [...relationship.sectionIds],
-    taskIds: [...relationship.taskIds],
-    count: relationship.count,
-    weight: relationship.weight,
-    normalizedWeight: relationship.normalizedWeight,
-    tagSourceUnitCount: relationship.tagSourceUnitCount,
-    associatedTagSourceUnitCount: relationship.associatedTagSourceUnitCount,
-    totalSourceUnitCount: relationship.totalSourceUnitCount,
-    coOccurrenceCount: relationship.coOccurrenceCount,
-    headingRelationshipCount: relationship.headingRelationshipCount,
-  }));
 }
 
 /**
@@ -983,69 +832,6 @@ function fileIncludesTag(
     file.sections.some((section) => sectionIncludesTag(index, section, tagKey)) ||
     file.tasks.some((task) => taskIncludesTag(index, task, tagKey))
   );
-}
-
-/**
- * Adapts an overview into the sidebar's related-note contract.
- */
-export function createTagOverviewSidebarSnapshot(
-  snapshot: TagOverviewSnapshot,
-): SidebarNotesSnapshot | undefined {
-  const query = snapshot.query?.isAdvanced ? snapshot.query : undefined;
-  const queryTags = query?.tags ?? [];
-  // A query drives the page whenever one is active, so the sidebar follows the
-  // query rather than the tag the page happened to be opened on. A query that
-  // names exactly one tag still gets that tag's chip and associations.
-  const focusTag = query
-    ? queryTags.length === 1
-      ? { ...queryTags[0] }
-      : undefined
-    : snapshot.tag
-      ? { key: snapshot.tag.key, label: snapshot.tag.label }
-      : undefined;
-  if (!focusTag && !query) {
-    return undefined;
-  }
-
-  const matchedTags = focusTag ? [focusTag] : queryTags.map((tag) => ({ ...tag }));
-  const notes = snapshot.sections.map((section) => ({
-    filePath: section.filePath,
-    title: section.heading,
-    fileName: getFileName(section.filePath) ?? section.filePath,
-    sourceLine: section.startLine,
-    headingPath: [stripTags(section.heading)],
-    titleTags: section.titleTags,
-    matchedTags,
-    matchCount: Math.max(1, matchedTags.length),
-    totalTagCount: Math.max(1, matchedTags.length),
-    overlap: 1,
-    relevanceScore: 100,
-  }));
-
-  const filterTags = query
-    ? focusTag
-      ? []
-      : queryTags.map((tag) => ({ ...tag }))
-    : snapshot.filterTags.map((tag) => ({ ...tag }));
-
-  return {
-    activeTags: [],
-    notes,
-    tagOverview: focusTag,
-    tagOverviewQuery: query?.text,
-    tagOverviewFilter: query
-      ? undefined
-      : snapshot.filterTag
-        ? { ...snapshot.filterTag }
-        : undefined,
-    tagOverviewFilters: filterTags,
-    tagOverviewRelationships: {
-      associatedTags: cloneTagAssociations(snapshot.associatedTags),
-      sharedAssociatedTags: cloneTagAssociations(snapshot.sharedAssociatedTags),
-    },
-    tagTitleDisplayMode: snapshot.tagTitleDisplayMode,
-    state: notes.length > 0 ? 'ready' : 'noMatches',
-  };
 }
 
 /**
@@ -1372,101 +1158,6 @@ export function getFileName(filePath: string | undefined): string | undefined {
 }
 
 /**
- * Projects an overview driven by a Deckard query rather than a single tag.
- *
- * Results come from the query evaluator, but every card, task, and control is
- * built with the same helpers a tag overview uses, so an advanced view is the
- * same page with a wider filter rather than a second, divergent surface.
- */
-export function createQueryOverviewSnapshot(
-  index: WorkspaceIndex,
-  preferences: PersistedPreferences,
-  queryText: string,
-  taskFilter: TaskFilter = 'active',
-  tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
-  enableHeadingTagRelationships = true,
-  focusTagKey?: string,
-): TagOverviewSnapshot {
-  const parsed = parseQuery(queryText);
-  const results = evaluateQuery(index, parsed.node);
-
-  const sections = results.sections
-    .map((section) =>
-      createTagOverviewCard(
-        section,
-        preferences.sectionAccessCounts,
-        tagTitleDisplayMode,
-      ),
-    )
-    .concat(results.files.map((file) => createFileOverviewCard(file)))
-    .sort((left, right) =>
-      compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
-    );
-
-  const taskCounts = {
-    all: results.tasks.length,
-    active: results.tasks.filter((task) => !task.completed).length,
-    completed: results.tasks.filter((task) => task.completed).length,
-  };
-
-  const queryTags = resolveQueryTags(index, parsed);
-  const focusTag = focusTagKey ? index.tags.get(focusTagKey) : undefined;
-
-  return {
-    tag: focusTag
-      ? {
-          ...focusTag,
-          sectionIds: [...focusTag.sectionIds],
-          taskIds: [...focusTag.taskIds],
-          filePaths: [...focusTag.filePaths],
-          isFavorite: preferences.favoriteTags.includes(focusTag.key),
-        }
-      : undefined,
-    // Whatever its shape, this page is driven by the query rather than by the
-    // panel's focus tag, so it must not present that tag's chips.
-    query: createQueryViewState(
-      index,
-      parsed,
-      { notes: sections.length, tasks: results.tasks.length },
-      true,
-      preferences.recentQueries ?? [],
-      {
-        facets: buildSearchFacets(index, results, queryText, {
-          // A query naming one tag keeps that tag's association suggestions.
-          includeTags: queryTags.length !== 1,
-        }),
-      },
-    ),
-    entity: focusTag ? index.entities.get(focusTag.key) : undefined,
-    filterTags: [],
-    savedViewName: findMatchingSavedQueryName(preferences.savedFilters, parsed),
-    // Association suggestions describe one tag's neighbourhood, which a
-    // multi-branch query does not have; they return with the tag chips.
-    associatedTags:
-      enableHeadingTagRelationships && queryTags.length === 1
-        ? cloneTagAssociations(index.tagAssociations?.get(queryTags[0].key) ?? [])
-        : [],
-    sharedAssociatedTags:
-      enableHeadingTagRelationships && queryTags.length > 1
-        ? getSharedTagAssociations(
-            index,
-            queryTags.map((tag) => tag.key),
-          )
-        : [],
-    sections,
-    tasks: results.tasks
-      .filter((task) => matchesTaskFilter(task, taskFilter))
-      .map((task) => createDashboardTask(task, index.sections)),
-    taskCounts,
-    taskFilter,
-    renderMode: preferences.renderMode,
-    sortMode: preferences.tagOverviewSortMode,
-    layout: preferences.tagOverviewLayout,
-    tagTitleDisplayMode,
-  };
-}
-
-/**
  * Builds everything the query bar and its builder need from one parse.
  */
 export function createQueryViewState(
@@ -1475,12 +1166,13 @@ export function createQueryViewState(
   matchCounts: { notes: number; tasks: number },
   isAdvanced: boolean,
   recentQueries: readonly string[] = [],
-  extras: { scope?: string; facets?: QueryFacet[] } = {},
+  extras: { facets?: QueryFacet[]; pending?: string } = {},
 ): QueryViewState {
   const groups = toBuilderGroups(parsed.node);
+  const pending = extras.pending?.trim();
   return {
     text: parsed.text,
-    ...(extras.scope !== undefined ? { scope: extras.scope } : {}),
+    ...(pending ? { pending } : {}),
     terms: getTopLevelTerms(parsed),
     canAppend: canAppendTerm(parsed),
     facets: extras.facets ?? [],
@@ -1488,7 +1180,7 @@ export function createQueryViewState(
     isBuildable: groups.every((group) =>
       group.rows.every((row) => row.supported),
     ),
-    diagnostics: parsed.diagnostics,
+    diagnostics: pending ? parseQuery(pending).diagnostics : parsed.diagnostics,
     groups,
     tags: resolveQueryTags(index, parsed),
     suggestions: createQuerySuggestions(index, recentQueries),
@@ -1734,6 +1426,8 @@ function findMatchingSavedQueryName(
   if (!normalized) {
     return undefined;
   }
-  return savedFilters.find((filter) => filter.query?.trim() === normalized)
-    ?.name;
+  // A search saved on the Task Board is that page's, not this one's.
+  return savedFilters.find(
+    (filter) => filter.query?.trim() === normalized && !filter.page,
+  )?.name;
 }

@@ -21,8 +21,9 @@ const LAYOUT_CONTRACTS = {
     ['.metrics', 'grid-template-columns', 'repeat(3'],
     ['.metrics', 'min-width', 'min(380px'],
     ['.metric', 'clip-path', 'polygon'],
+    ['.home-grid', 'grid-template-columns', 'repeat(2'],
   ],
-  tagOverview: [
+  searchPage: [
     ['main', 'border-top', 'var(--amber)'],
     ['header', 'position', 'relative'],
   ],
@@ -119,6 +120,14 @@ for (const [name, render] of pages) {
   const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((m) => m[1])
     .join('\n');
+  // A stray closing brace makes the browser drop the rule after it.
+  let depth = 0;
+  for (const character of styles.replace(/\/\*[\s\S]*?\*\//g, '').replace(/"(?:[^"\\]|\\.)*"/g, '""')) {
+    if (character === '{') depth += 1;
+    if (character === '}') depth -= 1;
+    if (depth < 0) break;
+  }
+  if (depth !== 0) problems.push(`style braces do not balance (${depth < 0 ? 'a stray }' : 'an unclosed {'})`);
   for (const [selector, property, expected] of LAYOUT_CONTRACTS[name] ?? []) {
     const actual = effectiveValue(styles, selector, property);
     if (!actual || !actual.includes(expected)) {

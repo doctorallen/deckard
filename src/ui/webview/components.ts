@@ -196,8 +196,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices button + button { margin-left: -1px; }
 .view-options-choices button:first-child { border-radius: 2px 0 0 2px; }
 .view-options-choices button:last-child { border-radius: 0 2px 2px 0; }
-.view-options-choices button.active { position: relative; z-index: 1; }
-}`;
+.view-options-choices button.active { position: relative; z-index: 1; }`;
 }
 
 /**
@@ -225,6 +224,11 @@ export function getTagCss(): string {
   vertical-align: 1px;
 }
 .tag-namespace { opacity: .62; }
+/* How much a tag weighs, as a rail of three steps: Related Notes' active
+   tags, and related tags in Refine. Empty steps are faint so filled ones read. */
+.tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .3; }
+.tag-weight-rail-segment.filled { background: var(--cyan); opacity: 1; }
 .task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
 
 /* Right-click actions on any tag. */
@@ -493,6 +497,24 @@ export function getComponentScript(): string {
     return '<button class="tag-open ' + (className || '') + '" data-action="open-tag" data-tag-key="'
       + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
       + renderTagLabel(tag.label) + '</button>';
+  }
+
+  /** The rail step a weight fills to: three for 0.75 and up, two from 0.375. */
+  function getWeightLevel(weight) {
+    const value = Number(weight);
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    if (value >= 0.75) return 3;
+    if (value >= 0.375) return 2;
+    return 1;
+  }
+
+  /** How much a tag weighs, as a rail of three steps filled to level. */
+  function renderWeightRail(level, title) {
+    let html = '<span class="tag-weight-rail"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + ' aria-hidden="true">';
+    for (let index = 0; index < 3; index += 1) {
+      html += '<span class="tag-weight-rail-segment' + (index < level ? ' filled' : '') + '"></span>';
+    }
+    return html + '</span>';
   }
 
   /** Give built-in and user-created namespaces the same readable title form. */
@@ -1052,7 +1074,9 @@ export function getComponentScript(): string {
       suppressClick = false;
       const row = event.target.closest(rowSelector);
       if (!row || event.button !== 0 || drag) return;
-      if (event.target.closest('button, input, select, textarea, a, [data-action]')) return;
+      // A control inside a row, such as a widget's gear, keeps its click: a
+      // drag would capture the pointer and take the click away from it.
+      if (event.target.closest('button, input, select, textarea, a, summary, label, [data-action]')) return;
       const kind = kindOf(row);
       if (!kind || !row.classList.contains('is-draggable') || !options.canRank(kind)) return;
       drag = { row: row, kind: kind, key: keyOf(row, kind), pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false };
@@ -1110,11 +1134,34 @@ export function getQueryEditorCss(): string {
 .query-input:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
 .query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
+/*
+ * The search box is a field of chips, as a multi-select is: each term of the
+ * search is a chip with a remove icon, joined by AND, and the text field after
+ * them takes the next term. The field wraps onto more lines as terms are added.
+ */
+.query-bar-shell { flex-wrap: wrap; align-items: center; gap: 4px 5px; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 3px 6px; cursor: text; }
+.query-bar-shell:focus-within { border-color: var(--amber); }
+.query-bar-shell.invalid { border-color: #FF5555; }
+.query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: none; }
+/* Every chip looks the same, whatever its term; only a left-out tag is red. */
+.query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: 11px var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
+.query-chip-label { min-width: 0; overflow-wrap: anywhere; }
+.query-bar-shell .query-chip.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); background: color-mix(in srgb, var(--favorite-red) 12%, transparent); color: var(--favorite-red); }
+.query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: 12px; line-height: 1; }
+.query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
+.query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
+.query-chip-join, .query-op { color: var(--amber); font: 10px var(--font-mono); letter-spacing: .08em; }
+.query-op { font-size: inherit; }
+.query-paren { color: var(--muted); }
 .query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); }
 .query-suggestions[hidden] { display: none; }
-.query-suggestion { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; border: 0; background: transparent; padding: 6px 9px; text-align: left; font: 12px var(--font-mono); }
-.query-suggestion:hover, .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
-.query-suggestion-detail { color: var(--muted); font-size: 10px; }
+/* A completion reads as written, whatever a theme does to buttons, and each
+   sits on its own ruled row; a long one wraps beside its note. */
+.query-suggestions .query-suggestion { display: flex; width: 100%; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); padding: 6px 10px; text-align: left; font: 12px var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
+.query-suggestions .query-suggestion:last-child { border-bottom: 0; }
+.query-suggestions .query-suggestion:hover, .query-suggestions .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
+.query-suggestion-label { min-width: 0; overflow-wrap: anywhere; }
+.query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: 10px; white-space: nowrap; }
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
@@ -1122,16 +1169,6 @@ export function getQueryEditorCss(): string {
 .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--amber); color: var(--amber); }
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
-.query-terms { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
-/* The chip is the box. VS Code's own webview styles give every <code> a
-   background, padding and a 4px radius, which would draw a second rounded box
-   inside it, and a term echoes the text typed in the box, so it is never
-   recased by a theme that shouts its controls. */
-.query-term { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border: 1px solid var(--line-strong); background: var(--panel); padding: 1px 6px 1px 8px; cursor: pointer; text-transform: none; }
-.query-term code { background: none; border-radius: 0; padding: 0; color: var(--cyan); font-size: 11px; }
-.query-term:hover code, .query-term:focus-visible code { color: inherit; }
-.query-term-remove { color: var(--muted); font-size: 13px; line-height: 1; }
-.query-term:hover .query-term-remove, .query-term:focus-visible .query-term-remove { color: inherit; }
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line); background: var(--panel); padding: 10px; }
 .query-builder-group + .query-builder-or { display: block; margin: 8px 0; color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-align: center; text-transform: uppercase; }
@@ -1158,7 +1195,8 @@ export function getQueryEditorCss(): string {
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
-.query-facet-count { color: var(--muted); font-size: 10px; }`;
+.query-facet-count { color: var(--muted); font-size: 10px; }
+.query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
 /**
@@ -1191,6 +1229,8 @@ export function getQueryEditorScript(): string {
    *                  Clear is disabled while the box holds only this.
    *   resultKinds    optional; what the search can find, notes and tasks
    *                  unless a page lists only one, such as ['tasks']
+   *   refineElsewhere() optional; true while the sidebar shows this search's
+   *                  Refine options, so the page shows a line in their place
    *   actions(hasText) optional; the page's own buttons for the bar, such as
    *                  Save. A button that needs text carries
    *                  data-query-needs-text, and is always drawn, disabled
@@ -1222,8 +1262,17 @@ export function getQueryEditorScript(): string {
     /** Fields written as one field:value token. */
     const SHORTHAND_FIELDS = ['is', 'has', 'in'];
 
-    /** Text being typed; undefined means the box shows the applied search. */
+    /**
+     * A whole search waiting to be run, such as one the builder wrote or Clear
+     * left; undefined means the box shows the applied search and the entry.
+     */
     let draft;
+    /** The next term, being typed in the field after the chips. */
+    let entry = '';
+    /** The entry the last search that ran was written with. */
+    let lastEntry = '';
+    /** The entry to keep once the host answers the search that ran. */
+    let entryAfterRun = '';
     /** The applied search the editor last saw. */
     let appliedSeen;
     /** Set between applying a search and seeing the host's answer. */
@@ -1250,7 +1299,7 @@ export function getQueryEditorScript(): string {
     function query() { return options.getState() || {}; }
     function suggestions() { return query().suggestions || {}; }
     function appliedText() { return query().text || ''; }
-    function currentText() { return draft === undefined ? appliedText() : draft; }
+    function currentText() { return draft === undefined ? combineQuery(appliedText(), entry) : draft; }
     function operatorsFor(field) {
       const table = suggestions().operators || DEFAULT_OPERATORS;
       return table[field] || DEFAULT_OPERATORS[field] || ['eq'];
@@ -1279,22 +1328,156 @@ export function getQueryEditorScript(): string {
       const value = currentText();
       const hasText = Boolean(String(value).trim());
       const errors = (query().diagnostics || []).filter(function (diagnostic) { return diagnostic.severity === 'error'; });
+      const terms = renderChips();
       const status = errors.length
         ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
         : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
       const label = options.label || 'Search';
       return '<section class="query-workspace" aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
-        + '<span class="query-input-shell"><input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(label) + '" placeholder="' + escapeHtml(placeholder()) + '" value="' + escapeHtml(value) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
+        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
         + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
         + '<button data-action="clear-query" data-query-clears title="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
         + '</div>'
         + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
-        + renderTerms()
         + renderBuilder()
         + '</section>';
     }
+
+    /**
+     * The search's words, with where each starts and ends: a tag, written as
+     * #tag, -#tag, tag:#tag, or tag = #tag; an operator; a parenthesis; or
+     * anything else. Quoted text is one word.
+     */
+    function scanQuery(text) {
+      const tokens = [];
+      const pattern = /"(?:[^"\\\\]|\\\\.)*"?|'[^']*'?|[()]|[^\\s()]+/g;
+      let match;
+      while ((match = pattern.exec(text))) {
+        tokens.push({ text: match[0], start: match.index, end: match.index + match[0].length });
+      }
+      const pieces = [];
+      const unquote = function (value) { return value.replace(/^["']|["']$/g, ''); };
+      for (let index = 0; index < tokens.length; index += 1) {
+        const token = tokens[index];
+        const word = token.text;
+        let tag = /^(-|!)?([#@][^\\s()"']+)$/.exec(unquote(word));
+        if (tag) {
+          pieces.push({ kind: 'tag', start: token.start, end: token.end, negated: Boolean(tag[1]) });
+          continue;
+        }
+        tag = /^(-)?tags?(:|!?=)(.+)$/i.exec(word);
+        if (tag && /^[#@]/.test(unquote(tag[3]))) {
+          pieces.push({ kind: 'tag', start: token.start, end: token.end, negated: Boolean(tag[1]) || tag[2] === '!=' });
+          continue;
+        }
+        const operator = tokens[index + 1];
+        const value = tokens[index + 2];
+        if (/^tags?$/i.test(word) && operator && value && /^!?=$/.test(operator.text) && /^[#@]/.test(unquote(value.text))) {
+          pieces.push({ kind: 'tag', start: token.start, end: value.end, negated: operator.text === '!=' });
+          index += 2;
+          continue;
+        }
+        if (/^(and|or|not|&&|\\|\\|)$/i.test(word)) {
+          pieces.push({ kind: 'op', start: token.start, end: token.end });
+          continue;
+        }
+        pieces.push({ kind: word === '(' || word === ')' ? 'paren' : 'word', start: token.start, end: token.end });
+      }
+      return pieces;
+    }
+
+    /** A term's text, with its AND, OR, and NOT in their own color. */
+    function renderTermText(text) {
+      let html = '';
+      let offset = 0;
+      scanQuery(text).forEach(function (piece) {
+        if (piece.kind !== 'op' && piece.kind !== 'paren') return;
+        html += escapeHtml(text.slice(offset, piece.start))
+          + '<span class="' + (piece.kind === 'op' ? 'query-op' : 'query-paren') + '">' + escapeHtml(text.slice(piece.start, piece.end).toUpperCase()) + '</span>';
+        offset = piece.end;
+      });
+      return html + escapeHtml(text.slice(offset));
+    }
+
+    /**
+     * The applied search as chips, each removing its own term, joined by
+     * AND. A search whose top level is an OR is one chip, which removes it.
+     */
+    function renderChips() {
+      const text = appliedText().trim();
+      if (!text) return '';
+      const terms = (query().terms || []).length ? query().terms : [{ text: text, without: '' }];
+      return terms.map(function (term, index) {
+        const pieces = scanQuery(term.text);
+        // Words show as the text condition they run.
+        const label = term.label || term.text;
+        const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
+        const className = 'query-chip' + (tag ? ' is-tag' : '') + (tag && tag.negated ? ' is-negated' : '');
+        return (index > 0 ? '<span class="query-chip-join" aria-hidden="true">AND</span>' : '')
+          + '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" title="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
+      }).join('');
+    }
+
+    /**
+     * The applied search with a new term added by AND. A term whose top level
+     * is an OR is wrapped, so it adds one condition.
+     */
+    function combineQuery(applied, extra) {
+      const text = String(applied || '').trim();
+      const addition = joinTags(String(extra || '').trim());
+      if (!addition) return text;
+      if (!text) return addition;
+      const wrapped = /(^|\\s)(or|\\|\\|)(\\s|$)/i.test(addition) && !/^\\(.*\\)$/.test(addition) ? '(' + addition + ')' : addition;
+      return (query().canAppend === false ? '(' + text + ')' : text) + ' AND ' + wrapped;
+    }
+
+    /**
+     * Writes AND between two tags that stand side by side, so a search of
+     * several tags reads as what it does.
+     */
+    function joinTags(text) {
+      const value = String(text);
+      const pieces = scanQuery(value);
+      let result = '';
+      let offset = 0;
+      pieces.forEach(function (piece, index) {
+        const previous = pieces[index - 1];
+        if (piece.kind === 'tag' && previous && previous.kind === 'tag' && !value.slice(previous.end, piece.start).trim()) {
+          result += value.slice(offset, previous.end) + ' AND ';
+          offset = piece.start;
+        }
+      });
+      return result + value.slice(offset);
+    }
+
+    /** Set the entry, in the field and in the state, without a redraw. */
+    function setEntry(input, text) {
+      entry = String(text || '');
+      draft = undefined;
+      if (input && input.value !== entry) input.value = entry;
+      syncTextButtons(currentText());
+      if (options.onDraft) options.onDraft(currentText());
+    }
+
+    // Text typed and not added as a term is let go when the search box loses
+    // focus, as a multi-select does; moving to the box's own buttons keeps it.
+    let pointerInWorkspace = false;
+    document.addEventListener('mousedown', function (event) {
+      pointerInWorkspace = Boolean(event.target && event.target.closest && event.target.closest('.query-workspace'));
+    }, true);
+    document.addEventListener('mouseup', function () {
+      setTimeout(function () { pointerInWorkspace = false; }, 0);
+    }, true);
+    document.addEventListener('focusout', function (event) {
+      const target = event.target;
+      if (!target || !target.dataset || target.dataset.action !== 'query-input' || !entry) return;
+      const next = event.relatedTarget;
+      if (pointerInWorkspace || (next && next.closest && next.closest('.query-workspace'))) return;
+      closeSuggestions();
+      setEntry(target, '');
+    }, true);
 
     /**
      * Enable the bar's buttons that need text as soon as there is some, in
@@ -1309,16 +1492,7 @@ export function getQueryEditorScript(): string {
       };
       document.querySelectorAll('[data-query-needs-text]').forEach(function (button) { enable(button, hasText); });
       document.querySelectorAll('[data-query-clears]').forEach(function (button) { enable(button, canClear(text)); });
-    }
-
-    /** Each term of a search of several, removable on its own. */
-    function renderTerms() {
-      const terms = query().terms || [];
-      if (terms.length < 2) return '';
-      return '<div class="query-terms" aria-label="Search terms">' + terms.map(function (term) {
-        // The whole chip removes its term; the cross stays as the affordance.
-        return '<button class="query-term" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(term.text) + '" title="Remove ' + escapeHtml(term.text) + '"><code>' + escapeHtml(term.text) + '</code><span class="query-term-remove" aria-hidden="true">&#215;</span></button>';
-      }).join('') + '</div>';
+      document.querySelectorAll('.query-bar-shell').forEach(function (shell) { shell.setAttribute('data-query-text', String(text || '')); });
     }
 
     /** What the results could still be narrowed by, with counts. */
@@ -1326,12 +1500,25 @@ export function getQueryEditorScript(): string {
       const facets = query().facets || [];
       const count = renderMatchCount();
       if (!facets.length && !count) return '';
+      if (options.refineElsewhere && options.refineElsewhere()) {
+        return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span><span class="query-facets-empty">' + (facets.length ? 'In the Related Notes sidebar.' : 'Nothing left to narrow by.') + '</span></div>' + count + '</section>';
+      }
       const empty = facets.length ? '' : '<span class="query-facets-empty">Nothing left to narrow by.</span>';
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
         return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
-          return '<button class="query-facet-value" data-action="facet" data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '" title="Show only these. Alt-click to leave them out; Shift-click to allow them as well." aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '">' + (facet.id === 'tags' ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+          return renderFacetValue(facet, value);
         }).join('') + '</div>';
       }).join('') + '</div>' + count + '</section>';
+    }
+
+    /** One value of a facet, with how strongly it is related when it is a tag. */
+    function renderFacetValue(facet, value) {
+      const isTag = facet.id === 'tags' || facet.id === 'related';
+      const hasStrength = typeof value.strength === 'number';
+      const help = 'Show only these. Alt-click to leave them out; Shift-click to allow them as well.';
+      const title = value.detail ? value.detail + '. ' + help : help;
+      const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
+      return '<button class="query-facet-value" data-action="facet" data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + value.label + strength + ', ' + value.count) + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>';
     }
 
     /** How many of each kind of result the applied search matches. */
@@ -1438,7 +1625,7 @@ export function getQueryEditorScript(): string {
       }
       builderSourceText = text;
       draft = text;
-      run(text);
+      run(text, true);
     }
 
     /** Write rows as search text, skipping rows with no value yet. */
@@ -1515,9 +1702,16 @@ export function getQueryEditorScript(): string {
       return row('text', 'contains', unquote(value));
     }
 
-    function run(text) {
+    /**
+     * Run a search. A search that takes in what was typed empties the field;
+     * one that only removes or adds a chip, or comes from the builder, keeps
+     * it, as keepEntry says.
+     */
+    function run(text, keepEntry) {
       awaitingApply = true;
-      options.apply(String(text).trim());
+      lastEntry = entry;
+      entryAfterRun = keepEntry ? entry : '';
+      options.apply(joinTags(String(text).trim()));
     }
 
     /**
@@ -1531,14 +1725,14 @@ export function getQueryEditorScript(): string {
         const existing = facet && facet.applied && facet.applied[0];
         const merged = existing ? mergeAlternative(text, existing, clause) : undefined;
         if (merged !== undefined) {
-          run(merged);
+          run(merged, true);
           return;
         }
       }
       const term = mode === 'exclude' ? '-' + clause : clause;
-      if (!text) run(term);
-      else if (query().canAppend === false) run('(' + text + ') ' + term);
-      else run(text + ' ' + term);
+      if (!text) run(term, true);
+      else if (query().canAppend === false) run('(' + text + ') AND ' + term, true);
+      else run(text + ' AND ' + term, true);
     }
 
     /** Put a clause beside an existing one as an alternative. */
@@ -1584,20 +1778,20 @@ export function getQueryEditorScript(): string {
         return {
           token: context.token,
           items: values.map(function (item) {
-            return { value: item.value, label: item.label, detail: item.detail, insert: quoteQueryValue(item.value) + ' ' };
+            return { value: item.value, label: item.label, detail: item.detail, insert: quoteQueryValue(item.value) + ' ', term: true };
           }),
         };
       }
       const token = (prefix.match(/[^\\s()]*$/) || [''])[0];
       const conditions = (all.conditions || []).map(function (item) {
-        return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ' };
+        return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ', term: true };
       });
       const fields = (all.fields || []).map(function (item) {
         const shorthand = SHORTHAND_FIELDS.indexOf(item.value) >= 0;
         return { value: item.value, label: item.label + (shorthand ? ':' : ' ='), detail: item.detail, insert: item.value + (shorthand ? ':' : ' = ') };
       });
       const tags = ((all.values || {}).tag || []).map(function (item) {
-        return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ' };
+        return { value: item.value, label: item.label, detail: item.detail, insert: item.value + ' ', term: true };
       });
       return { token: token, items: conditions.concat(fields, tags) };
     }
@@ -1688,7 +1882,7 @@ export function getQueryEditorScript(): string {
         return;
       }
       container.innerHTML = suggestionItems.map(function (item, index) {
-        return '<button type="button" role="option" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span>' + escapeHtml(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
+        return '<button type="button" role="option" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span class="query-suggestion-label">' + renderTermText(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
       }).join('');
       container.hidden = false;
       if (input) input.setAttribute('aria-expanded', 'true');
@@ -1737,20 +1931,26 @@ export function getQueryEditorScript(): string {
       if (!input) return;
 
       if (key === 'query') {
-        const caret = caretPosition(input);
-        const start = item.replaceAll ? 0 : caret - suggestionToken.length;
-        const end = item.replaceAll ? input.value.length : caret;
-        input.value = input.value.slice(0, start) + item.insert + input.value.slice(end);
-        const nextCaret = start + item.insert.length;
         closeSuggestions();
-        input.setSelectionRange(nextCaret, nextCaret);
-        draft = input.value;
-        syncTextButtons(draft);
-        if (options.onDraft) options.onDraft(draft);
+        // A recent search is a whole search, and replaces this one.
         if (item.apply) {
-          run(input.value);
+          setEntry(input, '');
+          run(item.insert);
           return;
         }
+        const caret = caretPosition(input);
+        const start = caret - suggestionToken.length;
+        const text = input.value.slice(0, start) + item.insert + input.value.slice(caret);
+        // A tag or condition, or a field's value, is a whole term: it becomes
+        // a chip at once. A field name waits for its value.
+        if (item.term) {
+          setEntry(input, '');
+          run(combineQuery(appliedText(), text));
+          return;
+        }
+        setEntry(input, text);
+        const nextCaret = start + item.insert.length;
+        input.setSelectionRange(nextCaret, nextCaret);
         input.focus();
         return;
       }
@@ -1850,9 +2050,16 @@ export function getQueryEditorScript(): string {
         if (text !== appliedSeen || awaitingApply) {
           const input = document.activeElement;
           const typing = Boolean(input && input.dataset && input.dataset.action === 'query-input');
-          // A search this editor ran replaces what was typed. Any other
-          // change, such as a save elsewhere, leaves a search being typed.
-          if (awaitingApply || !typing || draft === undefined) draft = undefined;
+          // A search this editor ran turns what was typed into chips; one that
+          // did not parse keeps it in the field with its error. Any other
+          // change, such as a save elsewhere, leaves a term being typed.
+          if (awaitingApply) {
+            entry = query().pending ? lastEntry : entryAfterRun;
+            draft = undefined;
+          } else if (!typing) {
+            entry = '';
+            draft = undefined;
+          }
           appliedSeen = text;
           awaitingApply = false;
         }
@@ -1895,6 +2102,14 @@ export function getQueryEditorScript(): string {
         // destroy the completion before its click could land.
         if (event.target.closest && event.target.closest('[data-action="query-suggestion"]')) {
           event.preventDefault();
+          return true;
+        }
+        // Pressing the field around the chips puts the caret in it.
+        const shell = event.target.classList && event.target.classList.contains('query-bar-shell') ? event.target : undefined;
+        const input = shell ? shell.querySelector('[data-action="query-input"]') : undefined;
+        if (input && input.focus) {
+          event.preventDefault();
+          input.focus();
           return true;
         }
         return false;
@@ -1940,6 +2155,9 @@ export function getQueryEditorScript(): string {
           return true;
         }
         if (action === 'clear-query') {
+          entry = '';
+          entryAfterRun = '';
+          document.querySelectorAll('[data-suggest-key="query"]').forEach(function (bar) { bar.value = ''; });
           draft = clearedText();
           closeSuggestions();
           awaitingApply = true;
@@ -1953,7 +2171,10 @@ export function getQueryEditorScript(): string {
           return true;
         }
         if (action === 'remove-term') {
-          run(target.dataset.without || '');
+          closeSuggestions();
+          run(target.dataset.without || '', true);
+          const bar = document.querySelector('[data-suggest-key="query"]');
+          if (bar && bar.focus) bar.focus();
           return true;
         }
         if (action === 'facet') {
@@ -2037,9 +2258,19 @@ export function getQueryEditorScript(): string {
             return true;
           }
           closeSuggestions();
-          if (isBar) run(input.value);
+          if (isBar) run(currentText());
           else if (input.dataset.pending) commitPendingRow(input, input.value);
           else commitBuilderValue(input);
+          return true;
+        }
+        // Backspace in an empty field removes the last chip.
+        if (isBar && event.key === 'Backspace' && !input.value && draft === undefined) {
+          const terms = query().terms || [];
+          if (appliedText().trim()) {
+            event.preventDefault();
+            closeSuggestions();
+            run(terms.length ? terms[terms.length - 1].without : '');
+          }
           return true;
         }
         if (event.key === 'Backspace' && !isBar && !input.value) {
@@ -2055,11 +2286,8 @@ export function getQueryEditorScript(): string {
             return true;
           }
           if (isBar) {
-            // Escape with no completions open abandons the edit.
-            draft = undefined;
-            input.value = appliedText();
-            syncTextButtons(input.value);
-            if (options.onDraft) options.onDraft(input.value);
+            // Escape with no completions open abandons the term being typed.
+            setEntry(input, '');
           }
           return true;
         }
@@ -2069,10 +2297,8 @@ export function getQueryEditorScript(): string {
       handleInput: function (event) {
         const target = event.target;
         if (target.dataset.action === 'query-input') {
-          draft = target.value;
-          syncTextButtons(draft);
+          setEntry(target, target.value);
           openSuggestions(target);
-          if (options.onDraft) options.onDraft(draft);
           return true;
         }
         if (target.dataset.action === 'builder-set-value') {

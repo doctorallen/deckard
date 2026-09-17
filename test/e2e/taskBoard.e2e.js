@@ -8,6 +8,8 @@ const vscode = require('vscode');
 const { mountWebview } = require('./webviewRuntime.js');
 const { TaskBoardPanel } = require('../../out/ui/webview/taskBoard.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
+const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
+const { DashboardPanel } = require('../../out/ui/webview/dashboard.js');
 
 function createIndex() {
   const task = (id, title, lineNumber, tags, completed = false) => ({
@@ -63,11 +65,13 @@ async function openBoard(prepare = async () => undefined) {
   const index = createIndex();
   const preferences = new PreferencesStore(createGlobalState());
   await prepare(preferences);
+  const activeSearch = new ActiveSearch();
   const board = new TaskBoardPanel(
     { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     preferences,
     { fsPath: '/ext' },
     async () => undefined,
+    activeSearch,
   );
   await board.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -78,7 +82,7 @@ async function openBoard(prepare = async () => undefined) {
   const cards = () => view.findAll('.board-card').map((card) => card.dataset.taskId).sort();
   const shownCards = () =>
     view.findAll('.board-card').filter((card) => !card.hidden).map((card) => card.dataset.taskId).sort();
-  return { view, panel, board, preferences, updates, lastState, cards, shownCards };
+  return { view, panel, board, preferences, updates, lastState, cards, shownCards, activeSearch, index };
 }
 
 const tests = [];
@@ -98,7 +102,8 @@ test('searches tasks with the search box every search page uses', async () => {
   await delay(10);
 
   assert.deepStrictEqual(cards(), ['audit', 'call']);
-  assert.strictEqual(view.find('[data-action="query-input"]').value, 'tag = #project/atlas');
+  assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'tag = #project/atlas');
+  assert.strictEqual(view.find('[data-action="query-input"]').value, '', 'the search is a chip now');
   // The count names tasks alone, since the board finds nothing else.
   assert.strictEqual(view.find('.query-facets-count').textContent, '2 tasks');
   assert.deepStrictEqual(preferences.value.recentQueries, ['tag = #project/atlas']);
@@ -107,6 +112,66 @@ test('searches tasks with the search box every search page uses', async () => {
   view.click(view.find('[data-action="clear-query"]'));
   await delay(10);
   assert.deepStrictEqual(cards(), ['audit', 'call', 'room', 'ship']);
+});
+
+test('saves its search as a view that reopens on the Task Board', async () => {
+  const { view, preferences, index } = await openBoard();
+  const save = () => view.find('[data-action="save-board-search"]');
+  assert.ok(save(), 'Save sits in the search bar');
+  assert.notStrictEqual(save().getAttribute('disabled'), null, 'with no search, there is nothing to save');
+
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, '#project/atlas is:open');
+  view.keydown(bar, 'Enter');
+  await delay(10);
+  assert.strictEqual(save().getAttribute('disabled'), null);
+
+  vscode._test.setInputBoxResponse('Atlas board');
+  view.click(save());
+  await delay(10);
+  vscode._test.setInputBoxResponse(undefined);
+  const [saved] = preferences.value.savedFilters;
+  assert.deepStrictEqual(
+    { name: saved.name, query: saved.query, page: saved.page },
+    { name: 'Atlas board', query: '#project/atlas is:open', page: 'taskBoard' },
+  );
+
+  // The Dashboard reopens it on the board, not on a search page.
+  const opened = [];
+  const dashboard = new DashboardPanel(
+    { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: new vscode.EventEmitter().event },
+    preferences,
+    { fsPath: '/ext' },
+    {
+      openTag: () => undefined,
+      openSearch: (query) => opened.push(`search ${query}`),
+      openTaskBoard: (query) => opened.push(`board ${query}`),
+    },
+  );
+  await dashboard.openSavedFilter(saved.id);
+  dashboard.dispose();
+  assert.deepStrictEqual(opened, ['board #project/atlas is:open']);
+});
+
+test('shows a line for Refine while the sidebar holds it', async () => {
+  const { view, activeSearch, board } = await openBoard();
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, 'tag = #project/atlas');
+  view.keydown(bar, 'Enter');
+  await delay(10);
+  assert.ok(view.find('.query-facet-value'), 'Refine is on the page while no sidebar shows it');
+  assert.strictEqual(activeSearch.active, board, 'the open board is the active search');
+
+  activeSearch.setSidebarVisible(true);
+  assert.strictEqual(view.find('.query-facet-value'), null);
+  assert.ok(view.find('.query-facets.is-elsewhere'), 'a line takes Refine\'s place');
+  assert.deepStrictEqual(board.getRefineState().resultKinds, ['tasks']);
+
+  await board.applySearch('tag = #project/atlas is:done');
+  assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'tag = #project/atlas is:done');
+
+  activeSearch.setSidebarVisible(false);
+  assert.strictEqual(view.find('.query-facets.is-elsewhere'), null, 'closing the sidebar brings Refine back');
 });
 
 test('plain words hide cards at once, and typing survives a host update', async () => {

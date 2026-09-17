@@ -41,7 +41,8 @@ import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
 import { TaskBoardPanel } from './ui/webview/taskBoard';
-import { TagOverviewPanels } from './ui/webview/tagOverview';
+import { ActiveSearch } from './ui/webview/activeSearch';
+import { SearchPanels } from './ui/webview/searchPage';
 import {
   OutlineTreeProvider,
   pickOutlineTag,
@@ -86,10 +87,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     new SearchStore(context.storageUri),
   );
   const preferences = new PreferencesStore(context.globalState);
-  const tagPanels = new TagOverviewPanels(
+  const activeSearch = new ActiveSearch();
+  const searchPanels = new SearchPanels(
     indexer,
     preferences,
     context.extensionUri,
+    activeSearch,
   );
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
@@ -109,25 +112,33 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
   const calendar = new CalendarView(indexer);
+  const taskBoard = new TaskBoardPanel(
+    indexer,
+    preferences,
+    context.extensionUri,
+    (tagKey) => searchPanels.show(tagKey),
+    activeSearch,
+  );
   const dashboard = new DashboardPanel(
     indexer,
     preferences,
     context.extensionUri,
-    async (tagKey, filterTagKeys = []) => {
-      await tagPanels.show(tagKey, undefined, filterTagKeys);
+    {
+      openTag: (tagKey) => searchPanels.show(tagKey),
+      openSearch: (query) => searchPanels.showQuery(query),
+      openTaskBoard: (query) => taskBoard.show(query),
     },
   );
   const quickFind = new QuickFind(indexer, preferences, {
-    openTag: (tagKey) => tagPanels.show(tagKey),
+    openTag: (tagKey) => searchPanels.show(tagKey),
     openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
-    showSearch: (query) => dashboard.showSearch(query),
+    showSearch: (query) => searchPanels.showQuery(query),
   });
   const sidebarNotes = new SidebarNotesView(
     indexer,
     preferences,
-    tagPanels,
-    (tagKey, filterTagKey, filterTagKeys) =>
-      tagPanels.show(tagKey, filterTagKey, filterTagKeys),
+    activeSearch,
+    (tagKey) => searchPanels.show(tagKey),
     context.extension.packageJSON.version,
   );
   const stats = new StatsPanel(
@@ -135,14 +146,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     preferences,
     context.extensionUri,
     async (tagKey) => {
-      await tagPanels.show(tagKey);
+      await searchPanels.show(tagKey);
     },
-  );
-  const taskBoard = new TaskBoardPanel(
-    indexer,
-    preferences,
-    context.extensionUri,
-    (tagKey) => tagPanels.show(tagKey),
   );
   const help = new HelpPanel(context.extensionUri);
   const notesGraph = new NotesGraphPanel(
@@ -166,7 +171,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   activeServices = {
     indexer,
     preferences,
-    tagPanels,
+    activeSearch,
+    searchPanels,
     sidebarNotes,
     tagDecorations,
     tagSuggestions,
@@ -191,7 +197,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     indexer,
     preferences,
-    tagPanels,
+    activeSearch,
+    searchPanels,
     sidebarNotes,
     tagDecorations,
     tagSuggestions,
@@ -264,7 +271,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           'Choose a tag from this heading',
         );
         if (tagKey) {
-          await tagPanels.show(tagKey);
+          await searchPanels.show(tagKey);
         }
       },
     ),
@@ -308,7 +315,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     }),
     vscode.window.registerWebviewPanelSerializer('deckard.tagOverview', {
       deserializeWebviewPanel: (webviewPanel, state) =>
-        tagPanels.restore(webviewPanel, state),
+        searchPanels.restore(webviewPanel, state),
     }),
   );
   context.subscriptions.push(
@@ -391,7 +398,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'deckard.showTagOverview',
-      (tagKey?: unknown) => showTagOverview(tagPanels, indexer, tagKey),
+      (tagKey?: unknown) => showTagOverview(searchPanels, indexer, tagKey),
+    ),
+    vscode.commands.registerCommand('deckard.search', (query?: unknown) =>
+      searchPanels.showQuery(getCommandTagArgument(query) ?? ''),
     ),
     vscode.commands.registerCommand(
       'deckard.searchWorkspace',
@@ -404,7 +414,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand(
       'deckard.searchNotes',
       (requestedQuery?: unknown) =>
-        showQuerySearch(dashboard, indexer, requestedQuery),
+        showQuerySearch(searchPanels, indexer, requestedQuery),
     ),
     vscode.commands.registerCommand('deckard.linkCurrentHeading', () =>
       linkCurrentHeading(indexer),
@@ -498,7 +508,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
 export function deactivate(): void {
   activeServices?.indexer.dispose();
   activeServices?.preferences.dispose();
-  activeServices?.tagPanels.dispose();
+  activeServices?.searchPanels.dispose();
+  activeServices?.activeSearch.dispose();
   activeServices?.sidebarNotes.dispose();
   activeServices?.tagDecorations.dispose();
   activeServices?.tagSuggestions.dispose();
@@ -526,7 +537,8 @@ export function deactivate(): void {
 interface ExtensionServices {
   indexer: WorkspaceIndexer;
   preferences: PreferencesStore;
-  tagPanels: TagOverviewPanels;
+  activeSearch: ActiveSearch;
+  searchPanels: SearchPanels;
   sidebarNotes: SidebarNotesView;
   tagDecorations: EditorTagDecorations;
   tagSuggestions: TagCompletionProvider;
@@ -568,13 +580,13 @@ function asOutlineNode(value: unknown): OutlineNode | undefined {
 }
 
 /**
- * Opens the Dashboard's Search tab on a query.
+ * Opens a search page on a query.
  *
  * The command accepts a query argument so a link or another command can open a
  * saved search directly, and prompts for one otherwise.
  */
 async function showQuerySearch(
-  dashboard: DashboardPanel,
+  searchPanels: SearchPanels,
   indexer: WorkspaceIndexer,
   requestedQuery: unknown,
 ): Promise<void> {
@@ -589,7 +601,7 @@ async function showQuerySearch(
     }));
 
   if (query?.trim()) {
-    await dashboard.showSearch(query);
+    await searchPanels.showQuery(query);
   }
 }
 
@@ -600,7 +612,7 @@ async function showQuerySearch(
  * no argument, so both paths converge on the same validated panel entrypoint.
  */
 async function showTagOverview(
-  tagPanels: TagOverviewPanels,
+  searchPanels: SearchPanels,
   indexer: WorkspaceIndexer,
   requestedTag: unknown,
 ): Promise<void> {
@@ -620,6 +632,6 @@ async function showTagOverview(
     )?.key;
 
   if (tagKey) {
-    await tagPanels.show(tagKey);
+    await searchPanels.show(tagKey);
   }
 }

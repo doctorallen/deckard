@@ -46,8 +46,6 @@ export function getSidebarNotesHtml(
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.active-filter-tag { color: var(--text); font-weight: 700; }
-.active-filter-joiner { color: var(--amber); font-weight: 700; }
 .sidebar-toolbar { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
@@ -56,11 +54,7 @@ export function getSidebarNotesHtml(
 .related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 .related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
-.active-tag.weighted-tag { display: inline-flex; align-items: center; gap: 5px; }
-.tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
-.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .65; }
-.tag-weight-rail-segment.filled { background: var(--cyan); opacity: .95; }
-.active-tag.weighted-tag:hover .tag-weight-rail-segment.filled, .active-tag.weighted-tag:focus-visible .tag-weight-rail-segment.filled { background: currentColor; }
+.active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
@@ -88,78 +82,27 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .graph-kind.task { color: var(--amber); }
 .graph-kind.tag { color: var(--green); }
 .graph-tag-pill { margin-left: 0; color: var(--text); }
-.sidebar-relationships { margin-top: 8px; overflow: visible; border: 2px solid var(--line); background: var(--panel-deep); }
-.sidebar-relationships-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 8px; border-bottom: 2px solid var(--line); }
-.sidebar-relationships-title { color: var(--amber); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
-.sidebar-relationships-count { color: var(--muted); font: 10px var(--vscode-editor-font-family, ui-monospace, monospace); }
-.sidebar-relationship-branch { border-bottom: 1px solid var(--line); background: var(--panel-deep); }
-.sidebar-relationship-branch:last-child { border-bottom: 0; }
-.sidebar-relationships summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); cursor: pointer; list-style-position: inside; text-transform: uppercase; }
-.sidebar-relationships summary::marker { color: var(--cyan); }
-.sidebar-relationships summary:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
-.sidebar-relationships .sidebar-relationship-branch > summary { padding: 7px 10px; border-left: 4px solid var(--amber); background: var(--panel-raised); color: var(--amber); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
-.sidebar-relationships .sidebar-relationship-branch > summary:hover, .sidebar-relationships .sidebar-relationship-branch > summary:focus-visible { background: var(--panel); color: var(--amber-bright); }
-.sidebar-relationship-count, .sidebar-association-score { color: var(--muted); font: 10px var(--vscode-editor-font-family, ui-monospace, monospace); }
-.sidebar-association-score { flex: 0 0 auto; color: var(--green); }
-.sidebar-association-meta { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-.sidebar-relationship-namespace { border-top: 1px solid var(--line); margin: 3px 0 0 10px; }
-.sidebar-relationship-namespace > summary { padding: 5px 8px 5px 10px; border-left: 3px solid var(--cyan); background: var(--panel-deep); color: var(--cyan); font-size: 10px; font-weight: 650; letter-spacing: .06em; }
-.sidebar-relationship-namespace > summary:hover, .sidebar-relationship-namespace > summary:focus-visible { background: var(--panel-raised); color: var(--cyan-bright); }
-.sidebar-relationship-items { display: grid; gap: 3px; margin: 0 8px 5px; padding: 3px 0 0; }
-.sidebar-associated-tag { display: flex; align-items: stretch; gap: 3px; }
-.sidebar-relationship-items .tag-open { width: 100%; min-width: 0; overflow: visible; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-add-filter { flex: 0 0 27px; min-height: 27px; border: 1px solid var(--line); background: var(--panel); color: var(--green); padding: 2px; font-size: 16px; line-height: 1; }
-.sidebar-add-filter:hover, .sidebar-add-filter:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.sidebar-relationships .tag-open.relationship-tag {
-  position: relative;
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  min-height: 27px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0;
-  border: 0;
-  border-left: 3px solid var(--cyan);
-  border-radius: 0;
-  background: transparent;
-  color: var(--text);
-  padding: 4px 8px;
-  text-align: left;
-  transform: none;
-  clip-path: none;
-}
-.sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag {
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--cyan);
-  background: var(--panel);
-}
-.sidebar-relationships .tag-open.relationship-tag:hover,
-.sidebar-relationships .tag-open.relationship-tag:focus-visible {
-  z-index: 10;
-  border-left-color: var(--amber);
-  background: var(--panel-raised);
-  color: var(--text);
-  transform: translateX(3px);
-  box-shadow: none;
-}
-.sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag:hover,
-.sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag:focus-visible {
-  border-color: var(--line-strong);
-  border-left-color: var(--amber);
-  background: var(--panel-raised);
-}
-.sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-relationships .sidebar-relationship-items .sidebar-relationship-count { flex: 0 0 auto; }
-.sidebar-association-score-wrap { position: relative; }
-.sidebar-association-score-wrap:hover .sidebar-association-tooltip,
-.sidebar-association-score-wrap:focus-within .sidebar-association-tooltip { display: block; }
-.sidebar-association-tooltip { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; display: none; width: 210px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; pointer-events: none; }
-.sidebar-association-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
-.sidebar-association-tooltip p { margin: 6px 0; }
-.sidebar-association-tooltip-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
-.sidebar-association-tooltip-weights strong { color: var(--green); font-weight: 600; }
+/* The active search's Refine options. */
+.refine-values { display: grid; gap: 3px; }
+.refine-value { display: flex; align-items: stretch; gap: 3px; }
+/* A tag as a full-width row, for the note's own tags and the related tags in
+   Refine: its rail, its name, and its count. The theme's own .tag-open layout
+   is set aside here, and the text matches the other Refine rows rather than a
+   tag's smaller size. */
+.active-tag-list .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
+.active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
+.active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The note's own tags are few, so a long one wraps from the left in full. */
+.active-tag-open > .tag-label { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.refine-open-tag { display: inline-grid; flex: 0 0 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 2px; }
+.refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.refine-open-tag:hover, .refine-open-tag:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+.refine-count { color: var(--muted); font: 10px var(--font-mono); }
+.refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
+.refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+.refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
+.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.refine-hint { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 /* The sidebar is narrow, so it runs tighter than a full-width page. */
@@ -191,33 +134,25 @@ ${getComponentScript()}
 
   
 
-  function getWeightLevel(weight) {
-    const value = Number(weight);
-    if (!Number.isFinite(value) || value <= 0) return 0;
-    if (value >= 0.75) return 3;
-    if (value >= 0.375) return 2;
-    return 1;
-  }
-
-  function renderWeightRail(level, title) {
-    let html = '<span class="tag-weight-rail" title="' + escapeHtml(title) + '" aria-hidden="true">';
-    for (let index = 0; index < 3; index += 1) {
-      html += '<span class="tag-weight-rail-segment' + (index < level ? ' filled' : '') + '"></span>';
-    }
-    return html + '</span>';
-  }
-
   function renderTag(tag, extraClass) {
-    const isActiveTag = (' ' + (extraClass || '') + ' ').indexOf(' active-tag ') !== -1;
+    return '<button class="' + (extraClass || '') + '" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(tag.label) + '</button>';
+  }
+
+  /**
+   * One of the note's tags, drawn as a related tag is in Refine: a full-width
+   * row of its weight, its name, and how much a search for it finds.
+   */
+  function renderActiveTag(tag) {
     const weight = Number(tag.weight);
-    const hasWeight = isActiveTag && Number.isFinite(weight) && weight > 0;
-    const className = (extraClass || '') + (hasWeight ? ' weighted-tag' : '');
-    const weightLabel = hasWeight ? ' (Related Notes weight ' + weight.toFixed(2) + ')' : '';
-    const weightTitle = hasWeight ? ' title="Related Notes weight ' + weight.toFixed(2) + '"' : '';
-    const weightMarker = hasWeight
-      ? renderWeightRail(getWeightLevel(weight), 'Segmented rail, Related Notes weight ' + weight.toFixed(2))
-      : '';
-    return '<button class="' + className + '"' + weightTitle + ' data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview' + weightLabel + '">' + weightMarker + renderTagLabel(tag.label) + '</button>';
+    const hasWeight = Number.isFinite(weight) && weight > 0;
+    const matches = tag.matches || { notes: 0, tasks: 0 };
+    const total = matches.notes + matches.tasks;
+    const found = matches.notes + ' note' + (matches.notes === 1 ? '' : 's') + ' · ' + matches.tasks + ' task' + (matches.tasks === 1 ? '' : 's');
+    const weightText = hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + '. ' : '';
+    return '<button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" title="' + escapeHtml(weightText + found + '. Open its page.') + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview (' + escapeHtml((hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + ', ' : '') + found) + ')">'
+      + (hasWeight ? renderWeightRail(getWeightLevel(weight), 'Segmented rail, Related Notes weight ' + weight.toFixed(2)) : '')
+      + renderTagLabel(tag.label)
+      + '<span class="refine-count">' + total + '</span></button>';
   }
 
   function renderTags(tags, extraClass) {
@@ -226,51 +161,43 @@ ${getComponentScript()}
     }).join('');
   }
 
-  /** Render one relationship node for the narrow sidebar tree. */
-  function renderSidebarRelationshipTag(tag, count, weight, normalizedWeight, coOccurrenceCount, headingRelationshipCount, direction, overviewTagKey, detail) {
-    const countHtml = Number(count) > 1
-      ? '<span class="sidebar-relationship-count">x' + escapeHtml(count) + '</span>'
-      : '';
-    const directWeight = Number(coOccurrenceCount);
-    const headingWeight = Math.max(0, Number(weight) - directWeight);
-    const percentage = Math.round(Number(normalizedWeight) * 100);
-    const scoreHtml = '<span class="sidebar-association-score-wrap"><span class="sidebar-association-score" aria-label="Association strength ' + percentage + ' percent">' + percentage + '%</span><span class="sidebar-association-tooltip" role="tooltip"><span class="sidebar-association-tooltip-header"><strong>Association strength</strong><strong>' + percentage + '%</strong></span><p>' + escapeHtml(detail) + '</p><div class="sidebar-association-tooltip-weights"><span>Raw direct weight</span><strong>' + directWeight.toFixed(2) + '</strong><span>Raw heading weight</span><strong>' + headingWeight.toFixed(2) + '</strong><span>Total weight</span><strong>' + Number(weight).toFixed(2) + '</strong><span>Normalized relevance</span><strong>' + Number(normalizedWeight).toFixed(2) + '</strong></div></span></span>';
-    const label = direction === 'parent'
-      ? 'Open parent tag '
-      : direction === 'child'
-        ? 'Open child tag '
-        : 'Open associated tag ';
-    const overviewAttribute = overviewTagKey
-      ? ' data-overview-tag-key="' + escapeHtml(overviewTagKey) + '"'
-      : '';
-    return '<div class="sidebar-associated-tag"><button class="tag-open relationship-tag" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="' + escapeHtml(label + tag.label) + '">' + renderTagLabel(tag.label) + '<span class="sidebar-association-meta">' + scoreHtml + countHtml + '</span></button><button class="sidebar-add-filter" data-action="add-overview-filter" data-add-tag-key="' + escapeHtml(tag.key) + '"' + overviewAttribute + ' aria-label="Add ' + escapeHtml(tag.label) + ' to this overview filter" title="Add ' + escapeHtml(tag.label) + ' to filter">+</button></div>';
+  /** One value of a facet: a tag opens, and its + narrows by it. */
+  function renderRefineValue(facet, value) {
+    const narrow = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
+    const help = 'Alt-click to leave these out; Shift-click to allow them as well.';
+    if (facet.id === 'related' || facet.id === 'tags') {
+      const hasStrength = typeof value.strength === 'number';
+      const strengthText = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
+      // The row narrows the search by the tag; the icon beside it opens the
+      // tag's own page in a new tab.
+      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' title="' + escapeHtml((value.detail ? value.detail + '. ' : '') + 'Add to the search. ' + help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
+        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" title="Open ' + escapeHtml(value.label) + ' in a new tab"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/></svg></button></div>';
+    }
+    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" title="Show only these. ' + help + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
   }
 
-  /** Render every association in one strength-sorted list. */
-  function renderSidebarAssociations(relationships, overviewTagKey) {
-    return relationships.slice().sort(function (left, right) {
-      return right.normalizedWeight - left.normalizedWeight || right.weight - left.weight || left.associatedTag.label.localeCompare(right.associatedTag.label, undefined, { sensitivity: 'base' });
-    }).map(function (relationship) {
-      const detail = relationship.coOccurrenceCount
-        ? 'Written together ' + relationship.coOccurrenceCount + ' time' + (relationship.coOccurrenceCount === 1 ? '' : 's') + (relationship.headingRelationshipCount ? '; heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's') : '')
-        : 'Heading context ' + relationship.headingRelationshipCount + ' time' + (relationship.headingRelationshipCount === 1 ? '' : 's');
-      return renderSidebarRelationshipTag(relationship.associatedTag, relationship.count, relationship.weight, relationship.normalizedWeight, relationship.coOccurrenceCount, relationship.headingRelationshipCount, 'associated', overviewTagKey, detail);
+  /**
+   * The active search page's Refine options, in place of related notes. The
+   * page shows its own search, terms, and counts, so the sidebar shows only
+   * what could narrow them.
+   */
+  function renderRefine(refine) {
+    const query = refine.query;
+    const facets = query.facets || [];
+    const heading = '<div class="refine-heading"><h2>Refine</h2>'
+      + (facets.length && String(query.text || '').trim()
+        ? '<p class="refine-hint">Select a value to add it to the search. Alt-click leaves it out; Shift-click allows it beside the one already chosen. The icon beside a tag opens it in a new tab.</p>'
+        : '')
+      + '</div>';
+    if (!String(query.text || '').trim()) {
+      return heading + '<div class="empty">Search on the page to see what its results could be narrowed by.</div>';
+    }
+    if (!facets.length) return heading + '<div class="empty">Nothing left to narrow by.</div>';
+    return heading + facets.map(function (facet) {
+      return '<section class="refine-facet" aria-label="' + escapeHtml(facet.label) + '"><span class="section-label">' + escapeHtml(facet.label) + '</span><div class="refine-values">' + facet.values.map(function (value) { return renderRefineValue(facet, value); }).join('') + '</div></section>';
     }).join('');
   }
 
-  /** Render a narrow, nested relationship tree when a tag overview is active. */
-  function renderSidebarRelationships(snapshot) {
-    const relationships = snapshot.tagOverviewRelationships;
-    if (!relationships) return '';
-    const filterTagKeys = snapshot.tagOverviewFilters || (snapshot.tagOverviewFilter ? [snapshot.tagOverviewFilter.key] : []);
-    const associations = filterTagKeys.length
-      ? relationships.sharedAssociatedTags || []
-      : relationships.associatedTags || [];
-    if (!associations.length) return '';
-    return '<section class="sidebar-relationships" aria-label="Tag associations"><details class="sidebar-relationship-branch"><summary><span>Associated tags</span><span class="sidebar-relationship-count">' + associations.length + '</span></summary><div class="sidebar-relationship-items sidebar-association-items">' + renderSidebarAssociations(associations, snapshot.tagOverview.key) + '</div></details></section>';
-  }
-
-  
 
   /** Shared shell for Related Notes and graph-connected node cards. */
   function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
@@ -325,8 +252,6 @@ ${getComponentScript()}
       state.state,
       state.activeFileName,
       state.activeEntryTitle,
-      state.tagOverview && state.tagOverview.key,
-      state.tagOverviewQuery,
       state.relatedNotesSortMode,
     ]);
   }
@@ -335,20 +260,17 @@ ${getComponentScript()}
   function render() {
     if (!state) return;
     closeTagContextMenu();
-    const tagOverviewFilters = state.tagOverviewFilters || (state.tagOverviewFilter ? [state.tagOverviewFilter] : []);
     let content;
-    if (state.state === 'graph') {
+    if (state.state === 'refine') {
+      content = renderRefine(state.refine);
+    } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
     } else if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
     } else if (state.state === 'noTags') {
       content = '<div class="empty">This note has no tags yet.</div>';
     } else if (state.state === 'noMatches') {
-      content = state.tagOverviewQuery
-        ? '<div class="empty">No notes match this query.</div>'
-        : state.tagOverview
-        ? '<div class="empty">' + (tagOverviewFilters.length ? 'No notes currently carry all selected tags.' : 'No notes currently carry this tag.') + '</div>'
-        : '<div class="empty">No other notes share its tags.</div>';
+      content = '<div class="empty">No other notes share its tags.</div>';
     } else {
       const noteListKey = getNoteListKey();
       if (noteListKey !== visibleNoteListKey) {
@@ -395,9 +317,7 @@ ${getComponentScript()}
         const specificityAdjustment = evidence.specificityPenalty > 0
           ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
           : '';
-        const relevance = state.tagOverview
-          ? ''
-          : '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        const relevance = '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
@@ -412,29 +332,24 @@ ${getComponentScript()}
       }).join('') + '</div>' + showMore;
     }
     const activeTags = state.activeTags.length
-      ? '<div class="tag-list" aria-label="Active note tags">' + renderTags(state.activeTags, 'active-tag') + '</div>'
+      ? '<div class="active-tag-list" aria-label="Active note tags">' + state.activeTags.map(renderActiveTag).join('') + '</div>'
       : '';
-    const context = state.state === 'graph'
+    const context = state.state === 'refine'
+      ? ''
+      : state.state === 'graph'
       ? (state.graph.selectedNode
         ? renderSelectedGraphNode(state.graph.selectedNode)
         : '<div class="active-file"><div class="active-label">Notes Graph</div><div class="active-name">Connected nodes</div></div>')
-      : state.tagOverviewQuery
-      ? '<div class="active-file"><div class="active-label">Advanced search</div><div class="active-name"><code class="sidebar-query">' + escapeHtml(state.tagOverviewQuery) + '</code></div>' + (tagOverviewFilters.length || state.tagOverview ? '<div class="tag-list" aria-label="Tags in this query">' + (state.tagOverview ? [state.tagOverview] : []).concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('') + '</div>' : '') + '</div>'
-      : state.tagOverview
-      ? '<div class="active-file"><div class="active-label">Tag overview</div><div class="active-name">' + (state.tagOverviewFilter
-        ? [state.tagOverview].concat(tagOverviewFilters).map(function (tag) { return renderTag(tag, 'active-filter-tag'); }).join('<span class="active-filter-joiner"> AND </span>')
-        : renderTag(state.tagOverview, 'active-filter-tag')) + '</div></div>'
       : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
-    const relatedNotesSort = state.state !== 'graph' && !state.tagOverview && !state.tagOverviewQuery && state.relatedNotesSortMode
+    const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
-      : state.tagOverview || state.tagOverviewQuery
-      ? '<span class="section-label">Matching notes</span>'
+      : state.state === 'refine'
+      ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
-    const relationshipTree = state.state !== 'graph' && state.tagOverview ? renderSidebarRelationships(state) : '';
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + relationshipTree + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
   }
 
   document.addEventListener('click', function (event) {
@@ -463,32 +378,15 @@ ${getComponentScript()}
     const target = event.target.closest('[data-action]');
     if (target) {
       if (target.dataset.action === 'open-tag') {
-        const message = { type: 'openTag', tagKey: target.dataset.overviewTagKey || target.dataset.tagKey };
-        if (target.dataset.filterTagKey) message.filterTagKey = target.dataset.filterTagKey;
-        if (target.dataset.filterTagKeys) {
-          try {
-            const filterTagKeys = JSON.parse(target.dataset.filterTagKeys);
-            if (Array.isArray(filterTagKeys) && filterTagKeys.every(function (key) { return typeof key === 'string'; })) message.filterTagKeys = filterTagKeys;
-          } catch (_error) {}
-        }
-        vscode.postMessage(message);
+        vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       }
-      if (target.dataset.action === 'add-overview-filter') {
-        const filterTagKeys = (state.tagOverviewFilters || []).map(
-          function (tag) { return tag.key; },
-        );
-        if (
-          target.dataset.overviewTagKey &&
-          target.dataset.addTagKey &&
-          Array.isArray(filterTagKeys) &&
-          filterTagKeys.every(function (key) { return typeof key === 'string'; })
-        ) {
-          vscode.postMessage({
-            type: 'openTag',
-            tagKey: target.dataset.overviewTagKey,
-            filterTagKeys: filterTagKeys.concat([target.dataset.addTagKey]),
-          });
-        }
+      if (target.dataset.action === 'refine') {
+        vscode.postMessage({
+          type: 'refineActiveSearch',
+          facetId: target.dataset.facetId,
+          clause: target.dataset.clause,
+          mode: event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and',
+        });
       }
       if (target.dataset.action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (target.dataset.action === 'open-dashboard') vscode.postMessage({ type: 'openDashboard' });

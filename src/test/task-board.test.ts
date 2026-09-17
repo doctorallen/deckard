@@ -160,7 +160,9 @@ suite('Task board', () => {
       { query: 'priority >= high', invalidQuery: 'priority >=' },
       options,
     );
-    assert.strictEqual(invalid.query.text, 'priority >=');
+    // The box keeps the search that ran as chips, and the typed one pending.
+    assert.strictEqual(invalid.query.text, 'priority >= high');
+    assert.strictEqual(invalid.query.pending, 'priority >=');
     assert.ok(invalid.query.diagnostics.some((diagnostic) => diagnostic.severity === 'error'));
     assert.strictEqual(invalid.taskCount, 1, 'the applied search still chooses the tasks');
 

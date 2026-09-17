@@ -5,8 +5,10 @@ import { logTrace, measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { refineQueryText } from '../../core/query/queryEdit';
 import {
   ParsedFile,
+  RefineActiveSearchMessage,
   Section,
   SidebarGraphContext,
   SidebarNotesSnapshot,
@@ -14,18 +16,14 @@ import {
   TagReference,
   TagTitleDisplayMode,
 } from '../../core/types';
-import {
-  createQueryOverviewSnapshot,
-  createTagOverviewSidebarSnapshot,
-  createTagOverviewSnapshot,
-  normalizeTagTitleDisplayMode,
-} from '../state/dashboardState';
+import { normalizeTagTitleDisplayMode } from '../state/dashboardState';
 import {
   createSidebarSnapshot,
   RelatedNotesRankingOptions,
 } from '../state/relatedNotesRanking';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
+import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
 
@@ -33,7 +31,9 @@ import { parseSidebarMessage } from './messages';
 const selectionRefreshDelayMs = 120;
 
 /**
- * Provides active-note context or active-tag-overview context in the sidebar.
+ * Shows the notes related to the Markdown note being edited, or, while a
+ * search page is the active editor, that search's Refine options, so the page
+ * keeps its height for its results.
  *
  * It presents saved-note relationships from the workspace index so sidebar
  * context matches the persistent local search data.
@@ -52,16 +52,12 @@ export class SidebarNotesView
   public constructor(
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
-    private readonly tagOverview: ActiveTagOverview,
-    private readonly onOpenTag: (
-      tagKey: string,
-      filterTagKey?: string,
-      filterTagKeys?: readonly string[],
-    ) => void | Promise<void>,
+    private readonly activeSearch: ActiveSearch,
+    private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
-    this.disposables.push(tagOverview.onDidChange(() => this.refresh()));
+    this.disposables.push(activeSearch.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => {
         this.suppressAutomaticEntrySelection = false;
@@ -128,12 +124,14 @@ export class SidebarNotesView
       webviewView.onDidDispose(() => {
         this.log('Related Notes webview disposed.');
         this.view = undefined;
+        this.activeSearch.setSidebarVisible(false);
         this.disposeViewListeners();
       }),
       webviewView.onDidChangeVisibility(() => {
         this.log(
           `Related Notes visibility changed: ${webviewView.visible}.`,
         );
+        this.activeSearch.setSidebarVisible(webviewView.visible);
         if (webviewView.visible) {
           this.refresh();
         }
@@ -144,6 +142,7 @@ export class SidebarNotesView
       }),
     ];
     this.renderHtml();
+    this.activeSearch.setSidebarVisible(webviewView.visible);
     this.refresh();
     void this.indexer.ready.then(() => this.refresh());
   }
@@ -155,6 +154,7 @@ export class SidebarNotesView
     clearTimeout(this.refreshHandle);
     this.disposeViewListeners();
     this.view = undefined;
+    this.activeSearch.setSidebarVisible(false);
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
   }
 
@@ -319,7 +319,7 @@ export class SidebarNotesView
         (result) => `${result.notes.length} results`,
       );
     this.log(
-      `Sending Related Notes state: ${currentSnapshot.state}${currentSnapshot.tagOverview ? ` (tag overview ${currentSnapshot.tagOverview.key})` : currentSnapshot.activeFileName ? ` (Markdown ${currentSnapshot.activeFileName})` : ''}, ${currentSnapshot.notes.length} note entries.`,
+      `Sending Related Notes state: ${currentSnapshot.state}${currentSnapshot.refine ? ` (search ${currentSnapshot.refine.title})` : currentSnapshot.activeFileName ? ` (Markdown ${currentSnapshot.activeFileName})` : ''}, ${currentSnapshot.notes.length} note entries.`,
     );
     void this.view.webview
       .postMessage({ type: 'state', data: currentSnapshot })
@@ -345,52 +345,29 @@ export class SidebarNotesView
   }
 
   /**
-   * Uses the tag-overview projection only while that panel is the active tab.
+   * Shows the active search page's Refine options while one is the active
+   * editor, and otherwise the notes related to the Markdown note.
    */
-  private createSnapshot() {
+  private createSnapshot(): SidebarNotesSnapshot {
     const index = this.indexer.getSnapshot();
     if (this.graphContext) {
       return {
         activeTags: [],
         notes: [],
-        tagOverviewFilters: [],
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         graph: this.graphContext,
-        state: 'graph' as const,
+        state: 'graph',
       };
     }
-    const activeTagKey = this.tagOverview.getActiveTagKey();
-    const activeTagFilterKeys = this.tagOverview.getActiveTagFilterKeys();
-    const activeQuery = this.tagOverview.getActiveQuery?.();
-    if (activeQuery || activeTagKey) {
-      // An advanced query decides what the overview is showing, so the sidebar
-      // projects the query's results rather than the page's focus tag.
-      const overview = activeQuery
-        ? createQueryOverviewSnapshot(
-            index,
-            this.preferences.value,
-            activeQuery,
-            'active',
-            this.getTagTitleDisplayMode(),
-            this.areHeadingTagRelationshipsEnabled(),
-            activeTagKey,
-          )
-        : createTagOverviewSnapshot(
-            index,
-            this.preferences.value,
-            activeTagKey as string,
-            'active',
-            this.getTagTitleDisplayMode(),
-            this.areHeadingTagRelationshipsEnabled(),
-            activeTagFilterKeys[0],
-            [...activeTagFilterKeys],
-          );
-      const sidebarSnapshot = overview
-        ? createTagOverviewSidebarSnapshot(overview)
-        : undefined;
-      if (sidebarSnapshot) {
-        return sidebarSnapshot;
-      }
+    const refine = this.activeSearch.active?.getRefineState();
+    if (refine) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        refine,
+        state: 'refine',
+      };
     }
 
     this.updateEntryContextFromActiveEditor();
@@ -498,12 +475,6 @@ export class SidebarNotesView
       .get<boolean>('enableKeywordLinks', true);
   }
 
-  private areHeadingTagRelationshipsEnabled(): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard')
-      .get<boolean>('enableHeadingTagRelationships', true);
-  }
-
   private getRelatedNotesRankingOptions(): RelatedNotesRankingOptions {
     const configuration = vscode.workspace.getConfiguration(
       'deckard',
@@ -561,6 +532,10 @@ export class SidebarNotesView
       await vscode.commands.executeCommand('deckard.showTaskBoard');
       return;
     }
+    if (message.type === 'refineActiveSearch') {
+      await this.refineActiveSearch(message);
+      return;
+    }
     if (message.type === 'activateNotesGraphNode') {
       await vscode.commands.executeCommand(
         'deckard.activateNotesGraphNode',
@@ -591,11 +566,7 @@ export class SidebarNotesView
     if (message.type === 'openTag') {
       const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
       if (tagKey) {
-        await this.onOpenTag(
-          tagKey,
-          message.filterTagKey,
-          message.filterTagKeys,
-        );
+        await this.onOpenTag(tagKey);
       }
       return;
     }
@@ -629,6 +600,35 @@ export class SidebarNotesView
     }
   }
 
+  /**
+   * Narrows the active search by a value its Refine view lists, as the
+   * page's own Refine would.
+   */
+  private async refineActiveSearch(
+    message: RefineActiveSearchMessage,
+  ): Promise<void> {
+    const source = this.activeSearch.active;
+    const state = source?.getRefineState();
+    const facet = state?.query.facets.find(
+      (candidate) => candidate.id === message.facetId,
+    );
+    if (
+      !source ||
+      !state ||
+      !facet?.values.some((value) => value.clause === message.clause)
+    ) {
+      return;
+    }
+    await source.applySearch(
+      refineQueryText(
+        state.query.text,
+        message.clause,
+        message.mode,
+        facet.applied[0],
+      ),
+    );
+  }
+
   private log(message: string): void {
     logTrace(() => `[Related Notes] ${message}`);
   }
@@ -644,17 +644,6 @@ function isSameEntryContext(
     left?.sourceLine === right?.sourceLine &&
     left?.source === right?.source
   );
-}
-
-/**
- * Minimal contract needed to switch the sidebar between editor and overview.
- */
-interface ActiveTagOverview {
-  readonly onDidChange: vscode.Event<void>;
-  getActiveTagKey(): string | undefined;
-  getActiveTagFilterKeys(): readonly string[];
-  /** The advanced query driving the active overview, when there is one. */
-  getActiveQuery?(): string | undefined;
 }
 
 /**

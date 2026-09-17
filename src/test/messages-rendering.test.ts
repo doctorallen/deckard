@@ -3,8 +3,8 @@ import * as vscode from 'vscode';
 
 import {
   parseDashboardMessage,
+  parseSearchPageMessage,
   parseSidebarMessage,
-  parseTagOverviewMessage,
 } from '../ui/webview/messages';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml } from '../ui/webview/helpHtml';
@@ -12,7 +12,7 @@ import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
 import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
-import { getTagOverviewHtml } from '../ui/webview/tagOverviewHtml';
+import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
 
 function assertWebviewScriptParses(html: string): void {
@@ -182,7 +182,6 @@ suite('Webview contracts', () => {
         snapshot: {
           activeTags: [],
           notes: [],
-          tagOverviewFilters: [],
           tagTitleDisplayMode: 'inline',
           state: 'noMatches',
         },
@@ -285,16 +284,17 @@ suite('Webview contracts', () => {
       parseDashboardMessage({ type: 'setTaskSort', mode: 'updated' }),
       undefined,
     );
-    assert.deepStrictEqual(
+    // Notes are listed on search pages now, which sort and render them.
+    assert.strictEqual(
       parseDashboardMessage({ type: 'setNoteSort', mode: 'access' }),
-      { type: 'setNoteSort', mode: 'access' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'setRenderMode', mode: 'html' }),
-      { type: 'setRenderMode', mode: 'html' },
+      undefined,
     );
     assert.strictEqual(
-      parseDashboardMessage({ type: 'setRenderMode', mode: 'source' }),
+      parseDashboardMessage({ type: 'setRenderMode', mode: 'html' }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'saveDashboardSearch' }),
       undefined,
     );
     assert.strictEqual(
@@ -321,32 +321,83 @@ suite('Webview contracts', () => {
       }),
       undefined,
     );
-    assert.deepStrictEqual(
+    assert.strictEqual(
       parseDashboardMessage({
         type: 'setDashboardColumns',
         section: 'notes',
         columns: 2,
       }),
-      {
-        type: 'setDashboardColumns',
-        section: 'notes',
-        columns: 2,
-      },
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'setDashboardMode', mode: 'home' }),
+      { type: 'setDashboardMode', mode: 'home' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'setDashboardMode', mode: 'notes' }),
+      undefined,
     );
     assert.deepStrictEqual(
       parseDashboardMessage({
-        type: 'setDashboardMode',
-        mode: 'notes',
+        type: 'setDashboardSearch',
+        field: 'tags',
+        query: 'atlas',
       }),
-      { type: 'setDashboardMode', mode: 'notes' },
+      { type: 'setDashboardSearch', field: 'tags', query: 'atlas' },
     );
-    assert.deepStrictEqual(
+    assert.strictEqual(
       parseDashboardMessage({
         type: 'setDashboardSearch',
         field: 'notes',
         query: 'atlas',
       }),
-      { type: 'setDashboardSearch', field: 'notes', query: 'atlas' },
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({
+        type: 'setDashboardWidgets',
+        widgets: [
+          { id: 'a', kind: 'tasks', width: 'full', count: 3, query: 'is:open', extra: true },
+          { id: 'b', kind: 'unknown', width: 'half' },
+          'not a widget',
+        ],
+      }),
+      {
+        type: 'setDashboardWidgets',
+        widgets: [{ id: 'a', kind: 'tasks', width: 'full', count: 3, query: 'is:open' }],
+      },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'setDashboardWidgets', widgets: 'all' }),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'resetDashboardWidgets' }),
+      { type: 'resetDashboardWidgets' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'openSearch', query: '#project/atlas' }),
+      { type: 'openSearch', query: '#project/atlas' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'openSearch', query: 42 }),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'openTaskBoard', query: 'is:open' }),
+      { type: 'openTaskBoard', query: 'is:open' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'openTaskBoard' }),
+      { type: 'openTaskBoard' },
+    );
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'openView', view: 'agenda' }),
+      { type: 'openView', view: 'agenda' },
+    );
+    assert.strictEqual(
+      parseDashboardMessage({ type: 'openView', view: 'settings' }),
+      undefined,
     );
     assert.deepStrictEqual(
       parseDashboardMessage({
@@ -364,31 +415,31 @@ suite('Webview contracts', () => {
     );
   });
 
-  test('accepts only supported tag overview messages', () => {
+  test('accepts only supported search page messages', () => {
     assert.deepStrictEqual(
-      parseTagOverviewMessage({ type: 'setRenderMode', mode: 'html' }),
+      parseSearchPageMessage({ type: 'setRenderMode', mode: 'html' }),
       {
         type: 'setRenderMode',
         mode: 'html',
       },
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({ type: 'saveTagOverviewFilter' }),
+      parseSearchPageMessage({ type: 'saveTagOverviewFilter' }),
       { type: 'saveTagOverviewFilter' },
     );
     assert.strictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'saveTagOverviewFilter',
         tagKeys: ['#untrusted', '#browser-data'],
       }),
       undefined,
     );
     assert.strictEqual(
-      parseTagOverviewMessage({ type: 'setRenderMode', mode: 'unsafe' }),
+      parseSearchPageMessage({ type: 'setRenderMode', mode: 'unsafe' }),
       undefined,
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'toggleTask',
         taskId: 'task-1',
         completed: true,
@@ -400,7 +451,7 @@ suite('Webview contracts', () => {
       },
     );
     assert.strictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'toggleTask',
         taskId: 'task-1',
         completed: 'yes',
@@ -408,83 +459,76 @@ suite('Webview contracts', () => {
       undefined,
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({ type: 'setTaskFilter', filter: 'active' }),
+      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'active' }),
       { type: 'setTaskFilter', filter: 'active' },
     );
     assert.strictEqual(
-      parseTagOverviewMessage({ type: 'setTaskFilter', filter: 'random' }),
+      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'random' }),
       undefined,
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({ type: 'openTag', tagKey: 'other' }),
+      parseSearchPageMessage({ type: 'openTag', tagKey: 'other' }),
       { type: 'openTag', tagKey: 'other' },
     );
+    // Opening a tag opens its page; tags added to a search are in its text.
     assert.deepStrictEqual(
-      parseTagOverviewMessage({
-        type: 'openTag',
-        tagKey: '#child',
-        filterTagKey: '#parent',
-      }),
-      { type: 'openTag', tagKey: '#child', filterTagKey: '#parent' },
-    );
-    assert.deepStrictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'openTag',
         tagKey: '#focus',
         filterTagKeys: ['#first', '#second'],
       }),
-      {
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', '#second'],
-      },
+      { type: 'openTag', tagKey: '#focus' },
     );
     assert.strictEqual(
-      parseTagOverviewMessage({
-        type: 'openTag',
-        tagKey: '#child',
-        filterTagKey: 42,
-      }),
+      parseSearchPageMessage({ type: 'openTag', tagKey: '' }),
       undefined,
     );
     assert.strictEqual(
-      parseTagOverviewMessage({
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', 42],
-      }),
+      parseSearchPageMessage({ type: 'setOverviewRefinement', refinement: 'x' }),
       undefined,
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({ type: 'setSearchColumns', section: 'notes', columns: 3 }),
+      { type: 'setSearchColumns', section: 'notes', columns: 3 },
+    );
+    assert.strictEqual(
+      parseSearchPageMessage({ type: 'setSearchColumns', section: 'tags', columns: 3 }),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseSearchPageMessage({ type: 'clearOverviewQuery' }),
+      { type: 'clearOverviewQuery' },
+    );
+    assert.deepStrictEqual(
+      parseSearchPageMessage({
         type: 'renameTag',
         tagKey: '#child',
       }),
       { type: 'renameTag', tagKey: '#child' },
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'setTagOverviewSort',
         mode: 'access',
       }),
       { type: 'setTagOverviewSort', mode: 'access' },
     );
     assert.strictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'setTagOverviewSort',
         mode: 'random',
       }),
       undefined,
     );
     assert.deepStrictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'setTagOverviewLayout',
         layout: 'split',
       }),
       { type: 'setTagOverviewLayout', layout: 'split' },
     );
     assert.strictEqual(
-      parseTagOverviewMessage({
+      parseSearchPageMessage({
         type: 'setTagOverviewLayout',
         layout: 'stacked',
       }),
@@ -502,7 +546,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(rendered.includes('<strong>safe</strong>'), true);
   });
 
-  test('renders accessible Search and Tags dashboard modes with focused controls', () => {
+  test('renders accessible Home and Tags dashboard modes with focused controls', () => {
     const html = getDashboardHtml(
       {
         cspSource: 'vscode-webview://deckard',
@@ -532,7 +576,6 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('\'<div class="row task-row\' + (task.completed'), true);
     assert.strictEqual(html.includes('.is-draggable { cursor: grab; touch-action: none; }'), true);
     assert.strictEqual(html.includes('function installRankedRows(options)'), true);
-    assert.strictEqual(html.includes('class="row entity-row '), true);
     assert.strictEqual(html.includes('class="row saved-filter-row"'), true);
     assert.strictEqual(
       html.includes(
@@ -598,15 +641,21 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
     // A tag in a title is a hairline link, not a control chip.
     assert.strictEqual(html.includes('.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }'), true);
-    assert.strictEqual(html.includes("renderTabSearchMark(noteEditor.currentText() || state.noteQueryText || '')"), true);
-    // One box per chip: VS Code's default <code> styling would draw a second.
-    assert.strictEqual(html.includes('.query-term code { background: none; border-radius: 0; padding: 0;'), true);
-    assert.strictEqual(html.includes('cursor: pointer; text-transform: none; }'), true);
+    // Searches open search pages, so no tab keeps one.
+    assert.strictEqual(html.includes('id="notes-tab"'), false);
+    assert.strictEqual(html.includes('id="home-tab"'), true);
+    // The box is a field of chips, one per term, each with a remove icon.
+    assert.strictEqual(html.includes('.query-term'), false, 'no row of terms under the box');
+    assert.strictEqual(html.includes('.query-bar-shell { flex-wrap: wrap;'), true);
+    assert.strictEqual(html.includes('<span class="query-chip-remove" aria-hidden="true">&#215;</span>'), true);
+    assert.strictEqual(html.includes('<span class="query-chip-join" aria-hidden="true">AND</span>'), true);
     // Choosing a recent search runs it rather than only filling the box.
     assert.strictEqual(html.includes('replaceAll: true, apply: true'), true);
     assert.strictEqual(html.includes('if (item.apply) {'), true);
-    // A term chip removes its own term, so the whole chip is the control.
-    assert.strictEqual(html.includes('<button class="query-term" data-action="remove-term"'), true);
+    // A chip removes its own term, so the whole chip is the control.
+    assert.strictEqual(html.includes('\'<button type="button" class="\' + className + \'" data-action="remove-term"'), true);
+    // Typed text not made a term is let go when the box loses focus.
+    assert.strictEqual(html.includes("document.addEventListener('focusout'"), true);
     assert.strictEqual(html.includes("renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '')"), true);
     // A namespace filter alone narrows the tags, so it gets the notice too.
     assert.strictEqual(html.includes('const tagNotice = normalizedBrowseQuery || activeTagNamespace'), true);
@@ -637,24 +686,23 @@ suite('Webview contracts', () => {
     // The task layout moved to the Task Board's gear.
     assert.strictEqual(html.includes('set-task-layout'), false);
     assert.strictEqual(html.includes('data-action="set-columns"'), true);
-    assert.strictEqual(html.includes('Task columns'), true);
-    assert.strictEqual(html.includes('Note columns'), true);
+    // Note and task columns are a search page's own.
+    assert.strictEqual(html.includes('Task columns'), false);
+    assert.strictEqual(html.includes('Note columns'), false);
     assert.strictEqual(html.includes('Tag columns'), true);
     assert.strictEqual(html.includes('saveDashboardViewState()'), true);
-    assert.strictEqual(html.includes('taskColumns: taskColumns'), true);
+    assert.strictEqual(html.includes('editingHome: editingHome'), true);
     assert.strictEqual(html.includes('tagColumns: tagColumns'), true);
     assert.strictEqual(
       html.includes("grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)'"),
       true,
     );
-    assert.strictEqual(
-      html.includes("applyDashboardColumns('tasks', selectedTaskColumns)"),
-      true,
-    );
-    assert.strictEqual(html.includes('style="grid-template-columns: repeat('), true);
+    assert.strictEqual(html.includes('applyTagColumns(selectedTagColumns)'), true);
+    // A style attribute is refused by the page's policy, so columns are set by script.
+    assert.strictEqual(html.includes('style="grid-template-columns: repeat('), false);
     assert.strictEqual(html.includes('Search:<input class="task-search"'), false);
     assert.strictEqual(html.includes('.catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
-    assert.strictEqual(html.includes('.tag-list, .task-list, .note-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
+    assert.strictEqual(html.includes('.tag-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
     assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
     assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
     assert.strictEqual(html.includes('function formatTagDisplay(tag)'), true);
@@ -705,7 +753,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes("onMenuAction: function (action, kind, key) {"), true);
     assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
     assert.strictEqual(html.includes('data-action="set-task-tag"'), false);
-    assert.strictEqual(html.includes('class="tag-open"'), true);
+    assert.strictEqual(html.includes('class="tag-open '), true);
     assert.strictEqual(
       html.includes("const entityRow = event.target.closest('.entity-row');"),
       true,
@@ -715,31 +763,27 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('aria-label="Tag scope"'), false);
     assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
     assert.strictEqual(html.includes('Saved searches'), true);
-    assert.strictEqual(
-      html.indexOf('Saved searches') <
-        html.indexOf('role="tablist" aria-label="Dashboard mode"'),
-      true,
-    );
     assert.strictEqual(html.includes('data-action="remove-saved-filter"'), true);
     assert.strictEqual(html.includes("type: 'openSavedFilter'"), true);
     assert.strictEqual(html.includes('role="tablist" aria-label="Dashboard mode"'), true);
     assert.strictEqual(html.includes('role="tab" data-action="set-dashboard-mode"'), true);
     assert.strictEqual(html.includes('aria-controls="tasks-panel"'), false);
-    assert.strictEqual(html.includes('aria-controls="notes-panel"'), true);
+    assert.strictEqual(html.includes('aria-controls="notes-panel"'), false);
+    assert.strictEqual(html.includes('aria-controls="home-panel"'), true);
     assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
-    assert.strictEqual(html.includes('id="notes-panel"'), true);
-    assert.strictEqual(html.includes('data-action="set-note-sort"'), true);
+    assert.strictEqual(html.includes('id="home-panel"'), true);
+    assert.strictEqual(html.includes('data-action="set-note-sort"'), false);
     assert.strictEqual(html.includes('data-action="set-note-tag"'), false);
     assert.strictEqual(html.includes('data-action="filter-note-tags"'), false);
     // Save sits in the search bar, beside the search it saves, and like
     // Clear it is always there, disabled until it would do something, so the
     // bar never shifts under the pointer.
-    assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), true);
-    assert.strictEqual(html.includes("(hasText ? '' : ' disabled') + '>Save</button>'"), true);
+    // Home's search box opens a search page, where a search is saved.
+    assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), false);
     assert.strictEqual(html.includes('data-action="clear-query" data-query-clears'), true);
     assert.strictEqual(html.includes("(canClear(value) ? '' : ' disabled') + '>Clear</button>'"), true);
     // The Search tab's sort shares the line under the search box, so it takes no row of its own.
-    assert.strictEqual(html.includes('noteEditor.renderBar(noteSortControl)'), true);
+    assert.strictEqual(html.includes("searchEditor.renderBar('')"), true);
     assert.strictEqual(html.includes('dashboard-tabs-controls'), false);
     assert.strictEqual(html.includes("+ status + (statusControls || '') + '</div>'"), true);
     // The result count sits in the Refine box's corner, not under the search box.
@@ -752,17 +796,13 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('.query-bar-row .query-apply:not(:hover):not(:focus-visible)'), true);
     assert.strictEqual(html.includes('class="save-filter" data-action="save-note-search"'), false);
     assert.strictEqual(html.includes('<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder"'), true);
-    assert.strictEqual(html.includes('actions: function (hasText)'), true);
     assert.strictEqual(html.includes("+ (options.actions ? options.actions(hasText) : '')"), true);
-    assert.strictEqual(html.includes("dashboardMode === 'notes' ? 'Search'"), true);
+    assert.strictEqual(html.includes("(dashboardMode === 'home' ? 'Home' : 'Tags')"), true);
     assert.strictEqual(html.includes('data-action="query-input"'), true);
-    assert.strictEqual(html.includes("type: 'recordRecentQuery'"), true);
-    assert.strictEqual(html.includes('data-action="save-note-search"'), true);
-    assert.strictEqual(html.includes('const noteSearchDebounceDelay = 350;'), true);
-    assert.strictEqual(html.includes('const tagSearchDebounceDelay = 180;'), false);
-    assert.strictEqual(html.includes('clearTimeout(noteSearchTimer)'), true);
-    assert.strictEqual(html.includes('noteSearchTimer = setTimeout'), true);
-    assert.strictEqual(html.includes('pendingNoteSearchQuery'), true);
+    assert.strictEqual(html.includes("type: 'openSearch'"), true);
+    assert.strictEqual(html.includes('data-action="save-note-search"'), false);
+    assert.strictEqual(html.includes('const tagSearchDebounceDelay = 350;'), true);
+    assert.strictEqual(html.includes('noteSearchTimer'), false);
     assert.strictEqual(html.includes('function scheduleTaskTagSearch()'), false);
     assert.strictEqual(html.includes('taskTagSearchTimer'), false);
     assert.strictEqual(html.includes('noteTagSearchTimer'), false);
@@ -777,29 +817,28 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(html.includes('class="card note-row"'), true);
-    assert.strictEqual(html.includes('class="markdown"'), true);
-    assert.strictEqual(html.includes('class="rendered"'), true);
-    assert.strictEqual(html.includes('data-action="set-mode"'), true);
-    assert.strictEqual(html.includes('aria-label="Source view"'), true);
-    assert.strictEqual(html.includes('aria-label="Rendered view"'), true);
-    assert.strictEqual(html.includes('Content format'), true);
-    assert.strictEqual(html.includes('data-mode="markdown"'), true);
-    assert.strictEqual(html.includes('data-mode="html"'), true);
-    assert.strictEqual(html.includes("state.renderMode === 'html'"), true);
-    assert.strictEqual(html.includes("'<div class=\"rendered\">'"), true);
+    // Notes are listed on search pages, which render them.
+    assert.strictEqual(html.includes('class="card note-row"'), false);
+    assert.strictEqual(html.includes('data-action="set-mode"'), false);
+    // Home: the reader's widgets, arranged on the page and saved on the host.
+    assert.strictEqual(html.includes('data-action="customize-home"'), true);
+    assert.strictEqual(html.includes('data-action="finish-customizing"'), true);
+    assert.strictEqual(html.includes('data-action="add-widget"'), true);
+    assert.strictEqual(html.includes('data-action="remove-widget"'), true);
+    assert.strictEqual(html.includes("'set-widget-width'"), true);
+    assert.strictEqual(html.includes("'set-widget-count'"), true);
+    assert.strictEqual(html.includes("type: 'setDashboardWidgets'"), true);
+    assert.strictEqual(html.includes("type: 'resetDashboardWidgets'"), true);
+    assert.strictEqual(html.includes("type: 'openTaskBoard'"), true);
+    assert.strictEqual(html.includes("widget: { selector: '.home-widget.is-editing[data-widget-id]', key: 'widgetId'"), true);
+    assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
+    assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    assert.strictEqual(html.includes('Home has no widgets.'), true);
+    assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
     assert.strictEqual(html.includes('role="tabpanel"'), true);
     assert.strictEqual(html.includes("vscode.getState()"), true);
     assert.strictEqual(
       html.includes("type: 'setDashboardColumns'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('taskColumns = incomingState.taskColumns ?? taskColumns ?? 1;'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('noteColumns = incomingState.noteColumns ?? noteColumns ?? 1;'),
       true,
     );
     assert.strictEqual(
@@ -808,7 +847,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes("type: 'setDashboardMode'"), true);
     assert.strictEqual(html.includes("type: 'setDashboardSearch'"), true);
-    assert.strictEqual(html.includes('bindDashboardColumnControls()'), true);
+    assert.strictEqual(html.includes('bindTagColumnControls()'), true);
     assert.strictEqual(
       html.includes("event.stopPropagation();"),
       true,
@@ -1200,6 +1239,8 @@ suite('Webview contracts', () => {
       "a page's top rule is recolored, not replaced",
     );
     assert.strictEqual(/main \{[^}]*border-top:/.test(cooper), false);
+    // Strength steps are gold against faint empty ones, not two pale greys.
+    assert.strictEqual(cooper.includes('.tag-weight-rail-segment.filled { background: var(--amber); }'), true);
   });
 
   test('renders the Dashboard with a centered maximum width and no outer frame', () => {
@@ -1232,8 +1273,8 @@ suite('Webview contracts', () => {
     );
   });
 
-  test('renders Tag Overview tabs and side-by-side layouts', () => {
-    const html = getTagOverviewHtml({
+  test('renders search page tabs and side-by-side layouts', () => {
+    const html = getSearchPageHtml({
       cspSource: 'vscode-webview://deckard',
     });
 
@@ -1329,7 +1370,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('function renderHub(isQueryView, filterTags)'),
+      html.includes('function renderHub()'),
       true,
     );
     assert.strictEqual(html.includes('\'<details class="hub"\''), true);
@@ -1340,11 +1381,11 @@ suite('Webview contracts', () => {
       html.includes("vscode.postMessage({ type: 'createHubNote' })"),
       true,
     );
-    assert.deepStrictEqual(parseTagOverviewMessage({ type: 'createHubNote' }), {
+    assert.deepStrictEqual(parseSearchPageMessage({ type: 'createHubNote' }), {
       type: 'createHubNote',
     });
     assert.strictEqual(
-      parseTagOverviewMessage({ type: 'createHubNote', tagKey: '#other' }),
+      parseSearchPageMessage({ type: 'createHubNote', tagKey: '#other' }),
       undefined,
     );
     assert.strictEqual(
@@ -1366,7 +1407,7 @@ suite('Webview contracts', () => {
     // The Notes and Tasks tabs are the shared result tabs.
     assert.strictEqual(html.includes("renderResultTabs([\n        { id: 'notes', label: 'Notes', count: notesCount },"), true);
     assert.strictEqual(html.includes("data-action=\"set-result-tab\""), true);
-    assert.strictEqual(html.includes("if (target.dataset.action === 'set-result-tab') {"), true);
+    assert.strictEqual(html.includes("if (action === 'set-result-tab') {"), true);
     assert.strictEqual(
       html.includes('.segmented { display: inline-flex; }'),
       true,
@@ -1390,13 +1431,17 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-action="search-tasks"'), false);
     assert.strictEqual(html.includes('data-action="toggle-query"'), false);
     assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
-    assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), true);
-    assert.strictEqual(html.includes('function filterOverviewEntries(kind)'), true);
+    // The box holds the page's whole search, its own tag included.
+    assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), false);
+    assert.strictEqual(html.includes("type: 'setOverviewQuery'"), true);
+    assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
+    assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
+    assert.strictEqual(html.includes('function filterEntries(kind)'), true);
     assert.strictEqual(
       html.includes('.card[hidden], .task[hidden] { display: none; }'),
       true,
     );
-    assert.strictEqual(html.includes('function updateTaskFilterCounts(query)'), true);
+    assert.strictEqual(html.includes('function updateTaskFilterCounts(filtering)'), true);
     assert.strictEqual(
       html.includes('if (kind === \'tasks\') updateTaskFilterCounts(filtering);'),
       true,
@@ -1408,7 +1453,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('data-search-entry="notes"'), true);
     assert.strictEqual(html.includes('data-search-entry="tasks"'), true);
     assert.strictEqual(html.includes('Search:<input class="overview-search"'), false);
-    assert.strictEqual(html.includes('.overview-search { width: min(250px, 44vw); border-color: var(--line-strong); }'), true);
+
     assert.strictEqual(
       html.includes("filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done'"),
       true,
@@ -1460,29 +1505,19 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes("type: 'saveTagOverviewFilter'"), true);
     assert.strictEqual(html.includes('data-action="toggle-task"'), true);
-    assert.strictEqual(
-      html.includes('function renderRelationshipTree(associations, rootTag)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderRelationshipGraph(associations, rootTag)'),
-      true,
-    );
-    assert.strictEqual(html.includes('Tag associations'), true);
-    assert.strictEqual(html.includes('<span>Associated tags</span>'), true);
-    assert.strictEqual(html.includes('Open associated tag'), true);
-    assert.strictEqual(html.includes('data-action="set-relationship-view"'), true);
-    assert.strictEqual(html.includes('data-view="tree"'), true);
-    assert.strictEqual(html.includes('data-view="graph"'), true);
-    assert.strictEqual(html.includes('class="relationship-tree-group"'), true);
-    assert.strictEqual(html.includes('class="relationship-node"'), true);
-    assert.strictEqual(html.includes('data-filter-tag-key'), true);
-    assert.strictEqual(
-      html.includes(
-        'state.filterTags || (state.filterTag ? [state.filterTag] : [])',
-      ),
-      true,
-    );
+    // Related tags are a facet of Refine now, not a tree on the page.
+    assert.strictEqual(html.includes('function renderRelationshipTree'), false);
+    assert.strictEqual(html.includes('data-filter-tag-key'), false);
+    assert.strictEqual(html.includes('function renderFacetValue(facet, value)'), true);
+    // Related tags use the same three-step rail as Related Notes' tags.
+    assert.strictEqual(html.includes('function renderWeightRail(level, title)'), true);
+    assert.strictEqual(html.includes('strength-bar'), false);
+    assert.strictEqual(html.includes("In the Related Notes sidebar."), true);
+    // A header only for a search of one tag; any other search is its box.
+    assert.strictEqual(html.includes("const titleHtml = focus ? renderOverviewTagLink(focus, title) : escapeHtml(title);"), true);
+    assert.strictEqual(html.includes("if (!state.tag) return '';"), true);
+    assert.strictEqual(html.includes("'setSearchColumns'"), true);
+    assert.strictEqual(html.includes("'Note columns'"), true);
     assert.strictEqual(
       html.includes('function renderOverviewTagLink(tag, text)'),
       true,
@@ -1509,47 +1544,22 @@ suite('Webview contracts', () => {
       html.includes('class="overview-tag-link" data-action="open-tag"'),
       true,
     );
-    assert.strictEqual(html.includes('class="overview-filter-tag"'), true);
-    assert.strictEqual(html.includes('class="overview-title-joiner"> AND </span>'), true);
+    assert.strictEqual(html.includes('class="overview-filter-tag"'), false);
     assert.strictEqual(html.includes('class="saved-view-name"'), true);
     assert.strictEqual(html.includes('state.savedViewName'), true);
     assert.strictEqual(html.includes('escapeHtml(state.savedViewName)'), true);
     assert.strictEqual(html.includes("state.tag.label + ' Overview'"), false);
     assert.strictEqual(html.includes('<h1 aria-label="'), true);
-    assert.strictEqual(html.includes('escapeHtml(titleAriaLabel)'), true);
-    assert.strictEqual(
-      html.includes(
-        "filterTags.map(function (tag) { return renderOverviewTagLink(tag, tag.label); }).join(' · ')",
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('.overview-title-joiner { color: var(--amber);'),
-      true,
-    );
-    assert.strictEqual(html.includes('function renderFilteredOverviewTag'), true);
-    assert.strictEqual(html.includes('class="title-filter-remove"'), true);
-    assert.strictEqual(html.includes('nextFilterTagKeys'), true);
-    assert.strictEqual(html.includes('data-filter-tag-keys'), true);
+    assert.strictEqual(html.includes('escapeHtml(title)'), true);
+    assert.strictEqual(html.includes('function renderFilteredOverviewTag'), false);
+    assert.strictEqual(html.includes('data-filter-tag-keys'), false);
     assert.strictEqual(html.includes('filter-context'), false);
     assert.strictEqual(html.includes('Clear relationship filter'), false);
     assert.strictEqual(html.includes('Clear filter'), false);
-    assert.strictEqual(html.includes('class="relationship-count"'), true);
-    assert.strictEqual(
-      html.includes(
-        '.tag-open.relationship-tag:hover, .tag-open.relationship-tag:focus-visible { color: var(--text); }',
-      ),
-      true,
-    );
-    assert.strictEqual(html.includes('.relationship-workspace { margin-top: 16px; overflow: hidden;'), true);
-    assert.strictEqual(
-      html.includes(
-        '.relationship-tree-root .tag-open.relationship-tag, .relationship-tree-item .tag-open.relationship-tag',
-      ),
-      true,
-    );
     assert.strictEqual(html.includes("type: 'toggleTask'"), true);
-    assert.strictEqual(html.includes("renderTaskFilterSwitch(state.taskFilter, taskCounts, 'set-task-filter')"), true);
+    assert.strictEqual(html.includes("renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter')"), true);
+    // Tasks are the shared task rows, marked so typed words can hide them.
+    assert.strictEqual(html.includes("renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })"), true);
     assert.strictEqual(
       html.includes(
         '<div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">',
@@ -1594,10 +1604,6 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('.active-filter-tag { color: var(--text); font-weight: 700; }'),
-      true,
-    );
-    assert.strictEqual(
       html.includes('.active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }'),
       true,
     );
@@ -1627,7 +1633,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('.tag-weight-rail {'), true);
     assert.strictEqual(
       html.includes(
-        '.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .65; }',
+        '.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .3; }',
       ),
       true,
     );
@@ -1690,53 +1696,32 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Newest</option>'), true);
     assert.strictEqual(html.includes('>Oldest</option>'), true);
     assert.strictEqual(html.includes('>Most accessed</option>'), true);
-    assert.strictEqual(
-      html.includes('function renderSidebarRelationships(snapshot)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('class="sidebar-relationship-branch"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('class="sidebar-relationship-namespace"'),
-      false,
-    );
-    assert.strictEqual(html.includes('Associated tags'), true);
-    assert.strictEqual(
-      html.includes('function renderSidebarAssociations(relationships, overviewTagKey)'),
-      true,
-    );
-    assert.strictEqual(html.includes('data-action="add-overview-filter"'), true);
-    assert.strictEqual(html.includes('data-add-tag-key'), true);
-    assert.strictEqual(html.includes('class="sidebar-add-filter"'), true);
-    assert.strictEqual(html.includes('Open associated tag'), true);
-    assert.strictEqual(
-      html.includes('class="sidebar-association-tooltip" role="tooltip"'),
-      true,
-    );
-    assert.strictEqual(html.includes("aria-label=\"Association strength ' + percentage + ' percent\""), true);
-    assert.strictEqual(html.includes("' + percentage + '%</span>"), true);
-    assert.strictEqual(html.includes('Total weight'), true);
-    assert.strictEqual(
-      html.includes('border-left: 2px solid var(--cyan);'),
-      false,
-    );
+    // While a search page is active, the sidebar holds its Refine options.
+    assert.strictEqual(html.includes('function renderSidebarRelationships'), false);
+    assert.strictEqual(html.includes('data-action="add-overview-filter"'), false);
+    assert.strictEqual(html.includes('function renderRefine(refine)'), true);
+    assert.strictEqual(html.includes("if (state.state === 'refine') {"), true);
+    assert.strictEqual(html.includes('function renderRefineValue(facet, value)'), true);
+    assert.strictEqual(html.includes("facet.id === 'related' || facet.id === 'tags'"), true);
+    // A related tag's row adds it to the search; its icon opens it in a new tab.
+    assert.strictEqual(html.includes('class="tag-open refine-value-open" data-action="refine"'), true);
+    assert.strictEqual(html.includes('class="refine-open-tag" data-action="open-tag"'), true);
+    assert.strictEqual(html.includes('sidebar-add-filter'), false);
+    assert.strictEqual(html.includes("type: 'refineActiveSearch'"), true);
+    assert.strictEqual(html.includes("mode: event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and'"), true);
+    // The page holds the search's terms and counts; the sidebar only refines.
+    assert.strictEqual(html.includes('data-action="refine-remove-term"'), false);
+    assert.strictEqual(html.includes("type: 'setActiveSearch'"), false);
+    assert.strictEqual(html.includes('Search page'), false);
+    // Strength is a bar relative to the strongest tag, not a percentage.
+    assert.strictEqual(html.includes('strength-bar'), false, 'one rail for a tag\'s weight');
+    assert.strictEqual(html.includes("' + percentage + '%</span>"), false);
+    assert.strictEqual(html.includes('Association strength'), false);
+    assert.strictEqual(html.includes('.refine-value-open {'), true);
     assert.strictEqual(html.includes('class="relevance-score"'), true);
-    assert.strictEqual(html.includes('const relevance = state.tagOverview'), true);
     assert.strictEqual(html.includes('note.relevanceScore'), true);
     assert.strictEqual(html.includes('data-filter-tag-key'), false);
-    assert.strictEqual(html.includes('state.tagOverviewFilter'), true);
-    assert.strictEqual(html.includes('active-filter-label'), false);
-    assert.strictEqual(html.includes('active-filter-joiner'), true);
-    assert.strictEqual(
-      html.includes("renderTag(state.tagOverview, 'active-filter-tag')"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('const tagOverviewName = state.tagOverviewFilter'),
-      false,
-    );
+    assert.strictEqual(html.includes('state.tagOverview'), false);
     assert.strictEqual(
       html.includes('function renderTagControl(tag, content, extraClass)'),
       false,
@@ -1749,46 +1734,6 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       html.includes("document.addEventListener('contextmenu'"),
       true,
-    );
-    assert.strictEqual(
-      html.includes('const filterTagKeys = snapshot.tagOverviewFilters'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        "renderTag(snapshot.tagOverview, 'tag-open relationship-tag')",
-      ),
-      false,
-    );
-    assert.strictEqual(
-      html.includes(
-        '.sidebar-relationships .tag-open.relationship-tag:hover',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        '.sidebar-relationships { margin-top: 8px; overflow: visible;',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        '.sidebar-relationships .tag-open.relationship-tag {\n  position: relative;',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        '.sidebar-relationships .sidebar-relationship-branch > summary',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        '.sidebar-relationships .sidebar-relationship-items .tag-open.relationship-tag::before',
-      ),
-      false,
     );
   });
 
@@ -1852,8 +1797,11 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('Move to top'), true);
     assert.strictEqual(html.includes('#follow-up'), true);
     assert.strictEqual(html.includes('Saved searches'), true);
-    assert.strictEqual(html.includes('Search/Tags tabs'), true);
-    assert.strictEqual(html.includes('Tasks/Search/Tags tabs'), false);
+    assert.strictEqual(html.includes('Home/Tags tabs'), true);
+    assert.strictEqual(html.includes('Search/Tags tabs'), false);
+    assert.strictEqual(html.includes('<h3>Home</h3>'), true);
+    assert.strictEqual(html.includes('<h3>Search pages and tag overviews</h3>'), true);
+    assert.strictEqual(html.includes('Deckard: Open Search Page'), true);
     assert.strictEqual(html.includes('<h3>Task list</h3>'), true);
     assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
     assert.strictEqual(html.includes('Browse tags'), true);
@@ -1884,17 +1832,14 @@ suite('Webview contracts', () => {
       parseSidebarMessage({ type: 'openTag', tagKey: 'work' }),
       { type: 'openTag', tagKey: 'work' },
     );
+    // A tag opens its own page; the old filter arguments are dropped.
     assert.deepStrictEqual(
       parseSidebarMessage({
         type: 'openTag',
         tagKey: '#focus',
         filterTagKeys: ['#first', '#second'],
       }),
-      {
-        type: 'openTag',
-        tagKey: '#focus',
-        filterTagKeys: ['#first', '#second'],
-      },
+      { type: 'openTag', tagKey: '#focus' },
     );
     assert.deepStrictEqual(
       parseSidebarMessage({ type: 'renameTag', tagKey: '#work' }),
@@ -1902,18 +1847,38 @@ suite('Webview contracts', () => {
     );
     assert.deepStrictEqual(
       parseSidebarMessage({
-        type: 'openTag',
-        tagKey: '#child',
-        filterTagKey: '#parent',
+        type: 'refineActiveSearch',
+        facetId: 'related',
+        clause: '#team/harbor',
+        mode: 'exclude',
+        extra: 'dropped',
       }),
-      { type: 'openTag', tagKey: '#child', filterTagKey: '#parent' },
+      {
+        type: 'refineActiveSearch',
+        facetId: 'related',
+        clause: '#team/harbor',
+        mode: 'exclude',
+      },
     );
     assert.strictEqual(
       parseSidebarMessage({
-        type: 'openTag',
-        tagKey: '#child',
-        filterTagKey: 42,
+        type: 'refineActiveSearch',
+        facetId: 'related',
+        clause: '#team/harbor',
+        mode: 'replace',
       }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseSidebarMessage({ type: 'refineActiveSearch', facetId: 'related', clause: '', mode: 'and' }),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      parseSidebarMessage({ type: 'setActiveSearch', query: '#project/atlas' }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseSidebarMessage({ type: 'setActiveSearch', query: 7 }),
       undefined,
     );
     assert.deepStrictEqual(parseSidebarMessage({ type: 'openDashboard' }), {

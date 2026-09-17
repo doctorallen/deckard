@@ -121,7 +121,7 @@ export function createTaskBoard(
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
   const taskFilter = preferences.taskBoardTaskFilter;
-  const shownText = search.invalidQuery ?? search.query;
+
   const board: TaskBoardLayout =
     layout === 'board'
       ? layoutTaskBoard(index, tasks, groupBy, options)
@@ -130,11 +130,12 @@ export function createTaskBoard(
     ...board,
     query: createQueryViewState(
       index,
-      parseQuery(shownText),
+      parseQuery(search.query),
       { notes: 0, tasks: tasks.length },
       true,
       preferences.recentQueries ?? [],
       {
+        pending: search.invalidQuery,
         facets: search.query.trim()
           ? buildSearchFacets(
               index,

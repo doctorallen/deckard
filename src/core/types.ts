@@ -18,15 +18,47 @@ export type TaskFilter = 'all' | 'active' | 'completed';
 /** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
 export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 
-/** The Dashboard's tabs: Search, and Tags. Tasks have the Task Board. */
-export type DashboardMode = 'notes' | 'browse';
+/**
+ * The Dashboard's tabs: Home, and Tags. Searches open search pages, and tasks
+ * have the Task Board.
+ */
+export type DashboardMode = 'home' | 'browse';
 
-export type DashboardSearchField = 'notes' | 'tags';
+export type DashboardSearchField = 'tags';
 
 export interface DashboardViewState {
   mode: DashboardMode;
-  noteSearchQuery: string;
   tagSearchQuery: string;
+}
+
+/** The widgets Home can show. */
+export type DashboardWidgetKind =
+  | 'search'
+  | 'tasks'
+  | 'agenda'
+  | 'favoriteTags'
+  | 'topTags'
+  | 'savedSearches'
+  | 'recentSearches'
+  | 'recentNotes'
+  | 'stats'
+  | 'savedQuery';
+
+/** Whether a widget takes one of Home's two columns or both. */
+export type DashboardWidgetWidth = 'half' | 'full';
+
+/** One widget on Home, as the reader arranged it. */
+export interface DashboardWidgetConfig {
+  /** Unique on the page, so a kind that can repeat is told apart. */
+  id: string;
+  kind: DashboardWidgetKind;
+  width: DashboardWidgetWidth;
+  /** How many entries a list widget shows. */
+  count?: number;
+  /** The search a tasks widget lists. */
+  query?: string;
+  /** The saved search a saved-search widget shows. */
+  filterId?: string;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
@@ -227,7 +259,6 @@ export interface PersistedPreferences {
   dashboardTaskColumns: DashboardColumnCount;
   dashboardNoteColumns: DashboardColumnCount;
   dashboardTagColumns: DashboardColumnCount;
-  dashboardNoteSortMode: TagOverviewSortMode;
   dashboardViewState: DashboardViewState;
   renderMode: RenderMode;
   tagOverviewSortMode: TagOverviewSortMode;
@@ -247,6 +278,8 @@ export interface PersistedPreferences {
   taskBoardGroup: TaskBoardGroupBy;
   /** Which tasks the Task Board's list shows. */
   taskBoardTaskFilter: TaskFilter;
+  /** The widgets on the Dashboard's Home, in order. */
+  dashboardWidgets: DashboardWidgetConfig[];
 }
 
 /**
@@ -259,6 +292,8 @@ export interface SavedFilter {
   tagKeys: string[];
   /** Present when the saved view was created from an advanced query. */
   query?: string;
+  /** Set when the search was saved on the Task Board, which reopens it. */
+  page?: 'taskBoard';
 }
 
 /**
@@ -270,6 +305,8 @@ export interface DashboardSavedFilter {
   tags: TagReference[];
   /** Present when reopening this view should restore an advanced query. */
   query?: string;
+  /** Set when the search reopens on the Task Board. */
+  page?: 'taskBoard';
 }
 
 export interface DashboardTask {
@@ -287,68 +324,91 @@ export interface DashboardNote extends TagOverviewCard {
 export interface DashboardSnapshot {
   tags: TagInfo[];
   entities: Entity[];
-  notes: DashboardNote[];
   totalSectionCount: number;
   totalNoteCount: number;
   totalTaskCount: number;
-  /** Columns of the tasks a search matches. */
-  taskColumns: DashboardColumnCount;
-  noteColumns: DashboardColumnCount;
   tagColumns: DashboardColumnCount;
-  noteSortMode: TagOverviewSortMode;
-  renderMode: RenderMode;
   tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   selectedTag?: string;
   viewState: DashboardViewState;
   savedFilters: DashboardSavedFilter[];
-  /**
-   * True when `notes` was left empty because the Search tab is not showing.
-   * Notes are most of what the page is sent, so other tabs are sent none.
-   */
-  notesOmitted?: boolean;
-  /** The Search tab's search, sent while the Search tab is shown. */
-  noteQuery?: QueryViewState;
-  /** The Search tab's applied text, sent even when its notes are left out. */
-  noteQueryText?: string;
-  /** Tasks the Search tab's search matches, open and soonest due first. */
-  noteQueryTasks?: DashboardTask[];
-  /** Every task the search matches, before `noteQueryTasks` was cut short. */
-  noteQueryTaskCount?: number;
+  /** Home's widgets as arranged, sent with every state. */
+  widgetConfig: DashboardWidgetConfig[];
+  /** What each widget shows, sent while Home is the tab shown. */
+  widgets?: DashboardWidget[];
 }
 
-export interface TagOverviewSnapshot {
-  /**
-   * The focus tag of a tag-driven overview.
-   *
-   * Undefined only for a standalone query view, which has no single tag to
-   * anchor its title, sidebar, or rename actions to.
-   */
+/** A tag a Home widget lists, with what searching for it finds. */
+export interface DashboardWidgetTag extends TagReference {
+  detail: string;
+}
+
+/** A note a Home widget lists, which opens at its line. */
+export interface DashboardWidgetNote {
+  filePath: string;
+  line: number;
+  title: string;
+  detail: string;
+}
+
+/** One agenda group, as Home's agenda widget shows it. */
+export interface DashboardWidgetAgendaGroup {
+  id: string;
+  label: string;
+  count: number;
+  tasks: DashboardTask[];
+}
+
+/** What one Home widget shows. Each kind fills only its own fields. */
+export interface DashboardWidget extends DashboardWidgetConfig {
+  title: string;
+  /** How many entries there are, listed or not. */
+  total?: number;
+  tasks?: DashboardTask[];
+  tags?: DashboardWidgetTag[];
+  notes?: DashboardWidgetNote[];
+  queries?: string[];
+  savedFilters?: DashboardSavedFilter[];
+  agenda?: DashboardWidgetAgendaGroup[];
+  stats?: Array<{ label: string; value: number }>;
+  /** A saved-search widget's search. */
+  savedQuery?: string;
+  /** Set when that search was saved on the Task Board, which opens it. */
+  savedPage?: 'taskBoard';
+  /** The notes a saved-search widget's search finds, listed or not. */
+  noteTotal?: number;
+  /** Set when the widget names a saved search that no longer exists. */
+  missing?: boolean;
+  /** Why a tasks widget's search could not run. */
+  error?: string;
+  /** The search widget's box: its completions and recent searches. */
+  searchState?: QueryViewState;
+}
+
+/**
+ * A search page: the notes and tasks one search finds.
+ *
+ * When the search is exactly one tag, the page is that tag's overview and also
+ * carries the tag, its entity, and its hub note. Any other search is described
+ * by its search box alone.
+ */
+export interface SearchPageSnapshot {
+  /** The tag the page is about, when the search is that one tag. */
   tag?: TagInfo;
   entity?: Entity;
-  /** The note that describes the tag; only on an overview with no filters. */
+  /** The note that describes the tag. */
   hub?: TagOverviewHub;
-  /**
-   * The advanced filter behind this view.
-   *
-   * Always present. A plain tag overview carries the query that expresses its
-   * own tag intersection, so the query bar and the tag chips never disagree.
-   */
-  query?: QueryViewState;
-  /** @deprecated Use filterTags to support every active overview filter. */
-  filterTag?: TagReference;
-  /** Whether a search beyond the page's own tags is narrowing it. */
-  narrowed?: boolean;
-  filterTags: TagReference[];
+  /** The search box's state, and the facets that could narrow it. */
+  query: QueryViewState;
+  /** The search the page was opened with, which Clear returns to. */
+  originQuery: string;
   savedViewName?: string;
-  associatedTags: TagAssociation[];
-  /** Tags independently associated with every active tag in a filtered overview. */
-  sharedAssociatedTags: TagAssociation[];
   sections: TagOverviewCard[];
   tasks: DashboardTask[];
   /** Counts before the active completion filter is applied. */
-  taskCounts?: {
+  taskCounts: {
     all: number;
     active: number;
     completed: number;
@@ -357,7 +417,14 @@ export interface TagOverviewSnapshot {
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
+  noteColumns: DashboardColumnCount;
+  taskColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
+  /**
+   * Whether the Related Notes sidebar is showing this search's Refine
+   * options, so the page shows a line in their place.
+   */
+  refineInSidebar?: boolean;
 }
 
 export interface TagOverviewHub {
@@ -488,29 +555,31 @@ export interface SidebarNotesSnapshot {
   activeTags: SidebarTag[];
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
-  tagOverview?: TagReference;
-  /**
-   * The advanced query driving the overview, when one is active.
-   *
-   * A query that names no single tag has no chip for the sidebar to show, so
-   * the query itself identifies the scope instead.
-   */
-  tagOverviewQuery?: string;
-  /** @deprecated Use tagOverviewFilters to support every active overview filter. */
-  tagOverviewFilter?: TagReference;
-  tagOverviewFilters: TagReference[];
-  tagOverviewRelationships?: {
-    associatedTags: TagAssociation[];
-    sharedAssociatedTags: TagAssociation[];
-  };
   tagTitleDisplayMode: TagTitleDisplayMode;
   graph?: SidebarGraphContext;
-  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches' | 'graph';
+  /** The active search page's Refine options, shown in its place. */
+  refine?: SearchRefineState;
+  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches' | 'graph' | 'refine';
+}
+
+/**
+ * The search a page is showing, as the sidebar's Refine view needs it.
+ */
+export interface SearchRefineState {
+  /** Which page the search is on. */
+  page: 'search' | 'taskBoard';
+  /** The page's name, such as "Person: Sable Ortiz". */
+  title: string;
+  query: QueryViewState;
+  /** What the page can find, so the counts name only those. */
+  resultKinds: Array<'notes' | 'tasks'>;
 }
 
 export interface SidebarTag extends TagReference {
   /** Relative contribution used when ranking Related Notes. */
   weight: number;
+  /** How many notes and tasks a search for the tag finds. */
+  matches?: { notes: number; tasks: number };
 }
 
 export type NotesGraphNodeKind = 'note' | 'task' | 'tag';
@@ -639,11 +708,6 @@ export interface SetTaskSortMessage {
   mode: TaskSortMode;
 }
 
-export interface SetNoteSortMessage {
-  type: 'setNoteSort';
-  mode: TagOverviewSortMode;
-}
-
 export interface SetDashboardModeMessage {
   type: 'setDashboardMode';
   mode: DashboardMode;
@@ -661,8 +725,38 @@ export interface CreateHubNoteMessage {
 
 export interface SetDashboardColumnsMessage {
   type: 'setDashboardColumns';
-  section: 'tasks' | 'notes' | 'tags';
+  section: 'tags';
   columns: DashboardColumnCount;
+}
+
+/** Sets how many columns a search page lays its notes or tasks out in. */
+export interface SetSearchColumnsMessage {
+  type: 'setSearchColumns';
+  section: 'notes' | 'tasks';
+  columns: DashboardColumnCount;
+}
+
+/** Replaces Home's widgets, in order. */
+export interface SetDashboardWidgetsMessage {
+  type: 'setDashboardWidgets';
+  widgets: DashboardWidgetConfig[];
+}
+
+/** Puts Home's widgets back as they first were. */
+export interface ResetDashboardWidgetsMessage {
+  type: 'resetDashboardWidgets';
+}
+
+/** Opens a search page on a search. */
+export interface OpenSearchMessage {
+  type: 'openSearch';
+  query: string;
+}
+
+/** Opens a Deckard view Home links to. */
+export interface OpenDeckardViewMessage {
+  type: 'openView';
+  view: 'agenda' | 'stats';
 }
 
 export interface ReorderTagsMessage {
@@ -680,9 +774,6 @@ export interface ReorderEntitiesMessage {
 export interface OpenTagMessage {
   type: 'openTag';
   tagKey: string;
-  /** @deprecated Use filterTagKeys to support every active overview filter. */
-  filterTagKey?: string;
-  filterTagKeys?: string[];
 }
 
 export interface RenameTagMessage {
@@ -705,11 +796,11 @@ export interface SaveTagOverviewFilterMessage {
 }
 
 /**
- * Replaces the overview's active query.
+ * Runs a search on a search page.
  *
- * The webview sends canonical query text whether the author typed it in the
- * query bar or assembled it in the visual builder, so the host only ever has
- * one representation to validate and evaluate.
+ * The webview sends query text whether the author typed it in the query bar
+ * or assembled it in the builder, so the host only ever has one
+ * representation to validate and evaluate.
  */
 export interface SetOverviewQueryMessage {
   type: 'setOverviewQuery';
@@ -717,30 +808,16 @@ export interface SetOverviewQueryMessage {
 }
 
 /**
- * Clears the advanced query and returns the page to its focus tag.
+ * Returns a search page to the search it was opened with.
  */
 export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
-}
-
-/**
- * Narrows a tag overview by a search typed after its tags. Whole tags in it
- * join the page's tag chips; the rest filters the page's entries.
- */
-export interface SetOverviewRefinementMessage {
-  type: 'setOverviewRefinement';
-  refinement: string;
 }
 
 /** Remembers a search that was run, for Find and the search boxes. */
 export interface RecordRecentQueryMessage {
   type: 'recordRecentQuery';
   query: string;
-}
-
-/** Saves the Dashboard's current note search as a named view. */
-export interface SaveDashboardSearchMessage {
-  type: 'saveDashboardSearch';
 }
 
 export interface SetTagOverviewSortMessage {
@@ -766,8 +843,10 @@ export interface OpenNotesGraphMessage {
   type: 'openNotesGraph';
 }
 
+/** Opens the Task Board, on a search when one is given. */
 export interface OpenTaskBoardMessage {
   type: 'openTaskBoard';
+  query?: string;
 }
 
 export interface ActivateNotesGraphNodeMessage {
@@ -798,6 +877,18 @@ export interface SidebarReadyMessage {
   type: 'ready';
 }
 
+/**
+ * Narrows the active search by one of its facet values, from the sidebar's
+ * Refine view: `and` keeps only it, `exclude` leaves it out, and `or` allows
+ * it beside the value of the same facet already chosen.
+ */
+export interface RefineActiveSearchMessage {
+  type: 'refineActiveSearch';
+  facetId: string;
+  clause: string;
+  mode: 'and' | 'exclude' | 'or';
+}
+
 export interface ClearEntryRelatedNotesMessage {
   type: 'clearEntryRelatedNotes';
 }
@@ -809,8 +900,6 @@ export type DashboardMessage =
   | ToggleFavoriteEntityMessage
   | SetTagSortMessage
   | SetEntitySortMessage
-  | SetRenderModeMessage
-  | SetNoteSortMessage
   | SetDashboardModeMessage
   | SetDashboardSearchMessage
   | SetDashboardColumnsMessage
@@ -821,9 +910,13 @@ export type DashboardMessage =
   | OpenSavedFilterMessage
   | RemoveSavedFilterMessage
   | RecordRecentQueryMessage
-  | SaveDashboardSearchMessage;
+  | SetDashboardWidgetsMessage
+  | ResetDashboardWidgetsMessage
+  | OpenSearchMessage
+  | OpenTaskBoardMessage
+  | OpenDeckardViewMessage;
 
-export type TagOverviewMessage =
+export type SearchPageMessage =
   | OpenSourceMessage
   | ToggleTaskMessage
   | SetTaskFilterMessage
@@ -832,10 +925,10 @@ export type TagOverviewMessage =
   | RenameTagMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage
+  | SetSearchColumnsMessage
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
-  | SetOverviewRefinementMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =
@@ -851,7 +944,8 @@ export type SidebarMessage =
   | CreateDailyNoteMessage
   | OpenHelpMessage
   | SetRelatedNotesSortMessage
-  | ClearEntryRelatedNotesMessage;
+  | ClearEntryRelatedNotesMessage
+  | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */
 export type TaskBoardGroupBy = 'status' | 'priority' | 'due';
@@ -903,6 +997,8 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   tagTitleDisplayMode: TagTitleDisplayMode;
   /** The board settings the page's view options edit. */
   settings: TaskBoardSettings;
+  /** Whether the sidebar is showing this search's Refine options. */
+  refineInSidebar?: boolean;
 }
 
 /** The `deckard.board` settings, as the Task Board's view options show them. */
@@ -946,7 +1042,13 @@ export interface SetBoardStatusNamespaceMessage {
   namespace: string;
 }
 
+/** Names the Task Board's search and keeps it as a saved view. */
+export interface SaveBoardSearchMessage {
+  type: 'saveBoardSearch';
+}
+
 export type TaskBoardMessage =
+  | SaveBoardSearchMessage
   | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage

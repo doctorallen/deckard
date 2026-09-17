@@ -13,6 +13,11 @@ import { ParsedQuery, QueryNode } from './queryTypes';
 export interface QueryTerm {
   /** The term as it was written. */
   text: string;
+  /**
+   * The term as the condition it runs, when that differs from how it was
+   * written: plain words are a `text ~` condition.
+   */
+  label?: string;
   /** The whole query without this term. */
   without: string;
 }
@@ -41,13 +46,28 @@ export function getTopLevelTerms(parsed: ParsedQuery): QueryTerm[] {
         without: joinTerms(others.map((other) => other.node)),
       };
     }
+    const text = parsed.text.slice(span.start, span.end);
     return {
-      text: parsed.text.slice(span.start, span.end),
+      text,
+      ...(isBareWords(span.node, text) ? { label: formatQuery(span.node) } : {}),
       without: tidy(
         parsed.text.slice(0, span.start) + ' ' + parsed.text.slice(span.end),
       ),
     };
   });
+}
+
+/**
+ * Whether a term is words written without their `text` field, which runs as
+ * a `text ~` condition.
+ */
+function isBareWords(node: QueryNode, written: string): boolean {
+  const condition = node.type === 'not' ? node.child : node;
+  return (
+    condition.type === 'condition' &&
+    condition.field === 'text' &&
+    !/^\s*(?:[-!]|not\s+)?\s*text\b/i.test(written)
+  );
 }
 
 /**
@@ -122,6 +142,61 @@ export function getPlainTextTerms(node: QueryNode | undefined): string[] | undef
     return false;
   };
   return collect(node) ? terms : undefined;
+}
+
+/**
+ * A query narrowed by one facet value, written as the search box's Refine
+ * writes it: `and` adds the value with AND, `exclude` adds it negated, and
+ * `or` puts it beside `alternativeTo`, the value of the same facet the query
+ * already has.
+ */
+export function refineQueryText(
+  text: string,
+  clause: string,
+  mode: 'and' | 'exclude' | 'or',
+  alternativeTo?: string,
+): string {
+  const current = text.trim();
+  if (mode === 'or' && alternativeTo) {
+    const merged = mergeAlternative(current, alternativeTo, clause);
+    if (merged !== undefined) {
+      return merged;
+    }
+  }
+  const term = mode === 'exclude' ? `-${clause}` : clause;
+  if (!current) {
+    return term;
+  }
+  return canAppendTerm(parseQuery(current))
+    ? `${current} AND ${term}`
+    : `(${current}) AND ${term}`;
+}
+
+/** Puts a clause beside an existing one as an alternative. */
+function mergeAlternative(
+  text: string,
+  existing: string,
+  clause: string,
+): string | undefined {
+  const escaped = existing.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`(^|[\\s(])${escaped}(?=$|[\\s)])`, 'i').exec(text);
+  if (!match) {
+    return undefined;
+  }
+  const start = match.index + match[1].length;
+  const end = start + existing.length;
+  let depth = 0;
+  for (let position = 0; position < start; position += 1) {
+    if (text.charAt(position) === '(') {
+      depth += 1;
+    }
+    if (text.charAt(position) === ')') {
+      depth -= 1;
+    }
+  }
+  return depth > 0
+    ? `${text.slice(0, end)} OR ${clause}${text.slice(end)}`
+    : `${text.slice(0, start)}(${existing} OR ${clause})${text.slice(end)}`;
 }
 
 /**

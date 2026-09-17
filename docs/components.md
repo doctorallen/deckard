@@ -221,7 +221,7 @@ search results and the Task Board's list layout.
 | `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
 | `renderTaskListRow(item, options)` | One row from a `DashboardTask`. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
 | `renderTaskFilterSwitch(filter, counts, action)` | The All / Open / Done `.segmented` switch with counts, as a tag overview's Tasks pane and the Task Board's list show it. |
-| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. The Dashboard ranks tags and entities with it, the Task Board its tasks. |
+| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
 ### `.row`
@@ -261,21 +261,44 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
 | `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. |
+| `renderWeightRail(level, title)`, `getWeightLevel(weight)` | How much a tag weighs, as a `.tag-weight-rail` of three steps, and the step a weight fills to: three from 0.75, two from 0.375. Related Notes' active tags, Refine, and the sidebar's Refine view draw it. |
 
 ### The search box
 
-`getQueryEditorCss()` and `getQueryEditorScript()` are the one search box the
-Dashboard's Search tab, every tag overview, and the Task Board use, so a
-search looks and behaves the same everywhere: the bar and its completions,
-the builder, removable terms, and **Refine**. A page creates it with
+`getQueryEditorCss()` and `getQueryEditorScript()` are the one search box
+search pages, Home's search widget, and the Task Board use, so a search looks
+and behaves the same everywhere: the bar and its completions, the builder,
+removable terms, and **Refine**. A page creates it with
 `createQueryEditor(options)`, draws `renderBar(statusControls)` and
 `renderFacets()`, and passes its events through. `options.resultKinds` names
 what the page can find, such as `['tasks']` on the Task Board, so the result
-count names only those.
+count names only those. `options.refineElsewhere()` returns true while the
+Related Notes sidebar shows the page's Refine options, and `renderFacets()`
+then draws a single line in their place.
+
+The bar is a `.query-bar-shell` field of chips, as a multi-select is: each of
+the applied search's top-level terms is a `.query-chip` button with a
+`.query-chip-remove` icon, joined by `.query-chip-join` AND, and the text field
+after them holds the next term. `data-query-text` on the shell is the whole
+search, chips and typed term together. A chosen completion that is a whole
+term becomes a chip at once; Enter adds the typed term by AND; Backspace in an
+empty field removes the last chip; and a term not added is let go when focus
+leaves the box. A search the host could not parse comes back as
+`QueryViewState.pending`, with the last good search as `text`.
 
 On the host, every page builds the box's state with `createQueryViewState()`
 and its **Refine** counts with `buildSearchFacets()`, from the results that
-page shows.
+page shows. A search of tags passes `related` values, ranked by association,
+in place of the counted tags.
+
+### Home
+
+The Dashboard's Home is a two-column `.home-grid` of `.home-widget` panels;
+`.is-full` spans both columns, and widgets in one row stretch to its height.
+In edit mode a widget is `.is-editing` and `.is-draggable`, carries a
+`.view-options-choices` width switch and its own `.home-widget-options` gear,
+and is ranked with `installRankedRows`. The host projects each widget with
+`createDashboardWidgets()` in `dashboardWidgets.ts`.
 
 ### Host-side helpers
 

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { getTagOverviewHtml } from '../ui/webview/tagOverviewHtml';
+import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 
 /**
  * Drives the overview webview's own script against a stub DOM.
@@ -214,8 +214,8 @@ suite('Tag overview query builder', () => {
     view.click({ action: 'facet', clause: 'is:open', facetId: 'status' }, { altKey: true });
 
     assert.deepStrictEqual(view.posted, [
-      { type: 'setOverviewQuery', query: 'tag = #project/atlas is:open' },
-      { type: 'setOverviewQuery', query: 'tag = #project/atlas -is:open' },
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND is:open' },
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND -is:open' },
     ]);
   });
 
@@ -239,9 +239,9 @@ suite('Tag overview query builder', () => {
     ]);
   });
 
-  test('refines a tag overview rather than replacing its tags', () => {
+  test('runs the whole search in the box, the page\'s own tag included', () => {
     const view = mountTagOverview();
-    view.send(createState('', { scope: 'tag = #project/atlas' }));
+    view.send(createState('#project/atlas', { origin: '#project/atlas' }));
     view.posted.length = 0;
 
     const input = view.type(
@@ -250,16 +250,36 @@ suite('Tag overview query builder', () => {
     );
     view.key(input, 'Enter');
 
+    // The chips hold the page's tag; what is typed after them joins by AND.
     assert.deepStrictEqual(view.posted, [
-      { type: 'setOverviewRefinement', refinement: 'vendor' },
+      { type: 'setOverviewQuery', query: '#project/atlas AND vendor' },
     ]);
+  });
+
+  test('shows a line in place of Refine while the sidebar holds it', () => {
+    const facets = [
+      {
+        id: 'related',
+        label: 'Tags',
+        applied: [],
+        values: [{ label: '#team/harbor', count: 3, clause: '#team/harbor', strength: 0.6, detail: 'Written together 3 times' }],
+      },
+    ];
+    const view = mountTagOverview();
+    view.send(createState('#project/atlas', { facets }));
+    assert.match(view.html(), /data-clause="#team\/harbor"/);
+    assert.match(view.html(), /class="tag-weight-rail"/, 'a related tag shows its strength');
+    assert.match(view.html(), /related 2 of 3/);
+
+    view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
+    assert.doesNotMatch(view.html(), /data-clause="#team\/harbor"/);
+    assert.match(view.html(), /In the Related Notes sidebar\./);
   });
 
   test('offers recent searches in an empty search box', () => {
     const view = mountTagOverview();
     view.send(
       createState('', {
-        scope: 'tag = #project/atlas',
         recent: [{ value: '#project/atlas is:open', label: '#project/atlas is:open', detail: 'Recent search' }],
       }),
     );
@@ -271,7 +291,7 @@ suite('Tag overview query builder', () => {
 
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
-    view.send(createState('#project/atlas', { scope: 'tag = #project/atlas' }));
+    view.send(createState('#project/atlas', { origin: '#project/atlas' }));
     const html = view.html();
 
     // Clear is always drawn, disabled while the box holds only the page's
@@ -323,7 +343,7 @@ interface MountedView {
  * Evaluates the overview script with the smallest DOM it will accept.
  */
 function mountTagOverview(): MountedView {
-  const html = getTagOverviewHtml({ cspSource: 'vscode-webview://deckard' });
+  const html = getSearchPageHtml({ cspSource: 'vscode-webview://deckard' });
   const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? '';
   assert.notStrictEqual(script, '', 'the overview should render a script');
 
@@ -371,7 +391,14 @@ function mountTagOverview(): MountedView {
       createElement: createStubElement,
       body: createStubElement('body'),
     },
-    window: { addEventListener: addListener, innerWidth: 1200, innerHeight: 800 },
+    window: {
+      addEventListener: addListener,
+      innerWidth: 1200,
+      innerHeight: 800,
+      scrollX: 0,
+      scrollY: 0,
+      scrollTo: () => undefined,
+    },
     NodeFilter: { SHOW_TEXT: 4 },
     acquireVsCodeApi: () => ({
       postMessage: (message: Record<string, unknown>) => posted.push(message),
@@ -474,14 +501,17 @@ function createStubElement(tagName: string): any {
 function createState(
   queryText = 'tag = #project/atlas',
   extras: {
-    scope?: string;
+    origin?: string;
     facets?: unknown[];
     canAppend?: boolean;
     recent?: Array<{ value: string; label: string; detail?: string }>;
   } = {},
 ): unknown {
-  const value = (extras.scope ?? queryText).replace(/^tag = /, '').split(' ')[0];
+  const value = queryText.replace(/^tag = /, '').split(' ')[0];
   return {
+    originQuery: extras.origin ?? '',
+    noteColumns: 1,
+    taskColumns: 1,
     tag: {
       key: value,
       label: value,
@@ -491,7 +521,6 @@ function createState(
       count: 1,
       isFavorite: false,
     },
-    filterTags: [],
     sections: [],
     tasks: [],
     taskCounts: { all: 0, active: 0, completed: 0 },
@@ -500,11 +529,8 @@ function createState(
     sortMode: 'alphabetical',
     layout: 'tabs',
     tagTitleDisplayMode: 'inline',
-    associatedTags: [],
-    sharedAssociatedTags: [],
     query: {
       text: queryText,
-      ...(extras.scope !== undefined ? { scope: extras.scope } : {}),
       terms: [],
       canAppend: extras.canAppend ?? true,
       facets: extras.facets ?? [],

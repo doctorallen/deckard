@@ -15,8 +15,8 @@ const { existsSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
 const suites = [
-  'overviewQuery.e2e.js',
-  'dashboardSearch.e2e.js',
+  'searchPage.e2e.js',
+  'dashboardHome.e2e.js',
   'taskBoard.e2e.js',
   'stats.e2e.js',
   'sidebarNotes.e2e.js',

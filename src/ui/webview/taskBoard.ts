@@ -4,6 +4,7 @@ import { parseQuery } from '../../core/query/queryParser';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
 import { openSourceAt } from '../commands/navigation';
 import { toggleTask } from '../commands/taskActions';
 import {
@@ -16,6 +17,7 @@ import {
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
 import { createTaskBoard } from '../state/taskBoardState';
+import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
 
@@ -28,7 +30,7 @@ import { getTaskBoardHtml } from './taskBoardHtml';
  * and the reindex that follows sends the saved state back. A move that cannot
  * be written refreshes the board, which puts the card back.
  */
-export class TaskBoardPanel implements vscode.Disposable {
+export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
@@ -37,15 +39,26 @@ export class TaskBoardPanel implements vscode.Disposable {
   private invalidQuery: string | undefined;
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
+  /** Whether the last state sent put Refine in the sidebar. */
+  private refineWasInSidebar = false;
+  private lastSnapshot: TaskBoardSnapshot | undefined;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly openTag: (tagKey: string) => Promise<void>,
+    private readonly activeSearch: ActiveSearch,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(
+      activeSearch.onDidChangeRefineVisibility(() => {
+        if (activeSearch.isRefineInSidebar(this) !== this.refineWasInSidebar) {
+          this.refresh();
+        }
+      }),
+    );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.theme')) {
@@ -62,13 +75,38 @@ export class TaskBoardPanel implements vscode.Disposable {
     );
   }
 
-  public async show(): Promise<void> {
+  /**
+   * Opens the board, on a search when one is given, such as the one a Home
+   * widget lists.
+   */
+  public async show(query?: string): Promise<void> {
+    if (query !== undefined) {
+      this.applyQuery(query);
+    }
     if (!this.panel) {
       this.createPanel();
     }
     this.panel?.reveal(vscode.ViewColumn.Active);
     await this.indexer.ready;
     this.refresh();
+  }
+
+  public getRefineState(): SearchRefineState | undefined {
+    const snapshot = this.lastSnapshot ?? this.createSnapshot();
+    return {
+      page: 'taskBoard',
+      title: 'Task Board',
+      query: snapshot.query,
+      resultKinds: ['tasks'],
+    };
+  }
+
+  public async applySearch(queryText: string): Promise<void> {
+    const applied = this.applyQuery(queryText);
+    this.refresh();
+    if (applied && this.query) {
+      await this.preferences.recordRecentQuery(this.query);
+    }
   }
 
   /**
@@ -94,6 +132,7 @@ export class TaskBoardPanel implements vscode.Disposable {
   }
 
   public dispose(): void {
+    this.activeSearch.release(this);
     this.disposePanelListeners();
     this.panel?.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
@@ -121,6 +160,8 @@ export class TaskBoardPanel implements vscode.Disposable {
     this.panelDisposables = [
       panel.onDidDispose(() => {
         this.panel = undefined;
+        this.lastSnapshot = undefined;
+        this.activeSearch.release(this);
         this.disposePanelListeners();
       }),
       panel.webview.onDidReceiveMessage((message) =>
@@ -130,8 +171,18 @@ export class TaskBoardPanel implements vscode.Disposable {
         if (panel.visible && this.isStale) {
           this.refresh();
         }
+        this.updateActivity(panel.active);
       }),
     ];
+    this.updateActivity(panel.active);
+  }
+
+  private updateActivity(active: boolean): void {
+    if (active) {
+      this.activeSearch.setActive(this);
+    } else {
+      this.activeSearch.release(this);
+    }
   }
 
   private disposePanelListeners(): void {
@@ -156,23 +207,29 @@ export class TaskBoardPanel implements vscode.Disposable {
       return;
     }
     this.isStale = false;
+    const snapshot = measure('Task board', () => this.createSnapshot());
+    this.lastSnapshot = snapshot;
+    this.refineWasInSidebar = snapshot.refineInSidebar === true;
+    void this.panel.webview.postMessage({ type: 'state', data: snapshot });
+    this.activeSearch.notifyChanged(this);
+  }
+
+  private createSnapshot(): TaskBoardSnapshot {
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
       vscode.workspace
         .getConfiguration('deckard')
         .get<unknown>('tagTitleDisplayMode', 'inline'),
     );
-    void this.panel.webview.postMessage({
-      type: 'state',
-      data: measure('Task board', () =>
-        createTaskBoard(
-          this.indexer.getSnapshot(),
-          this.preferences.value,
-          { query: this.query, invalidQuery: this.invalidQuery },
-          readTaskBoardOptions(),
-          tagTitleDisplayMode,
-        ),
+    return {
+      ...createTaskBoard(
+        this.indexer.getSnapshot(),
+        this.preferences.value,
+        { query: this.query, invalidQuery: this.invalidQuery },
+        readTaskBoardOptions(),
+        tagTitleDisplayMode,
       ),
-    });
+      refineInSidebar: this.activeSearch.isRefineInSidebar(this),
+    };
   }
 
   /**
@@ -188,6 +245,36 @@ export class TaskBoardPanel implements vscode.Disposable {
     }
     this.query = query;
     return true;
+  }
+
+  /**
+   * Names the board's search and keeps it as a saved view that reopens here.
+   */
+  private async saveSearch(): Promise<void> {
+    const query = this.query.trim();
+    if (!query) {
+      return;
+    }
+    const name = await vscode.window.showInputBox({
+      title: 'Save Deckard filter',
+      prompt: 'Name this Task Board search',
+      value: query,
+      validateInput: (value) =>
+        value.trim() ? undefined : 'A saved filter needs a name.',
+    });
+    if (name === undefined) {
+      return;
+    }
+    const saved = await this.preferences.saveSavedQueryFilter(
+      name,
+      query,
+      'taskBoard',
+    );
+    if (saved) {
+      void vscode.window.showInformationMessage(
+        `Saved Deckard filter: ${saved.name}`,
+      );
+    }
   }
 
   /**
@@ -224,14 +311,12 @@ export class TaskBoardPanel implements vscode.Disposable {
           );
         }
         return;
-      case 'setBoardQuery': {
-        const applied = this.applyQuery(message.query);
-        this.refresh();
-        if (applied && this.query) {
-          await this.preferences.recordRecentQuery(this.query);
-        }
+      case 'setBoardQuery':
+        await this.applySearch(message.query);
         return;
-      }
+      case 'saveBoardSearch':
+        await this.saveSearch();
+        return;
       case 'setBoardStatuses':
         await updateTaskBoardSetting('statuses', [
           ...new Set(message.statuses.map((status) => status.toLowerCase())),

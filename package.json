@@ -107,6 +107,10 @@
         "title": "Deckard: Show Tag Overview"
       },
       {
+        "command": "deckard.search",
+        "title": "Deckard: Open Search Page"
+      },
+      {
         "command": "deckard.searchWorkspace",
         "title": "Deckard: Find"
       },
@@ -471,13 +475,13 @@
           "deckard.tagOverview.hubNoteExpanded": {
             "type": "boolean",
             "default": true,
-            "description": "Show a tag's hub note open at the top of its Tag Overview. When off, the hub starts collapsed to its title row; select the title to open it.",
+            "description": "Show a tag's hub note open at the top of its page. When off, the hub starts collapsed to its title row; select the title to open it.",
             "order": 5
           },
           "deckard.enableHeadingTagRelationships": {
             "type": "boolean",
             "default": true,
-            "description": "Show weighted tag associations from explicit co-occurrence and heading proximity in Tag Overviews.",
+            "description": "Offer related tags, weighted by explicit co-occurrence and heading proximity, when refining a search of tags.",
             "order": 6
           }
         }

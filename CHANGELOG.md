@@ -35,12 +35,54 @@
   `priority`), and `in:folder` work in every query, including query blocks
   and AI assistant queries.
 
-- **The Search tab**: the Dashboard's Notes tab is now **Search**, Deckard's
-  search page. It has the full search box, with completions, the builder,
-  **Refine** counts, the tasks the search matches, and **Save** beside
-  the box. Its tag picker is gone, since tags are typed in the search or
-  chosen under **Refine**. `Deckard: Search Notes and Tasks`, **Show all** in
-  Find, a query block's **Open in search**, and saved searches open there.
+- **Search pages**: every search opens a page in its own editor tab, and a
+  tag's overview is the page for that one tag. A search of exactly one tag
+  shows the tag or entity as its title and its hub note above its entries;
+  anything more, such as a second tag, words, or `is:open`, makes it an
+  ordinary search, shown by its search box and builder alone, and **Clear**
+  returns it to the tag it opened with. Each page has the full search box,
+  **Refine**, Notes and Tasks tabs or side by side, sorting, **Save**, and a
+  gear for layout, rendering, and note and task columns. Opening a search a
+  page already shows brings that page forward. `Deckard: Open Search Page`
+  opens one on every note, and `Deckard: Search Notes and Tasks`, **Show all**
+  in Find, a query block's **Open in search**, and saved searches open here.
+
+- **Home**: the Dashboard opens on a page of widgets you choose: a search box,
+  the tasks a search finds, the Agenda, favorite and frequent tags, saved
+  searches and their results, recent searches, recently opened notes, and
+  workspace totals, each linking to where its entries live. **Customize** in
+  the gear lets you drag widgets into order, set each to half or full width,
+  choose how many entries it lists and which search a tasks widget runs,
+  remove widgets, add more, and reset to the start. Widgets in a row share its
+  height.
+
+- **Related tags in Refine**: a search of one tag, or of several joined by AND,
+  is refined under **Tags** by the tags associated with them, strongest
+  first, each with the three-step rail Related Notes draws a tag's weight
+  with, showing its strength beside the strongest, in place of a count of the
+  tags on the results.
+
+- **Refine in the sidebar**: while a search page or the Task Board is the
+  active editor, Related Notes shows its Refine options, and only those, so
+  the page keeps its height for results. Selecting a value adds it to the
+  search, and a related tag's open icon opens its page in a new tab. A
+  **Refine** heading with these instructions leads the view; the page shows
+  one Refine line until the sidebar is closed.
+
+- **A note's tags as rows**: Related Notes lists the tags it ranks by one per
+  row, as Refine lists related tags, each with its rail and a count of the
+  notes and tasks carrying it.
+
+- **The search box is a field of chips**: each term of the search, a tag, a
+  condition, or words, is a chip with a remove icon inside the box, joined by
+  AND, in place of the row of terms under it. Tags are blue and left-out tags
+  red, and AND, OR, and NOT have their own color. A chosen completion becomes
+  a chip at once, Enter adds what was typed, Backspace in an empty field
+  removes the last chip, and text not added is let go when the box loses
+  focus. Two tags side by side, and Refine values, are joined with AND.
+
+- **Save on the Task Board**: **Save**, beside its search box, keeps the search
+  as a saved view that reopens on the Task Board.
 
 - **Refine**: under the search box, counts of open and done tasks, due
   dates, tags, update dates, and folders in the results. Select one to
@@ -113,11 +155,16 @@
 
 ### Changed
 
-- The Dashboard no longer has a **Tasks** tab; tasks have the **Task Board**.
-  The Dashboard opens on **Search**, and one left on Tasks reopens there.
+- The Dashboard's tabs are **Home** and **Tags**. It no longer has a
+  **Tasks** tab, since tasks have the **Task Board**, or a **Search** tab,
+  since searches open search pages; one left on either reopens on Home.
+  Saved searches are listed on the Tags tab and in Home's widgets.
 
-- The Task Board searches with the same search box as the Dashboard and tag
-  overviews, in place of its query field: completions, the builder, removable
+- The Related Notes sidebar no longer lists a tag overview's associated tags
+  and matching notes, or shows association strength as a percentage, which
+  could pass 100%; the tags are offered in Refine, with a strength rail.
+
+- The Task Board searches with the same search box as search pages, in place of its query field: completions, the builder, removable
   terms, and **Refine**, counting tasks alone. Plain words hide cards as they
   are typed, and a search that does not parse keeps the board as it was.
 

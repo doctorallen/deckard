@@ -29,14 +29,16 @@ export interface FacetSource {
 
 export interface FacetOptions {
   /**
-   * Whether to count tags. A single tag's overview already lists its
-   * associated tags, ranked better than a count can.
+   * Tags associated with the search's own, ranked by how strongly. When
+   * given, they are offered under Tags in place of the tags counted on the
+   * results, since an association ranks better than a count can.
    */
-  includeTags?: boolean;
+  related?: SearchFacetValue[];
   now?: number;
 }
 
 const TAG_VALUE_LIMIT = 10;
+const RELATED_VALUE_LIMIT = 30;
 const FOLDER_VALUE_LIMIT = 8;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -63,7 +65,9 @@ export function buildSearchFacets(
       .filter(
         (value) =>
           value.count > 0 &&
-          value.count < total &&
+          // A related tag every result carries still says how the search's
+          // tags relate, so it stays; any other value must narrow.
+          (value.count < total || id === 'related') &&
           !isWritten(queryText, value.clause),
       )
       .slice(0, limit),
@@ -75,6 +79,18 @@ export function buildSearchFacets(
   const today = startOfDay(now);
   const facets: SearchFacet[] = [];
   const tasks = source.tasks;
+  // The tags a query names are not offered again, but they are the tag
+  // facet's applied values, so another tag can be ORed with one.
+  const appliedTags = (): string[] =>
+    collectQueryTagKeys(parseQuery(queryText).node).filter((tagKey) =>
+      isWritten(queryText, tagKey),
+    );
+
+  if (options.related) {
+    const related = facet('related', 'Tags', options.related, RELATED_VALUE_LIMIT);
+    related.applied = appliedTags();
+    facets.push(related);
+  }
 
   facets.push(
     facet('status', 'Tasks', [
@@ -117,13 +133,9 @@ export function buildSearchFacets(
     ]),
   );
 
-  if (options.includeTags !== false) {
+  if (!options.related) {
     const tags = facet('tags', 'Tags', countTags(index, source, queryText), TAG_VALUE_LIMIT);
-    // The tags a query names are not offered again, but they are this
-    // facet's applied values, so another tag can be ORed with one.
-    tags.applied = collectQueryTagKeys(parseQuery(queryText).node).filter((tagKey) =>
-      isWritten(queryText, tagKey),
-    );
+    tags.applied = appliedTags();
     facets.push(tags);
   }
 
@@ -172,7 +184,7 @@ export function isWritten(queryText: string, clause: string): boolean {
  * Tags on the results, most common first, leaving out the tags the query
  * already names.
  */
-function countTags(
+export function countTags(
   index: WorkspaceIndex,
   source: FacetSource,
   queryText: string,

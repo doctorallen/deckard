@@ -86,6 +86,11 @@ ${getQueryEditorScript()}
     placeholder: function () { return 'Search tasks: words, #tags, is:open, has:due, due < 7d, priority >= high…'; },
     label: 'Search tasks',
     resultKinds: ['tasks'],
+    refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
+    // Saving sits with the search it saves; the saved search reopens here.
+    actions: function (hasText) {
+      return '<button data-action="save-board-search" data-query-needs-text title="Save this search as a view that opens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>';
+    },
   });
 
   /** Hide the rows and cards that do not have every plain word being typed. */
@@ -265,6 +270,7 @@ ${getQueryEditorScript()}
     if (target) {
       const action = target.dataset.action;
       if (action === 'open-tag') post({ type: 'openTag', tagKey: target.dataset.tagKey });
+      if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'set-task-filter') post({ type: 'setTaskFilter', filter: target.dataset.filter });
       if (action === 'remove-status') {
