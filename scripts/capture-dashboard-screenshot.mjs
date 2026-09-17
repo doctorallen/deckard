@@ -75,7 +75,7 @@ const viewConfiguration = {
     output: 'docs/images/notes-search.png',
     title: 'Notes search',
     renderedAssertion:
-      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Dashboard' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#notes-panel:not([hidden]) .query-workspace'))",
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Search' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.query-workspace'))",
   },
   'tag-overview': {
     scene: `await run('deckard.showTagOverview', '#project/ghostline-relay');`,
@@ -84,7 +84,7 @@ const viewConfiguration = {
     renderedAssertion:
       // The shell exists before the page script fills it, so wait for content
       // it renders, or the capture can catch an unpainted page.
-      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Tag Overview' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1')?.textContent?.trim()) && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.query-workspace'))",
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Search' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1')?.textContent?.trim()) && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.query-workspace'))",
   },
   help: {
     command: 'deckard.showHelp',
