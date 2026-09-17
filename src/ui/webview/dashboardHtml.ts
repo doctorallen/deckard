@@ -129,6 +129,10 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget .task-list { --task-columns: 1; }
 .home-widget .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
 .home-widget .metric::before { display: none; }
+/* The resting hint is a quiet line, not the dashed frame of edit mode. */
+.home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: 11px var(--font-mono); }
+.home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+.home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
 .home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
 .home-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .home-widget-options { position: relative; }
@@ -198,6 +202,8 @@ ${getQueryEditorScript()}
     : '';
   /** Whether Home is being arranged. */
   let editingHome = Boolean(restoredViewState && restoredViewState.editingHome);
+  /** Whether Reset is waiting to be confirmed. It is never restored. */
+  let confirmingReset = false;
   /** The widget whose options are open, which stays open across a redraw. */
   let openWidgetOptions;
   /** A tasks widget's search being typed in its options, by widget. */
@@ -730,8 +736,14 @@ ${getQueryEditorScript()}
   }
 
   function renderWidget(widget) {
-    const count = widget.total !== undefined && WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].listed
-      ? ' <span class="tag-count">' + widget.total + '</span>'
+    const listed = WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].listed;
+    // Each kind lists its own sort of entry, so the shown count is whichever
+    // list the widget carries.
+    const list = widget.tasks || widget.tags || widget.notes || widget.queries || widget.savedFilters || widget.tagPairs;
+    const shown = listed && list ? list.length : undefined;
+    // "5 of 37" rather than "37" over five rows, which read as the whole list.
+    const count = widget.total !== undefined && listed
+      ? ' <span class="tag-count">' + (shown !== undefined && shown < widget.total ? shown + ' of ' + widget.total : widget.total) + '</span>'
       : '';
     const actions = editingHome
       ? renderViewOptionChoices('set-widget-width', [['half', '½', 'Half width'], ['full', 'Full', 'Full width']], widget.width, 'Width', 'data-widget-id="' + escapeHtml(widget.id) + '"')
@@ -762,8 +774,12 @@ ${getQueryEditorScript()}
     if (!state.widgets) return '<div class="empty">Loading Home…</div>';
     const widgets = state.widgets;
     const bar = editingHome
-      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it.</span><div class="home-edit-actions">' + renderAddWidget() + '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button><button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
-      : '';
+      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
+        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
+        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button>') + '<button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
+      // A resting Home says it can be arranged. It is not the customizing bar,
+      // and does not share its class: that one means "Home is being edited".
+      : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><button type="button" data-action="customize-home">Customize</button></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
       : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize Home</button></div>';
@@ -818,7 +834,9 @@ ${getQueryEditorScript()}
       ? (favoriteTags.length
         ? '<div class="tag-group" data-tag-group="favorites"><h3>Favorites <span class="tag-count">(' + favoriteTags.length + ')</span></h3><div class="tag-list">' + favoriteTags.map(renderTag).join('') + '</div></div>'
         : '') + (otherTags.length ? '<div class="tag-group" data-tag-group="other"><h3>Other tags <span class="tag-count">(' + otherTags.length + ')</span></h3><div class="tag-list">' + otherTags.map(renderTag).join('') + '</div></div>' : '')
-      : '<div class="empty">No tags match your search.</div>';
+      : '<div class="empty">' + (state.tags.length
+        ? 'No tags match your search.'
+        : 'No tags indexed yet. Write a tag such as #project/atlas on a heading or a task, and it appears here.') + '</div>';
     const savedFilters = state.savedFilters.length
       ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved searches <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) { return renderSavedFilterRow(filter, true); }).join('') + '</div></section>'
       : '';
@@ -901,7 +919,18 @@ ${getQueryEditorScript()}
         return;
       }
       if (action === 'reset-widgets') {
+        confirmingReset = true;
+        render();
+        return;
+      }
+      if (action === 'confirm-reset-widgets') {
+        confirmingReset = false;
         send({ type: 'resetDashboardWidgets' });
+        return;
+      }
+      if (action === 'cancel-reset-widgets') {
+        confirmingReset = false;
+        render();
         return;
       }
       if (action === 'remove-widget') {
