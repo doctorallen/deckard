@@ -42,7 +42,15 @@ export type DashboardWidgetKind =
   | 'recentSearches'
   | 'recentNotes'
   | 'stats'
-  | 'savedQuery';
+  | 'savedQuery'
+  | 'todayNote'
+  | 'quickAdd'
+  | 'staleTasks'
+  | 'relatedNotes'
+  | 'tagPairs'
+  | 'unhubbedTags'
+  | 'newTags'
+  | 'pinnedNotes';
 
 /** Whether a widget takes one of Home's two columns or both. */
 export type DashboardWidgetWidth = 'half' | 'full';
@@ -59,6 +67,11 @@ export interface DashboardWidgetConfig {
   query?: string;
   /** The saved search a saved-search widget shows. */
   filterId?: string;
+  /**
+   * How many days a widget looks back: how long a stale task's note has gone
+   * unchanged, or how recently a new tag was first seen.
+   */
+  days?: number;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
@@ -280,6 +293,13 @@ export interface PersistedPreferences {
   taskBoardTaskFilter: TaskFilter;
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];
+  /**
+   * When Deckard first indexed each tag, in epoch milliseconds. Tags already
+   * in use when this began to be kept are 0, so none of them count as new.
+   */
+  tagFirstSeen?: Record<string, number>;
+  /** Notes pinned to Home, by path, in the order they were pinned. */
+  pinnedNotes?: string[];
 }
 
 /**
@@ -353,6 +373,26 @@ export interface DashboardWidgetNote {
   detail: string;
 }
 
+/** Two tags written together, as Home lists them. */
+export interface DashboardWidgetTagPair {
+  tags: [TagReference, TagReference];
+  /** How many times they were written together. */
+  count: number;
+  /** The share of the rarer tag's entries that also carry the other, 0–1. */
+  overlap: number;
+  detail: string;
+}
+
+/** Today's daily note, as Home shows it. */
+export interface DashboardWidgetToday {
+  /** Today, as YYYY-MM-DD. */
+  date: string;
+  /** The note, when it exists. */
+  filePath?: string;
+  /** Its open tasks, listed or not. */
+  openTaskCount: number;
+}
+
 /** One agenda group, as Home's agenda widget shows it. */
 export interface DashboardWidgetAgendaGroup {
   id: string;
@@ -385,6 +425,12 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   error?: string;
   /** The search widget's box: its completions and recent searches. */
   searchState?: QueryViewState;
+  tagPairs?: DashboardWidgetTagPair[];
+  today?: DashboardWidgetToday;
+  /** The note a related-notes widget ranks by, or a note Home can pin. */
+  sourceNote?: DashboardWidgetNote;
+  /** Whether the note in the editor last is already pinned. */
+  sourcePinned?: boolean;
 }
 
 /**
@@ -753,6 +799,35 @@ export interface OpenSearchMessage {
   query: string;
 }
 
+/** Opens today's daily note, creating it when it does not exist yet. */
+export interface OpenDailyNoteMessage {
+  type: 'openDailyNote';
+}
+
+/** Adds a task to today's daily note. */
+export interface QuickAddMessage {
+  type: 'quickAdd';
+  text: string;
+}
+
+/** Creates a tag's hub note. */
+export interface CreateTagHubMessage {
+  type: 'createTagHub';
+  tagKey: string;
+}
+
+/** Pins a note to Home, or unpins it. */
+export interface PinNoteMessage {
+  type: 'pinNote' | 'unpinNote';
+  filePath: string;
+}
+
+/** Opens a note at its top. */
+export interface OpenNoteMessage {
+  type: 'openNote';
+  filePath: string;
+}
+
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
@@ -914,7 +989,12 @@ export type DashboardMessage =
   | ResetDashboardWidgetsMessage
   | OpenSearchMessage
   | OpenTaskBoardMessage
-  | OpenDeckardViewMessage;
+  | OpenDeckardViewMessage
+  | OpenDailyNoteMessage
+  | QuickAddMessage
+  | CreateTagHubMessage
+  | PinNoteMessage
+  | OpenNoteMessage;
 
 export type SearchPageMessage =
   | OpenSourceMessage

@@ -202,6 +202,67 @@ suite('Preferences store', () => {
     store.dispose();
   });
 
+  test('keeps each look-back widget\'s days within bounds', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.setDashboardWidgets([
+      { id: 's', kind: 'staleTasks', width: 'half', days: 9999 },
+      { id: 'n', kind: 'newTags', width: 'half' },
+      { id: 'q', kind: 'quickAdd', width: 'full', days: 3, count: 4 },
+    ]);
+    assert.deepStrictEqual(store.value.dashboardWidgets, [
+      { id: 's', kind: 'staleTasks', width: 'half', count: 5, days: 365 },
+      { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
+      { id: 'q', kind: 'quickAdd', width: 'full' },
+    ]);
+    store.dispose();
+  });
+
+  test('knows every tag of the first index, and when each later tag was first seen', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    assert.strictEqual(store.value.tagFirstSeen, undefined);
+
+    await store.prune(['#old', '#kept'], [], undefined, undefined, undefined, 100);
+    assert.deepStrictEqual(store.value.tagFirstSeen, { '#old': 0, '#kept': 0 });
+
+    await store.prune(['#kept', '#new'], [], undefined, undefined, undefined, 200);
+    assert.deepStrictEqual(
+      store.value.tagFirstSeen,
+      { '#kept': 0, '#new': 200 },
+      'a gone tag is forgotten',
+    );
+
+    await store.prune(['#kept', '#new'], [], undefined, undefined, undefined, 300);
+    assert.strictEqual(store.value.tagFirstSeen?.['#new'], 200, 'a tag is new once');
+
+    // Renamed to a name not yet used, a tag is no newer than it was.
+    await store.replaceTagKey('#kept', '#renamed');
+    assert.strictEqual(store.value.tagFirstSeen?.['#renamed'], 0);
+    store.dispose();
+  });
+
+  test('pins notes once, in order, and forgets pinned notes that are gone', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.pinNote('notes/a.md');
+    await store.pinNote('notes/b.md');
+    await store.pinNote('notes/a.md');
+    assert.deepStrictEqual(store.value.pinnedNotes, ['notes/a.md', 'notes/b.md']);
+
+    await store.unpinNote('notes/a.md');
+    assert.deepStrictEqual(store.value.pinnedNotes, ['notes/b.md']);
+
+    await store.pinNote('notes/c.md');
+    await store.prune([], [], undefined, undefined, ['notes/c.md']);
+    assert.deepStrictEqual(store.value.pinnedNotes, ['notes/c.md']);
+
+    await store.prune([], []);
+    assert.deepStrictEqual(
+      store.value.pinnedNotes,
+      ['notes/c.md'],
+      'without the index\'s files, pins are kept',
+    );
+    store.dispose();
+  });
+
   test('updates tag order and favorite membership together', async () => {
     const memento = new MemoryMemento();
     const store = new PreferencesStore(memento);

@@ -81,7 +81,27 @@ export const DASHBOARD_WIDGET_KINDS: Readonly<
   recentNotes: { repeatable: false, listed: true },
   stats: { repeatable: false, listed: false },
   savedQuery: { repeatable: true, listed: true },
+  todayNote: { repeatable: false, listed: true },
+  quickAdd: { repeatable: false, listed: false },
+  staleTasks: { repeatable: false, listed: true },
+  relatedNotes: { repeatable: false, listed: true },
+  tagPairs: { repeatable: false, listed: true },
+  unhubbedTags: { repeatable: false, listed: true },
+  newTags: { repeatable: false, listed: true },
+  pinnedNotes: { repeatable: false, listed: true },
 };
+
+/** How many days back each widget that looks back starts at. */
+export const DASHBOARD_WIDGET_DEFAULT_DAYS: Readonly<
+  Partial<Record<DashboardWidgetKind, number>>
+> = {
+  staleTasks: 30,
+  newTags: 14,
+};
+/** The furthest back a widget can look, in days. */
+export const DASHBOARD_WIDGET_DAYS_LIMIT = 365;
+/** The most notes Home keeps pinned. */
+export const PINNED_NOTE_LIMIT = 50;
 
 /** The most entries a list widget can show. */
 export const DASHBOARD_WIDGET_COUNT_LIMIT = 20;
@@ -290,6 +310,23 @@ export class PreferencesStore implements vscode.Disposable {
     await this.update({ dashboardWidgets: cloneWidgets(DEFAULT_DASHBOARD_WIDGETS) });
   }
 
+  /** Pins a note to Home, after the notes pinned before it. */
+  public async pinNote(filePath: string): Promise<void> {
+    const pinnedNotes = this.preferences.pinnedNotes ?? [];
+    if (pinnedNotes.includes(filePath) || pinnedNotes.length >= PINNED_NOTE_LIMIT) {
+      return;
+    }
+    await this.update({ pinnedNotes: [...pinnedNotes, filePath] });
+  }
+
+  public async unpinNote(filePath: string): Promise<void> {
+    await this.update({
+      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
+        (candidate) => candidate !== filePath,
+      ),
+    });
+  }
+
   public async setDashboardMode(mode: DashboardMode): Promise<void> {
     await this.updateDashboardViewState({ mode });
   }
@@ -423,6 +460,10 @@ export class PreferencesStore implements vscode.Disposable {
     };
     const { [sourceKey]: movedTime, ...tagAccessTimes } =
       this.preferences.tagAccessTimes ?? {};
+    // A tag renamed to a new name is no newer than it was; merged into a tag
+    // that exists, it takes that tag's time.
+    const firstSeen = this.preferences.tagFirstSeen;
+    const movedFirstSeen = firstSeen?.[sourceKey];
 
     await this.update({
       favoriteTags: replaceKeys(this.preferences.favoriteTags),
@@ -438,6 +479,14 @@ export class PreferencesStore implements vscode.Disposable {
               ...tagAccessTimes,
               [targetKey]: Math.max(movedTime, tagAccessTimes[targetKey] ?? 0),
             },
+      ...(firstSeen && movedFirstSeen !== undefined
+        ? {
+            tagFirstSeen: {
+              ...firstSeen,
+              [targetKey]: firstSeen[targetKey] ?? movedFirstSeen,
+            },
+          }
+        : {}),
       dashboardWidgets: this.preferences.dashboardWidgets.map((widget) =>
         widget.query
           ? { ...widget, query: replaceTagInQuery(widget.query, sourceKey, targetKey) }
@@ -557,6 +606,8 @@ export class PreferencesStore implements vscode.Disposable {
     validTaskIds: Iterable<string>,
     validSectionIds?: Iterable<string>,
     validEntityKeys?: Iterable<string>,
+    validFilePaths?: Iterable<string>,
+    now = Date.now(),
   ): Promise<void> {
     const validTags = new Set(validTagKeys);
     const validTasks = new Set(validTaskIds);
@@ -602,6 +653,16 @@ export class PreferencesStore implements vscode.Disposable {
         : [];
     });
     const savedFilterIds = new Set(savedFilters.map((filter) => filter.id));
+    // Every tag in the first index is known; a tag seen after that is new
+    // from the moment it is seen, until it is gone again.
+    const previousFirstSeen = this.preferences.tagFirstSeen;
+    const tagFirstSeen = Object.fromEntries(
+      [...validTags].map((tagKey) => [
+        tagKey,
+        previousFirstSeen ? (previousFirstSeen[tagKey] ?? now) : 0,
+      ]),
+    );
+    const validFiles = validFilePaths ? new Set(validFilePaths) : undefined;
     const changes: Partial<PersistedPreferences> = {
       dashboardWidgets: this.preferences.dashboardWidgets.filter(
         (widget) =>
@@ -633,6 +694,10 @@ export class PreferencesStore implements vscode.Disposable {
         ),
       ),
       savedFilters,
+      tagFirstSeen,
+      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
+        (filePath) => validFiles?.has(filePath) ?? true,
+      ),
     };
     // Every index update prunes, and it rarely removes anything. Writing
     // anyway would make every view that follows preferences refresh twice.
@@ -766,6 +831,11 @@ function normalizePreferences(
     dashboardWidgets: Array.isArray(value?.dashboardWidgets)
       ? normalizeDashboardWidgets(value.dashboardWidgets)
       : cloneWidgets(DEFAULT_DASHBOARD_WIDGETS),
+    // Left out until the first index is seen, which marks every tag known.
+    ...(typeof value?.tagFirstSeen === 'object' && value.tagFirstSeen !== null
+      ? { tagFirstSeen: normalizeFirstSeenTimes(value.tagFirstSeen) }
+      : {}),
+    pinnedNotes: uniqueStrings(value?.pinnedNotes).slice(0, PINNED_NOTE_LIMIT),
   };
 }
 
@@ -819,6 +889,14 @@ export function normalizeDashboardWidgets(
           ? candidate.query.trim()
           : 'is:open';
     }
+    const defaultDays = DASHBOARD_WIDGET_DEFAULT_DAYS[widgetKind];
+    if (defaultDays !== undefined) {
+      const days = candidate.days;
+      widget.days =
+        typeof days === 'number' && Number.isInteger(days)
+          ? Math.min(DASHBOARD_WIDGET_DAYS_LIMIT, Math.max(1, days))
+          : defaultDays;
+    }
     if (widgetKind === 'savedQuery') {
       if (typeof candidate.filterId !== 'string' || !candidate.filterId) {
         continue;
@@ -860,6 +938,18 @@ function replaceTagInQuery(
 /**
  * Keeps only positive, finite timestamps.
  */
+/** First-seen times, where 0 marks a tag known before times were kept. */
+function normalizeFirstSeenTimes(
+  values: Record<string, number>,
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      ([key, time]) =>
+        key.length > 0 && typeof time === 'number' && Number.isFinite(time) && time >= 0,
+    ),
+  );
+}
+
 function normalizeAccessTimes(
   values: Record<string, number> | undefined,
 ): Record<string, number> {

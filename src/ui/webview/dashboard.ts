@@ -23,11 +23,16 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
 
-/** Where the Dashboard sends a reader who leaves it. */
+/** Where the Dashboard sends a reader who leaves it, and what it asks for. */
 export interface DashboardNavigation {
   openTag(tagKey: string): void | Promise<void>;
   openSearch(query: string): void | Promise<void>;
   openTaskBoard(query?: string): void | Promise<void>;
+  /** Opens today's daily note, creating it first when needed. */
+  openDailyNote(): void | Promise<void>;
+  /** Adds a task to today's daily note; true when it was added. */
+  quickAdd(text: string): boolean | Promise<boolean>;
+  createHubNote(tagKey: string): void | Promise<void>;
 }
 
 /**
@@ -42,6 +47,8 @@ export class DashboardPanel implements vscode.Disposable {
   private isStale = false;
   private dashboardMode: DashboardMode = 'home';
   private dashboardTagColumns: DashboardColumnCount;
+  /** The note last open in an editor, which Home's widgets can follow. */
+  private sourceNotePath: string | undefined;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -53,6 +60,16 @@ export class DashboardPanel implements vscode.Disposable {
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.followEditor(vscode.window.activeTextEditor);
+    this.disposables.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        const previous = this.sourceNotePath;
+        this.followEditor(editor);
+        if (this.sourceNotePath !== previous && this.followsSourceNote()) {
+          this.refresh();
+        }
+      }),
+    );
     this.disposables.push(
       preferences.onDidChange((nextPreferences) => {
         this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
@@ -147,6 +164,39 @@ export class DashboardPanel implements vscode.Disposable {
     this.attachPanel(panel);
     await this.indexer.ready;
     this.refresh();
+  }
+
+  /** Remembers a note's editor; other editors, and none, leave it as it was. */
+  private followEditor(editor: vscode.TextEditor | undefined): void {
+    const uri = editor?.document.uri;
+    // A test's indexer may not tell notes apart; then no editor is followed.
+    if (uri && this.indexer.isNotesFile?.(uri)) {
+      this.sourceNotePath = this.indexer.getFilePath(uri);
+    }
+  }
+
+  /** Whether a widget on Home shows something about the last note. */
+  private followsSourceNote(): boolean {
+    return this.preferences.value.dashboardWidgets.some(
+      (widget) => widget.kind === 'relatedNotes' || widget.kind === 'pinnedNotes',
+    );
+  }
+
+  /**
+   * The note last open in an editor, or else the note last opened from
+   * Deckard.
+   */
+  private getSourceNotePath(): string | undefined {
+    if (this.sourceNotePath) {
+      return this.sourceNotePath;
+    }
+    const index = this.indexer.getSnapshot();
+    const [latest] = Object.entries(
+      this.preferences.value.sectionAccessTimes ?? {},
+    )
+      .filter(([sectionId]) => index.sections.has(sectionId))
+      .sort((left, right) => right[1] - left[1]);
+    return latest ? index.sections.get(latest[0])?.filePath : undefined;
   }
 
   /**
@@ -271,6 +321,23 @@ export class DashboardPanel implements vscode.Disposable {
               now: Date.now(),
               upcomingDays: configuration.get<number>('agenda.upcomingDays', 7),
               tagTitleDisplayMode,
+              sourceNotePath: this.getSourceNotePath(),
+              relatedNotes: {
+                enableKeywordLinks: configuration.get<boolean>(
+                  'enableKeywordLinks',
+                  true,
+                ),
+                ranking: {
+                  associationMinimumSupport: configuration.get<number>(
+                    'relatedNotesAssociationMinimumSupport',
+                    1,
+                  ),
+                  recencyHalfLifeDays: configuration.get<number>(
+                    'relatedNotesRecencyHalfLifeDays',
+                    0,
+                  ),
+                },
+              },
             }),
           }
         : {}),
@@ -450,6 +517,39 @@ export class DashboardPanel implements vscode.Disposable {
         await vscode.commands.executeCommand(
           message.view === 'agenda' ? 'deckard.agenda.focus' : 'deckard.showStats',
         );
+        return;
+      case 'openDailyNote':
+        await this.navigation.openDailyNote();
+        return;
+      case 'quickAdd': {
+        const added = await this.navigation.quickAdd(message.text.trim());
+        void this.panel?.webview.postMessage({
+          type: 'quickAddResult',
+          text: message.text,
+          added,
+        });
+        return;
+      }
+      case 'createTagHub':
+        // A tag that has a hub already opens it instead.
+        if (index.tags.get(message.tagKey)?.hubFilePaths?.length) {
+          await this.navigation.openTag(message.tagKey);
+        } else if (index.tags.has(message.tagKey)) {
+          await this.navigation.createHubNote(message.tagKey);
+        }
+        return;
+      case 'openNote':
+        if (index.files.has(message.filePath)) {
+          await openSourceAt(message.filePath, 1);
+        }
+        return;
+      case 'pinNote':
+        if (index.files.has(message.filePath)) {
+          await this.preferences.pinNote(message.filePath);
+        }
+        return;
+      case 'unpinNote':
+        await this.preferences.unpinNote(message.filePath);
         return;
     }
   }

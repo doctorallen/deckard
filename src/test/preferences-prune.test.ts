@@ -26,6 +26,8 @@ suite('Preference pruning', () => {
     const store = new PreferencesStore(memento);
     await store.recordTagAccess('#project/relay');
     await store.recordSectionAccess('relay-section');
+    // The first prune learns which tags the index already has.
+    await store.prune(['#project/relay'], [], ['relay-section'], []);
     const writes = memento.writes;
     let changes = 0;
     store.onDidChange(() => {

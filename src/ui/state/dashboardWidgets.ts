@@ -9,12 +9,14 @@ import {
   TagTitleDisplayMode,
   WorkspaceIndex,
 } from '../../core/types';
+import { formatLocalDate, listDailyNotes } from '../commands/dailyNote';
 import { createAgenda } from './agendaState';
 import {
   createDashboardSavedFilters,
   createDashboardTask,
   createQueryViewState,
   createSearchPageSnapshot,
+  describeAssociation,
   describeTagMatches,
   getFileName,
   getSavedFilterQuery,
@@ -22,6 +24,16 @@ import {
   sortTasks,
 } from './dashboardState';
 import { frecencyScore } from './frecency';
+import {
+  collectFileTags,
+  rankRelatedNotes,
+  RelatedNotesRankingOptions,
+  sortRelatedNotes,
+} from './relatedNotesRanking';
+
+const DAY = 24 * 60 * 60 * 1000;
+/** How many entries a tag needs before Home suggests it a hub note. */
+const HUB_SUGGESTION_MINIMUM = 3;
 
 /** What Home's widgets need beyond the index and preferences. */
 export interface DashboardWidgetOptions {
@@ -29,6 +41,13 @@ export interface DashboardWidgetOptions {
   /** How far ahead the agenda widget looks, from `deckard.agenda.upcomingDays`. */
   upcomingDays: number;
   tagTitleDisplayMode: TagTitleDisplayMode;
+  /** The note last open in an editor, which Home can rank by and pin. */
+  sourceNotePath?: string;
+  /** How Related Notes ranks, from its settings. */
+  relatedNotes?: {
+    enableKeywordLinks: boolean;
+    ranking: RelatedNotesRankingOptions;
+  };
 }
 
 /** Each widget's heading. A saved-search widget is named after its search. */
@@ -43,6 +62,14 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   recentNotes: 'Recently opened',
   stats: 'Workspace',
   savedQuery: 'Saved search',
+  todayNote: 'Today',
+  quickAdd: 'Quick add',
+  staleTasks: 'Stale tasks',
+  relatedNotes: 'Related notes',
+  tagPairs: 'Tags written together',
+  unhubbedTags: 'Tags without a hub',
+  newTags: 'New tags',
+  pinnedNotes: 'Pinned notes',
 };
 
 /**
@@ -245,5 +272,244 @@ function createWidget(
         tasks: page.tasks.slice(0, count),
       };
     }
+    case 'todayNote':
+    case 'quickAdd': {
+      const today = findTodayNote(index, options.now);
+      if (config.kind === 'quickAdd') {
+        return { ...widget, today: today.summary };
+      }
+      return {
+        ...widget,
+        today: today.summary,
+        total: today.tasks.length,
+        tasks: today.tasks
+          .slice(0, count)
+          .map((task) => createDashboardTask(task, index.sections)),
+      };
+    }
+    case 'staleTasks': {
+      // A task is as old as the note it is in, as the note dates itself.
+      const cutoff = options.now - (config.days ?? 30) * DAY;
+      const stale = [...index.tasks.values()]
+        .flatMap((task) => {
+          const updatedAt =
+            index.files.get(task.filePath)?.updatedAt ?? task.updatedAt;
+          return !task.completed && updatedAt !== undefined && updatedAt < cutoff
+            ? [{ task, updatedAt }]
+            : [];
+        })
+        .sort(
+          (left, right) =>
+            left.updatedAt - right.updatedAt ||
+            left.task.filePath.localeCompare(right.task.filePath) ||
+            left.task.lineNumber - right.task.lineNumber,
+        );
+      return {
+        ...widget,
+        total: stale.length,
+        tasks: stale
+          .slice(0, count)
+          .map(({ task }) => createDashboardTask(task, index.sections)),
+      };
+    }
+    case 'relatedNotes': {
+      const filePath = options.sourceNotePath;
+      const file = filePath ? index.files.get(filePath) : undefined;
+      if (!filePath || !file) {
+        return { ...widget, total: 0, notes: [] };
+      }
+      const settings = options.relatedNotes ?? {
+        enableKeywordLinks: true,
+        ranking: {},
+      };
+      const ranked = sortRelatedNotes(
+        rankRelatedNotes(
+          index,
+          filePath,
+          file,
+          collectFileTags(file),
+          settings.enableKeywordLinks,
+          'separate',
+          undefined,
+          settings.ranking,
+        ),
+        'tags',
+        {},
+      );
+      return {
+        ...widget,
+        sourceNote: describeNote(index, filePath),
+        total: ranked.length,
+        notes: ranked.slice(0, count).map((note) => ({
+          filePath: note.filePath,
+          line: note.sourceLine,
+          title: stripTags(note.title).trim() || note.fileName,
+          detail: [note.fileName]
+            .concat(note.matchedTags.map((tag) => tag.label))
+            .join(' · '),
+        })),
+      };
+    }
+    case 'tagPairs': {
+      const pairs = listTagPairs(index);
+      return { ...widget, total: pairs.length, tagPairs: pairs.slice(0, count) };
+    }
+    case 'unhubbedTags': {
+      const tags = [...index.tags.values()]
+        .filter(
+          (tag) =>
+            !tag.hubFilePaths?.length && tag.count >= HUB_SUGGESTION_MINIMUM,
+        )
+        .sort(
+          (left, right) =>
+            right.count - left.count || left.label.localeCompare(right.label),
+        );
+      return {
+        ...widget,
+        total: tags.length,
+        tags: tags.slice(0, count).map((tag) => ({
+          key: tag.key,
+          label: tag.label,
+          detail: describeTagMatches(index, tag.key),
+        })),
+      };
+    }
+    case 'newTags': {
+      const cutoff = options.now - (config.days ?? 14) * DAY;
+      const firstSeen = preferences.tagFirstSeen ?? {};
+      const tags = [...index.tags.values()]
+        .flatMap((tag) => {
+          const seenAt = firstSeen[tag.key];
+          return seenAt !== undefined && seenAt > 0 && seenAt >= cutoff
+            ? [{ tag, seenAt }]
+            : [];
+        })
+        .sort(
+          (left, right) =>
+            right.seenAt - left.seenAt ||
+            left.tag.label.localeCompare(right.tag.label),
+        );
+      return {
+        ...widget,
+        total: tags.length,
+        tags: tags.slice(0, count).map(({ tag, seenAt }) => ({
+          key: tag.key,
+          label: tag.label,
+          detail: `${describeAge(options.now, seenAt)} · ${describeTagMatches(index, tag.key)}`,
+        })),
+      };
+    }
+    case 'pinnedNotes': {
+      const pinned = (preferences.pinnedNotes ?? []).filter((filePath) =>
+        index.files.has(filePath),
+      );
+      const source = options.sourceNotePath;
+      return {
+        ...widget,
+        total: pinned.length,
+        notes: pinned
+          .slice(0, count)
+          .map((filePath) => describeNote(index, filePath)),
+        ...(source && index.files.has(source)
+          ? {
+              sourceNote: describeNote(index, source),
+              sourcePinned: pinned.includes(source),
+            }
+          : {}),
+      };
+    }
   }
+}
+
+/** Today's daily note, when there is one, and its open tasks. */
+function findTodayNote(index: WorkspaceIndex, now: number) {
+  const date = formatLocalDate(new Date(now));
+  const note = listDailyNotes(index).find((entry) => entry.date === date);
+  const tasks = note
+    ? (index.files.get(note.filePath)?.tasks ?? [])
+        .map((task) => index.tasks.get(task.id) ?? task)
+        .filter((task) => !task.completed)
+    : [];
+  return {
+    tasks,
+    summary: {
+      date,
+      ...(note ? { filePath: note.filePath } : {}),
+      openTaskCount: tasks.length,
+    },
+  };
+}
+
+/** A note by its top heading, or its name, and the folder it is in. */
+function describeNote(index: WorkspaceIndex, filePath: string) {
+  const file = index.files.get(filePath);
+  const heading = file?.sections.find((section) => !section.isInline);
+  const fileName = getFileName(filePath) ?? filePath;
+  const folder = filePath.includes('/')
+    ? filePath.slice(0, filePath.lastIndexOf('/'))
+    : '';
+  return {
+    filePath,
+    line: 1,
+    title: (heading ? stripTags(heading.heading).trim() : '') || fileName,
+    detail: folder ? `${fileName} · ${folder}` : fileName,
+  };
+}
+
+/**
+ * Every two tags written together, most often first. Tags written together
+ * nearly every time they are written may be one idea under two names.
+ */
+function listTagPairs(index: WorkspaceIndex) {
+  const seen = new Set<string>();
+  const pairs: Array<NonNullable<DashboardWidget['tagPairs']>[number]> = [];
+  index.tagAssociations?.forEach((associations, tagKey) => {
+    const tag = index.tags.get(tagKey);
+    for (const association of associations) {
+      const other = index.tags.get(association.associatedTag.key);
+      const count = association.coOccurrenceCount;
+      if (!tag || !other || count <= 0) {
+        continue;
+      }
+      const [first, second] = [tag, other].sort((left, right) =>
+        left.key.localeCompare(right.key),
+      );
+      const pairKey = `${first.key}\u0000${second.key}`;
+      if (first.key === second.key || seen.has(pairKey)) {
+        continue;
+      }
+      seen.add(pairKey);
+      const rarer = Math.min(
+        association.tagSourceUnitCount,
+        association.associatedTagSourceUnitCount,
+      );
+      const overlap = rarer > 0 ? Math.min(1, count / rarer) : 0;
+      pairs.push({
+        tags: [
+          { key: first.key, label: first.label },
+          { key: second.key, label: second.label },
+        ],
+        count,
+        overlap,
+        detail: `${describeAssociation(association)}; together in ${Math.round(overlap * 100)}% of the rarer tag's entries`,
+      });
+    }
+  });
+  return pairs.sort(
+    (left, right) =>
+      right.count - left.count ||
+      right.overlap - left.overlap ||
+      left.tags[0].label.localeCompare(right.tags[0].label) ||
+      left.tags[1].label.localeCompare(right.tags[1].label),
+  );
+}
+
+/** How long ago a time was, in whole days. */
+function describeAge(now: number, time: number): string {
+  const days = Math.floor((now - time) / DAY);
+  return days <= 0
+    ? 'First seen today'
+    : days === 1
+      ? 'First seen yesterday'
+      : `First seen ${days} days ago`;
 }

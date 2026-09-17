@@ -108,6 +108,20 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--cyan-bright); }
 .home-row-label code { background: none; padding: 0; color: inherit; font-size: 11px; }
 .home-row-detail { flex: 0 0 auto; color: var(--muted); font: 10px var(--font-mono); }
+/* A row with its own action beside it, such as Create hub or Unpin. */
+.home-row-with-action { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
+.home-row-with-action > .home-row { flex: 1 1 auto; min-width: 0; }
+.home-row-action { flex: 0 0 auto; min-height: 26px; padding: 2px 8px; text-transform: none; white-space: nowrap; }
+.home-widget-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; color: var(--muted); font: 11px var(--font-mono); }
+.home-widget-source strong { color: var(--text); font-weight: normal; overflow-wrap: anywhere; }
+.home-tag-pair { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.home-tag-pair-join { color: var(--muted); font: 10px var(--font-mono); }
+.home-today-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.home-today-date { color: var(--text); font: 13px var(--font-mono); }
+.home-quick-add { display: flex; gap: 6px; }
+.home-quick-add input { flex: 1 1 auto; min-width: 0; min-height: 30px; }
+.home-quick-add button { min-height: 30px; padding: 3px 10px; }
+.home-quick-add-status { margin: 6px 0 0; color: var(--muted); font: 11px var(--font-mono); }
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .home-widget-group:first-child { margin-top: 0; }
 .home-widget-empty { margin: 0; color: var(--muted); font-size: 12px; }
@@ -187,6 +201,9 @@ ${getQueryEditorScript()}
   let openWidgetOptions;
   /** A tasks widget's search being typed in its options, by widget. */
   const widgetQueryDrafts = {};
+  /** The task being typed into Quick add, and what became of the last one. */
+  let quickAddDraft = '';
+  let quickAddStatus = '';
 
   /** The widgets Home can add, and what each shows. */
   const WIDGET_KINDS = {
@@ -200,6 +217,14 @@ ${getQueryEditorScript()}
     recentNotes: { label: 'Recently opened', description: 'The notes you opened lately', repeatable: false, listed: true },
     stats: { label: 'Workspace', description: 'How many notes, tasks, and tags there are', repeatable: false, listed: false },
     savedQuery: { label: 'Saved search results', description: 'What one saved search finds', repeatable: true, listed: true },
+    todayNote: { label: 'Today', description: "Today's daily note and its open tasks", repeatable: false, listed: true },
+    quickAdd: { label: 'Quick add', description: "Add a task to today's daily note", repeatable: false, listed: false },
+    staleTasks: { label: 'Stale tasks', description: 'Open tasks in notes left unchanged for a while', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 30 },
+    relatedNotes: { label: 'Related notes', description: 'Notes related to the note you had open last', repeatable: false, listed: true },
+    tagPairs: { label: 'Tags written together', description: 'Tags most often written together, which may want a hub note or one name', repeatable: false, listed: true },
+    unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
+    newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
+    pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
   };
 
   /**
@@ -409,10 +434,11 @@ ${getQueryEditorScript()}
     const widget = {
       id: kind + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       kind: kind,
-      width: kind === 'search' || kind === 'stats' ? 'full' : 'half',
+      width: kind === 'search' || kind === 'stats' || kind === 'quickAdd' ? 'full' : 'half',
     };
     if (traits.listed) widget.count = 5;
     if (kind === 'tasks') widget.query = 'is:open';
+    if (traits.defaultDays) widget.days = traits.defaultDays;
     if (kind === 'savedQuery') {
       if (separator < 0) return;
       widget.filterId = String(value).slice(separator + 1);
@@ -514,20 +540,61 @@ ${getQueryEditorScript()}
       : '<p class="home-widget-empty">' + escapeHtml(emptyText) + '</p>';
   }
 
-  function renderHomeNotes(notes, emptyText) {
+  /** A row, and beside it a button of its own when there is one. */
+  function withRowAction(row, actionHtml) {
+    return actionHtml ? '<div class="home-row-with-action">' + row + actionHtml + '</div>' : row;
+  }
+
+  function renderRowAction(action, attributes, label, title) {
+    return '<button type="button" class="home-row-action" data-action="' + action + '" ' + attributes + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
+  }
+
+  /**
+   * Notes that open at their line, or at their top when they are whole notes.
+   * actionFor adds a button beside a note.
+   */
+  function renderHomeNotes(notes, emptyText, wholeNotes, actionFor) {
     return notes && notes.length
       ? '<div class="home-list">' + notes.map(function (note) {
-        return renderHomeRow('open-source', 'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.line + '"', escapeHtml(note.title), note.detail);
+        const row = wholeNotes
+          ? renderHomeRow('open-note', 'data-file-path="' + escapeHtml(note.filePath) + '"', escapeHtml(note.title), note.detail)
+          : renderHomeRow('open-source', 'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.line + '"', escapeHtml(note.title), note.detail);
+        return withRowAction(row, actionFor ? actionFor(note) : '');
       }).join('') + '</div>'
       : '<p class="home-widget-empty">' + escapeHtml(emptyText) + '</p>';
   }
 
-  function renderHomeTags(tags, emptyText) {
+  /** Tags that open their page. actionFor adds a button beside a tag. */
+  function renderHomeTags(tags, emptyText, actionFor) {
     return tags && tags.length
       ? '<div class="home-list">' + tags.map(function (tag) {
-        return renderHomeRow('open-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', renderTagLabel(tag.label), tag.detail);
+        const row = renderHomeRow('open-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', renderTagLabel(tag.label), tag.detail);
+        return withRowAction(row, actionFor ? actionFor(tag) : '');
       }).join('') + '</div>'
       : '<p class="home-widget-empty">' + escapeHtml(emptyText) + '</p>';
+  }
+
+  /** Two tags written together, which open a search for both. */
+  function renderTagPairs(pairs) {
+    return pairs && pairs.length
+      ? '<div class="home-list">' + pairs.map(function (pair) {
+        const query = pair.tags[0].key + ' AND ' + pair.tags[1].key;
+        const label = '<span class="home-tag-pair">' + renderTagLabel(pair.tags[0].label) + '<span class="home-tag-pair-join">+</span>' + renderTagLabel(pair.tags[1].label) + '</span>';
+        return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
+      }).join('') + '</div>'
+      : '<p class="home-widget-empty">Tags written on the same line or heading show up here.</p>';
+  }
+
+  /** The note a widget follows, and what can be done with it. */
+  function renderSourceNote(prefix, note, actionHtml) {
+    return '<div class="home-widget-source"><span>' + escapeHtml(prefix) + ' <strong>' + escapeHtml(note.title) + '</strong></span>' + (actionHtml || '') + '</div>';
+  }
+
+  function renderQuickAdd(widget) {
+    const today = widget.today || {};
+    const target = today.filePath ? 'today’s note, ' + today.date : 'a new note for ' + (today.date || 'today');
+    return '<form class="home-quick-add" data-form="quick-add"><input type="text" data-action="quick-add-draft" value="' + escapeHtml(quickAddDraft) + '" placeholder="Call Ren about the audit #project/atlas 📅 tomorrow" aria-label="Task to add to today’s note" autocomplete="off" spellcheck="true"><button type="submit">Add</button></form>'
+      + '<p class="home-quick-add-status" role="status">' + escapeHtml(quickAddStatus || 'Adds an open task to ' + target + '.') + '</p>';
   }
 
   /** What one widget shows. */
@@ -567,6 +634,39 @@ ${getQueryEditorScript()}
         return '<div class="metrics">' + (widget.stats || []).map(function (stat) {
           return '<div class="metric"><span class="metric-value">' + stat.value + '</span><span class="metric-label">' + escapeHtml(stat.label) + '</span></div>';
         }).join('') + '</div>';
+      case 'todayNote': {
+        const today = widget.today || {};
+        const summary = '<div class="home-today-summary"><span class="home-today-date">' + escapeHtml(today.date || '') + '</span>'
+          + (today.filePath ? '' : '<button type="button" data-action="open-daily-note">Create today’s note</button>') + '</div>';
+        if (!today.filePath) return summary + '<p class="home-widget-empty">There is no daily note for today yet.</p>';
+        return summary + renderHomeTasks(widget.tasks, 'No open tasks in today’s note.');
+      }
+      case 'quickAdd':
+        return renderQuickAdd(widget);
+      case 'staleTasks':
+        return renderHomeTasks(widget.tasks, 'No open task sits in a note left unchanged for ' + (widget.days || 30) + ' days.');
+      case 'relatedNotes':
+        if (!widget.sourceNote) return '<p class="home-widget-empty">Open a note to see the notes related to it.</p>';
+        return renderSourceNote('Related to', widget.sourceNote)
+          + renderHomeNotes(widget.notes, 'No notes share its tags.');
+      case 'tagPairs':
+        return renderTagPairs(widget.tagPairs);
+      case 'unhubbedTags':
+        return renderHomeTags(widget.tags, 'Every frequently used tag has a hub note.', function (tag) {
+          return renderRowAction('create-tag-hub', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Create hub', 'Create a hub note for ' + tag.label);
+        });
+      case 'newTags':
+        return renderHomeTags(widget.tags, 'No tag was first seen in the last ' + (widget.days || 14) + ' days.', function (tag) {
+          return renderRowAction('rename-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Rename', 'Rename ' + tag.label + ' everywhere');
+        });
+      case 'pinnedNotes': {
+        const source = widget.sourceNote && !widget.sourcePinned
+          ? renderSourceNote('Open:', widget.sourceNote, renderRowAction('pin-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Pin', 'Pin ' + widget.sourceNote.title + ' to Home'))
+          : '';
+        return source + renderHomeNotes(widget.notes, 'Pin a note with “Deckard: Pin Note to Home” to keep it here.', true, function (note) {
+          return renderRowAction('unpin-note', 'data-file-path="' + escapeHtml(note.filePath) + '"', '×', 'Unpin ' + note.title);
+        });
+      }
       case 'savedQuery':
         if (widget.missing) return '<p class="home-widget-empty">This saved search was removed.</p>';
         // A search saved on the Task Board finds tasks alone.
@@ -589,6 +689,12 @@ ${getQueryEditorScript()}
       case 'favoriteTags':
       case 'topTags': return link('set-dashboard-mode', 'data-dashboard-mode="browse"', 'All tags');
       case 'stats': return link('open-view', 'data-view="stats"', 'Stats');
+      case 'todayNote': return widget.today && widget.today.filePath ? link('open-daily-note', '', 'Open') : '';
+      case 'staleTasks': return link('open-task-board', 'data-query="is:open"', 'Task Board');
+      case 'unhubbedTags':
+      case 'newTags':
+      case 'tagPairs': return link('set-dashboard-mode', 'data-dashboard-mode="browse"', 'All tags');
+      case 'relatedNotes': return widget.sourceNote ? link('open-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Open note') : '';
       case 'savedQuery':
         if (widget.missing) return '';
         return widget.savedPage === 'taskBoard'
@@ -605,6 +711,9 @@ ${getQueryEditorScript()}
     const groups = [];
     if (traits.listed) {
       groups.push('<div class="view-options-group"><span>Show</span>' + renderViewOptionChoices('set-widget-count', [[3, '3'], [5, '5'], [10, '10'], [20, '20']], widget.count || 5, 'Entries shown', attribute) + '</div>');
+    }
+    if (traits.days) {
+      groups.push('<div class="view-options-group"><span>' + (widget.kind === 'newTags' ? 'Seen within' : 'Unchanged for') + '</span>' + renderViewOptionChoices('set-widget-days', traits.days, widget.days || traits.defaultDays, 'Days', attribute) + '</div>');
     }
     if (widget.kind === 'tasks') {
       const draft = widgetQueryDrafts[widget.id] !== undefined ? widgetQueryDrafts[widget.id] : (widget.query || '');
@@ -806,6 +915,16 @@ ${getQueryEditorScript()}
         updateWidget(target.dataset.widgetId, { count: Number(target.dataset.value) });
         return;
       }
+      if (action === 'set-widget-days') {
+        updateWidget(target.dataset.widgetId, { days: Number(target.dataset.value) });
+        return;
+      }
+      if (action === 'open-daily-note') send({ type: 'openDailyNote' });
+      if (action === 'create-tag-hub') send({ type: 'createTagHub', tagKey: target.dataset.tagKey });
+      if (action === 'rename-tag') send({ type: 'renameTag', tagKey: target.dataset.tagKey });
+      if (action === 'open-note') send({ type: 'openNote', filePath: target.dataset.filePath });
+      if (action === 'pin-note') send({ type: 'pinNote', filePath: target.dataset.filePath });
+      if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath });
       if (action === 'open-search') send({ type: 'openSearch', query: target.dataset.query || '' });
       if (action === 'open-task-board') send({ type: 'openTaskBoard', query: target.dataset.query || '' });
       if (action === 'open-view') send({ type: 'openView', view: target.dataset.view });
@@ -835,6 +954,18 @@ ${getQueryEditorScript()}
   });
 
   document.addEventListener('submit', function (event) {
+    if (event.target.closest('[data-form="quick-add"]')) {
+      event.preventDefault();
+      const text = quickAddDraft.trim();
+      if (!text) return;
+      // The field is cleared at once; the host gives the text back if it
+      // could not add it.
+      quickAddDraft = '';
+      quickAddStatus = 'Adding…';
+      send({ type: 'quickAdd', text: text });
+      renderKeepingFocus();
+      return;
+    }
     const form = event.target.closest('[data-form="widget-query"]');
     if (!form) return;
     event.preventDefault();
@@ -893,12 +1024,25 @@ ${getQueryEditorScript()}
       scheduleSearch('tags', browseQuery);
       renderKeepingFocus();
     }
+    if (target.dataset.action === 'quick-add-draft') {
+      quickAddDraft = target.value;
+    }
     if (target.dataset.action === 'widget-query-draft') {
       widgetQueryDrafts[target.dataset.widgetId] = target.value;
     }
   });
 
   window.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'quickAddResult') {
+      if (event.data.added) {
+        quickAddStatus = 'Added “' + event.data.text + '”.';
+      } else {
+        quickAddStatus = 'Could not add the task.';
+        if (!quickAddDraft) quickAddDraft = event.data.text;
+      }
+      renderKeepingFocus();
+      return;
+    }
     if (event.data && event.data.type === 'state') {
       const incomingState = event.data.data;
       tagColumns = incomingState.tagColumns ?? tagColumns ?? 2;

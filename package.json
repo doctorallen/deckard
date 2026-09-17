@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.14.0",
+  "version": "1.15.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -61,6 +61,14 @@
       {
         "command": "deckard.createDailyNote",
         "title": "Deckard: Create Daily Note"
+      },
+      {
+        "command": "deckard.pinNote",
+        "title": "Deckard: Pin Note to Home"
+      },
+      {
+        "command": "deckard.unpinNote",
+        "title": "Deckard: Unpin Note from Home"
       },
       {
         "command": "deckard.previousDailyNote",
@@ -182,6 +190,14 @@
         {
           "command": "deckard.quickFind.complete",
           "when": "false"
+        },
+        {
+          "command": "deckard.pinNote",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.unpinNote",
+          "when": "editorLangId == markdown"
         }
       ],
       "view/title": [
