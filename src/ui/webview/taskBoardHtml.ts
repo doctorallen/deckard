@@ -59,7 +59,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
-<main id="app" aria-live="polite"><div class="empty">Loading tasks...</div></main>
+<main id="app"><div class="empty">Loading tasks...</div></main>
+<div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
@@ -100,6 +101,18 @@ ${getQueryEditorScript()}
       const text = entry.textContent.toLowerCase();
       entry.hidden = !words.every(function (word) { return text.indexOf(word) >= 0; });
     });
+  }
+
+  /**
+   * Whether a card has every plain word being typed. The board is drawn with
+   * this so a column's count and its empty state follow the words, instead of
+   * a heading counting cards that are no longer on screen.
+   */
+  function isCardVisible(card) {
+    const words = editor.previewWords(editor.currentText());
+    if (!words.length) return true;
+    const text = [card.title, (card.details || []).join(' ')].join(' ').toLowerCase();
+    return words.every(function (word) { return text.indexOf(word) >= 0; });
   }
 
   /**
@@ -173,7 +186,7 @@ ${getQueryEditorScript()}
     }).join('');
     const namespace = namespaceDraft === undefined ? state.settings.statusNamespace : namespaceDraft;
     return '<div class="board-settings">'
-      + '<p class="board-settings-note">Columns when grouped by Status. Drag to reorder; Done always comes last.</p>'
+      + '<p class="board-settings-note">Columns when grouped by Status. Drag to reorder; Done always comes last. Saved in your settings, so they apply to every workspace unless this one sets its own.</p>'
       + (rows ? '<ul class="board-status-list" aria-label="Status columns">' + rows + '</ul>' : '<p class="board-settings-note">No status columns. Tasks without a status still get one.</p>')
       + '<form class="board-settings-row" data-form="add-status"><input type="text" data-action="status-draft" value="' + escapeHtml(statusDraft) + '" placeholder="Add a status, such as review" aria-label="New status column" autocomplete="off" spellcheck="false"><button type="submit">Add</button></form>'
       + '<span>Status tag</span>'
@@ -197,18 +210,25 @@ ${getQueryEditorScript()}
       { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board']], state.layout, 'Task layout') },
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
     ]);
-    const total = state.taskCount + (state.taskCount === 1 ? ' task' : ' tasks');
+    const shown = state.taskCounts && state.taskCounts[state.taskFilter] !== undefined
+      ? state.taskCounts[state.taskFilter]
+      : state.taskCount;
+    const total = shown + (shown === 1 ? ' task' : ' tasks');
+    // The filter applies to both layouts, so its switch belongs in both: it
+    // used to vanish on the board while still quietly filtering the list.
     const viewRow = '<div class="board-view-row">'
-      + (isList ? renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') : '<span></span>')
+      + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter')
       + '</div>';
     const list = (state.tasks || []).length
       ? state.tasks.map(function (item) {
         return renderTaskListRow(item, { draggable: canRank(), titleDisplay: state.tagTitleDisplayMode });
       }).join('')
-      : '<div class="empty">No tasks match this filter.</div>';
+      : '<div class="empty">' + (state.taskCount
+        ? 'No tasks match this filter.'
+        : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. A #' + escapeHtml(state.settings.statusNamespace) + '/… tag on a task puts it in a column.') + '</div>';
     const content = isList
       ? viewRow + '<div class="task-list">' + list + '</div>'
-      : renderTaskBoard(state);
+      : viewRow + renderTaskBoard(state, isCardVisible);
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>'
       + '<div class="board-header-actions"><span class="board-total">' + total + '</span>' + viewOptions + '</div></header>'

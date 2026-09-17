@@ -212,7 +212,11 @@ export function parseSearchPageMessage(
       return Object.keys(value).length === 1 ? { type: value.type } : undefined;
     case 'setOverviewQuery':
       return isOverviewQueryMessage(value)
-        ? { type: 'setOverviewQuery', query: value.query as string }
+        ? {
+            type: 'setOverviewQuery',
+            query: value.query as string,
+            remember: value.remember !== false,
+          }
         : undefined;
     default:
       return undefined;
@@ -231,9 +235,10 @@ const MAX_QUERY_LENGTH = 2000;
  */
 function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
   return (
-    Object.keys(value).length === 2 &&
+    Object.keys(value).length <= 3 &&
     typeof value.query === 'string' &&
-    value.query.length <= MAX_QUERY_LENGTH
+    value.query.length <= MAX_QUERY_LENGTH &&
+    (value.remember === undefined || typeof value.remember === 'boolean')
   );
 }
 
@@ -387,6 +392,10 @@ export function parseTaskBoardMessage(
     case 'setBoardGroup':
       return isTaskBoardGroupBy(value.groupBy)
         ? { type: 'setBoardGroup', groupBy: value.groupBy }
+        : undefined;
+    case 'showColumnRest':
+      return typeof value.columnId === 'string' && value.columnId.length > 0
+        ? { type: 'showColumnRest', columnId: value.columnId }
         : undefined;
     case 'setBoardQuery':
       return typeof value.query === 'string' &&

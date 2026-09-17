@@ -508,7 +508,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private async handleValidMessage(message: SearchPageMessage): Promise<void> {
     switch (message.type) {
       case 'setOverviewQuery':
-        await this.applyQuery(message.query);
+        await this.applyQuery(message.query, message.remember !== false);
         return;
       case 'clearOverviewQuery':
         await this.applyQuery(this.originQuery, false);

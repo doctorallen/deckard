@@ -136,6 +136,20 @@ button:focus-visible, select:focus-visible, input:focus-visible {
 }
 button[disabled] { opacity: .5; cursor: default; }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+/* The status node every page announces through. Off-screen, never hidden
+   with display:none, which would stop it being announced at all. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .toolbar { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 .toolbar label {
   display: inline-flex;
@@ -376,7 +390,12 @@ export function getTaskBoardCss(): string {
 }
 .board-column.is-overdue .board-column-title { color: var(--favorite-red); }
 .board-count { color: var(--muted); }
-.board-cards { display: grid; gap: 8px; min-height: 48px; }
+/* A column with hundreds of tasks scrolls in place: without this one long
+   column made the whole page hundreds of cards tall, and dragging to a far
+   column meant scrolling away from both. */
+.board-column { max-height: calc(100vh - 220px); overflow: hidden; }
+.board-column-title { position: sticky; top: 0; z-index: 1; background: var(--panel-deep); padding-bottom: 6px; }
+.board-cards { display: grid; align-content: start; gap: 8px; min-height: 48px; overflow-y: auto; }
 .board-card { position: relative; }
 .board-card.dragging { opacity: .45; }
 .board-card .task-title { padding-right: 26px; }
@@ -464,6 +483,23 @@ export function getBaseCss(): string {
  */
 export function getComponentScript(): string {
   return `
+  /**
+   * Say one short thing to a screen reader.
+   *
+   * A page rebuilds itself wholesale on every snapshot, so the page body must
+   * not be a live region: it would re-announce the whole page on each index
+   * update and each keystroke. Pages announce what actually changed here
+   * instead, into the small status node every page carries.
+   */
+  function announce(message) {
+    const status = document.getElementById('live-status');
+    if (!status) return;
+    const text = String(message || '');
+    // Repeating the same string is not announced again, so clear it first.
+    if (status.textContent === text) status.textContent = '';
+    status.textContent = text;
+  }
+
   /** Escape snapshot data before it is inserted as HTML. */
   function escapeHtml(value) {
     return String(value)
@@ -661,14 +697,17 @@ export function getComponentScript(): string {
     }).join('');
     const details = card.details.map(function (detail) {
       const overdue = card.overdue && detail.indexOf('due ') === 0;
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
+      // Colour alone carried this before, which says nothing to a reader who
+      // cannot see it, or on a board grouped by anything but due date.
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(overdue ? 'overdue, ' + detail : detail) + '</span>';
     }).join(' · ');
+    const plainTitle = String(card.title || '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
-      + '<input type="checkbox" data-action="board-toggle-task" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
+      + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
-      + '<select class="board-move" data-action="board-move" title="Move to another column" aria-label="Move this task to another column"><option value="" selected hidden>⋯</option>' + moves + '</select>'
+      + '<select class="board-move" data-action="board-move" title="Move to another column" aria-label="' + escapeHtml('Move ' + plainTitle + ' to another column') + '"><option value="" selected hidden>⋯</option>' + moves + '</select>'
       + '</div></article>';
   }
 
@@ -688,7 +727,7 @@ export function getComponentScript(): string {
         + ' aria-label="' + escapeHtml(column.label + ', ' + count + (count === 1 ? ' task' : ' tasks')) + '">'
         + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + count + '</span></h2>'
         + '<div class="board-cards">' + body + '</div>'
-        + (column.hiddenCount ? '<p class="board-more">and ' + column.hiddenCount + ' more</p>' : '')
+        + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
         + '</section>';
     }).join('') + '</div>';
   }
@@ -720,6 +759,11 @@ export function getComponentScript(): string {
       const group = event.target.closest('[data-action="set-board-group"]');
       if (group) {
         post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      const rest = event.target.closest('[data-action="show-column-rest"]');
+      if (rest) {
+        post({ type: 'showColumnRest', columnId: rest.dataset.columnId });
         return;
       }
       if (event.target.closest('input, select, button, a')) return;
@@ -1191,6 +1235,8 @@ export function getQueryEditorCss(): string {
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: 11px; }
+.query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -1495,15 +1541,44 @@ export function getQueryEditorScript(): string {
       document.querySelectorAll('.query-bar-shell').forEach(function (shell) { shell.setAttribute('data-query-text', String(text || '')); });
     }
 
+    /** Whether the applied search ran and matched nothing of any kind. */
+    function matchedNothing() {
+      if (!appliedText().trim()) return false;
+      const counts = query().matchCounts;
+      if (!counts) return false;
+      return (options.resultKinds || ['notes', 'tasks']).every(function (kind) { return !counts[kind]; });
+    }
+
+    /**
+     * Ways out of a search that found nothing. Narrowing is useless here, so
+     * the Refine row offers the two ways to widen instead: drop the term that
+     * was added last, or go back to what the page opened with.
+     */
+    function renderRecovery() {
+      const terms = query().terms || [];
+      const last = terms.length > 1 ? terms[terms.length - 1] : undefined;
+      const label = last ? String(last.label || last.text) : '';
+      const drop = last
+        ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" title="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
+        : '';
+      const clear = canClear(currentText())
+        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear the search</button>'
+        : '';
+      if (!drop && !clear) return '';
+      return '<span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">' + drop + clear + '</span>';
+    }
+
     /** What the results could still be narrowed by, with counts. */
     function renderFacets() {
       const facets = query().facets || [];
       const count = renderMatchCount();
+      const recovery = matchedNothing() ? renderRecovery() : '';
       if (!facets.length && !count) return '';
       if (options.refineElsewhere && options.refineElsewhere()) {
-        return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span><span class="query-facets-empty">' + (facets.length ? 'In the Related Notes sidebar.' : 'Nothing left to narrow by.') + '</span></div>' + count + '</section>';
+        const note = recovery || '<span class="query-facets-empty">' + (facets.length ? 'In the Related Notes sidebar.' : 'Nothing left to narrow by.') + '</span>';
+        return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + note + '</div>' + count + '</section>';
       }
-      const empty = facets.length ? '' : '<span class="query-facets-empty">Nothing left to narrow by.</span>';
+      const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
         return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
           return renderFacetValue(facet, value);
@@ -1707,11 +1782,18 @@ export function getQueryEditorScript(): string {
      * one that only removes or adds a chip, or comes from the builder, keeps
      * it, as keepEntry says.
      */
-    function run(text, keepEntry) {
+    function run(text, keepEntry, incidental) {
       awaitingApply = true;
       lastEntry = entry;
       entryAfterRun = keepEntry ? entry : '';
-      options.apply(joinTags(String(text).trim()));
+      // The host answers with a fresh snapshot, and the page rebuilds itself
+      // from it. Without this the caret would be thrown away on every search,
+      // so the next keystroke would go nowhere.
+      restoreFocus = true;
+      // A facet click or a dropped chip is a step along the way, not a search
+      // worth keeping: recording those evicts what the reader actually typed
+      // from the short list of recent searches.
+      options.apply(joinTags(String(text).trim()), !incidental);
     }
 
     /**
@@ -1725,14 +1807,14 @@ export function getQueryEditorScript(): string {
         const existing = facet && facet.applied && facet.applied[0];
         const merged = existing ? mergeAlternative(text, existing, clause) : undefined;
         if (merged !== undefined) {
-          run(merged, true);
+          run(merged, true, true);
           return;
         }
       }
       const term = mode === 'exclude' ? '-' + clause : clause;
-      if (!text) run(term, true);
-      else if (query().canAppend === false) run('(' + text + ') AND ' + term, true);
-      else run(text + ' AND ' + term, true);
+      if (!text) run(term, true, true);
+      else if (query().canAppend === false) run('(' + text + ') AND ' + term, true, true);
+      else run(text + ' AND ' + term, true, true);
     }
 
     /** Put a clause beside an existing one as an alternative. */
@@ -2172,7 +2254,7 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'remove-term') {
           closeSuggestions();
-          run(target.dataset.without || '', true);
+          run(target.dataset.without || '', true, true);
           const bar = document.querySelector('[data-suggest-key="query"]');
           if (bar && bar.focus) bar.focus();
           return true;
@@ -2269,7 +2351,7 @@ export function getQueryEditorScript(): string {
           if (appliedText().trim()) {
             event.preventDefault();
             closeSuggestions();
-            run(terms.length ? terms[terms.length - 1].without : '');
+            run(terms.length ? terms[terms.length - 1].without : '', false, true);
           }
           return true;
         }

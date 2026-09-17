@@ -880,6 +880,12 @@ export interface SaveTagOverviewFilterMessage {
 export interface SetOverviewQueryMessage {
   type: 'setOverviewQuery';
   query: string;
+  /**
+   * Whether this search is worth keeping in the recent searches. A search
+   * typed or built is; one that only follows a facet click or a dropped chip
+   * is a step along the way, and would evict the typed ones.
+   */
+  remember?: boolean;
 }
 
 /**
@@ -1127,7 +1133,14 @@ export interface SaveBoardSearchMessage {
   type: 'saveBoardSearch';
 }
 
+/** Asks the board to show every task a column is holding back. */
+export interface ShowColumnRestMessage {
+  type: 'showColumnRest';
+  columnId: string;
+}
+
 export type TaskBoardMessage =
+  | ShowColumnRestMessage
   | SaveBoardSearchMessage
   | SidebarReadyMessage
   | OpenSourceMessage
