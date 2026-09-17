@@ -23,6 +23,7 @@ import {
   findDailyNoteDate,
   stripTags,
 } from '../../core/markdown/parser';
+import { countTagMatches } from '../../core/query/queryEvaluator';
 import {
   findTagAssociation,
   getFileName,
@@ -58,7 +59,6 @@ export function createSidebarSnapshot(
       activeTags: [],
       notes: [],
       relatedNotesSortMode,
-      tagOverviewFilters: [],
       tagTitleDisplayMode,
       state: 'noMarkdown',
     };
@@ -77,9 +77,11 @@ export function createSidebarSnapshot(
           )
           .map(({ tag }) => tag)
       : sortedActiveTags;
+  const tagMatches = countTagMatches(index);
   const weightedActiveTags: SidebarTag[] = activeTags.map((tag) => ({
     ...tag,
     weight: activeTagWeights?.get(tag.key) ?? 1,
+    matches: tagMatches.get(tag.key) ?? { notes: 0, tasks: 0 },
   }));
   const notes = rankRelatedNotes(
     index,
@@ -97,7 +99,6 @@ export function createSidebarSnapshot(
     activeTags: weightedActiveTags,
     notes: sortRelatedNotes(notes, relatedNotesSortMode, sectionAccessCounts),
     relatedNotesSortMode,
-    tagOverviewFilters: [],
     tagTitleDisplayMode,
     state:
       notes.length > 0

@@ -1,6 +1,13 @@
 import * as assert from 'assert';
 
-import { TagReference, Task, WorkspaceIndex } from '../core/types';
+import { PreferencesStore } from '../core/storage/preferences';
+import {
+  PersistedPreferences,
+  TagReference,
+  Task,
+  TaskBoardGroupBy,
+  WorkspaceIndex,
+} from '../core/types';
 import {
   createTaskBoard,
   layoutTaskBoard,
@@ -11,6 +18,7 @@ import {
 import {
   parseDashboardMessage,
   parseSidebarMessage,
+  parseTaskBoardMessage,
 } from '../ui/webview/messages';
 
 const at = (month: number, day: number): number =>
@@ -24,6 +32,33 @@ const options: TaskBoardOptions = {
   format: 'emoji',
 };
 
+/** Preferences as a fresh install has them, with the board's own choices. */
+function preferencesWith(values: Partial<PersistedPreferences>): PersistedPreferences {
+  const store = new PreferencesStore({
+    get: () => undefined,
+    keys: () => [],
+    update: async () => undefined,
+  } as never);
+  const value = { ...store.value, ...values };
+  store.dispose();
+  return value;
+}
+
+/** The Task Board page, grouped and searched as given. */
+function board(
+  index: WorkspaceIndex,
+  groupBy: TaskBoardGroupBy,
+  query: string,
+  boardOptions: TaskBoardOptions,
+): ReturnType<typeof createTaskBoard> {
+  return createTaskBoard(
+    index,
+    preferencesWith({ taskBoardGroup: groupBy }),
+    { query },
+    boardOptions,
+  );
+}
+
 suite('Task board', () => {
   const ids = (board: ReturnType<typeof createTaskBoard>): Array<[string, string[]]> =>
     board.columns.map((column) => [
@@ -32,7 +67,7 @@ suite('Task board', () => {
     ]);
 
   test('groups by the status written on each task line', () => {
-    assert.deepStrictEqual(ids(createTaskBoard(createIndex(), 'status', '', options)), [
+    assert.deepStrictEqual(ids(board(createIndex(), 'status', '', options)), [
       ['status:', ['call']],
       ['status:todo', ['draft']],
       ['status:doing', ['audit']],
@@ -43,7 +78,7 @@ suite('Task board', () => {
   });
 
   test('groups by priority and by due date', () => {
-    assert.deepStrictEqual(ids(createTaskBoard(createIndex(), 'priority', '', options)), [
+    assert.deepStrictEqual(ids(board(createIndex(), 'priority', '', options)), [
       ['priority:highest', []],
       ['priority:high', ['audit']],
       ['priority:medium', []],
@@ -53,7 +88,7 @@ suite('Task board', () => {
       ['done', ['ship', 'file']],
     ]);
 
-    const due = createTaskBoard(createIndex(), 'due', '', options);
+    const due = board(createIndex(), 'due', '', options);
     assert.deepStrictEqual(ids(due), [
       ['due:overdue', ['audit']],
       ['due:today', ['call']],
@@ -71,12 +106,12 @@ suite('Task board', () => {
   });
 
   test('limits Done and narrows the board with a query', () => {
-    const limited = createTaskBoard(createIndex(), 'status', '', { ...options, doneLimit: 1 });
+    const limited = board(createIndex(), 'status', '', { ...options, doneLimit: 1 });
     const done = limited.columns[limited.columns.length - 1];
     assert.deepStrictEqual(done.cards.map((card) => card.taskId), ['ship']);
     assert.strictEqual(done.hiddenCount, 1);
 
-    const filtered = createTaskBoard(createIndex(), 'status', 'priority >= high', options);
+    const filtered = board(createIndex(), 'status', 'priority >= high', options);
     assert.strictEqual(filtered.taskCount, 1);
   });
 
@@ -101,7 +136,7 @@ suite('Task board', () => {
       {},
     );
     index.tasks.set(task.id, task);
-    const card = createTaskBoard(index, 'status', '', options)
+    const card = board(index, 'status', '', options)
       .columns.flatMap((column) => column.cards)
       .find((candidate) => candidate.taskId === 'read');
     assert.ok(card);
@@ -113,27 +148,101 @@ suite('Task board', () => {
     assert.match(card.title, /\*\*the brief\*\*/, 'the plain title is kept for search');
   });
 
-  test('accepts the Dashboard’s layout, grouping, and move messages', () => {
+  test('searches tasks with the shared search box, and keeps one that does not parse', () => {
+    const searched = board(createIndex(), 'status', 'priority >= high', options);
+    assert.strictEqual(searched.query.text, 'priority >= high');
+    assert.deepStrictEqual(searched.query.matchCounts, { notes: 0, tasks: 1 });
+    assert.strictEqual(searched.query.isAdvanced, true);
+
+    const invalid = createTaskBoard(
+      createIndex(),
+      preferencesWith({}),
+      { query: 'priority >= high', invalidQuery: 'priority >=' },
+      options,
+    );
+    // The box keeps the search that ran as chips, and the typed one pending.
+    assert.strictEqual(invalid.query.text, 'priority >= high');
+    assert.strictEqual(invalid.query.pending, 'priority >=');
+    assert.ok(invalid.query.diagnostics.some((diagnostic) => diagnostic.severity === 'error'));
+    assert.strictEqual(invalid.taskCount, 1, 'the applied search still chooses the tasks');
+
+    // Refine counts only what could narrow these tasks.
+    const tagged = board(createIndex(), 'status', 'is:open', options);
+    assert.ok(tagged.query.facets.every((facet) => facet.values.every((value) => value.count < 4)));
+  });
+
+  test('lists the searched tasks when shown as a list, with the settings it edits', () => {
+    const listed = createTaskBoard(
+      createIndex(),
+      preferencesWith({ taskBoardLayout: 'list', taskBoardTaskFilter: 'completed' }),
+      { query: '' },
+      options,
+    );
+    assert.strictEqual(listed.layout, 'list');
+    assert.deepStrictEqual(listed.columns, []);
+    assert.deepStrictEqual(listed.tasks?.map((item) => item.task.id).sort(), ['file', 'ship']);
+    assert.deepStrictEqual(listed.taskCounts, { all: 6, active: 4, completed: 2 });
+    assert.deepStrictEqual(listed.settings, { statuses: ['todo', 'doing'], statusNamespace: 'status' });
+    assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
+  });
+
+  test('accepts the Task Board’s layout, list, and settings messages', () => {
     assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'setDashboardTaskLayout', layout: 'board' }),
-      { type: 'setDashboardTaskLayout', layout: 'board' },
+      parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'list' }),
+      { type: 'setTaskLayout', layout: 'list' },
+    );
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'grid' }), undefined);
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setTaskFilter', filter: 'completed' }),
+      { type: 'setTaskFilter', filter: 'completed' },
+    );
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setTaskSort', mode: 'created' }),
+      { type: 'setTaskSort', mode: 'created' },
+    );
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'reorderTasks', taskIds: ['b', 'a'] }),
+      { type: 'reorderTasks', taskIds: ['b', 'a'] },
+    );
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['todo', 'in-review'] }),
+      { type: 'setBoardStatuses', statuses: ['todo', 'in-review'] },
     );
     assert.strictEqual(
-      parseDashboardMessage({ type: 'setDashboardTaskLayout', layout: 'grid' }),
+      parseTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['to do'] }),
+      undefined,
+      'a status that cannot be a tag is refused',
+    );
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: 'stage' }),
+      { type: 'setBoardStatusNamespace', namespace: 'stage' },
+    );
+    assert.strictEqual(
+      parseTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: '1stage' }),
       undefined,
     );
     assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'setBoardGroup', groupBy: 'due' }),
-      { type: 'setBoardGroup', groupBy: 'due' },
-    );
-    assert.deepStrictEqual(
-      parseDashboardMessage({ type: 'moveTask', taskId: 'a', column: 'status:doing' }),
+      parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: 'status:doing' }),
       { type: 'moveTask', taskId: 'a', column: 'status:doing' },
     );
     assert.strictEqual(
-      parseDashboardMessage({ type: 'moveTask', taskId: 'a', column: '' }),
+      parseTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: '' }),
       undefined,
     );
+  });
+
+  test('no longer takes task messages on the Dashboard', () => {
+    for (const message of [
+      { type: 'setDashboardTaskLayout', layout: 'board' },
+      { type: 'setBoardGroup', groupBy: 'due' },
+      { type: 'moveTask', taskId: 'a', column: 'status:doing' },
+      { type: 'setTaskFilter', filter: 'all' },
+      { type: 'setTaskTags', tagKeys: ['work'] },
+      { type: 'reorderTasks', taskIds: ['a'] },
+      { type: 'setDashboardMode', mode: 'tasks' },
+    ]) {
+      assert.strictEqual(parseDashboardMessage(message), undefined, message.type);
+    }
   });
 
   test('opens from the sidebar toolbar', () => {

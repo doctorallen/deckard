@@ -8,12 +8,16 @@ import {
   canAppendTerm,
   extractTagTerms,
   getTopLevelTerms,
+  refineQueryText,
 } from '../core/query/queryEdit';
 import { parseQuery } from '../core/query/queryParser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { PreferencesStore } from '../core/storage/preferences';
 import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
-import { createDashboardSnapshot } from '../ui/state/dashboardState';
+import {
+  createQuerySuggestions,
+  createSearchPageSnapshot,
+} from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
 
 class MemoryMemento implements vscode.Memento {
@@ -146,7 +150,7 @@ suite('Refining a search', () => {
     assert.deepStrictEqual(status?.values.map((value) => value.clause), ['is:done']);
   });
 
-  test('a search of words narrows the Search tab by title, file name, body, and tags', async () => {
+  test('a search of words finds notes by title, file name, body, and tags', async () => {
     const files = [
       parseMarkdown('notes/vault.md', '# Plan\nNothing else.'),
       parseMarkdown('notes/door.md', '# Other\nThe vault door.'),
@@ -154,12 +158,92 @@ suite('Refining a search', () => {
     ];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const store = new PreferencesStore(new MemoryMemento());
+
     // Written with its field, a text condition is still a search of words.
-    await store.setDashboardSearch('notes', 'text ~ "vault"');
+    const snapshot = createSearchPageSnapshot(index, store.value, 'text ~ "vault"');
 
-    const snapshot = createDashboardSnapshot(index, store.value, 'active');
+    assert.deepStrictEqual(snapshot.sections.map((note) => note.heading).sort(), ['Other', 'Plan']);
+    assert.strictEqual(snapshot.query.matchCounts.notes, 2);
+    store.dispose();
+  });
 
-    assert.deepStrictEqual(snapshot.notes.map((note) => note.heading).sort(), ['Other', 'Plan']);
-    assert.strictEqual(snapshot.noteQuery?.matchCounts.notes, 2);
+  test('refines a tag\'s page by its related tags, keeping those every result carries', async () => {
+    const files = [
+      parseMarkdown(
+        'notes/harbor.md',
+        [
+          '# Harbor #team/harbor #person/sable',
+          '# Clinic #person/sable #team/harbor #risk/privacy',
+          '# Solo #person/sable',
+        ].join('\n'),
+      ),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    const page = createSearchPageSnapshot(index, store.value, '#person/sable');
+    const related = page.query.facets.find((facet) => facet.id === 'related');
+    assert.ok(related, 'the page offers the tags related to its own');
+    assert.deepStrictEqual(
+      related.values.map((value) => [value.clause, value.count]),
+      [['#team/harbor', 2], ['#risk/privacy', 1]],
+    );
+    assert.strictEqual(related.values[0].strength, 1);
+    for (const value of related.values) {
+      assert.ok((value.strength ?? -1) >= 0 && (value.strength ?? 2) <= 1, 'strength is a share of the strongest');
+    }
+    assert.strictEqual(page.query.facets.some((facet) => facet.id === 'tags'), false);
+
+    const narrowed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#person/sable #team/harbor',
+    );
+    const shared = narrowed.query.facets.find((facet) => facet.id === 'related');
+    assert.deepStrictEqual(
+      shared?.values.map((value) => [value.clause, value.count]),
+      [['#risk/privacy', 1]],
+    );
+
+    // A search that is more than tags is refined by the tags its results carry.
+    const worded = createSearchPageSnapshot(index, store.value, '#person/sable clinic');
+    assert.strictEqual(worded.query.facets.some((facet) => facet.id === 'related'), false);
+    store.dispose();
+  });
+
+  test('labels words as the text condition they run', () => {
+    const labels = (text: string) =>
+      getTopLevelTerms(parseQuery(text)).map((term) => term.label ?? term.text);
+    assert.deepStrictEqual(labels('#a asdf -secret'), ['#a', 'text ~ asdf', 'NOT text ~ secret']);
+    assert.deepStrictEqual(labels('text ~ written is:open'), ['text ~ written', 'is:open']);
+  });
+
+  test('refines a search from the sidebar as the search box would', () => {
+    assert.strictEqual(refineQueryText('', '#a', 'and'), '#a');
+    assert.strictEqual(refineQueryText('#p', '#a', 'and'), '#p AND #a');
+    assert.strictEqual(refineQueryText('#p', '#a', 'exclude'), '#p AND -#a');
+    assert.strictEqual(refineQueryText('#p OR #q', '#a', 'and'), '(#p OR #q) AND #a');
+    assert.strictEqual(refineQueryText('#p is:open', 'is:done', 'or', 'is:open'), '#p (is:open OR is:done)');
+    assert.strictEqual(refineQueryText('#p (is:open OR is:done)', '#x', 'or', 'is:open'), '#p (is:open OR #x OR is:done)');
+    assert.strictEqual(refineQueryText('#p', '#a', 'or', 'is:open'), '#p AND #a', 'with nothing to join, it is added');
+  });
+  test('a suggested tag counts the notes and tasks its search finds', () => {
+    const files = [
+      parseMarkdown(
+        'notes/plan.md',
+        '# Plan #project/atlas\nIntro.\n## Details\nMore.\n- [ ] Book the room\n- [ ] Call Ren',
+      ),
+      parseMarkdown('notes/other.md', '# Other\n- [ ] Ship it #project/atlas'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const atlas = createQuerySuggestions(index).values.tag?.find(
+      (suggestion) => suggestion.value === '#project/atlas',
+    );
+    const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node);
+
+    // The nested Details section and its tasks inherit the heading's tag.
+    assert.strictEqual(results.sections.length + results.files.length, 2);
+    assert.strictEqual(results.tasks.length, 3);
+    assert.strictEqual(atlas?.detail, '2 notes · 3 tasks');
   });
 });

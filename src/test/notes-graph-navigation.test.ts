@@ -30,22 +30,20 @@ const defaultPreferences: PersistedPreferences = {
   dashboardTaskColumns: 1,
   dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
-  dashboardNoteSortMode: 'alphabetical',
   dashboardViewState: {
-    mode: 'tasks',
-    taskFilter: 'active',
-    selectedTaskTags: [],
-    taskSearchQuery: '',
-    noteSearchQuery: '',
+    mode: 'home',
     tagSearchQuery: '',
-    taskTagQuery: '',
   },
+  taskBoardLayout: 'board',
+  taskBoardGroup: 'status',
+  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
+  dashboardWidgets: [],
 };
 
 suite('Notes graph navigation', () => {
@@ -138,11 +136,7 @@ suite('Notes graph navigation', () => {
     Object.assign(sidebar, {
       indexer: createIndexer(workspaceIndex),
       preferences: { value: defaultPreferences } as PreferencesStore,
-      tagOverview: {
-        onDidChange: () => ({ dispose: () => undefined }),
-        getActiveTagKey: () => undefined,
-        getActiveTagFilterKeys: () => [],
-      },
+      activeSearch: { active: undefined },
     });
     const controller = sidebar as unknown as {
       graphContext: SidebarGraphContext | undefined;

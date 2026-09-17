@@ -1,9 +1,10 @@
+import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,
   NotesGraphMessage,
   RenderMode,
+  SearchPageMessage,
   SidebarMessage,
-  TagOverviewMessage,
   TagOverviewLayout,
   TagOverviewSortMode,
   RelatedNotesSortMode,
@@ -57,26 +58,6 @@ export function parseDashboardMessage(
       return isTagSortMode(value.mode)
         ? (value as unknown as DashboardMessage)
         : undefined;
-    case 'setTaskFilter':
-      return isTaskFilter(value.filter)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setTaskTags':
-      return isStringArray(value.tagKeys)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setTaskSort':
-      return isTaskSortMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setRenderMode':
-      return isRenderMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setNoteSort':
-      return isTagOverviewSortMode(value.mode)
-        ? (value as unknown as DashboardMessage)
-        : undefined;
     case 'setDashboardMode':
       return isDashboardMode(value.mode)
         ? (value as unknown as DashboardMessage)
@@ -87,17 +68,8 @@ export function parseDashboardMessage(
         ? (value as unknown as DashboardMessage)
         : undefined;
     case 'setDashboardColumns':
-      return (
-        (value.section === 'tasks' ||
-          value.section === 'notes' ||
-          value.section === 'tags') &&
-        isDashboardColumnCount(value.columns)
-      )
-        ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'reorderTasks':
-      return isStringArray(value.taskIds)
-        ? (value as unknown as DashboardMessage)
+      return value.section === 'tags' && isDashboardColumnCount(value.columns)
+        ? { type: 'setDashboardColumns', section: 'tags', columns: value.columns }
         : undefined;
     case 'reorderTags':
       return isStringArray(value.tagKeys) &&
@@ -111,25 +83,11 @@ export function parseDashboardMessage(
         : undefined;
     case 'openTag':
       return isOpenTagMessage(value)
-        ? (value as unknown as DashboardMessage)
+        ? { type: 'openTag', tagKey: value.tagKey as string }
         : undefined;
     case 'renameTag':
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
-        : undefined;
-    case 'setDashboardTaskLayout':
-      return value.layout === 'list' || value.layout === 'board'
-        ? { type: 'setDashboardTaskLayout', layout: value.layout }
-        : undefined;
-    case 'setBoardGroup':
-      return isTaskBoardGroupBy(value.groupBy)
-        ? { type: 'setBoardGroup', groupBy: value.groupBy }
-        : undefined;
-    case 'moveTask':
-      return typeof value.taskId === 'string' &&
-        typeof value.column === 'string' &&
-        value.column.length > 0
-        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
         : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
@@ -141,87 +99,102 @@ export function parseDashboardMessage(
         value.query.length <= MAX_QUERY_LENGTH
         ? { type: 'recordRecentQuery', query: value.query }
         : undefined;
-    case 'saveDashboardSearch':
-      return Object.keys(value).length === 1
-        ? { type: 'saveDashboardSearch' }
+    case 'setDashboardWidgets':
+      return Array.isArray(value.widgets) &&
+        value.widgets.length <= MAX_DASHBOARD_WIDGETS
+        ? {
+            type: 'setDashboardWidgets',
+            widgets: normalizeDashboardWidgets(value.widgets),
+          }
+        : undefined;
+    case 'resetDashboardWidgets':
+      return { type: 'resetDashboardWidgets' };
+    case 'openSearch':
+      return typeof value.query === 'string' &&
+        value.query.length <= MAX_QUERY_LENGTH
+        ? { type: 'openSearch', query: value.query }
+        : undefined;
+    case 'openTaskBoard':
+      return value.query === undefined ||
+        (typeof value.query === 'string' &&
+          value.query.length <= MAX_QUERY_LENGTH)
+        ? {
+            type: 'openTaskBoard',
+            ...(typeof value.query === 'string' ? { query: value.query } : {}),
+          }
+        : undefined;
+    case 'openView':
+      return value.view === 'agenda' || value.view === 'stats'
+        ? { type: 'openView', view: value.view }
         : undefined;
     default:
       return undefined;
   }
 }
 
+/** More widgets than Home keeps are refused rather than cut short. */
+const MAX_DASHBOARD_WIDGETS = 60;
+
 /**
- * Restricts tag-overview messages to its smaller navigation and display API.
+ * Restricts a search page's messages to its navigation and display API.
  */
-export function parseTagOverviewMessage(
+export function parseSearchPageMessage(
   value: unknown,
-): TagOverviewMessage | undefined {
+): SearchPageMessage | undefined {
   if (!isRecord(value) || typeof value.type !== 'string') {
     return undefined;
   }
 
-  if (value.type === 'openSource') {
-    return isSourceMessage(value)
-      ? (value as unknown as TagOverviewMessage)
-      : undefined;
+  switch (value.type) {
+    case 'openSource':
+      return isSourceMessage(value)
+        ? (value as unknown as SearchPageMessage)
+        : undefined;
+    case 'toggleTask':
+      return typeof value.taskId === 'string' &&
+        typeof value.completed === 'boolean'
+        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
+        : undefined;
+    case 'setTaskFilter':
+      return isTaskFilter(value.filter)
+        ? { type: 'setTaskFilter', filter: value.filter }
+        : undefined;
+    case 'setRenderMode':
+      return isRenderMode(value.mode)
+        ? { type: 'setRenderMode', mode: value.mode }
+        : undefined;
+    case 'setTagOverviewSort':
+      return isTagOverviewSortMode(value.mode)
+        ? { type: 'setTagOverviewSort', mode: value.mode }
+        : undefined;
+    case 'setTagOverviewLayout':
+      return isTagOverviewLayout(value.layout)
+        ? { type: 'setTagOverviewLayout', layout: value.layout }
+        : undefined;
+    case 'setSearchColumns':
+      return (value.section === 'notes' || value.section === 'tasks') &&
+        isDashboardColumnCount(value.columns)
+        ? { type: 'setSearchColumns', section: value.section, columns: value.columns }
+        : undefined;
+    case 'openTag':
+      return isOpenTagMessage(value)
+        ? { type: 'openTag', tagKey: value.tagKey as string }
+        : undefined;
+    case 'renameTag':
+      return isRenameTagMessage(value)
+        ? { type: 'renameTag', tagKey: value.tagKey as string }
+        : undefined;
+    case 'saveTagOverviewFilter':
+    case 'createHubNote':
+    case 'clearOverviewQuery':
+      return Object.keys(value).length === 1 ? { type: value.type } : undefined;
+    case 'setOverviewQuery':
+      return isOverviewQueryMessage(value)
+        ? { type: 'setOverviewQuery', query: value.query as string }
+        : undefined;
+    default:
+      return undefined;
   }
-  if (value.type === 'toggleTask') {
-    return typeof value.taskId === 'string' &&
-      typeof value.completed === 'boolean'
-      ? (value as unknown as TagOverviewMessage)
-      : undefined;
-  }
-  if (value.type === 'setTaskFilter' && isTaskFilter(value.filter)) {
-    return value as unknown as TagOverviewMessage;
-  }
-  if (value.type === 'setRenderMode' && isRenderMode(value.mode)) {
-    return value as unknown as TagOverviewMessage;
-  }
-  if (
-    value.type === 'setTagOverviewSort' &&
-    isTagOverviewSortMode(value.mode)
-  ) {
-    return value as unknown as TagOverviewMessage;
-  }
-  if (
-    value.type === 'setTagOverviewLayout' &&
-    isTagOverviewLayout(value.layout)
-  ) {
-    return value as unknown as TagOverviewMessage;
-  }
-  if (value.type === 'openTag' && isOpenTagMessage(value)) {
-    return value as unknown as TagOverviewMessage;
-  }
-  if (value.type === 'renameTag' && isRenameTagMessage(value)) {
-    return value as unknown as TagOverviewMessage;
-  }
-  if (
-    value.type === 'saveTagOverviewFilter' &&
-    Object.keys(value).length === 1
-  ) {
-    return { type: 'saveTagOverviewFilter' };
-  }
-  if (value.type === 'createHubNote' && Object.keys(value).length === 1) {
-    return { type: 'createHubNote' };
-  }
-  if (value.type === 'setOverviewQuery' && isOverviewQueryMessage(value)) {
-    return { type: 'setOverviewQuery', query: value.query as string };
-  }
-  if (
-    value.type === 'clearOverviewQuery' &&
-    Object.keys(value).length === 1
-  ) {
-    return { type: 'clearOverviewQuery' };
-  }
-  if (
-    value.type === 'setOverviewRefinement' &&
-    Object.keys(value).length === 2 &&
-    typeof value.refinement === 'string' &&
-    value.refinement.length <= MAX_QUERY_LENGTH
-  ) {
-    return { type: 'setOverviewRefinement', refinement: value.refinement };
-  }
-  return undefined;
 }
 
 /** Upper bound on query text accepted from the webview. */
@@ -314,10 +287,25 @@ export function parseSidebarMessage(
     return value as unknown as SidebarMessage;
   }
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
-    return value as unknown as SidebarMessage;
+    return { type: 'openTag', tagKey: value.tagKey as string };
   }
   if (value.type === 'renameTag' && isRenameTagMessage(value)) {
     return value as unknown as SidebarMessage;
+  }
+  if (
+    value.type === 'refineActiveSearch' &&
+    typeof value.facetId === 'string' &&
+    typeof value.clause === 'string' &&
+    value.clause.length > 0 &&
+    value.clause.length <= MAX_QUERY_LENGTH &&
+    (value.mode === 'and' || value.mode === 'exclude' || value.mode === 'or')
+  ) {
+    return {
+      type: 'refineActiveSearch',
+      facetId: value.facetId,
+      clause: value.clause,
+      mode: value.mode,
+    };
   }
   if (
     value.type === 'setRelatedNotesSort' &&
@@ -332,7 +320,7 @@ export function parseSidebarMessage(
     value.type === 'createDailyNote' ||
     value.type === 'openHelp'
   ) {
-    return value as unknown as SidebarMessage;
+    return { type: value.type };
   }
   return undefined;
 }
@@ -351,6 +339,10 @@ export function parseTaskBoardMessage(
   switch (value.type) {
     case 'ready':
       return { type: 'ready' };
+    case 'saveBoardSearch':
+      return Object.keys(value).length === 1
+        ? { type: 'saveBoardSearch' }
+        : undefined;
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as TaskBoardMessage)
@@ -379,10 +371,44 @@ export function parseTaskBoardMessage(
         value.query.length <= MAX_QUERY_LENGTH
         ? { type: 'setBoardQuery', query: value.query }
         : undefined;
+    case 'setTaskLayout':
+      return value.layout === 'list' || value.layout === 'board'
+        ? { type: 'setTaskLayout', layout: value.layout }
+        : undefined;
+    case 'setTaskFilter':
+      return isTaskFilter(value.filter)
+        ? { type: 'setTaskFilter', filter: value.filter }
+        : undefined;
+    case 'setTaskSort':
+      return isTaskSortMode(value.mode)
+        ? { type: 'setTaskSort', mode: value.mode }
+        : undefined;
+    case 'reorderTasks':
+      return isStringArray(value.taskIds)
+        ? { type: 'reorderTasks', taskIds: [...value.taskIds] }
+        : undefined;
+    case 'setBoardStatuses':
+      return Array.isArray(value.statuses) &&
+        value.statuses.length <= MAX_BOARD_STATUSES &&
+        value.statuses.every(
+          (status) => typeof status === 'string' && BOARD_NAME.test(status),
+        )
+        ? { type: 'setBoardStatuses', statuses: [...value.statuses] }
+        : undefined;
+    case 'setBoardStatusNamespace':
+      return typeof value.namespace === 'string' &&
+        BOARD_NAMESPACE.test(value.namespace)
+        ? { type: 'setBoardStatusNamespace', namespace: value.namespace }
+        : undefined;
     default:
       return undefined;
   }
 }
+
+/** The patterns `deckard.board.statuses` and `statusNamespace` allow. */
+const BOARD_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const BOARD_NAMESPACE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+const MAX_BOARD_STATUSES = 50;
 
 /**
  * Keeps the task board's grouping to the three it can lay out.
@@ -463,14 +489,7 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
 }
 
 function isOpenTagMessage(value: Record<string, unknown>): boolean {
-  return (
-    typeof value.tagKey === 'string' &&
-    value.tagKey.length > 0 &&
-    (value.filterTagKey === undefined ||
-      (typeof value.filterTagKey === 'string' &&
-        value.filterTagKey.length > 0)) &&
-    (value.filterTagKeys === undefined || isNonEmptyStringArray(value.filterTagKeys))
-  );
+  return typeof value.tagKey === 'string' && value.tagKey.length > 0;
 }
 
 function isRenameTagMessage(value: Record<string, unknown>): boolean {
@@ -494,12 +513,6 @@ function isStringArray(value: unknown): value is string[] {
   );
 }
 
-function isNonEmptyStringArray(value: unknown): value is string[] {
-  return (
-    isStringArray(value) && value.every((item) => item.length > 0)
-  );
-}
-
 /**
  * Keeps tag sorting an explicit allow-list instead of accepting arbitrary UI data.
  */
@@ -519,23 +532,18 @@ function isTaskFilter(value: unknown): value is TaskFilter {
   return value === 'all' || value === 'active' || value === 'completed';
 }
 
-function isDashboardColumnCount(value: unknown): boolean {
+function isDashboardColumnCount(value: unknown): value is 1 | 2 | 3 | 4 {
   return value === 1 || value === 2 || value === 3 || value === 4;
 }
 
 function isDashboardMode(value: unknown): value is DashboardMode {
-  return value === 'tasks' || value === 'notes' || value === 'browse';
+  return value === 'home' || value === 'browse';
 }
 
 function isDashboardSearchField(
   value: unknown,
 ): value is DashboardSearchField {
-  return (
-    value === 'tasks' ||
-    value === 'notes' ||
-    value === 'tags' ||
-    value === 'taskTags'
-  );
+  return value === 'tags';
 }
 
 /**

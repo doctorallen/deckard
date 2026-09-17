@@ -11,7 +11,7 @@ import {
   WorkspaceFileAccess,
   WorkspaceScanner,
 } from '../core/workspace/scanner';
-import { createTagOverviewSnapshot } from '../ui/state/dashboardState';
+import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 
 const defaultPreferences = {
   version: 1 as const,
@@ -28,22 +28,20 @@ const defaultPreferences = {
   dashboardTaskColumns: 1 as const,
   dashboardNoteColumns: 1 as const,
   dashboardTagColumns: 2 as const,
-  dashboardNoteSortMode: 'alphabetical' as const,
   dashboardViewState: {
-    mode: 'tasks' as const,
-    taskFilter: 'active' as const,
-    selectedTaskTags: [],
-    taskSearchQuery: '',
-    noteSearchQuery: '',
+    mode: 'home' as const,
     tagSearchQuery: '',
-    taskTagQuery: '',
   },
+  taskBoardLayout: 'board' as const,
+  taskBoardGroup: 'status' as const,
+  taskBoardTaskFilter: 'active' as const,
   renderMode: 'markdown' as const,
   tagOverviewSortMode: 'alphabetical' as const,
   tagOverviewLayout: 'tabs' as const,
   relatedNotesSortMode: 'tags' as const,
   sectionAccessCounts: {},
   savedFilters: [],
+  dashboardWidgets: [],
 };
 
 suite('Workspace scanner and index', () => {
@@ -337,13 +335,12 @@ suite('Workspace scanner and index', () => {
     const scanner = new WorkspaceScanner(access);
     const parsed = scanner.parse(noteUri, 'Inline note #work');
     const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = createSearchPageSnapshot(
       index,
       defaultPreferences,
       '#work',
     );
 
-    assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].startLine, 1);
   });
@@ -372,12 +369,11 @@ suite('Workspace scanner and index', () => {
     ]);
     assert.strictEqual(index.tags.get('#project/neon-relay')?.count, 1);
     assert.strictEqual(index.entities.get('#project/neon-relay')?.count, 1);
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = createSearchPageSnapshot(
       index,
       defaultPreferences,
       '#project/neon-relay',
     );
-    assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'metadata-only.md');
   });

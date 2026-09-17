@@ -78,9 +78,9 @@ code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monosp
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
 .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
 .tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
-button, select, input[type="text"], input[type="search"], .view-options summary, .tag-filter summary { border-radius: 2px; }
-button, .view-options summary, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
-button:hover, .view-options summary:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
+button, select, input[type="text"], input[type="search"], .tag-filter summary { border-radius: 2px; }
+button, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+button:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
 button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 /* A count inside a chosen button follows its text, not the muted color. */
 .active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
@@ -320,6 +320,8 @@ h1 { font-weight: 200; letter-spacing: .3em; }
 button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
 button, select { text-transform: uppercase; }
 button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
+/* A tag's weight reads as a gold instrument, against faint empty steps. */
+.tag-weight-rail-segment.filled { background: var(--amber); }
 input[type='checkbox'] { accent-color: var(--amber); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(13, 16, 19, .92); box-shadow: inset 2px 0 0 var(--cyan); }
 .metric:nth-child(3n), .card:nth-child(3n), .note-row:nth-child(3n), .task-row:nth-child(3n), .view-panel:nth-child(3n) { box-shadow: inset 2px 0 0 var(--amber); }

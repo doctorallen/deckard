@@ -12,18 +12,23 @@ import {
 } from '../../core/types';
 import {
   createDashboardSnapshot,
+  getSavedFilterQuery,
+  mergeOrder,
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
+import { createDashboardWidgets } from '../state/dashboardWidgets';
 import { toggleTask } from '../commands/taskActions';
-import {
-  moveTaskToColumn,
-  readTaskBoardOptions,
-} from '../commands/taskBoardActions';
-import { layoutTaskBoard } from '../state/taskBoardState';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
+
+/** Where the Dashboard sends a reader who leaves it. */
+export interface DashboardNavigation {
+  openTag(tagKey: string): void | Promise<void>;
+  openSearch(query: string): void | Promise<void>;
+  openTaskBoard(query?: string): void | Promise<void>;
+}
 
 /**
  * Owns the dashboard webview and translates validated UI messages into domain
@@ -35,42 +40,23 @@ export class DashboardPanel implements vscode.Disposable {
   private panelDisposables: vscode.Disposable[] = [];
   /** Whether something changed while the panel was hidden. */
   private isStale = false;
-  private taskFilter: DashboardSnapshot['taskFilter'] = 'active';
-  private selectedTaskTags: string[] = [];
-  private dashboardMode: DashboardMode = 'tasks';
-  private dashboardTaskColumns: DashboardColumnCount;
-  private dashboardNoteColumns: DashboardColumnCount;
+  private dashboardMode: DashboardMode = 'home';
   private dashboardTagColumns: DashboardColumnCount;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
-    private readonly onOpenTag: (
-      tagKey: string,
-      filterTagKeys?: readonly string[],
-    ) => void | Promise<void>,
+    private readonly navigation: DashboardNavigation,
   ) {
     const initialPreferences = preferences.value;
-    this.dashboardTaskColumns = initialPreferences.dashboardTaskColumns;
-    this.dashboardNoteColumns = initialPreferences.dashboardNoteColumns;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
-    this.taskFilter = initialPreferences.dashboardViewState.taskFilter;
-    this.selectedTaskTags = [
-      ...initialPreferences.dashboardViewState.selectedTaskTags,
-    ];
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(
       preferences.onDidChange((nextPreferences) => {
-        this.dashboardTaskColumns = nextPreferences.dashboardTaskColumns;
-        this.dashboardNoteColumns = nextPreferences.dashboardNoteColumns;
         this.dashboardTagColumns = nextPreferences.dashboardTagColumns;
         this.dashboardMode = nextPreferences.dashboardViewState.mode;
-        this.taskFilter = nextPreferences.dashboardViewState.taskFilter;
-        this.selectedTaskTags = [
-          ...nextPreferences.dashboardViewState.selectedTaskTags,
-        ];
         this.refresh();
       }),
     );
@@ -86,8 +72,7 @@ export class DashboardPanel implements vscode.Disposable {
         if (
           themeChanged ||
           titleDisplayChanged ||
-          event.affectsConfiguration('deckard.board') ||
-          event.affectsConfiguration('deckard.tasks')
+          event.affectsConfiguration('deckard.agenda')
         ) {
           this.refresh();
         }
@@ -109,8 +94,8 @@ export class DashboardPanel implements vscode.Disposable {
   }
 
   /**
-   * Opens a saved view: a saved search on the Search tab, or a saved tag set
-   * as that tag intersection.
+   * Opens a saved view where it was saved: on the Task Board, or on a search
+   * page with its query, or its tags that still exist joined by AND.
    */
   public async openSavedFilter(filterId: string): Promise<void> {
     const savedFilter = this.preferences.value.savedFilters.find(
@@ -119,8 +104,12 @@ export class DashboardPanel implements vscode.Disposable {
     if (!savedFilter) {
       return;
     }
+    if (savedFilter.query && savedFilter.page === 'taskBoard') {
+      await this.navigation.openTaskBoard(savedFilter.query);
+      return;
+    }
     if (savedFilter.query) {
-      await this.showSearch(savedFilter.query);
+      await this.navigation.openSearch(savedFilter.query);
       return;
     }
     const index = this.indexer.getSnapshot();
@@ -128,19 +117,8 @@ export class DashboardPanel implements vscode.Disposable {
       index.tags.has(tagKey),
     );
     if (tagKeys.length >= 2) {
-      await this.onOpenTag(tagKeys[0], tagKeys.slice(1));
+      await this.navigation.openSearch(getSavedFilterQuery({ tagKeys }));
     }
-  }
-
-  /**
-   * Opens the Search tab on a search, which is where every search can be
-   * seen in full and refined.
-   */
-  public async showSearch(query: string): Promise<void> {
-    this.dashboardMode = 'notes';
-    await this.preferences.setDashboardSearch('notes', query.trim());
-    await this.preferences.setDashboardMode('notes');
-    await this.show();
   }
 
   /**
@@ -266,81 +244,38 @@ export class DashboardPanel implements vscode.Disposable {
       return;
     }
     const preferences = this.preferences.value;
+    const configuration = vscode.workspace.getConfiguration('deckard');
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
-      vscode.workspace
-        .getConfiguration('deckard')
-        .get<unknown>('tagTitleDisplayMode', 'inline'),
+      configuration.get<unknown>('tagTitleDisplayMode', 'inline'),
     );
     const index = this.indexer.getSnapshot();
-    const snapshot = createDashboardSnapshot(
-      index,
-      {
-        ...preferences,
-        dashboardTaskColumns: this.dashboardTaskColumns,
-        dashboardNoteColumns: this.dashboardNoteColumns,
-        dashboardTagColumns: this.dashboardTagColumns,
-        dashboardViewState: {
-          ...preferences.dashboardViewState,
-          mode: this.dashboardMode,
-          taskFilter: this.taskFilter,
-          selectedTaskTags: [...this.selectedTaskTags],
-        },
+    const viewPreferences = {
+      ...preferences,
+      dashboardTagColumns: this.dashboardTagColumns,
+      dashboardViewState: {
+        ...preferences.dashboardViewState,
+        mode: this.dashboardMode,
       },
-      this.taskFilter,
-      this.selectedTaskTags,
-      undefined,
-      tagTitleDisplayMode,
-      // Switching tabs asks the host again, so only the Search tab gets notes.
-      this.dashboardMode === 'notes',
-    );
-    // The board lays out the same filtered tasks the list would show.
-    const taskLayout = preferences.dashboardTaskLayout ?? 'list';
+    };
     const data: DashboardSnapshot = {
-      ...snapshot,
-      // The Markdown view shows each note's source, which its search also
-      // reads, so only the HTML view is sent each note rendered.
-      notes:
-        snapshot.renderMode === 'html'
-          ? snapshot.notes
-          : snapshot.notes.map((note) => ({ ...note, renderedHtml: '' })),
-      taskLayout,
-      taskBoard:
-        taskLayout === 'board'
-          ? layoutTaskBoard(
-              index,
-              snapshot.tasks.map((item) => item.task),
-              preferences.dashboardBoardGroup ?? 'status',
-              readTaskBoardOptions(),
-            )
-          : undefined,
+      ...createDashboardSnapshot(
+        index,
+        viewPreferences,
+        undefined,
+        tagTitleDisplayMode,
+      ),
+      // Switching tabs asks the host again, so only Home gets its widgets.
+      ...(this.dashboardMode === 'home'
+        ? {
+            widgets: createDashboardWidgets(index, viewPreferences, {
+              now: Date.now(),
+              upcomingDays: configuration.get<number>('agenda.upcomingDays', 7),
+              tagTitleDisplayMode,
+            }),
+          }
+        : {}),
     };
     void this.panel.webview.postMessage({ type: 'state', data });
-  }
-
-  /**
-   * Names the Search tab's search and keeps it as a saved view.
-   */
-  private async saveSearch(): Promise<void> {
-    const query = this.preferences.value.dashboardViewState.noteSearchQuery.trim();
-    if (!query) {
-      return;
-    }
-    const name = await vscode.window.showInputBox({
-      title: 'Save Deckard filter',
-      prompt: 'Name this search',
-      value: query,
-      validateInput: (value) =>
-        value.trim() ? undefined : 'A saved filter needs a name.',
-    });
-    if (name === undefined) {
-      return;
-    }
-    const saved = await this.preferences.saveSavedQueryFilter(name, query);
-    if (saved) {
-      void vscode.window.showInformationMessage(
-        `Saved Deckard filter: ${saved.name}`,
-      );
-    }
   }
 
   /**
@@ -414,35 +349,6 @@ export class DashboardPanel implements vscode.Disposable {
       case 'setEntitySort':
         await this.preferences.setEntitySortMode(message.mode);
         return;
-      case 'setTaskFilter':
-        this.taskFilter = message.filter;
-        this.refresh();
-        await this.preferences.setDashboardTaskFilter(message.filter);
-        return;
-      case 'setTaskTags': {
-        const availableTags = new Set(
-          [...index.tags.values()]
-            .filter((tag) => tag.taskIds.length > 0)
-            .map((tag) => tag.key),
-        );
-        this.selectedTaskTags = [
-          ...new Set(
-            message.tagKeys.filter((tagKey) => availableTags.has(tagKey)),
-          ),
-        ];
-        this.refresh();
-        await this.preferences.setDashboardTaskTags(this.selectedTaskTags);
-        return;
-      }
-      case 'setTaskSort':
-        await this.preferences.setTaskSortMode(message.mode);
-        return;
-      case 'setRenderMode':
-        await this.preferences.setRenderMode(message.mode);
-        return;
-      case 'setNoteSort':
-        await this.preferences.setDashboardNoteSortMode(message.mode);
-        return;
       case 'setDashboardMode':
         this.dashboardMode = message.mode;
         this.refresh();
@@ -455,38 +361,12 @@ export class DashboardPanel implements vscode.Disposable {
         );
         return;
       case 'setDashboardColumns':
-        if (message.section === 'tasks') {
-          this.dashboardTaskColumns = message.columns;
-        } else if (message.section === 'notes') {
-          this.dashboardNoteColumns = message.columns;
-        } else {
-          this.dashboardTagColumns = message.columns;
-        }
+        this.dashboardTagColumns = message.columns;
         this.refresh();
         await this.preferences.setDashboardColumns(
           message.section,
           message.columns,
         );
-        return;
-      case 'setDashboardTaskLayout':
-        await this.preferences.setDashboardTaskLayout(message.layout);
-        return;
-      case 'setBoardGroup':
-        await this.preferences.setDashboardBoardGroup(message.groupBy);
-        return;
-      case 'moveTask': {
-        const task = index.tasks.get(message.taskId);
-        if (!task || !(await moveTaskToColumn(task, message.column))) {
-          this.refresh();
-        }
-        return;
-      }
-      case 'reorderTasks':
-        if (this.preferences.value.taskSortMode === 'rank') {
-          await this.preferences.setTaskOrder(
-            mergeOrder(message.taskIds, index.tasks.keys()),
-          );
-        }
         return;
       case 'reorderTags':
         if (
@@ -516,7 +396,7 @@ export class DashboardPanel implements vscode.Disposable {
         {
           const tagKey = resolveIndexedTagKey(index.tags, message.tagKey);
           if (tagKey) {
-            await this.onOpenTag(tagKey);
+            await this.navigation.openTag(tagKey);
           }
         }
         return;
@@ -527,7 +407,7 @@ export class DashboardPanel implements vscode.Disposable {
           this.preferences,
         );
         if (replacement) {
-          await this.onOpenTag(replacement.key);
+          await this.navigation.openTag(replacement.key);
         }
         return;
       }
@@ -540,27 +420,37 @@ export class DashboardPanel implements vscode.Disposable {
       case 'recordRecentQuery':
         await this.preferences.recordRecentQuery(message.query);
         return;
-      case 'saveDashboardSearch':
-        await this.saveSearch();
+      case 'setDashboardWidgets':
+        // A saved-search widget needs its saved search to still exist.
+        await this.preferences.setDashboardWidgets(
+          message.widgets.filter(
+            (widget) =>
+              widget.kind !== 'savedQuery' ||
+              this.preferences.value.savedFilters.some(
+                (filter) => filter.id === widget.filterId,
+              ),
+          ),
+        );
+        return;
+      case 'resetDashboardWidgets':
+        await this.preferences.resetDashboardWidgets();
+        return;
+      case 'openSearch': {
+        const query = message.query.trim();
+        await this.navigation.openSearch(query);
+        if (query) {
+          await this.preferences.recordRecentQuery(query);
+        }
+        return;
+      }
+      case 'openTaskBoard':
+        await this.navigation.openTaskBoard(message.query);
+        return;
+      case 'openView':
+        await vscode.commands.executeCommand(
+          message.view === 'agenda' ? 'deckard.agenda.focus' : 'deckard.showStats',
+        );
         return;
     }
   }
-}
-
-/**
- * Merges a requested order with current IDs so a stale drag result cannot lose
- * entries created or removed since the webview rendered its list.
- */
-function mergeOrder(
-  requested: string[],
-  available: Iterable<string>,
-): string[] {
-  const availableIds = [...available];
-  const availableSet = new Set(availableIds);
-  const requestedIds = requested.filter((id) => availableSet.has(id));
-  const requestedSet = new Set(requestedIds);
-  return [
-    ...requestedIds,
-    ...availableIds.filter((id) => !requestedSet.has(id)),
-  ];
 }

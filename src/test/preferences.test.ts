@@ -63,11 +63,11 @@ suite('Preferences store', () => {
     await store.setDashboardColumns('tasks', 3);
     await store.setDashboardColumns('notes', 2);
     await store.setDashboardColumns('tags', 4);
-    await store.setDashboardNoteSortMode('updated');
-    await store.setDashboardMode('notes');
-    await store.setDashboardTaskFilter('completed');
-    await store.setDashboardTaskTags(['#work']);
-    await store.setDashboardSearch('notes', 'atlas');
+    await store.setDashboardMode('browse');
+    await store.setTaskBoardTaskFilter('completed');
+    await store.setTaskBoardLayout('list');
+    await store.setTaskBoardGroup('due');
+    await store.setDashboardSearch('tags', 'atlas');
     await store.recordSectionAccess('section-1');
     await store.recordSectionAccess('missing-section');
     await store.prune(['case'], ['task-1'], ['section-1']);
@@ -84,18 +84,120 @@ suite('Preferences store', () => {
     assert.strictEqual(store.value.dashboardTaskColumns, 3);
     assert.strictEqual(store.value.dashboardNoteColumns, 2);
     assert.strictEqual(store.value.dashboardTagColumns, 4);
-    assert.strictEqual(store.value.dashboardNoteSortMode, 'updated');
     assert.deepStrictEqual(store.value.dashboardViewState, {
-      mode: 'notes',
-      taskFilter: 'completed',
-      selectedTaskTags: ['#work'],
-      taskSearchQuery: '',
-      noteSearchQuery: 'atlas',
-      tagSearchQuery: '',
-      taskTagQuery: '',
+      mode: 'browse',
+      tagSearchQuery: 'atlas',
     });
+    assert.strictEqual(store.value.taskBoardTaskFilter, 'completed');
+    assert.strictEqual(store.value.taskBoardLayout, 'list');
+    assert.strictEqual(store.value.taskBoardGroup, 'due');
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
+
+    store.dispose();
+  });
+
+  test('opens a Dashboard saved on its old Tasks tab on Home, and shows a board', () => {
+    const memento = new MemoryMemento();
+    void memento.update('deckard.preferences', {
+      version: 1,
+      dashboardViewState: {
+        mode: 'tasks',
+        taskFilter: 'completed',
+        selectedTaskTags: ['#work'],
+        taskSearchQuery: 'audit',
+        noteSearchQuery: 'atlas',
+        tagSearchQuery: '',
+        taskTagQuery: '',
+      },
+      dashboardTaskLayout: 'list',
+    });
+    const store = new PreferencesStore(memento);
+
+    assert.deepStrictEqual(store.value.dashboardViewState, {
+      mode: 'home',
+      tagSearchQuery: '',
+    });
+    assert.strictEqual(store.value.taskBoardLayout, 'board');
+    assert.strictEqual(store.value.taskBoardGroup, 'status');
+    assert.strictEqual(store.value.taskBoardTaskFilter, 'active');
+    assert.strictEqual('dashboardTaskLayout' in store.value, false);
+
+    store.dispose();
+  });
+
+  test('opens a Dashboard saved on its old Search tab on Home, with the default widgets', () => {
+    const memento = new MemoryMemento();
+    void memento.update('deckard.preferences', {
+      version: 1,
+      dashboardViewState: { mode: 'notes', noteSearchQuery: 'atlas', tagSearchQuery: 'proj' },
+      dashboardNoteSortMode: 'updated',
+    });
+    const store = new PreferencesStore(memento);
+
+    assert.deepStrictEqual(store.value.dashboardViewState, {
+      mode: 'home',
+      tagSearchQuery: 'proj',
+    });
+    assert.deepStrictEqual(
+      store.value.dashboardWidgets.map((widget) => widget.kind),
+      ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches'],
+    );
+    assert.strictEqual('dashboardNoteSortMode' in store.value, false);
+
+    store.dispose();
+  });
+
+  test('keeps only the Home widgets it can draw', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+
+    await store.setDashboardWidgets([
+      { id: 'a', kind: 'tasks', width: 'full', count: 99, query: ' is:open ' },
+      { id: 'a', kind: 'agenda', width: 'half' },
+      { id: 'b', kind: 'search', width: 'wide' as 'half' },
+      { id: 'c', kind: 'search', width: 'half' },
+      { id: 'd', kind: 'mystery' as 'stats', width: 'half' },
+      { id: 'e', kind: 'savedQuery', width: 'half' },
+      { id: 'f', kind: 'savedQuery', width: 'half', filterId: 'saved' },
+      { id: 'g', kind: 'stats', width: 'half', count: 3, query: 'x' },
+    ]);
+
+    assert.deepStrictEqual(store.value.dashboardWidgets, [
+      { id: 'a', kind: 'tasks', width: 'full', count: 20, query: 'is:open' },
+      { id: 'b', kind: 'search', width: 'half' },
+      { id: 'f', kind: 'savedQuery', width: 'half', count: 5, filterId: 'saved' },
+      { id: 'g', kind: 'stats', width: 'half' },
+    ]);
+
+    await store.resetDashboardWidgets();
+    assert.strictEqual(store.value.dashboardWidgets.length, 5);
+    await store.setDashboardWidgets([]);
+    assert.deepStrictEqual(store.value.dashboardWidgets, [], 'an empty Home stays empty');
+
+    store.dispose();
+  });
+
+  test('follows a renamed tag into a widget\'s search, and drops a removed saved search\'s widget', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    const saved = await store.saveSavedQueryFilter('Open', 'is:open');
+    assert.ok(saved);
+    await store.setDashboardWidgets([
+      { id: 't', kind: 'tasks', width: 'half', query: '#old is:open -#old/child' },
+      { id: 's', kind: 'savedQuery', width: 'half', filterId: saved.id },
+    ]);
+
+    await store.replaceTagKey('#old', '#new');
+    assert.strictEqual(
+      store.value.dashboardWidgets[0].query,
+      '#new is:open -#old/child',
+      'only the whole tag is renamed',
+    );
+
+    await store.removeSavedFilter(saved.id);
+    assert.deepStrictEqual(
+      store.value.dashboardWidgets.map((widget) => widget.id),
+      ['t'],
+    );
 
     store.dispose();
   });
@@ -221,7 +323,6 @@ suite('Preferences store', () => {
     await store.recordTagAccess('#apollo');
     await store.recordTagAccess('#apollo');
     await store.recordTagAccess('#atlas');
-    await store.setDashboardTaskTags(['#apollo']);
     await store.saveSavedFilter('Both', ['#apollo', '#atlas']);
     await store.saveSavedFilter('Apollo follow-up', ['#apollo', '#follow-up']);
 
@@ -229,10 +330,6 @@ suite('Preferences store', () => {
 
     assert.deepStrictEqual(store.value.favoriteTags, ['#atlas']);
     assert.deepStrictEqual(store.value.tagAccessCounts, { '#atlas': 3 });
-    assert.deepStrictEqual(
-      store.value.dashboardViewState.selectedTaskTags,
-      ['#atlas'],
-    );
     // A view left with one tag is no longer a filter, so it is dropped.
     assert.deepStrictEqual(
       store.value.savedFilters.map((filter) => [filter.name, filter.tagKeys]),

@@ -6,7 +6,7 @@ const assert = require('assert');
 const vscode = require('vscode');
 const { mountWebview } = require('./webviewRuntime.js');
 const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
-const { TagOverviewPanels } = require('../../out/ui/webview/tagOverview.js');
+const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
@@ -37,11 +37,10 @@ function createGlobalState() {
 }
 
 /**
- * Opens the #project/atlas overview, which the sidebar follows with the
- * matching notes, and mounts the sidebar's own page against the real host.
+ * Opens the sidebar beside the first note, which every other note shares a
+ * tag with, and mounts the sidebar's own page against the real host.
  */
 async function openSidebar(noteCount) {
-  vscode._test.createdPanels.length = 0;
   const index = createIndex(noteCount);
   const indexer = {
     ready: Promise.resolve(),
@@ -49,14 +48,15 @@ async function openSidebar(noteCount) {
     getFilePath: (uri) => uri.fsPath,
     onDidUpdate: new vscode.EventEmitter().event,
   };
+  vscode.window.activeTextEditor = {
+    document: { uri: vscode.Uri.file('notes/note-000.md'), languageId: 'markdown' },
+    selection: { active: { line: 0 } },
+  };
   const preferences = new PreferencesStore(createGlobalState());
-  const panels = new TagOverviewPanels(indexer, preferences, { fsPath: '/ext' });
-  await panels.show('#project/atlas');
-
   const sidebarView = new SidebarNotesView(
     indexer,
     preferences,
-    panels,
+    new ActiveSearch(),
     () => undefined,
     '0.0.0-test',
   );
@@ -68,7 +68,11 @@ async function openSidebar(noteCount) {
   host.posted.forEach((message) => host._deliver(message));
   const cards = () => view.find('.note-list').children.length;
   const showMore = () => view.find('[data-action="show-more-notes"]');
-  return { view, cards, showMore };
+  const close = () => {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+  };
+  return { view, cards, showMore, close };
 }
 
 /** A note with two tagged headings, and a note sharing each heading's tag. */
@@ -104,16 +108,10 @@ async function openForEditor() {
     selection: { active: { line: 0 } },
   };
   vscode.window.activeTextEditor = editor;
-  const tagOverview = {
-    onDidChange: new vscode.EventEmitter().event,
-    getActiveTagKey: () => undefined,
-    getActiveTagFilterKeys: () => [],
-    getActiveQuery: () => undefined,
-  };
   const sidebarView = new SidebarNotesView(
     indexer,
     new PreferencesStore(createGlobalState()),
-    tagOverview,
+    new ActiveSearch(),
     () => undefined,
     '0.0.0-test',
   );
@@ -141,23 +139,46 @@ function test(name, fn) { tests.push({ name, fn }); }
 // ---------------------------------------------------------------------------
 
 test('a long list shows 50 results and a Show more button', async () => {
-  const { view, cards, showMore } = await openSidebar(120);
-  assert.strictEqual(cards(), 50);
-  assert.strictEqual(showMore().textContent, 'Show 50 more of 70');
+  // One note is open, so 120 others are related to it.
+  const { view, cards, showMore, close } = await openSidebar(121);
+  try {
+    assert.strictEqual(cards(), 50);
+    assert.strictEqual(showMore().textContent, 'Show 50 more of 70');
 
-  view.click(showMore());
-  assert.strictEqual(cards(), 100);
-  assert.strictEqual(showMore().textContent, 'Show 20 more');
+    view.click(showMore());
+    assert.strictEqual(cards(), 100);
+    assert.strictEqual(showMore().textContent, 'Show 20 more');
 
-  view.click(showMore());
-  assert.strictEqual(cards(), 120);
-  assert.ok(!showMore(), 'every result is shown, so the button is gone');
+    view.click(showMore());
+    assert.strictEqual(cards(), 120);
+    assert.ok(!showMore(), 'every result is shown, so the button is gone');
+  } finally {
+    close();
+  }
 });
 
 test('a short list shows every result and no button', async () => {
-  const { cards, showMore } = await openSidebar(5);
-  assert.strictEqual(cards(), 5);
-  assert.ok(!showMore());
+  const { cards, showMore, close } = await openSidebar(6);
+  try {
+    assert.strictEqual(cards(), 5);
+    assert.ok(!showMore());
+  } finally {
+    close();
+  }
+});
+
+test('the note\'s tags are rows with a rail and a count', async () => {
+  const { view, close } = await openSidebar(6);
+  try {
+    const rows = view.findAll('.active-tag-list .active-tag-open');
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].getAttribute('data-action'), 'open-tag');
+    assert.ok(rows[0].querySelector('.tag-weight-rail'), 'with its weight');
+    assert.strictEqual(rows[0].querySelector('.refine-count').textContent, '6', 'and the six notes carrying it');
+    assert.ok(rows[0].getAttribute('title').includes('6 notes · 0 tasks'));
+  } finally {
+    close();
+  }
 });
 
 test('moving the cursor within one entry does not rank again', async () => {

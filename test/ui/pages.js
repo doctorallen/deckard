@@ -36,7 +36,7 @@ const webview = {
 };
 const pages = [
   ['dashboard', () => require('../../out/ui/webview/dashboardHtml.js').getDashboardHtml(webview, { fsPath: '/ext' })],
-  ['tagOverview', () => require('../../out/ui/webview/tagOverviewHtml.js').getTagOverviewHtml(webview)],
+  ['searchPage', () => require('../../out/ui/webview/searchPageHtml.js').getSearchPageHtml(webview)],
   ['sidebarNotes', () => require('../../out/ui/webview/sidebarNotesHtml.js').getSidebarNotesHtml(webview, '1.0.0')],
   ['notesGraph', () => require('../../out/ui/webview/notesGraphHtml.js').getNotesGraphHtml(webview)],
   ['help', () => require('../../out/ui/webview/helpHtml.js').getHelpHtml(webview, { fsPath: '/ext' })],
@@ -47,7 +47,7 @@ const pages = [
       .getRelatedNotesDebugHtml(webview, {
         filePath: 'notes/a.md', sourceLine: 1, title: 'Entry', tags: [],
         snapshot: {
-          activeTags: [], notes: [], tagOverviewFilters: [],
+          activeTags: [], notes: [],
           tagTitleDisplayMode: 'inline', state: 'ready',
         },
       })],

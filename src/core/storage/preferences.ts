@@ -12,10 +12,12 @@ import {
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
-  DashboardTaskLayout,
   DashboardViewState,
+  DashboardWidgetConfig,
+  DashboardWidgetKind,
   TaskBoardGroupBy,
   TaskFilter,
+  TaskLayout,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -34,15 +36,9 @@ const defaultPreferences: PersistedPreferences = {
   dashboardTaskColumns: 1,
   dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
-  dashboardNoteSortMode: 'alphabetical',
   dashboardViewState: {
-    mode: 'tasks',
-    taskFilter: 'active',
-    selectedTaskTags: [],
-    taskSearchQuery: '',
-    noteSearchQuery: '',
+    mode: 'home',
     tagSearchQuery: '',
-    taskTagQuery: '',
   },
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
@@ -50,15 +46,47 @@ const defaultPreferences: PersistedPreferences = {
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
-  dashboardTaskLayout: 'list',
-  dashboardBoardGroup: 'status',
+  taskBoardLayout: 'board',
+  taskBoardGroup: 'status',
+  taskBoardTaskFilter: 'active',
   tagAccessTimes: {},
   sectionAccessTimes: {},
   recentQueries: [],
+  // Filled with DEFAULT_DASHBOARD_WIDGETS when preferences are read.
+  dashboardWidgets: [],
 };
-
 /** How many recent searches are kept. */
 export const RECENT_QUERY_LIMIT = 20;
+
+/** The widgets Home starts with, and returns to on Reset. */
+export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
+  { id: 'search', kind: 'search', width: 'full' },
+  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
+  { id: 'agenda', kind: 'agenda', width: 'half', count: 5 },
+  { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
+  { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
+];
+
+/** The widgets Home can show, and whether a page may hold more than one. */
+export const DASHBOARD_WIDGET_KINDS: Readonly<
+  Record<DashboardWidgetKind, { repeatable: boolean; listed: boolean }>
+> = {
+  search: { repeatable: false, listed: false },
+  tasks: { repeatable: true, listed: true },
+  agenda: { repeatable: false, listed: true },
+  favoriteTags: { repeatable: false, listed: true },
+  topTags: { repeatable: false, listed: true },
+  savedSearches: { repeatable: false, listed: false },
+  recentSearches: { repeatable: false, listed: true },
+  recentNotes: { repeatable: false, listed: true },
+  stats: { repeatable: false, listed: false },
+  savedQuery: { repeatable: true, listed: true },
+};
+
+/** The most entries a list widget can show. */
+export const DASHBOARD_WIDGET_COUNT_LIMIT = 20;
+const DASHBOARD_WIDGET_LIMIT = 30;
+const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
 
 /**
  * Persists UI-only state without adding metadata to Markdown notes.
@@ -228,36 +256,42 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
-   * Shows the Dashboard's Tasks tab as a list or as the task board.
+   * Shows the Task Board's tasks as a list or as columns.
    */
-  public async setDashboardTaskLayout(
-    dashboardTaskLayout: DashboardTaskLayout,
-  ): Promise<void> {
-    await this.update({ dashboardTaskLayout });
+  public async setTaskBoardLayout(taskBoardLayout: TaskLayout): Promise<void> {
+    await this.update({ taskBoardLayout });
   }
 
-  public async setDashboardBoardGroup(
-    dashboardBoardGroup: TaskBoardGroupBy,
+  public async setTaskBoardGroup(
+    taskBoardGroup: TaskBoardGroupBy,
   ): Promise<void> {
-    await this.update({ dashboardBoardGroup });
+    await this.update({ taskBoardGroup });
   }
 
-  public async setDashboardNoteSortMode(
-    dashboardNoteSortMode: TagOverviewSortMode,
+  public async setTaskBoardTaskFilter(
+    taskBoardTaskFilter: TaskFilter,
   ): Promise<void> {
-    await this.update({ dashboardNoteSortMode });
+    await this.update({ taskBoardTaskFilter });
+  }
+
+  /**
+   * Replaces Home's widgets. Widgets the store cannot use are dropped, as
+   * they are when read back.
+   */
+  public async setDashboardWidgets(
+    dashboardWidgets: readonly DashboardWidgetConfig[],
+  ): Promise<void> {
+    await this.update({
+      dashboardWidgets: normalizeDashboardWidgets(dashboardWidgets),
+    });
+  }
+
+  public async resetDashboardWidgets(): Promise<void> {
+    await this.update({ dashboardWidgets: cloneWidgets(DEFAULT_DASHBOARD_WIDGETS) });
   }
 
   public async setDashboardMode(mode: DashboardMode): Promise<void> {
     await this.updateDashboardViewState({ mode });
-  }
-
-  public async setDashboardTaskFilter(taskFilter: TaskFilter): Promise<void> {
-    await this.updateDashboardViewState({ taskFilter });
-  }
-
-  public async setDashboardTaskTags(selectedTaskTags: string[]): Promise<void> {
-    await this.updateDashboardViewState({ selectedTaskTags });
   }
 
   public async setDashboardSearch(
@@ -265,10 +299,7 @@ export class PreferencesStore implements vscode.Disposable {
     query: string,
   ): Promise<void> {
     const fieldMap: Record<DashboardSearchField, keyof DashboardViewState> = {
-      tasks: 'taskSearchQuery',
-      notes: 'noteSearchQuery',
       tags: 'tagSearchQuery',
-      taskTags: 'taskTagQuery',
     };
     await this.updateDashboardViewState({ [fieldMap[field]]: query });
   }
@@ -390,7 +421,6 @@ export class PreferencesStore implements vscode.Disposable {
         ? rest
         : { ...rest, [targetKey]: (rest[targetKey] ?? 0) + moved };
     };
-    const viewState = this.preferences.dashboardViewState;
     const { [sourceKey]: movedTime, ...tagAccessTimes } =
       this.preferences.tagAccessTimes ?? {};
 
@@ -408,10 +438,11 @@ export class PreferencesStore implements vscode.Disposable {
               ...tagAccessTimes,
               [targetKey]: Math.max(movedTime, tagAccessTimes[targetKey] ?? 0),
             },
-      dashboardViewState: {
-        ...viewState,
-        selectedTaskTags: replaceKeys(viewState.selectedTaskTags),
-      },
+      dashboardWidgets: this.preferences.dashboardWidgets.map((widget) =>
+        widget.query
+          ? { ...widget, query: replaceTagInQuery(widget.query, sourceKey, targetKey) }
+          : widget,
+      ),
       // A tag-set view needs two tags; a query view keeps its own text.
       savedFilters: this.preferences.savedFilters.flatMap((filter) => {
         if (filter.query || !filter.tagKeys.includes(sourceKey)) {
@@ -432,6 +463,7 @@ export class PreferencesStore implements vscode.Disposable {
   public async saveSavedQueryFilter(
     name: string,
     query: string,
+    page?: 'taskBoard',
   ): Promise<SavedFilter | undefined> {
     const normalizedName = name.trim();
     const normalizedQuery = query.trim();
@@ -439,14 +471,18 @@ export class PreferencesStore implements vscode.Disposable {
       return undefined;
     }
 
+    // The same search saved on the Task Board is a different view, since it
+    // reopens there.
     const existing = this.preferences.savedFilters.find(
-      (filter) => filter.query?.trim() === normalizedQuery,
+      (filter) =>
+        filter.query?.trim() === normalizedQuery && filter.page === page,
     );
     const savedFilter: SavedFilter = {
       id: existing?.id ?? createSavedFilterId(),
       name: normalizedName,
       tagKeys: [],
       query: normalizedQuery,
+      ...(page ? { page } : {}),
     };
     await this.update({
       savedFilters: existing
@@ -507,6 +543,9 @@ export class PreferencesStore implements vscode.Disposable {
       savedFilters: this.preferences.savedFilters.filter(
         (filter) => filter.id !== id,
       ),
+      dashboardWidgets: this.preferences.dashboardWidgets.filter(
+        (widget) => widget.kind !== 'savedQuery' || widget.filterId !== id,
+      ),
     });
   }
 
@@ -562,7 +601,13 @@ export class PreferencesStore implements vscode.Disposable {
         ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
         : [];
     });
+    const savedFilterIds = new Set(savedFilters.map((filter) => filter.id));
     const changes: Partial<PersistedPreferences> = {
+      dashboardWidgets: this.preferences.dashboardWidgets.filter(
+        (widget) =>
+          widget.kind !== 'savedQuery' ||
+          (widget.filterId !== undefined && savedFilterIds.has(widget.filterId)),
+      ),
       favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -643,7 +688,6 @@ function normalizePreferences(
   const dashboardTaskColumns = value?.dashboardTaskColumns;
   const dashboardNoteColumns = value?.dashboardNoteColumns;
   const dashboardTagColumns = value?.dashboardTagColumns;
-  const dashboardNoteSortMode = value?.dashboardNoteSortMode;
   const dashboardViewState = value?.dashboardViewState;
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
@@ -684,12 +728,6 @@ function normalizePreferences(
     dashboardTagColumns: isDashboardColumnCount(dashboardTagColumns)
       ? dashboardTagColumns
       : 2,
-    dashboardNoteSortMode:
-      dashboardNoteSortMode === 'created' ||
-      dashboardNoteSortMode === 'updated' ||
-      dashboardNoteSortMode === 'access'
-        ? dashboardNoteSortMode
-        : 'alphabetical',
     dashboardViewState: normalizeDashboardViewState(dashboardViewState),
     renderMode: renderMode === 'html' ? 'html' : 'markdown',
     tagOverviewSortMode:
@@ -707,13 +745,16 @@ function normalizePreferences(
         : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
-    dashboardTaskLayout:
-      value?.dashboardTaskLayout === 'board' ? 'board' : 'list',
-    dashboardBoardGroup:
-      value?.dashboardBoardGroup === 'priority' ||
-      value?.dashboardBoardGroup === 'due'
-        ? value.dashboardBoardGroup
+    taskBoardLayout: value?.taskBoardLayout === 'list' ? 'list' : 'board',
+    taskBoardGroup:
+      value?.taskBoardGroup === 'priority' || value?.taskBoardGroup === 'due'
+        ? value.taskBoardGroup
         : 'status',
+    taskBoardTaskFilter:
+      value?.taskBoardTaskFilter === 'all' ||
+      value?.taskBoardTaskFilter === 'completed'
+        ? value.taskBoardTaskFilter
+        : 'active',
     tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
     sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
     recentQueries: uniqueStrings(
@@ -721,7 +762,99 @@ function normalizePreferences(
         .filter((query): query is string => typeof query === 'string')
         .map((query) => query.trim()),
     ).slice(0, RECENT_QUERY_LIMIT),
+    // Preferences saved before Home had widgets start with its defaults.
+    dashboardWidgets: Array.isArray(value?.dashboardWidgets)
+      ? normalizeDashboardWidgets(value.dashboardWidgets)
+      : cloneWidgets(DEFAULT_DASHBOARD_WIDGETS),
   };
+}
+
+/**
+ * Keeps only widgets Home can draw: a known kind, a unique id, one of the
+ * two widths, and options that kind uses, within their bounds. A kind that
+ * cannot repeat keeps its first widget.
+ */
+export function normalizeDashboardWidgets(
+  values: readonly unknown[],
+): DashboardWidgetConfig[] {
+  const ids = new Set<string>();
+  const kinds = new Set<DashboardWidgetKind>();
+  const widgets: DashboardWidgetConfig[] = [];
+  for (const value of values) {
+    if (typeof value !== 'object' || value === null) {
+      continue;
+    }
+    const candidate = value as Partial<Record<keyof DashboardWidgetConfig, unknown>>;
+    const kind = candidate.kind;
+    if (typeof kind !== 'string' || !Object.hasOwn(DASHBOARD_WIDGET_KINDS, kind)) {
+      continue;
+    }
+    const widgetKind = kind as DashboardWidgetKind;
+    const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
+    const traits = DASHBOARD_WIDGET_KINDS[widgetKind];
+    if (
+      !id ||
+      id.length > 64 ||
+      ids.has(id) ||
+      (!traits.repeatable && kinds.has(widgetKind))
+    ) {
+      continue;
+    }
+    const widget: DashboardWidgetConfig = {
+      id,
+      kind: widgetKind,
+      width: candidate.width === 'full' ? 'full' : 'half',
+    };
+    if (traits.listed) {
+      const count = candidate.count;
+      widget.count =
+        typeof count === 'number' && Number.isInteger(count)
+          ? Math.min(DASHBOARD_WIDGET_COUNT_LIMIT, Math.max(1, count))
+          : 5;
+    }
+    if (widgetKind === 'tasks') {
+      widget.query =
+        typeof candidate.query === 'string' &&
+        candidate.query.length <= DASHBOARD_WIDGET_QUERY_LIMIT
+          ? candidate.query.trim()
+          : 'is:open';
+    }
+    if (widgetKind === 'savedQuery') {
+      if (typeof candidate.filterId !== 'string' || !candidate.filterId) {
+        continue;
+      }
+      widget.filterId = candidate.filterId;
+    }
+    ids.add(id);
+    kinds.add(widgetKind);
+    widgets.push(widget);
+    if (widgets.length >= DASHBOARD_WIDGET_LIMIT) {
+      break;
+    }
+  }
+  return widgets;
+}
+
+function cloneWidgets(
+  widgets: readonly DashboardWidgetConfig[],
+): DashboardWidgetConfig[] {
+  return widgets.map((widget) => ({ ...widget }));
+}
+
+/**
+ * A search with one tag renamed where it stands as a whole tag, leaving the
+ * rest of what was written alone.
+ */
+function replaceTagInQuery(
+  query: string,
+  sourceKey: string,
+  targetKey: string,
+): string {
+  const escaped = sourceKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return query.replace(
+    new RegExp(`(^|[\\s(=:-])${escaped}(?=$|[\\s)])`, 'gi'),
+    (_match, prefix: string) => `${prefix}${targetKey}`,
+  );
 }
 
 /**
@@ -749,23 +882,11 @@ function isDashboardColumnCount(
 function normalizeDashboardViewState(
   value: Partial<DashboardViewState> | undefined,
 ): DashboardViewState {
-  const mode = value?.mode;
-  const taskFilter = value?.taskFilter;
+  // Tasks moved to the Task Board and searches to their own pages, so a
+  // Dashboard left on either opens on Home.
   return {
-    mode:
-      mode === 'notes' || mode === 'browse'
-        ? mode
-        : 'tasks',
-    taskFilter:
-      taskFilter === 'all' ||
-      taskFilter === 'completed'
-        ? taskFilter
-        : 'active',
-    selectedTaskTags: uniqueStrings(value?.selectedTaskTags),
-    taskSearchQuery: normalizeSearchQuery(value?.taskSearchQuery),
-    noteSearchQuery: normalizeSearchQuery(value?.noteSearchQuery),
+    mode: value?.mode === 'browse' ? 'browse' : 'home',
     tagSearchQuery: normalizeSearchQuery(value?.tagSearchQuery),
-    taskTagQuery: normalizeSearchQuery(value?.taskTagQuery),
   };
 }
 
@@ -825,8 +946,9 @@ function normalizeSavedFilters(values: SavedFilter[] | undefined): SavedFilter[]
         : undefined;
     // A saved view is identified by its query when it has one and by its tag
     // set otherwise, so the two kinds never collide.
+    const page = query && value.page === 'taskBoard' ? value.page : undefined;
     const identity = query
-      ? `query\u0000${query}`
+      ? `query\u0000${page ?? ''}\u0000${query}`
       : `tags\u0000${tagKeys.join('\u0000')}`;
     if (
       !name ||
@@ -839,7 +961,7 @@ function normalizeSavedFilters(values: SavedFilter[] | undefined): SavedFilter[]
     seenIds.add(value.id);
     seenTagSets.add(identity);
     return query
-      ? [{ id: value.id, name, tagKeys, query }]
+      ? [{ id: value.id, name, tagKeys, query, ...(page ? { page } : {}) }]
       : [{ id: value.id, name, tagKeys }];
   });
 }
@@ -891,14 +1013,12 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     entityAccessOrder: [...value.entityAccessOrder],
     entityAccessCounts: { ...value.entityAccessCounts },
     taskOrder: [...value.taskOrder],
-    dashboardViewState: {
-      ...value.dashboardViewState,
-      selectedTaskTags: [...value.dashboardViewState.selectedTaskTags],
-    },
+    dashboardViewState: { ...value.dashboardViewState },
     sectionAccessCounts: { ...value.sectionAccessCounts },
     savedFilters: value.savedFilters.map(cloneSavedFilter),
     tagAccessTimes: { ...value.tagAccessTimes },
     sectionAccessTimes: { ...value.sectionAccessTimes },
     recentQueries: [...(value.recentQueries ?? [])],
+    dashboardWidgets: cloneWidgets(value.dashboardWidgets),
   };
 }

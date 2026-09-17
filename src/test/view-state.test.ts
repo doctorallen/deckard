@@ -5,8 +5,8 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
   createDeckardStatsSnapshot,
   createDashboardSnapshot,
-  createTagOverviewSnapshot,
-  createTagOverviewSidebarSnapshot,
+  createDashboardTask,
+  createSearchPageSnapshot,
   matchesTaskFilter,
   sortDashboardNotes,
   sortEntities,
@@ -14,6 +14,7 @@ import {
   sortTagOverviewCards,
   sortTags,
 } from '../ui/state/dashboardState';
+import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import {
   createSidebarSnapshot,
   rankRelatedNotes,
@@ -29,6 +30,7 @@ import {
   TagOverviewCard,
   TagInfo,
   Task,
+  TaskFilter,
   WorkspaceIndex,
 } from '../core/types';
 
@@ -47,22 +49,57 @@ const defaultPreferences: PersistedPreferences = {
   dashboardTaskColumns: 1,
   dashboardNoteColumns: 1,
   dashboardTagColumns: 2,
-  dashboardNoteSortMode: 'alphabetical',
   dashboardViewState: {
-    mode: 'tasks',
-    taskFilter: 'active',
-    selectedTaskTags: [],
-    taskSearchQuery: '',
-    noteSearchQuery: '',
+    mode: 'home',
     tagSearchQuery: '',
-    taskTagQuery: '',
   },
+  taskBoardLayout: 'board',
+  taskBoardGroup: 'status',
+  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
+  dashboardWidgets: [],
+};
+
+/**
+ * A tag's search page: the tag, then any tags added to it, joined by AND, as
+ * opening a tag and adding tags to its search writes them.
+ */
+function overview(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  tagKey: string,
+  taskFilter: TaskFilter = 'active',
+  tagTitleDisplayMode: 'inline' | 'separate' = 'inline',
+  enableHeadingTagRelationships = true,
+  addedTagKeys: string[] = [],
+) {
+  return createSearchPageSnapshot(
+    index,
+    preferences,
+    [tagKey, ...addedTagKeys].join(' AND '),
+    { taskFilter, tagTitleDisplayMode, enableHeadingTagRelationships },
+  );
+}
+
+/** The tags a search page's Related facet offers, strongest first. */
+function relatedTagKeys(snapshot: ReturnType<typeof overview>): string[] {
+  return (
+    snapshot.query.facets
+      .find((facet) => facet.id === 'related')
+      ?.values.map((value) => value.clause) ?? []
+  );
+}
+
+const boardOptions: TaskBoardOptions = {
+  now: Date.now(),
+  statusNamespace: 'status',
+  statuses: ['todo', 'doing'],
+  format: 'emoji',
 };
 
 suite('Dashboard state', () => {
@@ -247,30 +284,25 @@ suite('Dashboard state', () => {
     });
   });
 
-  test('leaves notes out of the Dashboard only when asked', () => {
+  test('lists every note on a search page with no search', () => {
     const index = createFileIndex([
       createFile('notes/alpha.md', '# Alpha #work\nBody text.'),
     ]);
 
-    const withNotes = createDashboardSnapshot(index, defaultPreferences, 'active');
-    assert.strictEqual(withNotes.notes.length, 1);
-    assert.strictEqual(withNotes.notesOmitted, undefined);
-
-    const withoutNotes = createDashboardSnapshot(
-      index,
-      defaultPreferences,
-      'active',
-      [],
-      undefined,
-      'inline',
-      false,
+    const page = createSearchPageSnapshot(index, defaultPreferences, '');
+    assert.deepStrictEqual(
+      page.sections.map((card) => card.heading),
+      ['Alpha #work'],
     );
-    assert.deepStrictEqual(withoutNotes.notes, []);
-    assert.strictEqual(withoutNotes.notesOmitted, true);
-    assert.strictEqual(withoutNotes.totalNoteCount, 1, 'the count still covers every note');
+    assert.deepStrictEqual(page.query.facets, [], 'no search, nothing to refine');
+    assert.strictEqual(page.tag, undefined);
+    assert.strictEqual(
+      createDashboardSnapshot(index, defaultPreferences).totalNoteCount,
+      1,
+    );
   });
 
-  test('filters tasks and preserves explicit task display order', () => {
+  test('lists the Task Board\'s tasks filtered, in their explicit order', () => {
     const tasks = [
       createTask('first', false, 1, ['#work']),
       createTask('second', true, 2),
@@ -280,13 +312,15 @@ suite('Dashboard state', () => {
     const preferences = {
       ...defaultPreferences,
       taskOrder: [tasks[2].id, tasks[0].id, tasks[1].id],
+      taskBoardLayout: 'list' as const,
     };
-    const snapshot = createDashboardSnapshot(index, preferences, 'active');
+    const board = createTaskBoard(index, preferences, { query: '' }, boardOptions);
 
-    assert.strictEqual(snapshot.totalTaskCount, 3);
-    assert.strictEqual(snapshot.activeTaskCount, 2);
+    assert.strictEqual(createDashboardSnapshot(index, preferences).totalTaskCount, 3);
+    assert.deepStrictEqual(board.taskCounts, { all: 3, active: 2, completed: 1 });
+    assert.deepStrictEqual(board.columns, [], 'a list lays out no columns');
     assert.deepStrictEqual(
-      snapshot.tasks.map((item) => item.task.title),
+      board.tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
     assert.strictEqual(matchesTaskFilter(tasks[1], 'completed'), true);
@@ -295,7 +329,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
-  test('sorts dashboard notes with their own sort mode', () => {
+  test('sorts a search page\'s notes and lays them out in their columns', () => {
     const first = parseMarkdown(
       'notes/first.md',
       '# First note #work\n\nFirst body',
@@ -310,17 +344,16 @@ suite('Dashboard state', () => {
     const preferences = {
       ...defaultPreferences,
       dashboardNoteColumns: 3 as const,
-      dashboardNoteSortMode: 'updated' as const,
+      tagOverviewSortMode: 'updated' as const,
       sectionAccessCounts: { [first.sections[0].id]: 2 },
     };
-    const snapshot = createDashboardSnapshot(index, preferences, 'active');
+    const page = createSearchPageSnapshot(index, preferences, '');
 
-    assert.strictEqual(snapshot.totalNoteCount, 2);
-    assert.strictEqual(snapshot.noteColumns, 3);
-    assert.strictEqual(snapshot.renderMode, 'markdown');
-    assert.strictEqual(snapshot.tagTitleDisplayMode, 'inline');
+    assert.strictEqual(page.noteColumns, 3);
+    assert.strictEqual(page.renderMode, 'markdown');
+    assert.strictEqual(page.tagTitleDisplayMode, 'inline');
     assert.deepStrictEqual(
-      snapshot.notes.map((note) => note.heading),
+      page.sections.map((note) => note.heading),
       ['Second note #home', 'First note #work'],
     );
     assert.deepStrictEqual(
@@ -346,22 +379,20 @@ suite('Dashboard state', () => {
       ['Second note #home', 'First note #work'],
     );
 
-    const separateTitleSnapshot = createDashboardSnapshot(
+    const separate = createSearchPageSnapshot(
       index,
       { ...preferences, renderMode: 'html' },
-      'active',
-      [],
-      undefined,
-      'separate',
+      '',
+      { tagTitleDisplayMode: 'separate' },
     );
-    assert.strictEqual(separateTitleSnapshot.renderMode, 'html');
-    assert.strictEqual(separateTitleSnapshot.tagTitleDisplayMode, 'separate');
-    const separateTitleNote = separateTitleSnapshot.notes.find(
+    assert.strictEqual(separate.renderMode, 'html');
+    assert.strictEqual(separate.tagTitleDisplayMode, 'separate');
+    const separateNote = separate.sections.find(
       (note) => note.filePath === first.filePath,
     );
-    assert.ok(separateTitleNote);
-    assert.strictEqual(separateTitleNote.heading, 'First note');
-    assert.strictEqual(separateTitleNote.titleTags[0].label, '#work');
+    assert.ok(separateNote);
+    assert.strictEqual(separateNote.heading, 'First note');
+    assert.strictEqual(separateNote.titleTags[0].label, '#work');
   });
 
   test('keeps lightweight tags alongside canonical entities in the dashboard', () => {
@@ -370,7 +401,7 @@ suite('Dashboard state', () => {
       '# Project #project-name #project/project-name #management/performance',
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createDashboardSnapshot(index, defaultPreferences, 'active');
+    const snapshot = createDashboardSnapshot(index, defaultPreferences);
 
     assert.strictEqual(
       snapshot.tags.some((tag) => tag.key === '#project-name'),
@@ -391,11 +422,8 @@ suite('Dashboard state', () => {
       'management',
     );
     assert.strictEqual(
-      createTagOverviewSnapshot(
-        index,
-        defaultPreferences,
-        '#management/performance',
-      )?.entity?.name,
+      overview(index, defaultPreferences, '#management/performance').entity
+        ?.name,
       'performance',
     );
   });
@@ -441,7 +469,7 @@ suite('Dashboard state', () => {
       '# Atlas #project/atlas #follow-up',
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = overview(
       index,
       {
         ...defaultPreferences,
@@ -457,7 +485,6 @@ suite('Dashboard state', () => {
       'active',
       'inline',
       true,
-      undefined,
       ['#follow-up'],
     );
 
@@ -466,38 +493,32 @@ suite('Dashboard state', () => {
 
   test('renders task titles as inline Markdown', () => {
     const title = '[Read the docs](https://example.com/docs) **now**';
-    const snapshot = createDashboardSnapshot(
-      createIndex([createTask(title, false, 1)]),
-      defaultPreferences,
-      'active',
-    );
+    const index = createIndex([createTask(title, false, 1)]);
+    const item = createDashboardTask([...index.tasks.values()][0], index.sections);
 
     assert.ok(
-      snapshot.tasks[0].renderedTitle.includes(
+      item.renderedTitle.includes(
         '<a href="https://example.com/docs">Read the docs</a>',
       ),
     );
-    assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
-    assert.strictEqual(snapshot.tasks[0].renderedTitle.includes(title), false);
+    assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
+    assert.strictEqual(item.renderedTitle.includes(title), false);
   });
 
   test('projects task title tags alongside rendered Markdown', () => {
     const title = '[Review the plan](https://example.com/plan) #project/atlas **now**';
-    const snapshot = createDashboardSnapshot(
-      createIndex([createTask(title, false, 1, ['project/atlas'])]),
-      defaultPreferences,
-      'active',
-    );
+    const index = createIndex([createTask(title, false, 1, ['project/atlas'])]);
+    const item = createDashboardTask([...index.tasks.values()][0], index.sections);
 
-    assert.deepStrictEqual(snapshot.tasks[0].titleTags, [
+    assert.deepStrictEqual(item.titleTags, [
       { key: 'project/atlas', label: '#project/atlas' },
     ]);
     assert.ok(
-      snapshot.tasks[0].renderedTitle.includes(
+      item.renderedTitle.includes(
         '<a href="https://example.com/plan">Review the plan</a>',
       ),
     );
-    assert.ok(snapshot.tasks[0].renderedTitle.includes('<strong>now</strong>'));
+    assert.ok(item.renderedTitle.includes('<strong>now</strong>'));
   });
 
   test('sorts tasks by rank, creation date, and update date', () => {
@@ -1258,9 +1279,8 @@ suite('Dashboard state', () => {
       sectionAccessCounts: { [parsed.sections[0].id]: 4 },
     };
 
-    const snapshot = createTagOverviewSnapshot(index, preferences, '#work');
+    const snapshot = overview(index, preferences, '#work');
 
-    assert.ok(snapshot);
     assert.strictEqual(snapshot.sections[0].heading, 'Heading #work');
     assert.deepStrictEqual(snapshot.sections[0].titleTags, [
       { key: '#work', label: '#work' },
@@ -1271,14 +1291,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
     assert.strictEqual(snapshot.layout, 'tabs');
 
-    const separate = createTagOverviewSnapshot(
-      index,
-      preferences,
-      '#work',
-      'active',
-      'separate',
-    );
-    assert.ok(separate);
+    const separate = overview(index, preferences, '#work', 'active', 'separate');
     assert.strictEqual(separate.sections[0].heading, 'Heading');
   });
 
@@ -1294,21 +1307,17 @@ suite('Dashboard state', () => {
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = overview(
       index,
       defaultPreferences,
       '#child',
       'active',
       'inline',
       true,
-      '#parent',
+      ['#parent'],
     );
 
-    assert.ok(snapshot);
-    assert.deepStrictEqual(snapshot.filterTag, {
-      key: '#parent',
-      label: '#parent',
-    });
+    assert.strictEqual(snapshot.tag, undefined, 'two tags are a search, not one tag');
     assert.deepStrictEqual(
       snapshot.sections.map((section) => section.heading),
       ['Parent route #parent #child', 'Shared child #child'],
@@ -1317,23 +1326,16 @@ suite('Dashboard state', () => {
       snapshot.tasks.map((item) => item.task.title),
       ['Both tags #parent #child'],
     );
-    const parentSidebar = createTagOverviewSidebarSnapshot(snapshot);
-    assert.ok(parentSidebar);
-    assert.deepStrictEqual(parentSidebar.tagOverviewFilter, {
-      key: '#parent',
-      label: '#parent',
-    });
 
-    const reverse = createTagOverviewSnapshot(
+    const reverse = overview(
       index,
       defaultPreferences,
       '#parent',
       'active',
       'inline',
       true,
-      '#child',
+      ['#child'],
     );
-    assert.ok(reverse);
     assert.deepStrictEqual(
       reverse.sections.map((section) => section.heading),
       ['Parent route #parent #child', 'Shared child #child'],
@@ -1344,7 +1346,7 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('accumulates overview filters and intersects associated sidebar tags', () => {
+  test('relates a search of several tags by the tags all of them share', () => {
     const parsed = createFile(
       'notes/multi-filtered-relationship.md',
       [
@@ -1359,22 +1361,16 @@ suite('Dashboard state', () => {
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = overview(
       index,
       defaultPreferences,
       '#focus',
       'active',
       'inline',
       true,
-      undefined,
       ['#first', '#second', '#first'],
     );
 
-    assert.ok(snapshot);
-    assert.deepStrictEqual(snapshot.filterTags, [
-      { key: '#first', label: '#first' },
-      { key: '#second', label: '#second' },
-    ]);
     assert.deepStrictEqual(
       snapshot.sections.map((section) => section.heading),
       ['All routes #focus #first #second #shared'],
@@ -1383,21 +1379,11 @@ suite('Dashboard state', () => {
       snapshot.tasks.map((item) => item.task.title),
       ['All routes task #focus #first #second'],
     );
-    assert.deepStrictEqual(
-      snapshot.sharedAssociatedTags.map(
-        (association) => association.associatedTag.key,
-      ),
-      ['#shared'],
-    );
-
-    const sidebar = createTagOverviewSidebarSnapshot(snapshot);
-    assert.ok(sidebar);
-    assert.deepStrictEqual(sidebar.tagOverviewFilters, snapshot.filterTags);
-    assert.deepStrictEqual(
-      sidebar.tagOverviewRelationships?.sharedAssociatedTags.map(
-        (association) => association.associatedTag.key,
-      ),
-      ['#shared'],
+    assert.deepStrictEqual(relatedTagKeys(snapshot), ['#shared']);
+    assert.strictEqual(
+      snapshot.query.facets.some((facet) => facet.id === 'tags'),
+      false,
+      'related tags take the place of counted ones',
     );
   });
 
@@ -1412,24 +1398,26 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([parsed]);
 
-    const overview = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#parent',
-    );
+    const page = overview(index, defaultPreferences, '#parent');
+    const related = page.query.facets.find((facet) => facet.id === 'related');
 
-    assert.ok(overview);
+    assert.ok(related);
     assert.deepStrictEqual(
-      overview.associatedTags.map((association) => ({
-        key: association.associatedTag.key,
-        weight: association.weight,
-        coOccurrenceCount: association.coOccurrenceCount,
-        headingRelationshipCount: association.headingRelationshipCount,
+      related.values.map((value) => ({
+        clause: value.clause,
+        count: value.count,
+        detail: value.detail,
       })),
       [
-        { key: '#co-occurring', weight: 1, coOccurrenceCount: 1, headingRelationshipCount: 0 },
-        { key: '#child', weight: 0.25, coOccurrenceCount: 0, headingRelationshipCount: 1 },
+        { clause: '#co-occurring', count: 3, detail: 'Written together 1 time' },
+        { clause: '#child', count: 1, detail: 'Heading context 1 time' },
       ],
+    );
+    assert.strictEqual(related.values[0].strength, 1, 'the strongest is full');
+    assert.ok(
+      (related.values[1].strength ?? 0) > 0 &&
+        (related.values[1].strength ?? 0) < 1,
+      'a weaker one is a share of the strongest',
     );
   });
 
@@ -1444,17 +1432,16 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([parsed]);
 
-    const filtered = createTagOverviewSnapshot(
+    const filtered = overview(
       index,
       defaultPreferences,
       '#second',
       'active',
       'inline',
       true,
-      '#first',
+      ['#first'],
     );
 
-    assert.ok(filtered);
     assert.deepStrictEqual(
       filtered.sections.map((section) => section.heading),
       ['First route #first #second'],
@@ -1484,12 +1471,12 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([parsed]);
 
-    const enabled = createTagOverviewSnapshot(
+    const enabled = overview(
       index,
       defaultPreferences,
       '#hub/relationship-overview',
     );
-    const disabled = createTagOverviewSnapshot(
+    const disabled = overview(
       index,
       defaultPreferences,
       '#hub/relationship-overview',
@@ -1498,10 +1485,12 @@ suite('Dashboard state', () => {
       false,
     );
 
-    assert.ok(enabled);
-    assert.ok(disabled);
-    assert.strictEqual(enabled.associatedTags.length, 24);
-    assert.deepStrictEqual(disabled.associatedTags, []);
+    assert.strictEqual(relatedTagKeys(enabled).length, 24);
+    assert.deepStrictEqual(relatedTagKeys(disabled), []);
+    assert.ok(
+      disabled.query.facets.some((facet) => facet.id === 'tags'),
+      'without relationships, the tags on the results are counted instead',
+    );
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -1511,28 +1500,10 @@ suite('Dashboard state', () => {
     );
     const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
 
-    const all = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#work',
-      'all',
-    );
-    const active = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#work',
-      'active',
-    );
-    const completed = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#work',
-      'completed',
-    );
+    const all = overview(index, defaultPreferences, '#work', 'all');
+    const active = overview(index, defaultPreferences, '#work', 'active');
+    const completed = overview(index, defaultPreferences, '#work', 'completed');
 
-    assert.ok(all);
-    assert.ok(active);
-    assert.ok(completed);
     assert.strictEqual(all.taskFilter, 'all');
     assert.deepStrictEqual(all.taskCounts, {
       all: 2,
@@ -1540,7 +1511,7 @@ suite('Dashboard state', () => {
       completed: 1,
     });
     assert.strictEqual(
-      createTagOverviewSnapshot(index, defaultPreferences, '#work')?.taskFilter,
+      createSearchPageSnapshot(index, defaultPreferences, '#work').taskFilter,
       'active',
     );
     assert.deepStrictEqual(
@@ -1561,13 +1532,8 @@ suite('Dashboard state', () => {
     const parsed = parseMarkdown('notes/inline-only.md', 'Inline note #work');
     const index = createFileIndex([parsed]);
 
-    const snapshot = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#work',
-    );
+    const snapshot = overview(index, defaultPreferences, '#work');
 
-    assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(snapshot.sections[0].heading, 'Inline note #work');
     assert.deepStrictEqual(snapshot.sections[0].tags, [
@@ -1589,13 +1555,12 @@ suite('Dashboard state', () => {
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = overview(
       index,
       defaultPreferences,
       '#meeting/sector-nine-briefing',
     );
 
-    assert.ok(snapshot);
     assert.deepStrictEqual(snapshot.sections[0].titleTags, [
       { key: '#project/neon-relay', label: '#project/neon-relay' },
       { key: '#topic/synthetic-memory', label: '#topic/synthetic-memory' },
@@ -1618,19 +1583,9 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([parsed]);
 
-    const ivo = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '@ivo-chen',
-    );
-    const mara = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '@mara-vale',
-    );
+    const ivo = overview(index, defaultPreferences, '@ivo-chen');
+    const mara = overview(index, defaultPreferences, '@mara-vale');
 
-    assert.ok(ivo);
-    assert.ok(mara);
     assert.deepStrictEqual(ivo.sections.map((section) => section.heading), [
       '1. @ivo-chen verifies the physical junction.',
     ]);
@@ -1653,13 +1608,12 @@ suite('Dashboard state', () => {
     );
     const index = createFileIndex([parsed]);
 
-    const snapshot = createTagOverviewSnapshot(
+    const snapshot = overview(
       index,
       defaultPreferences,
       '#project/east-junction',
     );
 
-    assert.ok(snapshot);
     assert.strictEqual(snapshot.sections.length, 1);
     assert.strictEqual(
       snapshot.sections[0].rawContent,
@@ -1670,61 +1624,29 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('projects tag overview cards into sidebar notes without changing order', () => {
+  test('orders a tag page\'s notes by title, then path and line', () => {
     const first = createFile(
       'notes/first.md',
       '# Zeta #work\n\n## Alpha #work',
     );
     const second = createFile('notes/second.md', '# Beta #work');
     const index = createFileIndex([first, second]);
-    const overview = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#work',
-    );
-
-    assert.ok(overview);
-    const sidebar = createTagOverviewSidebarSnapshot(overview);
-    assert.ok(sidebar);
+    const page = overview(index, defaultPreferences, '#work');
 
     assert.deepStrictEqual(
-      sidebar.notes.map((note) => note.filePath),
-      ['notes/first.md', 'notes/second.md', 'notes/first.md'],
-    );
-    assert.deepStrictEqual(
-      sidebar.notes.map((note) => note.title),
+      page.sections.map((note) => note.heading),
       ['Alpha #work', 'Beta #work', 'Zeta #work'],
     );
-    assert.deepStrictEqual(
-      sidebar.notes.map((note) => note.fileName),
-      ['first.md', 'second.md', 'first.md'],
-    );
-    assert.deepStrictEqual(
-      sidebar.notes.map((note) => note.sourceLine),
-      overview.sections.map((section) => section.startLine),
-    );
-    assert.deepStrictEqual(sidebar.tagOverview, {
-      key: '#work',
-      label: '#work',
-    });
+    assert.deepStrictEqual(page.tag?.key, '#work');
 
-    const separateOverview = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#work',
-      'active',
-      'separate',
-    );
-    assert.ok(separateOverview);
-    const separateSidebar = createTagOverviewSidebarSnapshot(separateOverview);
-    assert.ok(separateSidebar);
+    const separate = overview(index, defaultPreferences, '#work', 'active', 'separate');
     assert.deepStrictEqual(
-      separateSidebar.notes.map((note) => note.title),
+      separate.sections.map((note) => note.heading),
       ['Alpha', 'Beta', 'Zeta'],
     );
   });
 
-  test('projects tag associations into the sidebar tree', () => {
+  test('offers a tag\'s associations as Related, and narrows them with the search', () => {
     const parsed = createFile(
       'notes/relationship-sidebar.md',
       [
@@ -1734,47 +1656,34 @@ suite('Dashboard state', () => {
       ].join('\n'),
     );
     const index = createFileIndex([parsed]);
-    const overview = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#focus',
-    );
-
-    assert.ok(overview);
-    const sidebar = createTagOverviewSidebarSnapshot(overview);
-    assert.ok(sidebar);
+    const page = overview(index, defaultPreferences, '#focus');
 
     assert.deepStrictEqual(
-      sidebar.tagOverviewRelationships?.associatedTags.map(
-        (association) => association.associatedTag.key,
-      ),
-      ['#parent', '#task', '#child'],
+      [...relatedTagKeys(page)].sort(),
+      ['#child', '#parent', '#task'],
+    );
+    const strengths = page.query.facets
+      .find((facet) => facet.id === 'related')
+      ?.values.map((value) => value.strength ?? 0) ?? [];
+    assert.deepStrictEqual(
+      strengths,
+      [...strengths].sort((left, right) => right - left),
+      'the strongest association comes first',
     );
 
-    const filteredOverview = createTagOverviewSnapshot(
+    const narrowed = overview(
       index,
       defaultPreferences,
       '#focus',
       'active',
       'inline',
       true,
-      '#task',
+      ['#task'],
     );
-    assert.ok(filteredOverview);
-    const filteredSidebar = createTagOverviewSidebarSnapshot(filteredOverview);
-    assert.ok(filteredSidebar);
-    assert.deepStrictEqual(filteredSidebar.tagOverviewFilter, {
-      key: '#task',
-      label: '#task',
-    });
-    assert.deepStrictEqual(filteredSidebar.tagOverviewFilters, [
-      { key: '#task', label: '#task' },
-    ]);
-    assert.deepStrictEqual(
-      filteredSidebar.tagOverviewRelationships?.associatedTags.map(
-        (association) => association.associatedTag.key,
-      ),
-      ['#parent', '#task', '#child'],
+    assert.strictEqual(narrowed.tag, undefined);
+    assert.ok(
+      !relatedTagKeys(narrowed).includes('#task'),
+      'a tag the search names is not offered again',
     );
   });
 
@@ -1797,37 +1706,39 @@ suite('Dashboard state', () => {
       new Map(files.map((file) => [file.filePath, file])),
     );
 
-    const overview = createTagOverviewSnapshot(
-      index,
-      defaultPreferences,
-      '#project/atlas',
-    );
-    assert.ok(overview);
-    assert.ok(overview.hub);
-    assert.strictEqual(overview.hub.filePath, 'notes/atlas.md');
-    assert.strictEqual(overview.hub.rawContent, '# Atlas\nRetire the old ledger.');
-    assert.deepStrictEqual(overview.hub.properties, [
+    const page = overview(index, defaultPreferences, '#project/atlas');
+    assert.ok(page.hub);
+    assert.strictEqual(page.hub.filePath, 'notes/atlas.md');
+    assert.strictEqual(page.hub.rawContent, '# Atlas\nRetire the old ledger.');
+    assert.deepStrictEqual(page.hub.properties, [
       { name: 'status', values: [{ text: 'active' }] },
     ]);
-    assert.deepStrictEqual(overview.hub.otherFilePaths, []);
+    assert.deepStrictEqual(page.hub.otherFilePaths, []);
     // The hub's own sections are on screen already, so they are not listed.
     assert.deepStrictEqual(
-      overview.sections.map((section) => section.filePath),
+      page.sections.map((section) => section.filePath),
       ['notes/plan.md'],
     );
 
-    const filtered = createTagOverviewSnapshot(
+    const filtered = overview(
       index,
       defaultPreferences,
       '#project/atlas',
       'active',
       'inline',
       true,
-      undefined,
       ['#meeting'],
     );
-    assert.ok(filtered);
     assert.strictEqual(filtered.hub, undefined);
+    assert.strictEqual(filtered.tag, undefined, 'the header is for one tag only');
+
+    const worded = createSearchPageSnapshot(
+      index,
+      defaultPreferences,
+      '#project/atlas ledger',
+    );
+    assert.strictEqual(worded.hub, undefined);
+    assert.strictEqual(worded.tag, undefined);
   });
 });
 

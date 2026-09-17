@@ -23,8 +23,7 @@ import {
   WorkspaceIndex,
 } from '../core/types';
 import {
-  createQueryOverviewSnapshot,
-  createTagOverviewSnapshot,
+  createSearchPageSnapshot,
 } from '../ui/state/dashboardState';
 
 suite('Deckard query language', () => {
@@ -368,43 +367,34 @@ suite('Deckard query evaluation', () => {
   });
 });
 
-suite('Deckard query overview state', () => {
-  test('a query view never presents the chips of another tag', () => {
+suite('Deckard search page state', () => {
+  test('a search that is not one tag has no tag header', () => {
     const index = createIndex();
-    const snapshot = createQueryOverviewSnapshot(
+    const snapshot = createSearchPageSnapshot(
       index,
       createPreferences(),
-      'tag = #risk/vendor',
-      'active',
-      'inline',
-      true,
-      // The page was opened on a different tag, which must not drive its
-      // header once a query is what produces the results.
-      '#project/atlas',
+      'tag = #risk/vendor OR tag = #project/atlas',
+      { originQuery: '#project/atlas' },
     );
 
-    assert.strictEqual(snapshot.query?.isAdvanced, true);
-    assert.deepStrictEqual(snapshot.filterTags, []);
-    assert.deepStrictEqual(
-      snapshot.sections.map((section) => section.filePath),
-      ['notes/2026-09-11.md'],
-    );
+    assert.strictEqual(snapshot.tag, undefined);
+    assert.strictEqual(snapshot.hub, undefined);
+    assert.strictEqual(snapshot.originQuery, '#project/atlas');
   });
 
-  test('a tag overview keeps presenting itself with chips', () => {
+  test('a search of one tag is that tag\'s page, however it is written', () => {
     const index = createIndex();
-    const snapshot = createTagOverviewSnapshot(
+    for (const text of ['#project/atlas', 'tag = #project/atlas', 'tag:#project/atlas']) {
+      const snapshot = createSearchPageSnapshot(index, createPreferences(), text);
+      assert.strictEqual(snapshot.tag?.key, '#project/atlas', text);
+      assert.strictEqual(snapshot.query.text, text, 'the box keeps what was typed');
+    }
+    const narrowed = createSearchPageSnapshot(
       index,
       createPreferences(),
-      '#project/atlas',
+      '#project/atlas is:open',
     );
-
-    assert.strictEqual(snapshot?.query?.isAdvanced, false);
-    // The page's tags are written in the box, so they can be edited or
-    // dropped there; the scope still travels with the state, which is what
-    // tells the page it refines its tags rather than replacing them.
-    assert.strictEqual(snapshot?.query?.scope, 'tag = #project/atlas');
-    assert.strictEqual(snapshot?.query?.text, '#project/atlas');
+    assert.strictEqual(narrowed.tag, undefined, 'anything more is a search');
   });
 
   test('reads is:, has:, no:, and in: as shorthand conditions', () => {
@@ -518,22 +508,20 @@ function createPreferences(): PersistedPreferences {
     dashboardTaskColumns: 1,
     dashboardNoteColumns: 1,
     dashboardTagColumns: 1,
-    dashboardNoteSortMode: 'alphabetical',
     dashboardViewState: {
-      mode: 'tasks',
-      taskFilter: 'active',
-      selectedTaskTags: [],
-      taskSearchQuery: '',
-      noteSearchQuery: '',
+      mode: 'home',
       tagSearchQuery: '',
-      taskTagQuery: '',
     },
+    taskBoardLayout: 'board',
+    taskBoardGroup: 'status',
+    taskBoardTaskFilter: 'active',
     renderMode: 'markdown',
     tagOverviewSortMode: 'alphabetical',
     tagOverviewLayout: 'tabs',
     relatedNotesSortMode: 'newest',
     sectionAccessCounts: {},
     savedFilters: [],
+    dashboardWidgets: [],
   };
 }
 
