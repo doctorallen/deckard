@@ -53,6 +53,16 @@ function createNavigation(): DashboardNavigation & { opened: string[] } {
     openTaskBoard: async (query) => {
       opened.push(`board ${query ?? ''}`);
     },
+    openDailyNote: async () => {
+      opened.push('today');
+    },
+    quickAdd: async (text) => {
+      opened.push(`add ${text}`);
+      return true;
+    },
+    createHubNote: async (tagKey) => {
+      opened.push(`hub ${tagKey}`);
+    },
   };
 }
 

@@ -57,6 +57,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function openDashboard(
   index = createIndex(),
   prepare = async () => undefined,
+  indexerExtras = {},
 ) {
   vscode._test.createdPanels.length = 0;
   const updates = new vscode.EventEmitter();
@@ -64,6 +65,7 @@ async function openDashboard(
     ready: Promise.resolve(),
     getSnapshot: () => index,
     onDidUpdate: updates.event,
+    ...indexerExtras,
   };
   const preferences = new PreferencesStore(createGlobalState());
   await prepare(preferences);
@@ -103,11 +105,34 @@ function createNavigation() {
     openTaskBoard: (query) => {
       opened.push(`board ${query ?? ''}`);
     },
+    openDailyNote: () => {
+      opened.push('today');
+    },
+    quickAdd: (text) => {
+      opened.push(`add ${text}`);
+      return !text.includes('refused');
+    },
+    createHubNote: (tagKey) => {
+      opened.push(`hub ${tagKey}`);
+    },
   };
 }
 
 const tests = [];
 function test(name, fn) { tests.push({ name, fn }); }
+
+/** A note in the editor, a note sharing its tags, and a tag with no hub. */
+function createNotesIndex() {
+  const note = (filePath, content) =>
+    parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/current.md', '# Current work #project/atlas #risk/vendor\n- [ ] Draft the plan'),
+    note('notes/vendor.md', '# Vendor call #risk/vendor\n- [ ] Call the vendor\n- [ ] Send the notes'),
+    note('notes/atlas.md', '# Atlas #project/atlas'),
+    note('notes/contract.md', '# Contract review #risk/vendor'),
+  ];
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}
 
 // ---------------------------------------------------------------------------
 
@@ -481,6 +506,91 @@ test('typing a tag search keeps focus and text through a host update', async () 
 });
 
 // ---------------------------------------------------------------------------
+
+test('the new widgets act on notes, tags, and today\'s note', async () => {
+  vscode.window.activeTextEditor = {
+    document: { uri: vscode.Uri.file('notes/current.md'), languageId: 'markdown' },
+    selection: { active: { line: 0 } },
+  };
+  try {
+    const { view, navigation, preferences } = await openDashboard(
+      createNotesIndex(),
+      (store) => store.setDashboardWidgets([
+        { id: 'today', kind: 'todayNote', width: 'half' },
+        { id: 'add', kind: 'quickAdd', width: 'full' },
+        { id: 'related', kind: 'relatedNotes', width: 'half' },
+        { id: 'pairs', kind: 'tagPairs', width: 'half' },
+        { id: 'hubs', kind: 'unhubbedTags', width: 'half' },
+        { id: 'pins', kind: 'pinnedNotes', width: 'half' },
+        { id: 'stale', kind: 'staleTasks', width: 'half' },
+      ]),
+      {
+        isNotesFile: () => true,
+        getFilePath: (uri) => uri.fsPath.replace(/^\//, ''),
+      },
+    );
+    const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
+
+    // Today's note does not exist yet, so the widget offers to create it.
+    view.click(widget('today').querySelector('[data-action="open-daily-note"]'));
+    await delay(20);
+    assert.deepStrictEqual(navigation.opened, ['today']);
+
+    // Quick add sends the task, clears the field, and says what happened.
+    const field = () => widget('add').querySelector('[data-action="quick-add-draft"]');
+    view.type(field(), 'Call Ren #risk/vendor');
+    view.submit(widget('add').querySelector('form'));
+    await delay(20);
+    assert.strictEqual(navigation.opened[1], 'add Call Ren #risk/vendor');
+    assert.strictEqual(field().value, '');
+    assert.match(widget('add').querySelector('.home-quick-add-status').textContent, /Added/);
+    view.type(field(), 'refused task');
+    view.submit(widget('add').querySelector('form'));
+    await delay(20);
+    assert.strictEqual(field().value, 'refused task', 'a task not added is given back');
+
+    // Related notes follow the note in the editor.
+    assert.match(widget('related').querySelector('.home-widget-source').textContent, /Current work/);
+    const related = widget('related').querySelectorAll('[data-action="open-source"]');
+    assert.deepStrictEqual(
+      related.map((row) => row.dataset.filePath).sort(),
+      ['notes/atlas.md', 'notes/contract.md', 'notes/vendor.md'],
+    );
+
+    // A pair of tags opens a search for both.
+    view.click(widget('pairs').querySelector('[data-action="open-search"]'));
+    await delay(20);
+    assert.strictEqual(navigation.opened[3], 'search #project/atlas AND #risk/vendor');
+
+    // Vendor is used three times and has no hub.
+    const createHub = widget('hubs').querySelector('[data-action="create-tag-hub"]');
+    assert.strictEqual(createHub.dataset.tagKey, '#risk/vendor');
+    view.click(createHub);
+    await delay(20);
+    assert.strictEqual(navigation.opened[4], 'hub #risk/vendor');
+
+    // The note in the editor can be pinned, and then unpinned.
+    view.click(widget('pins').querySelector('[data-action="pin-note"]'));
+    await delay(20);
+    assert.deepStrictEqual(preferences.value.pinnedNotes, ['notes/current.md']);
+    assert.strictEqual(widget('pins').querySelector('[data-action="pin-note"]'), null, 'a pinned note is not offered again');
+    assert.strictEqual(widget('pins').querySelector('[data-action="open-note"]').dataset.filePath, 'notes/current.md');
+    view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
+    await delay(20);
+    assert.deepStrictEqual(preferences.value.pinnedNotes, []);
+
+    // A look-back widget chooses its days in its options.
+    view.click(view.find('[data-action="customize-home"]'));
+    view.click(widget('stale').querySelector('[data-action="set-widget-days"][data-value="7"]'));
+    await delay(20);
+    assert.strictEqual(
+      preferences.value.dashboardWidgets.find((entry) => entry.id === 'stale').days,
+      7,
+    );
+  } finally {
+    vscode.window.activeTextEditor = undefined;
+  }
+});
 
 (async () => {
   let pass = 0;

@@ -145,4 +145,144 @@ suite('Dashboard Home widgets', () => {
       ],
     );
   });
+
+  test('shows today\'s note, stale tasks, and where Quick add writes', () => {
+    const index = createWorkIndex();
+    const [today, quickAdd, stale] = widgets(
+      [
+        { id: 'd', kind: 'todayNote', width: 'half', count: 5 },
+        { id: 'q', kind: 'quickAdd', width: 'full' },
+        { id: 's', kind: 'staleTasks', width: 'half', count: 5, days: 30 },
+      ],
+      index,
+    );
+    assert.deepStrictEqual(today.today, {
+      date: '2026-09-16',
+      filePath: 'notes/2026-09-16.md',
+      openTaskCount: 1,
+    });
+    assert.deepStrictEqual(today.tasks?.map((entry) => entry.task.lineNumber), [2]);
+    assert.strictEqual(quickAdd.today?.filePath, 'notes/2026-09-16.md');
+    assert.strictEqual(quickAdd.tasks, undefined, 'Quick add lists nothing');
+    assert.deepStrictEqual(
+      stale.tasks?.map((entry) => entry.task.title),
+      ['Forgotten task'],
+      'only the open task in the note left alone for 60 days',
+    );
+
+    const [noNote] = createDashboardWidgets(
+      index,
+      { ...preferences, dashboardWidgets: [{ id: 'd', kind: 'todayNote', width: 'half' }] },
+      { now: now + DAY, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+    );
+    assert.deepStrictEqual(noNote.today, { date: '2026-09-17', openTaskCount: 0 });
+  });
+
+  test('ranks notes related to the last note, and lists pinned notes', () => {
+    const index = createWorkIndex();
+    const [related, pinned] = createDashboardWidgets(
+      index,
+      {
+        ...preferences,
+        pinnedNotes: ['notes/hub.md', 'notes/gone.md'],
+        dashboardWidgets: [
+          { id: 'r', kind: 'relatedNotes', width: 'half', count: 5 },
+          { id: 'p', kind: 'pinnedNotes', width: 'half', count: 5 },
+        ],
+      },
+      {
+        now,
+        upcomingDays: 7,
+        tagTitleDisplayMode: 'inline',
+        sourceNotePath: 'notes/old.md',
+      },
+    );
+    assert.strictEqual(related.sourceNote?.title, 'Old notes');
+    assert.ok(
+      related.notes?.some((note) => note.filePath === 'notes/2026-09-16.md'),
+      'a note sharing its tags is related',
+    );
+    assert.ok(related.notes?.every((note) => note.filePath !== 'notes/old.md'));
+
+    assert.deepStrictEqual(pinned.notes, [
+      { filePath: 'notes/hub.md', line: 1, title: 'Atlas hub', detail: 'hub.md · notes' },
+    ]);
+    assert.strictEqual(pinned.total, 1, 'a pinned note that is gone is left out');
+    assert.strictEqual(pinned.sourceNote?.filePath, 'notes/old.md');
+    assert.strictEqual(pinned.sourcePinned, false);
+
+    const [nothingOpen] = widgets(
+      [{ id: 'r', kind: 'relatedNotes', width: 'half' }],
+      index,
+    );
+    assert.strictEqual(nothingOpen.sourceNote, undefined);
+    assert.deepStrictEqual(nothingOpen.notes, []);
+  });
+
+  test('lists tags written together, tags without a hub, and new tags', () => {
+    const index = createWorkIndex();
+    const [pairs, unhubbed, fresh] = createDashboardWidgets(
+      index,
+      {
+        ...preferences,
+        tagFirstSeen: {
+          '#project/atlas': 0,
+          '#risk/vendor': now - 2 * DAY,
+          '#team/harbor': now - 40 * DAY,
+        },
+        dashboardWidgets: [
+          { id: 'p', kind: 'tagPairs', width: 'half', count: 5 },
+          { id: 'u', kind: 'unhubbedTags', width: 'half', count: 5 },
+          { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
+        ],
+      },
+      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+    );
+    assert.deepStrictEqual(
+      pairs.tagPairs?.map((pair) => pair.tags.map((tag) => tag.key)),
+      [['#project/atlas', '#risk/vendor']],
+      'each pair is listed once',
+    );
+    assert.ok((pairs.tagPairs?.[0].count ?? 0) > 0);
+    assert.match(pairs.tagPairs?.[0].detail ?? '', /Written together/);
+
+    assert.deepStrictEqual(
+      unhubbed.tags?.map((tag) => tag.key),
+      ['#risk/vendor'],
+      'Atlas has a hub, and Harbor is used too little',
+    );
+
+    assert.deepStrictEqual(fresh.tags?.map((tag) => tag.key), ['#risk/vendor']);
+    assert.match(fresh.tags?.[0].detail ?? '', /^First seen 2 days ago · /);
+  });
 });
+
+/**
+ * Today's daily note, a note left alone for 60 days, a hub for Atlas, and a
+ * tag written once.
+ */
+function createWorkIndex(): WorkspaceIndex {
+  const files = [
+    parseMarkdown(
+      'notes/2026-09-16.md',
+      '# 2026-09-16\n- [ ] Plan the day #project/atlas #risk/vendor\n- [x] Water the plants',
+      { createdAt: now, updatedAt: now },
+    ),
+    parseMarkdown(
+      'notes/old.md',
+      '# Old notes #project/atlas #risk/vendor\n- [ ] Forgotten task',
+      { createdAt: now - 90 * DAY, updatedAt: now - 60 * DAY },
+    ),
+    parseMarkdown(
+      'notes/vendor.md',
+      '# Vendor #risk/vendor\n- [ ] Call the vendor\n\n# Harbor #team/harbor',
+      { createdAt: now - 3 * DAY, updatedAt: now - 2 * DAY },
+    ),
+    parseMarkdown(
+      'notes/hub.md',
+      '---\ndescribes: "#project/atlas"\n---\n# Atlas hub',
+      { createdAt: now - 3 * DAY, updatedAt: now - 3 * DAY },
+    ),
+  ];
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}

@@ -4,7 +4,8 @@ import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
-import { capture } from './ui/commands/capture';
+import { capture, captureToToday } from './ui/commands/capture';
+import { createHubNote } from './ui/commands/hubNote';
 import {
   createDailyNote,
   openAdjacentDailyNote,
@@ -127,6 +128,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openTag: (tagKey) => searchPanels.show(tagKey),
       openSearch: (query) => searchPanels.showQuery(query),
       openTaskBoard: (query) => taskBoard.show(query),
+      openDailyNote: async () => {
+        await createDailyNote();
+      },
+      quickAdd: (text) => captureToToday(text),
+      createHubNote: async (tagKey) => {
+        await createHubNote(indexer, tagKey);
+      },
     },
   );
   const quickFind = new QuickFind(indexer, preferences, {
@@ -229,6 +237,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         index.tasks.keys(),
         index.sections.keys(),
         index.entities.keys(),
+        index.files.keys(),
       );
     }),
   );
@@ -370,6 +379,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openPeriodicNote('month'),
     ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
+    vscode.commands.registerCommand('deckard.pinNote', () =>
+      setNotePinned(indexer, preferences, true),
+    ),
+    vscode.commands.registerCommand('deckard.unpinNote', () =>
+      setNotePinned(indexer, preferences, false),
+    ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
       capture(indexer, 'heading'),
     ),
@@ -493,6 +508,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       index.tasks.keys(),
       index.sections.keys(),
       index.entities.keys(),
+      index.files.keys(),
     );
   });
 
@@ -633,5 +649,29 @@ async function showTagOverview(
 
   if (tagKey) {
     await searchPanels.show(tagKey);
+  }
+}
+
+/** Pins the note in the editor to Home's Pinned notes, or unpins it. */
+async function setNotePinned(
+  indexer: WorkspaceIndexer,
+  preferences: PreferencesStore,
+  pinned: boolean,
+): Promise<void> {
+  const uri = vscode.window.activeTextEditor?.document.uri;
+  if (!uri || !indexer.isNotesFile(uri)) {
+    void vscode.window.showInformationMessage(
+      'Open a note in the notes folder to pin it to Home.',
+    );
+    return;
+  }
+  const filePath = indexer.getFilePath(uri);
+  const name = filePath.split('/').pop() ?? filePath;
+  if (pinned) {
+    await preferences.pinNote(filePath);
+    void vscode.window.showInformationMessage(`Pinned ${name} to Home.`);
+  } else {
+    await preferences.unpinNote(filePath);
+    void vscode.window.showInformationMessage(`Unpinned ${name} from Home.`);
   }
 }

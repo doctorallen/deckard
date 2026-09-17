@@ -127,10 +127,32 @@ export function parseDashboardMessage(
       return value.view === 'agenda' || value.view === 'stats'
         ? { type: 'openView', view: value.view }
         : undefined;
+    case 'openDailyNote':
+      return { type: 'openDailyNote' };
+    case 'quickAdd':
+      return typeof value.text === 'string' &&
+        value.text.trim().length > 0 &&
+        value.text.length <= MAX_QUICK_ADD_LENGTH &&
+        !/[\r\n]/.test(value.text)
+        ? { type: 'quickAdd', text: value.text }
+        : undefined;
+    case 'createTagHub':
+      return typeof value.tagKey === 'string' && value.tagKey.length > 0
+        ? { type: 'createTagHub', tagKey: value.tagKey }
+        : undefined;
+    case 'pinNote':
+    case 'unpinNote':
+    case 'openNote':
+      return typeof value.filePath === 'string' && value.filePath.length > 0
+        ? { type: value.type, filePath: value.filePath }
+        : undefined;
     default:
       return undefined;
   }
 }
+
+/** A quick-add task is one line. */
+const MAX_QUICK_ADD_LENGTH = 1000;
 
 /** More widgets than Home keeps are refused rather than cut short. */
 const MAX_DASHBOARD_WIDGETS = 60;

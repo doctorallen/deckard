@@ -232,6 +232,20 @@ suite('Webview contracts', () => {
       undefined,
     );
     assert.strictEqual(parseDashboardMessage({ type: 'unknown' }), undefined);
+    // Home's widgets: a quick-add task is one line of text.
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'quickAdd', text: 'Call Ren', extra: 1 }),
+      { type: 'quickAdd', text: 'Call Ren' },
+    );
+    assert.strictEqual(parseDashboardMessage({ type: 'quickAdd', text: '  ' }), undefined);
+    assert.strictEqual(parseDashboardMessage({ type: 'quickAdd', text: 'a\nb' }), undefined);
+    assert.deepStrictEqual(
+      parseDashboardMessage({ type: 'unpinNote', filePath: 'notes/a.md' }),
+      { type: 'unpinNote', filePath: 'notes/a.md' },
+    );
+    assert.strictEqual(parseDashboardMessage({ type: 'pinNote', filePath: 7 }), undefined);
+    assert.strictEqual(parseDashboardMessage({ type: 'createTagHub', tagKey: '' }), undefined);
+    assert.deepStrictEqual(parseDashboardMessage({ type: 'openDailyNote' }), { type: 'openDailyNote' });
     assert.deepStrictEqual(
       parseDashboardMessage({ type: 'setTagSort', mode: 'custom' }),
       { type: 'setTagSort', mode: 'custom' },

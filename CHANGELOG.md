@@ -56,6 +56,23 @@
   remove widgets, add more, and reset to the start. Widgets in a row share its
   height.
 
+- **More Home widgets**:
+  - **Today**: today's daily note and its open tasks, or a button to create it.
+  - **Quick add**: a field that adds an open task to today's daily note.
+  - **Stale tasks**: open tasks in notes left unchanged for 7 to 90 days.
+  - **Related notes**: notes related to the note you had open last, ranked as
+    Related Notes ranks them.
+  - **Tags written together**: the tag pairs written together most often,
+    with how much they overlap, to spot a missing hub note or one idea under
+    two names. A pair opens a search for both.
+  - **Tags without a hub**: tags used at least three times that have no hub
+    note, each with **Create hub**.
+  - **New tags**: tags first seen in the last 7 to 90 days, each with
+    **Rename**, to catch a typo such as `#projet/atlas` early. Tags already in
+    use when you update are not new.
+  - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
+    **Pin** for the note you had open last; **×** unpins one.
+
 - **Related tags in Refine**: a search of one tag, or of several joined by AND,
   is refined under **Tags** by the tags associated with them, strongest
   first, each with the three-step rail Related Notes draws a tag's weight

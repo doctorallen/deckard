@@ -44,12 +44,7 @@ export async function capture(
   const line = formatCaptureLine(answer.text);
 
   if (answer.target === 'today') {
-    const folder = await chooseTargetFolder();
-    if (!folder) {
-      return;
-    }
-    const uri = await ensureDailyNote(folder);
-    announce(uri, await appendCapture(uri, line));
+    await captureToToday(answer.text);
     return;
   }
 
@@ -211,6 +206,21 @@ export async function appendCapture(
   }
   await document.save();
   return insertion.taskLine;
+}
+
+/**
+ * Adds a task to today's daily note, creating the note when needed, and says
+ * where it went. Returns whether it was added.
+ */
+export async function captureToToday(text: string): Promise<boolean> {
+  const folder = await chooseTargetFolder();
+  if (!folder) {
+    return false;
+  }
+  const uri = await ensureDailyNote(folder);
+  const taskLine = await appendCapture(uri, formatCaptureLine(text));
+  announce(uri, taskLine);
+  return taskLine !== undefined;
 }
 
 /**
