@@ -605,7 +605,15 @@ export interface SidebarNotesSnapshot {
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
   refine?: SearchRefineState;
-  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches' | 'graph' | 'refine';
+  state:
+    | 'ready'
+    | 'loading'
+    | 'notIndexed'
+    | 'noMarkdown'
+    | 'noTags'
+    | 'noMatches'
+    | 'graph'
+    | 'refine';
 }
 
 /**

@@ -161,13 +161,18 @@ export class EditorReferences
           ),
         );
       }
-      // Related Notes can focus only a tagged heading.
+      // Related Notes can focus only a tagged heading. A heading nothing
+      // shares a tag with gets no lens at all: it used to carry a line
+      // reading "No entries share a tag" that could not even be clicked.
       if ((section.headingTags?.length ?? 0) > 0) {
-        lenses.push(
-          new DeckardLens(range, () =>
-            this.createRelatedCommand(document, file, section),
-          ),
-        );
+        const sharedTagCount = this.countSharedTagEntries(file, section);
+        if (sharedTagCount > 0) {
+          lenses.push(
+            new DeckardLens(range, () =>
+              this.createRelatedCommand(document, section, sharedTagCount),
+            ),
+          );
+        }
       }
     }
     return lenses;
@@ -254,13 +259,9 @@ export class EditorReferences
    */
   private createRelatedCommand(
     document: vscode.TextDocument,
-    file: ParsedFile,
     section: Section,
+    count: number,
   ): vscode.Command {
-    const count = this.countSharedTagEntries(file, section);
-    if (count === 0) {
-      return { title: 'No entries share a tag', command: '' };
-    }
     return {
       title:
         count === 1 ? '1 entry shares a tag' : `${count} entries share a tag`,

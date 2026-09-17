@@ -69,7 +69,10 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
 .relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
-.relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip { display: block; }
+.relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
+.relevance-score { min-height: 0; border: 0; background: transparent; padding: 0; cursor: pointer; }
+.relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
+.relevance-reason { margin-top: 5px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
 .relevance-tooltip li + li { margin-top: 3px; }
@@ -266,6 +269,10 @@ ${getComponentScript()}
       content = renderRefine(state.refine);
     } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
+    } else if (state.state === 'loading') {
+      content = '<div class="empty">Indexing this workspace…</div>';
+    } else if (state.state === 'notIndexed') {
+      content = '<div class="empty">This note is not indexed yet. Save it inside the notes folder to see related entries.</div>';
     } else if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
     } else if (state.state === 'noTags') {
@@ -318,7 +325,7 @@ ${getComponentScript()}
         const specificityAdjustment = evidence.specificityPenalty > 0
           ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
           : '';
-        const relevance = '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance score ' + note.relevanceScore + ' percent. Show how this was scored." title="How this note was scored">' + note.relevanceScore + '%</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
@@ -328,7 +335,7 @@ ${getComponentScript()}
           titleHtml,
           relevance,
           '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;
     }
@@ -350,7 +357,7 @@ ${getComponentScript()}
       : state.state === 'refine'
       ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow" title="Deckard v${escapedExtensionVersion}">DECKARD</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
   }
 
   document.addEventListener('click', function (event) {
@@ -378,6 +385,22 @@ ${getComponentScript()}
     }
     const target = event.target.closest('[data-action]');
     if (target) {
+      if (target.dataset.action === 'show-relevance') {
+        // Pressing the score opens the panel that hovering shows, so the
+        // reasons are reachable without a pointer.
+        const wrap = target.closest('.relevance-wrap');
+        const open = wrap && !wrap.classList.contains('is-open');
+        document.querySelectorAll('.relevance-wrap.is-open').forEach(function (other) {
+          other.classList.remove('is-open');
+          const button = other.querySelector('[data-action="show-relevance"]');
+          if (button) button.setAttribute('aria-expanded', 'false');
+        });
+        if (wrap && open) {
+          wrap.classList.add('is-open');
+          target.setAttribute('aria-expanded', 'true');
+        }
+        return;
+      }
       if (target.dataset.action === 'open-tag') {
         vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       }
@@ -445,6 +468,18 @@ ${getComponentScript()}
     if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
       closeTagContextMenu();
       return;
+    }
+    if (event.key === 'Escape') {
+      const open = document.querySelector('.relevance-wrap.is-open');
+      if (open) {
+        open.classList.remove('is-open');
+        const button = open.querySelector('[data-action="show-relevance"]');
+        if (button) {
+          button.setAttribute('aria-expanded', 'false');
+          if (button.focus) button.focus();
+        }
+        return;
+      }
     }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     if (event.target.closest('[data-action]')) return;

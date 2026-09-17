@@ -192,6 +192,10 @@
           "when": "false"
         },
         {
+          "command": "deckard.showEntryRelatedNotesDebug",
+          "when": "false"
+        },
+        {
           "command": "deckard.pinNote",
           "when": "editorLangId == markdown"
         },
@@ -662,6 +666,12 @@
       {
         "title": "AI Assistants",
         "properties": {
+          "deckard.developerMode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Offer Deckard's own diagnostics, such as the related-notes ranking breakdown on a tagged entry's hover. Useful when tuning Related Notes; off for everyday note taking.",
+            "order": 0
+          },
           "deckard.assistantTools": {
             "type": "boolean",
             "default": true,
