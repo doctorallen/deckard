@@ -39,6 +39,10 @@ const corpoCss = `
      which is a border color, not a text one. */
   --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
   --hover-fg: var(--vscode-foreground);
+  /* A chosen tab or filter takes VS Code's own button colors, so Corpo keeps
+     looking like the editor around it. */
+  --chosen-bg: var(--vscode-button-background);
+  --chosen-fg: var(--vscode-button-foreground);
   --panel-deep: var(--vscode-input-background, var(--vscode-editor-background));
   --text: var(--vscode-foreground);
   --muted: var(--vscode-descriptionForeground);
@@ -167,8 +171,8 @@ h1 { letter-spacing: .12em; }
 .telemetry-line span:last-child { color: var(--cyan-bright); }
 .section-heading { border-bottom: 1px solid rgba(0, 229, 255, .3); padding-bottom: 6px; }
 .section-readout { color: var(--cyan); }
-button, select, .tag-open { border-color: var(--cyan); border-radius: 0; background: rgba(7, 6, 17, .94); color: var(--cyan-bright); font-family: var(--font-mono); letter-spacing: .04em; clip-path: polygon(0 5px, 5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%); }
-button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--cyan); background: var(--cyan); color: var(--bg-dark); box-shadow: 0 0 12px rgba(0, 229, 255, .28); }
+button, select, .tag-open, .view-options summary { border-color: var(--cyan); border-radius: 0; background: rgba(7, 6, 17, .94); color: var(--cyan-bright); font-family: var(--font-mono); letter-spacing: .04em; clip-path: polygon(0 5px, 5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%); }
+button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--cyan); background: var(--cyan); color: var(--bg-dark); box-shadow: 0 0 12px rgba(0, 229, 255, .28); }
 :root { --hover-bg: var(--cyan); --hover-fg: var(--bg-dark); }
 input[type='checkbox'] { accent-color: var(--cyan); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(21, 16, 47, .92); box-shadow: inset 3px 0 0 var(--favorite-red), 0 0 0 1px rgba(0, 229, 255, .1); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
@@ -225,9 +229,9 @@ body { background-image: repeating-linear-gradient(0deg, rgba(118, 255, 99, .025
 main { border-color: var(--line); box-shadow: 0 0 22px rgba(41, 165, 47, .08); }
 header { border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(118, 255, 99, .2); }
 h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-button, select, .tag-open { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
+button, select, .tag-open, .view-options summary { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
 button, select { text-transform: uppercase; }
-button:hover, button.active, select:hover, .tag-open:hover { background: var(--green); border-color: var(--green); color: #071006; }
+button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { background: var(--green); border-color: var(--green); color: #071006; }
 :root { --hover-bg: var(--green); --hover-fg: #071006; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(3, 12, 3, .9); box-shadow: inset 2px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
@@ -272,8 +276,8 @@ body { background-image: none; }
 main { border-color: var(--slate-border); box-shadow: none; }
 header { border-color: var(--line-strong); }
 h1, h2, h3 { font-family: var(--font-display); color: #3d4d28; letter-spacing: .04em; }
-button, select, .tag-open { border-color: var(--slate-border); border-radius: 5px; background: #e9dfb7; color: var(--text); }
-button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
+button, select, .tag-open, .view-options summary { border-color: var(--slate-border); border-radius: 5px; background: #e9dfb7; color: var(--text); }
+button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
 :root { --hover-bg: var(--green); --hover-fg: #fff7db; }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 5px; background: #f1e8c8; box-shadow: inset 3px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
@@ -327,9 +331,11 @@ h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font
 h1 { font-weight: 200; letter-spacing: .3em; }
 .metric-value { font-family: var(--font-display); font-weight: 300; letter-spacing: .04em; }
 .eyebrow { color: var(--amber); letter-spacing: .28em; }
-button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
+/* Controls are squared, and so are the ends of a group of segments. */
+:root { --control-radius: 0; }
+button, select, .tag-open, .view-options summary { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
 button, select { text-transform: uppercase; }
-button:hover, button.active, select:hover, .tag-open:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
+button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
 :root { --hover-bg: var(--text); --hover-fg: var(--bg-dark); }
 /* A tag's weight reads as a gold instrument, against faint empty steps. */
 .tag-weight-rail-segment.filled { background: var(--amber); }
@@ -402,7 +408,9 @@ h1 { font-weight: 200; letter-spacing: .32em; }
 .eyebrow { color: var(--muted); letter-spacing: .26em; }
 .source, .metric-label { color: var(--muted); letter-spacing: .16em; }
 .section-heading { border-bottom: 1px solid var(--slate-border); padding-bottom: 6px; }
-button, select, .tag-open { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; }
+/* Controls are squared, and so are the ends of a group of segments. */
+:root { --control-radius: 0; }
+button, select, .tag-open, .view-options summary { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .14em; }
 button, select { text-transform: uppercase; }
 button:hover, select:hover, .tag-open:hover { border-color: var(--line-strong); background: rgba(95, 211, 228, .08); color: var(--cyan-bright); }
 /* An orange rule under the live control, in place of a filled button. */
@@ -459,7 +467,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --font-display: ${theme === 'lcars' ? "'Arial Narrow', var(--vscode-font-family, sans-serif)" : 'var(--vscode-font-family, sans-serif)'};
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
-${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } .task-filter-toggle button { border-radius: 0; } .task-filter-toggle button:first-child { border-radius: 0 0 0 15px; } .task-filter-toggle button:last-child { border-radius: 0 15px 15px 0; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, button .task-filter-icon, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } .task-filter-toggle button { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, select.related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
+${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } .task-filter-toggle button { border-radius: 0; } .task-filter-toggle button:first-child { border-radius: 0 0 0 15px; } .task-filter-toggle button:last-child { border-radius: 0 15px 15px 0; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, button .task-filter-icon, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } .task-filter-toggle button { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
 ${theme === 'lcars' ? '.active-file .tag-list button { color: #050505; }' : ''}
 ${theme === 'lcars' ? '.favorite-toggle { background: var(--cyan); color: #7a1f1f; } .favorite-toggle .favorite-heart { color: #7a1f1f; } .favorite-toggle:hover, .favorite-toggle:focus-visible, .favorite-toggle.favorite { background: #f5cc72; color: #7a1f1f; }' : ''}
 ${theme === 'lcars' ? '.dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }' : ''}

@@ -692,7 +692,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('dashboard-view-options'), false);
     assert.strictEqual(
       html.includes(
-        '.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border);',
+        '.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep);',
       ),
       true,
     );
@@ -750,10 +750,10 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(html.includes('<div class="dashboard-tabs-row"><div class="dashboard-tabs"'), true);
+    assert.strictEqual(html.includes('<div class="dashboard-tabs-row"><div class="segmented dashboard-tabs"'), true);
     assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
     assert.strictEqual(
-      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; color: var(--panel-deep); background: var(--amber-bright); }'),
+      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }'),
       true,
     );
     // The task tag picker went with the Tasks tab; a search names its tags.
@@ -1508,7 +1508,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('  installViewOptions();\n'), true);
     assert.strictEqual(html.includes("options.querySelector('summary').focus();"), true);
     assert.strictEqual(
-      html.includes('.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border);'),
+      html.includes('.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep);'),
       true,
     );
     assert.strictEqual(html.includes('<details class="view-options">'), false, 'the gear is not drawn by hand');

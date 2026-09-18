@@ -11,7 +11,7 @@
  * Changing a component here changes it everywhere.
  */
 
-import { settingsIcon } from './icons';
+import { helpIcon, settingsIcon } from './icons';
 
 /**
  * The palette every webview starts from.
@@ -51,11 +51,18 @@ export function getDesignTokens(): string {
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
+  /* The corner a control takes. The ends of a group of segments follow it,
+     so a theme that squares its buttons squares the group too. */
+  --control-radius: 2px;
   /* What a control looks like while it is hovered, pressed, or active. A
      theme re-declares the pair, never one half, so the text stays readable
      on whatever the background becomes. */
   --hover-bg: #121620;
   --hover-fg: #FFB000;
+  /* What a chosen segment looks like: the tab, filter, or option in force.
+     A theme re-declares the pair, never one half. */
+  --chosen-bg: #FFB000;
+  --chosen-fg: #050608;
 }`;
 }
 
@@ -196,8 +203,8 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* A row of buttons that reads as one control. */
 .segmented { display: inline-flex; }
 .segmented > * + * { margin-left: calc(var(--edge) * -1); }
-.segmented > :first-child { border-radius: 2px 0 0 2px; }
-.segmented > :last-child { border-radius: 0 2px 2px 0; }
+.segmented > :first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
+.segmented > :last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
 .segmented > .active { position: relative; z-index: 1; }
 
 /* An icon-only control, square and the same height as the rest. */
@@ -209,15 +216,30 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   padding: 5px;
 }
 .toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.settings-icon { fill: currentColor; stroke: none; }
+.settings-icon, .help-icon { fill: currentColor; stroke: none; }
 .filter-count { color: var(--muted); font-size: 10px; }
+
+/* A chosen segment, in any group of them: the Dashboard's tabs mark their
+   own, and this marks every other group the same way, rather than leaving
+   them with the inverted treatment a pressed button takes. */
+.segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"] {
+  border-color: var(--chosen-bg);
+  background: var(--chosen-bg);
+  color: var(--chosen-fg);
+}
+.segmented button.active *, .segmented button[aria-pressed="true"] *, .segmented button[aria-selected="true"] * {
+  color: inherit;
+}
 
 /* The gear that holds a page's view options, drawn the same on every page. */
 .view-options { position: relative; flex: 0 0 auto; }
-.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
+/* The gear is a summary rather than a button, so it is given a control's
+   ground here and joins the button selectors every theme restyles. The Help
+   button beside it is already a button, and is left to those same rules. */
+.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
-.view-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
-.view-options summary:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 2px; }
+.view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
@@ -227,8 +249,8 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices { display: inline-flex; }
 .view-options-choices button { min-width: 28px; min-height: 28px; padding: 4px 8px; }
 .view-options-choices button + button { margin-left: -1px; }
-.view-options-choices button:first-child { border-radius: 2px 0 0 2px; }
-.view-options-choices button:last-child { border-radius: 0 2px 2px 0; }
+.view-options-choices button:first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
+.view-options-choices button:last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
 .view-options-choices button.active { position: relative; z-index: 1; }`;
 }
 
@@ -334,6 +356,7 @@ export function getSurfaceCss(): string {
   gap: 4px;
   padding: 5px 8px;
 }
+
 
 .metrics {
   display: grid;
@@ -903,7 +926,7 @@ export function getComponentScript(): string {
     return '<button type="button" class="icon-button help-button" data-action="open-help"'
       + (anchor ? ' data-help-anchor="' + escapeHtml(anchor) + '"' : '')
       + ' aria-label="Open Help" title="Open Help">'
-      + '<svg class="toolbar-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg>'
+      + '${helpIcon}'
       + '</button>';
   }
 
