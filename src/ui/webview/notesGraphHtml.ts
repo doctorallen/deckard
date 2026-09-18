@@ -78,15 +78,15 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .tag-list-note { color: var(--muted); font: 10px var(--font-mono); padding: 2px 4px; }
 .relationship-note { margin: 0; color: var(--muted); font: 10px/1.45 var(--font-mono); }
 .clear-tags { align-self: flex-start; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 10px var(--font-mono); text-transform: uppercase; cursor: pointer; }
-.clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); }
+.clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .zoom-controls { display: inline-flex; }
 .zoom-controls button { min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
-.zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); position: relative; }
+.zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: 10px var(--font-mono); }
 .reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 10px var(--font-mono); text-transform: uppercase; cursor: pointer; }
-.reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); color: var(--amber-bright); }
+.reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
 .graph-legend { display: flex; align-items: center; gap: 5px; }

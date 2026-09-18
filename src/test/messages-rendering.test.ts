@@ -1007,7 +1007,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.note .tag-list button { color: #050505; }',
+        '.note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; }',
       ),
       true,
     );

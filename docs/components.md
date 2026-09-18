@@ -53,6 +53,30 @@ those survive the cascade (see **Layout contracts**).
 
 ---
 
+## Contrast, and the hover pair
+
+`npm run test:contrast` renders every page in every theme, resolves the
+tokens, and works out what color sits on what background at rest and while a
+control is hovered, focused, or active — including the text inside it, which
+is what a hover background strands. It fails on anything new; the problems
+already there are listed in `test/ui/contrast-baseline.json`, and
+`npm run test:contrast -- --update` re-records them once some are fixed. It
+also runs as part of `npm run test:ui`.
+
+Hover is where contrast breaks here, because a hover is usually two rules: one
+flips a control's background, another colors the control or something inside
+it. **Write the pair, never one half.** `--hover-bg` and `--hover-fg` are the
+tokens for it, every theme declares both, and anything inside a hovered
+control inherits its color.
+
+```css
+/* Yes */
+.thing:hover { background: var(--hover-bg); color: var(--hover-fg); }
+
+/* No: the theme's hover background may be light, and this is not */
+.thing:hover { color: var(--amber); }
+```
+
 ## Design tokens
 
 `getDesignTokens()` declares the whole palette on `:root`. Every page gets

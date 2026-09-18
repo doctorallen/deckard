@@ -75,6 +75,9 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
 .favorite-toggle { display: grid; place-items: center; color: var(--favorite-red); }
 .favorite-toggle:hover, .favorite-toggle:focus-visible { color: var(--favorite-red); }
+/* A toggle that is already a favorite carries a filled ground in some themes,
+   so hovering it takes the shared hover pair rather than keeping red on red. */
+.favorite-toggle.favorite:hover, .favorite-toggle.favorite:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
 .favorite-heart { display: block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; }
 .favorite-toggle.favorite .favorite-heart { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 .browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }

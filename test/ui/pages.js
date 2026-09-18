@@ -22,12 +22,14 @@ Module._resolveFilename = function patched(request, ...rest) {
 // the tokens and restyles surfaces on purpose, so the pages render as Replicant.
 const vscodeStub = require(path.join(__dirname, '..', 'e2e', 'vscodeStub.js'));
 const getConfiguration = vscodeStub.workspace.getConfiguration;
+/** The theme the pages render with; the contrast check walks every one. */
+let renderTheme = 'replicant';
 vscodeStub.workspace.getConfiguration = (section) => {
   const configuration = getConfiguration(section);
   return {
     ...configuration,
     get: (key, fallback) =>
-      section === 'deckard' && key === 'theme' ? 'replicant' : configuration.get(key, fallback),
+      section === 'deckard' && key === 'theme' ? renderTheme : configuration.get(key, fallback),
   };
 };
 const webview = {
@@ -53,4 +55,22 @@ const pages = [
       })],
 ];
 
-module.exports = { pages };
+/** Every theme Deckard ships, read from the manifest the themes declare. */
+const { deckardThemes } = require('../../out/ui/webview/themes.js');
+
+/**
+ * Renders every page with one theme applied, as [name, html] pairs. The page
+ * functions read the theme when they run, so the pages are built again for
+ * each one rather than restyled after the fact.
+ */
+function renderPagesForTheme(theme) {
+  const previous = renderTheme;
+  renderTheme = theme;
+  try {
+    return pages.map(([name, render]) => [name, render()]);
+  } finally {
+    renderTheme = previous;
+  }
+}
+
+module.exports = { pages, renderPagesForTheme, themes: deckardThemes };

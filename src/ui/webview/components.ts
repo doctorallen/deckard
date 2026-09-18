@@ -51,6 +51,11 @@ export function getDesignTokens(): string {
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
+  /* What a control looks like while it is hovered, pressed, or active. A
+     theme re-declares the pair, never one half, so the text stays readable
+     on whatever the background becomes. */
+  --hover-bg: #121620;
+  --hover-fg: #FFB000;
 }`;
 }
 
@@ -127,8 +132,15 @@ button, select, input[type="text"], input[type="search"] {
 button { cursor: pointer; }
 button:hover, button.active, select:hover, input[type="text"]:focus, input[type="search"]:focus {
   border-color: var(--amber);
-  background: var(--panel-raised);
-  color: var(--amber);
+  background: var(--hover-bg);
+  color: var(--hover-fg);
+}
+/* Anything inside a control follows the control's own text color, so a hover
+   that flips the background cannot leave a count or an icon on top of it in
+   a color chosen for the background it used to have. */
+button:hover *, button.active *, button:focus-visible *,
+.tag-open:hover *, .tag-open:focus-visible * {
+  color: inherit;
 }
 button:focus-visible, select:focus-visible, input:focus-visible {
   outline: var(--edge) solid var(--cyan);
@@ -166,7 +178,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
-.control-icon select:hover + .control-icon-svg { color: var(--amber-bright); }
+.control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
 .control-icon select { padding-left: 29px; }
 
 /* Notes and Tasks tabs over a set of results, on a page that lists both. */

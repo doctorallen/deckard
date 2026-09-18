@@ -59,9 +59,13 @@ export function getSidebarNotesHtml(
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
 .related-notes-sort-control { position: relative; display: block; margin-top: 10px; }
-.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
+select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
-.related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
+/* The sort control takes the shared control hover, border and all: its own
+   amber border and amber text were both out of step with every other hover,
+   and unreadable on a theme whose hover background is light. The icon sits
+   over the control, so it follows the same text color. */
+select.related-notes-sort:hover ~ .related-notes-sort-icon { color: var(--hover-fg); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
