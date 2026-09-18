@@ -95,7 +95,7 @@ ${getQueryEditorScript()}
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     // Saving sits with the search it saves; the saved search reopens here.
     actions: function (hasText) {
-      return '<button data-action="save-board-search" data-query-needs-text title="Save this search as a view that opens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
 

@@ -137,7 +137,7 @@ ${getQueryEditorScript()}
     label: 'Search notes and tasks',
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     actions: function (hasText) {
-      return '<button data-action="save-filter" data-query-needs-text title="Save this search as a view"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-filter" data-query-needs-text title="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
 
@@ -320,10 +320,10 @@ ${getQueryEditorScript()}
     ]);
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span></label>';
     const savedViewName = state.savedViewName
-      ? '<div class="saved-view-name" aria-label="Saved view: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved view:</span> ' + escapeHtml(state.savedViewName) + '</div>'
+      ? '<div class="saved-view-name" aria-label="Saved search: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved search:</span> ' + escapeHtml(state.savedViewName) + '</div>'
       : '';
     const eyebrow = state.tag
-      ? 'DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW'
+      ? 'DECKARD / TAG SEARCH'
       : 'DECKARD / SEARCH';
     // A search that does not parse leaves the previous results on the page.
     // Say so, rather than letting them read as answers to what was typed.

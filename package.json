@@ -163,7 +163,7 @@
       },
       {
         "command": "deckard.showTagOverview",
-        "title": "Deckard: Show Tag Overview"
+        "title": "Deckard: Open a Tag's Search Page"
       },
       {
         "command": "deckard.search",
@@ -207,7 +207,7 @@
       },
       {
         "command": "deckard.outline.openTagOverview",
-        "title": "Open Tag Overview…"
+        "title": "Open the Tag's Search Page…"
       },
       {
         "command": "deckard.outline.renameTag",

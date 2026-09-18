@@ -267,7 +267,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       return;
     }
     const name = await vscode.window.showInputBox({
-      title: 'Save Deckard filter',
+      title: 'Save this search',
       prompt: 'Name this Task Board search',
       value: query,
       validateInput: (value) =>
@@ -283,7 +283,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     );
     if (saved) {
       void vscode.window.showInformationMessage(
-        `Saved Deckard filter: ${saved.name}`,
+        `Saved the search "${saved.name}".`,
       );
     }
   }
