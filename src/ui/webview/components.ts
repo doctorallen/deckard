@@ -1434,6 +1434,10 @@ export function getQueryEditorScript(): string {
     /** A builder value input to focus once the next render settles. */
     let pendingBuilderFocus;
     let restoreFocus = false;
+    /** Set while the caret is being put back, so the list stays closed. */
+    let suppressFocusSuggestions = false;
+    /** Set when the reader asked for the box itself, such as by pressing /. */
+    let openSuggestionsOnRestore = false;
     let suggestionItems = [];
     let suggestionIndex = -1;
     /** Which input the completion list belongs to, if any. */
@@ -1808,7 +1812,7 @@ export function getQueryEditorScript(): string {
       }
       builderSourceText = text;
       draft = text;
-      run(text, true);
+      run(text, true, false, false);
     }
 
     /** Write rows as search text, skipping rows with no value yet. */
@@ -1890,14 +1894,15 @@ export function getQueryEditorScript(): string {
      * one that only removes or adds a chip, or comes from the builder, keeps
      * it, as keepEntry says.
      */
-    function run(text, keepEntry, incidental) {
+    function run(text, keepEntry, incidental, focusBar) {
       awaitingApply = true;
       lastEntry = entry;
       entryAfterRun = keepEntry ? entry : '';
       // The host answers with a fresh snapshot, and the page rebuilds itself
       // from it. Without this the caret would be thrown away on every search,
-      // so the next keystroke would go nowhere.
-      restoreFocus = true;
+      // so the next keystroke would go nowhere. A search built in the builder
+      // keeps its own field instead.
+      restoreFocus = focusBar !== false;
       // A facet click or a dropped chip is a step along the way, not a search
       // worth keeping: recording those evicts what the reader actually typed
       // from the short list of recent searches.
@@ -2265,7 +2270,12 @@ export function getQueryEditorScript(): string {
           restoreFocus = false;
           const bar = document.querySelector('[data-suggest-key="query"]');
           if (bar && bar.focus) {
+            // Putting the caret back is not the reader asking for the recent
+            // searches: only focusing the empty box by hand opens those.
+            if (!openSuggestionsOnRestore) suppressFocusSuggestions = true;
+            openSuggestionsOnRestore = false;
             bar.focus();
+            suppressFocusSuggestions = false;
             const caret = bar.value ? bar.value.length : 0;
             if (bar.setSelectionRange) bar.setSelectionRange(caret, caret);
           }
@@ -2280,9 +2290,10 @@ export function getQueryEditorScript(): string {
         }
       },
 
-      /** Put the caret in the search box. */
+      /** Put the caret in the search box, with its recent searches. */
       focus: function () {
         restoreFocus = true;
+        openSuggestionsOnRestore = true;
         options.render();
       },
 
@@ -2307,6 +2318,7 @@ export function getQueryEditorScript(): string {
 
       handleFocusIn: function (event) {
         const target = event.target;
+        if (suppressFocusSuggestions) return;
         if (target && target.dataset && target.dataset.action === 'query-input' && !target.value) {
           openSuggestions(target);
         }
