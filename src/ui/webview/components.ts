@@ -692,13 +692,52 @@ export function getComponentScript(): string {
       }).join('') + '</div>';
   }
 
-  /** One task card, with its checkbox and the menu that moves it to another column. */
-  function renderTaskBoardCard(card, columnId, columns) {
-    const moves = columns.filter(function (column) {
-      return column.droppable && column.id !== columnId;
-    }).map(function (column) {
-      return '<option value="' + escapeHtml(column.id) + '">' + escapeHtml(column.label) + '</option>';
-    }).join('');
+  /**
+   * Every edit a card can make, whatever the board is grouped by.
+   *
+   * The menu used to offer the columns of the current grouping alone, so
+   * changing a due date meant regrouping the whole board first, and the most
+   * common edits ended in the Markdown file instead.
+   */
+  function renderTaskCardMoves(card, columnId, columns, settings) {
+    const option = function (value, label) {
+      return value === columnId
+        ? ''
+        : '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</option>';
+    };
+    const group = function (label, options) {
+      const body = options.join('');
+      return body ? '<optgroup label="' + escapeHtml(label) + '">' + body + '</optgroup>' : '';
+    };
+    const statuses = (settings && settings.statuses) || [];
+    const statusOptions = [option('status:', 'No status')].concat(statuses.map(function (status) {
+      return option('status:' + status, status.charAt(0).toUpperCase() + status.slice(1).replace(/[-_]+/g, ' '));
+    }));
+    const priorityOptions = [['highest', 'Highest'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low'], ['lowest', 'Lowest'], ['', 'No priority']].map(function (entry) {
+      return option('priority:' + entry[0], entry[1]);
+    });
+    const dueOptions = [['today', 'Due today'], ['tomorrow', 'Due tomorrow'], ['', 'No due date']].map(function (entry) {
+      return option('due:' + entry[0], entry[1]);
+    });
+    const done = card.completed ? '' : option('done', 'Complete it');
+    // Any column of the current grouping that is not one of the above, such
+    // as a due band the board made, still moves the card.
+    const others = columns.filter(function (column) {
+      return column.droppable && column.id !== columnId
+        && column.id.indexOf('status:') !== 0
+        && column.id.indexOf('priority:') !== 0
+        && column.id.indexOf('due:') !== 0
+        && column.id !== 'done';
+    }).map(function (column) { return option(column.id, column.label); });
+    return group('Status', statusOptions)
+      + group('Priority', priorityOptions)
+      + group('Due', dueOptions)
+      + group('This board', others)
+      + (done ? group('Done', [done]) : '');
+  }
+
+  /** One task card, with its checkbox and the menu that edits it. */
+  function renderTaskBoardCard(card, columnId, columns, settings) {
     const details = card.details.map(function (detail) {
       const overdue = card.overdue && detail.indexOf('due ') === 0;
       // Colour alone carried this before, which says nothing to a reader who
@@ -711,7 +750,7 @@ export function getComponentScript(): string {
       + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
-      + '<select class="board-move" data-action="board-move" title="Move to another column" aria-label="' + escapeHtml('Move ' + plainTitle + ' to another column') + '"><option value="" selected hidden>⋯</option>' + moves + '</select>'
+      + '<select class="board-move" data-action="board-move" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '"><option value="" selected hidden>⋯</option>' + renderTaskCardMoves(card, columnId, columns, settings) + '</select>'
       + '</div></article>';
   }
 
@@ -724,7 +763,7 @@ export function getComponentScript(): string {
       const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
       const count = cards.length + column.hiddenCount;
       const body = cards.length
-        ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns); }).join('')
+        ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns, board.settings); }).join('')
         : '<p class="board-empty">' + (column.droppable ? 'Drop a task here' : 'No tasks') + '</p>';
       return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + '"'
         + ' data-column-id="' + escapeHtml(column.id) + '" data-droppable="' + column.droppable + '"'
