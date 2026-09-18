@@ -1053,11 +1053,11 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    // The heart is drawn in the toggle's own color, so no theme colors it
+    // apart: a theme that did would strand it when the toggle is hovered.
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
-        '.favorite-toggle .favorite-heart { color: #7a1f1f; }',
-      ),
-      true,
+      deckardThemes.some((theme) => getDeckardThemeCss(theme).includes('.favorite-heart {')),
+      false,
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(

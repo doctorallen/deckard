@@ -57,7 +57,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .saved-filter-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .saved-filter-name { color: var(--cyan-bright); font: 12px var(--font-mono); overflow-wrap: anywhere; }
 .saved-filter-tags { margin-top: 3px; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
-.saved-filter-remove { min-height: 26px; color: var(--muted); text-transform: none; }
+.saved-filter-remove { min-height: 26px; text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-kind { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; }
@@ -72,10 +72,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-actions { display: flex; align-items: center; gap: 5px; }
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
 .favorite-toggle { display: grid; place-items: center; color: var(--favorite-red); }
-.favorite-toggle:hover, .favorite-toggle:focus-visible { color: var(--favorite-red); }
-/* A toggle that is already a favorite carries a filled ground in some themes,
-   so hovering it takes the shared hover pair rather than keeping red on red. */
-.favorite-toggle.favorite:hover, .favorite-toggle.favorite:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
+/* The toggle carries a filled ground in some themes, and a hovered control's
+   ground in every one, so hovering it takes the shared hover pair rather than
+   keeping a red that was chosen for the ground it has at rest. */
+.favorite-toggle:hover, .favorite-toggle:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
 .favorite-heart { display: block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; }
 .favorite-toggle.favorite .favorite-heart { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 .browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
@@ -102,10 +102,15 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-title { margin: 0; color: var(--amber-bright); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 .home-widget-grip { margin-right: 6px; color: var(--muted); }
 .home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-.home-open { min-height: 26px; padding: 3px 8px; color: var(--cyan-bright); text-transform: none; }
+.home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }
 .home-remove { min-height: 26px; padding: 3px 8px; text-transform: none; }
 .home-list { display: grid; gap: 6px; }
-.home-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; text-transform: none; }
+/* A row on Home is a button, but it is painted by the row rules, so it reads
+   as a row: the text that belongs on a panel rather than the color a theme
+   wrote for a hovered control over the hover ground. Its label and its detail
+   follow it from there, as they do inside any hovered control. */
+.home-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--text); text-align: left; text-transform: none; }
+.home-row:hover, .home-row:focus-visible { color: var(--text); }
 .home-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--cyan-bright); }
 .home-row-label code { background: none; padding: 0; color: inherit; font-size: 11px; }
 .home-row-detail { flex: 0 0 auto; color: var(--muted); font: 10px var(--font-mono); }

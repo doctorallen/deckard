@@ -366,9 +366,12 @@ export function getSurfaceCss(): string {
 }
 .metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: 12px; }
 /* A metric that opens what it counts keeps the tile's look, and gains the
-   hover and focus treatment every other control has. */
-.metric-open { display: grid; gap: 4px; justify-items: start; text-align: left; font: inherit; cursor: pointer; }
-.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: inherit; }
+   hover and focus treatment every other control has. The tile rules paint it,
+   not the control ones, so it carries the text that belongs on a panel: a
+   theme whose controls have a ground of their own writes their text for that
+   ground, and on LCARS that is near-black, which the tile never becomes. */
+.metric-open { display: grid; gap: 4px; justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .metric-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
 .metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
 
@@ -467,7 +470,9 @@ export function getTaskBoardCss(): string {
   text-align-last: center;
   cursor: pointer;
 }
-.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--amber); }
+/* The menu sits on the control ground once it is hovered, so it takes the
+   shared hover text rather than the amber it carries over the card. */
+.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
 .board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
 .board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
 }
@@ -1354,7 +1359,10 @@ export function getQueryEditorCss(): string {
 /* A value and its two other modes read as one control. The modes stay out of
    the way until the value is hovered or something in it has focus. */
 .query-facet-value-group { display: inline-flex; align-items: stretch; }
-.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); color: var(--muted); font-size: 11px; opacity: 0; }
+/* The mode is held back by staying hidden until the value is hovered, not by
+   a muted color, which would be muted against whatever ground a theme gives
+   its controls rather than against the page. */
+.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); font-size: 11px; opacity: 0; }
 .query-facet-value-group:hover .query-facet-mode, .query-facet-mode:focus-visible { opacity: 1; }
 @media (hover: none) { .query-facet-mode { opacity: 1; } }
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }

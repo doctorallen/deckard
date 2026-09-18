@@ -21,6 +21,27 @@
   - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
     **Pin** for the note you had open last; **×** unpins one.
 
+### Fixed
+
+- A row on Home reads while the pointer is over it. A row is a button as well
+  as a row, and each was colored by its own rule: the row rule raised the
+  ground and the button rule wrote the text for a ground it never had, so a
+  Favorite tags, Frequent tags, or Recently opened row went all but black on
+  black. Cooper showed it worst; LCARS, Synthwave, Tomcat, and Fellowship had
+  it too, and LCARS also at rest.
+
+- A Stats tile you can open reads on LCARS, where it had taken the near-black
+  its controls are written for onto the tile's own panel.
+
+- The Favorite heart, a card's **Move** menu on the Task Board, a saved
+  search's **Remove**, a widget's **All tags**, and a search facet's mode read
+  on whatever ground the theme in use gives them, at rest and while hovered.
+  No theme colors the heart apart from the toggle carrying it now, so a hover
+  cannot strand it.
+
+- Fellowship's muted text is a little darker, so the smaller print on its
+  parchment panels reads.
+
 ## 1.14.0 - 2026-09-17
 
 ### Added
