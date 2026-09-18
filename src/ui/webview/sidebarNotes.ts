@@ -618,7 +618,14 @@ export class SidebarNotesView
       if (note.sectionId) {
         await this.preferences.recordSectionAccess(note.sectionId);
       }
-      await openSourceAt(note.filePath, note.sourceLine);
+      // A result used to replace the note it was ranked from, with no way
+      // back but Ctrl+Tab. Cmd/Ctrl-click opens it alongside instead.
+      await openSourceAt(
+        note.filePath,
+        note.sourceLine,
+        undefined,
+        message.beside === true,
+      );
     }
   }
 

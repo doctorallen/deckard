@@ -728,6 +728,8 @@ export interface OpenSourceMessage {
   type: 'openSource';
   filePath: string;
   line: number;
+  /** Open beside the current editor rather than replacing it. */
+  beside?: boolean;
 }
 
 export interface ToggleTaskMessage {

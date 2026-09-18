@@ -529,7 +529,8 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
     typeof value.filePath === 'string' &&
     typeof value.line === 'number' &&
     Number.isInteger(value.line) &&
-    value.line > 0
+    value.line > 0 &&
+    (value.beside === undefined || typeof value.beside === 'boolean')
   );
 }
 

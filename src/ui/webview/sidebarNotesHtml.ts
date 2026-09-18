@@ -95,6 +95,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .graph-tag-pill { margin-left: 0; color: var(--text); }
 /* The active search's Refine options. */
 .refine-values { display: grid; gap: 3px; }
+.refine-subject { margin: 2px 0 0; color: var(--cyan); font: 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .refine-value { display: flex; align-items: stretch; gap: 3px; }
 /* A tag as a full-width row, for the note's own tags and the related tags in
    Refine: its rail, its name, and its count. The theme's own .tag-open layout
@@ -196,7 +197,12 @@ ${getComponentScript()}
   function renderRefine(refine) {
     const query = refine.query;
     const facets = query.facets || [];
-    const heading = '<div class="refine-heading"><h2>Refine</h2>'
+    // Which search these narrow. With two search pages open, nothing said
+    // which one a value here would change.
+    const subject = refine.title
+      ? '<p class="refine-subject" title="' + escapeHtml(refine.title) + '">' + escapeHtml(refine.title) + '</p>'
+      : '';
+    const heading = '<div class="refine-heading"><h2>Refine</h2>' + subject
       + (facets.length && String(query.text || '').trim()
         ? '<p class="refine-hint">Select a value to add it to the search. Alt-click leaves it out; Shift-click allows it beside the one already chosen. The icon beside a tag opens it in a new tab.</p>'
         : '')
@@ -213,7 +219,7 @@ ${getComponentScript()}
 
   /** Shared shell for Related Notes and graph-connected node cards. */
   function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
-    return '<article class="note ' + className + '" tabindex="0" ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
+    return '<article class="note ' + className + '" tabindex="0" title="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
   }
 
   function renderGraphConnections(graph) {
@@ -478,7 +484,9 @@ ${getComponentScript()}
       return;
     }
     const note = event.target.closest('.note');
-    if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
+    // Cmd/Ctrl-click opens the result beside the note it was ranked from,
+    // the way a graph node already did.
+    if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) });
   });
   document.addEventListener('pointerover', function (event) {
     const graphNode = event.target.closest('.graph-node');
@@ -537,7 +545,7 @@ ${getComponentScript()}
     const note = event.target.closest('.note');
     if (note) {
       event.preventDefault();
-      vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
+      vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) });
     }
   });
   document.addEventListener('change', function (event) {
