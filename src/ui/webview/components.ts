@@ -1125,7 +1125,25 @@ export function getComponentScript(): string {
       }
     }, true);
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) closeRankMenu();
+      if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) {
+        closeRankMenu();
+        return;
+      }
+      // Reordering was a drag or a right-click, so a keyboard could reach
+      // neither. The same menu opens on the focused row with the menu key,
+      // Shift+F10, or Alt+Enter, at the row itself.
+      const isMenuKey = event.key === 'ContextMenu'
+        || (event.key === 'F10' && event.shiftKey)
+        || (event.key === 'Enter' && event.altKey);
+      if (!isMenuKey) return;
+      const row = event.target.closest ? event.target.closest(rowSelector) : undefined;
+      if (!row) return;
+      const bounds = row.getBoundingClientRect();
+      openMenu({
+        preventDefault: function () { event.preventDefault(); },
+        clientX: bounds.left + 12,
+        clientY: bounds.top + bounds.height,
+      }, row);
     });
     document.addEventListener('contextmenu', function (event) {
       const row = event.target.closest(rowSelector);
@@ -1252,6 +1270,12 @@ export function getQueryEditorCss(): string {
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: 11px; }
+/* A value and its two other modes read as one control. The modes stay out of
+   the way until the value is hovered or something in it has focus. */
+.query-facet-value-group { display: inline-flex; align-items: stretch; }
+.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); color: var(--muted); font-size: 11px; opacity: 0; }
+.query-facet-value-group:hover .query-facet-mode, .query-facet-mode:focus-visible { opacity: 1; }
+@media (hover: none) { .query-facet-mode { opacity: 1; } }
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
@@ -1610,7 +1634,12 @@ export function getQueryEditorScript(): string {
       const help = 'Show only these. Alt-click to leave them out; Shift-click to allow them as well.';
       const title = value.detail ? value.detail + '. ' + help : help;
       const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
-      return '<button class="query-facet-value" data-action="facet" data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + value.label + strength + ', ' + value.count) + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+      const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
+      return '<span class="query-facet-value-group">'
+        + '<button class="query-facet-value" data-action="facet"' + shared + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + value.label + strength + ', ' + value.count) + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>'
+        + '<button class="query-facet-mode" data-action="facet-exclude"' + shared + ' title="Leave these out" aria-label="' + escapeHtml('Leave ' + value.label + ' out of the search') + '">&minus;</button>'
+        + '<button class="query-facet-mode" data-action="facet-or"' + shared + ' title="Allow these as well" aria-label="' + escapeHtml('Allow ' + value.label + ' as well') + '">+</button>'
+        + '</span>';
     }
 
     /** How many of each kind of result the applied search matches. */
@@ -2278,6 +2307,10 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'facet') {
           refine(target.dataset.clause, target.dataset.facetId, event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and');
+          return true;
+        }
+        if (action === 'facet-exclude' || action === 'facet-or') {
+          refine(target.dataset.clause, target.dataset.facetId, action === 'facet-exclude' ? 'exclude' : 'or');
           return true;
         }
         if (action === 'builder-add-group') {

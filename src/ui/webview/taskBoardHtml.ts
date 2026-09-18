@@ -184,7 +184,7 @@ ${getQueryEditorScript()}
   function renderStatusSettings() {
     const statuses = state.settings.statuses;
     const rows = statuses.map(function (status, index) {
-      return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" title="Drag to reorder, or right-click to move it first or last">'
+      return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" title="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">'
         + '<span class="board-status-grip" aria-hidden="true">&#10303;</span>'
         + '<span class="board-status-name">' + escapeHtml(status) + '</span>'
         + '<button type="button" data-action="remove-status" data-index="' + index + '" aria-label="Remove ' + escapeHtml(status) + '" title="Remove column">&#215;</button></li>';
