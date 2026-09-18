@@ -130,10 +130,17 @@ button, select, input[type="text"], input[type="search"] {
   font: inherit;
 }
 button { cursor: pointer; }
-button:hover, button.active, select:hover, input[type="text"]:focus, input[type="search"]:focus {
+button:hover, button.active, select:hover, .tag-open:hover {
   border-color: var(--amber);
   background: var(--hover-bg);
   color: var(--hover-fg);
+}
+/* A field being typed in keeps its own ground and its text: inverting it the
+   way a pressed control inverts would recolor the text under the caret. */
+input[type="text"]:focus, input[type="search"]:focus {
+  border-color: var(--amber);
+  background: var(--panel-deep);
+  color: var(--text);
 }
 /* Anything inside a control follows the control's own text color, so a hover
    that flips the background cannot leave a count or an icon on top of it in

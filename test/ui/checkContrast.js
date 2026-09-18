@@ -522,7 +522,10 @@ function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
   const checked = new Set();
 
   for (const entry of declared) {
-    if (!entry.color) continue;
+    // An element that declares only a background is checked too: its text
+    // comes from a broader rule, and moving the ground under inherited text
+    // is exactly how a field ends up black on black.
+    if (!entry.color && !entry.background) continue;
     // Each element that declares a color is checked in every state something
     // gives it, since a hover elsewhere may move the ground under it.
     for (const state of ['base', 'hover', 'focus', 'active']) {
