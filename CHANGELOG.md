@@ -4,6 +4,13 @@
 
 ### Added
 
+- **Task dependencies are queryable**. `is:blocked` finds an open task while a
+  task it names in ⛔ is still open, and `is:blocking` the open task the other
+  one waits for, so the Agenda's `blocked by …` line can now be searched for
+  across the workspace. Completing the blocker frees both. `has:id` and
+  `has:dependsOn`, with `no:` for either, read the 🆔 and ⛔ markers themselves
+  whatever state the tasks at their ends are in.
+
 - **More Home widgets**:
   - **Today**: today's daily note and its open tasks, or a button to create it.
   - **Quick add**: a field that adds an open task to today's daily note.

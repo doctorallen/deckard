@@ -117,6 +117,50 @@ interface QueryUnit {
   startAt?: number;
   doneAt?: number;
   priority?: TaskPriority;
+  /** 🆔 this task's own name, which other tasks depend on. */
+  dependencyId?: string;
+  /** ⛔ the names of the tasks this one waits for. */
+  dependsOn?: string[];
+  /** Open, and waiting for a task that is still open. */
+  blocked?: boolean;
+  /** Open, and an open task is waiting for it. */
+  blocking?: boolean;
+}
+
+/**
+ * The live dependency edges of a workspace, built once per index.
+ *
+ * Only an edge between two open tasks counts: a task a completed task waited
+ * for is holding nothing up, and a task whose blockers are all done is ready
+ * to start. Computing this once keeps `is:blocked` and `is:blocking` from
+ * scanning every other task for each task they test.
+ */
+interface DependencyState {
+  /** 🆔 names of the open tasks, so a ⛔ can be told from a stale name. */
+  openIds: Set<string>;
+  /** 🆔 names that an open task waits for. */
+  neededIds: Set<string>;
+}
+
+const dependencyStates = new WeakMap<WorkspaceIndex, DependencyState>();
+
+function getDependencyState(index: WorkspaceIndex): DependencyState {
+  const cached = dependencyStates.get(index);
+  if (cached) {
+    return cached;
+  }
+  const state: DependencyState = { openIds: new Set(), neededIds: new Set() };
+  index.tasks.forEach((task) => {
+    if (task.completed) {
+      return;
+    }
+    if (task.dependencyId) {
+      state.openIds.add(task.dependencyId);
+    }
+    task.dependsOn?.forEach((id) => state.neededIds.add(id));
+  });
+  dependencyStates.set(index, state);
+  return state;
 }
 
 function buildTagMembership(index: WorkspaceIndex): TagMembership {
@@ -198,6 +242,7 @@ function createTaskUnit(
   task: Task,
 ): QueryUnit {
   const tagKeys = new Set(membership.tasks.get(task.id) ?? []);
+  const dependencies = getDependencyState(index);
   task.tags.forEach((tagKey) => tagKeys.add(tagKey));
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
@@ -219,6 +264,15 @@ function createTaskUnit(
     startAt: task.startAt,
     doneAt: task.doneAt,
     priority: task.priority,
+    dependencyId: task.dependencyId,
+    dependsOn: task.dependsOn,
+    blocked:
+      !task.completed &&
+      (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
+    blocking:
+      !task.completed &&
+      task.dependencyId !== undefined &&
+      dependencies.neededIds.has(task.dependencyId),
   };
 }
 
@@ -345,6 +399,9 @@ function matchesTaskState(value: string, unit: QueryUnit): boolean {
 /**
  * Answers `is:`. `note` is anything that is not a task; the rest are tasks.
  * `due` means open and due within the next seven days, overdue included.
+ * `blocked` and `blocking` read the ⛔ and 🆔 dependency edges between open
+ * tasks; `has:dependsOn` and `has:id` read the markers themselves, whether or
+ * not the task at the other end is still open.
  */
 function matchesIs(
   value: string,
@@ -373,6 +430,10 @@ function matchesIs(
         unit.dueAt !== undefined &&
         unit.dueAt < startOfDay(now) + 7 * DAY
       );
+    case 'blocked':
+      return unit.blocked === true;
+    case 'blocking':
+      return unit.blocking === true;
     default:
       return false;
   }
@@ -387,11 +448,21 @@ function matchesHas(condition: QueryConditionNode, unit: QueryUnit): boolean {
   if (unit.kind !== 'task') {
     return false;
   }
-  const present =
-    condition.value === 'priority'
-      ? unit.priority !== undefined
-      : getTaskDate(unit, condition.value) !== undefined;
+  const present = isTaskFieldPresent(unit, condition.value);
   return condition.operator === 'neq' ? !present : present;
+}
+
+function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
+  switch (field) {
+    case 'priority':
+      return unit.priority !== undefined;
+    case 'id':
+      return unit.dependencyId !== undefined;
+    case 'dependsOn':
+      return (unit.dependsOn?.length ?? 0) > 0;
+    default:
+      return getTaskDate(unit, field) !== undefined;
+  }
 }
 
 function getTaskDate(unit: QueryUnit, field: string): number | undefined {

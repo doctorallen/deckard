@@ -1357,9 +1357,19 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
+  { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
+  { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
 ];
 
-const HAS_SUGGESTIONS = ['due', 'scheduled', 'start', 'done', 'priority'];
+const HAS_SUGGESTIONS = [
+  'due',
+  'scheduled',
+  'start',
+  'done',
+  'priority',
+  'id',
+  'dependsOn',
+];
 
 /**
  * Every folder that holds a note, parents before their children.
@@ -1383,9 +1393,9 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:task, or is:note';
+      return 'is:open, is:done, is:overdue, is:due, is:task, is:note, is:blocked, or is:blocking';
     case 'has':
-      return 'has:due or no:due, and the same for scheduled, start, done, and priority';
+      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':
       return 'A folder and everything in it, as in in:notes/projects';
     case 'task':

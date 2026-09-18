@@ -36,8 +36,9 @@ README.
 
 Inspired by Tasks and TaskNotes. **Shipped**, with the Agenda view; see the
 README. Both the emoji and Dataview formats are read, and typing `/` in a
-task suggests metadata to insert. Dependencies are read and shown as
-"blocked by" in the Agenda, but not yet queryable.
+task suggests metadata to insert. Dependencies are read, shown as
+"blocked by" in the Agenda, and queryable as `is:blocked`, `is:blocking`,
+`has:id`, and `has:dependsOn`.
 
 `findTaskDate` in `src/core/markdown/parser.ts` already reads one loose due
 date, and the Dashboard already marks overdue tasks. Rather than inventing a

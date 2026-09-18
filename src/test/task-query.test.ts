@@ -67,6 +67,105 @@ suite('Task metadata queries', () => {
   });
 });
 
+suite('Task dependency queries', () => {
+  const index = createDependencyIndex();
+  const matches = (query: string): string[] => {
+    const parsed = parseQuery(query);
+    assert.deepStrictEqual(
+      parsed.diagnostics.filter((diagnostic) => diagnostic.severity === 'error'),
+      [],
+      query,
+    );
+    return evaluateQuery(index, parsed.node)
+      .tasks.map((task) => task.id)
+      .sort();
+  };
+
+  test('finds the tasks an open task is waiting for', () => {
+    assert.deepStrictEqual(matches('is:blocked'), ['waiting']);
+    assert.deepStrictEqual(matches('is:blocking'), ['blocker']);
+  });
+
+  test('a finished blocker frees the task that waited for it', () => {
+    assert.deepStrictEqual(matches('is:blocked is:open'), ['waiting']);
+    assert.ok(!matches('is:blocked').includes('released'));
+    assert.ok(!matches('is:blocking').includes('finished'));
+  });
+
+  test('a completed task neither blocks nor is blocked', () => {
+    assert.ok(!matches('is:blocked').includes('done-waiting'));
+  });
+
+  test('reads the markers themselves apart from the edges between them', () => {
+    assert.deepStrictEqual(matches('has:id'), [
+      'blocker',
+      'finished',
+      'orphan',
+    ]);
+    assert.deepStrictEqual(matches('has:dependsOn'), [
+      'done-waiting',
+      'released',
+      'stale',
+      'waiting',
+    ]);
+    assert.deepStrictEqual(matches('no:dependsOn'), [
+      'blocker',
+      'finished',
+      'orphan',
+      'plain',
+    ]);
+  });
+
+  test('a ⛔ naming nothing in the workspace blocks nobody', () => {
+    assert.ok(!matches('is:blocked').includes('stale'));
+  });
+
+  test('combines with the rest of the language', () => {
+    assert.deepStrictEqual(matches('is:blocking OR is:blocked'), [
+      'blocker',
+      'waiting',
+    ]);
+    assert.deepStrictEqual(matches('-is:blocked has:dependsOn'), [
+      'done-waiting',
+      'released',
+      'stale',
+    ]);
+  });
+
+  test('explains a value the dependency shorthands cannot take', () => {
+    const messages = (query: string): string[] =>
+      parseQuery(query).diagnostics.map((diagnostic) => diagnostic.message);
+    assert.match(messages('is:stuck')[0] ?? '', /blocked/);
+    assert.match(messages('has:blocker')[0] ?? '', /dependsOn/);
+  });
+});
+
+function createDependencyIndex(): WorkspaceIndex {
+  const tasks: Task[] = [
+    // An open pair: `waiting` cannot start until `blocker` is done.
+    createTask({ id: 'blocker', dependencyId: 'b1' }),
+    createTask({ id: 'waiting', dependsOn: ['b1'] }),
+    // The same pair once the blocker is done.
+    createTask({ id: 'finished', dependencyId: 'f1', completed: true }),
+    createTask({ id: 'released', dependsOn: ['f1'] }),
+    // A completed task waiting on an open one is nobody's problem.
+    createTask({ id: 'done-waiting', dependsOn: ['b1'], completed: true }),
+    // A ⛔ whose name no task in the workspace carries.
+    createTask({ id: 'stale', dependsOn: ['gone'] }),
+    // A 🆔 no task waits for.
+    createTask({ id: 'orphan', dependencyId: 'o1' }),
+    createTask({ id: 'plain' }),
+  ];
+  return {
+    files: new Map(),
+    sections: new Map(),
+    tasks: new Map(tasks.map((task) => [task.id, task])),
+    tags: new Map(),
+    entities: new Map(),
+    updatedAt: Date.now(),
+  };
+}
+
 function createIndex(): WorkspaceIndex {
   const tasks: Task[] = [
     createTask({ id: 'late', dueAt: inDays(-3) }),
