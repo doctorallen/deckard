@@ -4,6 +4,7 @@ import { getTaskLineId } from '../../core/markdown/parser';
 import {
   createNextOccurrence,
   formatIsoDate,
+  parseTaskMetadata,
   setTaskLineCompletion,
   TaskMetadataFormat,
 } from '../../core/markdown/taskMetadata';
@@ -67,9 +68,11 @@ export async function updateTaskLine(
   /**
    * What to tell the reader was written, such as "Completed 'Send proposal'".
    * An edit that says what it did is offered with an Undo; one that passes
-   * nothing is silent, for edits the reader is already watching happen.
+   * nothing is silent, for edits the reader is already watching happen. A
+   * function is read after the edit, for an edit that only then knows what it
+   * did, such as a completion that started the next occurrence.
    */
-  description?: string,
+  description?: string | (() => string),
 ): Promise<boolean> {
   const uri = await resolveSourceUri(task.filePath);
   if (!uri) {
@@ -117,9 +120,10 @@ export async function updateTaskLine(
       ) ?? (await vscode.workspace.openTextDocument(uri));
     await updatedDocument.save();
     carryRank(task.filePath, task.lineNumber, task.id, replacement);
-    if (description) {
+    const said = typeof description === 'function' ? description() : description;
+    if (said) {
       offerUndo(
-        description,
+        said,
         uri,
         task.lineNumber,
         replacement,
@@ -232,7 +236,15 @@ export async function toggleTask(
   task: Task,
   completed: boolean,
 ): Promise<boolean> {
-  const description = `${completed ? 'Completed' : 'Reopened'} ${quoteTaskTitle(task)}`;
+  // A repeating task is completed and immediately replaced by its next
+  // occurrence, which looks like nothing happened unless the edit says so.
+  let startedNext: string | undefined;
+  const description = () =>
+    completed
+      ? `Completed ${quoteTaskTitle(task)}${
+          startedNext ? `, and started the next one${startedNext}.` : '.'
+        }`
+      : `Reopened ${quoteTaskTitle(task)}.`;
   return updateTaskLine(
     task,
     (line, { uri, eol }) => {
@@ -256,6 +268,7 @@ export async function toggleTask(
         now,
       );
       if (nextOccurrence !== undefined) {
+        startedNext = describeNextOccurrence(nextOccurrence);
         return `${nextOccurrence}${eol}${replacement}`;
       }
       if (task.recurrence) {
@@ -267,6 +280,13 @@ export async function toggleTask(
     },
     description,
   );
+}
+
+/** When the occurrence a completion started is next wanted, if it says. */
+function describeNextOccurrence(line: string): string {
+  const { metadata } = parseTaskMetadata(line);
+  const when = metadata.due ?? metadata.scheduled ?? metadata.start;
+  return when ? `, ${metadata.due ? 'due' : 'scheduled'} ${when}` : '';
 }
 
 /** A task's title, short enough to sit in a notification. */
