@@ -1655,7 +1655,11 @@ export function getQueryEditorScript(): string {
       const recovery = matchedNothing() ? renderRecovery() : '';
       if (!facets.length && !count) return '';
       if (options.refineElsewhere && options.refineElsewhere()) {
-        const note = recovery || '<span class="query-facets-empty">' + (facets.length ? 'In the Related Notes sidebar.' : 'Nothing left to narrow by.') + '</span>';
+        // The sidebar still says where Refine went; a search that matched
+        // nothing has nothing to narrow, so it offers the way back instead.
+        const note = facets.length
+          ? '<span class="query-facets-empty">In the Related Notes sidebar.</span>'
+          : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
         return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + note + '</div>' + count + '</section>';
       }
       const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');

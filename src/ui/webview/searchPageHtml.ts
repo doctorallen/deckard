@@ -115,7 +115,7 @@ ${getQueryEditorScript()}
    * land on an empty Notes tab while every hit sat behind Tasks.
    */
   let tabChosen = false;
-  const savedPageState = vscode.getState();
+  const savedPageState = typeof vscode.getState === 'function' ? vscode.getState() : undefined;
   if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks')) {
     activeTab = savedPageState.tab;
     tabChosen = true;
@@ -347,7 +347,7 @@ ${getQueryEditorScript()}
     // The host reads this same record to restore a page, so the tab is added
     // only once it is the reader's own choice.
     if (tabChosen) saved.tab = activeTab;
-    vscode.setState(saved);
+    if (typeof vscode.setState === 'function') vscode.setState(saved);
   }
 
   installViewOptions();

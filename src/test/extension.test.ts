@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 35);
+    assert.strictEqual(Object.keys(settings).length, 36);
     const activationEvents = extension.packageJSON.activationEvents ?? [];
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.dashboard'));
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.tagOverview'));
@@ -224,8 +224,12 @@ suite('Extension Test Suite', () => {
       const titles = lenses.map((lens) => lens.command?.title);
       assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
       // A tagged heading also counts the entries elsewhere that share one of
-      // its tags; no other note here carries #project/atlas.
-      assert.ok(titles.includes('No entries share a tag'), JSON.stringify(titles));
+      // its tags. No other note here carries #project/atlas, and a heading
+      // with nothing to show gets no lens at all.
+      assert.ok(
+        !titles.some((title) => title?.includes('share a tag')),
+        JSON.stringify(titles),
+      );
     } finally {
       await vscode.workspace.fs.delete(fileUri);
     }

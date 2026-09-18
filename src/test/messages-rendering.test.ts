@@ -1419,9 +1419,14 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('>Source</button>'), false);
     assert.strictEqual(html.includes('>Rendered</button>'), false);
     // The Notes and Tasks tabs are the shared result tabs.
-    assert.strictEqual(html.includes("renderResultTabs([\n        { id: 'notes', label: 'Notes', count: notesCount },"), true);
+    assert.strictEqual(html.includes("{ id: 'notes', label: 'Notes', count: notesCount },"), true);
+    // Both tabs count what their pane shows.
+    assert.strictEqual(html.includes("{ id: 'tasks', label: 'Tasks', count: tasksCount },"), true);
+    assert.strictEqual(html.includes("count: state.taskCounts.all"), false);
     assert.strictEqual(html.includes("data-action=\"set-result-tab\""), true);
-    assert.strictEqual(html.includes("if (action === 'set-result-tab') {"), true);
+    // An empty side offers the other side's results, through the same path.
+    assert.strictEqual(html.includes("if (action === 'set-result-tab' || action === 'show-other-results') {"), true);
+    assert.strictEqual(html.includes('data-action="show-other-results"'), true);
     assert.strictEqual(
       html.includes('.segmented { display: inline-flex; }'),
       true,
@@ -1597,8 +1602,10 @@ suite('Webview contracts', () => {
     );
 
     assertWebviewScriptParses(html);
-    assert.strictEqual(html.includes('<p class="eyebrow">DECKARD</p>'), true);
-    assert.strictEqual(html.includes('<span class="version">v1.0.0</span>'), true);
+    assert.strictEqual(html.includes('<p class="eyebrow" title="Deckard v1.0.0">DECKARD</p>'), true);
+    // The badge took a place in the narrowest row in the product; the
+    // version is the eyebrow's tooltip now.
+    assert.strictEqual(html.includes('<span class="version">v1.0.0</span>'), false);
     assert.strictEqual(html.includes('DECKARD / RELATED NOTES'), false);
     assert.strictEqual(html.includes('class="reason"'), false);
     assert.strictEqual(html.includes('note.reasons'), true);

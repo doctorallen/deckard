@@ -382,7 +382,10 @@ export class SidebarNotesView
     if (
       openDocument &&
       isMarkdownDocument(openDocument) &&
-      !this.getActiveFile()
+      !this.getActiveFile() &&
+      // A entry chosen by hand keeps the pane on that entry, whatever the
+      // editor is showing.
+      this.entryContext?.source !== 'manual'
     ) {
       return {
         activeTags: [],
