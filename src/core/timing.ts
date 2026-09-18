@@ -19,6 +19,8 @@ export interface TimingLog {
   trace(message: string): void;
   debug(message: string): void;
   info(message: string): void;
+  /** Optional on a test's log; VS Code's channel has it. */
+  error?(message: string): void;
 }
 
 /** A measurement at least this long is reported even at the default level. */
@@ -29,6 +31,23 @@ let log: TimingLog | undefined;
 /** Sends measurements to `next`, or stops reporting them when undefined. */
 export function setTimingLog(next: TimingLog | undefined): void {
   log = next;
+}
+
+/**
+ * Reports something that went wrong to Deckard's log.
+ *
+ * A note that cannot be read is dropped from the index, which shows up later
+ * as a note missing from search or Home. This is the account of it, in the
+ * log the troubleshooting docs send people to; it used to go to the
+ * extension host's console, where nobody was looking.
+ */
+export function reportError(message: string, error: unknown): void {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (log?.error) {
+    log.error(`${message}: ${detail}`);
+    return;
+  }
+  log?.info(`${message}: ${detail}`);
 }
 
 /**

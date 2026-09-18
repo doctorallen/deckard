@@ -9,6 +9,7 @@ import {
   MarkdownParseOptions,
   parseMarkdown,
 } from '../markdown/parser';
+import { reportError } from '../timing';
 import { ParsedFile } from '../types';
 
 export interface WorkspaceFileAccess {
@@ -69,7 +70,7 @@ export class WorkspaceScanner {
       try {
         files.push(await this.read(entry.uri, entry.workspaceFolder));
       } catch (error) {
-        console.error(`Deckard could not read ${entry.uri.toString()}`, error);
+        reportError(`Could not read ${entry.uri.toString()}`, error);
       } finally {
         completed += 1;
         onProgress?.(completed, entries.length);
