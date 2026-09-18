@@ -248,6 +248,25 @@ export class PreferencesStore implements vscode.Disposable {
   /**
    * Stores custom task order independently of date-based task sorting.
    */
+  /**
+   * Keeps a task's place in the rank order when Deckard's own edit rewrites
+   * its line. A task's id comes from the text after its checkbox, so stamping
+   * a done date on it, or taking one off again, makes it a new task to
+   * anything keyed by id, and it would fall to the end of a ranked list.
+   */
+  public async replaceTaskInOrder(
+    previousId: string,
+    nextId: string,
+  ): Promise<void> {
+    const index = this.preferences.taskOrder.indexOf(previousId);
+    if (index < 0 || previousId === nextId) {
+      return;
+    }
+    const taskOrder = [...this.preferences.taskOrder];
+    taskOrder[index] = nextId;
+    await this.update({ taskOrder: [...new Set(taskOrder)] });
+  }
+
   public async setTaskOrder(taskOrder: string[]): Promise<void> {
     await this.update({ taskOrder: [...new Set(taskOrder)] });
   }

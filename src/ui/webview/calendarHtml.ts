@@ -43,7 +43,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
-<main id="app" aria-live="polite"><div class="empty">Loading calendar...</div></main>
+<main id="app"><div class="empty">Loading calendar...</div></main>
+<div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
@@ -69,7 +70,10 @@ ${getComponentScript()}
     const label = escapeHtml(describeDay(day, overdue));
     const dot = day.notePath ? '<span class="note-dot" aria-hidden="true"></span>' : '';
     const due = day.dueCount > 0 ? '<span class="due' + (overdue ? ' overdue' : '') + '" aria-hidden="true">' + day.dueCount + '</span>' : '';
-    return '<button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + '>' + day.day + dot + due + '</button>';
+    // One day in the grid is tabbable at a time: the focused one, else today,
+    // else the first of the month.
+    const focusable = state.focusDate ? day.date === state.focusDate : day.isToday;
+    return '<button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '">' + day.day + dot + due + '</button>';
   }
 
   function renderWeek(week) {
@@ -87,8 +91,41 @@ ${getComponentScript()}
       (state.month === state.currentMonth ? '' : '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.currentMonth) + '">Today</button>') +
       '</div>';
     const weekdays = '<span class="weekday" aria-hidden="true"></span>' + WEEKDAYS.map(function (name) { return '<span class="weekday">' + name + '</span>'; }).join('');
-    document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="group" aria-label="' + escapeHtml(state.title) + '">' + weekdays + state.weeks.map(renderWeek).join('') + '</div>';
+    document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '">' + weekdays + state.weeks.map(renderWeek).join('') + '</div>';
   }
+
+  /** Move the focus by days, weeks, or to the ends of a week. */
+  document.addEventListener('keydown', function (event) {
+    const day = event.target && event.target.closest ? event.target.closest('.day') : null;
+    if (!day) return;
+    const steps = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 };
+    const days = [].slice.call(document.querySelectorAll('.calendar-grid .day'));
+    const index = days.indexOf(day);
+    let next;
+    if (steps[event.key] !== undefined) {
+      next = days[index + steps[event.key]];
+    } else if (event.key === 'Home') {
+      next = days[index - (index % 7)];
+    } else if (event.key === 'End') {
+      next = days[index - (index % 7) + 6];
+    } else if (event.key === 'PageUp' || event.key === 'PageDown') {
+      event.preventDefault();
+      const month = event.key === 'PageUp' ? state.previousMonth : state.nextMonth;
+      vscode.postMessage({ type: 'showMonth', month: month });
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    // A step past the edge of the drawn weeks moves to the next month.
+    if (!next) {
+      vscode.postMessage({ type: 'showMonth', month: steps[event.key] < 0 ? state.previousMonth : state.nextMonth });
+      return;
+    }
+    state.focusDate = next.dataset.date;
+    days.forEach(function (candidate) { candidate.setAttribute('tabindex', candidate === next ? '0' : '-1'); });
+    next.focus();
+  });
 
   document.addEventListener('click', function (event) {
     const target = event.target && event.target.closest ? event.target.closest('[data-action]') : null;

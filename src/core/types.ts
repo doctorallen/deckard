@@ -585,7 +585,16 @@ export interface DeckardStatsSnapshot {
 }
 
 /** Messages from the Stats page, which only opens what it lists. */
-export type StatsMessage = OpenTagMessage | OpenSourceMessage;
+/** Asks the host to read every note again. */
+export interface ReindexWorkspaceMessage {
+  type: 'reindexWorkspace';
+}
+
+export type StatsMessage =
+  | OpenTagMessage
+  | OpenSourceMessage
+  | OpenSearchMessage
+  | ReindexWorkspaceMessage;
 
 /** Messages from the sidebar calendar. The host finds each note itself. */
 export type CalendarMessage =
@@ -605,7 +614,15 @@ export interface SidebarNotesSnapshot {
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
   refine?: SearchRefineState;
-  state: 'ready' | 'noMarkdown' | 'noTags' | 'noMatches' | 'graph' | 'refine';
+  state:
+    | 'ready'
+    | 'loading'
+    | 'notIndexed'
+    | 'noMarkdown'
+    | 'noTags'
+    | 'noMatches'
+    | 'graph'
+    | 'refine';
 }
 
 /**
@@ -711,6 +728,8 @@ export interface OpenSourceMessage {
   type: 'openSource';
   filePath: string;
   line: number;
+  /** Open beside the current editor rather than replacing it. */
+  beside?: boolean;
 }
 
 export interface ToggleTaskMessage {
@@ -880,6 +899,12 @@ export interface SaveTagOverviewFilterMessage {
 export interface SetOverviewQueryMessage {
   type: 'setOverviewQuery';
   query: string;
+  /**
+   * Whether this search is worth keeping in the recent searches. A search
+   * typed or built is; one that only follows a facet click or a dropped chip
+   * is a step along the way, and would evict the typed ones.
+   */
+  remember?: boolean;
 }
 
 /**
@@ -997,6 +1022,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | SetTaskFilterMessage
@@ -1127,7 +1153,15 @@ export interface SaveBoardSearchMessage {
   type: 'saveBoardSearch';
 }
 
+/** Asks the board to show every task a column is holding back. */
+export interface ShowColumnRestMessage {
+  type: 'showColumnRest';
+  columnId: string;
+}
+
 export type TaskBoardMessage =
+  | OpenHelpMessage
+  | ShowColumnRestMessage
   | SaveBoardSearchMessage
   | SidebarReadyMessage
   | OpenSourceMessage

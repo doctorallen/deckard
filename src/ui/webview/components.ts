@@ -11,7 +11,7 @@
  * Changing a component here changes it everywhere.
  */
 
-import { settingsIcon } from './icons';
+import { helpIcon, settingsIcon } from './icons';
 
 /**
  * The palette every webview starts from.
@@ -51,6 +51,18 @@ export function getDesignTokens(): string {
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
+  /* The corner a control takes. The ends of a group of segments follow it,
+     so a theme that squares its buttons squares the group too. */
+  --control-radius: 2px;
+  /* What a control looks like while it is hovered, pressed, or active. A
+     theme re-declares the pair, never one half, so the text stays readable
+     on whatever the background becomes. */
+  --hover-bg: #121620;
+  --hover-fg: #FFB000;
+  /* What a chosen segment looks like: the tab, filter, or option in force.
+     A theme re-declares the pair, never one half. */
+  --chosen-bg: #FFB000;
+  --chosen-fg: #050608;
 }`;
 }
 
@@ -125,10 +137,24 @@ button, select, input[type="text"], input[type="search"] {
   font: inherit;
 }
 button { cursor: pointer; }
-button:hover, button.active, select:hover, input[type="text"]:focus, input[type="search"]:focus {
+button:hover, button.active, select:hover, .tag-open:hover {
   border-color: var(--amber);
-  background: var(--panel-raised);
-  color: var(--amber);
+  background: var(--hover-bg);
+  color: var(--hover-fg);
+}
+/* A field being typed in keeps its own ground and its text: inverting it the
+   way a pressed control inverts would recolor the text under the caret. */
+input[type="text"]:focus, input[type="search"]:focus {
+  border-color: var(--amber);
+  background: var(--panel-deep);
+  color: var(--text);
+}
+/* Anything inside a control follows the control's own text color, so a hover
+   that flips the background cannot leave a count or an icon on top of it in
+   a color chosen for the background it used to have. */
+button:hover *, button.active *, button:focus-visible *,
+.tag-open:hover *, .tag-open:focus-visible * {
+  color: inherit;
 }
 button:focus-visible, select:focus-visible, input:focus-visible {
   outline: var(--edge) solid var(--cyan);
@@ -136,6 +162,20 @@ button:focus-visible, select:focus-visible, input:focus-visible {
 }
 button[disabled] { opacity: .5; cursor: default; }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+/* The status node every page announces through. Off-screen, never hidden
+   with display:none, which would stop it being announced at all. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .toolbar { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 .toolbar label {
   display: inline-flex;
@@ -152,7 +192,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
-.control-icon select:hover + .control-icon-svg { color: var(--amber-bright); }
+.control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
 .control-icon select { padding-left: 29px; }
 
 /* Notes and Tasks tabs over a set of results, on a page that lists both. */
@@ -163,8 +203,8 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* A row of buttons that reads as one control. */
 .segmented { display: inline-flex; }
 .segmented > * + * { margin-left: calc(var(--edge) * -1); }
-.segmented > :first-child { border-radius: 2px 0 0 2px; }
-.segmented > :last-child { border-radius: 0 2px 2px 0; }
+.segmented > :first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
+.segmented > :last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
 .segmented > .active { position: relative; z-index: 1; }
 
 /* An icon-only control, square and the same height as the rest. */
@@ -176,15 +216,30 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   padding: 5px;
 }
 .toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.settings-icon { fill: currentColor; stroke: none; }
+.settings-icon, .help-icon { fill: currentColor; stroke: none; }
 .filter-count { color: var(--muted); font-size: 10px; }
+
+/* A chosen segment, in any group of them: the Dashboard's tabs mark their
+   own, and this marks every other group the same way, rather than leaving
+   them with the inverted treatment a pressed button takes. */
+.segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"] {
+  border-color: var(--chosen-bg);
+  background: var(--chosen-bg);
+  color: var(--chosen-fg);
+}
+.segmented button.active *, .segmented button[aria-pressed="true"] *, .segmented button[aria-selected="true"] * {
+  color: inherit;
+}
 
 /* The gear that holds a page's view options, drawn the same on every page. */
 .view-options { position: relative; flex: 0 0 auto; }
-.view-options summary { display: grid; width: 30px; min-height: 30px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
+/* The gear is a summary rather than a button, so it is given a control's
+   ground here and joins the button selectors every theme restyles. The Help
+   button beside it is already a button, and is left to those same rules. */
+.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
-.view-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
-.view-options summary:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 2px; }
+.view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
@@ -194,8 +249,8 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices { display: inline-flex; }
 .view-options-choices button { min-width: 28px; min-height: 28px; padding: 4px 8px; }
 .view-options-choices button + button { margin-left: -1px; }
-.view-options-choices button:first-child { border-radius: 2px 0 0 2px; }
-.view-options-choices button:last-child { border-radius: 0 2px 2px 0; }
+.view-options-choices button:first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
+.view-options-choices button:last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
 .view-options-choices button.active { position: relative; z-index: 1; }`;
 }
 
@@ -302,6 +357,7 @@ export function getSurfaceCss(): string {
   padding: 5px 8px;
 }
 
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
@@ -309,6 +365,10 @@ export function getSurfaceCss(): string {
   margin-top: 20px;
 }
 .metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: 12px; }
+/* A metric that opens what it counts keeps the tile's look, and gains the
+   hover and focus treatment every other control has. */
+.metric-open { display: grid; gap: 4px; justify-items: start; text-align: left; font: inherit; cursor: pointer; }
+.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: inherit; }
 .metric-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
 .metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
 
@@ -376,7 +436,12 @@ export function getTaskBoardCss(): string {
 }
 .board-column.is-overdue .board-column-title { color: var(--favorite-red); }
 .board-count { color: var(--muted); }
-.board-cards { display: grid; gap: 8px; min-height: 48px; }
+/* A column with hundreds of tasks scrolls in place: without this one long
+   column made the whole page hundreds of cards tall, and dragging to a far
+   column meant scrolling away from both. */
+.board-column { max-height: calc(100vh - 220px); overflow: hidden; }
+.board-column-title { position: sticky; top: 0; z-index: 1; background: var(--panel-deep); padding-bottom: 6px; }
+.board-cards { display: grid; align-content: start; gap: 8px; min-height: 48px; overflow-y: auto; }
 .board-card { position: relative; }
 .board-card.dragging { opacity: .45; }
 .board-card .task-title { padding-right: 26px; }
@@ -464,6 +529,23 @@ export function getBaseCss(): string {
  */
 export function getComponentScript(): string {
   return `
+  /**
+   * Say one short thing to a screen reader.
+   *
+   * A page rebuilds itself wholesale on every snapshot, so the page body must
+   * not be a live region: it would re-announce the whole page on each index
+   * update and each keystroke. Pages announce what actually changed here
+   * instead, into the small status node every page carries.
+   */
+  function announce(message) {
+    const status = document.getElementById('live-status');
+    if (!status) return;
+    const text = String(message || '');
+    // Repeating the same string is not announced again, so clear it first.
+    if (status.textContent === text) status.textContent = '';
+    status.textContent = text;
+  }
+
   /** Escape snapshot data before it is inserted as HTML. */
   function escapeHtml(value) {
     return String(value)
@@ -652,23 +734,65 @@ export function getComponentScript(): string {
       }).join('') + '</div>';
   }
 
-  /** One task card, with its checkbox and the menu that moves it to another column. */
-  function renderTaskBoardCard(card, columnId, columns) {
-    const moves = columns.filter(function (column) {
-      return column.droppable && column.id !== columnId;
-    }).map(function (column) {
-      return '<option value="' + escapeHtml(column.id) + '">' + escapeHtml(column.label) + '</option>';
-    }).join('');
+  /**
+   * Every edit a card can make, whatever the board is grouped by.
+   *
+   * The menu used to offer the columns of the current grouping alone, so
+   * changing a due date meant regrouping the whole board first, and the most
+   * common edits ended in the Markdown file instead.
+   */
+  function renderTaskCardMoves(card, columnId, columns, settings) {
+    const option = function (value, label) {
+      return value === columnId
+        ? ''
+        : '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</option>';
+    };
+    const group = function (label, options) {
+      const body = options.join('');
+      return body ? '<optgroup label="' + escapeHtml(label) + '">' + body + '</optgroup>' : '';
+    };
+    const statuses = (settings && settings.statuses) || [];
+    const statusOptions = [option('status:', 'No status')].concat(statuses.map(function (status) {
+      return option('status:' + status, status.charAt(0).toUpperCase() + status.slice(1).replace(/[-_]+/g, ' '));
+    }));
+    const priorityOptions = [['highest', 'Highest'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low'], ['lowest', 'Lowest'], ['', 'No priority']].map(function (entry) {
+      return option('priority:' + entry[0], entry[1]);
+    });
+    const dueOptions = [['today', 'Due today'], ['tomorrow', 'Due tomorrow'], ['', 'No due date']].map(function (entry) {
+      return option('due:' + entry[0], entry[1]);
+    });
+    const done = card.completed ? '' : option('done', 'Complete it');
+    // Any column of the current grouping that is not one of the above, such
+    // as a due band the board made, still moves the card.
+    const others = columns.filter(function (column) {
+      return column.droppable && column.id !== columnId
+        && column.id.indexOf('status:') !== 0
+        && column.id.indexOf('priority:') !== 0
+        && column.id.indexOf('due:') !== 0
+        && column.id !== 'done';
+    }).map(function (column) { return option(column.id, column.label); });
+    return group('Status', statusOptions)
+      + group('Priority', priorityOptions)
+      + group('Due', dueOptions)
+      + group('This board', others)
+      + (done ? group('Done', [done]) : '');
+  }
+
+  /** One task card, with its checkbox and the menu that edits it. */
+  function renderTaskBoardCard(card, columnId, columns, settings) {
     const details = card.details.map(function (detail) {
       const overdue = card.overdue && detail.indexOf('due ') === 0;
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
+      // Colour alone carried this before, which says nothing to a reader who
+      // cannot see it, or on a board grouped by anything but due date.
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(overdue ? 'overdue, ' + detail : detail) + '</span>';
     }).join(' · ');
+    const plainTitle = String(card.title || '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
-      + '<input type="checkbox" data-action="board-toggle-task" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
+      + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
-      + '<select class="board-move" data-action="board-move" title="Move to another column" aria-label="Move this task to another column"><option value="" selected hidden>⋯</option>' + moves + '</select>'
+      + '<select class="board-move" data-action="board-move" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '"><option value="" selected hidden>⋯</option>' + renderTaskCardMoves(card, columnId, columns, settings) + '</select>'
       + '</div></article>';
   }
 
@@ -681,14 +805,14 @@ export function getComponentScript(): string {
       const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
       const count = cards.length + column.hiddenCount;
       const body = cards.length
-        ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns); }).join('')
+        ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns, board.settings); }).join('')
         : '<p class="board-empty">' + (column.droppable ? 'Drop a task here' : 'No tasks') + '</p>';
       return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + '"'
         + ' data-column-id="' + escapeHtml(column.id) + '" data-droppable="' + column.droppable + '"'
         + ' aria-label="' + escapeHtml(column.label + ', ' + count + (count === 1 ? ' task' : ' tasks')) + '">'
         + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + count + '</span></h2>'
         + '<div class="board-cards">' + body + '</div>'
-        + (column.hiddenCount ? '<p class="board-more">and ' + column.hiddenCount + ' more</p>' : '')
+        + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
         + '</section>';
     }).join('') + '</div>';
   }
@@ -720,6 +844,11 @@ export function getComponentScript(): string {
       const group = event.target.closest('[data-action="set-board-group"]');
       if (group) {
         post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      const rest = event.target.closest('[data-action="show-column-rest"]');
+      if (rest) {
+        post({ type: 'showColumnRest', columnId: rest.dataset.columnId });
         return;
       }
       if (event.target.closest('input, select, button, a')) return;
@@ -788,6 +917,19 @@ export function getComponentScript(): string {
    * { label, html, stacked }, one row of the menu each. A menu that was open
    * before a redraw is open after it.
    */
+  /**
+   * The way to Help from any page. Help was reachable only from one icon in
+   * the Related Notes sidebar, or the command palette, so the pages a reader
+   * gets stuck on offered no route to it.
+   */
+  function renderHelpButton(anchor) {
+    return '<button type="button" class="icon-button help-button" data-action="open-help"'
+      + (anchor ? ' data-help-anchor="' + escapeHtml(anchor) + '"' : '')
+      + ' aria-label="Open Help" title="Open Help">'
+      + '${helpIcon}'
+      + '</button>';
+  }
+
   function renderViewOptions(groups) {
     const wasOpen = Boolean(document.querySelector('.view-options[open]'));
     return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">' + '${settingsIcon}' + '</summary>'
@@ -1064,7 +1206,25 @@ export function getComponentScript(): string {
       }
     }, true);
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) closeRankMenu();
+      if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) {
+        closeRankMenu();
+        return;
+      }
+      // Reordering was a drag or a right-click, so a keyboard could reach
+      // neither. The same menu opens on the focused row with the menu key,
+      // Shift+F10, or Alt+Enter, at the row itself.
+      const isMenuKey = event.key === 'ContextMenu'
+        || (event.key === 'F10' && event.shiftKey)
+        || (event.key === 'Enter' && event.altKey);
+      if (!isMenuKey) return;
+      const row = event.target.closest ? event.target.closest(rowSelector) : undefined;
+      if (!row) return;
+      const bounds = row.getBoundingClientRect();
+      openMenu({
+        preventDefault: function () { event.preventDefault(); },
+        clientX: bounds.left + 12,
+        clientY: bounds.top + bounds.height,
+      }, row);
     });
     document.addEventListener('contextmenu', function (event) {
       const row = event.target.closest(rowSelector);
@@ -1191,6 +1351,14 @@ export function getQueryEditorCss(): string {
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: 11px; }
+/* A value and its two other modes read as one control. The modes stay out of
+   the way until the value is hovered or something in it has focus. */
+.query-facet-value-group { display: inline-flex; align-items: stretch; }
+.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); color: var(--muted); font-size: 11px; opacity: 0; }
+.query-facet-value-group:hover .query-facet-mode, .query-facet-mode:focus-visible { opacity: 1; }
+@media (hover: none) { .query-facet-mode { opacity: 1; } }
+.query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -1289,6 +1457,10 @@ export function getQueryEditorScript(): string {
     /** A builder value input to focus once the next render settles. */
     let pendingBuilderFocus;
     let restoreFocus = false;
+    /** Set while the caret is being put back, so the list stays closed. */
+    let suppressFocusSuggestions = false;
+    /** Set when the reader asked for the box itself, such as by pressing /. */
+    let openSuggestionsOnRestore = false;
     let suggestionItems = [];
     let suggestionIndex = -1;
     /** Which input the completion list belongs to, if any. */
@@ -1495,15 +1667,48 @@ export function getQueryEditorScript(): string {
       document.querySelectorAll('.query-bar-shell').forEach(function (shell) { shell.setAttribute('data-query-text', String(text || '')); });
     }
 
+    /** Whether the applied search ran and matched nothing of any kind. */
+    function matchedNothing() {
+      if (!appliedText().trim()) return false;
+      const counts = query().matchCounts;
+      if (!counts) return false;
+      return (options.resultKinds || ['notes', 'tasks']).every(function (kind) { return !counts[kind]; });
+    }
+
+    /**
+     * Ways out of a search that found nothing. Narrowing is useless here, so
+     * the Refine row offers the two ways to widen instead: drop the term that
+     * was added last, or go back to what the page opened with.
+     */
+    function renderRecovery() {
+      const terms = query().terms || [];
+      const last = terms.length > 1 ? terms[terms.length - 1] : undefined;
+      const label = last ? String(last.label || last.text) : '';
+      const drop = last
+        ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" title="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
+        : '';
+      const clear = canClear(currentText())
+        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear the search</button>'
+        : '';
+      if (!drop && !clear) return '';
+      return '<span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">' + drop + clear + '</span>';
+    }
+
     /** What the results could still be narrowed by, with counts. */
     function renderFacets() {
       const facets = query().facets || [];
       const count = renderMatchCount();
+      const recovery = matchedNothing() ? renderRecovery() : '';
       if (!facets.length && !count) return '';
       if (options.refineElsewhere && options.refineElsewhere()) {
-        return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span><span class="query-facets-empty">' + (facets.length ? 'In the Related Notes sidebar.' : 'Nothing left to narrow by.') + '</span></div>' + count + '</section>';
+        // The sidebar still says where Refine went; a search that matched
+        // nothing has nothing to narrow, so it offers the way back instead.
+        const note = facets.length
+          ? '<span class="query-facets-empty">In the Related Notes sidebar.</span>'
+          : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
+        return '<section class="query-facets is-elsewhere" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + note + '</div>' + count + '</section>';
       }
-      const empty = facets.length ? '' : '<span class="query-facets-empty">Nothing left to narrow by.</span>';
+      const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
         return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
           return renderFacetValue(facet, value);
@@ -1518,7 +1723,12 @@ export function getQueryEditorScript(): string {
       const help = 'Show only these. Alt-click to leave them out; Shift-click to allow them as well.';
       const title = value.detail ? value.detail + '. ' + help : help;
       const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
-      return '<button class="query-facet-value" data-action="facet" data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + value.label + strength + ', ' + value.count) + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+      const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
+      return '<span class="query-facet-value-group">'
+        + '<button class="query-facet-value" data-action="facet"' + shared + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + value.label + strength + ', ' + value.count) + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>'
+        + '<button class="query-facet-mode" data-action="facet-exclude"' + shared + ' title="Leave these out" aria-label="' + escapeHtml('Leave ' + value.label + ' out of the search') + '">&minus;</button>'
+        + '<button class="query-facet-mode" data-action="facet-or"' + shared + ' title="Allow these as well" aria-label="' + escapeHtml('Allow ' + value.label + ' as well') + '">+</button>'
+        + '</span>';
     }
 
     /** How many of each kind of result the applied search matches. */
@@ -1625,7 +1835,7 @@ export function getQueryEditorScript(): string {
       }
       builderSourceText = text;
       draft = text;
-      run(text, true);
+      run(text, true, false, false);
     }
 
     /** Write rows as search text, skipping rows with no value yet. */
@@ -1707,11 +1917,19 @@ export function getQueryEditorScript(): string {
      * one that only removes or adds a chip, or comes from the builder, keeps
      * it, as keepEntry says.
      */
-    function run(text, keepEntry) {
+    function run(text, keepEntry, incidental, focusBar) {
       awaitingApply = true;
       lastEntry = entry;
       entryAfterRun = keepEntry ? entry : '';
-      options.apply(joinTags(String(text).trim()));
+      // The host answers with a fresh snapshot, and the page rebuilds itself
+      // from it. Without this the caret would be thrown away on every search,
+      // so the next keystroke would go nowhere. A search built in the builder
+      // keeps its own field instead.
+      restoreFocus = focusBar !== false;
+      // A facet click or a dropped chip is a step along the way, not a search
+      // worth keeping: recording those evicts what the reader actually typed
+      // from the short list of recent searches.
+      options.apply(joinTags(String(text).trim()), !incidental);
     }
 
     /**
@@ -1725,14 +1943,14 @@ export function getQueryEditorScript(): string {
         const existing = facet && facet.applied && facet.applied[0];
         const merged = existing ? mergeAlternative(text, existing, clause) : undefined;
         if (merged !== undefined) {
-          run(merged, true);
+          run(merged, true, true);
           return;
         }
       }
       const term = mode === 'exclude' ? '-' + clause : clause;
-      if (!text) run(term, true);
-      else if (query().canAppend === false) run('(' + text + ') AND ' + term, true);
-      else run(text + ' AND ' + term, true);
+      if (!text) run(term, true, true);
+      else if (query().canAppend === false) run('(' + text + ') AND ' + term, true, true);
+      else run(text + ' AND ' + term, true, true);
     }
 
     /** Put a clause beside an existing one as an alternative. */
@@ -2075,7 +2293,12 @@ export function getQueryEditorScript(): string {
           restoreFocus = false;
           const bar = document.querySelector('[data-suggest-key="query"]');
           if (bar && bar.focus) {
+            // Putting the caret back is not the reader asking for the recent
+            // searches: only focusing the empty box by hand opens those.
+            if (!openSuggestionsOnRestore) suppressFocusSuggestions = true;
+            openSuggestionsOnRestore = false;
             bar.focus();
+            suppressFocusSuggestions = false;
             const caret = bar.value ? bar.value.length : 0;
             if (bar.setSelectionRange) bar.setSelectionRange(caret, caret);
           }
@@ -2090,9 +2313,10 @@ export function getQueryEditorScript(): string {
         }
       },
 
-      /** Put the caret in the search box. */
+      /** Put the caret in the search box, with its recent searches. */
       focus: function () {
         restoreFocus = true;
+        openSuggestionsOnRestore = true;
         options.render();
       },
 
@@ -2117,6 +2341,7 @@ export function getQueryEditorScript(): string {
 
       handleFocusIn: function (event) {
         const target = event.target;
+        if (suppressFocusSuggestions) return;
         if (target && target.dataset && target.dataset.action === 'query-input' && !target.value) {
           openSuggestions(target);
         }
@@ -2172,13 +2397,17 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'remove-term') {
           closeSuggestions();
-          run(target.dataset.without || '', true);
+          run(target.dataset.without || '', true, true);
           const bar = document.querySelector('[data-suggest-key="query"]');
           if (bar && bar.focus) bar.focus();
           return true;
         }
         if (action === 'facet') {
           refine(target.dataset.clause, target.dataset.facetId, event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and');
+          return true;
+        }
+        if (action === 'facet-exclude' || action === 'facet-or') {
+          refine(target.dataset.clause, target.dataset.facetId, action === 'facet-exclude' ? 'exclude' : 'or');
           return true;
         }
         if (action === 'builder-add-group') {
@@ -2269,7 +2498,7 @@ export function getQueryEditorScript(): string {
           if (appliedText().trim()) {
             event.preventDefault();
             closeSuggestions();
-            run(terms.length ? terms[terms.length - 1].without : '');
+            run(terms.length ? terms[terms.length - 1].without : '', false, true);
           }
           return true;
         }

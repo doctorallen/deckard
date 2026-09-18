@@ -168,7 +168,7 @@ suite('Tag overview query builder', () => {
     view.key(input, 'Tab');
 
     assert.deepStrictEqual(view.posted, [
-      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND is:open' },
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND is:open', remember: true },
     ]);
   });
 
@@ -214,8 +214,8 @@ suite('Tag overview query builder', () => {
     view.click({ action: 'facet', clause: 'is:open', facetId: 'status' }, { altKey: true });
 
     assert.deepStrictEqual(view.posted, [
-      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND is:open' },
-      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND -is:open' },
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND is:open', remember: false },
+      { type: 'setOverviewQuery', query: 'tag = #project/atlas AND -is:open', remember: false },
     ]);
   });
 
@@ -235,7 +235,7 @@ suite('Tag overview query builder', () => {
     view.click({ action: 'facet', clause: 'is:done', facetId: 'status' }, { shiftKey: true });
 
     assert.deepStrictEqual(view.posted, [
-      { type: 'setOverviewQuery', query: '#project/atlas (is:open OR is:done)' },
+      { type: 'setOverviewQuery', query: '#project/atlas (is:open OR is:done)', remember: false },
     ]);
   });
 
@@ -252,7 +252,7 @@ suite('Tag overview query builder', () => {
 
     // The chips hold the page's tag; what is typed after them joins by AND.
     assert.deepStrictEqual(view.posted, [
-      { type: 'setOverviewQuery', query: '#project/atlas AND vendor' },
+      { type: 'setOverviewQuery', query: '#project/atlas AND vendor', remember: true },
     ]);
   });
 

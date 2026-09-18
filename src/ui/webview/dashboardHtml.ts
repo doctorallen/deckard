@@ -41,9 +41,7 @@ ${getQueryEditorCss()}
 .dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
 .dashboard-tabs button + button { margin-left: -1px; }
-.dashboard-tabs button:first-child { border-radius: 2px 0 0 2px; }
-.dashboard-tabs button:last-child { border-radius: 0 2px 2px 0; }
-.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; color: var(--panel-deep); background: var(--amber-bright); }
+.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }
 .dashboard-panel { min-width: 0; padding-top: 16px; }
 .dashboard-panel[hidden] { display: none; }
 section { min-width: 0; }
@@ -75,6 +73,9 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
 .favorite-toggle { display: grid; place-items: center; color: var(--favorite-red); }
 .favorite-toggle:hover, .favorite-toggle:focus-visible { color: var(--favorite-red); }
+/* A toggle that is already a favorite carries a filled ground in some themes,
+   so hovering it takes the shared hover pair rather than keeping red on red. */
+.favorite-toggle.favorite:hover, .favorite-toggle.favorite:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
 .favorite-heart { display: block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; }
 .favorite-toggle.favorite .favorite-heart { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 .browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
@@ -129,6 +130,11 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget .task-list { --task-columns: 1; }
 .home-widget .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
 .home-widget .metric::before { display: none; }
+/* The resting hint is a quiet line, not the dashed frame of edit mode. */
+.home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: 11px var(--font-mono); }
+.home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+.home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: 11px; line-height: 1.35; white-space: normal; }
+.home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
 .home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
 .home-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .home-widget-options { position: relative; }
@@ -172,7 +178,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
-<main id="app" aria-live="polite"><div class="empty">Loading index...</div></main>
+<main id="app"><div class="empty">Loading index...</div></main>
+<div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
@@ -197,6 +204,8 @@ ${getQueryEditorScript()}
     : '';
   /** Whether Home is being arranged. */
   let editingHome = Boolean(restoredViewState && restoredViewState.editingHome);
+  /** Whether Reset is waiting to be confirmed. It is never restored. */
+  let confirmingReset = false;
   /** The widget whose options are open, which stays open across a redraw. */
   let openWidgetOptions;
   /** A tasks widget's search being typed in its options, by widget. */
@@ -668,7 +677,7 @@ ${getQueryEditorScript()}
         });
       }
       case 'savedQuery':
-        if (widget.missing) return '<p class="home-widget-empty">This saved search was removed.</p>';
+        if (widget.missing) return '<p class="home-widget-empty">This saved search was removed. <button type="button" data-action="customize-home">Pick another</button></p>';
         // A search saved on the Task Board finds tasks alone.
         if (widget.savedPage === 'taskBoard') return renderHomeTasks(widget.tasks, 'No open tasks match.');
         return '<h3 class="home-widget-group">Notes <span class="tag-count">' + (widget.noteTotal || 0) + '</span></h3>' + renderHomeNotes(widget.notes, 'No notes match.')
@@ -724,20 +733,30 @@ ${getQueryEditorScript()}
         return '<option value="' + escapeHtml(filter.id) + '"' + (filter.id === widget.filterId ? ' selected' : '') + '>' + escapeHtml(filter.name) + '</option>';
       }).join('') + '</select></div>');
     }
+    const description = WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].description;
+    if (description) {
+      groups.unshift('<div class="view-options-group is-stacked"><span>About</span><p class="home-widget-about">' + escapeHtml(description) + '</p></div>');
+    }
     if (!groups.length) return '';
     return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" title="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu">' + groups.join('') + '</div></details>';
   }
 
   function renderWidget(widget) {
-    const count = widget.total !== undefined && WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].listed
-      ? ' <span class="tag-count">' + widget.total + '</span>'
+    const listed = WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].listed;
+    // Each kind lists its own sort of entry, so the shown count is whichever
+    // list the widget carries.
+    const list = widget.tasks || widget.tags || widget.notes || widget.queries || widget.savedFilters || widget.tagPairs;
+    const shown = listed && list ? list.length : undefined;
+    // "5 of 37" rather than "37" over five rows, which read as the whole list.
+    const count = widget.total !== undefined && listed
+      ? ' <span class="tag-count">' + (shown !== undefined && shown < widget.total ? shown + ' of ' + widget.total : widget.total) + '</span>'
       : '';
     const actions = editingHome
       ? renderViewOptionChoices('set-widget-width', [['half', '½', 'Half width'], ['full', 'Full', 'Full width']], widget.width, 'Width', 'data-widget-id="' + escapeHtml(widget.id) + '"')
         + renderWidgetOptions(widget)
         + '<button type="button" class="home-remove" data-action="remove-widget" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Remove ' + escapeHtml(widget.title) + '" title="Remove widget">&#215;</button>'
       : renderWidgetOpen(widget);
-    return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" title="Drag to move, or right-click to move first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
+    return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" title="Drag to move, or press the menu key (Shift+F10) to move it first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
       + '<div class="home-widget-header"><h2 class="home-widget-title">' + (editingHome ? '<span class="home-widget-grip" aria-hidden="true">&#10303;</span>' : '') + escapeHtml(widget.title) + count + '</h2><div class="home-widget-actions">' + actions + '</div></div>'
       + renderWidgetBody(widget)
       + '</article>';
@@ -761,8 +780,12 @@ ${getQueryEditorScript()}
     if (!state.widgets) return '<div class="empty">Loading Home…</div>';
     const widgets = state.widgets;
     const bar = editingHome
-      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it.</span><div class="home-edit-actions">' + renderAddWidget() + '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button><button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
-      : '';
+      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
+        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
+        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button>') + '<button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
+      // A resting Home says it can be arranged. It is not the customizing bar,
+      // and does not share its class: that one means "Home is being edited".
+      : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><button type="button" data-action="customize-home">Customize</button></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
       : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize Home</button></div>';
@@ -817,7 +840,9 @@ ${getQueryEditorScript()}
       ? (favoriteTags.length
         ? '<div class="tag-group" data-tag-group="favorites"><h3>Favorites <span class="tag-count">(' + favoriteTags.length + ')</span></h3><div class="tag-list">' + favoriteTags.map(renderTag).join('') + '</div></div>'
         : '') + (otherTags.length ? '<div class="tag-group" data-tag-group="other"><h3>Other tags <span class="tag-count">(' + otherTags.length + ')</span></h3><div class="tag-list">' + otherTags.map(renderTag).join('') + '</div></div>' : '')
-      : '<div class="empty">No tags match your search.</div>';
+      : '<div class="empty">' + (state.tags.length
+        ? 'No tags match your search.'
+        : 'No tags indexed yet. Write a tag such as #project/atlas on a heading or a task, and it appears here.') + '</div>';
     const savedFilters = state.savedFilters.length
       ? '<section class="saved-filters" aria-labelledby="saved-filters-heading"><div class="section-heading"><h2 id="saved-filters-heading">Saved searches <span class="tag-count">' + state.savedFilters.length + '</span></h2></div><div class="saved-filter-list">' + state.savedFilters.map(function (filter) { return renderSavedFilterRow(filter, true); }).join('') + '</div></section>'
       : '';
@@ -844,7 +869,7 @@ ${getQueryEditorScript()}
 
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>Dashboard: ' + (dashboardMode === 'home' ? 'Home' : 'Tags') + '</h1></div><div class="dashboard-header-actions">' + metrics + dashboardOptions + '</div></header>' +
-      '<div class="dashboard-tabs-row"><div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="home-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="home" aria-selected="' + (dashboardMode === 'home') + '" aria-controls="home-panel" tabindex="' + (dashboardMode === 'home' ? '0' : '-1') + '">Home</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '') + '</button></div></div>' +
+      '<div class="dashboard-tabs-row"><div class="segmented dashboard-tabs" role="tablist" aria-label="Dashboard mode"><button id="home-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="home" aria-selected="' + (dashboardMode === 'home') + '" aria-controls="home-panel" tabindex="' + (dashboardMode === 'home' ? '0' : '-1') + '">Home</button><button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected="' + (dashboardMode === 'browse') + '" aria-controls="browse-panel" tabindex="' + (dashboardMode === 'browse' ? '0' : '-1') + '">Tags' + renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '') + '</button></div></div>' +
       '<section id="home-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="home-tab"' + (dashboardMode === 'home' ? '' : ' hidden') + '>' + home + '</section>' +
       '<section id="browse-panel" class="dashboard-panel" role="tabpanel" aria-labelledby="browse-tab"' + (dashboardMode === 'browse' ? '' : ' hidden') + '><div class="browse-toolbar"><div class="browse-toolbar-controls"><input class="catalog-search" type="search"' + (normalizedBrowseQuery ? ' data-has-query' : '') + ' data-action="search-browse" value="' + escapeHtml(browseQuery) + '" placeholder="Search tags" aria-label="Search tags" autocomplete="off"><div class="control-row">' + tagNamespaceControl + tagSortControl + '</div></div></div>' + tagNotice + tagContent + savedFilters + '</section>';
     bindTagColumnControls();
@@ -900,7 +925,18 @@ ${getQueryEditorScript()}
         return;
       }
       if (action === 'reset-widgets') {
+        confirmingReset = true;
+        render();
+        return;
+      }
+      if (action === 'confirm-reset-widgets') {
+        confirmingReset = false;
         send({ type: 'resetDashboardWidgets' });
+        return;
+      }
+      if (action === 'cancel-reset-widgets') {
+        confirmingReset = false;
+        render();
         return;
       }
       if (action === 'remove-widget') {
@@ -1051,6 +1087,12 @@ ${getQueryEditorScript()}
         browseQuery = acceptHostSearch('tags', incomingState.viewState.tagSearchQuery, browseQuery);
       }
       incomingState.tagColumns = tagColumns;
+      // Widgets are sent only while Home is showing, and the snapshot
+      // replaces the state wholesale. Keeping the last set stops Home
+      // blanking to "Loading Home…" on every return from the Tags tab.
+      if (!incomingState.widgets && state && state.widgets) {
+        incomingState.widgets = state.widgets;
+      }
       state = incomingState;
       searchEditor.receive();
       renderKeepingFocus();

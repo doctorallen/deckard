@@ -107,6 +107,7 @@ suite('Tag decorations', () => {
       'Relay checks',
       'file:///tmp/deckard/relay.md',
       12,
+      false,
     );
 
     assert.strictEqual(
@@ -114,6 +115,22 @@ suite('Tag decorations', () => {
       true,
     );
     assert.strictEqual(hover.value.includes('Show related notes for Relay checks'), true);
+    // The ranking breakdown is a developer tool, so an ordinary hover leaves
+    // it out; deckard.developerMode puts it back.
+    assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), false);
+    assert.deepStrictEqual(hover.isTrusted, {
+      enabledCommands: ['deckard.showEntryRelatedNotes'],
+    });
+  });
+
+  test('offers the ranking breakdown in developer mode', () => {
+    const hover = createEntryRelatedNotesHoverMessage(
+      'Relay checks',
+      'file:///tmp/deckard/relay.md',
+      12,
+      true,
+    );
+
     assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), true);
     assert.deepStrictEqual(hover.isTrusted, {
       enabledCommands: [

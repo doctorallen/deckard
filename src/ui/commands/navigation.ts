@@ -58,6 +58,8 @@ export async function openSourceAt(
   filePath: string,
   line: number,
   workspaceFolders?: readonly vscode.WorkspaceFolder[],
+  /** Open in the column beside the active one rather than replacing it. */
+  beside = false,
 ): Promise<vscode.TextEditor | undefined> {
   const uri = await resolveSourceUri(filePath, workspaceFolders);
   if (!uri) {
@@ -71,6 +73,7 @@ export async function openSourceAt(
     const document = await vscode.workspace.openTextDocument(uri);
     const editor = await vscode.window.showTextDocument(document, {
       preview: false,
+      ...(beside ? { viewColumn: vscode.ViewColumn.Beside } : {}),
     });
     revealLine(editor, line);
     return editor;

@@ -48,6 +48,8 @@ export class SidebarNotesView
   private graphContext: SidebarGraphContext | undefined;
   private suppressAutomaticEntrySelection = false;
   private refreshHandle: ReturnType<typeof setTimeout> | undefined;
+  /** Whether the first scan has finished, which tells indexing from missing. */
+  private indexed = false;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -144,7 +146,10 @@ export class SidebarNotesView
     this.renderHtml();
     this.activeSearch.setSidebarVisible(webviewView.visible);
     this.refresh();
-    void this.indexer.ready.then(() => this.refresh());
+    void this.indexer.ready.then(() => {
+      this.indexed = true;
+      this.refresh();
+    });
   }
 
   /**
@@ -367,6 +372,26 @@ export class SidebarNotesView
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         refine,
         state: 'refine',
+      };
+    }
+
+    // A Markdown note that is open but absent from the index is either one
+    // Deckard has not read yet, or one outside the notes folder. Both used to
+    // read as "open a Markdown note", contradicting the editor.
+    const openDocument = vscode.window.activeTextEditor?.document;
+    if (
+      openDocument &&
+      isMarkdownDocument(openDocument) &&
+      !this.getActiveFile() &&
+      // A entry chosen by hand keeps the pane on that entry, whatever the
+      // editor is showing.
+      this.entryContext?.source !== 'manual'
+    ) {
+      return {
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        state: this.indexed ? 'notIndexed' : 'loading',
       };
     }
 
@@ -596,7 +621,14 @@ export class SidebarNotesView
       if (note.sectionId) {
         await this.preferences.recordSectionAccess(note.sectionId);
       }
-      await openSourceAt(note.filePath, note.sourceLine);
+      // A result used to replace the note it was ranked from, with no way
+      // back but Ctrl+Tab. Cmd/Ctrl-click opens it alongside instead.
+      await openSourceAt(
+        note.filePath,
+        note.sourceLine,
+        undefined,
+        message.beside === true,
+      );
     }
   }
 

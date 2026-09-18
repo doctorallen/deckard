@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.15.0",
+  "version": "1.16.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -28,6 +28,57 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "walkthroughs": [
+      {
+        "id": "deckard.gettingStarted",
+        "title": "Get started with Deckard",
+        "description": "Index the Markdown notes you already write, then follow the people, projects, and tasks in them.",
+        "steps": [
+          {
+            "id": "deckard.walkthrough.openNote",
+            "title": "Open or create a note",
+            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two.\n[Create today's note](command:deckard.createDailyNote)",
+            "media": {
+              "markdown": "resources/walkthrough/notes.md"
+            }
+          },
+          {
+            "id": "deckard.walkthrough.addTags",
+            "title": "Tag what the note is about",
+            "description": "Write a tag such as #project/atlas on a heading or a task, or @dana for a person. Tags are what Deckard connects notes by.\n[Open Help](command:deckard.showHelp)",
+            "media": {
+              "markdown": "resources/walkthrough/tags.md"
+            }
+          },
+          {
+            "id": "deckard.walkthrough.openHome",
+            "title": "See the workspace",
+            "description": "Home collects today's note, your tasks, the Agenda, and the searches you keep.\n[Open the Dashboard](command:deckard.showDashboard)",
+            "media": {
+              "markdown": "resources/walkthrough/home.md"
+            }
+          },
+          {
+            "id": "deckard.walkthrough.search",
+            "title": "Find anything",
+            "description": "Find searches as you type. A search page holds the whole result, and Refine narrows it.\n[Find a note](command:deckard.searchWorkspace)",
+            "media": {
+              "markdown": "resources/walkthrough/search.md"
+            }
+          }
+        ]
+      }
+    ],
+    "viewsWelcome": [
+      {
+        "view": "deckard.outline",
+        "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
+      },
+      {
+        "view": "deckard.agenda",
+        "contents": "Tasks with a due or scheduled date appear here.\n\nWrite one in a note as a checklist item with a date, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)"
+      }
+    ],
     "commands": [
       {
         "command": "deckard.showDashboard",
@@ -112,7 +163,7 @@
       },
       {
         "command": "deckard.showTagOverview",
-        "title": "Deckard: Show Tag Overview"
+        "title": "Deckard: Open a Tag's Search Page"
       },
       {
         "command": "deckard.search",
@@ -120,7 +171,7 @@
       },
       {
         "command": "deckard.searchWorkspace",
-        "title": "Deckard: Find"
+        "title": "Deckard: Search Notes (find as you type)"
       },
       {
         "command": "deckard.quickFind.complete",
@@ -128,7 +179,7 @@
       },
       {
         "command": "deckard.searchNotes",
-        "title": "Deckard: Search Notes and Tasks"
+        "title": "Deckard: Search Notes and Tasks (write a query)"
       },
       {
         "command": "deckard.linkCurrentHeading",
@@ -156,7 +207,7 @@
       },
       {
         "command": "deckard.outline.openTagOverview",
-        "title": "Open Tag Overview…"
+        "title": "Open the Tag's Search Page…"
       },
       {
         "command": "deckard.outline.renameTag",
@@ -192,12 +243,24 @@
           "when": "false"
         },
         {
+          "command": "deckard.showEntryRelatedNotesDebug",
+          "when": "false"
+        },
+        {
           "command": "deckard.pinNote",
           "when": "editorLangId == markdown"
         },
         {
           "command": "deckard.unpinNote",
           "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.outline.enableFollowCursor",
+          "when": "!deckard.outlineFollowCursor"
+        },
+        {
+          "command": "deckard.outline.disableFollowCursor",
+          "when": "deckard.outlineFollowCursor"
         }
       ],
       "view/title": [
@@ -662,6 +725,12 @@
       {
         "title": "AI Assistants",
         "properties": {
+          "deckard.developerMode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Offer Deckard's own diagnostics, such as the related-notes ranking breakdown on a tagged entry's hover. Useful when tuning Related Notes; off for everyday note taking.",
+            "order": 0
+          },
           "deckard.assistantTools": {
             "type": "boolean",
             "default": true,
@@ -710,7 +779,8 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "test:e2e": "npm run compile-tests && node test/e2e/run.js",
-    "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js"
+    "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js && node test/ui/checkContrast.js",
+    "test:contrast": "npm run compile-tests && node test/ui/checkContrast.js"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.2.0",

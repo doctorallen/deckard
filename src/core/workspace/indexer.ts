@@ -16,7 +16,7 @@ import {
   EntrySearchResult,
   SearchStore,
 } from '../storage/searchStore';
-import { measure, measureAsync } from '../timing';
+import { measure, measureAsync, reportError } from '../timing';
 import { ScanProgress, WorkspaceScanner } from './scanner';
 
 /**
@@ -356,7 +356,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
         this.files.set(filePath, parsedFile);
         this.searchStore?.upsert(parsedFile);
       } catch (error) {
-        console.error(`Deckard could not update ${filePath}`, error);
+        reportError(`Could not update ${filePath}`, error);
       }
     }
   }

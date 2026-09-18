@@ -63,7 +63,7 @@ export interface TaskBoardOptions {
 export type TaskMove =
   | { kind: 'unchanged' }
   | { kind: 'complete' }
-  | { kind: 'edit'; edit: (line: string) => string }
+  | { kind: 'edit'; edit: (line: string) => string; label: string }
   | { kind: 'refused'; reason: string };
 
 interface ColumnDraft {
@@ -244,13 +244,22 @@ export function resolveTaskMove(
       if (value && !isValidStatusName(value)) {
         return refuse(`"${value}" cannot be written as a status tag.`);
       }
-      if (!task.completed && (readTaskStatus(task, options.statusNamespace) ?? '') === value) {
+      if (
+        !task.completed &&
+        (readTaskStatus(task, options.statusNamespace) ?? '') === value
+      ) {
         return { kind: 'unchanged' };
       }
       return {
         kind: 'edit',
+        label: value ? formatStatusLabel(value) : 'No status',
         edit: (line) =>
-          setTaskStatusTag(reopen(line), column, options.statusNamespace, value || undefined),
+          setTaskStatusTag(
+            reopen(line),
+            column,
+            options.statusNamespace,
+            value || undefined,
+          ),
       };
     }
     case 'priority': {
@@ -262,6 +271,7 @@ export function resolveTaskMove(
       }
       return {
         kind: 'edit',
+        label: value ? `${formatStatusLabel(value)} priority` : 'No priority',
         edit: (line) =>
           setTaskPriority(
             reopen(line),
@@ -281,7 +291,9 @@ export function resolveTaskMove(
         );
         return {
           kind: 'edit',
-          edit: (line) => setTaskDate(reopen(line), column, 'due', date, options.format),
+          label: value === 'today' ? 'Due today' : 'Due tomorrow',
+          edit: (line) =>
+            setTaskDate(reopen(line), column, 'due', date, options.format),
         };
       }
       if (value === '') {
@@ -294,6 +306,7 @@ export function resolveTaskMove(
         }
         return {
           kind: 'edit',
+          label: 'No due date',
           edit: (line) => setTaskDate(reopen(line), column, 'due', undefined),
         };
       }
@@ -378,7 +391,12 @@ function createStatusColumns(
     .filter((status) => !configured.includes(status))
     .sort();
   return [
-    { id: 'status:', label: 'No status', droppable: true, tasks: withoutStatus },
+    {
+      id: 'status:',
+      label: 'No status',
+      droppable: true,
+      tasks: withoutStatus,
+    },
     ...[...configured, ...found].map((status) => ({
       id: `status:${status}`,
       label: formatStatusLabel(status),
@@ -460,7 +478,9 @@ function createCard(
     line: task.lineNumber,
     overdue: open && task.dueAt !== undefined && task.dueAt < today,
     details: [
-      !open && task.doneAt !== undefined ? `done ${formatIsoDate(task.doneAt)}` : '',
+      !open && task.doneAt !== undefined
+        ? `done ${formatIsoDate(task.doneAt)}`
+        : '',
       open && task.dueText ? `due ${task.dueText}` : '',
       open && task.scheduledAt !== undefined
         ? `scheduled ${formatIsoDate(task.scheduledAt)}`
@@ -468,7 +488,9 @@ function createCard(
       open && task.startAt !== undefined && task.startAt > today
         ? `starts ${formatIsoDate(task.startAt)}`
         : '',
-      groupBy !== 'priority' && task.priority ? `${task.priority} priority` : '',
+      groupBy !== 'priority' && task.priority
+        ? `${task.priority} priority`
+        : '',
       task.recurrence ? `repeats ${task.recurrence}` : '',
       open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
       task.filePath.split('/').pop() ?? task.filePath,

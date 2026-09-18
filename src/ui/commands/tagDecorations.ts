@@ -369,15 +369,26 @@ export function createEntryRelatedNotesHoverMessage(
   title: string,
   documentUri: string,
   lineNumber: number,
+  /**
+   * Whether to offer the ranking breakdown as well. It explains Deckard to
+   * itself, so it is offered only where it was asked for: every tagged entry
+   * used to carry the link.
+   */
+  includeDebug = vscode.workspace
+    .getConfiguration('deckard')
+    .get<boolean>('developerMode', false),
 ): vscode.MarkdownString {
   const safeTitle = escapeMarkdown(title);
+  const debugLink = includeDebug
+    ? `  \n[Debug related notes for ${safeTitle}](${createEntryRelatedNotesDebugUri(documentUri, lineNumber)})`
+    : '';
   const hover = new vscode.MarkdownString(
-    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})  \n[Debug related notes for ${safeTitle}](${createEntryRelatedNotesDebugUri(documentUri, lineNumber)})`,
+    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})${debugLink}`,
   );
   hover.isTrusted = {
     enabledCommands: [
       'deckard.showEntryRelatedNotes',
-      'deckard.showEntryRelatedNotesDebug',
+      ...(includeDebug ? ['deckard.showEntryRelatedNotesDebug'] : []),
     ],
   };
   return hover;

@@ -23,6 +23,12 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
 
+/** Today, as a day number, so a rollover is one comparison. */
+function startOfToday(): number {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
 /** Where the Dashboard sends a reader who leaves it, and what it asks for. */
 export interface DashboardNavigation {
   openTag(tagKey: string): void | Promise<void>;
@@ -49,6 +55,13 @@ export class DashboardPanel implements vscode.Disposable {
   private dashboardTagColumns: DashboardColumnCount;
   /** The note last open in an editor, which Home's widgets can follow. */
   private sourceNotePath: string | undefined;
+  /** The day the widgets were built for: Today goes stale when it turns. */
+  private publishedOn = startOfToday();
+
+  /** Whether a new day has started since the widgets were last built. */
+  private dayHasTurned(): boolean {
+    return this.publishedOn !== startOfToday();
+  }
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -246,7 +259,9 @@ export class DashboardPanel implements vscode.Disposable {
         void this.handleMessage(message);
       }),
       panel.onDidChangeViewState(() => {
-        if (panel.visible && this.isStale) {
+        // Coming back to a page left open is also how a new day arrives, so
+        // it refreshes when the day has turned even if nothing was indexed.
+        if (panel.visible && (this.isStale || this.dayHasTurned())) {
           this.refresh();
         }
       }),
@@ -286,6 +301,7 @@ export class DashboardPanel implements vscode.Disposable {
     }
 
     this.isStale = false;
+    this.publishedOn = startOfToday();
     measure('Dashboard', () => this.publish());
   }
 
@@ -481,9 +497,27 @@ export class DashboardPanel implements vscode.Disposable {
       case 'openSavedFilter':
         await this.openSavedFilter(message.filterId);
         return;
-      case 'removeSavedFilter':
-        await this.preferences.removeSavedFilter(message.filterId);
+      case 'removeSavedFilter': {
+        // Removing a saved search also removes any Home widget bound to it,
+        // and nothing could bring either back, so it asks first.
+        const saved = this.preferences.value.savedFilters.find(
+          (filter) => filter.id === message.filterId,
+        );
+        const widgets = this.preferences.value.dashboardWidgets.filter(
+          (widget) => widget.filterId === message.filterId,
+        ).length;
+        const confirm = await vscode.window.showWarningMessage(
+          `Remove the saved search "${saved?.name ?? 'this search'}"?${
+            widgets ? ' Its widget leaves Home with it.' : ''
+          }`,
+          { modal: true },
+          'Remove',
+        );
+        if (confirm === 'Remove') {
+          await this.preferences.removeSavedFilter(message.filterId);
+        }
         return;
+      }
       case 'recordRecentQuery':
         await this.preferences.recordRecentQuery(message.query);
         return;

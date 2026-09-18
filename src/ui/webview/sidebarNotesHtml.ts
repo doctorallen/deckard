@@ -6,7 +6,7 @@ import {
   getComponentScript,
 } from './components';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
-import { notesGraphIcon, taskBoardIcon } from './icons';
+import { helpIcon, notesGraphIcon, taskBoardIcon } from './icons';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -37,11 +37,19 @@ export function getSidebarNotesHtml(
 <style nonce="${nonce}">${getBaseCss()}
 .relevance-score, .version { font-family: var(--font-mono); }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
+.sidebar-header .eyebrow { flex: 0 0 auto; }
+/* The selected entry is context for the list, not the subject of the pane:
+   two lines of it, so the related notes start above the fold. */
+.active-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .version { flex: 0 0 auto; color: var(--green); font-size: 10px; }
-.active-file { margin-top: 12px; padding: 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
+.active-file { margin-top: 8px; padding: 7px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
 .graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
+.active-summary::-webkit-details-marker { display: none; }
+.active-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.active-file[open] .active-name { -webkit-line-clamp: 3; }
 .sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
@@ -51,15 +59,19 @@ export function getSidebarNotesHtml(
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
 .related-notes-sort-control { position: relative; display: block; margin-top: 10px; }
-.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
+select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
-.related-notes-sort:hover { border-color: var(--amber); color: var(--amber); }
+/* The sort control takes the shared control hover, border and all: its own
+   amber border and amber text were both out of step with every other hover,
+   and unreadable on a theme whose hover background is light. The icon sits
+   over the control, so it follows the same text color. */
+select.related-notes-sort:hover ~ .related-notes-sort-icon { color: var(--hover-fg); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
-.section-label { display: block; margin: 16px 0 7px; padding-left: 6px; border-left: 2px solid var(--amber); }
+.section-label { display: block; margin: 10px 0 6px; padding-left: 6px; border-left: 2px solid var(--amber); }
 .note-list { display: grid; gap: 8px; }
 .note { position: relative; border: 2px solid var(--line); background: var(--panel); padding: 9px; cursor: pointer; }
 .note:hover, .note:focus-within { z-index: 20; border-color: var(--line-strong); }
@@ -69,7 +81,10 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
 .relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
-.relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip { display: block; }
+.relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
+.relevance-score { min-height: 0; border: 0; background: transparent; padding: 0; cursor: pointer; }
+.relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
+.relevance-reason { margin-top: 5px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
 .relevance-tooltip li + li { margin-top: 3px; }
@@ -84,6 +99,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .graph-tag-pill { margin-left: 0; color: var(--text); }
 /* The active search's Refine options. */
 .refine-values { display: grid; gap: 3px; }
+.refine-subject { margin: 2px 0 0; color: var(--cyan); font: 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .refine-value { display: flex; align-items: stretch; gap: 3px; }
 /* A tag as a full-width row, for the note's own tags and the related tags in
    Refine: its rail, its name, and its count. The theme's own .tag-open layout
@@ -118,7 +134,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
-<main id="app" aria-live="polite"><div class="empty">Loading related notes...</div></main>
+<main id="app"><div class="empty">Loading related notes...</div></main>
+<div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
@@ -184,7 +201,12 @@ ${getComponentScript()}
   function renderRefine(refine) {
     const query = refine.query;
     const facets = query.facets || [];
-    const heading = '<div class="refine-heading"><h2>Refine</h2>'
+    // Which search these narrow. With two search pages open, nothing said
+    // which one a value here would change.
+    const subject = refine.title
+      ? '<p class="refine-subject" title="' + escapeHtml(refine.title) + '">' + escapeHtml(refine.title) + '</p>'
+      : '';
+    const heading = '<div class="refine-heading"><h2>Refine</h2>' + subject
       + (facets.length && String(query.text || '').trim()
         ? '<p class="refine-hint">Select a value to add it to the search. Alt-click leaves it out; Shift-click allows it beside the one already chosen. The icon beside a tag opens it in a new tab.</p>'
         : '')
@@ -201,7 +223,7 @@ ${getComponentScript()}
 
   /** Shared shell for Related Notes and graph-connected node cards. */
   function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
-    return '<article class="note ' + className + '" tabindex="0" ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
+    return '<article class="note ' + className + '" tabindex="0" title="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
   }
 
   function renderGraphConnections(graph) {
@@ -245,6 +267,11 @@ ${getComponentScript()}
   // count starts over whenever the sidebar shows a different list.
   const NOTE_PAGE_SIZE = 50;
   let visibleNoteLimit = NOTE_PAGE_SIZE;
+  /** How many of the note's own tags are listed before the rest are folded. */
+  const ACTIVE_TAG_PAGE_SIZE = 4;
+  let showEveryActiveTag = false;
+  /** Whether the selected-entry context is unfolded, kept across redraws. */
+  let contextOpen = false;
   let visibleNoteListKey = '';
 
   function getNoteListKey() {
@@ -265,6 +292,10 @@ ${getComponentScript()}
       content = renderRefine(state.refine);
     } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
+    } else if (state.state === 'loading') {
+      content = '<div class="empty">Indexing this workspace…</div>';
+    } else if (state.state === 'notIndexed') {
+      content = '<div class="empty">This note is not indexed yet. Save it inside the notes folder to see related entries.</div>';
     } else if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
     } else if (state.state === 'noTags') {
@@ -317,7 +348,7 @@ ${getComponentScript()}
         const specificityAdjustment = evidence.specificityPenalty > 0
           ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
           : '';
-        const relevance = '<span class="relevance-wrap"><span class="relevance-score" aria-label="Relevance score ' + note.relevanceScore + ' percent">' + note.relevanceScore + '%</span><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance score ' + note.relevanceScore + ' percent. Show how this was scored." title="How this note was scored">' + note.relevanceScore + '%</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
@@ -327,12 +358,23 @@ ${getComponentScript()}
           titleHtml,
           relevance,
           '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;
     }
+    // The note's own tags are context for the list below them, so only the
+    // first few are kept on screen; the rest are one press away. A note with
+    // a dozen tags used to push every related note out of view.
+    const shownActiveTags = showEveryActiveTag
+      ? state.activeTags
+      : state.activeTags.slice(0, ACTIVE_TAG_PAGE_SIZE);
+    const hiddenActiveTagCount = state.activeTags.length - shownActiveTags.length;
     const activeTags = state.activeTags.length
-      ? '<div class="active-tag-list" aria-label="Active note tags">' + state.activeTags.map(renderActiveTag).join('') + '</div>'
+      ? '<div class="active-tag-list" aria-label="Active note tags">' + shownActiveTags.map(renderActiveTag).join('')
+        + (hiddenActiveTagCount > 0
+          ? '<button type="button" class="clear-entry-context" data-action="show-every-active-tag">Show ' + hiddenActiveTagCount + ' more ' + (hiddenActiveTagCount === 1 ? 'tag' : 'tags') + '</button>'
+          : '')
+        + '</div>'
       : '';
     const context = state.state === 'refine'
       ? ''
@@ -340,7 +382,14 @@ ${getComponentScript()}
       ? (state.graph.selectedNode
         ? renderSelectedGraphNode(state.graph.selectedNode)
         : '<div class="active-file"><div class="active-label">Notes Graph</div><div class="active-name">Connected nodes</div></div>')
-      : (state.activeFileName ? '<div class="active-file"><div class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</div><div class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</div>' + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '') + activeTags + '</div>' : '');
+      : (state.activeFileName
+        // The entry being ranked from, and its tags, are context: folded by
+        // default so the related notes start at the top of a short pane, and
+        // the fold is remembered.
+        ? '<details class="active-file"' + (contextOpen ? ' open' : '') + '><summary class="active-summary"><span class="active-label">' + (state.activeEntryTitle ? 'Selected note' : 'Current note') + '</span><span class="active-name">' + escapeHtml(state.activeEntryTitle || state.activeFileName) + '</span></summary>'
+          + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '')
+          + activeTags + '</details>'
+        : '');
     const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
       ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
       : '';
@@ -349,9 +398,14 @@ ${getComponentScript()}
       : state.state === 'refine'
       ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow">DECKARD</p><span class="version">v${escapedExtensionVersion}</span><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help"><svg class="outline-icon" viewBox="0 0 16 16" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.5 6.2a1.7 1.7 0 1 1 2.6 1.5c-.8.5-1.1.9-1.1 1.8M8 11.7h.01"/></svg></button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow" title="Deckard v${escapedExtensionVersion}">DECKARD</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help">${helpIcon}</button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
   }
 
+  document.addEventListener('toggle', function (event) {
+    if (event.target.classList && event.target.classList.contains('active-file')) {
+      contextOpen = event.target.open;
+    }
+  }, true);
   document.addEventListener('click', function (event) {
     if (event.target.closest('[data-action="show-more-notes"]')) {
       const firstNewNote = visibleNoteLimit;
@@ -377,6 +431,27 @@ ${getComponentScript()}
     }
     const target = event.target.closest('[data-action]');
     if (target) {
+      if (target.dataset.action === 'show-every-active-tag') {
+        showEveryActiveTag = true;
+        render();
+        return;
+      }
+      if (target.dataset.action === 'show-relevance') {
+        // Pressing the score opens the panel that hovering shows, so the
+        // reasons are reachable without a pointer.
+        const wrap = target.closest('.relevance-wrap');
+        const open = wrap && !wrap.classList.contains('is-open');
+        document.querySelectorAll('.relevance-wrap.is-open').forEach(function (other) {
+          other.classList.remove('is-open');
+          const button = other.querySelector('[data-action="show-relevance"]');
+          if (button) button.setAttribute('aria-expanded', 'false');
+        });
+        if (wrap && open) {
+          wrap.classList.add('is-open');
+          target.setAttribute('aria-expanded', 'true');
+        }
+        return;
+      }
       if (target.dataset.action === 'open-tag') {
         vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       }
@@ -413,7 +488,9 @@ ${getComponentScript()}
       return;
     }
     const note = event.target.closest('.note');
-    if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
+    // Cmd/Ctrl-click opens the result beside the note it was ranked from,
+    // the way a graph node already did.
+    if (note) vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) });
   });
   document.addEventListener('pointerover', function (event) {
     const graphNode = event.target.closest('.graph-node');
@@ -445,6 +522,18 @@ ${getComponentScript()}
       closeTagContextMenu();
       return;
     }
+    if (event.key === 'Escape') {
+      const open = document.querySelector('.relevance-wrap.is-open');
+      if (open) {
+        open.classList.remove('is-open');
+        const button = open.querySelector('[data-action="show-relevance"]');
+        if (button) {
+          button.setAttribute('aria-expanded', 'false');
+          if (button.focus) button.focus();
+        }
+        return;
+      }
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     if (event.target.closest('[data-action]')) return;
     const graphNode = event.target.closest('.graph-node');
@@ -460,7 +549,7 @@ ${getComponentScript()}
     const note = event.target.closest('.note');
     if (note) {
       event.preventDefault();
-      vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line) });
+      vscode.postMessage({ type: 'openSource', filePath: note.dataset.filePath, line: Number(note.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey) });
     }
   });
   document.addEventListener('change', function (event) {

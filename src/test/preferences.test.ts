@@ -44,6 +44,35 @@ class DelayedFirstWriteMemento extends MemoryMemento {
 }
 
 suite('Preferences store', () => {
+  test('a task keeps its place when Deckard rewrites its line', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.setTaskOrder(['task-a', 'task-b', 'task-c']);
+
+    // Completing task-b stamps a done date on it, which makes it a new id.
+    await store.replaceTaskInOrder('task-b', 'task-b-done');
+    assert.deepStrictEqual(store.value.taskOrder, [
+      'task-a',
+      'task-b-done',
+      'task-c',
+    ]);
+
+    // Undoing the completion puts the line, and the place, back.
+    await store.replaceTaskInOrder('task-b-done', 'task-b');
+    assert.deepStrictEqual(store.value.taskOrder, [
+      'task-a',
+      'task-b',
+      'task-c',
+    ]);
+
+    // A task the order never held is left alone.
+    await store.replaceTaskInOrder('task-z', 'task-z-done');
+    assert.deepStrictEqual(store.value.taskOrder, [
+      'task-a',
+      'task-b',
+      'task-c',
+    ]);
+  });
+
   test('persists favorites and removes stale content references', async () => {
     const memento = new MemoryMemento();
     const store = new PreferencesStore(memento);

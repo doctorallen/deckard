@@ -87,6 +87,8 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
+.stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
+.empty-action { margin: 12px 0 0; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
@@ -98,7 +100,8 @@ ${getDeckardThemeCss(getDeckardTheme())}
 </style>
 </head>
 <body>
-<main id="app" aria-live="polite"><div class="empty">Loading search...</div></main>
+<main id="app"><div class="empty">Loading search...</div></main>
+<div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
@@ -106,10 +109,21 @@ ${getComponentScript()}
 ${getQueryEditorScript()}
   let state;
   let activeTab = 'notes';
+  /**
+   * Whether the reader picked the tab themselves. Until they do, the page
+   * opens the tab that actually has results: a task search would otherwise
+   * land on an empty Notes tab while every hit sat behind Tasks.
+   */
+  let tabChosen = false;
+  const savedPageState = typeof vscode.getState === 'function' ? vscode.getState() : undefined;
+  if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks')) {
+    activeTab = savedPageState.tab;
+    tabChosen = true;
+  }
   const editor = createQueryEditor({
     getState: function () { return state && state.query; },
     render: function () { render(); },
-    apply: function (text) { vscode.postMessage({ type: 'setOverviewQuery', query: text }); },
+    apply: function (text, remember) { vscode.postMessage({ type: 'setOverviewQuery', query: text, remember: remember !== false }); },
     // Clear returns the page to the search it was opened with, such as its
     // own tag, rather than to nothing.
     clear: function () { vscode.postMessage({ type: 'clearOverviewQuery' }); },
@@ -123,7 +137,7 @@ ${getQueryEditorScript()}
     label: 'Search notes and tasks',
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     actions: function (hasText) {
-      return '<button data-action="save-filter" data-query-needs-text title="Save this search as a view"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-filter" data-query-needs-text title="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
 
@@ -264,21 +278,37 @@ ${getQueryEditorScript()}
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + renderOverviewTagLink(focus, state.entity.label) + '</div>'
       : '';
-    const cards = state.sections.length
-      ? state.sections.map(renderCard).join('')
-      : '<div class="empty">' + (state.tag ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + '</div>';
-    const tasks = state.tasks.length
-      ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
-      : '<div class="empty">No tasks match this filter.</div>';
     const notesCount = state.sections.length;
     const tasksCount = state.tasks.length;
+    // An empty side of a search that did find something on the other side is
+    // a dead end otherwise: the count is in the tab strip, but nothing says
+    // the results are one click away.
+    const otherResults = function (kind) {
+      if (state.layout === 'split') return '';
+      const otherCount = kind === 'notes' ? tasksCount : notesCount;
+      if (!otherCount) return '';
+      const other = kind === 'notes' ? 'tasks' : 'notes';
+      const noun = otherCount === 1 ? other.slice(0, -1) : other;
+      return '<p class="empty-action"><button data-action="show-other-results" data-tab="' + other + '">Show ' + otherCount + ' matching ' + escapeHtml(noun) + '</button></p>';
+    };
+    const cards = state.sections.length
+      ? state.sections.map(renderCard).join('')
+      : '<div class="empty">' + (state.tag ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
+    const tasks = state.tasks.length
+      ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
+      : '<div class="empty">' + (state.taskFilter === 'active' ? 'No open tasks match this search.' : 'No tasks match this filter.') + otherResults('tasks') + '</div>';
+    if (!tabChosen && state.layout !== 'split') {
+      activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
+    }
     const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div><div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></section>';
     const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
+      // Both counts are the ones the panes actually show, so a tab never
+      // promises more rows than the pane behind it holds.
       : renderResultTabs([
         { id: 'notes', label: 'Notes', count: notesCount },
-        { id: 'tasks', label: 'Tasks', count: state.taskCounts.all },
+        { id: 'tasks', label: 'Tasks', count: tasksCount },
       ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
@@ -290,17 +320,34 @@ ${getQueryEditorScript()}
     ]);
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span></label>';
     const savedViewName = state.savedViewName
-      ? '<div class="saved-view-name" aria-label="Saved view: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved view:</span> ' + escapeHtml(state.savedViewName) + '</div>'
+      ? '<div class="saved-view-name" aria-label="Saved search: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved search:</span> ' + escapeHtml(state.savedViewName) + '</div>'
       : '';
     const eyebrow = state.tag
-      ? 'DECKARD / ' + (state.entity ? 'ENTITY' : 'TAG') + ' OVERVIEW'
+      ? 'DECKARD / TAG SEARCH'
       : 'DECKARD / SEARCH';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + layoutContent;
+    // A search that does not parse leaves the previous results on the page.
+    // Say so, rather than letting them read as answers to what was typed.
+    const invalid = (state.query.diagnostics || []).some(function (diagnostic) { return diagnostic.severity === 'error'; });
+    const staleNotice = invalid
+      ? '<p class="stale-results">The search above has not run. These are the results of the last one that did.</p>'
+      : '';
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + layoutContent;
     applyColumns();
     filterEntries('notes');
     filterEntries('tasks');
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
+    announce(notesCount + (notesCount === 1 ? ' note' : ' notes') + ' and ' + tasksCount + (tasksCount === 1 ? ' task' : ' tasks') + ' match this search.');
+  }
+
+  /** Keep the page's own view state across a window reload. */
+  function saveState() {
+    if (!state) return;
+    const saved = { query: state.query.text, origin: state.originQuery };
+    // The host reads this same record to restore a page, so the tab is added
+    // only once it is the reader's own choice.
+    if (tabChosen) saved.tab = activeTab;
+    if (typeof vscode.setState === 'function') vscode.setState(saved);
   }
 
   installViewOptions();
@@ -339,10 +386,13 @@ ${getQueryEditorScript()}
         applyColumns();
         vscode.postMessage({ type: 'setSearchColumns', section: section, columns: columns });
       }
-      if (action === 'set-result-tab') {
+      if (action === 'set-result-tab' || action === 'show-other-results') {
         activeTab = target.dataset.tab === 'tasks' ? 'tasks' : 'notes';
+        tabChosen = true;
+        saveState();
         render();
       }
+      if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
       if (action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
@@ -385,8 +435,8 @@ ${getQueryEditorScript()}
     if (event.data && event.data.type === 'state') {
       state = event.data.data;
       editor.receive();
-      vscode.setState({ query: state.query.text, origin: state.originQuery });
       render();
+      saveState();
     }
   });
 }());

@@ -209,10 +209,15 @@ export function parseSearchPageMessage(
     case 'saveTagOverviewFilter':
     case 'createHubNote':
     case 'clearOverviewQuery':
+    case 'openHelp':
       return Object.keys(value).length === 1 ? { type: value.type } : undefined;
     case 'setOverviewQuery':
       return isOverviewQueryMessage(value)
-        ? { type: 'setOverviewQuery', query: value.query as string }
+        ? {
+            type: 'setOverviewQuery',
+            query: value.query as string,
+            remember: value.remember !== false,
+          }
         : undefined;
     default:
       return undefined;
@@ -231,9 +236,10 @@ const MAX_QUERY_LENGTH = 2000;
  */
 function isOverviewQueryMessage(value: Record<string, unknown>): boolean {
   return (
-    Object.keys(value).length === 2 &&
+    Object.keys(value).length <= 3 &&
     typeof value.query === 'string' &&
-    value.query.length <= MAX_QUERY_LENGTH
+    value.query.length <= MAX_QUERY_LENGTH &&
+    (value.remember === undefined || typeof value.remember === 'boolean')
   );
 }
 
@@ -388,6 +394,14 @@ export function parseTaskBoardMessage(
       return isTaskBoardGroupBy(value.groupBy)
         ? { type: 'setBoardGroup', groupBy: value.groupBy }
         : undefined;
+    case 'showColumnRest':
+      return typeof value.columnId === 'string' && value.columnId.length > 0
+        ? { type: 'showColumnRest', columnId: value.columnId }
+        : undefined;
+    case 'openHelp':
+      return Object.keys(value).length === 1
+        ? { type: 'openHelp' }
+        : undefined;
     case 'setBoardQuery':
       return typeof value.query === 'string' &&
         value.query.length <= MAX_QUERY_LENGTH
@@ -464,6 +478,15 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
             line: value.line as number,
           }
         : undefined;
+    case 'openSearch':
+      return typeof value.query === 'string' &&
+        value.query.length <= MAX_QUERY_LENGTH
+        ? { type: 'openSearch', query: value.query }
+        : undefined;
+    case 'reindexWorkspace':
+      return Object.keys(value).length === 1
+        ? { type: 'reindexWorkspace' }
+        : undefined;
     default:
       return undefined;
   }
@@ -506,7 +529,8 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
     typeof value.filePath === 'string' &&
     typeof value.line === 'number' &&
     Number.isInteger(value.line) &&
-    value.line > 0
+    value.line > 0 &&
+    (value.beside === undefined || typeof value.beside === 'boolean')
   );
 }
 

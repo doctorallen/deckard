@@ -283,7 +283,16 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   await delay(20);
   assert.strictEqual(ids()[ids().length - 1], 'search');
 
+  // Reset discards an arrangement, so it asks before it does.
   view.click(view.find('[data-action="reset-widgets"]'));
+  await delay(20);
+  assert.deepStrictEqual(ids(), [added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes until it is confirmed');
+  view.click(view.find('[data-action="cancel-reset-widgets"]'));
+  await delay(20);
+  assert.ok(view.find('[data-action="reset-widgets"]'), 'Reset is offered again');
+
+  view.click(view.find('[data-action="reset-widgets"]'));
+  view.click(view.find('[data-action="confirm-reset-widgets"]'));
   await delay(20);
   assert.deepStrictEqual(ids(), ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches']);
 

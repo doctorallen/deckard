@@ -508,7 +508,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private async handleValidMessage(message: SearchPageMessage): Promise<void> {
     switch (message.type) {
       case 'setOverviewQuery':
-        await this.applyQuery(message.query);
+        await this.applyQuery(message.query, message.remember !== false);
         return;
       case 'clearOverviewQuery':
         await this.applyQuery(this.originQuery, false);
@@ -531,6 +531,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
           message.section,
           message.columns,
         );
+        return;
+      case 'openHelp':
+        await vscode.commands.executeCommand('deckard.showHelp');
         return;
       case 'saveTagOverviewFilter':
         await this.saveSearch();
@@ -625,8 +628,8 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
     const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
     const name = await vscode.window.showInputBox({
-      title: 'Save Deckard filter',
-      prompt: isTagSet ? 'Name this tag filter' : 'Name this search',
+      title: 'Save this search',
+      prompt: 'Name this search',
       value: isTagSet
         ? tagKeys.map((tagKey) => index.tags.get(tagKey)?.label ?? tagKey).join(' + ')
         : text,
@@ -641,7 +644,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       : await this.preferences.saveSavedQueryFilter(name, text);
     if (saved) {
       void vscode.window.showInformationMessage(
-        `Saved Deckard filter: ${saved.name}`,
+        `Saved the search "${saved.name}".`,
       );
     }
   }

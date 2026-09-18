@@ -4,36 +4,26 @@
 
 ### Added
 
-- **Corpo theme**: a plain style that takes its colors and fonts from your
-  VS Code theme, light or dark. It leaves out the grid, glows, clipped
-  corners, and uppercase readouts of Deckard's other themes, and its buttons,
-  fields, and links look like VS Code's own.
+- **More Home widgets**:
+  - **Today**: today's daily note and its open tasks, or a button to create it.
+  - **Quick add**: a field that adds an open task to today's daily note.
+  - **Stale tasks**: open tasks in notes left unchanged for 7 to 90 days.
+  - **Related notes**: notes related to the note you had open last, ranked as
+    Related Notes ranks them.
+  - **Tags written together**: the tag pairs written together most often,
+    with how much they overlap, to spot a missing hub note or one idea under
+    two names. A pair opens a search for both.
+  - **Tags without a hub**: tags used at least three times that have no hub
+    note, each with **Create hub**.
+  - **New tags**: tags first seen in the last 7 to 90 days, each with
+    **Rename**, to catch a typo such as `#projet/atlas` early. Tags already in
+    use when you update are not new.
+  - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
+    **Pin** for the note you had open last; **×** unpins one.
 
-- **Leave files out of the index**: `deckard.exclude` takes glob patterns
-  written like VS Code's `files.exclude`, such as `{ "**/archive": true }`,
-  and Deckard does not index the files and folders they match. Deckard also
-  leaves out what `files.exclude` hides when a note there is saved or
-  created, not only when the workspace is reindexed. Changing either setting
-  reindexes the workspace.
+## 1.14.0 - 2026-09-17
 
-- **Filter tags by namespace**: the Dashboard's Tags tab has a **Namespace**
-  filter again, listing each namespace in use and **None** for tags without
-  one. It works together with tag search and is kept while the Dashboard is
-  open.
-
-- **Find**: `Deckard: Find` (<kbd>Cmd/Ctrl+Shift+Alt+F</kbd>) searches notes,
-  tasks, tags, and saved views as you type. Titles come first, then notes
-  that mention your words, ranked by relevance; the last word matches while
-  it is typed, `atlas` finds `#project/atlas`, and Tab completes a tag or
-  condition. A misspelled word gets a correction, and an empty search offers
-  recent searches, favorite and recent tags, saved views, and recently
-  opened notes. It replaces `Deckard: Search Workspace Knowledge`, and keeps
-  its command, so existing keybindings still work.
-
-- **Shorthands**: `is:open`, `is:done`, `is:overdue`, `is:due`, `is:task`,
-  `is:note`, `has:due` and `no:due` (also `scheduled`, `start`, `done`, and
-  `priority`), and `in:folder` work in every query, including query blocks
-  and AI assistant queries.
+### Added
 
 - **Search pages**: every search opens a page in its own editor tab, and a
   tag's overview is the page for that one tag. A search of exactly one tag
@@ -55,23 +45,6 @@
   choose how many entries it lists and which search a tasks widget runs,
   remove widgets, add more, and reset to the start. Widgets in a row share its
   height.
-
-- **More Home widgets**:
-  - **Today**: today's daily note and its open tasks, or a button to create it.
-  - **Quick add**: a field that adds an open task to today's daily note.
-  - **Stale tasks**: open tasks in notes left unchanged for 7 to 90 days.
-  - **Related notes**: notes related to the note you had open last, ranked as
-    Related Notes ranks them.
-  - **Tags written together**: the tag pairs written together most often,
-    with how much they overlap, to spot a missing hub note or one idea under
-    two names. A pair opens a search for both.
-  - **Tags without a hub**: tags used at least three times that have no hub
-    note, each with **Create hub**.
-  - **New tags**: tags first seen in the last 7 to 90 days, each with
-    **Rename**, to catch a typo such as `#projet/atlas` early. Tags already in
-    use when you update are not new.
-  - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
-    **Pin** for the note you had open last; **×** unpins one.
 
 - **Related tags in Refine**: a search of one tag, or of several joined by AND,
   is refined under **Tags** by the tags associated with them, strongest
@@ -101,6 +74,186 @@
 - **Save on the Task Board**: **Save**, beside its search box, keeps the search
   as a saved view that reopens on the Task Board.
 
+### Changed
+
+- The Dashboard's tabs are **Home** and **Tags**. It no longer has a
+  **Tasks** tab, since tasks have the **Task Board**, or a **Search** tab,
+  since searches open search pages; one left on either reopens on Home.
+  Saved searches are listed on the Tags tab and in Home's widgets.
+
+- The Related Notes sidebar no longer lists a tag overview's associated tags
+  and matching notes, or shows association strength as a percentage, which
+  could pass 100%; the tags are offered in Refine, with a strength rail.
+
+- The Task Board searches with the same search box as search pages, in place of its query field: completions, the builder, removable
+  terms, and **Refine**, counting tasks alone. Plain words hide cards as they
+  are typed, and a search that does not parse keeps the board as it was.
+
+- The Task Board has a **View options** gear, like the Dashboard's. It
+  switches between the board and a list, which has **All**, **Open**, and
+  **Done** counts, **Sort: Rank/Created/Updated**, and ranking by drag or by
+  right-click, as the Dashboard's Tasks tab had. The gear also edits the
+  status columns, which you drag into order, and their tag namespace, saving
+  them to `deckard.board.statuses` and `deckard.board.statusNamespace`.
+
+### Fixed
+
+- **Clear** in a tag overview's search box does something: it returns the page
+  to its own tag, dropping tags added to it and words typed after them. It
+  used to clear only the words, and stayed enabled with nothing to clear.
+
+- A tag suggested in a search box, or in Find, says how many notes and tasks
+  searching for it finds, such as *2 notes · 3 tasks*, rather than a count of
+  entries that could disagree with the search.
+
+- A tag overview's **View options** gear looks like the Dashboard's. The Corpo
+  theme drew it as a button, with a blue border.
+
+- The Dashboard keeps a search of plain words as soon as typing settles,
+  whatever the words. Its check for plain words split the search on the
+  letter `s` rather than on spaces, so a search of several words, or of a
+  word with an `s` in it, waited for Enter.
+
+## 1.13.0 - 2026-09-16
+
+### Changed
+
+- A tag overview and the Dashboard's **Search** tab are laid out the same way:
+  **Save** sits beside Search and Clear in the bar, **Sort** sits under it, and
+  both pages list their results under **Notes** and **Tasks** tabs. The tag
+  overview's title and its tag are no longer underlined.
+
+### Fixed
+
+- A tag overview shows its hub note again. The page's tags moved into its
+  search box, and text in the box was read as narrowing the page, which hides
+  the hub; only a search typed beyond the tags counts now.
+
+- A tag overview lists the same entries as the same search run from the
+  Dashboard. It listed only the entries that write its tag, while a search
+  answers with the headings that carry it as well.
+
+- A tag overview reopened from a previous session reads its tags back out of
+  the search it saved, rather than narrowing the page by them a second time.
+
+## 1.12.0 - 2026-09-16
+
+### Added
+
+- **Corpo theme**: a plain style that takes its colors and fonts from your
+  VS Code theme, light or dark. It leaves out the grid, glows, clipped
+  corners, and uppercase readouts of Deckard's other themes, and its buttons,
+  fields, and links look like VS Code's own.
+
+### Changed
+
+- A tag overview writes its own tags in its search box rather than holding
+  them apart from it. The page reads as the search it is: its tags can be
+  edited or dropped there like any other term, adding one from the sidebar
+  writes it into the box, and the entries, hub note, and chips are unchanged.
+
+- Choosing a recent search runs it, instead of only filling the search box.
+
+- The builder opens with an empty row to type in even when the search already
+  has conditions, such as a page's tags.
+
+- A tag reads as it was written wherever it appears, in every theme: a theme
+  that shouts its controls no longer shouts the tags inside them, and a tag in
+  a heading no longer inherits the heading's case. A tag beside a title is
+  drawn as a hairline with no fill, so a boxed tag means a control that
+  changes what is listed.
+
+- **Oblivion** is redrawn after the film's light-table screens: a near-black
+  ground ruled with faint teal graph paper, pages framed by corner brackets
+  rather than filled panels, wide letter-spaced headings, and an orange rule
+  under the live tab or filter in place of a filled block. Its palette is the
+  screens' own: cyan-teal for the data, warm sand in the readouts, and
+  red-orange kept for alerts.
+
+- A search term chip is removed by clicking anywhere on it, not only on its
+  cross, and it lights up under the pointer like the other controls.
+
+- The mark on a Dashboard tab whose search has text is a filter icon rather
+  than a dot, and the **Search** tab keeps its mark while another tab is open.
+
+- Corpo is the default theme, in place of Replicant. To keep the previous
+  look, set `deckard.theme` to `replicant`.
+
+- The tags chosen on the Dashboard's Tasks tab sit in a dashed box headed
+  **Tags**, like **Refine** on the Search tab, with **Clear filters** at its
+  right.
+
+
+  and a dot marks each tab whose search has text. A **Namespace** filter on
+  the Tags tab counts as a search: it gets the same line and dot, and
+  **Clear search** clears it too.
+
+### Fixed
+
+- A search term in the search bar sits in one box: VS Code styles every
+  `<code>` element with a background and rounded corners, which drew a second
+  box inside each chip, and a term now keeps the case it was typed in.
+
+- The mark on a chosen tab in the Oblivion theme is the filter icon itself
+  rather than the icon inside a filled orange block.
+
+- Pages in the Corpo theme paint their own background, so a view VS Code gives
+  no backdrop of its own, such as a tag overview, no longer renders blank.
+
+- A **Refine** chip's text lines up with the group label beside it, rather
+  than sitting a few pixels above it.
+
+- A hovered tag in the Cooper and Synthwave themes keeps its light hover
+  background, so its dark text no longer disappears into a dark panel.
+
+- In the Cooper theme, the gold glow no longer repeats in bands down a panel
+  taller than its content, such as the Related Notes sidebar.
+
+- A person's `@` tag, such as `@ren-kade`, shows as a **person** in the
+  Dashboard's Tags tab, and the **Namespace** filter's **Person** lists it
+  with the `#person/` tags, rather than under **None**.
+
+- Task titles on the task board, on the Dashboard and in **Deckard: Task
+  Board**, show their Markdown rendered, as the task list does, rather than
+  as raw `**bold**` and `[links](...)`.
+
+## 1.11.0 - 2026-09-15
+
+### Added
+
+- **Leave files out of the index**: `deckard.exclude` takes glob patterns
+  written like VS Code's `files.exclude`, such as `{ "**/archive": true }`,
+  and Deckard does not index the files and folders they match. Deckard also
+  leaves out what `files.exclude` hides when a note there is saved or
+  created, not only when the workspace is reindexed. Changing either setting
+  reindexes the workspace.
+
+- **Filter tags by namespace**: the Dashboard's Tags tab has a **Namespace**
+  filter again, listing each namespace in use and **None** for tags without
+  one. It works together with tag search and is kept while the Dashboard is
+  open.
+
+- **Find**: `Deckard: Find` (<kbd>Cmd/Ctrl+Shift+Alt+F</kbd>) searches notes,
+  tasks, tags, and saved views as you type. Titles come first, then notes
+  that mention your words, ranked by relevance; the last word matches while
+  it is typed, `atlas` finds `#project/atlas`, and Tab completes a tag or
+  condition. A misspelled word gets a correction, and an empty search offers
+  recent searches, favorite and recent tags, saved views, and recently
+  opened notes. It replaces `Deckard: Search Workspace Knowledge`, and keeps
+  its command, so existing keybindings still work.
+
+- **Shorthands**: `is:open`, `is:done`, `is:overdue`, `is:due`, `is:task`,
+  `is:note`, `has:due` and `no:due` (also `scheduled`, `start`, `done`, and
+  `priority`), and `in:folder` work in every query, including query blocks
+  and AI assistant queries.
+
+- **The Search tab**: the Dashboard's Notes tab is now **Search**, Deckard's
+  search page. It has the full search box, with completions, the builder,
+  **Refine** counts, the tasks the search matches, and **Save** beside
+  the box. Its tag picker is gone, since tags are typed in the search or
+  chosen under **Refine**. `Deckard: Search Notes and Tasks`, **Show all** in
+  Find, a query block's **Open in search**, and saved searches open there.
+
 - **Refine**: under the search box, counts of open and done tasks, due
   dates, tags, update dates, and folders in the results. Select one to
   narrow, Alt-select to leave it out, or Shift-select to allow another value
@@ -110,6 +263,31 @@
   or a value such as `open` and the row fills in its field and operator;
   Enter opens the next row, Backspace removes an empty one, and Ctrl/Cmd+
   Enter starts an OR group.
+
+### Changed
+
+- The Dashboard's **Saved tag views** are now **Saved searches**, since they
+  hold saved searches as well as saved tag sets.
+
+- A Dashboard search kept from an earlier visit is no longer easy to miss.
+  When one is narrowing the Tasks or Tags list, a line above the list says
+  how many items match, with **Clear search**, the search box is outlined,
+  and a dot marks each tab whose search has text.
+
+- The search box is always shown in a tag overview, in place of the
+  **Advanced search** button and the separate notes and tasks search fields.
+  It narrows the tag's own entries, a whole `#tag` typed in it joins the
+  tags in the title, and `/` puts the caret in it. Each term of a longer
+  search is a chip that can be removed on its own.
+
+- Full-text search ranks each note section and task by relevance, weighting
+  titles, headings, and tags above body text, and requires every word rather
+  than any. The search cache is rebuilt once, on the first start after an
+  update.
+
+## 1.10.0 - 2026-09-14
+
+### Added
 
 - **Quick capture**: `Deckard: Capture` adds a task to today's daily note
   without leaving the current editor. Typing `#` or `@` suggests tags, most
@@ -172,150 +350,12 @@
 
 ### Changed
 
-- The Dashboard's tabs are **Home** and **Tags**. It no longer has a
-  **Tasks** tab, since tasks have the **Task Board**, or a **Search** tab,
-  since searches open search pages; one left on either reopens on Home.
-  Saved searches are listed on the Tags tab and in Home's widgets.
-
-- The Related Notes sidebar no longer lists a tag overview's associated tags
-  and matching notes, or shows association strength as a percentage, which
-  could pass 100%; the tags are offered in Refine, with a strength rail.
-
-- The Task Board searches with the same search box as search pages, in place of its query field: completions, the builder, removable
-  terms, and **Refine**, counting tasks alone. Plain words hide cards as they
-  are typed, and a search that does not parse keeps the board as it was.
-
-- The Task Board has a **View options** gear, like the Dashboard's. It
-  switches between the board and a list, which has **All**, **Open**, and
-  **Done** counts, **Sort: Rank/Created/Updated**, and ranking by drag or by
-  right-click, as the Dashboard's Tasks tab had. The gear also edits the
-  status columns, which you drag into order, and their tag namespace, saving
-  them to `deckard.board.statuses` and `deckard.board.statusNamespace`.
-
-- A tag overview and the Dashboard's **Search** tab are laid out the same way:
-  **Save** sits beside Search and Clear in the bar, **Sort** sits under it, and
-  both pages list their results under **Notes** and **Tasks** tabs. The tag
-  overview's title and its tag are no longer underlined.
-
-- A tag overview writes its own tags in its search box rather than holding
-  them apart from it. The page reads as the search it is: its tags can be
-  edited or dropped there like any other term, adding one from the sidebar
-  writes it into the box, and the entries, hub note, and chips are unchanged.
-
-- Choosing a recent search runs it, instead of only filling the search box.
-
-- The builder opens with an empty row to type in even when the search already
-  has conditions, such as a page's tags.
-
-- A tag reads as it was written wherever it appears, in every theme: a theme
-  that shouts its controls no longer shouts the tags inside them, and a tag in
-  a heading no longer inherits the heading's case. A tag beside a title is
-  drawn as a hairline with no fill, so a boxed tag means a control that
-  changes what is listed.
-
-- **Oblivion** is redrawn after the film's light-table screens: a near-black
-  ground ruled with faint teal graph paper, pages framed by corner brackets
-  rather than filled panels, wide letter-spaced headings, and an orange rule
-  under the live tab or filter in place of a filled block. Its palette is the
-  screens' own: cyan-teal for the data, warm sand in the readouts, and
-  red-orange kept for alerts.
-
-- A search term chip is removed by clicking anywhere on it, not only on its
-  cross, and it lights up under the pointer like the other controls.
-
-- The mark on a Dashboard tab whose search has text is a filter icon rather
-  than a dot, and the **Search** tab keeps its mark while another tab is open.
-
-- Corpo is the default theme, in place of Replicant. To keep the previous
-  look, set `deckard.theme` to `replicant`.
-
-- The tags chosen on the Dashboard's Tasks tab sit in a dashed box headed
-  **Tags**, like **Refine** on the Search tab, with **Clear filters** at its
-  right.
-
-- The Dashboard's **Saved tag views** are now **Saved searches**, since they
-  hold saved searches as well as saved tag sets.
-
-- A Dashboard search kept from an earlier visit is no longer easy to miss.
-  When one is narrowing the Tasks or Tags list, a line above the list says
-  how many items match, with **Clear search**, the search box is outlined,
-  and a dot marks each tab whose search has text. A **Namespace** filter on
-  the Tags tab counts as a search: it gets the same line and dot, and
-  **Clear search** clears it too.
-
-- The search box is always shown in a tag overview, in place of the
-  **Advanced search** button and the separate notes and tasks search fields.
-  It narrows the tag's own entries, a whole `#tag` typed in it joins the
-  tags in the title, and `/` puts the caret in it. Each term of a longer
-  search is a chip that can be removed on its own.
-
-- Full-text search ranks each note section and task by relevance, weighting
-  titles, headings, and tags above body text, and requires every word rather
-  than any. The search cache is rebuilt once, on the first start after an
-  update.
-
 - A note's created and updated dates, used by the `created` and `updated`
   query fields and the Created and Updated sorts, now come from the note
   before its file. `created:`, `date:`, and `updated:` front matter win, and a
   daily note counts as created on its day, or earlier if its file is older.
   A git clone resets every file's times, so these dates used to be the day of
   the clone.
-
-### Fixed
-
-- **Clear** in a tag overview's search box does something: it returns the page
-  to its own tag, dropping tags added to it and words typed after them. It
-  used to clear only the words, and stayed enabled with nothing to clear.
-
-- A tag suggested in a search box, or in Find, says how many notes and tasks
-  searching for it finds, such as *2 notes · 3 tasks*, rather than a count of
-  entries that could disagree with the search.
-
-- A tag overview's **View options** gear looks like the Dashboard's. The Corpo
-  theme drew it as a button, with a blue border.
-
-- The Dashboard keeps a search of plain words as soon as typing settles,
-  whatever the words. Its check for plain words split the search on the
-  letter `s` rather than on spaces, so a search of several words, or of a
-  word with an `s` in it, waited for Enter.
-
-- A tag overview shows its hub note again. The page's tags moved into its
-  search box, and text in the box was read as narrowing the page, which hides
-  the hub; only a search typed beyond the tags counts now.
-
-- A tag overview lists the same entries as the same search run from the
-  Dashboard. It listed only the entries that write its tag, while a search
-  answers with the headings that carry it as well.
-
-- A tag overview reopened from a previous session reads its tags back out of
-  the search it saved, rather than narrowing the page by them a second time.
-
-- A search term in the search bar sits in one box: VS Code styles every
-  `<code>` element with a background and rounded corners, which drew a second
-  box inside each chip, and a term now keeps the case it was typed in.
-
-- The mark on a chosen tab in the Oblivion theme is the filter icon itself
-  rather than the icon inside a filled orange block.
-
-- Pages in the Corpo theme paint their own background, so a view VS Code gives
-  no backdrop of its own, such as a tag overview, no longer renders blank.
-
-- A **Refine** chip's text lines up with the group label beside it, rather
-  than sitting a few pixels above it.
-
-- A hovered tag in the Cooper and Synthwave themes keeps its light hover
-  background, so its dark text no longer disappears into a dark panel.
-
-- In the Cooper theme, the gold glow no longer repeats in bands down a panel
-  taller than its content, such as the Related Notes sidebar.
-
-- A person's `@` tag, such as `@ren-kade`, shows as a **person** in the
-  Dashboard's Tags tab, and the **Namespace** filter's **Person** lists it
-  with the `#person/` tags, rather than under **None**.
-
-- Task titles on the task board, on the Dashboard and in **Deckard: Task
-  Board**, show their Markdown rendered, as the task list does, rather than
-  as raw `**bold**` and `[links](...)`.
 
 ## 1.9.0 - 2026-09-13
 
