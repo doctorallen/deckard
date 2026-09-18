@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { getTaskLineId } from '../../core/markdown/parser';
 import {
   createNextOccurrence,
   formatIsoDate,
@@ -8,6 +9,43 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { Task } from '../../core/types';
 import { openSourceAt, resolveSourceUri } from './navigation';
+
+/**
+ * Carries a task's place in the rank order from the line it was to the line
+ * it becomes. Set once, where the preferences live, the way the timing log is.
+ */
+type TaskRankKeeper = (previousId: string, nextId: string) => void;
+
+let keepTaskRank: TaskRankKeeper | undefined;
+
+export function setTaskRankKeeper(keeper: TaskRankKeeper | undefined): void {
+  keepTaskRank = keeper;
+}
+
+/**
+ * Tells the rank order that a task's line was rewritten, so a completed task
+ * and a task put back by Undo both keep the place they were dragged to.
+ */
+function carryRank(
+  filePath: string,
+  lineNumber: number,
+  previousId: string,
+  replacement: string,
+): void {
+  if (!keepTaskRank) {
+    return;
+  }
+  // A completion may add a line above, so the task is the last line written.
+  const lines = replacement.split(/\r?\n/);
+  const nextId = getTaskLineId(
+    filePath,
+    lineNumber + lines.length - 1,
+    lines[lines.length - 1],
+  );
+  if (nextId) {
+    keepTaskRank(previousId, nextId);
+  }
+}
 
 /** What an edit to a task line may need to know about its document. */
 export interface TaskLineContext {
@@ -78,8 +116,16 @@ export async function updateTaskLine(
         (openDocument) => openDocument.uri.toString() === uri.toString(),
       ) ?? (await vscode.workspace.openTextDocument(uri));
     await updatedDocument.save();
+    carryRank(task.filePath, task.lineNumber, task.id, replacement);
     if (description) {
-      offerUndo(description, uri, task.lineNumber, replacement, line);
+      offerUndo(
+        description,
+        uri,
+        task.lineNumber,
+        replacement,
+        line,
+        task.filePath,
+      );
     }
     return true;
   } catch (error) {
@@ -103,12 +149,13 @@ function offerUndo(
   lineNumber: number,
   replacement: string,
   original: string,
+  filePath: string,
 ): void {
   void vscode.window
     .showInformationMessage(description, 'Undo')
     .then((choice) => {
       if (choice === 'Undo') {
-        void revertTaskLine(uri, lineNumber, replacement, original);
+        void revertTaskLine(uri, lineNumber, replacement, original, filePath);
       }
     });
 }
@@ -125,6 +172,7 @@ async function revertTaskLine(
   lineNumber: number,
   replacement: string,
   original: string,
+  filePath?: string,
 ): Promise<void> {
   try {
     const document = await vscode.workspace.openTextDocument(uri);
@@ -150,6 +198,20 @@ async function revertTaskLine(
     edit.replace(uri, range, original);
     if (await vscode.workspace.applyEdit(edit)) {
       await document.save();
+      // The line is the one it was, so the task is too: give it back the
+      // place in the rank order the edit carried away.
+      if (filePath) {
+        const written = replacement.split(/\r?\n/);
+        const writtenId = getTaskLineId(
+          filePath,
+          lineNumber + written.length - 1,
+          written[written.length - 1],
+        );
+        const restoredId = getTaskLineId(filePath, lineNumber, original);
+        if (writtenId && restoredId && keepTaskRank) {
+          keepTaskRank(writtenId, restoredId);
+        }
+      }
     }
   } catch (error) {
     void vscode.window.showErrorMessage(

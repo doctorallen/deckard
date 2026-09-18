@@ -1570,6 +1570,25 @@ function stripClosingHeadingHashes(text: string): string {
  * Creates deterministic IDs so persisted ranks and access counts survive a
  * workspace rescan without storing metadata in the Markdown source.
  */
+/**
+ * The id a task line gets, so an edit that rewrites the line can carry the
+ * task's place in the rank order across to the line it becomes.
+ *
+ * A task's id is made from its file, its line, and the text after its
+ * checkbox, so stamping a done date on it makes it a different task as far as
+ * anything keyed by id is concerned.
+ */
+export function getTaskLineId(
+  filePath: string,
+  lineNumber: number,
+  lineText: string,
+): string | undefined {
+  const match = lineText.match(taskPattern);
+  return match
+    ? createId('task', `${filePath}:${lineNumber}:${match[4]}`)
+    : undefined;
+}
+
 function createId(prefix: string, value: string): string {
   let hash = 0;
 

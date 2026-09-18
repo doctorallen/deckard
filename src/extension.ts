@@ -11,6 +11,7 @@ import {
   openAdjacentDailyNote,
   openPeriodicNote,
 } from './ui/commands/dailyNote';
+import { setTaskRankKeeper } from './ui/commands/taskActions';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -88,6 +89,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     new SearchStore(context.storageUri),
   );
   const preferences = new PreferencesStore(context.globalState);
+  // A task's id comes from its own text, so an edit Deckard writes makes it a
+  // new task to anything keyed by id. This keeps its place in a ranked list
+  // across the edit, and across an Undo of it.
+  setTaskRankKeeper((previousId, nextId) => {
+    void preferences.replaceTaskInOrder(previousId, nextId);
+  });
+  context.subscriptions.push({ dispose: () => setTaskRankKeeper(undefined) });
   const activeSearch = new ActiveSearch();
   const searchPanels = new SearchPanels(
     indexer,
