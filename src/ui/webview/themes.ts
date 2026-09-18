@@ -236,6 +236,9 @@ button:hover, button.active, select:hover, .tag-open:hover { background: var(--g
   if (theme === 'fellowship') {
     return `
 :root {
+  /* The only light palette. Without this it keeps the base sheet's dark
+     scheme, so scrollbars and select popups render dark on parchment. */
+  color-scheme: light;
   --bg-dark: #d6cda9;
   --bg: #e6deb9;
   --panel-bg: #f1e8c8;
