@@ -132,6 +132,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 /* The resting hint is a quiet line, not the dashed frame of edit mode. */
 .home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: 11px var(--font-mono); }
 .home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+.home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: 11px; line-height: 1.35; white-space: normal; }
 .home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
 .home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
 .home-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -675,7 +676,7 @@ ${getQueryEditorScript()}
         });
       }
       case 'savedQuery':
-        if (widget.missing) return '<p class="home-widget-empty">This saved search was removed.</p>';
+        if (widget.missing) return '<p class="home-widget-empty">This saved search was removed. <button type="button" data-action="customize-home">Pick another</button></p>';
         // A search saved on the Task Board finds tasks alone.
         if (widget.savedPage === 'taskBoard') return renderHomeTasks(widget.tasks, 'No open tasks match.');
         return '<h3 class="home-widget-group">Notes <span class="tag-count">' + (widget.noteTotal || 0) + '</span></h3>' + renderHomeNotes(widget.notes, 'No notes match.')
@@ -730,6 +731,10 @@ ${getQueryEditorScript()}
       groups.push('<div class="view-options-group is-stacked"><span>Saved search</span><select data-action="set-widget-filter" ' + attribute + ' aria-label="Saved search to show">' + state.savedFilters.map(function (filter) {
         return '<option value="' + escapeHtml(filter.id) + '"' + (filter.id === widget.filterId ? ' selected' : '') + '>' + escapeHtml(filter.name) + '</option>';
       }).join('') + '</select></div>');
+    }
+    const description = WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].description;
+    if (description) {
+      groups.unshift('<div class="view-options-group is-stacked"><span>About</span><p class="home-widget-about">' + escapeHtml(description) + '</p></div>');
     }
     if (!groups.length) return '';
     return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" title="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu">' + groups.join('') + '</div></details>';
@@ -1081,6 +1086,12 @@ ${getQueryEditorScript()}
         browseQuery = acceptHostSearch('tags', incomingState.viewState.tagSearchQuery, browseQuery);
       }
       incomingState.tagColumns = tagColumns;
+      // Widgets are sent only while Home is showing, and the snapshot
+      // replaces the state wholesale. Keeping the last set stops Home
+      // blanking to "Loading Home…" on every return from the Tags tab.
+      if (!incomingState.widgets && state && state.widgets) {
+        incomingState.widgets = state.widgets;
+      }
       state = incomingState;
       searchEditor.receive();
       renderKeepingFocus();
