@@ -71,15 +71,19 @@ export const QUERY_IS_VALUES = [
   'note',
   'overdue',
   'due',
+  'blocked',
+  'blocking',
 ] as const;
 
-/** Values `has:` and `no:` accept: a task date, or a priority. */
+/** Values `has:` and `no:` accept: a task date, a priority, or an id. */
 export const QUERY_HAS_VALUES = [
   'due',
   'scheduled',
   'start',
   'done',
   'priority',
+  'id',
+  'dependsOn',
 ] as const;
 
 /** Task date fields. Each also accepts `none`, meaning no date is written. */

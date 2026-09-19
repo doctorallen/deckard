@@ -126,6 +126,34 @@ suite('Preferences store', () => {
     store.dispose();
   });
 
+  test('keeps the page size a reader chose, and only one it offers', async () => {
+    const memento = new MemoryMemento();
+    const store = new PreferencesStore(memento);
+
+    assert.strictEqual(store.value.searchPageSize, 30, 'thirty to a page by default');
+
+    await store.setSearchPageSize(100);
+    assert.strictEqual(store.value.searchPageSize, 100);
+
+    // A reader comes back to the pages they left, so the choice is read from
+    // storage rather than started again.
+    const reopened = new PreferencesStore(memento);
+    assert.strictEqual(reopened.value.searchPageSize, 100);
+    store.dispose();
+    reopened.dispose();
+
+    // A size Deckard no longer offers, or never did, falls back rather than
+    // paging a search by a number nothing can choose again.
+    const tampered = new MemoryMemento();
+    await tampered.update('deckard.preferences', {
+      version: 1,
+      searchPageSize: 3141,
+    });
+    const recovered = new PreferencesStore(tampered);
+    assert.strictEqual(recovered.value.searchPageSize, 30);
+    recovered.dispose();
+  });
+
   test('opens a Dashboard saved on its old Tasks tab on Home, and shows a board', () => {
     const memento = new MemoryMemento();
     void memento.update('deckard.preferences', {

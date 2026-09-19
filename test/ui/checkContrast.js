@@ -93,6 +93,13 @@ const VSCODE_PALETTES = {
   },
 };
 
+/**
+ * Controls whose content is a shape rather than words. WCAG asks 3:1 of what
+ * makes a control out, the same as it asks of large text, rather than the 4.5
+ * it asks of text to read.
+ */
+const ICON_KEYS = new Set(['.favorite-toggle', '.favorite-heart']);
+
 /** Text that is 16px or larger, or bold at 14px, only needs 3:1. */
 const LARGE_TEXT_KEYS = new Set([
   'h1',
@@ -354,7 +361,7 @@ function excludesState(selector, state) {
   const excluded = [...selector.matchAll(/:not\(([^)]*)\)/g)].map((match) => match[1]);
   if (state === 'hover') return excluded.some((part) => part.includes(':hover'));
   if (state === 'focus') return excluded.some((part) => part.includes(':focus'));
-  if (state === 'active') return excluded.some((part) => part.includes('.active'));
+  if (state === 'active') return excluded.some((part) => /\.active(?![\w-])/.test(part));
   return false;
 }
 
@@ -362,7 +369,11 @@ function excludesState(selector, state) {
 function stateOf(selector) {
   if (/:hover/.test(selector)) return 'hover';
   if (/:focus-visible|:focus\b/.test(selector)) return 'focus';
-  if (/\.active|\[aria-selected="true"\]|\[aria-pressed="true"\]|\.is-open|\[open\]/.test(selector)) {
+  if (
+    /\.active(?![\w-])|\[aria-selected="true"\]|\[aria-pressed="true"\]|\.is-open(?![\w-])|\[open\]/.test(
+      selector,
+    )
+  ) {
     return 'active';
   }
   return 'base';
@@ -378,7 +389,7 @@ function elementKey(selector) {
   const stripped = last
     .replace(/:{1,2}[a-z-]+(\([^)]*\))?/g, '')
     .replace(/\[[^\]]*\]/g, '')
-    .replace(/\.active|\.is-open/g, '');
+    .replace(/\.active(?![\w-])|\.is-open(?![\w-])/g, '');
   return stripped || last;
 }
 
@@ -393,7 +404,7 @@ function ancestorKeys(selector) {
       compound
         .replace(/:{1,2}[a-z-]+(\([^)]*\))?/g, '')
         .replace(/\[[^\]]*\]/g, '')
-        .replace(/\.active|\.is-open/g, ''),
+        .replace(/\.active(?![\w-])|\.is-open(?![\w-])/g, ''),
     )
     .filter(Boolean);
   return compounds.reverse();
@@ -415,15 +426,38 @@ function compoundsOf(selector) {
     .map((compound) =>
       compound
         .replace(/:{1,2}[a-z-]+(\([^)]*\))?/g, '')
-        .replace(/\[[^\]]*\]/g, '')
-        .replace(/\.active|\.is-open/g, ''),
+        .replace(/\[[^\]]*\]/g, (attribute) => normalizeAttribute(attribute))
+        .replace(/\.active(?![\w-])|\.is-open(?![\w-])/g, ''),
     )
     .filter(Boolean);
 }
 
+/**
+ * One attribute qualifier written the same way whether it came from a selector
+ * or from the markup, so `[data-has-query]` and `[type="text"]` compare.
+ */
+function normalizeAttribute(attribute) {
+  const match = attribute.match(/^\[\s*([^\]=~|^$*\s]+)\s*(?:[~|^$*]?=\s*(.*?)\s*)?\]$/);
+  if (!match) return attribute;
+  const [, name, value] = match;
+  return value === undefined ? `[${name}]` : `[${name}=${value.replace(/^["']|["']$/g, '')}]`;
+}
+
 /** The simple parts of one compound, such as `button.active` -> button, .active. */
 function partsOf(compound) {
-  return (compound.match(/^[a-z][\w-]*|\.[\w-]+|#[\w-]+/g) || []).filter(Boolean);
+  return (compound.match(/^[a-z][\w-]*|\.[\w-]+|#[\w-]+|\[[^\]]*\]/g) || []).filter(Boolean);
+}
+
+/**
+ * Whether an element carries what a selector asked for. An attribute named
+ * without a value is asking only that the element have it, whatever it is set
+ * to, which is how `[data-has-query]` reads.
+ */
+function carries(parts, wanted) {
+  if (parts.includes(wanted)) return true;
+  if (!wanted.startsWith('[') || wanted.includes('=')) return false;
+  const prefix = `${wanted.slice(0, -1)}=`;
+  return parts.some((part) => part.startsWith(prefix));
 }
 
 /**
@@ -436,7 +470,7 @@ function rests(ruleCompounds, elementCompounds) {
   if (!ruleCompounds.length || !elementCompounds.length) return false;
   const ruleLast = partsOf(ruleCompounds[ruleCompounds.length - 1]);
   const elementLast = partsOf(elementCompounds[elementCompounds.length - 1]);
-  if (!ruleLast.length || !ruleLast.every((part) => elementLast.includes(part))) return false;
+  if (!ruleLast.length || !ruleLast.every((part) => carries(elementLast, part))) return false;
   let index = elementCompounds.length - 2;
   for (let position = ruleCompounds.length - 2; position >= 0; position -= 1) {
     const wanted = partsOf(ruleCompounds[position]);
@@ -444,7 +478,7 @@ function rests(ruleCompounds, elementCompounds) {
     while (index >= 0) {
       const candidate = partsOf(elementCompounds[index]);
       index -= 1;
-      if (wanted.every((part) => candidate.includes(part))) {
+      if (wanted.every((part) => carries(candidate, part))) {
         found = true;
         break;
       }
@@ -468,20 +502,25 @@ function buildDeclarations(rules, tokens) {
     rule.selectors.forEach((selector) => {
       if (selector.startsWith(':root') || selector === 'html') return;
       const declaredColor = rule.declarations.color;
-      const color =
-        declaredColor && /^(inherit|currentcolor|unset|initial)$/i.test(declaredColor.trim())
-          ? undefined
-          : resolveValue(declaredColor, tokens);
+      // `inherit` is a color like any other as far as the cascade goes: it
+      // wins its element, and what it takes is settled afterwards. Reading it
+      // as no color at all would hand the element to a weaker rule that the
+      // browser never reaches.
+      const inherits =
+        Boolean(declaredColor) &&
+        /^(inherit|currentcolor|unset|initial)$/i.test(declaredColor.trim());
+      const color = inherits ? undefined : resolveValue(declaredColor, tokens);
       const background =
         resolveValue(rule.declarations.background, tokens) ??
         resolveValue(rule.declarations['background-color'], tokens);
-      if (!color && !background) return;
+      if (!color && !background && !inherits) return;
       declared.push({
         selector,
         compounds: compoundsOf(selector),
         state: stateOf(selector),
         order,
         rank: specificity(selector),
+        inherits,
         color: color ? parseColor(firstColorToken(color)) : undefined,
         background: background ? parseColor(firstColorToken(background)) : undefined,
       });
@@ -494,7 +533,7 @@ function buildDeclarations(rules, tokens) {
 function resolveFor(declared, compounds, state, property) {
   const matches = declared.filter(
     (entry) =>
-      entry[property] &&
+      (entry[property] || (property === 'color' && entry.inherits)) &&
       (entry.state === state || entry.state === 'base') &&
       !excludesState(entry.selector, state) &&
       rests(entry.compounds, compounds),
@@ -508,6 +547,21 @@ function resolveFor(declared, compounds, state, property) {
         left.order - right.order,
     )
     .pop();
+}
+
+/**
+ * The color an element's text ends up, following `inherit` out to whatever it
+ * takes it from: the nearest thing it sits inside that names a color, or the
+ * page. The rule that won is kept, since that is what a reader is pointed at.
+ */
+function inheritedColor(declared, compounds, state, pageColor) {
+  const winner = resolveFor(declared, compounds, state, 'color');
+  if (!winner?.inherits) return winner;
+  for (let depth = compounds.length - 1; depth > 0; depth -= 1) {
+    const from = inheritedColor(declared, compounds.slice(0, depth), state, pageColor);
+    if (from?.color) return { ...winner, color: from.color };
+  }
+  return pageColor ? { ...winner, color: pageColor } : undefined;
 }
 
 /**
@@ -530,6 +584,58 @@ function backgroundBehind(declared, compounds, state, pageBackground) {
   return { color: behind, from };
 }
 
+/**
+ * Every element a page renders that answers to more than one selector, as a
+ * compound such as `button.row.saved-filter-row.home-row`.
+ *
+ * A page's own script writes its markup as string literals, so the tag and its
+ * classes are read out of the page text whether the element is in the HTML as
+ * served or written when the page draws. A class built from an expression,
+ * such as a row's `is-draggable`, is not a bare word and is left out rather
+ * than guessed at.
+ */
+function elementShapes(html, wantedAttributes) {
+  const shapes = new Set();
+  for (const match of html.matchAll(/<([a-z][\w-]*)\b/g)) {
+    // The opening tag runs to its first `>`. A page's script writes markup in
+    // pieces, so it is read within a window rather than to the end of a string
+    // that may not close on this line.
+    const near = html.slice(match.index, match.index + 600);
+    const close = near.indexOf('>');
+    const tag = close < 0 ? near : near.slice(0, close + 1);
+    const written = tag.match(/\bclass="([^"]*)"/);
+    if (!written) continue;
+    const classes = [
+      ...new Set(written[1].split(/\s+/).filter((name) => /^[a-zA-Z][\w-]*$/.test(name))),
+    ];
+    if (!classes.length) continue;
+    // Only the attributes some rule asks about are carried, so an element is
+    // named by what actually decides which rules reach it.
+    const attributes = [
+      ...new Set(
+        [...tag.matchAll(/\b([a-z][\w-]*)="([^"]*)"/g)]
+          .flatMap(([, name, value]) => [`[${name}=${value}]`, `[${name}]`])
+          .filter((part) => wantedAttributes.has(part)),
+      ),
+    ];
+    shapes.add(`${match[1]}.${classes.join('.')}${attributes.join('')}`);
+  }
+  return [...shapes];
+}
+
+/** Every attribute qualifier the stylesheet keys on, written the one way. */
+function attributesUsed(rules) {
+  const used = new Set();
+  rules.forEach((rule) =>
+    rule.selectors.forEach((selector) =>
+      [...selector.matchAll(/\[[^\]]*\]/g)].forEach(([attribute]) =>
+        used.add(normalizeAttribute(attribute)),
+      ),
+    ),
+  );
+  return used;
+}
+
 function isDecorative(selector, key) {
   return DECORATIVE.some((mark) => selector.includes(mark) || key === mark);
 }
@@ -549,28 +655,28 @@ function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
   });
   const pageBackground =
     parseColor(resolveValue(`var(${pageBackgroundToken})`, tokens)) ?? { r: 0, g: 0, b: 0, a: 1 };
+  const pageColor = parseColor(resolveValue('var(--text)', tokens));
   const declared = buildDeclarations(rules, tokens);
   const problems = [];
   const checked = new Set();
+  /** The rule pairs already reported, so one problem is not named twice. */
+  const reported = new Set();
 
-  for (const entry of declared) {
-    // An element that declares only a background is checked too: its text
-    // comes from a broader rule, and moving the ground under inherited text
-    // is exactly how a field ends up black on black.
-    if (!entry.color && !entry.background) continue;
+  /** Judges one element, described as the compounds it sits in and is. */
+  function check(compounds) {
     // Each element that declares a color is checked in every state something
     // gives it, since a hover elsewhere may move the ground under it.
     for (const state of ['base', 'hover', 'focus', 'active']) {
       // A selector and the same selector with its state pseudo describe one
       // element, so they are one finding.
-      const key = `${entry.compounds.join(' ')}|${state}`;
+      const key = `${compounds.join(' ')}|${state}`;
       if (checked.has(key)) continue;
       checked.add(key);
-      const colorRule = resolveFor(declared, entry.compounds, state, 'color');
+      const colorRule = inheritedColor(declared, compounds, state, pageColor);
       if (!colorRule?.color) continue;
       const { color: background, from } = backgroundBehind(
         declared,
-        entry.compounds,
+        compounds,
         state,
         pageBackground,
       );
@@ -581,12 +687,24 @@ function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
       const foreground = composite(colorRule.color, background);
       if (!foreground || foreground.a === 0) continue;
       const ratio = contrastRatio(foreground, background);
-      const last = entry.compounds[entry.compounds.length - 1] ?? '';
-      const required = LARGE_TEXT_KEYS.has(last) ? LARGE_TEXT_RATIO : TEXT_RATIO;
+      // An element is judged by any of the parts it is made of, since it is
+      // named here as the whole element rather than as one selector: an `h2`
+      // that also carries a class is still large text.
+      const last = compounds[compounds.length - 1] ?? '';
+      const parts = [last, ...partsOf(last)];
+      const required = parts.some((part) => LARGE_TEXT_KEYS.has(part) || ICON_KEYS.has(part))
+        ? LARGE_TEXT_RATIO
+        : TEXT_RATIO;
       if (ratio >= required) continue;
-      if (isDecorative(colorRule.selector, last)) continue;
+      if (parts.some((part) => isDecorative(colorRule.selector, part))) continue;
+      // The same two rules meeting is one problem however many elements bring
+      // them together, and it is reported under the selectors it was written
+      // as rather than again under every element that carries them.
+      const pair = `${colorRule.selector}|${from}|${state}`;
+      if (reported.has(pair)) continue;
+      reported.add(pair);
       problems.push({
-        key: entry.compounds.join(' '),
+        key: compounds.join(' '),
         state,
         ratio: Math.round(ratio * 100) / 100,
         required,
@@ -594,6 +712,21 @@ function findProblems(html, { pageBackgroundToken = '--bg' } = {}, palette) {
         backgroundFrom: from ?? `page ${pageBackgroundToken}`,
       });
     }
+  }
+
+  for (const entry of declared) {
+    // An element that declares only a background is checked too: its text
+    // comes from a broader rule, and moving the ground under inherited text
+    // is exactly how a field ends up black on black.
+    if (!entry.color && !entry.background) continue;
+    check(entry.compounds);
+  }
+  // A selector describes one element; the page renders elements that answer to
+  // several at once, and that is where a pair of rules meets. A row that is
+  // also a button takes its ground from the row rule and its text from the
+  // button rule, and neither selector can be read alone to see it.
+  for (const shape of elementShapes(html, attributesUsed(rules))) {
+    check([shape]);
   }
   return problems;
 }

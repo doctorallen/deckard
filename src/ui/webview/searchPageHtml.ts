@@ -89,6 +89,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
 .empty-action { margin: 12px 0 0; }
+.pagination .page-size { font-size: 12px; }
+.pagination .page-size select { min-width: 64px; }
+.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
+.did-you-mean button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
@@ -128,10 +132,19 @@ ${getQueryEditorScript()}
     // own tag, rather than to nothing.
     clear: function () { vscode.postMessage({ type: 'clearOverviewQuery' }); },
     clearedText: function () { return state ? state.originQuery : ''; },
-    // Plain words hide what they do not match at once; the rest waits for Enter.
+    // The words being typed narrow the whole search, which only the host can
+    // do: the page holds one page of the results, and hiding rows on it
+    // would search thirty notes and call the answer a search of the
+    // workspace. Sent on a short delay so a word costs one search, not one
+    // per letter.
     onDraft: function () {
-      filterEntries('notes');
-      filterEntries('tasks');
+      const words = editor.previewWords(editor.currentText());
+      if (words.join(' ') === sentPreview) return;
+      sentPreview = words.join(' ');
+      clearTimeout(previewHandle);
+      previewHandle = setTimeout(function () {
+        vscode.postMessage({ type: 'previewSearch', words: words });
+      }, PREVIEW_DELAY_MS);
     },
     placeholder: function () { return 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…'; },
     label: 'Search notes and tasks',
@@ -140,6 +153,38 @@ ${getQueryEditorScript()}
       return '<button data-action="save-filter" data-query-needs-text title="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
+
+  /**
+   * A list's paging, standing in for a host that did not send any: one page
+   * holding everything, which is what Home's widgets and an older saved page
+   * amount to.
+   */
+  function pagingOf(paging, shown) {
+    if (paging && typeof paging.total === 'number') return paging;
+    return { page: 1, size: Math.max(shown, 1), pageCount: 1, total: shown };
+  }
+
+  /**
+   * The control that turns a list to another of its pages, with the range it
+   * is showing and how many it holds. The steps themselves are the shared
+   * ones every paged list uses.
+   */
+  function renderPagination(kind, paging, pageSizes) {
+    const sizes = pageSizes && pageSizes.length ? pageSizes : [paging.size];
+    // The control stays while there is a choice to make about it: a result
+    // that fits the smallest page is one page however it is sized, and the
+    // per-page chooser would have nothing to change.
+    if (paging.pageCount <= 1 && paging.total <= Math.min.apply(null, sizes)) return '';
+    const noun = kind === 'notes' ? 'notes' : 'tasks';
+    const perPage = '<label class="control-label page-size">Per page:<span class="control-icon"><select data-action="set-results-per-page" aria-label="Results per page">'
+      + sizes.map(function (size) {
+        return '<option value="' + size + '"' + (size === paging.size ? ' selected' : '') + '>' + size + '</option>';
+      }).join('')
+      + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M3 8h7M3 11h4"/></svg></span></label>';
+    return '<nav class="pagination" aria-label="' + (kind === 'notes' ? 'Note' : 'Task') + ' pages">'
+      + '<span class="page-summary"><span class="page-range">' + describePageRange(paging) + '</span>' + perPage + '</span>'
+      + '<span class="page-controls">' + renderPageSteps(paging, 'set-result-page', 'data-kind="' + kind + '"', noun) + '</span></nav>';
+  }
 
   /** Render a title or metadata tag as a direct link to its page. */
   function renderOverviewTagLink(tag, text) {
@@ -150,52 +195,16 @@ ${getQueryEditorScript()}
    * Hide the entries that lack a plain word of the search, so words narrow
    * the page as they are typed, before the search runs.
    */
-  function filterEntries(kind) {
-    if (!state) return;
-    const words = editor.previewWords(editor.currentText());
-    const total = kind === 'notes' ? state.sections.length : state.tasks.length;
-    let visibleCount = 0;
-    document.querySelectorAll('[data-search-entry="' + kind + '"]').forEach(function (entry) {
-      const text = entry.dataset.searchText || entry.textContent.toLowerCase();
-      const visible = words.every(function (word) { return text.indexOf(word) >= 0; });
-      entry.hidden = !visible;
-      if (visible) visibleCount += 1;
-    });
-    const filtering = words.length > 0 && visibleCount < total;
-    document.querySelectorAll('[data-search-count="' + kind + '"]').forEach(function (count) {
-      count.textContent = visibleCount + (filtering ? ' / ' + total : '');
-    });
-    const empty = document.querySelector('[data-search-empty="' + kind + '"]');
-    if (empty) empty.hidden = !words.length || visibleCount > 0;
-    if (kind === 'tasks') updateTaskFilterCounts(filtering);
-  }
-
-  function updateTaskFilterCounts(filtering) {
-    const counts = filtering
-      ? { all: 0, active: 0, completed: 0 }
-      : (state && state.taskCounts ? state.taskCounts : { all: 0, active: 0, completed: 0 });
-    if (filtering) {
-      document.querySelectorAll('[data-search-entry="tasks"]').forEach(function (entry) {
-        if (entry.hidden) return;
-        counts.all += 1;
-        counts[entry.classList.contains('completed') ? 'completed' : 'active'] += 1;
-      });
-    }
-    document.querySelectorAll('.task-filter-toggle button[data-filter]').forEach(function (button) {
-      const filter = button.dataset.filter;
-      if (!filter || counts[filter] === undefined) return;
-      const count = counts[filter];
-      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
-      const description = label + ' tasks, ' + count;
-      const countElement = button.querySelector('.filter-count');
-      if (countElement) countElement.textContent = String(count);
-      button.setAttribute('aria-label', description);
-      button.title = description;
-    });
-  }
-
   /** Set once the reader opens or closes the hub, which then outlasts refreshes. */
   let hubOpen;
+  /**
+   * How long the box waits after a keystroke before searching. Long enough
+   * that a word is one search rather than one per letter, short enough that
+   * the results feel like they are following the typing.
+   */
+  const PREVIEW_DELAY_MS = 180;
+  let previewHandle;
+  let sentPreview = '';
   document.addEventListener('toggle', function (event) {
     if (event.target.classList && event.target.classList.contains('hub')) hubOpen = event.target.open;
   }, true);
@@ -264,10 +273,15 @@ ${getQueryEditorScript()}
   /** Rebuild the page from the latest host snapshot. */
   function render() {
     if (!state) return;
+    // The redraw is about to take the search box out of the document.
+    editor.beforeRender();
     closeTagContextMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
-    const hasText = Boolean(String(state.query.text || '').trim());
+    // A draft narrows the results as surely as the search does, so an empty
+    // list is answering the draft, not reporting on the tag.
+    const drafting = Boolean(state.draftWords && state.draftWords.length);
+    const hasText = Boolean(String(state.query.text || '').trim()) || drafting;
     const focus = state.entity
       ? { key: state.entity.key, label: state.entity.label }
       : state.tag;
@@ -278,8 +292,12 @@ ${getQueryEditorScript()}
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + renderOverviewTagLink(focus, state.entity.label) + '</div>'
       : '';
-    const notesCount = state.sections.length;
-    const tasksCount = state.tasks.length;
+    const notePaging = pagingOf(state.notePaging, state.sections.length);
+    const taskPaging = pagingOf(state.taskPaging, state.tasks.length);
+    const notesCount = notePaging.total;
+    const tasksCount = taskPaging.total;
+    const notesPagination = renderPagination('notes', notePaging, state.pageSizes);
+    const tasksPagination = renderPagination('tasks', taskPaging, state.pageSizes);
     // An empty side of a search that did find something on the other side is
     // a dead end otherwise: the count is in the tab strip, but nothing says
     // the results are one click away.
@@ -293,15 +311,16 @@ ${getQueryEditorScript()}
     };
     const cards = state.sections.length
       ? state.sections.map(renderCard).join('')
-      : '<div class="empty">' + (state.tag ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
+      : '<div class="empty">' + (state.tag && !drafting ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
       : '<div class="empty">' + (state.taskFilter === 'active' ? 'No open tasks match this search.' : 'No tasks match this filter.') + otherResults('tasks') + '</div>';
+    const tasksPaged = tasks + tasksPagination;
     if (!tabChosen && state.layout !== 'split') {
       activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
     }
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div><div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasks + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
@@ -331,10 +350,13 @@ ${getQueryEditorScript()}
     const staleNotice = invalid
       ? '<p class="stale-results">The search above has not run. These are the results of the last one that did.</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + layoutContent;
+    // A search that found nothing, and a closer spelling that finds
+    // something, so the dead end has a way out of it.
+    const suggestion = !invalid && state.suggestion
+      ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
+      : '';
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
-    filterEntries('notes');
-    filterEntries('tasks');
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
     announce(notesCount + (notesCount === 1 ? ' note' : ' notes') + ' and ' + tasksCount + (tasksCount === 1 ? ' task' : ' tasks') + ' match this search.');
@@ -392,6 +414,11 @@ ${getQueryEditorScript()}
         saveState();
         render();
       }
+      if (action === 'set-result-page') {
+        vscode.postMessage({ type: 'setResultPage', kind: target.dataset.kind, page: Number(target.dataset.page) });
+        return;
+      }
+      if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
@@ -426,6 +453,7 @@ ${getQueryEditorScript()}
     if (editor.handleChange(event)) return;
     const target = event.target;
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
+    if (target.dataset.action === 'set-results-per-page') vscode.postMessage({ type: 'setResultsPerPage', size: Number(target.value) });
     if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
   });
   document.addEventListener('input', function (event) {

@@ -111,6 +111,10 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   late: 'overdue',
   due: 'due',
   soon: 'due',
+  blocked: 'blocked',
+  waiting: 'blocked',
+  blocking: 'blocking',
+  blocker: 'blocking',
 };
 
 /**
@@ -125,6 +129,10 @@ const HAS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   done: 'done',
   completed: 'done',
   priority: 'priority',
+  id: 'id',
+  dependson: 'dependsOn',
+  dependencies: 'dependsOn',
+  blockedby: 'dependsOn',
 };
 
 /**
@@ -635,7 +643,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, or due — not "${value}".`,
+          message: `is: accepts open, done, task, note, overdue, due, blocked, or blocking — not "${value}".`,
           severity: 'error',
           start,
           end,
@@ -649,7 +657,7 @@ class Parser {
       const normalized = HAS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `has: and no: accept due, scheduled, start, done, or priority — not "${value}".`,
+          message: `has: and no: accept due, scheduled, start, done, priority, id, or dependsOn — not "${value}".`,
           severity: 'error',
           start,
           end,

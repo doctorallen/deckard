@@ -25,8 +25,11 @@ const esbuildProblemMatcherPlugin = {
 
 async function main() {
 	const ctx = await esbuild.context({
+		// The search index worker is its own bundle: a worker thread is
+		// started from a file path, and it has no VS Code to import.
 		entryPoints: [
-			'src/extension.ts'
+			'src/extension.ts',
+			'src/core/storage/searchStoreWorker.ts'
 		],
 		bundle: true,
 		format: 'cjs',
@@ -34,7 +37,8 @@ async function main() {
 		sourcemap: !production,
 		sourcesContent: false,
 		platform: 'node',
-		outfile: 'dist/extension.js',
+		outdir: 'dist',
+		entryNames: '[name]',
 		external: ['vscode'],
 		logLevel: 'silent',
 		plugins: [

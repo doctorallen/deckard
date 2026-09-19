@@ -19,6 +19,15 @@ const theme = process.env.DECKARD_SCREENSHOT_THEME ?? 'replicant';
 // A VS Code color theme, such as "Default Light Modern", for themes that follow it.
 const colorTheme = process.env.DECKARD_SCREENSHOT_COLOR_THEME;
 const view = process.env.DECKARD_SCREENSHOT_VIEW ?? 'dashboard';
+// A selector inside the view's webview to put the pointer over before the
+// capture, for a shot of a hover rather than of the view at rest.
+const hover = process.env.DECKARD_SCREENSHOT_HOVER;
+// Selectors inside the view's webview to click first, comma separated, for a
+// shot of something the view only shows once it has been used.
+const clicks = (process.env.DECKARD_SCREENSHOT_CLICK ?? '')
+  .split(',')
+  .map((selector) => selector.trim())
+  .filter(Boolean);
 
 // A side bar pane, such as a tree view, that is expanded and lists rows.
 function expandedPaneWithRows(title) {
@@ -471,6 +480,69 @@ async function evaluate(client, expression, sessionId) {
   return result.result?.value;
 }
 
+/**
+ * Puts the pointer over one element inside the view's webview, and clicks it
+ * when asked, so a capture can show a hover the way a reader sees it, or a
+ * view the way it looks once it has been used. The move goes through the
+ * browser's own input, which is what `:hover` answers to; dispatching an event
+ * at the element would not raise it.
+ *
+ * A webview is a frame of its own, holding the page in another frame inside
+ * it, so the spot is measured there and dispatched on that frame's session.
+ */
+async function pointAtWebview(client, targets, selector, action) {
+  const extensionId = selectedView.webviewExtension ?? 'esperinnovations.deckard-notes';
+  const webviews = targets.filter(
+    (target) =>
+      target.type === 'iframe' &&
+      target.url.includes(`extensionId=${extensionId}`) &&
+      target.url.includes('vscode-webview://'),
+  );
+  for (const webview of webviews) {
+    const { sessionId } = await client.call('Target.attachToTarget', {
+      targetId: webview.targetId,
+      flatten: true,
+    });
+    const spot = await evaluate(
+      client,
+      `(() => {
+        const frame = document.querySelector('iframe');
+        const page = frame?.contentDocument ?? document;
+        const element = page.querySelector(${JSON.stringify(selector)});
+        if (!element) return null;
+        element.scrollIntoView({ block: 'center' });
+        const inner = element.getBoundingClientRect();
+        const outer = frame ? frame.getBoundingClientRect() : { x: 0, y: 0 };
+        return { x: outer.x + inner.x + inner.width / 2, y: outer.y + inner.y + inner.height / 2 };
+      })()`,
+      sessionId,
+    );
+    if (!spot) {
+      await client.call('Target.detachFromTarget', { sessionId });
+      continue;
+    }
+    const at = { x: spot.x, y: spot.y };
+    await client.call('Input.dispatchMouseEvent', { type: 'mouseMoved', buttons: 0, ...at }, sessionId);
+    if (action === 'click') {
+      for (const type of ['mousePressed', 'mouseReleased']) {
+        await client.call(
+          'Input.dispatchMouseEvent',
+          { type, button: 'left', buttons: 1, clickCount: 1, ...at },
+          sessionId,
+        );
+      }
+      // The page answers a click by asking the host and drawing again.
+      await delay(900);
+    } else {
+      // Rows move onto the raised panel over 120ms, so a hover is waited out.
+      await delay(400);
+    }
+    await client.call('Target.detachFromTarget', { sessionId });
+    return;
+  }
+  throw new Error(`Nothing to ${action} matches ${selector}`);
+}
+
 async function isRendered(client, targets, workbenchSessionId) {
   if (selectedView.target === 'workbench') {
     return Boolean(
@@ -549,6 +621,12 @@ async function capture(client) {
         ready &&
         (await isRendered(client, targets, workbenchSessionId))
       ) {
+        for (const selector of clicks) {
+          await pointAtWebview(client, targets, selector, 'click');
+        }
+        if (hover) {
+          await pointAtWebview(client, targets, hover, 'hover');
+        }
         const screenshot = await client.call(
           'Page.captureScreenshot',
           { format: 'png', fromSurface: true },

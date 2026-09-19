@@ -23,13 +23,20 @@ export interface WikiLinkOccurrence {
   targetPath?: string;
   /** The heading after `#`, as written. */
   heading?: string;
+  /** The `^id` after `#`, without its caret. */
+  block?: string;
 }
 
-/** What a link names: a note, and optionally one of its headings. */
+/**
+ * What a link names: a note, and optionally one of its headings or one of
+ * its `^block-id` lines.
+ */
 export interface WikiLinkTarget {
   /** Empty for `[[#Heading]]`, which names the note the link is in. */
   note: string;
   heading?: string;
+  /** The `^id` after `#`, without its caret, for `[[Note#^id]]`. */
+  block?: string;
 }
 
 const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
@@ -39,8 +46,15 @@ export function parseWikiTarget(text: string): WikiLinkTarget {
   if (hash < 0) {
     return { note: text.trim() };
   }
-  const heading = text.slice(hash + 1).trim();
-  return { note: text.slice(0, hash).trim(), heading: heading || undefined };
+  const note = text.slice(0, hash).trim();
+  const fragment = text.slice(hash + 1).trim();
+  // A fragment that opens with a caret names a line rather than a heading.
+  // Obsidian writes it that way, and a heading cannot begin with one.
+  if (fragment.startsWith('^')) {
+    const block = fragment.slice(1).trim();
+    return { note, ...(block ? { block } : {}) };
+  }
+  return { note, heading: fragment || undefined };
 }
 
 /** A note's title: its file name without the `.md` extension. */
@@ -136,6 +150,14 @@ export function findLinkedSection(
   );
 }
 
+/** The one-based line a link's `#^id` names in a note. */
+export function findLinkedBlock(
+  file: ParsedFile,
+  block: string,
+): number | undefined {
+  return file.blockIds?.[block];
+}
+
 export class BacklinkIndex {
   private readonly byTarget = new Map<string, WikiLinkOccurrence[]>();
 
@@ -153,6 +175,13 @@ export class BacklinkIndex {
   public toNote(filePath: string): WikiLinkOccurrence[] {
     return (this.byTarget.get(filePath) ?? []).filter(
       (occurrence) => occurrence.sourcePath !== filePath,
+    );
+  }
+
+  /** Links to one `^block-id` line of a note, including from within it. */
+  public toBlock(filePath: string, block: string): WikiLinkOccurrence[] {
+    return (this.byTarget.get(filePath) ?? []).filter(
+      (occurrence) => occurrence.block === block,
     );
   }
 
@@ -191,6 +220,7 @@ export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
           endColumn: startColumn + match[0].length,
           targetPath: resolveWikiTarget(titles, target.note, sourcePath),
           heading: target.heading,
+          block: target.block,
         });
       }
     });

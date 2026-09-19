@@ -250,6 +250,24 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private taskFilter: TaskFilter = 'active';
   /**
+   * Which page of notes and of tasks the page is showing. A workspace-wide
+   * search used to send, and draw, every one of them on every save: several
+   * megabytes through the webview channel, and thousands of cards rebuilt,
+   * for the screenful anyone reads.
+   *
+   * Both are kept as the reader left them, and clamped by the snapshot when
+   * the results move under them, so they are read back from it rather than
+   * trusted.
+   */
+  private notePage = 1;
+  private taskPage = 1;
+  /**
+   * The words the reader is typing but has not committed. They narrow the
+   * whole search rather than the page of it on screen, so what the box
+   * promises while it is typed in is what Enter delivers.
+   */
+  private previewWords: string[] = [];
+  /**
    * Search text that does not parse. The box shows it, with its error, while
    * the page keeps the results of the last search that did.
    */
@@ -326,6 +344,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     this.isStale = false;
     const snapshot = measure('Search page', () => this.createSnapshot());
+    // The snapshot clamps a page number to the pages the search has, and a
+    // search shortens under an open page whenever a note is saved. Reading
+    // the clamped numbers back keeps the page the reader is on and the page
+    // the host asks for from drifting apart.
+    this.notePage = snapshot.notePaging.page;
+    this.taskPage = snapshot.taskPaging.page;
     this.lastSnapshot = snapshot;
     this.refineWasInSidebar = snapshot.refineInSidebar === true;
     this.panel.title = getPageTitle(snapshot);
@@ -395,9 +419,18 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         originQuery: this.originQuery,
         taskFilter: this.taskFilter,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        notePage: this.notePage,
+        taskPage: this.taskPage,
+        previewWords: this.previewWords,
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
+        // Correcting a spelling needs the full-text cache. An indexer
+        // without one answers no search page any the worse for it, so the
+        // page asks only when there is something to ask.
+        ...(this.indexer.suggestWords
+          ? { suggestWords: (words: readonly string[]) => this.indexer.suggestWords(words) }
+          : {}),
       },
     );
     return {
@@ -488,6 +521,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     this.invalidQueryText = undefined;
     this.queryText = text;
+    // The draft has become the search, or been replaced by another, so it is
+    // no longer narrowing anything on its own.
+    this.previewWords = [];
+    // A different search is a different list, read from its first page.
+    this.notePage = 1;
+    this.taskPage = 1;
     this.refresh();
     if (remember && text) {
       await this.preferences.recordRecentQuery(text);
@@ -513,8 +552,43 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'clearOverviewQuery':
         await this.applyQuery(this.originQuery, false);
         return;
+      case 'setResultPage':
+        if (message.kind === 'notes') {
+          this.notePage = message.page;
+        } else {
+          this.taskPage = message.page;
+        }
+        this.refresh();
+        return;
+      case 'previewSearch': {
+        const words = message.words
+          .map((word) => word.trim().toLowerCase())
+          .filter(Boolean);
+        if (
+          words.length === this.previewWords.length &&
+          words.every((word, index) => word === this.previewWords[index])
+        ) {
+          return;
+        }
+        this.previewWords = words;
+        // Narrowing is a different list, read from its first page.
+        this.notePage = 1;
+        this.taskPage = 1;
+        this.refresh();
+        return;
+      }
+      case 'setResultsPerPage':
+        // A different page size is a different set of pages, and the number
+        // the reader was on means nothing in it, so both lists start again.
+        this.notePage = 1;
+        this.taskPage = 1;
+        await this.preferences.setSearchPageSize(message.size);
+        return;
       case 'setTaskFilter':
         this.taskFilter = message.filter;
+        // A different filter is a different list of tasks, read from its
+        // first page rather than from wherever the last list had got to.
+        this.taskPage = 1;
         this.refresh();
         return;
       case 'setRenderMode':

@@ -77,6 +77,24 @@ control inherits its color.
 .thing:hover { color: var(--amber); }
 ```
 
+The check reads each element as the page renders it, with every class it
+carries, because that is where two rules meet. A `<button class="row
+saved-filter-row home-row">` is both a control and a surface, and the row
+rules win its background while the control rules were still coloring its
+text — which is how Home's rows came to be all but invisible while hovered.
+
+**A control that is also a surface takes the surface's text.** Its background
+never becomes `--hover-bg`, so `--hover-fg` is the wrong color for it, and
+what sits inside it follows it as it would inside any hovered control:
+
+```css
+/* Yes: the row rules paint it, so it reads as a row */
+.home-row, .home-row:hover { color: var(--text); }
+
+/* No: --hover-fg belongs on --hover-bg, and this never has it */
+.home-row:hover { color: var(--hover-fg); }
+```
+
 ## Design tokens
 
 `getDesignTokens()` declares the whole palette on `:root`. Every page gets

@@ -57,7 +57,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .saved-filter-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .saved-filter-name { color: var(--cyan-bright); font: 12px var(--font-mono); overflow-wrap: anywhere; }
 .saved-filter-tags { margin-top: 3px; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
-.saved-filter-remove { min-height: 26px; color: var(--muted); text-transform: none; }
+.saved-filter-remove { min-height: 26px; text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-kind { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; }
@@ -72,10 +72,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-actions { display: flex; align-items: center; gap: 5px; }
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
 .favorite-toggle { display: grid; place-items: center; color: var(--favorite-red); }
-.favorite-toggle:hover, .favorite-toggle:focus-visible { color: var(--favorite-red); }
-/* A toggle that is already a favorite carries a filled ground in some themes,
-   so hovering it takes the shared hover pair rather than keeping red on red. */
-.favorite-toggle.favorite:hover, .favorite-toggle.favorite:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
+/* The toggle carries a filled ground in some themes, and a hovered control's
+   ground in every one, so hovering it takes the shared hover pair rather than
+   keeping a red that was chosen for the ground it has at rest. */
+.favorite-toggle:hover, .favorite-toggle:focus-visible { background: var(--hover-bg); color: var(--hover-fg); }
 .favorite-heart { display: block; width: 16px; height: 16px; background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; }
 .favorite-toggle.favorite .favorite-heart { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 .browse-toolbar { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
@@ -102,10 +102,15 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-title { margin: 0; color: var(--amber-bright); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 .home-widget-grip { margin-right: 6px; color: var(--muted); }
 .home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-.home-open { min-height: 26px; padding: 3px 8px; color: var(--cyan-bright); text-transform: none; }
+.home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }
 .home-remove { min-height: 26px; padding: 3px 8px; text-transform: none; }
 .home-list { display: grid; gap: 6px; }
-.home-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; text-transform: none; }
+/* A row on Home is a button, but it is painted by the row rules, so it reads
+   as a row: the text that belongs on a panel rather than the color a theme
+   wrote for a hovered control over the hover ground. Its label and its detail
+   follow it from there, as they do inside any hovered control. */
+.home-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--text); text-align: left; text-transform: none; }
+.home-row:hover, .home-row:focus-visible { color: var(--text); }
 .home-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--cyan-bright); }
 .home-row-label code { background: none; padding: 0; color: inherit; font-size: 11px; }
 .home-row-detail { flex: 0 0 auto; color: var(--muted); font: 10px var(--font-mono); }
@@ -126,6 +131,16 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .home-widget-group:first-child { margin-top: 0; }
 .home-widget-empty { margin: 0; color: var(--muted); font-size: 12px; }
+.home-widget-paging { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 0; border-top: 1px solid var(--line); padding-top: 8px; font-size: 11px; }
+.home-widget-paging .page-range { color: var(--muted); font-family: var(--font-mono); }
+.home-widget-paging .control-label { gap: 4px; font-size: 11px; }
+.home-widget-paging select { min-width: 46px; }
+.home-widget-steps { display: flex; align-items: center; gap: 6px; }
+.home-widget-steps .page-range { margin-right: 2px; }
+.home-widget-steps button { display: grid; width: 22px; min-height: 22px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
+.home-widget-steps button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.home-widget-steps button[disabled] { color: var(--muted); cursor: default; opacity: 0.45; }
+.home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .home-widget .query-workspace { margin-top: 0; }
 .home-widget .task-list { --task-columns: 1; }
 .home-widget .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
@@ -218,19 +233,19 @@ ${getQueryEditorScript()}
   const WIDGET_KINDS = {
     search: { label: 'Search', description: 'A search box that opens a search page', repeatable: false, listed: false },
     tasks: { label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board', repeatable: true, listed: true },
-    agenda: { label: 'Agenda', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true },
+    agenda: { label: 'Agenda', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
     favoriteTags: { label: 'Favorite tags', description: 'The tags you favorited', repeatable: false, listed: true },
     topTags: { label: 'Frequent tags', description: 'The tags you open most, lately', repeatable: false, listed: true },
     savedSearches: { label: 'Saved searches', description: 'Your saved searches', repeatable: false, listed: false },
     recentSearches: { label: 'Recent searches', description: 'The searches you ran lately', repeatable: false, listed: true },
     recentNotes: { label: 'Recently opened', description: 'The notes you opened lately', repeatable: false, listed: true },
     stats: { label: 'Workspace', description: 'How many notes, tasks, and tags there are', repeatable: false, listed: false },
-    savedQuery: { label: 'Saved search results', description: 'What one saved search finds', repeatable: true, listed: true },
+    savedQuery: { label: 'Saved search results', description: 'What one saved search finds', repeatable: true, listed: true, pageable: false },
     todayNote: { label: 'Today', description: "Today's daily note and its open tasks", repeatable: false, listed: true },
     quickAdd: { label: 'Quick add', description: "Add a task to today's daily note", repeatable: false, listed: false },
     staleTasks: { label: 'Stale tasks', description: 'Open tasks in notes left unchanged for a while', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 30 },
     relatedNotes: { label: 'Related notes', description: 'Notes related to the note you had open last', repeatable: false, listed: true },
-    tagPairs: { label: 'Tags written together', description: 'Tags most often written together, which may want a hub note or one name', repeatable: false, listed: true },
+    tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
     unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
@@ -591,7 +606,7 @@ ${getQueryEditorScript()}
         const label = '<span class="home-tag-pair">' + renderTagLabel(pair.tags[0].label) + '<span class="home-tag-pair-join">+</span>' + renderTagLabel(pair.tags[1].label) + '</span>';
         return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
       }).join('') + '</div>'
-      : '<p class="home-widget-empty">Tags written on the same line or heading show up here.</p>';
+      : '<p class="home-widget-empty">Two tags carried by the same note or task show up here.</p>';
   }
 
   /** The note a widget follows, and what can be done with it. */
@@ -718,8 +733,11 @@ ${getQueryEditorScript()}
     const traits = WIDGET_KINDS[widget.kind] || {};
     const attribute = 'data-widget-id="' + escapeHtml(widget.id) + '"';
     const groups = [];
-    if (traits.listed) {
+    if (traits.listed && !widget.paged) {
       groups.push('<div class="view-options-group"><span>Show</span>' + renderViewOptionChoices('set-widget-count', [[3, '3'], [5, '5'], [10, '10'], [20, '20']], widget.count || 5, 'Entries shown', attribute) + '</div>');
+    }
+    if (traits.listed && traits.pageable !== false) {
+      groups.push('<div class="view-options-group"><span>Paging</span>' + renderViewOptionChoices('set-widget-paged', [['off', 'Off', 'Show the first few'], ['on', 'On', 'Page through all of them']], widget.paged ? 'on' : 'off', 'Paging', attribute) + '</div>');
     }
     if (traits.days) {
       groups.push('<div class="view-options-group"><span>' + (widget.kind === 'newTags' ? 'Seen within' : 'Unchanged for') + '</span>' + renderViewOptionChoices('set-widget-days', traits.days, widget.days || traits.defaultDays, 'Days', attribute) + '</div>');
@@ -749,7 +767,7 @@ ${getQueryEditorScript()}
     const shown = listed && list ? list.length : undefined;
     // "5 of 37" rather than "37" over five rows, which read as the whole list.
     const count = widget.total !== undefined && listed
-      ? ' <span class="tag-count">' + (shown !== undefined && shown < widget.total ? shown + ' of ' + widget.total : widget.total) + '</span>'
+      ? ' <span class="tag-count">' + (!widget.paged && shown !== undefined && shown < widget.total ? shown + ' of ' + widget.total : widget.total) + '</span>'
       : '';
     const actions = editingHome
       ? renderViewOptionChoices('set-widget-width', [['half', '½', 'Half width'], ['full', 'Full', 'Full width']], widget.width, 'Width', 'data-widget-id="' + escapeHtml(widget.id) + '"')
@@ -759,7 +777,46 @@ ${getQueryEditorScript()}
     return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" title="Drag to move, or press the menu key (Shift+F10) to move it first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
       + '<div class="home-widget-header"><h2 class="home-widget-title">' + (editingHome ? '<span class="home-widget-grip" aria-hidden="true">&#10303;</span>' : '') + escapeHtml(widget.title) + count + '</h2><div class="home-widget-actions">' + actions + '</div></div>'
       + renderWidgetBody(widget)
+      + renderWidgetPaging(widget)
       + '</article>';
+  }
+
+  /**
+   * A paged widget's pager: how many it holds, where the reader is in the
+   * list, and a step either way.
+   *
+   * A search page offers every page number because a reader goes to one; a
+   * widget is a few entries in a corner of Home, walked a page at a time, so
+   * it is two chevrons and the count it is showing.
+   */
+  function renderWidgetPaging(widget) {
+    const paging = widget.paging;
+    if (!paging || editingHome) return '';
+    const attribute = 'data-widget-id="' + escapeHtml(widget.id) + '"';
+    const step = function (page, label, path, enabled) {
+      return '<button type="button" data-action="set-widget-page" data-page="' + page + '" ' + attribute
+        + (enabled ? '' : ' disabled')
+        + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" title="' + label + ' page">'
+        + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="' + path + '"/></svg></button>';
+    };
+    // The sizes on offer, and whatever this widget is already set to, so a
+    // count chosen before it was paged is not silently changed by its own
+    // control.
+    const sizes = [3, 5, 10, 20, 50]
+      .concat(paging.size)
+      .filter(function (size, index, all) { return all.indexOf(size) === index; })
+      .sort(function (left, right) { return left - right; });
+    const perPage = '<label class="control-label">Per page:<select data-action="set-widget-page-size" ' + attribute + ' aria-label="Entries per page">'
+      + sizes.map(function (size) {
+        return '<option value="' + size + '"' + (size === paging.size ? ' selected' : '') + '>' + size + '</option>';
+      }).join('')
+      + '</select></label>';
+    return '<nav class="home-widget-paging" aria-label="' + escapeHtml(widget.title) + ' pages">'
+      + perPage
+      + '<span class="home-widget-steps"><span class="page-range">' + describePageRange(paging) + '</span>'
+      + step(paging.page - 1, 'Previous', 'M10 3 5 8l5 5', paging.page > 1)
+      + step(paging.page + 1, 'Next', 'M6 3l5 5-5 5', paging.page < paging.pageCount)
+      + '</span></nav>';
   }
 
   /** The kinds that can still be added, and a saved search's widget for each. */
@@ -947,8 +1004,19 @@ ${getQueryEditorScript()}
         updateWidget(target.dataset.widgetId, { width: target.dataset.value === 'full' ? 'full' : 'half' });
         return;
       }
+      if (action === 'set-widget-paged') {
+        const paged = target.dataset.value === 'on';
+        // A list that starts being paged starts at its first page, and one
+        // that stops keeps nothing to come back to.
+        updateWidget(target.dataset.widgetId, paged ? { paged: true, page: 1 } : { paged: false, page: 1 });
+        return;
+      }
+      if (action === 'set-widget-page') {
+        updateWidget(target.dataset.widgetId, { page: Number(target.dataset.page) });
+        return;
+      }
       if (action === 'set-widget-count') {
-        updateWidget(target.dataset.widgetId, { count: Number(target.dataset.value) });
+        updateWidget(target.dataset.widgetId, { count: Number(target.dataset.value), page: 1 });
         return;
       }
       if (action === 'set-widget-days') {
@@ -1048,6 +1116,9 @@ ${getQueryEditorScript()}
     }
     if (target.dataset.action === 'add-widget' && target.value) addWidget(target.value);
     if (target.dataset.action === 'set-widget-filter') updateWidget(target.dataset.widgetId, { filterId: target.value });
+    // A different page size is a different set of pages, so the list is read
+    // again from its top.
+    if (target.dataset.action === 'set-widget-page-size') updateWidget(target.dataset.widgetId, { count: Number(target.value), page: 1 });
     if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
   });
 

@@ -1,6 +1,8 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
+import { evaluateQuery } from '../core/query/queryEvaluator';
+import { parseQuery } from '../core/query/queryParser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
   DashboardWidgetConfig,
@@ -35,6 +37,7 @@ const preferences: PersistedPreferences = {
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
+  searchPageSize: 30,
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [
@@ -219,6 +222,86 @@ suite('Dashboard Home widgets', () => {
     assert.deepStrictEqual(nothingOpen.notes, []);
   });
 
+  test('ranks tag pairs by the entries carrying both, not by one line', () => {
+    // Harbor scopes six check-ins from its heading, so Sable and Harbor are
+    // carried together six times without ever being written on one line.
+    // Courier and the invoice are written side by side once.
+    const files = [
+      parseMarkdown(
+        'notes/harbor.md',
+        [
+          '# Harbor #team/harbor',
+          '## Check-in one #person/sable-ortiz',
+          'Prose.',
+          '## Check-in two #person/sable-ortiz',
+          'Prose.',
+          '## Check-in three #person/sable-ortiz',
+          'Prose.',
+        ].join('\n'),
+      ),
+      parseMarkdown(
+        'notes/courier.md',
+        '# Courier #contact/courier #feature/repair-invoice\nWritten together, once.',
+      ),
+    ];
+    const index = buildWorkspaceIndex(
+      new Map(files.map((file) => [file.filePath, file])),
+    );
+
+    const [pairs] = createDashboardWidgets(
+      index,
+      {
+        ...preferences,
+        dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 10 }],
+      },
+      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+    );
+
+    const listed = pairs.tagPairs ?? [];
+    const first = listed[0];
+    assert.deepStrictEqual(
+      first.tags.map((tag) => tag.key),
+      ['#person/sable-ortiz', '#team/harbor'],
+      'the pair carried by more entries comes first, however it was written',
+    );
+    assert.ok(
+      first.count > 1,
+      'a pair that never shares a line still counts more than once',
+    );
+    const once = listed.find((pair) =>
+      pair.tags.some((tag) => tag.key === '#contact/courier'),
+    );
+    assert.strictEqual(once?.count, 1);
+    assert.ok(
+      listed.indexOf(first) < listed.indexOf(once!),
+      'the once-written pair ranks below it',
+    );
+  });
+
+  test('counts a pair as the search the row opens counts it', () => {
+    const index = createWorkIndex();
+    const [pairs] = createDashboardWidgets(
+      index,
+      {
+        ...preferences,
+        dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 20 }],
+      },
+      { now, upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+    );
+
+    // Pressing a row searches for both tags. The number beside it has to be
+    // the number that search then shows, or the row argues with itself.
+    for (const pair of pairs.tagPairs ?? []) {
+      const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
+      const results = evaluateQuery(index, parseQuery(query).node);
+      assert.strictEqual(
+        results.sections.length + results.files.length + results.tasks.length,
+        pair.count,
+        query,
+      );
+    }
+  });
+
   test('lists tags written together, tags without a hub, and new tags', () => {
     const index = createWorkIndex();
     const [pairs, unhubbed, fresh] = createDashboardWidgets(
@@ -244,7 +327,7 @@ suite('Dashboard Home widgets', () => {
       'each pair is listed once',
     );
     assert.ok((pairs.tagPairs?.[0].count ?? 0) > 0);
-    assert.match(pairs.tagPairs?.[0].detail ?? '', /Written together/);
+    assert.match(pairs.tagPairs?.[0].detail ?? '', /carry both/);
 
     assert.deepStrictEqual(
       unhubbed.tags?.map((tag) => tag.key),

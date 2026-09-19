@@ -15,7 +15,7 @@ against the current source so that nothing here duplicates a shipped feature.
 | Typed front matter schemas and explicit relations | Open | Breadcrumbs, Metadata Menu, Supercharged Links |
 | Task scheduling and planning | Mostly shipped as Obsidian Tasks metadata and the Agenda. Calendar projections remain. | Tasks (#4, 4.2M), TaskNotes (1.5M) |
 | Backlinks and note-link graphs | Shipped: the Notes Graph, and backlink counts and previews in the editor | Obsidian core Backlinks and Graph |
-| Section and block references | Open | Obsidian block references |
+| Section and block references | Shipped for reading: `[[Note#^id]]` resolves, completes, previews, and is counted as a backlink. Minting ids is deliberately left out. | Obsidian block references |
 | Canvas or whiteboard | Open, low priority | Excalidraw (#1, 7.9M), Advanced Canvas |
 | Git-aware collaboration | Open, keep light since VS Code has SCM built in | Obsidian Git (#6, 3.1M) |
 
@@ -36,8 +36,9 @@ README.
 
 Inspired by Tasks and TaskNotes. **Shipped**, with the Agenda view; see the
 README. Both the emoji and Dataview formats are read, and typing `/` in a
-task suggests metadata to insert. Dependencies are read and shown as
-"blocked by" in the Agenda, but not yet queryable.
+task suggests metadata to insert. Dependencies are read, shown as
+"blocked by" in the Agenda, and queryable as `is:blocked`, `is:blocking`,
+`has:id`, and `has:dependsOn`.
 
 `findTaskDate` in `src/core/markdown/parser.ts` already reads one loose due
 date, and the Dashboard already marks overdue tasks. Rather than inventing a
@@ -129,8 +130,9 @@ merging; see the README's Tag overviews section and
 
 ## Quick wins
 
-- **Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
-  cursor. Smart Connections supports drag-to-link.
+- ~~**Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
+  cursor. Smart Connections supports drag-to-link.~~ Shipped as the link
+  button on each result.
 - ~~**Extract Tagged Heading leaves a link behind.** It currently removes the
   section with nothing in its place; Note Refactor leaves a `[[link]]` to the
   new note.~~ Shipped: the section is replaced by a `[[link]]` to the new
@@ -140,8 +142,11 @@ merging; see the README's Tag overviews section and
   due date.
 - ~~**Open the Dashboard on startup** setting, as Homepage (1.3M) does.~~
   Shipped as `deckard.dashboard.openOnStartup`.
-- **Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
-  as Omnisearch (1.9M) does.
+- ~~**Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
+  as Omnisearch (1.9M) does.~~ Shipped: the full-text cache weights titles,
+  headings, and tags above body text, and corrects a misspelled word against
+  the words in the notes. Find offers the correction as a row, and a search
+  page that finds nothing offers it under the search box.
 
 ## Worth considering
 

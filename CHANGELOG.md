@@ -2,7 +2,100 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Tags written together ranks by the notes and tasks carrying both.** It
+  counted only tags written side by side on one line, which is the strongest
+  case and a rare one: in a workspace where tags are written under headings
+  the count was one for every pair, so the list came out alphabetical and
+  looked sorted the wrong way round, and every pair that never shared a line
+  was left out of it entirely. A pair is now counted over the same entries a
+  search for both tags finds, inherited tags included, so the number beside a
+  pair is the number the row opens — `#project/argent-protocol` and
+  `#person/sable-ortiz` read 8, which is what searching for both shows.
+
+- **A word being typed into a search box survives its own results arriving.**
+  Redrawing the page takes the field out of the document, which the browser
+  reports as the reader leaving it, and what was typed was let go as if they
+  had clicked away. It only showed once typing started searching, because
+  that made the draft's own results the commonest redraw of all. The caret
+  goes back where it was rather than to the end, so a redraw in the middle of
+  a word no longer moves it out from under you. The Task board's search box
+  had the same fault and is fixed with it.
+
+### Changed
+
+- **Typing in a search box narrows the whole search, not the page on screen.**
+  The words used to hide rows of the page the reader was holding, which at
+  200 to a page was nearly the whole search and at 30 was not: a match on
+  another page was never found, the count read as a share of the search when
+  it was a share of the page, and a page whose own rows did not match said
+  nothing matched at all. The words are now run as part of the search, so
+  what a draft finds is exactly what pressing Enter finds, and the counts,
+  the pages and Refine all agree with it.
+
+- **The search cache is written on a thread of its own.** The first build in a
+  new workspace wrote every note on the extension host, the thread shared with
+  every other extension and with every completion, hover, and CodeLens
+  Deckard answers: 159 ms at 940 notes and 1.5 s at 5,000. It now leaves the
+  host 14 ms and 45 ms, both under the threshold the log calls Slow. While
+  the build runs, a search finds a note by its title and tags before it finds
+  it by the words inside it. A rescan that changed nothing still writes
+  nothing, and a workspace with no storage of its own, or a machine where the
+  thread cannot be started, writes on the host as before.
+
+- **A search page shows its results a page at a time.** A search that matched
+  the workspace used to send, and draw, every note and task on every save:
+  about 4.3 MB of card text at 940 notes, growing with the workspace, for the
+  screenful anyone reads. Each list is paged now, with **Previous**, **Next**,
+  the page numbers, and the range being shown under it, and notes and tasks
+  are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results
+  to a page, starting at 30, and the choice is kept, so every search page
+  opens the way the last one was left. Every count on the page is still of
+  the whole search, and a search that shortens under an open page falls back
+  to the last page it still has.
+
 ### Added
+
+- **A Home widget can page through its entries.** **Paging**, in the widget's
+  gear, turns it from the first few into all of them a page at a time. The
+  widget grows a line of its own holding **Per page**, the entries it is
+  showing, such as *6–10 of 601*, and a chevron either way — a widget is a
+  corner of Home walked a page at a time, so it offers no page numbers the
+  way a search page does. The page is kept with the widget's other settings.
+  The Agenda and a saved search's results stay unpaged: each lists more than
+  one kind of thing, and one page number could not say which it meant.
+
+- **Links can name one line.** After `#`, a `[[Check-in#^lift-slip]]` link
+  names the line marked `^lift-slip` rather than the note or one of its
+  headings, following the Obsidian block-reference convention. Typing
+  `[[Check-in#^` completes the markers a note carries, each shown with the
+  line it marks; following a link opens the note at that line, and hovering
+  it previews the line under the headings it sits beneath. Markers in fenced
+  code are ignored, the first of a repeated marker wins, and a link to a
+  marker that is gone still opens the note and says so. Deckard reads
+  markers and never writes them, so a note is only as marked up as its
+  author made it.
+
+- **Related Notes writes a link to a result**. The button beside a result's
+  score puts a `[[Note#Heading]]` link to that entry at the cursor of the note
+  you are editing. It names the heading the entry sits under, without its
+  tags, names the note alone when the heading only repeats the note's title,
+  and says so when two notes share the name it has to write.
+
+- **A search page that finds nothing offers a closer spelling**, which until
+  now only Find did: **Nothing matched. Search for … instead?** Each
+  misspelled word is replaced by the closest word the notes contain, and only
+  the words a search reads as prose are corrected, so a tag, a path, or a
+  field name spelled the same way is left exactly as it was written. The
+  correction has to find something itself before it is offered.
+
+- **Task dependencies are queryable**. `is:blocked` finds an open task while a
+  task it names in ⛔ is still open, and `is:blocking` the open task the other
+  one waits for, so the Agenda's `blocked by …` line can now be searched for
+  across the workspace. Completing the blocker frees both. `has:id` and
+  `has:dependsOn`, with `no:` for either, read the 🆔 and ⛔ markers themselves
+  whatever state the tasks at their ends are in.
 
 - **More Home widgets**:
   - **Today**: today's daily note and its open tasks, or a button to create it.
@@ -20,6 +113,27 @@
     use when you update are not new.
   - **Pinned notes**: notes you pin with `Deckard: Pin Note to Home`, or with
     **Pin** for the note you had open last; **×** unpins one.
+
+### Fixed
+
+- A row on Home reads while the pointer is over it. A row is a button as well
+  as a row, and each was colored by its own rule: the row rule raised the
+  ground and the button rule wrote the text for a ground it never had, so a
+  Favorite tags, Frequent tags, or Recently opened row went all but black on
+  black. Cooper showed it worst; LCARS, Synthwave, Tomcat, and Fellowship had
+  it too, and LCARS also at rest.
+
+- A Stats tile you can open reads on LCARS, where it had taken the near-black
+  its controls are written for onto the tile's own panel.
+
+- The Favorite heart, a card's **Move** menu on the Task Board, a saved
+  search's **Remove**, a widget's **All tags**, and a search facet's mode read
+  on whatever ground the theme in use gives them, at rest and while hovered.
+  No theme colors the heart apart from the toggle carrying it now, so a hover
+  cannot strand it.
+
+- Fellowship's muted text is a little darker, so the smaller print on its
+  parchment panels reads.
 
 ## 1.14.0 - 2026-09-17
 

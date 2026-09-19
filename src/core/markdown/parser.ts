@@ -8,7 +8,13 @@ import {
   TagReference,
   Task,
 } from '../types';
-import { parseIsoDate, parseTaskMetadata } from './taskMetadata';
+import {
+  BLOCK_ID_PATTERN,
+  parseIsoDate,
+  parseTaskMetadata,
+} from './taskMetadata';
+
+export { BLOCK_ID_PATTERN } from './taskMetadata';
 
 interface HeadingMatch {
   lineNumber: number;
@@ -226,11 +232,14 @@ export function parseMarkdown(
     dateAnchor,
   );
 
+  const blockIds = findBlockIds(lines, fencedLines);
+
   return normalizeParsedTagReferences({
     filePath,
     content,
     sections,
     tasks,
+    ...(Object.keys(blockIds).length > 0 ? { blockIds } : {}),
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
     ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
@@ -1426,6 +1435,30 @@ function createLocalDate(
  * Marks fence delimiters and their contents in one pass so every Markdown
  * feature can ignore examples without maintaining a second parser.
  */
+/**
+ * The block ids a note carries, each with the one-based line it marks.
+ *
+ * The first of a repeated id wins, because a link can only mean one line and
+ * the first is the one an author reading down the note would think of. Ids
+ * inside fenced code are left alone, like everything else in a fence.
+ */
+export function findBlockIds(
+  lines: string[],
+  fencedLines: Set<number>,
+): Record<string, number> {
+  const blockIds: Record<string, number> = {};
+  lines.forEach((line, lineIndex) => {
+    if (fencedLines.has(lineIndex)) {
+      return;
+    }
+    const match = BLOCK_ID_PATTERN.exec(line);
+    if (match && !(match[1] in blockIds)) {
+      blockIds[match[1]] = lineIndex + 1;
+    }
+  });
+  return blockIds;
+}
+
 export function findFencedLines(lines: string[]): Set<number> {
   const fencedLines = new Set<number>();
   let fenceCharacter: '`' | '~' | undefined;

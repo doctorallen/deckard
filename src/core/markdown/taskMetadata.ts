@@ -136,7 +136,15 @@ const DATAVIEW_FIELD_PATTERN =
   /\[[ \t]*([A-Za-z]+)[ \t]*::[ \t]*([^\]]*?)[ \t]*\]|\([ \t]*([A-Za-z]+)[ \t]*::[ \t]*([^)]*?)[ \t]*\)/gu;
 const DATAVIEW_ID_PATTERN =
   /[ \t]*(?:\[[ \t]*id[ \t]*::[^\]]*\]|\([ \t]*id[ \t]*::[^)]*\))/giu;
-const BLOCK_ID_PATTERN = /[ \t]+\^[A-Za-z0-9-]+[ \t]*$/;
+/**
+ * A block id: the `^name` an author writes at the end of a line to make that
+ * line something a `[[Note#^name]]` link can point at, as Obsidian does.
+ *
+ * It must be the last thing on the line and separated from the text, so a
+ * caret written in prose is not mistaken for one. Deckard reads these
+ * wherever they are written; `findBlockIds` collects them for a whole note.
+ */
+export const BLOCK_ID_PATTERN = /[ \t]+\^([A-Za-z0-9-]+)[ \t]*$/;
 
 const PRIORITY_NAMES: ReadonlySet<string> = new Set(PRIORITY_MARKERS.values());
 

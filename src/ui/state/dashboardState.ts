@@ -6,6 +6,8 @@ import {
   Entity,
   ParsedFile,
   PersistedPreferences,
+  ResultPaging,
+  SEARCH_PAGE_SIZES,
   SearchPageSnapshot,
   Section,
   StatsAccessItem,
@@ -29,7 +31,9 @@ import {
 } from '../../core/markdown/parser';
 import {
   canAppendTerm,
+  correctQueryText,
   getPlainTextTerms,
+  getTextWords,
   getTopLevelTerms,
 } from '../../core/query/queryEdit';
 import {
@@ -143,6 +147,25 @@ export interface SearchPageOptions {
   tagTitleDisplayMode?: TagTitleDisplayMode;
   /** Whether tags are related by their headings as well as written together. */
   enableHeadingTagRelationships?: boolean;
+  /**
+   * The closest word the notes contain for each word they do not, from the
+   * full-text cache. Without it a search that finds nothing simply says so.
+   */
+  suggestWords?: (words: readonly string[]) => ReadonlyMap<string, string>;
+  /**
+   * Words the reader has typed into the search box and not yet committed.
+   * They narrow the whole search, not the page of it being shown.
+   */
+  previewWords?: readonly string[];
+  /**
+   * False for a caller that wants the whole result rather than a page of it,
+   * such as Home's widgets. A search page is paged by the size the reader
+   * chose, which is kept in their preferences.
+   */
+  paged?: boolean;
+  /** Which page of each list to carry, 1-based and clamped. */
+  notePage?: number;
+  taskPage?: number;
   now?: number;
 }
 
@@ -170,6 +193,14 @@ export function createSearchPageSnapshot(
 ): SearchPageSnapshot {
   const text = queryText.trim();
   const parsed = parseQuery(text);
+  // The words being typed narrow the search before they are committed to the
+  // box. They are run as part of the search rather than matched against what
+  // is on screen, so a page of thirty is not what a reader is searching, and
+  // so what the preview finds is exactly what pressing Enter will find.
+  const preview = (options.previewWords ?? [])
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
   const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
   const taskFilter = options.taskFilter ?? 'active';
   const tagKeys = resolveQueryTagIntersection(index, parsed);
@@ -179,8 +210,8 @@ export function createSearchPageSnapshot(
     ? index.files.get(focusTag.hubFilePaths[0])
     : undefined;
 
-  const results = parsed.node
-    ? evaluateQuery(index, parsed.node)
+  const results = drafted.node
+    ? evaluateQuery(index, drafted.node)
     : {
         sections: [...index.sections.values()],
         tasks: [...index.tasks.values()],
@@ -192,7 +223,7 @@ export function createSearchPageSnapshot(
       preferences.sectionAccessCounts,
       tagTitleDisplayMode,
     );
-  const plainTerms = getPlainTextTerms(parsed.node);
+  const plainTerms = getPlainTextTerms(drafted.node);
   const cards = plainTerms
     ? [
         ...[...index.sections.values()].map(cardFor),
@@ -206,17 +237,38 @@ export function createSearchPageSnapshot(
           .filter((file) => file.filePath !== hubFile?.filePath)
           .map(createFileOverviewCard),
       ];
-  const sections = cards.sort((left, right) =>
+  const ranked = cards.sort((left, right) =>
     compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
   );
+  const pageSize = options.paged === false ? undefined : preferences.searchPageSize;
+  const notePaging = createPaging(ranked.length, pageSize, options.notePage);
+  const sections = takePage(ranked, notePaging);
   const tasks = sortTasks(
     [...results.tasks],
     preferences.taskOrder,
     preferences.taskSortMode,
   );
+  const shownTasks = tasks
+    .filter((task) => matchesTaskFilter(task, taskFilter))
+    .map((task) => createDashboardTask(task, index.sections));
+  const taskPaging = createPaging(shownTasks.length, pageSize, options.taskPage);
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
+      : undefined;
+  // Only a search that found nothing is worth correcting: results answer the
+  // search as it was typed, and offering a different one beside them would
+  // argue with what the reader can already see.
+  const corrected =
+    ranked.length === 0 && tasks.length === 0
+      ? suggestSearch(text, parsed, options.suggestWords)
+      : undefined;
+  // A word the notes contain somewhere may still sit in no note that
+  // satisfies the rest of the search, so the correction is run before it is
+  // offered. A second dead end would help nobody.
+  const suggestion =
+    corrected !== undefined && findsSomething(index, corrected, cardFor)
+      ? corrected
       : undefined;
 
   return {
@@ -243,7 +295,7 @@ export function createSearchPageSnapshot(
     query: createQueryViewState(
       index,
       parsed,
-      { notes: sections.length, tasks: tasks.length },
+      { notes: ranked.length, tasks: tasks.length },
       true,
       preferences.recentQueries ?? [],
       {
@@ -255,6 +307,8 @@ export function createSearchPageSnapshot(
           : [],
       },
     ),
+    ...(suggestion ? { suggestion } : {}),
+    ...(preview.length > 0 ? { draftWords: preview } : {}),
     originQuery: options.originQuery?.trim() ?? '',
     savedViewName:
       tagKeys && tagKeys.length >= 2
@@ -262,15 +316,16 @@ export function createSearchPageSnapshot(
           findMatchingSavedQueryName(preferences.savedFilters, parsed)
         : findMatchingSavedQueryName(preferences.savedFilters, parsed),
     sections,
-    tasks: tasks
-      .filter((task) => matchesTaskFilter(task, taskFilter))
-      .map((task) => createDashboardTask(task, index.sections)),
+    notePaging,
+    tasks: takePage(shownTasks, taskPaging),
+    taskPaging,
     taskCounts: {
       all: tasks.length,
       active: tasks.filter((task) => !task.completed).length,
       completed: tasks.filter((task) => task.completed).length,
     },
     taskFilter,
+    pageSizes: SEARCH_PAGE_SIZES,
     renderMode: preferences.renderMode,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,
@@ -1038,6 +1093,96 @@ export function getTitleTags(
     .filter((tag) => title.includes(tag.label));
 }
 
+/**
+ * Works out which page of a list is being shown.
+ *
+ * A page number is clamped rather than refused, because the results move
+ * under it: a note saved elsewhere can shorten a search while its last page
+ * is open, and the reader should find the last page there rather than an
+ * empty one. Without a page size there is one page holding everything.
+ */
+function createPaging(
+  total: number,
+  size: number | undefined,
+  page: number | undefined,
+): ResultPaging {
+  if (size === undefined || size <= 0) {
+    return { page: 1, size: Math.max(total, 1), pageCount: 1, total };
+  }
+  const pageCount = Math.max(Math.ceil(total / size), 1);
+  return {
+    page: Math.min(Math.max(Math.trunc(page ?? 1), 1), pageCount),
+    size,
+    pageCount,
+    total,
+  };
+}
+
+/** The slice of a list that one page shows. */
+function takePage<T>(entries: T[], paging: ResultPaging): T[] {
+  if (paging.pageCount === 1 && paging.page === 1 && entries.length <= paging.size) {
+    return entries;
+  }
+  const start = (paging.page - 1) * paging.size;
+  return entries.slice(start, start + paging.size);
+}
+
+/**
+ * Whether a search finds any note or task, counted the same two ways the
+ * page itself counts: a search of plain words matches each note's title,
+ * file name, body, and tags, and any other search is answered by the query
+ * evaluator.
+ */
+function findsSomething(
+  index: WorkspaceIndex,
+  text: string,
+  cardFor: (section: Section) => TagOverviewCard,
+): boolean {
+  const parsed = parseQuery(text);
+  if (!parsed.node) {
+    return false;
+  }
+  const results = evaluateQuery(index, parsed.node);
+  if (results.tasks.length > 0) {
+    return true;
+  }
+  const plainTerms = getPlainTextTerms(parsed.node);
+  if (!plainTerms) {
+    return results.sections.length > 0 || results.files.length > 0;
+  }
+  return (
+    [...index.sections.values()].some((section) =>
+      matchesNoteWords(cardFor(section), plainTerms),
+    ) ||
+    listFrontmatterOnlyFiles(index).some((file) =>
+      matchesNoteWords(createFileOverviewCard(file), plainTerms),
+    )
+  );
+}
+
+/**
+ * Writes a search again with its misspellings corrected, or nothing when
+ * there is nothing to correct.
+ */
+function suggestSearch(
+  text: string,
+  parsed: ParsedQuery,
+  suggestWords: SearchPageOptions['suggestWords'],
+): string | undefined {
+  if (!suggestWords || !parsed.node) {
+    return undefined;
+  }
+  const words = getTextWords(parsed.node);
+  if (words.length === 0) {
+    return undefined;
+  }
+  const corrections = suggestWords(words);
+  if (corrections.size === 0) {
+    return undefined;
+  }
+  return correctQueryText(text, parsed.node, (word) => corrections.get(word));
+}
+
 export function getInlineSource(section: Section): string {
   return section.isInline && section.rawContent
     ? section.rawContent
@@ -1357,9 +1502,19 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
+  { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
+  { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
 ];
 
-const HAS_SUGGESTIONS = ['due', 'scheduled', 'start', 'done', 'priority'];
+const HAS_SUGGESTIONS = [
+  'due',
+  'scheduled',
+  'start',
+  'done',
+  'priority',
+  'id',
+  'dependsOn',
+];
 
 /**
  * Every folder that holds a note, parents before their children.
@@ -1383,9 +1538,9 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:task, or is:note';
+      return 'is:open, is:done, is:overdue, is:due, is:task, is:note, is:blocked, or is:blocking';
     case 'has':
-      return 'has:due or no:due, and the same for scheduled, start, done, and priority';
+      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':
       return 'A folder and everything in it, as in in:notes/projects';
     case 'task':

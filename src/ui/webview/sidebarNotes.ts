@@ -21,6 +21,7 @@ import {
   createSidebarSnapshot,
   RelatedNotesRankingOptions,
 } from '../state/relatedNotesRanking';
+import { createWikiLink, insertWikiLink } from '../commands/insertLink';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
@@ -603,6 +604,20 @@ export class SidebarNotesView
       );
       if (replacement) {
         await this.onOpenTag(replacement.key);
+      }
+      return;
+    }
+
+    if (message.type === 'insertLink') {
+      const note = this.createSnapshot().notes.find(
+        (candidate) =>
+          candidate.filePath === message.filePath &&
+          candidate.sourceLine === message.line,
+      );
+      if (note) {
+        await insertWikiLink(
+          createWikiLink(index, note.filePath, note.sectionId),
+        );
       }
       return;
     }

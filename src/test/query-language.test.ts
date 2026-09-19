@@ -518,6 +518,7 @@ function createPreferences(): PersistedPreferences {
     renderMode: 'markdown',
     tagOverviewSortMode: 'alphabetical',
     tagOverviewLayout: 'tabs',
+  searchPageSize: 30,
     relatedNotesSortMode: 'newest',
     sectionAccessCounts: {},
     savedFilters: [],

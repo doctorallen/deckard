@@ -79,6 +79,11 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note-title { min-width: 0; overflow-wrap: anywhere; }
 .note-title .inline-tag { color: var(--text); }
 .relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
+.note-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.insert-link { flex: 0 0 auto; min-height: 0; border: 0; background: transparent; padding: 0; color: var(--muted); cursor: pointer; opacity: 0; }
+.insert-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
+.insert-link:hover { color: var(--accent); }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
 .relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
 .relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
@@ -352,11 +357,15 @@ ${getComponentScript()}
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
+        // Writing a link to a result is the reason to have found it, and
+        // the sidebar sits beside the note being written in. The button
+        // stays out of the way until the card is under the pointer.
+        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" title="Write a [[link]] to this entry at the cursor"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2-2a2.47 2.47 0 0 0-3.5-3.5l-.8.8"/><path d="M9.5 6.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.47 2.47 0 0 0 3.5 3.5l.8-.8"/></svg></button>';
         return renderNoteCard(
           '',
           'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
           titleHtml,
-          relevance,
+          '<div class="note-actions">' + insertLink + relevance + '</div>',
           '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
           (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
@@ -450,6 +459,11 @@ ${getComponentScript()}
           wrap.classList.add('is-open');
           target.setAttribute('aria-expanded', 'true');
         }
+        return;
+      }
+      if (target.dataset.action === 'insert-link') {
+        const card = target.closest('.note');
+        if (card) vscode.postMessage({ type: 'insertLink', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
         return;
       }
       if (target.dataset.action === 'open-tag') {

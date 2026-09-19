@@ -101,6 +101,89 @@ export function countTagMatches(
   return counts;
 }
 
+/** How many notes and tasks a search for two tags together finds. */
+export interface TagPairMatchCount extends TagMatchCount {
+  tags: [string, string];
+}
+
+const tagPairMatchCounts = new WeakMap<
+  WorkspaceIndex,
+  TagPairMatchCount[]
+>();
+
+/**
+ * Two tags, in the order a pair is always keyed in, so the same two tags are
+ * one pair however they were written.
+ */
+function pairKey(left: string, right: string): string {
+  return left < right ? `${left}\u0000${right}` : `${right}\u0000${left}`;
+}
+
+/**
+ * How many notes and tasks `tag = A AND tag = B` finds, for every pair of
+ * tags that any entry carries together.
+ *
+ * Counted over the same units the evaluator tests, with the tags they inherit
+ * from their headings and their note's front matter, so the number beside a
+ * pair is the number the search for that pair opens. Two tags written on one
+ * line are the strongest case of this and no longer the only one: tags that
+ * meet because a heading scopes them both count too, which is how most notes
+ * put tags together.
+ *
+ * A unit carrying n tags contributes n(n-1)/2 pairs, so a unit with an
+ * unreasonable number of tags is left out rather than allowed to dominate
+ * the pass.
+ */
+export function countTagPairMatches(
+  index: WorkspaceIndex,
+): readonly TagPairMatchCount[] {
+  const cached = tagPairMatchCounts.get(index);
+  if (cached) {
+    return cached;
+  }
+  const counts = new Map<string, TagPairMatchCount>();
+  const add = (tagKeys: Set<string>, kind: keyof TagMatchCount): void => {
+    if (tagKeys.size < 2 || tagKeys.size > MAX_TAGS_PER_UNIT) {
+      return;
+    }
+    const keys = [...tagKeys];
+    for (let left = 0; left < keys.length; left += 1) {
+      for (let right = left + 1; right < keys.length; right += 1) {
+        const key = pairKey(keys[left], keys[right]);
+        const count = counts.get(key) ?? {
+          tags: key.split('\u0000') as [string, string],
+          notes: 0,
+          tasks: 0,
+        };
+        count[kind] += 1;
+        counts.set(key, count);
+      }
+    }
+  };
+  const membership = buildTagMembership(index);
+  index.sections.forEach((section) =>
+    add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
+  );
+  index.tasks.forEach((task) =>
+    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
+  );
+  index.files.forEach((file) => {
+    if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
+      add(createFileUnit(membership, file).tagKeys, 'notes');
+    }
+  });
+  const pairs = [...counts.values()];
+  tagPairMatchCounts.set(index, pairs);
+  return pairs;
+}
+
+/**
+ * The most tags an entry may carry before its pairs are skipped. A note that
+ * tags one line with dozens of things says little about any two of them, and
+ * the pairs grow with the square of the count.
+ */
+const MAX_TAGS_PER_UNIT = 40;
+
 /**
  * One thing a condition can be tested against.
  */
@@ -117,6 +200,50 @@ interface QueryUnit {
   startAt?: number;
   doneAt?: number;
   priority?: TaskPriority;
+  /** 🆔 this task's own name, which other tasks depend on. */
+  dependencyId?: string;
+  /** ⛔ the names of the tasks this one waits for. */
+  dependsOn?: string[];
+  /** Open, and waiting for a task that is still open. */
+  blocked?: boolean;
+  /** Open, and an open task is waiting for it. */
+  blocking?: boolean;
+}
+
+/**
+ * The live dependency edges of a workspace, built once per index.
+ *
+ * Only an edge between two open tasks counts: a task a completed task waited
+ * for is holding nothing up, and a task whose blockers are all done is ready
+ * to start. Computing this once keeps `is:blocked` and `is:blocking` from
+ * scanning every other task for each task they test.
+ */
+interface DependencyState {
+  /** 🆔 names of the open tasks, so a ⛔ can be told from a stale name. */
+  openIds: Set<string>;
+  /** 🆔 names that an open task waits for. */
+  neededIds: Set<string>;
+}
+
+const dependencyStates = new WeakMap<WorkspaceIndex, DependencyState>();
+
+function getDependencyState(index: WorkspaceIndex): DependencyState {
+  const cached = dependencyStates.get(index);
+  if (cached) {
+    return cached;
+  }
+  const state: DependencyState = { openIds: new Set(), neededIds: new Set() };
+  index.tasks.forEach((task) => {
+    if (task.completed) {
+      return;
+    }
+    if (task.dependencyId) {
+      state.openIds.add(task.dependencyId);
+    }
+    task.dependsOn?.forEach((id) => state.neededIds.add(id));
+  });
+  dependencyStates.set(index, state);
+  return state;
 }
 
 function buildTagMembership(index: WorkspaceIndex): TagMembership {
@@ -198,6 +325,7 @@ function createTaskUnit(
   task: Task,
 ): QueryUnit {
   const tagKeys = new Set(membership.tasks.get(task.id) ?? []);
+  const dependencies = getDependencyState(index);
   task.tags.forEach((tagKey) => tagKeys.add(tagKey));
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
@@ -219,6 +347,15 @@ function createTaskUnit(
     startAt: task.startAt,
     doneAt: task.doneAt,
     priority: task.priority,
+    dependencyId: task.dependencyId,
+    dependsOn: task.dependsOn,
+    blocked:
+      !task.completed &&
+      (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
+    blocking:
+      !task.completed &&
+      task.dependencyId !== undefined &&
+      dependencies.neededIds.has(task.dependencyId),
   };
 }
 
@@ -345,6 +482,9 @@ function matchesTaskState(value: string, unit: QueryUnit): boolean {
 /**
  * Answers `is:`. `note` is anything that is not a task; the rest are tasks.
  * `due` means open and due within the next seven days, overdue included.
+ * `blocked` and `blocking` read the ⛔ and 🆔 dependency edges between open
+ * tasks; `has:dependsOn` and `has:id` read the markers themselves, whether or
+ * not the task at the other end is still open.
  */
 function matchesIs(
   value: string,
@@ -373,6 +513,10 @@ function matchesIs(
         unit.dueAt !== undefined &&
         unit.dueAt < startOfDay(now) + 7 * DAY
       );
+    case 'blocked':
+      return unit.blocked === true;
+    case 'blocking':
+      return unit.blocking === true;
     default:
       return false;
   }
@@ -387,11 +531,21 @@ function matchesHas(condition: QueryConditionNode, unit: QueryUnit): boolean {
   if (unit.kind !== 'task') {
     return false;
   }
-  const present =
-    condition.value === 'priority'
-      ? unit.priority !== undefined
-      : getTaskDate(unit, condition.value) !== undefined;
+  const present = isTaskFieldPresent(unit, condition.value);
   return condition.operator === 'neq' ? !present : present;
+}
+
+function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
+  switch (field) {
+    case 'priority':
+      return unit.priority !== undefined;
+    case 'id':
+      return unit.dependencyId !== undefined;
+    case 'dependsOn':
+      return (unit.dependsOn?.length ?? 0) > 0;
+    default:
+      return getTaskDate(unit, field) !== undefined;
+  }
 }
 
 function getTaskDate(unit: QueryUnit, field: string): number | undefined {

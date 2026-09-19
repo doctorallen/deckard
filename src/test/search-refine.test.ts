@@ -6,7 +6,9 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { evaluateQuery } from '../core/query/queryEvaluator';
 import {
   canAppendTerm,
+  correctQueryText,
   extractTagTerms,
+  getTextWords,
   getTopLevelTerms,
   refineQueryText,
 } from '../core/query/queryEdit';
@@ -208,6 +210,220 @@ suite('Refining a search', () => {
     // A search that is more than tags is refined by the tags its results carry.
     const worded = createSearchPageSnapshot(index, store.value, '#person/sable clinic');
     assert.strictEqual(worded.query.facets.some((facet) => facet.id === 'related'), false);
+    store.dispose();
+  });
+
+  test('offers a closer spelling for a search that found nothing', () => {
+    const files = [
+      parseMarkdown('notes/vault.md', '# Plan #project/atlas\nThe elevator is stuck.'),
+      parseMarkdown('notes/other.md', '# Other\nNothing here.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+    // Stands in for the full-text cache, which holds the words of the notes.
+    const suggestWords = (words: readonly string[]): ReadonlyMap<string, string> =>
+      new Map(
+        words
+          .filter((word) => word === 'elevatr')
+          .map((word) => [word, 'elevator']),
+      );
+
+    const missed = createSearchPageSnapshot(index, store.value, 'elevatr', {
+      suggestWords,
+    });
+    assert.strictEqual(missed.sections.length, 0);
+    assert.strictEqual(missed.suggestion, 'elevator');
+
+    // The correction keeps the rest of the search exactly as it was written.
+    const narrowed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#project/atlas text ~ elevatr',
+      { suggestWords },
+    );
+    assert.strictEqual(narrowed.suggestion, '#project/atlas text ~ elevator');
+
+    store.dispose();
+  });
+
+  test('keeps a correction to itself when it would find nothing either', () => {
+    const files = [
+      parseMarkdown('notes/vault.md', '# Plan #project/atlas\nThe elevator is stuck.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+    const suggestWords = (words: readonly string[]): ReadonlyMap<string, string> =>
+      new Map(
+        words
+          .filter((word) => word === 'elevatr')
+          .map((word) => [word, 'elevator']),
+      );
+
+    // The word is in the notes, but in no note that also carries the tag.
+    const snapshot = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#risk/vendor text ~ elevatr',
+      { suggestWords },
+    );
+    assert.strictEqual(snapshot.sections.length, 0);
+    assert.strictEqual(snapshot.suggestion, undefined);
+
+    // A search that found something is never argued with.
+    const found = createSearchPageSnapshot(index, store.value, 'elevator', {
+      suggestWords,
+    });
+    assert.ok(found.sections.length > 0);
+    assert.strictEqual(found.suggestion, undefined);
+
+    store.dispose();
+  });
+
+  test('corrects only the words a search reads as prose', () => {
+    const words = (text: string) => getTextWords(parseQuery(text).node);
+    assert.deepStrictEqual(words('elevatr #elevatr in:elevatr'), ['elevatr']);
+    assert.deepStrictEqual(words('-text ~ elevatr'), []);
+    assert.deepStrictEqual(words('"vendor risk" OR text = plan'), [
+      'vendor',
+      'risk',
+      'plan',
+    ]);
+
+    // A tag spelled like the misspelled word is left exactly as it was.
+    const corrected = (text: string) =>
+      correctQueryText(text, parseQuery(text).node, (word) =>
+        word === 'elevatr' ? 'elevator' : undefined,
+      );
+    assert.strictEqual(
+      corrected('#elevatr elevatr'),
+      '#elevatr elevator',
+    );
+    assert.strictEqual(corrected('#elevatr'), undefined);
+  });
+
+  test('carries one page of a broad search and counts the whole of it', () => {
+    const files = Array.from({ length: 25 }, (_, index) =>
+      parseMarkdown(
+        `notes/note-${index}.md`,
+        `# Note ${index} #project/atlas\nProse.\n- [ ] Task ${index} #project/atlas`,
+      ),
+    );
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    // A caller that asks not to be paged carries everything, as Home's
+    // widgets need, and says so: one page holding the lot.
+    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      paged: false,
+    });
+    assert.strictEqual(whole.sections.length, 25);
+    assert.strictEqual(whole.tasks.length, 25);
+    assert.deepStrictEqual(whole.notePaging, {
+      page: 1,
+      size: 25,
+      pageCount: 1,
+      total: 25,
+    });
+
+    const paged = { ...store.value, searchPageSize: 10 as const };
+    const first = createSearchPageSnapshot(index, paged, '#project/atlas');
+    assert.deepStrictEqual(first.notePaging, {
+      page: 1,
+      size: 10,
+      pageCount: 3,
+      total: 25,
+    });
+    assert.deepStrictEqual(first.sections, whole.sections.slice(0, 10));
+    // What the page says it found is what the search found, not what it was
+    // sent, so turning a page never changes the answer.
+    assert.strictEqual(first.query.matchCounts.notes, 25);
+    assert.strictEqual(first.query.matchCounts.tasks, 25);
+    assert.deepStrictEqual(first.taskCounts, whole.taskCounts);
+
+    const second = createSearchPageSnapshot(index, paged, '#project/atlas', {
+      notePage: 2,
+      taskPage: 2,
+    });
+    assert.deepStrictEqual(second.sections, whole.sections.slice(10, 20));
+    assert.deepStrictEqual(second.tasks, whole.tasks.slice(10, 20));
+    assert.strictEqual(second.notePaging.page, 2);
+
+    store.dispose();
+  });
+
+  test('a draft searches everything the search found, and agrees with Enter', () => {
+    const files = [
+      parseMarkdown('notes/one.md', '# One #project/atlas\nThe elevator survey.'),
+      parseMarkdown('notes/two.md', '# Two #project/atlas\nThe ledger migration.'),
+      parseMarkdown('notes/three.md', '# Three #risk/vendor\nThe elevator again.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    const drafted = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      previewWords: ['elevator'],
+    });
+    // The draft narrows the search it is typed into, not the whole workspace.
+    assert.deepStrictEqual(
+      drafted.sections.map((card) => card.heading),
+      ['One #project/atlas'],
+    );
+    assert.strictEqual(drafted.query.matchCounts.notes, 1);
+
+    // Pressing Enter writes the words into the search. What it then finds is
+    // what the draft was already showing.
+    const committed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#project/atlas elevator',
+    );
+    assert.deepStrictEqual(
+      committed.sections.map((card) => card.heading),
+      drafted.sections.map((card) => card.heading),
+    );
+
+    // The box still shows the search that was committed, so a draft never
+    // turns into a chip on its own.
+    assert.strictEqual(drafted.query.text, '#project/atlas');
+    assert.strictEqual(
+      drafted.query.terms.map((term) => term.text).join(' '),
+      '#project/atlas',
+    );
+
+    store.dispose();
+  });
+
+  test('puts a page number back inside the pages a search has', () => {
+    const files = Array.from({ length: 15 }, (_, index) =>
+      parseMarkdown(`notes/note-${index}.md`, `# Note ${index} #project/atlas\nProse.`),
+    );
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    // A note saved elsewhere can shorten a search while its last page is
+    // open. The reader should land on the last page there is, not past it.
+    const paged = { ...store.value, searchPageSize: 10 as const };
+    const past = createSearchPageSnapshot(index, paged, '#project/atlas', {
+      notePage: 9,
+    });
+    assert.strictEqual(past.notePaging.page, 2);
+    assert.strictEqual(past.sections.length, 5);
+
+    const before = createSearchPageSnapshot(index, paged, '#project/atlas', {
+      notePage: 0,
+    });
+    assert.strictEqual(before.notePaging.page, 1);
+
+    // A search that found nothing still has a page, so the page has a list
+    // to be empty in.
+    const none = createSearchPageSnapshot(index, paged, '#project/nothing');
+    assert.deepStrictEqual(none.notePaging, {
+      page: 1,
+      size: 10,
+      pageCount: 1,
+      total: 0,
+    });
+
     store.dispose();
   });
 

@@ -14,6 +14,7 @@ import {
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 
 const defaultPreferences = {
+  searchPageSize: 30 as const,
   version: 1 as const,
   favoriteTags: [],
   favoriteEntities: [],

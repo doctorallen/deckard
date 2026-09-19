@@ -112,6 +112,15 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   /**
+   * Answers the closest word the notes contain for each word they do not,
+   * so a surface that searches the index itself can correct a misspelling
+   * the same way the full-text cache does.
+   */
+  public suggestWords(terms: readonly string[]): ReadonlyMap<string, string> {
+    return this.searchStore?.suggestWords(terms) ?? new Map();
+  }
+
+  /**
    * Keeps path formatting owned by the scanner so all callers use one key shape.
    */
   public getFilePath(uri: vscode.Uri): string {
@@ -189,9 +198,23 @@ export class WorkspaceIndexer implements vscode.Disposable {
           () => this.searchStore?.replace(this.files.values()),
           () => `${this.files.size} notes`,
         );
+        // What the store handed to its worker is still being written. The
+        // log says when it lands, because until then a search finds a note
+        // by its title and tags but not yet by the words inside it.
+        this.reportSearchIndexWritten();
         this.emitUpdate();
       },
     );
+  }
+
+  /** Times the part of a rebuild that finished after the host moved on. */
+  private reportSearchIndexWritten(): void {
+    const store = this.searchStore;
+    if (store) {
+      void measureAsync('Write search index off the extension host', () =>
+        store.whenIdle(),
+      );
+    }
   }
 
   /**

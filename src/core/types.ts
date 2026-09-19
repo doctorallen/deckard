@@ -11,6 +11,19 @@ export type TagOverviewSortMode =
 
 export type TagOverviewLayout = 'tabs' | 'split';
 
+/**
+ * The page sizes a search page offers.
+ *
+ * Thirty is a screenful or two, which is what a reader looks through before
+ * narrowing the search instead. The larger sizes are for reading a whole
+ * result through, and cost more to send and draw the larger they are.
+ */
+export const SEARCH_PAGE_SIZES = [10, 30, 50, 100, 200] as const;
+
+export type SearchPageSize = (typeof SEARCH_PAGE_SIZES)[number];
+
+export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
+
 export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
@@ -61,8 +74,15 @@ export interface DashboardWidgetConfig {
   id: string;
   kind: DashboardWidgetKind;
   width: DashboardWidgetWidth;
-  /** How many entries a list widget shows. */
+  /** How many entries a list widget shows, or holds on a page when paged. */
   count?: number;
+  /**
+   * Whether the widget pages through everything it found rather than showing
+   * the first few and leaving the rest to the view it links to.
+   */
+  paged?: boolean;
+  /** Which page it is showing, 1-based and clamped to the pages it has. */
+  page?: number;
   /** The search a tasks widget lists. */
   query?: string;
   /** The saved search a saved-search widget shows. */
@@ -180,6 +200,11 @@ export interface ParsedFile {
   links: string[];
   /** Other names `[[links]]` can use for the note, from `aliases:` front matter. */
   aliases?: string[];
+  /**
+   * The `^block-id` markers the note carries, each with the one-based line it
+   * marks, so a `[[Note#^id]]` link can be opened at the line it names.
+   */
+  blockIds?: Record<string, number>;
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
   /**
@@ -276,6 +301,8 @@ export interface PersistedPreferences {
   renderMode: RenderMode;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
+  /** How many notes, and how many tasks, a search page shows at a time. */
+  searchPageSize: SearchPageSize;
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
@@ -406,6 +433,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   title: string;
   /** How many entries there are, listed or not. */
   total?: number;
+  /** Which page of its entries it carries, for a widget that is paged. */
+  paging?: ResultPaging;
   tasks?: DashboardTask[];
   tags?: DashboardWidgetTag[];
   notes?: DashboardWidgetNote[];
@@ -440,6 +469,26 @@ export interface DashboardWidget extends DashboardWidgetConfig {
  * carries the tag, its entity, and its hub note. Any other search is described
  * by its search box alone.
  */
+/**
+ * One page of a search's results.
+ *
+ * A search page shows a page at a time rather than everything it found: a
+ * search that matches a workspace would otherwise send, and draw, every note
+ * on every save — megabytes of card text for the screenful anyone reads.
+ * `total` is of the whole search, so every count on the page is of the search
+ * and not of the page being shown.
+ */
+export interface ResultPaging {
+  /** 1-based, clamped to the pages the search has. */
+  page: number;
+  /** How many results a page holds. */
+  size: number;
+  /** How many pages the results fill; at least one, even when empty. */
+  pageCount: number;
+  /** How many results the search found. */
+  total: number;
+}
+
 export interface SearchPageSnapshot {
   /** The tag the page is about, when the search is that one tag. */
   tag?: TagInfo;
@@ -451,8 +500,13 @@ export interface SearchPageSnapshot {
   /** The search the page was opened with, which Clear returns to. */
   originQuery: string;
   savedViewName?: string;
+  /** The note cards of the page being shown. */
   sections: TagOverviewCard[];
+  /** Which page of notes these are, and how many there are in all. */
+  notePaging: ResultPaging;
   tasks: DashboardTask[];
+  /** Which page of tasks these are, and how many there are in all. */
+  taskPaging: ResultPaging;
   /** Counts before the active completion filter is applied. */
   taskCounts: {
     all: number;
@@ -463,6 +517,8 @@ export interface SearchPageSnapshot {
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
+  /** The page sizes the reader can choose between. */
+  pageSizes: readonly SearchPageSize[];
   noteColumns: DashboardColumnCount;
   taskColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
@@ -471,6 +527,16 @@ export interface SearchPageSnapshot {
    * options, so the page shows a line in their place.
    */
   refineInSidebar?: boolean;
+  /**
+   * A search that finds nothing, written again with each misspelled word
+   * replaced by the closest word the notes contain.
+   */
+  suggestion?: string;
+  /**
+   * The words being typed into the search box that are narrowing these
+   * results, before they are committed to the search itself.
+   */
+  draftWords?: string[];
 }
 
 export interface TagOverviewHub {
@@ -732,6 +798,16 @@ export interface OpenSourceMessage {
   beside?: boolean;
 }
 
+/**
+ * Write a `[[Note#Heading]]` link to a related note at the cursor of the note
+ * being edited.
+ */
+export interface InsertLinkMessage {
+  type: 'insertLink';
+  filePath: string;
+  line: number;
+}
+
 export interface ToggleTaskMessage {
   type: 'toggleTask';
   taskId: string;
@@ -914,6 +990,29 @@ export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
 }
 
+/**
+ * Narrow a search page by the words being typed, before they are committed
+ * to its search box.
+ */
+export interface PreviewSearchMessage {
+  type: 'previewSearch';
+  words: string[];
+}
+
+/** Choose how many results a search page shows at a time. */
+export interface SetResultsPerPageMessage {
+  type: 'setResultsPerPage';
+  size: SearchPageSize;
+}
+
+/** Turn one of a search page's lists to another of its pages. */
+export interface SetResultPageMessage {
+  type: 'setResultPage';
+  kind: 'notes' | 'tasks';
+  /** 1-based, and clamped to the pages the search actually has. */
+  page: number;
+}
+
 /** Remembers a search that was run, for Find and the search boxes. */
 export interface RecordRecentQueryMessage {
   type: 'recordRecentQuery';
@@ -1035,6 +1134,9 @@ export type SearchPageMessage =
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
+  | SetResultPageMessage
+  | SetResultsPerPageMessage
+  | PreviewSearchMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =
@@ -1051,6 +1153,7 @@ export type SidebarMessage =
   | OpenHelpMessage
   | SetRelatedNotesSortMessage
   | ClearEntryRelatedNotesMessage
+  | InsertLinkMessage
   | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */

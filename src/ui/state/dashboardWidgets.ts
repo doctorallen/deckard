@@ -1,11 +1,16 @@
 import { stripTags } from '../../core/markdown/parser';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
+import {
+  countTagMatches,
+  countTagPairMatches,
+  evaluateQuery,
+} from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
   DashboardWidget,
   DashboardWidgetConfig,
   DashboardWidgetKind,
   PersistedPreferences,
+  ResultPaging,
   TagTitleDisplayMode,
   WorkspaceIndex,
 } from '../../core/types';
@@ -16,7 +21,6 @@ import {
   createDashboardTask,
   createQueryViewState,
   createSearchPageSnapshot,
-  describeAssociation,
   describeTagMatches,
   getFileName,
   getSavedFilterQuery,
@@ -82,9 +86,13 @@ export function createDashboardWidgets(
   preferences: PersistedPreferences,
   options: DashboardWidgetOptions,
 ): DashboardWidget[] {
-  return preferences.dashboardWidgets.map((config) =>
-    createWidget(index, preferences, options, config),
-  );
+  return preferences.dashboardWidgets.map((config) => {
+    // A paged widget works out its own paging while it takes its entries,
+    // because only it knows how many it found.
+    const paging: { value?: ResultPaging } = {};
+    const widget = createWidget(index, preferences, options, config, paging);
+    return paging.value ? { ...widget, paging: paging.value } : widget;
+  });
 }
 
 function createWidget(
@@ -92,12 +100,30 @@ function createWidget(
   preferences: PersistedPreferences,
   options: DashboardWidgetOptions,
   config: DashboardWidgetConfig,
+  paging: { value?: ResultPaging },
 ): DashboardWidget {
   const widget: DashboardWidget = {
     ...config,
     title: DASHBOARD_WIDGET_TITLES[config.kind],
   };
   const count = config.count ?? 5;
+  /**
+   * The entries a widget shows: its first few, or one page of them.
+   *
+   * A page number is clamped rather than refused, because the entries move
+   * under it — a task completed elsewhere shortens the list while its last
+   * page is open, and the reader should find the last page there.
+   */
+  const take = <T,>(entries: readonly T[]): T[] => {
+    if (!config.paged) {
+      return entries.slice(0, count);
+    }
+    const pageCount = Math.max(Math.ceil(entries.length / count), 1);
+    const page = Math.min(Math.max(Math.trunc(config.page ?? 1), 1), pageCount);
+    paging.value = { page, size: count, pageCount, total: entries.length };
+    const start = (page - 1) * count;
+    return entries.slice(start, start + count);
+  };
   switch (config.kind) {
     case 'search':
       return {
@@ -131,8 +157,7 @@ function createWidget(
       return {
         ...widget,
         total: tasks.length,
-        tasks: tasks
-          .slice(0, count)
+        tasks: take(tasks)
           .map((task) => createDashboardTask(task, index.sections)),
       };
     }
@@ -158,7 +183,7 @@ function createWidget(
       return {
         ...widget,
         total: favorites.length,
-        tags: favorites.slice(0, count).map((tag) => ({
+        tags: take(favorites).map((tag) => ({
           key: tag.key,
           label: tag.label,
           detail: describeTagMatches(index, tag.key),
@@ -184,7 +209,7 @@ function createWidget(
       return {
         ...widget,
         total: ranked.length,
-        tags: ranked.slice(0, count).map(({ tag }) => ({
+        tags: take(ranked).map(({ tag }) => ({
           key: tag.key,
           label: tag.label,
           detail: describeTagMatches(index, tag.key),
@@ -200,7 +225,7 @@ function createWidget(
       return {
         ...widget,
         total: queries.length,
-        queries: queries.slice(0, count),
+        queries: take(queries),
       };
     }
     case 'recentNotes': {
@@ -221,7 +246,7 @@ function createWidget(
             },
           ];
         });
-      return { ...widget, total: notes.length, notes: notes.slice(0, count) };
+      return { ...widget, total: notes.length, notes: take(notes) };
     }
     case 'stats': {
       const frontmatterNotes = [...index.files.values()].filter(
@@ -252,6 +277,10 @@ function createWidget(
         taskFilter: 'active',
         tagTitleDisplayMode: options.tagTitleDisplayMode,
         now: options.now,
+        // A widget takes its own few entries off the top of the whole
+        // result, so it is not the reader's page size that decides what it
+        // has to choose from.
+        paged: false,
       });
       return {
         ...widget,
@@ -282,8 +311,7 @@ function createWidget(
         ...widget,
         today: today.summary,
         total: today.tasks.length,
-        tasks: today.tasks
-          .slice(0, count)
+        tasks: take(today.tasks)
           .map((task) => createDashboardTask(task, index.sections)),
       };
     }
@@ -307,8 +335,7 @@ function createWidget(
       return {
         ...widget,
         total: stale.length,
-        tasks: stale
-          .slice(0, count)
+        tasks: take(stale)
           .map(({ task }) => createDashboardTask(task, index.sections)),
       };
     }
@@ -340,7 +367,7 @@ function createWidget(
         ...widget,
         sourceNote: describeNote(index, filePath),
         total: ranked.length,
-        notes: ranked.slice(0, count).map((note) => ({
+        notes: take(ranked).map((note) => ({
           filePath: note.filePath,
           line: note.sourceLine,
           title: stripTags(note.title).trim() || note.fileName,
@@ -352,7 +379,7 @@ function createWidget(
     }
     case 'tagPairs': {
       const pairs = listTagPairs(index);
-      return { ...widget, total: pairs.length, tagPairs: pairs.slice(0, count) };
+      return { ...widget, total: pairs.length, tagPairs: take(pairs) };
     }
     case 'unhubbedTags': {
       const tags = [...index.tags.values()]
@@ -367,7 +394,7 @@ function createWidget(
       return {
         ...widget,
         total: tags.length,
-        tags: tags.slice(0, count).map((tag) => ({
+        tags: take(tags).map((tag) => ({
           key: tag.key,
           label: tag.label,
           detail: describeTagMatches(index, tag.key),
@@ -392,7 +419,7 @@ function createWidget(
       return {
         ...widget,
         total: tags.length,
-        tags: tags.slice(0, count).map(({ tag, seenAt }) => ({
+        tags: take(tags).map(({ tag, seenAt }) => ({
           key: tag.key,
           label: tag.label,
           detail: `${describeAge(options.now, seenAt)} · ${describeTagMatches(index, tag.key)}`,
@@ -407,8 +434,7 @@ function createWidget(
       return {
         ...widget,
         total: pinned.length,
-        notes: pinned
-          .slice(0, count)
+        notes: take(pinned)
           .map((filePath) => describeNote(index, filePath)),
         ...(source && index.files.has(source)
           ? {
@@ -457,44 +483,44 @@ function describeNote(index: WorkspaceIndex, filePath: string) {
 }
 
 /**
- * Every two tags written together, most often first. Tags written together
- * nearly every time they are written may be one idea under two names.
+ * Every two tags an entry carries together, most often first, counted the way
+ * a search for both counts.
+ *
+ * This used to count only tags written on one line, which is the strongest
+ * case and a rare one: in a workspace where tags are written under headings,
+ * every pair tied at one and the list came out alphabetical. Counting the
+ * entries a search for both finds ranks them, and makes the number beside a
+ * pair the number the row opens.
+ *
+ * Tags written together nearly every time they are written may be one idea
+ * under two names, which is what the overlap says.
  */
 function listTagPairs(index: WorkspaceIndex) {
-  const seen = new Set<string>();
+  const tagCounts = countTagMatches(index);
+  const entriesFor = (tagKey: string): number => {
+    const count = tagCounts.get(tagKey);
+    return count ? count.notes + count.tasks : 0;
+  };
   const pairs: Array<NonNullable<DashboardWidget['tagPairs']>[number]> = [];
-  index.tagAssociations?.forEach((associations, tagKey) => {
-    const tag = index.tags.get(tagKey);
-    for (const association of associations) {
-      const other = index.tags.get(association.associatedTag.key);
-      const count = association.coOccurrenceCount;
-      if (!tag || !other || count <= 0) {
-        continue;
-      }
-      const [first, second] = [tag, other].sort((left, right) =>
-        left.key.localeCompare(right.key),
-      );
-      const pairKey = `${first.key}\u0000${second.key}`;
-      if (first.key === second.key || seen.has(pairKey)) {
-        continue;
-      }
-      seen.add(pairKey);
-      const rarer = Math.min(
-        association.tagSourceUnitCount,
-        association.associatedTagSourceUnitCount,
-      );
-      const overlap = rarer > 0 ? Math.min(1, count / rarer) : 0;
-      pairs.push({
-        tags: [
-          { key: first.key, label: first.label },
-          { key: second.key, label: second.label },
-        ],
-        count,
-        overlap,
-        detail: `${describeAssociation(association)}; together in ${Math.round(overlap * 100)}% of the rarer tag's entries`,
-      });
+  for (const pair of countTagPairMatches(index)) {
+    const first = index.tags.get(pair.tags[0]);
+    const second = index.tags.get(pair.tags[1]);
+    const count = pair.notes + pair.tasks;
+    if (!first || !second || count <= 0) {
+      continue;
     }
-  });
+    const rarer = Math.min(entriesFor(first.key), entriesFor(second.key));
+    const overlap = rarer > 0 ? Math.min(1, count / rarer) : 0;
+    pairs.push({
+      tags: [
+        { key: first.key, label: first.label },
+        { key: second.key, label: second.label },
+      ],
+      count,
+      overlap,
+      detail: `${describeEntryCount(pair)} carry both; that is ${Math.round(overlap * 100)}% of the rarer tag's entries`,
+    });
+  }
   return pairs.sort(
     (left, right) =>
       right.count - left.count ||
@@ -502,6 +528,18 @@ function listTagPairs(index: WorkspaceIndex) {
       left.tags[0].label.localeCompare(right.tags[0].label) ||
       left.tags[1].label.localeCompare(right.tags[1].label),
   );
+}
+
+/** "8 notes", "3 notes and 1 task", for what a pair was counted over. */
+function describeEntryCount(pair: { notes: number; tasks: number }): string {
+  const parts: string[] = [];
+  if (pair.notes > 0) {
+    parts.push(`${pair.notes} note${pair.notes === 1 ? '' : 's'}`);
+  }
+  if (pair.tasks > 0) {
+    parts.push(`${pair.tasks} task${pair.tasks === 1 ? '' : 's'}`);
+  }
+  return parts.join(' and ') || 'Nothing';
 }
 
 /** How long ago a time was, in whole days. */

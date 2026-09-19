@@ -55,7 +55,7 @@ suite('Local search store', () => {
     }
   });
 
-  test('a scan that changes many notes leaves none of their old text', () => {
+  test('a scan that changes many notes leaves none of their old text', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
     const store = new SearchStore(vscode.Uri.file(directory));
     const notes = (word: string, updatedAt: number, count: number) =>
@@ -63,11 +63,42 @@ suite('Local search store', () => {
         parseMarkdown(`note-${index}.md`, `# Note ${index}\n${word}.`, { updatedAt }),
       );
     try {
+      // Both scans are large enough to go to the worker, and the second is
+      // compared before the first has landed, so the store has to answer for
+      // the notes it handed over as well as the ones it wrote.
       store.replace(notes('staffing', 1, 300));
       store.replace(notes('budget', 2, 250));
+      await store.whenIdle();
 
       assert.strictEqual(store.search('budget', 1000).length, 250, 'every edit is indexed');
       assert.strictEqual(store.search('staffing', 1000).length, 0, 'no old text is left');
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('a build large enough to be worth a thread is written on one', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const store = new SearchStore(vscode.Uri.file(directory));
+    const notes = Array.from({ length: 60 }, (_, index) =>
+      parseMarkdown(`note-${index}.md`, `# Note ${index}\nElevator survey.`, {
+        updatedAt: 1,
+      }),
+    );
+    try {
+      store.replace(notes);
+      // The extension host is free the moment it has handed the build over,
+      // which is the whole point: the cache fills in behind it.
+      assert.strictEqual(store.search('elevator', 1000).length, 0);
+
+      await store.whenIdle();
+      assert.strictEqual(store.search('elevator', 1000).length, 60);
+
+      // A rescan that changed nothing writes nothing, so it needs no thread
+      // and nothing is left in flight.
+      store.replace(notes);
+      assert.strictEqual(store.search('elevator', 1000).length, 60);
     } finally {
       store.dispose();
       rmSync(directory, { recursive: true, force: true });

@@ -25,7 +25,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
-| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. |
+| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. `[[Note#Heading]]` and `[[Note#^line-marker]]` open a heading or one line. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
@@ -113,6 +113,19 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled; consecutive tagged prose lines are grouped so wrapped explanations do not become truncated duplicate entries.
 
 A `[[link]]` names a note by its file name without `.md`, or by any name in the note's `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
+
+After `#`, a link can name a heading, as `[[Check-in#Vendor review]]` does, or one line, as `[[Check-in#^lift-slip]]` does. A line is named by the `^marker` written at its end, the way the [Obsidian](https://obsidian.md) block-reference convention writes it:
+
+```markdown
+## Vendor review
+The lift survey slipped because the contractor never confirmed. ^lift-slip
+- [ ] Chase the contract @dana ^chase
+```
+
+- A marker is the last thing on its line, separated from the text, so a caret written in prose is never mistaken for one. Markers inside fenced code are ignored, and when a note repeats one the first line wins.
+- Typing `[[Check-in#^` completes the markers that note carries, each shown with the line it marks, so a link is written by picking the line rather than by remembering its name.
+- Following the link opens the note at that line, and hovering it previews the line under the headings it sits beneath. A link to a marker the note no longer carries still opens the note, and says the line is gone.
+- Deckard reads markers; it never writes them. Your prose stays as marked up as you made it, which is why there is no command to mint one.
 
 By default, use `@` for people and namespaced `#` tags for workspace entities:
 
@@ -248,14 +261,16 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 | **Quick add** | A field that adds an open task to today's daily note, creating the note if needed | — |
 | **Stale tasks** | Open tasks in notes left unchanged for 7, 14, 30, or 90 days, oldest first | The Task board |
 | **Related notes** | Notes related to the note you had open last, ranked as [Related Notes](#related-notes) ranks them | That note |
-| **Tags written together** | The tag pairs written together most often, with how often and how much the rarer tag's entries overlap; a pair searches for both | The Tags tab |
+| **Tags written together** | The tag pairs carried together by the most notes and tasks, counted as a search for both counts, with how much of the rarer tag's entries they share; a pair searches for both | The Tags tab |
 | **Tags without a hub** | Tags used at least three times with no [hub note](#hub-notes), each with **Create hub** | The Tags tab |
 | **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename**, so a typo is caught early | The Tags tab |
 | **Pinned notes** | Notes you pinned, each with **×** to unpin; **Pin** adds the note you had open last | The notes |
 
 Pin the note in the editor with `Deckard: Pin Note to Home`, and unpin it with `Deckard: Unpin Note from Home`. A tag is new from the first time Deckard indexes it; the tags in use when Deckard first kept track are not new.
 
-Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks and New tags look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
+**Paging**, in a widget's gear, turns it from the first few entries into all of them a page at a time: the widget grows a line of its own with **Per page**, the entries it is showing, such as *6–10 of 601*, and a chevron either way. The Agenda and a saved search's results are not paged, because each lists more than one thing and a single page number could not say which. A widget's page is kept with the rest of its settings, so Home opens where you left it.
+
+Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks and New tags look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
 
 ### Tags
 
@@ -365,6 +380,8 @@ Select a result percentage to open its explanation with the matching signals and
 
 Use the sort control to choose **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Select a related note to open its matching line, or select a tag to open its page.
 
+Each result also carries a link button, beside its score, which writes a `[[Note#Heading]]` link to that entry at the cursor of the note you are editing, replacing the selection when there is one. The link names the heading the entry was written under, without its tags, and names the note alone when the heading only repeats the note's title. A tagged line or task is linked through the heading above it, since a link cannot name a line. When two notes share the name the link has to use, Deckard writes it and says which notes it could mean, because renaming one of them is the only way to make it resolve.
+
 ### Refine a search from the sidebar
 
 While a [search page](#search-pages) or the Task board is the active editor, Related Notes shows that search's [Refine](#refine) options instead of related notes, so the page keeps its height for its results. It lists only the ways the results could be narrowed; the page keeps its search, terms, and counts, and terms are removed in its search box. Related tags are listed strongest first, each with a three-step rail, as Related Notes draws a tag's weight, showing its strength beside the strongest; hover one to see how often the tags were written together or shared a heading.
@@ -387,6 +404,7 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 - **Refine** narrows the results. On a page of one tag, or of several tags joined by AND, it offers related **Tags** first, strongest first, with a three-step rail for each one's strength; select one to add it to the search.
 - Notes and Tasks are two tabs, or side by side; the Tasks list opens on **Open** tasks and has an **All**/**Open**/**Done** filter, with checkboxes that update the original Markdown task.
 - Sort notes alphabetically, by creation date, by update date, or by most accessed, on the line under the search box.
+- A broad search is shown a page at a time, with **Previous**, **Next**, and the page numbers under each list, and the range it is showing, such as *271–300 of 3,760*. Notes and tasks are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results to a page; it starts at 30 and is remembered, so every search page opens the way you left the last one. The counts beside Notes and Tasks, the Refine counts, and the filtering you do by typing in the search box are all of the whole search, never of the page. Changing the search, the page size, or the Open/Done filter returns to the first page, and a search that shortens while its last page is open moves you back to the last page it still has.
 - The **View options** gear chooses **Tabs** or **Side by side**, the original Markdown source or a rendered view, and one through four columns for notes and for tasks.
 - **Save** keeps the search as a saved search. A search of two or more tags is saved as that set of tags, and follows them when they are renamed; the saved search's name appears above the title whenever the page's search matches it.
 - Select a note entry to jump to its heading in the source note.
@@ -451,13 +469,14 @@ Search pages, Home's search widget, and the Task board have the same search box.
 ![A search page searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](docs/images/notes-search.png)
 
 - The box is a field of chips, as a multi-select is. Each term of the search, whether a tag, a condition such as `is:open`, or words, which show as the `text ~` condition they run, is a chip with a **×**, joined to the next by **AND**; a search whose top level is an OR is one chip. Tags are drawn in blue, and a tag left out with `-` in red. Type the next term in the field after the chips.
-- Plain words filter what is on the page as you type. <kbd>Enter</kbd> adds what you typed to the search and runs it.
+- Plain words narrow the search as you type, across everything it found rather than the page of it on screen, so a match on the last page is found from the first. The counts, the pages, and Refine all follow. <kbd>Enter</kbd> adds the words to the search itself, which makes them chips, remembers the search, and lets you save it; until then they are a draft, and leaving the box lets them go.
 - Completions appear as you type: field names, the values a field accepts once the caret is in one, tags, whole conditions such as `is:open`, and, in an empty box, your recent searches. Nothing is preselected, so <kbd>Enter</kbd> always runs what you typed; <kbd>Tab</kbd> completes, arrow keys move through the list, and <kbd>Escape</kbd> abandons the edit.
 - Choosing a tag, a condition, or a field's value from the completions makes it a chip at once. Pressing a chip removes its term and keeps the rest as you wrote it, and <kbd>Backspace</kbd> in an empty field removes the last chip.
 - Text you typed and did not add is let go when the box loses focus, unless you move to its own buttons, such as **Search**.
 - **AND**, **OR**, and **NOT** are drawn in their own color. Two tags written side by side are joined with AND, and Refine adds its values with AND.
 - On a tag's page the box holds the tag as a chip, so everything the page filters by is in one place.
 - A parse error is reported under the box; the chips and results keep the last search that ran, and the field keeps what you typed so you can fix it.
+- A search page that finds nothing offers a closer spelling, as Find does: **Nothing matched. Search for … instead?** replaces each misspelled word with the closest word your notes contain and leaves the rest of the search as you wrote it, so a tag or a folder is never corrected into something else. It is offered only when the corrected search finds something.
 - **Save**, beside the box, stores the search under a name. Saved searches appear on Home and the Tags tab, reopen where they were saved, and survive tags being renamed or removed from the index.
 
 **Builder**, under the search box, edits the same search as OR groups of AND rows. **Add condition** starts a row from its value: type a tag, a word, or a value such as `open`, and choose a completion or press <kbd>Enter</kbd>, and the row fills in its field and operator. <kbd>Enter</kbd> then opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) starts a new OR group. A finished row keeps its field, operator, and value dropdowns for editing. The operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so there is no separate negate control to disagree with a row, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The search box remains the source of truth, so a condition the builder cannot represent, such as a negated group, is shown as read-only text rather than rewritten.
@@ -490,10 +509,13 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `is:overdue` | Open tasks past their due date. |
 | `is:due` | Open tasks due within the next seven days, overdue ones included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
-| `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, and `priority` work the same way. |
+| `is:blocked`, `is:blocking` | Open tasks waiting for a task that is still open, and the open tasks they wait for. |
+| `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, `priority`, `id`, and `dependsOn` work the same way. |
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
 
 Put `-` in front of a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as you wrote it when it saves or formats a query.
+
+`is:blocked` and `is:blocking` read the ⛔ and 🆔 markers as the edges between two open tasks: a task is blocked while a task it names in ⛔ is still open, and blocking while an open task names its 🆔. Completing the blocker frees both, so neither lists a task whose other end is done, and a ⛔ naming nothing in the workspace blocks nothing. `has:dependsOn` and `has:id` read the markers themselves whatever state the tasks are in.
 
 The fields:
 
@@ -702,7 +724,7 @@ Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-
 - **Content in a code block appears ignored:** this is intentional. Fenced code is excluded from indexing, tag links, and completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are intentionally not tags. Use an `@` marker or include a non-numeric character.
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.
-- **Deckard feels slow:** run `Deckard: Show Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown.
+- **Deckard feels slow:** run `Deckard: Show Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown. The search cache is written on a thread of its own, so the first build in a new workspace does not hold VS Code up; while it runs, a search finds a note by its title and tags before it finds it by the words inside it, and the log records the build as `Write search index off the extension host`.
 
 Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and it scans only Markdown files within the configured workspace scope.
 

@@ -384,6 +384,11 @@ async function renderLinkPreview(
       `*This note has no heading "${escapeMarkdown(preview.missingHeading)}", so this is its start.*\n\n`,
     );
   }
+  if (preview.missingBlock) {
+    markdown.appendMarkdown(
+      `*This note has no line marked \`^${escapeMarkdown(preview.missingBlock)}\`, so this is its start.*\n\n`,
+    );
+  }
   markdown.appendMarkdown('---\n\n');
   markdown.appendMarkdown(preview.excerpt || '*Nothing written here yet.*');
   if (preview.truncated) {

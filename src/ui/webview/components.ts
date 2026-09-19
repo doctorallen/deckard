@@ -219,6 +219,17 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .settings-icon, .help-icon { fill: currentColor; stroke: none; }
 .filter-count { color: var(--muted); font-size: 10px; }
 
+/* Walking a list a page at a time: a search page's results, a widget's entries. */
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.page-summary { display: flex; align-items: center; gap: 12px; }
+.page-range { color: var(--muted); font-family: var(--font-mono); }
+.page-controls { display: flex; align-items: center; gap: 4px; }
+.pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
+.pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
+.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.page-gap { color: var(--muted); padding: 0 2px; }
+
 /* A chosen segment, in any group of them: the Dashboard's tabs mark their
    own, and this marks every other group the same way, rather than leaving
    them with the inverted treatment a pressed button takes. */
@@ -366,9 +377,12 @@ export function getSurfaceCss(): string {
 }
 .metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: 12px; }
 /* A metric that opens what it counts keeps the tile's look, and gains the
-   hover and focus treatment every other control has. */
-.metric-open { display: grid; gap: 4px; justify-items: start; text-align: left; font: inherit; cursor: pointer; }
-.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: inherit; }
+   hover and focus treatment every other control has. The tile rules paint it,
+   not the control ones, so it carries the text that belongs on a panel: a
+   theme whose controls have a ground of their own writes their text for that
+   ground, and on LCARS that is near-black, which the tile never becomes. */
+.metric-open { display: grid; gap: 4px; justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .metric-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
 .metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
 
@@ -467,7 +481,9 @@ export function getTaskBoardCss(): string {
   text-align-last: center;
   cursor: pointer;
 }
-.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--amber); }
+/* The menu sits on the control ground once it is hovered, so it takes the
+   shared hover text rather than the amber it carries over the card. */
+.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
 .board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
 .board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
 }
@@ -1278,6 +1294,65 @@ export function getComponentScript(): string {
     else next.push(key);
     return next;
   }
+
+  /**
+   * The page numbers to offer, with a gap where numbers are left out.
+   *
+   * The first and last pages are always there, because they are where a
+   * reader goes back to, and the pages either side of the current one,
+   * because they are the next step. A gap is a null.
+   */
+  function pageNumbers(current, pageCount) {
+    if (pageCount <= 7) {
+      return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
+    }
+    const wanted = [1, pageCount, current, current - 1, current + 1];
+    const pages = wanted
+      .filter(function (page) { return page >= 1 && page <= pageCount; })
+      .filter(function (page, index, all) { return all.indexOf(page) === index; })
+      .sort(function (left, right) { return left - right; });
+    const withGaps = [];
+    pages.forEach(function (page, index) {
+      if (index > 0 && page - pages[index - 1] > 1) withGaps.push(null);
+      withGaps.push(page);
+    });
+    return withGaps;
+  }
+
+  /**
+   * Previous, the page numbers, and Next: the control that walks a list.
+   *
+   * Every list that pages uses this one, so a search page and a widget on
+   * Home are walked the same way. \`action\` and \`attributes\` say who is being
+   * paged, and \`noun\` names the entries for a screen reader.
+   */
+  function renderPageSteps(paging, action, attributes, noun) {
+    if (!paging || paging.pageCount <= 1) return '';
+    const own = attributes ? ' ' + attributes : '';
+    const step = function (page, label, enabled) {
+      return '<button class="page-step" data-action="' + action + '" data-page="' + page + '"' + own
+        + (enabled ? '' : ' disabled')
+        + ' aria-label="' + label + ' page of ' + escapeHtml(noun) + '">' + label + '</button>';
+    };
+    const numbers = pageNumbers(paging.page, paging.pageCount).map(function (page) {
+      if (page === null) return '<span class="page-gap" aria-hidden="true">…</span>';
+      const current = page === paging.page;
+      return '<button class="page-number' + (current ? ' is-current' : '') + '" data-action="' + action + '" data-page="' + page + '"' + own
+        + (current ? ' aria-current="page"' : '')
+        + ' aria-label="Page ' + page + ' of ' + escapeHtml(noun) + '">' + page + '</button>';
+    }).join('');
+    return step(paging.page - 1, 'Previous', paging.page > 1)
+      + numbers
+      + step(paging.page + 1, 'Next', paging.page < paging.pageCount);
+  }
+
+  /** "271–300 of 3760", the part of a list a page is showing. */
+  function describePageRange(paging) {
+    if (!paging || !paging.total) return '';
+    const first = (paging.page - 1) * paging.size + 1;
+    const last = Math.min(paging.page * paging.size, paging.total);
+    return first + '\u2013' + last + ' of ' + paging.total;
+  }
 `;
 }
 
@@ -1354,7 +1429,10 @@ export function getQueryEditorCss(): string {
 /* A value and its two other modes read as one control. The modes stay out of
    the way until the value is hovered or something in it has focus. */
 .query-facet-value-group { display: inline-flex; align-items: stretch; }
-.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); color: var(--muted); font-size: 11px; opacity: 0; }
+/* The mode is held back by staying hidden until the value is hovered, not by
+   a muted color, which would be muted against whatever ground a theme gives
+   its controls rather than against the page. */
+.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); font-size: 11px; opacity: 0; }
 .query-facet-value-group:hover .query-facet-mode, .query-facet-mode:focus-visible { opacity: 1; }
 @media (hover: none) { .query-facet-mode { opacity: 1; } }
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
@@ -1457,6 +1535,15 @@ export function getQueryEditorScript(): string {
     /** A builder value input to focus once the next render settles. */
     let pendingBuilderFocus;
     let restoreFocus = false;
+    /**
+     * Set while the page redraws around the box. A redraw takes the field out
+     * of the document, which the browser reports as the reader leaving it,
+     * and what was typed would be let go as if they had clicked away. The
+     * draft's own results arriving is the commonest redraw of all.
+     */
+    let redrawing = false;
+    /** Where the caret sat when the redraw began, to put it back. */
+    let caretAtRedraw;
     /** Set while the caret is being put back, so the list stays closed. */
     let suppressFocusSuggestions = false;
     /** Set when the reader asked for the box itself, such as by pressing /. */
@@ -1644,6 +1731,7 @@ export function getQueryEditorScript(): string {
     }, true);
     document.addEventListener('focusout', function (event) {
       const target = event.target;
+      if (redrawing) return;
       if (!target || !target.dataset || target.dataset.action !== 'query-input' || !entry) return;
       const next = event.relatedTarget;
       if (pointerInWorkspace || (next && next.closest && next.closest('.query-workspace'))) return;
@@ -2287,8 +2375,25 @@ export function getQueryEditorScript(): string {
         }
       },
 
+      /**
+       * Told before the page redraws, so that taking the field out of the
+       * document is not mistaken for the reader leaving it, and the caret can
+       * be put back where they were typing.
+       */
+      beforeRender: function () {
+        const active = document.activeElement;
+        if (active && active.dataset && active.dataset.action === 'query-input') {
+          redrawing = true;
+          caretAtRedraw = active.selectionStart;
+          restoreFocus = true;
+        }
+      },
+
       /** Restore focus and any open completion list after a redraw. */
       afterRender: function () {
+        const caretWanted = caretAtRedraw;
+        redrawing = false;
+        caretAtRedraw = undefined;
         if (restoreFocus) {
           restoreFocus = false;
           const bar = document.querySelector('[data-suggest-key="query"]');
@@ -2299,7 +2404,13 @@ export function getQueryEditorScript(): string {
             openSuggestionsOnRestore = false;
             bar.focus();
             suppressFocusSuggestions = false;
-            const caret = bar.value ? bar.value.length : 0;
+            const typed = bar.value ? bar.value.length : 0;
+            // Back where they were typing, not at the end: a redraw in the
+            // middle of a word would otherwise move the caret under them.
+            const caret =
+              caretWanted === undefined || caretWanted === null
+                ? typed
+                : Math.min(caretWanted, typed);
             if (bar.setSelectionRange) bar.setSelectionRange(caret, caret);
           }
         }

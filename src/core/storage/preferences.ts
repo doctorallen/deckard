@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 
 import {
   PersistedPreferences,
+  DEFAULT_SEARCH_PAGE_SIZE,
+  SearchPageSize,
+  SEARCH_PAGE_SIZES,
   TagOverviewLayout,
   RelatedNotesSortMode,
   RenderMode,
@@ -43,6 +46,7 @@ const defaultPreferences: PersistedPreferences = {
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
+  searchPageSize: DEFAULT_SEARCH_PAGE_SIZE,
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
@@ -55,6 +59,11 @@ const defaultPreferences: PersistedPreferences = {
   // Filled with DEFAULT_DASHBOARD_WIDGETS when preferences are read.
   dashboardWidgets: [],
 };
+/** Whether a stored value is one of the page sizes a search page offers. */
+function isSearchPageSize(value: unknown): value is SearchPageSize {
+  return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value);
+}
+
 /** How many recent searches are kept. */
 export const RECENT_QUERY_LIMIT = 20;
 
@@ -68,19 +77,28 @@ export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
 ];
 
 /** The widgets Home can show, and whether a page may hold more than one. */
+/**
+ * What each kind of widget can do. `listed` widgets show a number of entries
+ * and offer a count; of those, all but two can be paged through — the Agenda
+ * counts each of its groups separately, and a saved search lists notes
+ * beside tasks, so neither is one list for a page number to walk.
+ */
 export const DASHBOARD_WIDGET_KINDS: Readonly<
-  Record<DashboardWidgetKind, { repeatable: boolean; listed: boolean }>
+  Record<
+    DashboardWidgetKind,
+    { repeatable: boolean; listed: boolean; pageable?: false }
+  >
 > = {
   search: { repeatable: false, listed: false },
   tasks: { repeatable: true, listed: true },
-  agenda: { repeatable: false, listed: true },
+  agenda: { repeatable: false, listed: true, pageable: false },
   favoriteTags: { repeatable: false, listed: true },
   topTags: { repeatable: false, listed: true },
   savedSearches: { repeatable: false, listed: false },
   recentSearches: { repeatable: false, listed: true },
   recentNotes: { repeatable: false, listed: true },
   stats: { repeatable: false, listed: false },
-  savedQuery: { repeatable: true, listed: true },
+  savedQuery: { repeatable: true, listed: true, pageable: false },
   todayNote: { repeatable: false, listed: true },
   quickAdd: { repeatable: false, listed: false },
   staleTasks: { repeatable: false, listed: true },
@@ -385,6 +403,16 @@ export class PreferencesStore implements vscode.Disposable {
     tagOverviewSortMode: TagOverviewSortMode,
   ): Promise<void> {
     await this.update({ tagOverviewSortMode });
+  }
+
+  /**
+   * Selects how many results a search page shows at a time, which is kept so
+   * the next page opens the way the last one was left.
+   */
+  public async setSearchPageSize(
+    searchPageSize: SearchPageSize,
+  ): Promise<void> {
+    await this.update({ searchPageSize });
   }
 
   /**
@@ -776,6 +804,7 @@ function normalizePreferences(
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
   const tagOverviewLayout = value?.tagOverviewLayout;
+  const searchPageSize = value?.searchPageSize;
   const relatedNotesSortMode = value?.relatedNotesSortMode;
 
   return {
@@ -821,6 +850,9 @@ function normalizePreferences(
         ? tagOverviewSortMode
         : 'alphabetical',
     tagOverviewLayout: tagOverviewLayout === 'split' ? 'split' : 'tabs',
+    searchPageSize: isSearchPageSize(searchPageSize)
+      ? searchPageSize
+      : DEFAULT_SEARCH_PAGE_SIZE,
     relatedNotesSortMode:
       relatedNotesSortMode === 'newest' ||
       relatedNotesSortMode === 'oldest' ||
@@ -901,6 +933,19 @@ export function normalizeDashboardWidgets(
           ? Math.min(DASHBOARD_WIDGET_COUNT_LIMIT, Math.max(1, count))
           : 5;
     }
+    // Only a widget that lists one kind of entry can be paged: the Agenda
+    // counts its groups separately, and a saved search lists notes beside
+    // tasks, so one page number would not say which list it meant.
+    if (traits.listed && traits.pageable !== false) {
+      if (candidate.paged === true) {
+        widget.paged = true;
+        const page = candidate.page;
+        widget.page =
+          typeof page === 'number' && Number.isInteger(page) && page > 0
+            ? Math.min(DASHBOARD_WIDGET_PAGE_LIMIT, page)
+            : 1;
+      }
+    }
     if (widgetKind === 'tasks') {
       widget.query =
         typeof candidate.query === 'string' &&
@@ -931,6 +976,13 @@ export function normalizeDashboardWidgets(
   }
   return widgets;
 }
+
+/**
+ * The furthest page a widget may be left on. A page number is clamped to the
+ * pages it actually has when it is drawn; this only keeps a stored number
+ * from being unreasonable.
+ */
+const DASHBOARD_WIDGET_PAGE_LIMIT = 10000;
 
 function cloneWidgets(
   widgets: readonly DashboardWidgetConfig[],
