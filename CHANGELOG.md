@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **The search cache is written on a thread of its own.** The first build in a
+  new workspace wrote every note on the extension host, the thread shared with
+  every other extension and with every completion, hover, and CodeLens
+  Deckard answers: 159 ms at 940 notes and 1.5 s at 5,000. It now leaves the
+  host 14 ms and 45 ms, both under the threshold the log calls Slow. While
+  the build runs, a search finds a note by its title and tags before it finds
+  it by the words inside it. A rescan that changed nothing still writes
+  nothing, and a workspace with no storage of its own, or a machine where the
+  thread cannot be started, writes on the host as before.
+
 - **A search page carries a batch of a broad search rather than all of it.**
   A search that matched the workspace used to send, and draw, every note and
   task on every save: about 4.3 MB of card text at 940 notes, growing with
