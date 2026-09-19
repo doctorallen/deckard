@@ -1461,27 +1461,9 @@ suite('Webview contracts', () => {
     // The box holds the page's whole search, its own tag included.
     assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), false);
     assert.strictEqual(html.includes("type: 'setOverviewQuery'"), true);
-    // A closer spelling runs as an ordinary search, and only when the page
-    // was given one for a search that parsed.
-    assert.strictEqual(
-      html.includes("if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });"),
-      true,
-    );
-    assert.strictEqual(html.includes("!invalid && state.suggestion"), true);
-    assert.strictEqual(html.includes('class="did-you-mean"'), true);
-    // The counts are of the whole result; the page carries a batch of it.
-    assert.strictEqual(
-      html.includes("if (action === 'show-more-entries') { vscode.postMessage({ type: 'showMoreEntries', kind: target.dataset.kind }); return; }"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("const showMoreNotes = showMore('notes', notesCount, state.sections.length);"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("count.textContent = filtering ? visibleCount + ' / ' + total : String(total);"),
-      true,
-    );
+    // The closer spelling a search page offers, and the batch it carries of
+    // a broad one, are held to what the page does: see the Search page
+    // behavior suite.
     assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
     assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
     assert.strictEqual(html.includes('function filterEntries(kind)'), true);
@@ -1645,13 +1627,9 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('Association weight'), true);
     assert.strictEqual(html.includes('Specificity adjustment'), true);
-    // Writing a link to a result sits beside its score, out of the way
-    // until the card is under the pointer or holds the focus.
-    assert.strictEqual(html.includes('data-action="insert-link"'), true);
-    assert.strictEqual(
-      html.includes("vscode.postMessage({ type: 'insertLink', filePath: card.dataset.filePath, line: Number(card.dataset.line) });"),
-      true,
-    );
+    // Writing a link to a result is held to what the sidebar does; see the
+    // Related Notes behavior suite. The rule that keeps the button out of the
+    // way is style, which only a rendered page can be asked about.
     assert.strictEqual(
       html.includes('.note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }'),
       true,
