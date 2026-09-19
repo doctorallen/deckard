@@ -116,3 +116,57 @@
 .deckard-query-message.is-error {
   color: var(--vscode-errorForeground, #e51400);
 }
+
+/*
+ * ![[Note#Heading]] embeds, drawn as the note, section, or line they name.
+ * They sit beside query blocks and follow the same editor-theme variables.
+ */
+
+.deckard-embed {
+  margin: 1em 0;
+  padding: 0.5em 0.9em 0.6em;
+  border: 1px solid var(--vscode-textBlockQuote-border, rgba(127, 127, 127, 0.35));
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.05));
+}
+
+.deckard-embed-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: 0.9em;
+}
+
+.deckard-embed-label {
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-embed-title {
+  overflow-wrap: anywhere;
+}
+
+/* The embedded note's own first and last blocks sit flush with the frame. */
+.deckard-embed-body > :first-child {
+  margin-top: 0.3em;
+}
+
+.deckard-embed-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* An embed inside an embed steps in, so the nesting is visible. */
+.deckard-embed .deckard-embed {
+  margin-left: 0.4em;
+}
+
+.deckard-embed-message {
+  margin: 0.4em 0 0;
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground, inherit);
+}

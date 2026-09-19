@@ -84,6 +84,19 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **`![[Note#Heading]]` embeds draw the note, section, or line they name.**
+  A link to a heading or a marked line already resolved, completed, previewed
+  on hover and counted as a backlink; an embed is the same reference read in
+  place, in VS Code's Markdown preview. `![[Note]]` draws a whole note
+  without its front matter, `![[Note#Heading]]` the heading and everything
+  nested under it, `![[Note#^id]]` the one marked line without its marker,
+  and `![[#Heading]]` a heading of the note being read — that last one from
+  the editor's own text, so it keeps up as you type. Each embed is headed by
+  what it read and links to its source line. It needs no minted block ids,
+  which is the part Deckard deliberately leaves out. An embed inside a
+  sentence stays the text you typed, attachments such as `![[diagram.png]]`
+  are left alone, and an embed inside an embed stops at three deep.
+
 - **Stats says which tags look like one idea spelled twice.** Merging has
   existed for a while and Home already names the tags that are new and the
   ones without a hub, but nothing pointed out that `#projct/atlas` and

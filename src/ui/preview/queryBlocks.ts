@@ -10,6 +10,7 @@ import {
   getQueryBlockSnapshot,
   QueryBlockSource,
 } from '../state/queryBlockState';
+import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
 
 interface IndexSource {
@@ -54,12 +55,13 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
    * Called by VS Code's Markdown extension for every preview engine it builds.
    */
   public extendMarkdownIt(md: MarkdownIt): MarkdownIt {
-    return addQueryBlockRenderer(md, {
+    const source = {
       getIndex: () => this.index,
       onDidRender: () => {
         this.previewReadsIndex = true;
       },
-    });
+    };
+    return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);
   }
 
   public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {

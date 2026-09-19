@@ -176,6 +176,9 @@ built.
 
 ### 11. Embeds: `![[Note#Heading]]`
 
+**Shipped**; see the README's Embeds section. The preview draws a whole note,
+a heading with everything under it, or one marked line.
+
 Heading and `^marker` references already resolve, complete, preview, and
 count as backlinks, and `extendMarkdownIt` already replaces a `deckard`
 fence with live results. Rendering an embed in the Markdown preview is that

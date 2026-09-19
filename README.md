@@ -28,6 +28,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Renaming notes and headings](#renaming-notes-and-headings) | Renaming a note carries every `[[link]]` that named it along, in the same step, and one command does the same for a heading. |
 | [Previewing and undoing](#previewing-and-undoing-a-write) | A write that reaches several notes is shown in VS Code's refactor preview first, and one command takes the last one back. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. `[[Note#Heading]]` and `[[Note#^line-marker]]` open a heading or one line. |
+| [Embeds](#embeds) | `![[Note#Heading]]` on a line of its own reads that note, section, or marked line in place, in the Markdown preview. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
@@ -146,6 +147,24 @@ The lift survey slipped because the contractor never confirmed. ^lift-slip
 - Typing `[[Check-in#^` completes the markers that note carries, each shown with the line it marks, so a link is written by picking the line rather than by remembering its name.
 - Following the link opens the note at that line, and hovering it previews the line under the headings it sits beneath. A link to a marker the note no longer carries still opens the note, and says the line is gone.
 - Deckard reads markers; it never writes them. Your prose stays as marked up as you made it, which is why there is no command to mint one.
+
+### Embeds
+
+Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that note where the line is. The same reference a link uses, read in place:
+
+| Written | Draws |
+| --- | --- |
+| `![[Check-in]]` | the whole note, without its front matter |
+| `![[Check-in#Vendor review]]` | that heading, and everything nested under it |
+| `![[Check-in#^lift-slip]]` | the one line that marker names, without the marker |
+| `![[#Vendor review]]` | a heading of the note the embed is written in |
+
+- Each embed is headed by what it read, which links to its source line; selecting it opens the note there.
+- An embed names its note the way a link does: the file name without `.md`, or an alias. A name two notes share reads neither, and a name no note has says so rather than drawing nothing.
+- `![[…]]` inside a sentence stays the text you typed, since an embed is a block. `![[diagram.png]]` and other attachments are left alone too: Deckard indexes Markdown, and your image syntax is yours.
+- An embed inside an embed is drawn up to three deep, so a pair of notes embedding each other stops rather than spinning.
+- An embed of the note being previewed reads the editor's own text, so it keeps up as you type. An embed of another note reads the index, which is up to date as of that note's last save.
+- The Markdown stays portable: outside Deckard the line reads as the `![[…]]` other tools already understand, and, like any link, an embed written inside fenced code is left as code.
 
 By default, use `@` for people and namespaced `#` tags for workspace entities:
 
