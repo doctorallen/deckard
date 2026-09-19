@@ -137,6 +137,10 @@ already shipped or already named elsewhere in this document.
 
 ### 8. Update links when a note is renamed or moved
 
+**Shipped**; see the README's Renaming notes and headings section. Renaming a
+note rewrites the links that named it, in the same step as the rename, and
+`Deckard: Rename Heading` does the same for one heading.
+
 Nothing listens to `vscode.workspace.onWillRenameFiles`, so moving or
 renaming a note quietly breaks every `[[Note]]`, `[[Note#Heading]]`, and
 `[[Note#^marker]]` that points at it. Link health (#4) reports that breakage

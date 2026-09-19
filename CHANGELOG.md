@@ -72,6 +72,22 @@
 
 ### Added
 
+- **Renaming a note carries its links with it.** A `[[link]]` names a note by
+  its title, so renaming one in the Explorer broke every link to it and left
+  the diagnostics to report the wreckage afterwards. The links are rewritten
+  as part of the rename, so one Undo takes back both, and Deckard says how
+  many it changed in how many notes. Only links that resolved to the renamed
+  note are touched: one written through an alias the note keeps still opens
+  it, and one naming a different note that shares the title is not Deckard's
+  to change. A heading, a `^marker`, and display text after `|` are kept as
+  they were written, and a note that only moves folders changes no link at
+  all, because a link names a title and not a path.
+  `deckard.updateLinksOnRename` turns it off.
+
+- **`Deckard: Rename Heading`** renames the heading the cursor is in and
+  carries the links into it along, both `[[Note#Heading]]` elsewhere and
+  `[[#Heading]]` in the same note. Tags written on the heading stay on it.
+
 - **`deckard.noteBoundaries` decides what counts as a note inside a file.** A
   tagged line has always been a note of its own, so a search for a tag written
   in prose returned the sentence rather than the heading the sentence was

@@ -24,6 +24,10 @@ import { CalendarView } from './ui/webview/calendar';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
+import {
+  LinkMaintenance,
+  renameHeadingCommand,
+} from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
@@ -120,6 +124,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
+  const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer);
   const taskBoard = new TaskBoardPanel(
     indexer,
@@ -206,6 +211,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskBoard,
     editorReferences,
     linkHealth,
+    linkMaintenance,
     calendar,
     quickFind,
   };
@@ -232,6 +238,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskBoard,
     editorReferences,
     linkHealth,
+    linkMaintenance,
     calendar,
     assistantTools,
     mcpServer,
@@ -464,6 +471,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           preferences,
         ),
     ),
+    vscode.commands.registerCommand('deckard.renameHeading', () =>
+      renameHeadingCommand(indexer),
+    ),
     vscode.commands.registerCommand(
       'deckard.mergeTag',
       (requestedTagKey?: unknown) =>
@@ -560,6 +570,7 @@ export function deactivate(): void {
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
   activeServices?.linkHealth.dispose();
+  activeServices?.linkMaintenance.dispose();
   activeServices?.calendar.dispose();
   activeServices?.quickFind.dispose();
   activeServices = undefined;
@@ -590,6 +601,7 @@ interface ExtensionServices {
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
   linkHealth: LinkHealth;
+  linkMaintenance: LinkMaintenance;
   calendar: CalendarView;
   quickFind: QuickFind;
 }

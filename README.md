@@ -25,6 +25,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
+| [Renaming notes and headings](#renaming-notes-and-headings) | Renaming a note carries every `[[link]]` that named it along, in the same step, and one command does the same for a heading. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. `[[Note#Heading]]` and `[[Note#^line-marker]]` open a heading or one line. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
@@ -105,6 +106,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 | **Deckard: Merge Tag…** | Merges one indexed tag into another that already exists, after showing what the merge will change. |
+| **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
 | **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
 | **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
 
@@ -250,6 +252,18 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - **Hovering a tag** shows how many notes and tasks use it, its [hub note](#hub-notes) when it has one, and its five most recently updated entries, each a link to its line, with **Open overview**. Set `deckard.editor.hoverPreviews` to `false` to turn previews off. The tag's **Rename** action stays in the same hover.
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](docs/images/editor-assistance.png)
+
+## Renaming notes and headings
+
+A `[[link]]` names its target by text, so renaming a note would break every link to it. Deckard rewrites them as part of the rename:
+
+- **Renaming or moving a note in the Explorer** rewrites every `[[link]]` that named it by its old title, across the workspace. The links and the rename land together, so one Undo takes back both, and Deckard says how many links it changed in how many notes.
+- Only links that resolved to the note being renamed are touched. A link written through an `aliases:` name the note keeps is left as it is, since it still opens the note, and so is a link to a different note that happens to share the name. Moving a note to another folder changes no links, because a link names a note by its title and not by its path.
+- A link's heading, `^marker`, and `|display text` are kept exactly as they were written: `[[Vendor review#Terms|the terms]]` becomes `[[Supplier review#Terms|the terms]]`.
+- `deckard.updateLinksOnRename` turns this off.
+- **Deckard: Rename Heading** renames the heading the cursor is in and carries the links into it along: `[[Check-in#Vendor review]]` elsewhere, and `[[#Vendor review]]` in the same note, follow the new text. Tags written on the heading stay on it. Save the note first — Deckard rewrites the links from what is on disk, so it asks you to save rather than work from a draft it cannot see.
+
+Links inside fenced code are left alone, as everywhere else in Deckard.
 
 ## Dashboard
 
@@ -670,6 +684,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.referenceCounts": true,
 	"deckard.editor.hoverPreviews": true,
 	"deckard.editor.linkDiagnostics": true,
+	"deckard.updateLinksOnRename": true,
 	"deckard.assistantTools": true,
 	"deckard.mcpServer.enabled": false,
 	"deckard.mcpServer.port": 39217,
@@ -712,6 +727,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
 | `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
+| `deckard.updateLinksOnRename` | `true` | Rewrites every `[[Wiki link]]` that named a note by its old title when the note is renamed, in the same step as the rename. See [Renaming notes and headings](#renaming-notes-and-headings). |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks with Deckard queries and list tags, after you allow the first call in each session. See [AI assistants](#ai-assistants). |
 | `deckard.mcpServer.enabled` | `false` | Runs a Model Context Protocol server on 127.0.0.1 with the same tools, for Claude Code and other MCP clients that carry its token. See [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients). |
 | `deckard.mcpServer.port` | `39217` | The port the MCP server listens on, on 127.0.0.1. |

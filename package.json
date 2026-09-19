@@ -198,6 +198,10 @@
         "title": "Deckard: Merge Tag…"
       },
       {
+        "command": "deckard.renameHeading",
+        "title": "Deckard: Rename Heading"
+      },
+      {
         "command": "deckard.showEntryRelatedNotesDebug",
         "title": "Deckard: Debug Related Notes"
       },
@@ -612,6 +616,12 @@
             "default": true,
             "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note.",
             "order": 3
+          },
+          "deckard.updateLinksOnRename": {
+            "type": "boolean",
+            "default": true,
+            "description": "Rewrite every [[Wiki link]] that names a note by its old title when the note is renamed, in the same step as the rename, so one Undo takes back both.",
+            "order": 4
           }
         }
       },
