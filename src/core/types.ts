@@ -1075,6 +1075,15 @@ export interface SetResultsPerPageMessage {
   size: SearchPageSize;
 }
 
+/**
+ * Edit every result of a search at once: the page asks, and the host offers
+ * the edits its results can take.
+ */
+export interface EditResultsMessage {
+  type: 'editResults';
+  kind: 'notes' | 'tasks';
+}
+
 /** Turn one of a search page's lists to another of its pages. */
 export interface SetResultPageMessage {
   type: 'setResultPage';
@@ -1207,6 +1216,7 @@ export type SearchPageMessage =
   | SetResultPageMessage
   | SetResultsPerPageMessage
   | PreviewSearchMessage
+  | EditResultsMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =

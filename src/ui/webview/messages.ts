@@ -189,6 +189,10 @@ export function parseSearchPageMessage(
       return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
         ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
         : undefined;
+    case 'editResults':
+      return value.kind === 'notes' || value.kind === 'tasks'
+        ? { type: 'editResults', kind: value.kind }
+        : undefined;
     case 'setResultPage':
       return (value.kind === 'notes' || value.kind === 'tasks') &&
         typeof value.page === 'number' &&

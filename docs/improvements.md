@@ -268,6 +268,17 @@ moment they need an answer.
 
 ### 21. Bulk actions on search results
 
+**Shipped**; see the README's Editing a search's results section. **Edit…**
+in a results pane completes, reopens, dates, or tags everything the search
+found, choosing the results in a quick pick rather than with checkboxes drawn
+on the page. Every line is compared with the line the index recorded, and the
+whole edit is one previewed, undoable write.
+
+Moving notes into a folder was deliberately left out: that is a file
+operation the Explorer already does, and #8 now carries their links along, so
+Deckard would only be adding a second way to do it — one its Undo could not
+take back.
+
 Select rows on a search page and add a tag, complete the tasks, set a due
 date, or move the notes into a folder. This is the largest single saving
 here and the furthest from the source-safety rules, so it needs the

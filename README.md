@@ -13,7 +13,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Tags and entities](#markdown-format) | `#tags`, `@people`, and namespaced entities such as `#project/atlas` on headings, tasks, and lines become one workspace-wide index. |
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
 | [Dashboard](#dashboard) | Workspace totals, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
-| [Search pages](#search-pages) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. Any other search opens the same kind of page. |
+| [Search pages](#search-pages) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. Any other search opens the same kind of page, and [one edit](#editing-a-searchs-results) can be made to everything it found. |
 | [Search](#search) | `Deckard: Search Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
@@ -505,6 +505,23 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 
 Opening a tag's page records tag access. Opening a section records section access, which powers the access sort. A page that a search was saved from before search pages existed, or a tag overview left open, reopens as a search page with the same tag, tags, and words.
 
+### Editing a search's results
+
+**Edit…** in a results pane makes one edit to everything the search found. A search page is where a set of notes and tasks is already gathered — refine it until the results are the ones you mean, then edit them together:
+
+| Results | What can be done to them |
+| --- | --- |
+| Tasks | **Complete**, **Reopen**, **Set a due date**, **Add a tag** |
+| Notes | **Add a tag**, written at the end of each heading line |
+
+- Deckard asks what to do, then lists the results with every one chosen; unpick any you want left alone. The list is VS Code's own, so it is searchable and works from the keyboard.
+- Completing tasks works exactly as a checkbox does, done date and next occurrence included, so a repeating task still leaves its next occurrence behind.
+- A tag is written at the end of the line, and a line that already carries it is left as it is.
+- Every line is compared with the line Deckard indexed before it is touched. A task or heading edited since is left alone and counted, so an edit made while the page was open is never overwritten.
+- The whole edit is one write: [previewed](#previewing-and-undoing-a-write) when it reaches more than one note, and taken back by `Deckard: Undo Last Change`.
+- The results are what the search found, not the page of it on screen. A page with no search of its own — every note — edits the results it is showing instead, since every note is not a set anyone means to edit at once.
+- Moving notes into a folder is not one of these edits: the Explorer does that, and Deckard [carries their links along](#renaming-notes-and-headings).
+
 ### Hub notes
 
 A hub note describes a tag, so the tag's overview opens with what the tag is rather than only where it is used. Add `describes:` to the note's front matter:
@@ -847,7 +864,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ## Source safety and persistence
 
-Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, rename a note, tag, or heading, carry unfinished tasks forward, or approve an entity tag from `Deckard: Link Current Heading to Entity`. A rename or merge that reaches more than one note is [shown before it is written](#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
+Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, rename a note, tag, or heading, carry unfinished tasks forward, [edit a search's results](#editing-a-searchs-results), or approve an entity tag from `Deckard: Link Current Heading to Entity`. A rename or merge that reaches more than one note is [shown before it is written](#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
 
 Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-note search. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 

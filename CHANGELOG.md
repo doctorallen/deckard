@@ -84,6 +84,18 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **One edit can be made to everything a search found.** A search page is
+  where a set of notes and tasks is already gathered, so **Edit…** in a
+  results pane now completes them, reopens them, dates them, or tags them
+  together. Deckard asks what to do and then lists the results with every one
+  chosen, in VS Code's own list, so unpicking any leaves it alone. Every line
+  is compared with the line the index recorded before it is touched — the
+  check a single checkbox already made — so a task edited since is left as
+  its author left it and counted; completing works exactly as a checkbox
+  does, next occurrence included; and a tag is not written twice on a line
+  that carries it. The whole edit is one write, previewed when it reaches
+  more than one note and taken back by `Deckard: Undo Last Change`.
+
 - **A task knows who it is for.** `@ren-kade` on a task meant both "owns
   this" and "was named here", so there was no way to ask what was waiting on
   whom. The first person named on a task line is now the person it is for,
