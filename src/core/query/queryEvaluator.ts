@@ -308,6 +308,9 @@ function createSectionUnit(
 ): QueryUnit {
   const tagKeys = new Set(membership.sections.get(section.id) ?? []);
   section.tags.forEach((tagKey) => tagKeys.add(tagKey));
+  // A tag written on one of the section's own lines answers for the section,
+  // because the section is what contains that line.
+  section.bodyTags?.forEach((tag) => tagKeys.add(tag.key));
   collectInheritedTagKeys(index, section, tagKeys);
   return {
     kind: 'section',

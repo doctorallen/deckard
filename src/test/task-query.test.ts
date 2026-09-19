@@ -201,8 +201,10 @@ function createSection(values: Partial<Section> & { id: string }): Section {
     tagLabels: {},
     links: [],
     rawContent: '',
+    bodyContent: '',
     startLine: 1,
     endLine: 2,
+    bodyEndLine: 2,
     ...values,
   };
 }

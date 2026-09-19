@@ -502,10 +502,27 @@
       {
         "title": "Tags and People",
         "properties": {
+          "deckard.noteBoundaries": {
+            "type": "string",
+            "scope": "resource",
+            "enum": [
+              "line",
+              "heading",
+              "marked"
+            ],
+            "enumDescriptions": [
+              "A tagged line is a note of its own.",
+              "Only headings are notes. A tagged line keeps its tags and its place, and the heading holding it is what a search returns.",
+              "As Heading, except a line marked with a ^block-id, which stays a note of its own."
+            ],
+            "default": "line",
+            "description": "Where one note ends and the next begins inside a Markdown file. Tasks are always their own entry, wherever they are written."
+          },
           "deckard.parseInlineTags": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
+            "markdownDeprecationMessage": "Use `#deckard.noteBoundaries#` instead. `false` is read as `heading`.",
             "description": "Index tags on non-heading Markdown lines as standalone entries.",
             "order": 0
           },

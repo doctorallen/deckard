@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **A heading's own text stops at the next heading of any level.** A parent's
+  stored text used to contain its children's, so one sentence sat inside the
+  text of every entry above it — four deep in the sample notes — and was
+  excerpted, indexed and counted once for each. A section now carries its own
+  body as well as the subtree that Extract moves.
+
 - **Tags written together ranks by the notes and tasks carrying both.** It
   counted only tags written side by side on one line, which is the strongest
   case and a rare one: in a workspace where tags are written under headings
@@ -56,6 +62,22 @@
   to the last page it still has.
 
 ### Added
+
+- **`deckard.noteBoundaries` decides what counts as a note inside a file.** A
+  tagged line has always been a note of its own, so a search for a tag written
+  in prose returned the sentence rather than the heading the sentence was
+  about. Set to `heading`, a tagged line is no longer an entry: its tags stay
+  on the line, and the heading holding the line is what a search returns —
+  nothing is copied onto the heading, so a heading still shows only the tags
+  its author wrote there, and the match knows which line answered it. A tag
+  written in a body does not travel: not up to the headings above it, not
+  across to the lines beside it. `marked` is the same, except that a line
+  carrying a `^block-id` stays a note of its own, because its author said so.
+  A tagged line with no heading above it always stays a note. Tasks are their
+  own entry under every setting. The default is `line`, so nothing moves
+  unless you ask it to, and `deckard.parseInlineTags` is deprecated: `false`
+  now reads as `heading`, which keeps a line's tags searchable rather than
+  dropping them.
 
 - **A Home widget can page through its entries.** **Paging**, in the widget's
   gear, turns it from the first few into all of them a page at a time. The

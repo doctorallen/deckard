@@ -151,11 +151,36 @@ export interface Section {
   tags: string[];
   tagLabels: Record<string, string>;
   links: string[];
+  /** The section and everything nested inside it, which is what Extract moves. */
   rawContent: string;
+  /**
+   * The section's own text: its heading and the lines under it, stopping at
+   * the next heading of any level. A parent's own body does not contain its
+   * children's, so a line belongs to the text of exactly one entry.
+   */
+  bodyContent: string;
   startLine: number;
+  /** The last line of the section and everything nested inside it. */
   endLine: number;
+  /** The last line of the section's own body, before any nested heading. */
+  bodyEndLine: number;
+  /**
+   * Tags written on the section's own body lines, each with the line that
+   * carries it.
+   *
+   * The tag stays where its author wrote it. A heading matches a search for
+   * one of these because it contains the line, not because the tag was moved
+   * onto the heading — so `tags` remains what was written on the heading
+   * itself, and a match can say which line answered it.
+   */
+  bodyTags?: SectionBodyTag[];
   createdAt?: number;
   updatedAt?: number;
+}
+
+export interface SectionBodyTag extends TagReference {
+  /** One-based line the tag is written on. */
+  line: number;
 }
 
 export interface Task {

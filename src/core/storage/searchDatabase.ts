@@ -343,7 +343,9 @@ export function createSearchEntries(file: ParsedFile): SearchEntry[] {
     title: section.heading,
     headings: [fileName, ...headingPath(section.parentSectionId)].join(' / '),
     tags: tagText(section.tags, section.tagLabels),
-    body: section.rawContent,
+    // The section's own text: a parent's row no longer repeats every word of
+    // its children, which used to make one sentence match four entries.
+    body: section.bodyContent ?? section.rawContent,
   }));
   file.tasks.forEach((task) => {
     entries.push({

@@ -110,7 +110,21 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 
 ## Markdown format
 
-Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled; consecutive tagged prose lines are grouped so wrapped explanations do not become truncated duplicate entries.
+Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive.
+
+`deckard.noteBoundaries` decides where one note ends and the next begins:
+
+| Setting | A tagged line is | A search for a tag written in prose returns |
+| --- | --- | --- |
+| `line` *(default)* | a note of its own | that line |
+| `heading` | part of the heading above it | the heading holding the line |
+| `marked` | part of the heading above it, unless it carries a `^marker` | the heading, or the marked line itself |
+
+Under `heading`, a tag written in a note's prose is **not moved onto the heading**. It stays on the line it was written on, and the heading answers a search for it because it contains that line — so a heading still shows only the tags its author wrote on it, and the match knows which line it came from. A tag written on a heading goes on being inherited by everything nested under it, as it always has; a tag written in a body does not travel at all, neither up to the headings above nor across to the lines beside.
+
+A tagged line with no heading above it stays a note whatever the setting says, because folding it would drop its tags. Consecutive tagged prose lines are grouped so wrapped explanations do not become truncated duplicate entries, and under `marked` a marker on any line of such a group marks the whole of it.
+
+Tasks are outside all of this. A task is its own entry wherever it is written, under every setting.
 
 A `[[link]]` names a note by its file name without `.md`, or by any name in the note's `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
 
@@ -641,7 +655,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.weeklyNoteTemplate": "# {week}\n\n",
 	"deckard.monthlyNoteTemplate": "# {month}\n\n",
 	"deckard.templatesFolder": "templates",
-	"deckard.parseInlineTags": true,
+	"deckard.noteBoundaries": "line",
 	"deckard.outline.showTags": true,
 	"deckard.outline.followCursor": true,
 	"deckard.outline.inheritedTags": false,
@@ -682,7 +696,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the ISO week, such as `2026-W37`, and `{date}` its Monday. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `2026-09`, and `{date}` its first day. |
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](#templates), relative to the workspace folder. Deckard does not index it. Leave it empty to turn templates off. |
-| `deckard.parseInlineTags` | `true` | Indexes tags on non-heading, non-task Markdown lines as standalone entries and decorates them in the editor. Consecutive tagged prose lines are grouped into one entry, while a tagged unordered or numbered list item includes its indented child bullets. Heading and task-line tags remain available when `false`. |
+| `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](#markdown-format). `line` indexes a tagged non-heading, non-task line as its own entry. `heading` keeps the tag on its line and returns the heading holding it. `marked` is `heading` except for a line carrying a `^block-id`. Tasks are their own entry under all three. |
+| `deckard.parseInlineTags` | `true` | Deprecated: use `deckard.noteBoundaries`. `false` is read as `heading`, which keeps a line's tags searchable through the heading that holds them rather than dropping them. |
 | `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |

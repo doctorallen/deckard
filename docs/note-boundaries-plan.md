@@ -2,6 +2,14 @@
 
 A proposal for how Deckard decides where one note ends and the next begins.
 
+> **Status: implemented.** `deckard.noteBoundaries` ships with `line`,
+> `heading` and `marked`; a heading's own body is bounded; a tagged line's
+> tags stay on the line and answer through the heading that holds it. Phase 1
+> (grouping results by heading, for readers who stay on `line`) was not built:
+> under `heading` every result is already a heading, so the grouping it added
+> would have had nothing to group. Nesting policy (c) is not built either — it
+> applies to both settings and is argued for separately below.
+
 ## Executive summary
 
 Deckard indexes four kinds of thing as entries: a tagged heading, a tagged

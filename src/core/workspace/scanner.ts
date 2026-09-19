@@ -7,6 +7,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   MarkdownParseOptions,
+  NoteBoundaries,
   parseMarkdown,
 } from '../markdown/parser';
 import { reportError } from '../timing';
@@ -35,6 +36,11 @@ export type ScanProgress = (completed: number, total: number) => void;
  * requiring a live VS Code workspace, while the default adapter uses VS Code
  * storage and file APIs in production.
  */
+/** The configured note boundary, falling back when the setting is stale. */
+function getNoteBoundaries(value: unknown): NoteBoundaries {
+  return value === 'heading' || value === 'marked' ? value : 'line';
+}
+
 export class WorkspaceScanner {
   public constructor(
     private readonly access: WorkspaceFileAccess = createDefaultAccess(),
@@ -203,6 +209,12 @@ export class WorkspaceScanner {
       parseInlineTags: this.getConfiguration(workspaceFolder).get<boolean>(
         'parseInlineTags',
         true,
+      ),
+      noteBoundaries: getNoteBoundaries(
+        this.getConfiguration(workspaceFolder).get<unknown>(
+          'noteBoundaries',
+          'line',
+        ),
       ),
       entityNamespaceAliases: getEntityNamespaceAliases(
         this.getConfiguration(workspaceFolder).get<unknown>(
