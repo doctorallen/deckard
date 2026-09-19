@@ -93,9 +93,9 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .page-range { color: var(--muted); font-family: var(--font-mono); }
 .page-controls { display: flex; align-items: center; gap: 4px; }
 .pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
-.pagination button:hover:not([disabled]) { border-color: var(--accent); color: var(--accent); }
+.pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
-.pagination .page-number.is-current { border-color: var(--accent); background: var(--accent); color: var(--panel); }
+.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .page-gap { color: var(--muted); padding: 0 2px; }
 .did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
 .did-you-mean button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
