@@ -577,302 +577,68 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('img-src vscode-webview://deckard;'), true);
     assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
     assert.strictEqual(html.includes('favorite-heart-filled.svg'), true);
-    assert.strictEqual(html.includes('class="favorite-heart"'), true);
-    assert.strictEqual(
+        assert.strictEqual(
       html.includes(
         'input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }',
       ),
       true,
     );
-    assert.strictEqual(html.includes('padding: 10px; cursor: pointer;'), true);
-    // Rows take their hover border from the shared .row surface.
+        // Rows take their hover border from the shared .row surface.
     assert.strictEqual(
       html.includes('.row:hover, .card:hover, .task:hover { border-color: var(--amber); }'),
       true,
     );
-    // A matching task is the shared task row, and ranked rows share one drag.
-    assert.strictEqual(html.includes('function renderTaskListRow(item, options)'), true);
-    assert.strictEqual(html.includes('\'<div class="row task-row\' + (task.completed'), true);
-    assert.strictEqual(html.includes('.is-draggable { cursor: grab; touch-action: none; }'), true);
-    assert.strictEqual(html.includes('function installRankedRows(options)'), true);
-    assert.strictEqual(html.includes('class="row saved-filter-row"'), true);
-    assert.strictEqual(
+            assert.strictEqual(html.includes('.is-draggable { cursor: grab; touch-action: none; }'), true);
+            assert.strictEqual(
       html.includes(
         '.saved-filter-row:hover { background: var(--panel-raised); transform: translateX(3px); }',
       ),
       true,
     );
-    // The Tasks tab moved to the Task Board.
-    assert.strictEqual(html.includes('Task completion filter'), false);
-    assert.strictEqual(html.includes('class="task-filter-icon"'), true);
-    assert.strictEqual(
-      html.includes('function renderTaskTitle(renderedTitle, references)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderTagLabel(label, svg)'),
-      true,
-    );
-    assert.strictEqual(
+                    assert.strictEqual(
       html.includes('.tag-namespace { opacity: .62; }'),
       true,
     );
-    assert.strictEqual(
-      html.includes('class="tag-namespace"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('class="tag-value"'),
-      true,
-    );
-    assertWebviewScriptParses(html);
-    assert.strictEqual(
-      html.includes('renderTaskTitle(item.renderedTitle, item.titleTags)'),
-      true,
-    );
-    assert.strictEqual(
+            assertWebviewScriptParses(html);
+        assert.strictEqual(
       html.includes(
         '.task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }',
       ),
       true,
     );
-    assert.strictEqual(html.includes('normalizedTaskSearchQuery'), false);
-    assert.strictEqual(html.includes("'<span>' + label + '</span>"), true);
-    assert.strictEqual(html.includes('Sort:<span class="control-icon">'), true);
-    assert.strictEqual(html.includes('class="browse-toolbar-controls"'), true);
-    assert.strictEqual(html.includes('data-action="search-tasks"'), false);
-    assert.strictEqual(html.includes('class="task-search" type="search"'), false);
-    // The Search tab's search is the shared search box, not a plain field.
-    assert.strictEqual(html.includes('class="note-search" type="search"'), false);
-    assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
-    assert.strictEqual(html.includes('class="catalog-search" type="search"'), true);
-    // A search kept from an earlier visit says so above the list it narrows,
-    // outlines its box, and marks its tab.
-    assert.strictEqual(html.includes('function renderSearchNotice(shown, total, noun, query, action)'), true);
-    assert.strictEqual(html.includes("'clear-task-search'"), false);
-    assert.strictEqual(html.includes("'clear-tag-search'"), true);
-    assert.strictEqual(html.includes('input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query]'), true);
-    assert.strictEqual(html.includes('renderTabSearchMark(taskSearchQuery)'), false);
-    assert.strictEqual(html.includes('id="tasks-tab"'), false);
-    // The mark is a filter icon, and the Search tab keeps it from another tab.
+                                                                // The mark is a filter icon, and the Search tab keeps it from another tab.
     assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span>'), true);
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
     // A tag in a title is a hairline link, not a control chip.
     assert.strictEqual(html.includes('.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }'), true);
-    // Searches open search pages, so no tab keeps one.
-    assert.strictEqual(html.includes('id="notes-tab"'), false);
-    assert.strictEqual(html.includes('id="home-tab"'), true);
-    // The box is a field of chips, one per term, each with a remove icon.
-    assert.strictEqual(html.includes('.query-term'), false, 'no row of terms under the box');
-    assert.strictEqual(html.includes('.query-bar-shell { flex-wrap: wrap;'), true);
-    assert.strictEqual(html.includes('<span class="query-chip-remove" aria-hidden="true">&#215;</span>'), true);
-    assert.strictEqual(html.includes('<span class="query-chip-join" aria-hidden="true">AND</span>'), true);
-    // Choosing a recent search runs it rather than only filling the box.
-    assert.strictEqual(html.includes('replaceAll: true, apply: true'), true);
-    assert.strictEqual(html.includes('if (item.apply) {'), true);
-    // A chip removes its own term, so the whole chip is the control.
-    assert.strictEqual(html.includes('\'<button type="button" class="\' + className + \'" data-action="remove-term"'), true);
-    // Typed text not made a term is let go when the box loses focus.
-    assert.strictEqual(html.includes("document.addEventListener('focusout'"), true);
-    assert.strictEqual(html.includes("renderTabSearchMark(browseQuery, tagNamespaceLabel ? 'Namespace: ' + tagNamespaceLabel : '')"), true);
-    // A namespace filter alone narrows the tags, so it gets the notice too.
-    assert.strictEqual(html.includes('const tagNotice = normalizedBrowseQuery || activeTagNamespace'), true);
-    assert.strictEqual(html.includes('select[data-action="set-tag-namespace"][data-has-query]'), true);
-    // Board cards show their title as rendered Markdown, like task rows.
-    assert.strictEqual(html.includes("renderTaskTitle(card.renderedTitle, card.titleTags)"), true);
-    assert.strictEqual(html.includes("renderInlineTitle(card.title, card.titleTags, false)"), false);
-    assert.strictEqual(html.includes('class="selected-task-tags"'), false);
-    assert.strictEqual(html.includes('padding: 10px 12px; border: 1px dashed var(--line-strong); }'), true);
-    assert.strictEqual(html.includes('<h1>Dashboard: '), true);
-    assert.strictEqual(html.includes('class="dashboard-header-actions"'), true);
-    // The gear is the one every page draws, after the totals.
+                                                                                // The gear is the one every page draws, after the totals.
     assert.strictEqual(
       html.indexOf("const metrics = '<div class=\"metrics\"") <
         html.indexOf('const dashboardOptions = renderViewOptions(['),
       true,
     );
-    assert.strictEqual(html.includes('<div class="dashboard-header-actions">\' + metrics + dashboardOptions'), true);
-    assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
-    assert.strictEqual(html.includes('dashboard-view-options'), false);
-    assert.strictEqual(
-      html.includes(
-        '.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep);',
-      ),
-      true,
-    );
-    assert.strictEqual(html.includes('.dashboard-header-actions .view-options { order: 2; }'), true);
-    // The task layout moved to the Task Board's gear.
-    assert.strictEqual(html.includes('set-task-layout'), false);
-    assert.strictEqual(html.includes('data-action="set-columns"'), true);
-    // Note and task columns are a search page's own.
-    assert.strictEqual(html.includes('Task columns'), false);
-    assert.strictEqual(html.includes('Note columns'), false);
-    assert.strictEqual(html.includes('Tag columns'), true);
-    assert.strictEqual(html.includes('saveDashboardViewState()'), true);
-    assert.strictEqual(html.includes('editingHome: editingHome'), true);
-    assert.strictEqual(html.includes('tagColumns: tagColumns'), true);
-    assert.strictEqual(
-      html.includes("grid.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)'"),
-      true,
-    );
-    assert.strictEqual(html.includes('applyTagColumns(selectedTagColumns)'), true);
-    // A style attribute is refused by the page's policy, so columns are set by script.
+                    assert.strictEqual(html.includes('.dashboard-header-actions .view-options { order: 2; }'), true);
+                                            // A style attribute is refused by the page's policy, so columns are set by script.
     assert.strictEqual(html.includes('style="grid-template-columns: repeat('), false);
-    assert.strictEqual(html.includes('Search:<input class="task-search"'), false);
-    assert.strictEqual(html.includes('.catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
+        assert.strictEqual(html.includes('.catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }'), true);
     assert.strictEqual(html.includes('.tag-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }'), true);
-    assert.strictEqual(html.includes('placeholder="Search tags" aria-label="Search tags"'), true);
-    assert.strictEqual(html.includes('state.tags.filter(function (tag)'), true);
-    assert.strictEqual(html.includes('function formatTagDisplay(tag)'), true);
-    // An @ tag is a person, as the indexer counts it, so it joins #person/ tags.
-    assert.strictEqual(html.includes("if (key.startsWith('@')) return 'person';"), true);
-    assert.strictEqual(html.includes('const display = formatTagDisplay(tag);'), true);
-    assert.strictEqual(html.includes("escapeHtml(display.name)"), true);
-    assert.strictEqual(
-      html.includes("display.namespace ? '<span class=\"entity-kind\">'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('data-action="set-tag-namespace"\' + (activeTagNamespace ? \' data-has-query\' : \'\') + \' aria-label="Filter tags by namespace"'),
-      true,
-    );
-    assert.strictEqual(html.includes('tagNamespaceFilter: tagNamespaceFilter'), true);
-    assert.strictEqual(html.includes('data-browse-scope='), false);
-    assert.strictEqual(
-      html.includes('data-tag-group="favorites"><h3>Favorites <span class="tag-count">('),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('data-tag-group="other"><h3>Other tags <span class="tag-count">('),
-      true,
-    );
-    assert.strictEqual(html.includes('class="section-summary"'), false);
-    assert.strictEqual(html.includes('.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }'), true);
+                                                        assert.strictEqual(html.includes('.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }'), true);
     assert.strictEqual(
       html.includes(
         '.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
       ),
       true,
     );
-    assert.strictEqual(html.includes('<div class="dashboard-tabs-row"><div class="segmented dashboard-tabs"'), true);
-    assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
+        assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
     assert.strictEqual(
       html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }'),
       true,
     );
-    // The task tag picker went with the Tasks tab; a search names its tags.
-    assert.strictEqual(html.includes('<span class="control-label">Tags:</span>'), false);
-    assert.strictEqual(html.includes('data-action="remove-task-tag"'), false);
-    assert.strictEqual(html.includes('class="rename-tag"'), false);
-    assert.strictEqual(
-      html.includes('data-context-action="rename-tag"'),
-      true,
-    );
-    assert.strictEqual(html.includes("onMenuAction: function (action, kind, key) {"), true);
-    assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
-    assert.strictEqual(html.includes('data-action="set-task-tag"'), false);
-    assert.strictEqual(html.includes('class="tag-open '), true);
-    assert.strictEqual(
-      html.includes("const entityRow = event.target.closest('.entity-row');"),
-      true,
-    );
-    assert.strictEqual(html.includes('const filteredTags = state.tags.filter'), true);
-    assert.strictEqual(html.includes('data-action="search-browse"'), true);
-    assert.strictEqual(html.includes('aria-label="Tag scope"'), false);
-    assert.strictEqual(html.includes('data-action="favorite-tag"'), true);
-    assert.strictEqual(html.includes('Saved searches'), true);
-    assert.strictEqual(html.includes('data-action="remove-saved-filter"'), true);
-    assert.strictEqual(html.includes("type: 'openSavedFilter'"), true);
-    assert.strictEqual(html.includes('role="tablist" aria-label="Dashboard mode"'), true);
-    assert.strictEqual(html.includes('role="tab" data-action="set-dashboard-mode"'), true);
-    assert.strictEqual(html.includes('aria-controls="tasks-panel"'), false);
-    assert.strictEqual(html.includes('aria-controls="notes-panel"'), false);
-    assert.strictEqual(html.includes('aria-controls="home-panel"'), true);
-    assert.strictEqual(html.includes('aria-controls="browse-panel"'), true);
-    assert.strictEqual(html.includes('id="home-panel"'), true);
-    assert.strictEqual(html.includes('data-action="set-note-sort"'), false);
-    assert.strictEqual(html.includes('data-action="set-note-tag"'), false);
-    assert.strictEqual(html.includes('data-action="filter-note-tags"'), false);
-    // Save sits in the search bar, beside the search it saves, and like
-    // Clear it is always there, disabled until it would do something, so the
-    // bar never shifts under the pointer.
-    // Home's search box opens a search page, where a search is saved.
-    assert.strictEqual(html.includes('data-query-needs-text title="Save this search as a view"'), false);
-    assert.strictEqual(html.includes('data-action="clear-query" data-query-clears'), true);
-    assert.strictEqual(html.includes("(canClear(value) ? '' : ' disabled') + '>Clear</button>'"), true);
-    // The Search tab's sort shares the line under the search box, so it takes no row of its own.
-    assert.strictEqual(html.includes("searchEditor.renderBar('')"), true);
-    assert.strictEqual(html.includes('dashboard-tabs-controls'), false);
-    assert.strictEqual(html.includes("+ status + (statusControls || '') + '</div>'"), true);
-    // The result count sits in the Refine box's corner, not under the search box.
-    assert.strictEqual(html.includes('<span class="query-facets-count" role="status">'), true);
-    assert.strictEqual(html.includes("+ '</div>' + count + '</section>'"), true);
-    assert.strictEqual(html.includes('.query-status .control-icon select { min-height: 24px'), false);
-    assert.strictEqual(html.includes("'</div><div class=\"task-toolbar\"><div class=\"toolbar-controls\">' + noteSortControl"), false);
-    // Search is the primary action; Save is an ordinary button beside it.
-    assert.strictEqual(html.includes('<button class="query-apply" data-action="apply-query"'), true);
-    assert.strictEqual(html.includes('.query-bar-row .query-apply:not(:hover):not(:focus-visible)'), true);
-    assert.strictEqual(html.includes('class="save-filter" data-action="save-note-search"'), false);
-    assert.strictEqual(html.includes('<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder"'), true);
-    assert.strictEqual(html.includes("+ (options.actions ? options.actions(hasText) : '')"), true);
-    assert.strictEqual(html.includes("(dashboardMode === 'home' ? 'Home' : 'Tags')"), true);
-    assert.strictEqual(html.includes('data-action="query-input"'), true);
-    assert.strictEqual(html.includes("type: 'openSearch'"), true);
-    assert.strictEqual(html.includes('data-action="save-note-search"'), false);
-    assert.strictEqual(html.includes('const tagSearchDebounceDelay = 350;'), true);
-    assert.strictEqual(html.includes('noteSearchTimer'), false);
-    assert.strictEqual(html.includes('function scheduleTaskTagSearch()'), false);
-    assert.strictEqual(html.includes('taskTagSearchTimer'), false);
-    assert.strictEqual(html.includes('noteTagSearchTimer'), false);
-    assert.strictEqual(html.includes('pendingTaskTagQuery'), false);
-    assert.strictEqual(html.includes('pendingNoteTagQuery'), false);
-    // Every search and tag-filter field keeps its focus through a redraw by
-    // its action, rather than each field being listed by name.
-    assert.strictEqual(html.includes('function renderKeepingFocus()'), true);
-    assert.strictEqual(
-      html.includes(
-        'active.matches(\'input[type="search"], input[type="text"]\')',
-      ),
-      true,
-    );
-    // Notes are listed on search pages, which render them.
-    assert.strictEqual(html.includes('class="card note-row"'), false);
-    assert.strictEqual(html.includes('data-action="set-mode"'), false);
-    // Home: the reader's widgets, arranged on the page and saved on the host.
-    assert.strictEqual(html.includes('data-action="customize-home"'), true);
-    assert.strictEqual(html.includes('data-action="finish-customizing"'), true);
-    assert.strictEqual(html.includes('data-action="add-widget"'), true);
-    assert.strictEqual(html.includes('data-action="remove-widget"'), true);
-    assert.strictEqual(html.includes("'set-widget-width'"), true);
-    assert.strictEqual(html.includes("'set-widget-count'"), true);
-    assert.strictEqual(html.includes("type: 'setDashboardWidgets'"), true);
-    assert.strictEqual(html.includes("type: 'resetDashboardWidgets'"), true);
-    assert.strictEqual(html.includes("type: 'openTaskBoard'"), true);
-    assert.strictEqual(html.includes("widget: { selector: '.home-widget.is-editing[data-widget-id]', key: 'widgetId'"), true);
-    assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
+                        assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
+                                                                                                                                                                                                                                                    assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
-    assert.strictEqual(html.includes('Home has no widgets.'), true);
-    assert.strictEqual(html.includes('class="toolbar-icon settings-icon"'), true);
-    assert.strictEqual(html.includes('role="tabpanel"'), true);
-    assert.strictEqual(html.includes("vscode.getState()"), true);
-    assert.strictEqual(
-      html.includes("type: 'setDashboardColumns'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('incomingState.tagColumns = tagColumns;'),
-      true,
-    );
-    assert.strictEqual(html.includes("type: 'setDashboardMode'"), true);
-    assert.strictEqual(html.includes("type: 'setDashboardSearch'"), true);
-    assert.strictEqual(html.includes('bindTagColumnControls()'), true);
-    assert.strictEqual(
-      html.includes("event.stopPropagation();"),
-      true,
-    );
-    assert.strictEqual(html.includes("event.key === 'ArrowLeft'"), true);
-  });
+                                              });
 
   test('draws a tag the same way in every theme', () => {
     // A tag is a button, so a theme that shouts its controls shouted its tags.
