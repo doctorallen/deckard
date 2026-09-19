@@ -1480,20 +1480,13 @@ suite('Webview contracts', () => {
     // behavior suite.
     assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
     assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
-    assert.strictEqual(html.includes('function filterEntries(kind)'), true);
-    assert.strictEqual(
-      html.includes('.card[hidden], .task[hidden] { display: none; }'),
-      true,
-    );
-    assert.strictEqual(html.includes('function updateTaskFilterCounts(filtering)'), true);
-    assert.strictEqual(
-      html.includes('if (kind === \'tasks\') updateTaskFilterCounts(filtering);'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('counts[entry.classList.contains(\'completed\') ? \'completed\' : \'active\'] += 1;'),
-      true,
-    );
+    // The words being typed narrow the whole search on the host; the page no
+    // longer hides rows of the one page it holds. See the Search page
+    // behavior suite.
+    assert.strictEqual(html.includes('function filterEntries(kind)'), false);
+    assert.strictEqual(html.includes("type: 'previewSearch'"), true);
+
+    assert.strictEqual(html.includes('function updateTaskFilterCounts(filtering)'), false);
     assert.strictEqual(html.includes('data-search-entry="notes"'), true);
     assert.strictEqual(html.includes('data-search-entry="tasks"'), true);
     assert.strictEqual(html.includes('Search:<input class="overview-search"'), false);

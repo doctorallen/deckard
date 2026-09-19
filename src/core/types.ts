@@ -518,6 +518,11 @@ export interface SearchPageSnapshot {
    * replaced by the closest word the notes contain.
    */
   suggestion?: string;
+  /**
+   * The words being typed into the search box that are narrowing these
+   * results, before they are committed to the search itself.
+   */
+  draftWords?: string[];
 }
 
 export interface TagOverviewHub {
@@ -971,6 +976,15 @@ export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
 }
 
+/**
+ * Narrow a search page by the words being typed, before they are committed
+ * to its search box.
+ */
+export interface PreviewSearchMessage {
+  type: 'previewSearch';
+  words: string[];
+}
+
 /** Choose how many results a search page shows at a time. */
 export interface SetResultsPerPageMessage {
   type: 'setResultsPerPage';
@@ -1108,6 +1122,7 @@ export type SearchPageMessage =
   | ClearOverviewQueryMessage
   | SetResultPageMessage
   | SetResultsPerPageMessage
+  | PreviewSearchMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =

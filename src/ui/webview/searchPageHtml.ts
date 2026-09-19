@@ -141,10 +141,19 @@ ${getQueryEditorScript()}
     // own tag, rather than to nothing.
     clear: function () { vscode.postMessage({ type: 'clearOverviewQuery' }); },
     clearedText: function () { return state ? state.originQuery : ''; },
-    // Plain words hide what they do not match at once; the rest waits for Enter.
+    // The words being typed narrow the whole search, which only the host can
+    // do: the page holds one page of the results, and hiding rows on it
+    // would search thirty notes and call the answer a search of the
+    // workspace. Sent on a short delay so a word costs one search, not one
+    // per letter.
     onDraft: function () {
-      filterEntries('notes');
-      filterEntries('tasks');
+      const words = editor.previewWords(editor.currentText());
+      if (words.join(' ') === sentPreview) return;
+      sentPreview = words.join(' ');
+      clearTimeout(previewHandle);
+      previewHandle = setTimeout(function () {
+        vscode.postMessage({ type: 'previewSearch', words: words });
+      }, PREVIEW_DELAY_MS);
     },
     placeholder: function () { return 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…'; },
     label: 'Search notes and tasks',
@@ -237,56 +246,16 @@ ${getQueryEditorScript()}
    * Hide the entries that lack a plain word of the search, so words narrow
    * the page as they are typed, before the search runs.
    */
-  function filterEntries(kind) {
-    if (!state) return;
-    const words = editor.previewWords(editor.currentText());
-    // The notes count is of everything the search found, so narrowing by a
-    // word never reads as though the search itself had shrunk to a batch.
-    const total = kind === 'notes'
-      ? pagingOf(state.notePaging, state.sections.length).total
-      : pagingOf(state.taskPaging, state.tasks.length).total;
-    let visibleCount = 0;
-    document.querySelectorAll('[data-search-entry="' + kind + '"]').forEach(function (entry) {
-      const text = entry.dataset.searchText || entry.textContent.toLowerCase();
-      const visible = words.every(function (word) { return text.indexOf(word) >= 0; });
-      entry.hidden = !visible;
-      if (visible) visibleCount += 1;
-    });
-    const filtering = words.length > 0 && visibleCount < total;
-    document.querySelectorAll('[data-search-count="' + kind + '"]').forEach(function (count) {
-      count.textContent = filtering ? visibleCount + ' / ' + total : String(total);
-    });
-    const empty = document.querySelector('[data-search-empty="' + kind + '"]');
-    if (empty) empty.hidden = !words.length || visibleCount > 0;
-    if (kind === 'tasks') updateTaskFilterCounts(filtering);
-  }
-
-  function updateTaskFilterCounts(filtering) {
-    const counts = filtering
-      ? { all: 0, active: 0, completed: 0 }
-      : (state && state.taskCounts ? state.taskCounts : { all: 0, active: 0, completed: 0 });
-    if (filtering) {
-      document.querySelectorAll('[data-search-entry="tasks"]').forEach(function (entry) {
-        if (entry.hidden) return;
-        counts.all += 1;
-        counts[entry.classList.contains('completed') ? 'completed' : 'active'] += 1;
-      });
-    }
-    document.querySelectorAll('.task-filter-toggle button[data-filter]').forEach(function (button) {
-      const filter = button.dataset.filter;
-      if (!filter || counts[filter] === undefined) return;
-      const count = counts[filter];
-      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
-      const description = label + ' tasks, ' + count;
-      const countElement = button.querySelector('.filter-count');
-      if (countElement) countElement.textContent = String(count);
-      button.setAttribute('aria-label', description);
-      button.title = description;
-    });
-  }
-
   /** Set once the reader opens or closes the hub, which then outlasts refreshes. */
   let hubOpen;
+  /**
+   * How long the box waits after a keystroke before searching. Long enough
+   * that a word is one search rather than one per letter, short enough that
+   * the results feel like they are following the typing.
+   */
+  const PREVIEW_DELAY_MS = 180;
+  let previewHandle;
+  let sentPreview = '';
   document.addEventListener('toggle', function (event) {
     if (event.target.classList && event.target.classList.contains('hub')) hubOpen = event.target.open;
   }, true);
@@ -358,7 +327,10 @@ ${getQueryEditorScript()}
     closeTagContextMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
-    const hasText = Boolean(String(state.query.text || '').trim());
+    // A draft narrows the results as surely as the search does, so an empty
+    // list is answering the draft, not reporting on the tag.
+    const drafting = Boolean(state.draftWords && state.draftWords.length);
+    const hasText = Boolean(String(state.query.text || '').trim()) || drafting;
     const focus = state.entity
       ? { key: state.entity.key, label: state.entity.label }
       : state.tag;
@@ -388,7 +360,7 @@ ${getQueryEditorScript()}
     };
     const cards = state.sections.length
       ? state.sections.map(renderCard).join('')
-      : '<div class="empty">' + (state.tag ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
+      : '<div class="empty">' + (state.tag && !drafting ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
       : '<div class="empty">' + (state.taskFilter === 'active' ? 'No open tasks match this search.' : 'No tasks match this filter.') + otherResults('tasks') + '</div>';
@@ -396,8 +368,8 @@ ${getQueryEditorScript()}
     if (!tabChosen && state.layout !== 'split') {
       activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
     }
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div>' + notesPagination + '<div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
@@ -434,8 +406,6 @@ ${getQueryEditorScript()}
       : '';
     document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
-    filterEntries('notes');
-    filterEntries('tasks');
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
     announce(notesCount + (notesCount === 1 ? ' note' : ' notes') + ' and ' + tasksCount + (tasksCount === 1 ? ' task' : ' tasks') + ' match this search.');

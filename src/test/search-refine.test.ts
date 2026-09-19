@@ -351,6 +351,48 @@ suite('Refining a search', () => {
     store.dispose();
   });
 
+  test('a draft searches everything the search found, and agrees with Enter', () => {
+    const files = [
+      parseMarkdown('notes/one.md', '# One #project/atlas\nThe elevator survey.'),
+      parseMarkdown('notes/two.md', '# Two #project/atlas\nThe ledger migration.'),
+      parseMarkdown('notes/three.md', '# Three #risk/vendor\nThe elevator again.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    const drafted = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      previewWords: ['elevator'],
+    });
+    // The draft narrows the search it is typed into, not the whole workspace.
+    assert.deepStrictEqual(
+      drafted.sections.map((card) => card.heading),
+      ['One #project/atlas'],
+    );
+    assert.strictEqual(drafted.query.matchCounts.notes, 1);
+
+    // Pressing Enter writes the words into the search. What it then finds is
+    // what the draft was already showing.
+    const committed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#project/atlas elevator',
+    );
+    assert.deepStrictEqual(
+      committed.sections.map((card) => card.heading),
+      drafted.sections.map((card) => card.heading),
+    );
+
+    // The box still shows the search that was committed, so a draft never
+    // turns into a chip on its own.
+    assert.strictEqual(drafted.query.text, '#project/atlas');
+    assert.strictEqual(
+      drafted.query.terms.map((term) => term.text).join(' '),
+      '#project/atlas',
+    );
+
+    store.dispose();
+  });
+
   test('puts a page number back inside the pages a search has', () => {
     const files = Array.from({ length: 15 }, (_, index) =>
       parseMarkdown(`notes/note-${index}.md`, `# Note ${index} #project/atlas\nProse.`),

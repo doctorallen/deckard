@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **Typing in a search box narrows the whole search, not the page on screen.**
+  The words used to hide rows of the page the reader was holding, which at
+  200 to a page was nearly the whole search and at 30 was not: a match on
+  another page was never found, the count read as a share of the search when
+  it was a share of the page, and a page whose own rows did not match said
+  nothing matched at all. The words are now run as part of the search, so
+  what a draft finds is exactly what pressing Enter finds, and the counts,
+  the pages and Refine all agree with it.
+
 - **The search cache is written on a thread of its own.** The first build in a
   new workspace wrote every note on the extension host, the thread shared with
   every other extension and with every completion, hover, and CodeLens

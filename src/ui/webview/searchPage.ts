@@ -262,6 +262,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private notePage = 1;
   private taskPage = 1;
   /**
+   * The words the reader is typing but has not committed. They narrow the
+   * whole search rather than the page of it on screen, so what the box
+   * promises while it is typed in is what Enter delivers.
+   */
+  private previewWords: string[] = [];
+  /**
    * Search text that does not parse. The box shows it, with its error, while
    * the page keeps the results of the last search that did.
    */
@@ -415,6 +421,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         notePage: this.notePage,
         taskPage: this.taskPage,
+        previewWords: this.previewWords,
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
@@ -509,6 +516,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     this.invalidQueryText = undefined;
     this.queryText = text;
+    // The draft has become the search, or been replaced by another, so it is
+    // no longer narrowing anything on its own.
+    this.previewWords = [];
     // A different search is a different list, read from its first page.
     this.notePage = 1;
     this.taskPage = 1;
@@ -545,6 +555,23 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         }
         this.refresh();
         return;
+      case 'previewSearch': {
+        const words = message.words
+          .map((word) => word.trim().toLowerCase())
+          .filter(Boolean);
+        if (
+          words.length === this.previewWords.length &&
+          words.every((word, index) => word === this.previewWords[index])
+        ) {
+          return;
+        }
+        this.previewWords = words;
+        // Narrowing is a different list, read from its first page.
+        this.notePage = 1;
+        this.taskPage = 1;
+        this.refresh();
+        return;
+      }
       case 'setResultsPerPage':
         // A different page size is a different set of pages, and the number
         // the reader was on means nothing in it, so both lists start again.

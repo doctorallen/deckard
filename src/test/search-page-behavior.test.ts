@@ -254,6 +254,42 @@ suite('Search page behavior', () => {
     });
   });
 
+  test('narrows the whole search by the words being typed, not the page', () => {
+    // The word is on the last note of a 25-note search shown ten to a page,
+    // so a page that searched only what it was holding would not find it.
+    const notes: Record<string, string> = {};
+    for (let index = 0; index < 25; index += 1) {
+      notes[`notes/note-${index}.md`] =
+        `# Note ${index} #project/atlas\n${index === 24 ? 'The elevator survey.' : 'Prose.'}`;
+    }
+    const { page } = open(notes, '#project/atlas', {
+      pageSize: 10,
+      previewWords: ['elevator'],
+    });
+
+    assert.strictEqual(page.findAll('.card').length, 1);
+    assert.match(page.text('.card') ?? '', /elevator/);
+    // The count is of what the draft finds, so it never reports a page's
+    // worth of matches against a workspace's worth of results.
+    assert.strictEqual(page.text('[data-search-count="notes"]'), '1');
+    assert.strictEqual(page.document.querySelector('.pagination'), null);
+  });
+
+  test('says the draft found nothing only when the search found nothing', () => {
+    const notes: Record<string, string> = {};
+    for (let index = 0; index < 25; index += 1) {
+      notes[`notes/note-${index}.md`] = `# Note ${index} #project/atlas\nProse.`;
+    }
+    const { page } = open(notes, '#project/atlas', {
+      pageSize: 10,
+      previewWords: ['elevator'],
+    });
+
+    assert.strictEqual(page.findAll('.card').length, 0);
+    assert.strictEqual(page.text('[data-search-count="notes"]'), '0');
+    assert.match(page.text('.empty') ?? '', /No notes match/);
+  });
+
   test('keeps its search for a window reload', () => {
     const { page } = open(
       { 'notes/atlas.md': '# Atlas #project/atlas\nProse.' },

@@ -153,6 +153,11 @@ export interface SearchPageOptions {
    */
   suggestWords?: (words: readonly string[]) => ReadonlyMap<string, string>;
   /**
+   * Words the reader has typed into the search box and not yet committed.
+   * They narrow the whole search, not the page of it being shown.
+   */
+  previewWords?: readonly string[];
+  /**
    * False for a caller that wants the whole result rather than a page of it,
    * such as Home's widgets. A search page is paged by the size the reader
    * chose, which is kept in their preferences.
@@ -188,6 +193,14 @@ export function createSearchPageSnapshot(
 ): SearchPageSnapshot {
   const text = queryText.trim();
   const parsed = parseQuery(text);
+  // The words being typed narrow the search before they are committed to the
+  // box. They are run as part of the search rather than matched against what
+  // is on screen, so a page of thirty is not what a reader is searching, and
+  // so what the preview finds is exactly what pressing Enter will find.
+  const preview = (options.previewWords ?? [])
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
   const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
   const taskFilter = options.taskFilter ?? 'active';
   const tagKeys = resolveQueryTagIntersection(index, parsed);
@@ -197,8 +210,8 @@ export function createSearchPageSnapshot(
     ? index.files.get(focusTag.hubFilePaths[0])
     : undefined;
 
-  const results = parsed.node
-    ? evaluateQuery(index, parsed.node)
+  const results = drafted.node
+    ? evaluateQuery(index, drafted.node)
     : {
         sections: [...index.sections.values()],
         tasks: [...index.tasks.values()],
@@ -210,7 +223,7 @@ export function createSearchPageSnapshot(
       preferences.sectionAccessCounts,
       tagTitleDisplayMode,
     );
-  const plainTerms = getPlainTextTerms(parsed.node);
+  const plainTerms = getPlainTextTerms(drafted.node);
   const cards = plainTerms
     ? [
         ...[...index.sections.values()].map(cardFor),
@@ -295,6 +308,7 @@ export function createSearchPageSnapshot(
       },
     ),
     ...(suggestion ? { suggestion } : {}),
+    ...(preview.length > 0 ? { draftWords: preview } : {}),
     originQuery: options.originQuery?.trim() ?? '',
     savedViewName:
       tagKeys && tagKeys.length >= 2

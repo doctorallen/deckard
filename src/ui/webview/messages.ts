@@ -174,6 +174,17 @@ export function parseSearchPageMessage(
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
         : undefined;
+    case 'previewSearch':
+      return Array.isArray(value.words) &&
+        value.words.length <= MAX_PREVIEW_WORDS &&
+        value.words.every(
+          (word) =>
+            typeof word === 'string' &&
+            word.length > 0 &&
+            word.length <= MAX_PREVIEW_WORD_LENGTH,
+        )
+        ? { type: 'previewSearch', words: value.words as string[] }
+        : undefined;
     case 'setResultsPerPage':
       return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
         ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
@@ -238,6 +249,13 @@ export function parseSearchPageMessage(
 }
 
 /** Upper bound on query text accepted from the webview. */
+/**
+ * What a page may send as the words being typed. A draft is a handful of
+ * short words; anything longer is not one, whatever sent it.
+ */
+const MAX_PREVIEW_WORDS = 12;
+const MAX_PREVIEW_WORD_LENGTH = 100;
+
 const MAX_QUERY_LENGTH = 2000;
 
 /**
