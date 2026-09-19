@@ -4,6 +4,13 @@
 
 ### Added
 
+- **A search page that finds nothing offers a closer spelling**, which until
+  now only Find did: **Nothing matched. Search for … instead?** Each
+  misspelled word is replaced by the closest word the notes contain, and only
+  the words a search reads as prose are corrected, so a tag, a path, or a
+  field name spelled the same way is left exactly as it was written. The
+  correction has to find something itself before it is offered.
+
 - **Task dependencies are queryable**. `is:blocked` finds an open task while a
   task it names in ⛔ is still open, and `is:blocking` the open task the other
   one waits for, so the Agenda's `blocked by …` line can now be searched for

@@ -141,8 +141,11 @@ merging; see the README's Tag overviews section and
   due date.
 - ~~**Open the Dashboard on startup** setting, as Homepage (1.3M) does.~~
   Shipped as `deckard.dashboard.openOnStartup`.
-- **Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
-  as Omnisearch (1.9M) does.
+- ~~**Typo tolerance and title/heading boosts** in Search Workspace Knowledge,
+  as Omnisearch (1.9M) does.~~ Shipped: the full-text cache weights titles,
+  headings, and tags above body text, and corrects a misspelled word against
+  the words in the notes. Find offers the correction as a row, and a search
+  page that finds nothing offers it under the search box.
 
 ## Worth considering
 

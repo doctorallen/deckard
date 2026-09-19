@@ -398,6 +398,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
+        suggestWords: (words) => this.indexer.suggestWords(words),
       },
     );
     return {

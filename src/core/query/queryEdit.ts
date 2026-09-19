@@ -1,6 +1,6 @@
 import { formatQuery } from './queryFormat';
 import { parseQuery } from './queryParser';
-import { ParsedQuery, QueryNode } from './queryTypes';
+import { ParsedQuery, QueryConditionNode, QueryNode } from './queryTypes';
 
 /**
  * Edits query text by the terms a person wrote, rather than by rewriting it.
@@ -142,6 +142,97 @@ export function getPlainTextTerms(node: QueryNode | undefined): string[] | undef
     return false;
   };
   return collect(node) ? terms : undefined;
+}
+
+/**
+ * Every word a query searches note text for, lowercased and deduplicated.
+ *
+ * Only a positive `text` condition contributes: a tag, a folder, or a file
+ * name is a name rather than prose, and a negated condition names what the
+ * reader already knows is not there, so neither is worth correcting.
+ */
+export function getTextWords(node: QueryNode | undefined): string[] {
+  const words = new Set<string>();
+  forEachTextCondition(node, (condition) => {
+    condition.value
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu)
+      ?.forEach((word: string) => words.add(word));
+  });
+  return [...words];
+}
+
+/**
+ * Visits every `text` condition a query searches for positively, wherever it
+ * sits in the tree.
+ */
+function forEachTextCondition(
+  node: QueryNode | undefined,
+  visit: (condition: QueryConditionNode) => void,
+): void {
+  const walk = (current: QueryNode, negated: boolean): void => {
+    switch (current.type) {
+      case 'not':
+        walk(current.child, !negated);
+        return;
+      case 'and':
+      case 'or':
+        current.children.forEach((child) => walk(child, negated));
+        return;
+      case 'condition':
+        if (
+          !negated &&
+          current.field === 'text' &&
+          (current.operator === 'contains' || current.operator === 'eq')
+        ) {
+          visit(current);
+        }
+    }
+  };
+  if (node) {
+    walk(node, false);
+  }
+}
+
+/**
+ * Rewrites a query with each misspelled word replaced by `correct`'s answer.
+ *
+ * Only the text a `text` condition searches for is rewritten, and each
+ * condition is rewritten where it stands, so a correction can never reach a
+ * tag, a path, or a field name that happens to share the word's spelling.
+ * Returns nothing when no word was corrected.
+ */
+export function correctQueryText(
+  text: string,
+  node: QueryNode | undefined,
+  correct: (word: string) => string | undefined,
+): string | undefined {
+  if (!node) {
+    return undefined;
+  }
+  const spans: { start: number; end: number }[] = [];
+  forEachTextCondition(node, (condition) =>
+    spans.push({ start: condition.start, end: condition.end }),
+  );
+
+  let corrected = text;
+  let changed = false;
+  // Right to left, so an earlier condition's offsets still point at the same
+  // characters after a later one has been rewritten.
+  for (const span of spans.sort((left, right) => right.start - left.start)) {
+    const source = corrected.slice(span.start, span.end);
+    const rewritten = source.replace(/[\p{L}\p{N}]+/gu, (word: string) => {
+      const replacement = correct(word.toLowerCase());
+      if (!replacement || replacement === word.toLowerCase()) {
+        return word;
+      }
+      changed = true;
+      return replacement;
+    });
+    corrected =
+      corrected.slice(0, span.start) + rewritten + corrected.slice(span.end);
+  }
+  return changed ? corrected : undefined;
 }
 
 /**

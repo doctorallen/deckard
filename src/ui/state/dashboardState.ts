@@ -29,7 +29,9 @@ import {
 } from '../../core/markdown/parser';
 import {
   canAppendTerm,
+  correctQueryText,
   getPlainTextTerms,
+  getTextWords,
   getTopLevelTerms,
 } from '../../core/query/queryEdit';
 import {
@@ -143,6 +145,11 @@ export interface SearchPageOptions {
   tagTitleDisplayMode?: TagTitleDisplayMode;
   /** Whether tags are related by their headings as well as written together. */
   enableHeadingTagRelationships?: boolean;
+  /**
+   * The closest word the notes contain for each word they do not, from the
+   * full-text cache. Without it a search that finds nothing simply says so.
+   */
+  suggestWords?: (words: readonly string[]) => ReadonlyMap<string, string>;
   now?: number;
 }
 
@@ -218,6 +225,20 @@ export function createSearchPageSnapshot(
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
       : undefined;
+  // Only a search that found nothing is worth correcting: results answer the
+  // search as it was typed, and offering a different one beside them would
+  // argue with what the reader can already see.
+  const corrected =
+    sections.length === 0 && tasks.length === 0
+      ? suggestSearch(text, parsed, options.suggestWords)
+      : undefined;
+  // A word the notes contain somewhere may still sit in no note that
+  // satisfies the rest of the search, so the correction is run before it is
+  // offered. A second dead end would help nobody.
+  const suggestion =
+    corrected !== undefined && findsSomething(index, corrected, cardFor)
+      ? corrected
+      : undefined;
 
   return {
     ...(focusTag
@@ -255,6 +276,7 @@ export function createSearchPageSnapshot(
           : [],
       },
     ),
+    ...(suggestion ? { suggestion } : {}),
     originQuery: options.originQuery?.trim() ?? '',
     savedViewName:
       tagKeys && tagKeys.length >= 2
@@ -1036,6 +1058,62 @@ export function getTitleTags(
       label: tagLabels[key] ?? `#${key}`,
     }))
     .filter((tag) => title.includes(tag.label));
+}
+
+/**
+ * Whether a search finds any note or task, counted the same two ways the
+ * page itself counts: a search of plain words matches each note's title,
+ * file name, body, and tags, and any other search is answered by the query
+ * evaluator.
+ */
+function findsSomething(
+  index: WorkspaceIndex,
+  text: string,
+  cardFor: (section: Section) => TagOverviewCard,
+): boolean {
+  const parsed = parseQuery(text);
+  if (!parsed.node) {
+    return false;
+  }
+  const results = evaluateQuery(index, parsed.node);
+  if (results.tasks.length > 0) {
+    return true;
+  }
+  const plainTerms = getPlainTextTerms(parsed.node);
+  if (!plainTerms) {
+    return results.sections.length > 0 || results.files.length > 0;
+  }
+  return (
+    [...index.sections.values()].some((section) =>
+      matchesNoteWords(cardFor(section), plainTerms),
+    ) ||
+    listFrontmatterOnlyFiles(index).some((file) =>
+      matchesNoteWords(createFileOverviewCard(file), plainTerms),
+    )
+  );
+}
+
+/**
+ * Writes a search again with its misspellings corrected, or nothing when
+ * there is nothing to correct.
+ */
+function suggestSearch(
+  text: string,
+  parsed: ParsedQuery,
+  suggestWords: SearchPageOptions['suggestWords'],
+): string | undefined {
+  if (!suggestWords || !parsed.node) {
+    return undefined;
+  }
+  const words = getTextWords(parsed.node);
+  if (words.length === 0) {
+    return undefined;
+  }
+  const corrections = suggestWords(words);
+  if (corrections.size === 0) {
+    return undefined;
+  }
+  return correctQueryText(text, parsed.node, (word) => corrections.get(word));
 }
 
 export function getInlineSource(section: Section): string {

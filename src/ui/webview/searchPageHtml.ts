@@ -89,6 +89,8 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
 .empty-action { margin: 12px 0 0; }
+.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
+.did-you-mean button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
@@ -331,7 +333,12 @@ ${getQueryEditorScript()}
     const staleNotice = invalid
       ? '<p class="stale-results">The search above has not run. These are the results of the last one that did.</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + layoutContent;
+    // A search that found nothing, and a closer spelling that finds
+    // something, so the dead end has a way out of it.
+    const suggestion = !invalid && state.suggestion
+      ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
+      : '';
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
     filterEntries('notes');
     filterEntries('tasks');
@@ -392,6 +399,7 @@ ${getQueryEditorScript()}
         saveState();
         render();
       }
+      if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });

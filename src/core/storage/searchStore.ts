@@ -323,11 +323,19 @@ export class SearchStore implements vscode.Disposable {
   }
 
   /**
-   * Replaces each word the notes do not contain with the closest word they
-   * do, preferring the most widely used. Returns nothing when every word is
-   * already in the notes or none has a close neighbour.
+   * Answers, for each word the notes do not contain, the closest word they
+   * do, preferring the most widely used. A word the notes already contain,
+   * or one with no close neighbour, is left out, so an empty result means
+   * there is nothing to correct.
+   *
+   * Every search surface corrects spelling through this one lookup, because
+   * a correction is only as good as the words actually in the notes.
    */
-  private suggest(query: string, terms: string[]): string | undefined {
+  public suggestWords(terms: readonly string[]): Map<string, string> {
+    const corrections = new Map<string, string>();
+    if (terms.length === 0) {
+      return corrections;
+    }
     const lookup = this.database.prepare(
       `SELECT term, doc FROM entries_vocab
        WHERE term >= ? AND term < ?`,
@@ -335,8 +343,6 @@ export class SearchStore implements vscode.Disposable {
     const exists = this.database.prepare(
       'SELECT 1 AS found FROM entries_vocab WHERE term = ?',
     );
-    let suggestion = query;
-    let changed = false;
     for (const term of terms) {
       if (term.length < 3 || exists.get(term)) {
         continue;
@@ -361,11 +367,26 @@ export class SearchStore implements vscode.Disposable {
         }
       }
       if (best) {
-        suggestion = replaceWord(suggestion, term, best.term);
-        changed = true;
+        corrections.set(term, best.term);
       }
     }
-    return changed ? suggestion : undefined;
+    return corrections;
+  }
+
+  /**
+   * Rewrites a search with each misspelled word replaced by the closest word
+   * the notes contain. Returns nothing when there is nothing to correct.
+   */
+  private suggest(query: string, terms: string[]): string | undefined {
+    const corrections = this.suggestWords(terms);
+    if (corrections.size === 0) {
+      return undefined;
+    }
+    let suggestion = query;
+    corrections.forEach((replacement, term) => {
+      suggestion = replaceWord(suggestion, term, replacement);
+    });
+    return suggestion;
   }
 
   private count(sql: string): number {

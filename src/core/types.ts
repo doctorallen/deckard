@@ -471,6 +471,11 @@ export interface SearchPageSnapshot {
    * options, so the page shows a line in their place.
    */
   refineInSidebar?: boolean;
+  /**
+   * A search that finds nothing, written again with each misspelled word
+   * replaced by the closest word the notes contain.
+   */
+  suggestion?: string;
 }
 
 export interface TagOverviewHub {

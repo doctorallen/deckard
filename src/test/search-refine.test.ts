@@ -6,7 +6,9 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { evaluateQuery } from '../core/query/queryEvaluator';
 import {
   canAppendTerm,
+  correctQueryText,
   extractTagTerms,
+  getTextWords,
   getTopLevelTerms,
   refineQueryText,
 } from '../core/query/queryEdit';
@@ -209,6 +211,94 @@ suite('Refining a search', () => {
     const worded = createSearchPageSnapshot(index, store.value, '#person/sable clinic');
     assert.strictEqual(worded.query.facets.some((facet) => facet.id === 'related'), false);
     store.dispose();
+  });
+
+  test('offers a closer spelling for a search that found nothing', () => {
+    const files = [
+      parseMarkdown('notes/vault.md', '# Plan #project/atlas\nThe elevator is stuck.'),
+      parseMarkdown('notes/other.md', '# Other\nNothing here.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+    // Stands in for the full-text cache, which holds the words of the notes.
+    const suggestWords = (words: readonly string[]): ReadonlyMap<string, string> =>
+      new Map(
+        words
+          .filter((word) => word === 'elevatr')
+          .map((word) => [word, 'elevator']),
+      );
+
+    const missed = createSearchPageSnapshot(index, store.value, 'elevatr', {
+      suggestWords,
+    });
+    assert.strictEqual(missed.sections.length, 0);
+    assert.strictEqual(missed.suggestion, 'elevator');
+
+    // The correction keeps the rest of the search exactly as it was written.
+    const narrowed = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#project/atlas text ~ elevatr',
+      { suggestWords },
+    );
+    assert.strictEqual(narrowed.suggestion, '#project/atlas text ~ elevator');
+
+    store.dispose();
+  });
+
+  test('keeps a correction to itself when it would find nothing either', () => {
+    const files = [
+      parseMarkdown('notes/vault.md', '# Plan #project/atlas\nThe elevator is stuck.'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+    const suggestWords = (words: readonly string[]): ReadonlyMap<string, string> =>
+      new Map(
+        words
+          .filter((word) => word === 'elevatr')
+          .map((word) => [word, 'elevator']),
+      );
+
+    // The word is in the notes, but in no note that also carries the tag.
+    const snapshot = createSearchPageSnapshot(
+      index,
+      store.value,
+      '#risk/vendor text ~ elevatr',
+      { suggestWords },
+    );
+    assert.strictEqual(snapshot.sections.length, 0);
+    assert.strictEqual(snapshot.suggestion, undefined);
+
+    // A search that found something is never argued with.
+    const found = createSearchPageSnapshot(index, store.value, 'elevator', {
+      suggestWords,
+    });
+    assert.ok(found.sections.length > 0);
+    assert.strictEqual(found.suggestion, undefined);
+
+    store.dispose();
+  });
+
+  test('corrects only the words a search reads as prose', () => {
+    const words = (text: string) => getTextWords(parseQuery(text).node);
+    assert.deepStrictEqual(words('elevatr #elevatr in:elevatr'), ['elevatr']);
+    assert.deepStrictEqual(words('-text ~ elevatr'), []);
+    assert.deepStrictEqual(words('"vendor risk" OR text = plan'), [
+      'vendor',
+      'risk',
+      'plan',
+    ]);
+
+    // A tag spelled like the misspelled word is left exactly as it was.
+    const corrected = (text: string) =>
+      correctQueryText(text, parseQuery(text).node, (word) =>
+        word === 'elevatr' ? 'elevator' : undefined,
+      );
+    assert.strictEqual(
+      corrected('#elevatr elevatr'),
+      '#elevatr elevator',
+    );
+    assert.strictEqual(corrected('#elevatr'), undefined);
   });
 
   test('labels words as the text condition they run', () => {

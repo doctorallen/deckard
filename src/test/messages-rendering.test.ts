@@ -1453,6 +1453,14 @@ suite('Webview contracts', () => {
     // The box holds the page's whole search, its own tag included.
     assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), false);
     assert.strictEqual(html.includes("type: 'setOverviewQuery'"), true);
+    // A closer spelling runs as an ordinary search, and only when the page
+    // was given one for a search that parsed.
+    assert.strictEqual(
+      html.includes("if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });"),
+      true,
+    );
+    assert.strictEqual(html.includes("!invalid && state.suggestion"), true);
+    assert.strictEqual(html.includes('class="did-you-mean"'), true);
     assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
     assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
     assert.strictEqual(html.includes('function filterEntries(kind)'), true);

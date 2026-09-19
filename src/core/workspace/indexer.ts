@@ -112,6 +112,15 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   /**
+   * Answers the closest word the notes contain for each word they do not,
+   * so a surface that searches the index itself can correct a misspelling
+   * the same way the full-text cache does.
+   */
+  public suggestWords(terms: readonly string[]): ReadonlyMap<string, string> {
+    return this.searchStore?.suggestWords(terms) ?? new Map();
+  }
+
+  /**
    * Keeps path formatting owned by the scanner so all callers use one key shape.
    */
   public getFilePath(uri: vscode.Uri): string {
