@@ -48,10 +48,14 @@ parent.** Deckard already inherits downward too.
 
 That makes the proposal on the table — roll a line's tags up to its heading —
 genuinely novel, and the risk is the obvious one: the heading ends up claiming
-a tag its own text never says. That is survivable if the roll-up is
-*recorded* rather than pretended, which Deckard's data model already allows
-for (`associationTagGroups` is an array of groups, one per line the tags were
-written on).
+a tag its own text never says. Measured against the sample notes the risk
+turns out to be small (no heading absorbs more than one tagged line, no tag
+matches more than it did, and the direction is only unsafe if promoted tags
+are allowed to keep propagating downward — 6 cases, all of them people). See
+*Which way should tags flow?* below for the numbers. It is survivable if the
+roll-up is *recorded* rather than pretended, which Deckard's data model
+already allows for (`associationTagGroups` is an array of groups, one per line
+the tags were written on).
 
 **Recommendation: add `deckard.noteBoundaries`, a three-value setting,
 defaulting to `line` for existing workspaces and `heading` for new ones.**
@@ -149,6 +153,171 @@ coarser than a block) is already unlike any of them — but it is a reason to
 keep the provenance rather than pretend the heading was tagged.
 
 ---
+
+## Which way should tags flow?
+
+The research turned up one unanimous convention — tags flow from container to
+contained — and the proposal runs the other way. This section takes that
+seriously, because the two directions are not mirror images.
+
+### The asymmetry
+
+Downward inheritance is **truth-preserving**. "This paragraph sits inside a
+section about Harbor" is true of every part of that section, however long it
+is, and stays true as the section grows. Nothing a writer adds later can make
+it false.
+
+Upward promotion is **not**. "This section is about `#contact/jax-lumen`" is
+inferred from one sentence out of however many. Add nineteen more sentences
+about something else and the claim gets weaker, silently. Containment licenses
+the first inference and not the second.
+
+That asymmetry is the whole argument, and it is why no tool in the table does
+it. It does not mean Deckard should not — it means promotion has to be treated
+as *evidence about* a heading rather than as a tag the author wrote on it.
+
+### Downward, as today
+
+**For.** Safe, monotone, familiar, and the only rule under which a deeper
+entry is strictly more specific than its parent. It is what makes the heading
+path (*Harbor check-in › Sable Ortiz › Consenting-witness meeting*) mean
+something.
+
+**Against.** It does not answer the complaint at all. Inheritance decides what
+a unit *carries*; it has no opinion on what the unit *is*. Left alone, the
+sentence stays a note. It also inflates: a tag on a root heading matches every
+descendant, which is where `#team/harbor` gets to 122 matches in 48 notes.
+
+### Upward, as proposed
+
+**For.** It puts the tag on the thing that has a name. A heading has a title;
+a sentence has only its own prose, which is why the result list reads as it
+does in the screenshot. Retrieval by tag is worth exactly as much as the
+titles it returns.
+
+It also matches how the sample notes are actually written: the heading names
+the occasion, the sentence names the people and artefacts. Nobody writes
+`#### Consenting-witness meeting #project/argent-protocol #feature/joint-summary #contact/jax-lumen #contact/vero-kline` — they write the heading, then the sentence.
+
+**Against.** The claim it makes is weaker than the claim downward inheritance
+makes, and nothing in the index records that. A promoted tag and a written tag
+would be indistinguishable to search, to counts, and to Related Notes ranking,
+where a shared tag is the strongest signal there is. A heading that merely
+mentions someone would rank like one titled with them.
+
+And it loses the line. Today a result for `#feature/joint-summary` opens at
+line 7; promoted, it opens at the heading and the reader hunts. (Option 3
+exists to answer exactly this.)
+
+### Does a promoted tag keep flowing down?
+
+This is the fork that matters most, and it is invisible until you look for it.
+If a line's tags join its heading, and headings inherit downward, then a tag
+written on one line reaches that heading's *other* children — siblings of the
+line it came from.
+
+Measured on the sample notes, the two orders differ by **6 (entry, tag)
+pairs**. Small. But look at what they are:
+
+```
+Review authority #risk/fatigue            <-  #person/orion-pike
+Evidence governance #risk/chain-of-custody <-  #person/leena-sato
+Ethical command control #risk/coercion     <-  #person/nia-calder
+Source governance #risk/retaliation        <-  #contact/miko-tern
+Rest-rule governance #risk/fatigue         <-  #person/nia-calder
+Ethics governance #risk/decommissioning    <-  #person/sable-ortiz
+```
+
+Every one is a person or a contact attaching to a neighbouring subsection they
+were never named in. The rate is negligible; the kind of error is not. A false
+"this section is about Nia Calder" is a claim about a person, and those are
+the ones worth being strict about.
+
+**So: promote, but do not propagate.** A promoted tag belongs to the heading
+that absorbed it and goes no further. Ancestors keep inheriting only what was
+written on them. This is the `B2` column in the numbers below.
+
+## What this does to the sample content
+
+48 notes, 409 heading entries, 74 tagged-line entries, 184 distinct tags.
+"Rolled up" means: tagged lines stop being entries, their tags join the
+nearest enclosing heading, and promoted tags do not propagate further.
+
+| | Today | Rolled up |
+|---|---:|---:|
+| Entries | 483 | 409 |
+| Tagged lines with no heading to roll into | — | **0** |
+| Headings that gain a tag | — | 74 of 409 (18%) |
+| Tags gained, per affected heading | — | avg 2.0, max 3 |
+| Headings with no tags of their own that become tagged | — | **0** |
+| Headings absorbing more than one tagged line | — | **0** |
+| Tags whose match count grows | — | **0** |
+| Tags whose match count shrinks | — | 25 |
+| Tags whose match count is unchanged | — | 147 |
+
+Four of those numbers settle arguments:
+
+**Every tagged line has a heading to roll into (0 orphans).** The fallback for
+a file with no headings is a real requirement but not a real situation here.
+
+**No untagged heading becomes tagged (0).** Open question 1 is, for this
+corpus, moot: every tagged line already sits under a tagged heading, so
+promotion never drags an untitled section into a tag's results.
+
+**No heading absorbs more than one tagged line (0 of 74).** This is the
+strongest result. The feared failure — a heading turning into a bag holding
+everything its body mentions — does not occur once. Promotion here is very
+nearly a relabelling: the sentence's tags become the enclosing heading's, and
+nothing is mixed with anything else. The worst case in the whole workspace is:
+
+```
+"Buyer voiceprint #project/ashen-mirror"
+   own:   #project/ashen-mirror
+   gains: #feature/signal-reconstruction, #person/mara-vale, #contact/courier
+```
+
+which reads as a fair description of that section rather than a dilution of it.
+
+**No tag matches more things than before (0 grew).** Promotion consolidates;
+it does not inflate. What shrinks is the count of tags that were being counted
+once per tagged line:
+
+```
+#team/harbor          122 -> 89
+#team/wardens         121 -> 88
+#person/mara-vale      70 -> 54
+#person/sable-ortiz    69 -> 52
+#project/ashen-mirror  41 -> 29
+```
+
+Those drops are not lost matches. They are the same places, counted once each
+instead of once per sentence.
+
+And the tag from the screenshot:
+
+```
+#feature/joint-summary    today 1    rolled up 1
+```
+
+**The count does not change. The entry does.** Today it is the sentence
+*"Sable will protect the #feature/joint-summary review with…"*. Rolled up it
+is *Harbor check-in › Sable Ortiz › Consenting-witness meeting*. That single
+line is the entire case for the change: the search was never finding too much
+or too little, it was returning the wrong kind of thing.
+
+### What follows
+
+1. **Promote, do not propagate.** Ancestors inherit written tags only.
+2. **Record the promotion.** A heading's tag knows whether it was written or
+   absorbed. Costs one flag; buys honest UI, an `is:promoted` filter later,
+   and the next point.
+3. **Weight a promoted tag below a written one in Related Notes.** A shared
+   written tag is the author saying two things are about each other. A shared
+   promoted tag is two sections mentioning the same name. The ranking already
+   distinguishes evidence by strength; this is one more kind.
+4. **Keep the line's position** so a result can open where the tag was
+   written, which is Option 3 and the reason it is in Phase 3 rather than
+   dropped.
 
 ## Options
 
