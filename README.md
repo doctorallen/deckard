@@ -317,13 +317,16 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 | **Tags written together** | The tag pairs carried together by the most notes and tasks, counted as a search for both counts, with how much of the rarer tag's entries they share; a pair searches for both | The Tags tab |
 | **Tags without a hub** | Tags used at least three times with no [hub note](#hub-notes), each with **Create hub** | The Tags tab |
 | **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename**, so a typo is caught early | The Tags tab |
+| **People gone quiet** | The people you have not written about for 30, 60, 90, or 180 days, longest ago first, each with how long it has been and what is still open with them | The Tags tab |
 | **Pinned notes** | Notes you pinned, each with **×** to unpin; **Pin** adds the note you had open last | The notes |
 
 Pin the note in the editor with `Deckard: Pin Note to Home`, and unpin it with `Deckard: Unpin Note from Home`. A tag is new from the first time Deckard indexes it; the tags in use when Deckard first kept track are not new.
 
+**People gone quiet** reads `@` tags and `#person/…` tags together, so one person written both ways is counted as the two tags they are — [Stats](#tags-that-look-alike) says when that is what has happened. A name was last written on the day of the newest note carrying it, dated the way Deckard dates every note: a `updated:` field first, then a daily note's day, then the file. Someone whose notes carry no date at all is left out rather than guessed at. Selecting a person opens their search page, where the entries themselves are.
+
 **Paging**, in a widget's gear, turns it from the first few entries into all of them a page at a time: the widget grows a line of its own with **Per page**, the entries it is showing, such as *6–10 of 601*, and a chevron either way. The Agenda and a saved search's results are not paged, because each lists more than one thing and a single page number could not say which. A widget's page is kept with the rest of its settings, so Home opens where you left it.
 
-Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks and New tags look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
+Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks, New tags, and People gone quiet look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
 
 ### Tags
 

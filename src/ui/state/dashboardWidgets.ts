@@ -28,6 +28,7 @@ import {
   sortTasks,
 } from './dashboardState';
 import { frecencyScore } from './frecency';
+import { listQuietPeople } from './peopleRecency';
 import {
   collectFileTags,
   rankRelatedNotes,
@@ -73,6 +74,7 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   tagPairs: 'Tags written together',
   unhubbedTags: 'Tags without a hub',
   newTags: 'New tags',
+  quietPeople: 'People gone quiet',
   pinnedNotes: 'Pinned notes',
 };
 
@@ -426,6 +428,22 @@ function createWidget(
         })),
       };
     }
+    case 'quietPeople': {
+      const quiet = listQuietPeople(index, options.now, config.days ?? 90);
+      return {
+        ...widget,
+        total: quiet.length,
+        tags: take(quiet).map((person) => ({
+          key: person.tag.key,
+          label: person.tag.label,
+          detail: `${describeLastWritten(options.now, person.lastWrittenAt)} · ${
+            person.openTasks === 0
+              ? describeTagMatches(index, person.tag.key)
+              : `${person.openTasks} open ${person.openTasks === 1 ? 'task' : 'tasks'}`
+          }`,
+        })),
+      };
+    }
     case 'pinnedNotes': {
       const pinned = (preferences.pinnedNotes ?? []).filter((filePath) =>
         index.files.has(filePath),
@@ -540,6 +558,20 @@ function describeEntryCount(pair: { notes: number; tasks: number }): string {
     parts.push(`${pair.tasks} task${pair.tasks === 1 ? '' : 's'}`);
   }
   return parts.join(' and ') || 'Nothing';
+}
+
+/** How long ago a name was last written, in whole days. */
+function describeLastWritten(now: number, time: number): string {
+  const days = Math.floor((now - time) / DAY);
+  if (days <= 0) {
+    return 'Written today';
+  }
+  if (days === 1) {
+    return 'Written yesterday';
+  }
+  return days < 365
+    ? `Written ${days} days ago`
+    : `Written ${Math.floor(days / 365)} ${Math.floor(days / 365) === 1 ? 'year' : 'years'} ago`;
 }
 
 /** How long ago a time was, in whole days. */

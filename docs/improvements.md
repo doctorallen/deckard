@@ -223,6 +223,9 @@ an optional notification at an hour you choose follows from the same count.
 
 ### 16. When you last wrote about a person
 
+**Shipped** as Home's People gone quiet widget; see the README's Home
+section.
+
 People are first-class in the index, but nothing tracks recency by person:
 who has not appeared in ninety days, when a name was last written, what is
 open that mentions them. On a person's hub note that is the 1:1 and meeting

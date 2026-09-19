@@ -63,6 +63,7 @@ export type DashboardWidgetKind =
   | 'tagPairs'
   | 'unhubbedTags'
   | 'newTags'
+  | 'quietPeople'
   | 'pinnedNotes';
 
 /** Whether a widget takes one of Home's two columns or both. */

@@ -248,6 +248,7 @@ ${getQueryEditorScript()}
     tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
     unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
+    quietPeople: { label: 'People gone quiet', description: 'People you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
   };
 
@@ -683,6 +684,8 @@ ${getQueryEditorScript()}
         return renderHomeTags(widget.tags, 'No tag was first seen in the last ' + (widget.days || 14) + ' days.', function (tag) {
           return renderRowAction('rename-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Rename', 'Rename ' + tag.label + ' everywhere');
         });
+      case 'quietPeople':
+        return renderHomeTags(widget.tags, 'Everyone you write about has come up in the last ' + (widget.days || 90) + ' days.');
       case 'pinnedNotes': {
         const source = widget.sourceNote && !widget.sourcePinned
           ? renderSourceNote('Open:', widget.sourceNote, renderRowAction('pin-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Pin', 'Pin ' + widget.sourceNote.title + ' to Home'))
@@ -717,6 +720,7 @@ ${getQueryEditorScript()}
       case 'staleTasks': return link('open-task-board', 'data-query="is:open"', 'Task Board');
       case 'unhubbedTags':
       case 'newTags':
+      case 'quietPeople':
       case 'tagPairs': return link('set-dashboard-mode', 'data-dashboard-mode="browse"', 'All tags');
       case 'relatedNotes': return widget.sourceNote ? link('open-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Open note') : '';
       case 'savedQuery':

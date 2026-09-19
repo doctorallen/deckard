@@ -84,6 +84,16 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **Home says who you have not written about lately.** People are
+  first-class in the index, but nothing said when a name last came up, which
+  is the question a 1:1 or a standing meeting asks. The **People gone quiet**
+  widget lists the people missing from the last 30, 60, 90, or 180 days,
+  longest ago first, each with how long it has been and what is still open
+  with them. It reads `@` tags and `#person/…` tags together, dates a name by
+  the newest note carrying it — front matter first, then a daily note's day,
+  then the file — and leaves out anyone whose notes carry no date at all
+  rather than guessing.
+
 - **What is due today now shows in the status bar.** Every other count
   Deckard keeps waited for a view to be opened; this one is visible while you
   are writing code. It reads **3 due today**, counting the same tasks the

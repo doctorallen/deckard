@@ -106,6 +106,7 @@ export const DASHBOARD_WIDGET_KINDS: Readonly<
   tagPairs: { repeatable: false, listed: true },
   unhubbedTags: { repeatable: false, listed: true },
   newTags: { repeatable: false, listed: true },
+  quietPeople: { repeatable: false, listed: true },
   pinnedNotes: { repeatable: false, listed: true },
 };
 
@@ -115,6 +116,7 @@ export const DASHBOARD_WIDGET_DEFAULT_DAYS: Readonly<
 > = {
   staleTasks: 30,
   newTags: 14,
+  quietPeople: 90,
 };
 /** The furthest back a widget can look, in days. */
 export const DASHBOARD_WIDGET_DAYS_LIMIT = 365;
