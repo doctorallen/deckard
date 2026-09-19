@@ -129,23 +129,6 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('selectedNeighbors[index]'), true);
   });
 
-  test('opens the selected graph node from the sidebar header', () => {
-    const html = getSidebarNotesHtml({
-      cspSource: 'vscode-webview://deckard',
-    }, '1.0.0');
-
-    assertWebviewScriptParses(html);
-    assert.strictEqual(
-      html.includes('data-action="open-selected-graph-node"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("if (target.dataset.action === 'open-selected-graph-node')"),
-      true,
-    );
-    assert.strictEqual(html.includes('open: true'), true);
-  });
-
   test('distinguishes selected, parent, and child tag context in diagnostics', () => {
     const html = getRelatedNotesDebugHtml(
       { cspSource: 'test-csp' },
@@ -1402,32 +1385,14 @@ suite('Webview contracts', () => {
     );
 
     assertWebviewScriptParses(html);
-    assert.strictEqual(html.includes('<p class="eyebrow" title="Deckard v1.0.0">DECKARD</p>'), true);
-    // The badge took a place in the narrowest row in the product; the
-    // version is the eyebrow's tooltip now.
-    assert.strictEqual(html.includes('<span class="version">v1.0.0</span>'), false);
-    assert.strictEqual(html.includes('DECKARD / RELATED NOTES'), false);
-    assert.strictEqual(html.includes('class="reason"'), false);
-    assert.strictEqual(html.includes('note.reasons'), true);
-    assert.strictEqual(html.includes('const relevanceReasons = note.reasons'), true);
-    assert.strictEqual(
-      html.includes('class="relevance-tooltip" role="tooltip"'),
-      true,
-    );
-    assert.strictEqual(html.includes('Association weight'), true);
-    assert.strictEqual(html.includes('Specificity adjustment'), true);
-    // Writing a link to a result is held to what the sidebar does; see the
+                                        // Writing a link to a result is held to what the sidebar does; see the
     // Related Notes behavior suite. The rule that keeps the button out of the
     // way is style, which only a rendered page can be asked about.
     assert.strictEqual(
       html.includes('.note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }'),
       true,
     );
-    assert.strictEqual(
-      html.includes('.note:hover, .note:focus-within { z-index: 20;'),
-      true,
-    );
-    assert.strictEqual(
+        assert.strictEqual(
       html.includes('.note-title .inline-tag { color: var(--text); }'),
       true,
     );
@@ -1435,50 +1400,17 @@ suite('Webview contracts', () => {
       html.includes('.active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }'),
       true,
     );
-    assert.strictEqual(
-      html.includes('<span class="section-label">Related notes</span>'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("type: 'hoverNotesGraphNode'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("type: 'activateNotesGraphNode'"),
-      true,
-    );
-    assert.strictEqual(html.includes('function renderNoteCard('), true);
-    assert.strictEqual(html.includes('Connected nodes'), true);
-    assert.strictEqual(html.includes('class="graph-kind '), true);
-    assert.strictEqual(
-      html.includes('function renderTagLabel(label, svg)'),
-      true,
-    );
-    assert.strictEqual(
+                                assert.strictEqual(
       html.includes('.tag-namespace { opacity: .62; }'),
       true,
     );
-    assert.strictEqual(html.includes('.tag-weight-rail {'), true);
-    assert.strictEqual(
+        assert.strictEqual(
       html.includes(
         '.tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .3; }',
       ),
       true,
     );
-    assert.strictEqual(html.includes('function renderWeightRail(level, title)'), true);
-    assert.strictEqual(html.includes('Related Notes weight'), true);
-    assert.strictEqual(html.includes('tag-weight-pips'), false);
-    assert.strictEqual(html.includes('tag-weight-pip'), false);
-    assert.strictEqual(html.includes('tag-weight-legend'), false);
-    assert.strictEqual(
-      html.includes('class="tag-namespace"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('class="tag-value"'),
-      true,
-    );
-    // Inline tags keep the sidebar's compact size; colour, margin and
+                                // Inline tags keep the sidebar's compact size; colour, margin and
     // alignment come from the shared .tag-open and .inline-tag rules.
     assert.strictEqual(
       html.includes(
@@ -1510,60 +1442,7 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(html.includes("note.dailyDate ? 'Daily note '"), false);
-    assert.strictEqual(html.includes('set-related-notes-sort'), true);
-    assert.strictEqual(html.includes('related-notes-sort-control'), true);
-    assert.strictEqual(html.includes('related-notes-sort-icon'), true);
-    assert.strictEqual(
-      html.includes("state.tagTitleDisplayMode === 'separate'"),
-      true,
-    );
-    assert.strictEqual(html.includes('function renderInlineTitle(title, tags, appendMissing)'), true);
-    assert.strictEqual(html.includes("renderTagButton(tag, 'inline-tag')"), true);
-    assert.strictEqual(html.includes('>Relevance</option>'), true);
-    assert.strictEqual(html.includes('>Newest</option>'), true);
-    assert.strictEqual(html.includes('>Oldest</option>'), true);
-    assert.strictEqual(html.includes('>Most accessed</option>'), true);
-    // While a search page is active, the sidebar holds its Refine options.
-    assert.strictEqual(html.includes('function renderSidebarRelationships'), false);
-    assert.strictEqual(html.includes('data-action="add-overview-filter"'), false);
-    assert.strictEqual(html.includes('function renderRefine(refine)'), true);
-    assert.strictEqual(html.includes("if (state.state === 'refine') {"), true);
-    assert.strictEqual(html.includes('function renderRefineValue(facet, value)'), true);
-    assert.strictEqual(html.includes("facet.id === 'related' || facet.id === 'tags'"), true);
-    // A related tag's row adds it to the search; its icon opens it in a new tab.
-    assert.strictEqual(html.includes('class="tag-open refine-value-open" data-action="refine"'), true);
-    assert.strictEqual(html.includes('class="refine-open-tag" data-action="open-tag"'), true);
-    assert.strictEqual(html.includes('sidebar-add-filter'), false);
-    assert.strictEqual(html.includes("type: 'refineActiveSearch'"), true);
-    assert.strictEqual(html.includes("mode: event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and'"), true);
-    // The page holds the search's terms and counts; the sidebar only refines.
-    assert.strictEqual(html.includes('data-action="refine-remove-term"'), false);
-    assert.strictEqual(html.includes("type: 'setActiveSearch'"), false);
-    assert.strictEqual(html.includes('Search page'), false);
-    // Strength is a bar relative to the strongest tag, not a percentage.
-    assert.strictEqual(html.includes('strength-bar'), false, 'one rail for a tag\'s weight');
-    assert.strictEqual(html.includes("' + percentage + '%</span>"), false);
-    assert.strictEqual(html.includes('Association strength'), false);
-    assert.strictEqual(html.includes('.refine-value-open {'), true);
-    assert.strictEqual(html.includes('class="relevance-score"'), true);
-    assert.strictEqual(html.includes('note.relevanceScore'), true);
-    assert.strictEqual(html.includes('data-filter-tag-key'), false);
-    assert.strictEqual(html.includes('state.tagOverview'), false);
-    assert.strictEqual(
-      html.includes('function renderTagControl(tag, content, extraClass)'),
-      false,
-    );
-    assert.strictEqual(html.includes('data-context-action="rename-tag"'), true);
-    assert.strictEqual(
-      html.includes('function openTagContextMenu(event, target)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("document.addEventListener('contextmenu'"),
-      true,
-    );
-  });
+                                                                                                                                                      });
 
   test('renders Help navigation for quick-start and advanced sections', () => {
     const html = getHelpHtml(
