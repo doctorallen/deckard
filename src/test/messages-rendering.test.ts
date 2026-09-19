@@ -28,6 +28,12 @@ suite('Webview contracts', () => {
     });
 
     assertWebviewScriptParses(html);
+    // The graph's controls are driven in the Notes Graph behavior suite.
+    // What is left here is its clustering and force model, still held to its
+    // source text: the page draws into a canvas, which jsdom has no context
+    // for, and these functions are locked inside the page script where no
+    // test can call them. Lifting them into a module of their own is what
+    // turns these checks into tests of the algorithm.
     assert.strictEqual(
       html.includes('The graph uses prevalence-aware visual communities'),
       true,
@@ -39,44 +45,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('primaryClusterSize[bestMembership.tagIndex] += 1'), true);
     assert.strictEqual(html.includes('strength *= isPrimaryMembership ? 3 : 0.08'), true);
     assert.strictEqual(html.includes('var clusterGravity ='), true);
-    assert.strictEqual(html.includes('id="show-notes" checked'), true);
-    assert.strictEqual(html.includes("node.kind === 'note' && !settings.showNotes"), true);
-    assert.strictEqual(html.includes('id="link-density"'), true);
-    assert.strictEqual(html.includes('id="tag-specificity"'), true);
-    assert.strictEqual(html.includes('id="bridge-strength"'), true);
-    assert.strictEqual(html.includes('id="cluster-cohesion"'), true);
-    assert.strictEqual(html.includes('id="community-spacing"'), true);
-    assert.strictEqual(html.includes('id="show-all-links"'), true);
-    assert.strictEqual(html.includes('id="reset-graph-settings"'), true);
-    assert.strictEqual(
-      html.includes('title="Filter note, task, and tag titles and file paths."'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Show tag nodes and tag links; hidden tags still guide clustering."'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Choose how many of each node\'s strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections."'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage."'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Set the target length of visible links; larger values spread connected nodes farther apart."'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Restore all graph controls and filters, clear node momentum, and reframe the graph."'),
-      true,
-    );
-    [
+        assert.strictEqual(html.includes("node.kind === 'note' && !settings.showNotes"), true);
+                                                            [
       'search',
       'show-notes',
       'show-tasks',
@@ -104,8 +74,7 @@ suite('Webview contracts', () => {
     ].forEach((id) => {
       assert.strictEqual(new RegExp(`id="${id}"[^>]*title="[^"]+"`).test(html), true);
     });
-    assert.strictEqual(html.includes('class="graph-zoom-controls"'), true);
-    assert.strictEqual(
+        assert.strictEqual(
       html.indexOf('id="reset-graph-settings"') >
         html.indexOf('class="graph-zoom-controls"'),
       true,
