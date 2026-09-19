@@ -389,6 +389,7 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 - **Refine** narrows the results. On a page of one tag, or of several tags joined by AND, it offers related **Tags** first, strongest first, with a three-step rail for each one's strength; select one to add it to the search.
 - Notes and Tasks are two tabs, or side by side; the Tasks list opens on **Open** tasks and has an **All**/**Open**/**Done** filter, with checkboxes that update the original Markdown task.
 - Sort notes alphabetically, by creation date, by update date, or by most accessed, on the line under the search box.
+- A broad search fills the page with its first 200 notes and 200 tasks, and **Show more** under a list asks for the next batch. The counts beside Notes and Tasks are always of the whole search.
 - The **View options** gear chooses **Tabs** or **Side by side**, the original Markdown source or a rendered view, and one through four columns for notes and for tasks.
 - **Save** keeps the search as a saved search. A search of two or more tags is saved as that set of tags, and follows them when they are renamed; the saved search's name appears above the title whenever the page's search matches it.
 - Select a note entry to jump to its heading in the source note.

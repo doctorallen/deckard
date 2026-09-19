@@ -150,6 +150,13 @@ export interface SearchPageOptions {
    * full-text cache. Without it a search that finds nothing simply says so.
    */
   suggestWords?: (words: readonly string[]) => ReadonlyMap<string, string>;
+  /**
+   * How many note cards and task rows to carry. The rest are counted and
+   * left behind, so a broad search costs what is on screen rather than what
+   * the workspace holds. Every count the page shows is of the whole result.
+   */
+  noteLimit?: number;
+  taskLimit?: number;
   now?: number;
 }
 
@@ -213,14 +220,21 @@ export function createSearchPageSnapshot(
           .filter((file) => file.filePath !== hubFile?.filePath)
           .map(createFileOverviewCard),
       ];
-  const sections = cards.sort((left, right) =>
+  const ranked = cards.sort((left, right) =>
     compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
   );
+  const sections =
+    options.noteLimit === undefined
+      ? ranked
+      : ranked.slice(0, Math.max(options.noteLimit, 0));
   const tasks = sortTasks(
     [...results.tasks],
     preferences.taskOrder,
     preferences.taskSortMode,
   );
+  const shownTasks = tasks
+    .filter((task) => matchesTaskFilter(task, taskFilter))
+    .map((task) => createDashboardTask(task, index.sections));
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
@@ -229,7 +243,7 @@ export function createSearchPageSnapshot(
   // search as it was typed, and offering a different one beside them would
   // argue with what the reader can already see.
   const corrected =
-    sections.length === 0 && tasks.length === 0
+    ranked.length === 0 && tasks.length === 0
       ? suggestSearch(text, parsed, options.suggestWords)
       : undefined;
   // A word the notes contain somewhere may still sit in no note that
@@ -264,7 +278,7 @@ export function createSearchPageSnapshot(
     query: createQueryViewState(
       index,
       parsed,
-      { notes: sections.length, tasks: tasks.length },
+      { notes: ranked.length, tasks: tasks.length },
       true,
       preferences.recentQueries ?? [],
       {
@@ -284,9 +298,12 @@ export function createSearchPageSnapshot(
           findMatchingSavedQueryName(preferences.savedFilters, parsed)
         : findMatchingSavedQueryName(preferences.savedFilters, parsed),
     sections,
-    tasks: tasks
-      .filter((task) => matchesTaskFilter(task, taskFilter))
-      .map((task) => createDashboardTask(task, index.sections)),
+    sectionTotal: ranked.length,
+    tasks:
+      options.taskLimit === undefined
+        ? shownTasks
+        : shownTasks.slice(0, Math.max(options.taskLimit, 0)),
+    taskTotal: shownTasks.length,
     taskCounts: {
       all: tasks.length,
       active: tasks.filter((task) => !task.completed).length,

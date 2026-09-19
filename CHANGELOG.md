@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+
+- **A search page carries a batch of a broad search rather than all of it.**
+  A search that matched the workspace used to send, and draw, every note and
+  task on every save: about 4.3 MB of card text at 940 notes, growing with
+  the workspace, for the screenful anyone reads. A page now carries 200 of
+  each, about 0.54 MB whatever the workspace holds, and **Show more** asks
+  for the next batch. Every count on the page is still of the whole search.
+
 ### Added
 
 - **Related Notes writes a link to a result**. The button beside a result's

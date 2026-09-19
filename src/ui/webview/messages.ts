@@ -172,6 +172,10 @@ export function parseSearchPageMessage(
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
         : undefined;
+    case 'showMoreEntries':
+      return value.kind === 'notes' || value.kind === 'tasks'
+        ? { type: 'showMoreEntries', kind: value.kind }
+        : undefined;
     case 'toggleTask':
       return typeof value.taskId === 'string' &&
         typeof value.completed === 'boolean'

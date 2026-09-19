@@ -451,8 +451,19 @@ export interface SearchPageSnapshot {
   /** The search the page was opened with, which Clear returns to. */
   originQuery: string;
   savedViewName?: string;
+  /**
+   * The note cards the page carries, which a broad search limits to the
+   * first `noteLimit` of them.
+   */
   sections: TagOverviewCard[];
+  /** How many notes the search found, whether or not they are all carried. */
+  sectionTotal: number;
   tasks: DashboardTask[];
+  /**
+   * How many tasks the search found under the active completion filter,
+   * whether or not they are all carried.
+   */
+  taskTotal: number;
   /** Counts before the active completion filter is applied. */
   taskCounts: {
     all: number;
@@ -929,6 +940,12 @@ export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
 }
 
+/** Carry the next batch of results, for a search with more than it sent. */
+export interface ShowMoreEntriesMessage {
+  type: 'showMoreEntries';
+  kind: 'notes' | 'tasks';
+}
+
 /** Remembers a search that was run, for Find and the search boxes. */
 export interface RecordRecentQueryMessage {
   type: 'recordRecentQuery';
@@ -1050,6 +1067,7 @@ export type SearchPageMessage =
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
+  | ShowMoreEntriesMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =

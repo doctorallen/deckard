@@ -441,6 +441,14 @@ suite('Webview contracts', () => {
       parseSearchPageMessage({ type: 'saveTagOverviewFilter' }),
       { type: 'saveTagOverviewFilter' },
     );
+    assert.deepStrictEqual(
+      parseSearchPageMessage({ type: 'showMoreEntries', kind: 'tasks' }),
+      { type: 'showMoreEntries', kind: 'tasks' },
+    );
+    assert.strictEqual(
+      parseSearchPageMessage({ type: 'showMoreEntries', kind: 'everything' }),
+      undefined,
+    );
     assert.strictEqual(
       parseSearchPageMessage({
         type: 'saveTagOverviewFilter',
@@ -1461,6 +1469,19 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes("!invalid && state.suggestion"), true);
     assert.strictEqual(html.includes('class="did-you-mean"'), true);
+    // The counts are of the whole result; the page carries a batch of it.
+    assert.strictEqual(
+      html.includes("if (action === 'show-more-entries') { vscode.postMessage({ type: 'showMoreEntries', kind: target.dataset.kind }); return; }"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("const showMoreNotes = showMore('notes', notesCount, state.sections.length);"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes("count.textContent = filtering ? visibleCount + ' / ' + total : String(total);"),
+      true,
+    );
     assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
     assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
     assert.strictEqual(html.includes('function filterEntries(kind)'), true);

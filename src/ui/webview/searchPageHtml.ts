@@ -155,7 +155,11 @@ ${getQueryEditorScript()}
   function filterEntries(kind) {
     if (!state) return;
     const words = editor.previewWords(editor.currentText());
-    const total = kind === 'notes' ? state.sections.length : state.tasks.length;
+    // The notes count is of everything the search found, so narrowing by a
+    // word never reads as though the search itself had shrunk to a batch.
+    const total = kind === 'notes'
+      ? (state.sectionTotal === undefined ? state.sections.length : state.sectionTotal)
+      : (state.taskTotal === undefined ? state.tasks.length : state.taskTotal);
     let visibleCount = 0;
     document.querySelectorAll('[data-search-entry="' + kind + '"]').forEach(function (entry) {
       const text = entry.dataset.searchText || entry.textContent.toLowerCase();
@@ -165,7 +169,7 @@ ${getQueryEditorScript()}
     });
     const filtering = words.length > 0 && visibleCount < total;
     document.querySelectorAll('[data-search-count="' + kind + '"]').forEach(function (count) {
-      count.textContent = visibleCount + (filtering ? ' / ' + total : '');
+      count.textContent = filtering ? visibleCount + ' / ' + total : String(total);
     });
     const empty = document.querySelector('[data-search-empty="' + kind + '"]');
     if (empty) empty.hidden = !words.length || visibleCount > 0;
@@ -280,8 +284,19 @@ ${getQueryEditorScript()}
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + renderOverviewTagLink(focus, state.entity.label) + '</div>'
       : '';
-    const notesCount = state.sections.length;
-    const tasksCount = state.tasks.length;
+    const notesCount = state.sectionTotal === undefined ? state.sections.length : state.sectionTotal;
+    const tasksCount = state.taskTotal === undefined ? state.tasks.length : state.taskTotal;
+    // The page carries a batch of a broad search's results. The rest are
+    // counted, and fetched when the reader asks for them.
+    const showMore = function (kind, total, carried) {
+      const unsent = Math.max(total - carried, 0);
+      if (!unsent) return '';
+      const noun = kind === 'notes' ? 'note' : 'task';
+      const label = unsent + ' more ' + (unsent === 1 ? noun : noun + 's') + ' ' + (unsent === 1 ? 'matches' : 'match') + ' this search';
+      return '<p class="empty-action"><button data-action="show-more-entries" data-kind="' + kind + '" title="' + label + '" aria-label="Show more ' + kind + '. ' + label + '">Show more</button></p>';
+    };
+    const showMoreNotes = showMore('notes', notesCount, state.sections.length);
+    const showMoreTasks = showMore('tasks', tasksCount, state.tasks.length);
     // An empty side of a search that did find something on the other side is
     // a dead end otherwise: the count is in the tab strip, but nothing says
     // the results are one click away.
@@ -299,6 +314,7 @@ ${getQueryEditorScript()}
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
       : '<div class="empty">' + (state.taskFilter === 'active' ? 'No open tasks match this search.' : 'No tasks match this filter.') + otherResults('tasks') + '</div>';
+    const tasksPaged = tasks + showMoreTasks;
     if (!tabChosen && state.layout !== 'split') {
       activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
     }
@@ -399,6 +415,7 @@ ${getQueryEditorScript()}
         saveState();
         render();
       }
+      if (action === 'show-more-entries') { vscode.postMessage({ type: 'showMoreEntries', kind: target.dataset.kind }); return; }
       if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });

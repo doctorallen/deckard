@@ -301,6 +301,40 @@ suite('Refining a search', () => {
     assert.strictEqual(corrected('#elevatr'), undefined);
   });
 
+  test('carries a batch of a broad search and counts the whole of it', () => {
+    const files = Array.from({ length: 6 }, (_, index) =>
+      parseMarkdown(
+        `notes/note-${index}.md`,
+        `# Note ${index} #project/atlas\nProse.\n- [ ] Task ${index} #project/atlas`,
+      ),
+    );
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas');
+    assert.strictEqual(whole.sections.length, 6);
+    assert.strictEqual(whole.sectionTotal, 6);
+    assert.strictEqual(whole.tasks.length, 6);
+    assert.strictEqual(whole.taskTotal, 6);
+
+    const batch = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      noteLimit: 2,
+      taskLimit: 3,
+    });
+    assert.strictEqual(batch.sections.length, 2);
+    assert.strictEqual(batch.tasks.length, 3);
+    // What the page says it found is what the search found, not what it was
+    // sent, so asking for the next batch never changes the answer.
+    assert.strictEqual(batch.sectionTotal, 6);
+    assert.strictEqual(batch.taskTotal, 6);
+    assert.strictEqual(batch.query.matchCounts.notes, 6);
+    assert.strictEqual(batch.query.matchCounts.tasks, 6);
+    assert.deepStrictEqual(batch.sections, whole.sections.slice(0, 2));
+    assert.deepStrictEqual(batch.taskCounts, whole.taskCounts);
+
+    store.dispose();
+  });
+
   test('labels words as the text condition they run', () => {
     const labels = (text: string) =>
       getTopLevelTerms(parseQuery(text)).map((term) => term.label ?? term.text);

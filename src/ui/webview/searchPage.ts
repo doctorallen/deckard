@@ -31,6 +31,14 @@ import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 
 /**
+ * How many note cards and task rows a page carries, and asks for again each
+ * time the reader wants more. Enough that a search anyone would read through
+ * arrives whole, and small enough that a workspace-wide search is not
+ * megabytes of card text through the webview channel on every save.
+ */
+const PAGE_SIZE = 200;
+
+/**
  * Opens search pages: one editor tab per search, which a tag's overview is
  * the case of, when the search is that one tag.
  *
@@ -250,6 +258,14 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private taskFilter: TaskFilter = 'active';
   /**
+   * How many note cards and task rows the page is carrying. A workspace-wide
+   * search used to send, and draw, every one of them on every save: several
+   * megabytes through the webview channel, and thousands of cards rebuilt,
+   * for the screenful anyone reads. The page asks for the next batch instead.
+   */
+  private noteLimit = PAGE_SIZE;
+  private taskLimit = PAGE_SIZE;
+  /**
    * Search text that does not parse. The box shows it, with its error, while
    * the page keeps the results of the last search that did.
    */
@@ -395,6 +411,8 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         originQuery: this.originQuery,
         taskFilter: this.taskFilter,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
+        noteLimit: this.noteLimit,
+        taskLimit: this.taskLimit,
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
@@ -489,6 +507,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     this.invalidQueryText = undefined;
     this.queryText = text;
+    // A different search is a different list, read from its top.
+    this.noteLimit = PAGE_SIZE;
+    this.taskLimit = PAGE_SIZE;
     this.refresh();
     if (remember && text) {
       await this.preferences.recordRecentQuery(text);
@@ -513,6 +534,14 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         return;
       case 'clearOverviewQuery':
         await this.applyQuery(this.originQuery, false);
+        return;
+      case 'showMoreEntries':
+        if (message.kind === 'notes') {
+          this.noteLimit += PAGE_SIZE;
+        } else {
+          this.taskLimit += PAGE_SIZE;
+        }
+        this.refresh();
         return;
       case 'setTaskFilter':
         this.taskFilter = message.filter;
