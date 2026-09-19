@@ -57,6 +57,15 @@ roll-up is *recorded* rather than pretended, which Deckard's data model
 already allows for (`associationTagGroups` is an array of groups, one per line
 the tags were written on).
 
+**Decided: tags do not roll up.** Promotion asserts something a heading's own
+text does not say, and every mitigation for that is scaffolding around the
+same flaw. What the complaint needs is the *result* in a different place, not
+the tag. So the boundary moves instead: **a heading is the unit a search
+returns; a tag written on a line inside it stays on that line; the heading
+matches because it contains the line.** Nothing is copied, so nothing has to
+be recorded, weighted down, or stopped from propagating — and the result set
+is the same one measured below.
+
 **Recommendation: add `deckard.noteBoundaries`, a three-value setting,
 defaulting to `line` for existing workspaces and `heading` for new ones.**
 Ship it in the order in Phase 1–3 below, starting with the part that changes
@@ -305,19 +314,49 @@ is *Harbor check-in › Sable Ortiz › Consenting-witness meeting*. That single
 line is the entire case for the change: the search was never finding too much
 or too little, it was returning the wrong kind of thing.
 
-### What follows
+### Decision: tags do not roll up
 
-1. **Promote, do not propagate.** Ancestors inherit written tags only.
-2. **Record the promotion.** A heading's tag knows whether it was written or
-   absorbed. Costs one flag; buys honest UI, an `is:promoted` filter later,
-   and the next point.
-3. **Weight a promoted tag below a written one in Related Notes.** A shared
-   written tag is the author saying two things are about each other. A shared
-   promoted tag is two sections mentioning the same name. The ranking already
-   distinguishes evidence by strength; this is one more kind.
-4. **Keep the line's position** so a result can open where the tag was
-   written, which is Option 3 and the reason it is in Phase 3 rather than
-   dropped.
+Weighing the above, **promotion is rejected**. The asymmetry is real and no
+amount of small measured risk makes an untrue statement true: a heading that
+absorbs a tag written in its body claims something its own text does not say,
+and every mitigation — a provenance flag, a lower ranking weight, a rule
+against propagating — is scaffolding around that one problem.
+
+What the complaint actually needs is not the tag in a different place. It is
+the **result** in a different place. So move the boundary, not the tag:
+
+> A heading is the unit a search returns. A tag written on a line inside it
+> stays on that line. The heading matches because it *contains* the line.
+
+Nothing is copied, so there is nothing to record, nothing to weight down, and
+nothing to stop propagating. Provenance is not a flag — it is the line number,
+which the index already has. And the result set is identical to the measured
+`B2` column above, so every number in the previous section still stands: 409
+entries, no tag matching more than before, `#feature/joint-summary` still one
+match, now the meeting rather than the sentence.
+
+This is also how the file-unit tools behave, described honestly. A tag
+anywhere in an Obsidian note matches the note; nobody says the tag was moved
+to the file. The same sentence with "heading" in place of "file" is this
+proposal.
+
+**One definition has to change for it to work.** A heading entry's own body
+must be the lines from its heading to the *next heading of any level*,
+excluding its descendants. Today a parent's stored text swallows its
+children's, so "contains" would make every ancestor match a tag written
+anywhere beneath it — inflation worse than the promotion it replaces, and
+upward flow through every ancestor rather than one. Bounding a heading's body
+to its own lines fixes that and the double-counting noted earlier in the same
+stroke.
+
+So a heading entry matches a tag when the tag is:
+
+1. written on its heading line, or
+2. written on a line in its own body, or
+3. written on an ancestor heading (downward inheritance, unchanged).
+
+And a match of kind (2) knows which line it came from, so the result can open
+there and quote it.
 
 ## Options
 
@@ -333,7 +372,7 @@ genuinely is the atom. 15% of entries and the home of 59% of the tags.
 - **Against:** the complaint. Sentences titled with their own prose compete
   with real notes; the heading that names the subject carries nothing.
 
-### Option 2 — Headings are the only boundary; a line's tags roll up
+### Option 2 — Headings are the only boundary; a line's tags roll up *(rejected)*
 
 Setting value: `heading`.
 
@@ -352,20 +391,24 @@ for the file.
   written there or promoted, so the UI can render a promoted tag differently
   and a future `is:promoted` could exclude them.
 
-### Option 3 — Headings are the boundary; lines become parts, not results
+### Option 3 — Headings are the boundary; the tag stays on the line *(chosen)*
 
-Setting value: `heading`, plus the line kept as an *anchor*.
+Setting value: `heading`.
 
-As Option 2 for retrieval — a search returns headings — but the line survives
-in the index as a located fragment of its heading entry: it contributes its
-tags, keeps its line number, and a result can open at it and quote it, the way
-a block reference does. It simply never appears as a result in its own right.
+A search returns headings. A tagged line is not an entry and its tags are not
+copied anywhere: they stay on the line, and the line stays in the index as a
+located part of its heading entry, keeping its line number and its tags. The
+heading matches because it contains the line.
 
-- **For:** the complaint is fixed without losing "where in the note was this".
-  A result can say *Consenting-witness meeting* and still scroll to line 7 and
-  show that sentence as the reason it matched.
+- **For:** fixes the complaint without asserting anything untrue. A result
+  says *Consenting-witness meeting*, opens at line 7, and quotes that sentence
+  as the reason it matched. No provenance flag, no propagation rule, no
+  second class of tag — the tag never moved. Identical result set to the
+  measured roll-up, so the numbers above apply unchanged.
 - **Against:** more work than Option 2. The entry model grows a notion of
   "parts", which touches excerpting, the graph, and Related Notes evidence.
+  And it depends on bounding a heading's body to its own lines, which is a
+  change to how section text is stored.
 
 ### Option 4 — Opt-in promotion, org-roam style
 
@@ -442,15 +485,18 @@ subtree reachable but not duplicated.
 ```
 
 - `line` — a tagged line is its own note. Today's behaviour.
-- `heading` — only headings are notes; a tagged line's tags join its heading.
-- `marked` — as `heading`, but a line carrying a `^block-id` stays its own note.
+- `heading` — only headings are notes. A tagged line keeps its tags and its
+  place; the heading containing it is what a search returns.
+- `marked` — as `heading`, but a line carrying a `^block-id` stays its own
+  note, because the author said so.
 
 Tasks are outside the setting in every value: a task is always its own entry,
 wherever it sits. That is already true and should stay true — it is the one
 thing every tool in the table agrees on.
 
-`deckard.parseInlineTags` becomes redundant: `false` is `heading` without the
-roll-up, which is strictly worse than `heading`. Keep reading it for one
+`deckard.parseInlineTags` becomes redundant, and is not quite any of the three:
+`false` today means the line's tags are not read *at all*, which loses 59% of
+the vocabulary rather than relocating what it matches. Keep reading it for one
 release, mapping `false` → `heading`, then drop it.
 
 ### What the setting changes
@@ -459,7 +505,7 @@ release, mapping `false` → `heading`, then drop it.
 |---|---|
 | Search results and counts | Fewer, coarser entries. On the sample workspace, 483 entries → 409, and every count beside a tag changes |
 | Tag pages | A tag's page lists headings rather than sentences — the visible point of the change |
-| Related Notes | Ranking input changes: a heading now carries the tags of its lines. Association groups must stay per-line or "written together" silently becomes "written under the same heading" |
+| Related Notes | Ranking input changes: a heading now matches on tags written in its body. Association groups stay per-line by construction, since the tags were never moved off the line |
 | Tags written together | Reads from those groups, so it is correct only if groups stay per-line |
 | Notes Graph | Around 74 fewer nodes; edges move to headings |
 | Query blocks, saved searches, MCP and assistant tools | Unchanged in syntax; different results. A saved search keeps working and returns coarser entries |
@@ -479,30 +525,43 @@ like the rest, so one workspace can differ from another.
 
 **Phase 1 — group results by heading (Option 5).** Display only. No index
 change, no setting semantics to get wrong, and it answers the loudest half of
-the complaint. It also puts the grouping UI in place that Phase 2 needs.
+the complaint: result lists stop being lists of sentences. It also puts the
+grouping UI in place that Phase 2 needs, and it is reversible in an afternoon
+if it reads badly.
 
-**Phase 2 — the setting, with `line` and `heading`.** Roll-up in the parser,
-per-line association groups preserved, promoted tags recorded as promoted.
-Nesting policy (c). Default `line` for existing workspaces, `heading` for new.
+**Phase 2 — bound a heading's body to its own lines.** A heading entry's text
+and tags stop at the next heading of any level. This is a prerequisite for
+Phase 3 — without it "contains" reaches the whole subtree — and it is worth
+doing alone: it ends the double-counting where one sentence sits in the stored
+text of four entries, which affects excerpts and counts today.
 
-**Phase 3 — `marked`, and lines as parts (Options 3 and 4).** A rolled-up line
-keeps its line number so a result can open at it and quote it, and a
-`^block-id` line stays a note of its own.
+**Phase 3 — the setting, with `line` and `heading`.** A tagged line stops
+being an entry and becomes a located part of its heading: same tags, same line
+number, never its own result. Matching gains rule (2) — a heading matches a
+tag written in its own body — and a match remembers the line, so a result
+opens there and quotes it. Nesting policy (c).
 
-Each phase is shippable alone, and Phase 1 is worth having even if 2 and 3 are
-never built.
+**Phase 4 — `marked`.** A line carrying a `^block-id` stays a note of its own,
+so a line worth being a note can be made one, in the text, portably.
+
+Each phase is shippable alone, and the first two are worth having even if the
+setting is never built.
 
 ## Open questions
 
-1. Should a heading with **no tags of its own** become an entry when its lines
-   have tags? Under `heading` it must — otherwise the tags have nowhere to go
-   — but it means untagged headings start appearing in tag results.
-2. Should promoted tags be visible as such in the UI, or silently equal to
-   written ones? (Recording them costs nothing; showing them is a choice.)
-3. Under `heading`, does a *file* with no headings become one entry, or do its
-   tagged lines stay entries by necessity?
-4. Is the nesting policy worth its own setting, or should it follow the
+1. Should a heading with **no tags of its own** become an entry when its body
+   has tags? Under `heading` it must, or the tag matches nothing — but it
+   means untitled sections start appearing in tag results. It never arises in
+   the sample notes (every tagged line already sits under a tagged heading),
+   so this may be theoretical.
+2. Under `heading`, does a *file* with no headings become one entry, or do its
+   tagged lines stay entries by necessity? The latter is the honest fallback,
+   and it means the setting is a preference rather than a guarantee.
+3. Is the nesting policy worth its own setting, or should it follow the
    boundary setting?
+4. Should a result matched by a body line be *titled* by its heading and
+   *excerpted* by the line, or show both? The heading path already gives the
+   first half of that answer.
 
 ## Sources
 
