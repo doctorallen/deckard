@@ -193,6 +193,11 @@ export interface ParsedFile {
   links: string[];
   /** Other names `[[links]]` can use for the note, from `aliases:` front matter. */
   aliases?: string[];
+  /**
+   * The `^block-id` markers the note carries, each with the one-based line it
+   * marks, so a `[[Note#^id]]` link can be opened at the line it names.
+   */
+  blockIds?: Record<string, number>;
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
   /**

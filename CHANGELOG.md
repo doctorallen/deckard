@@ -36,6 +36,17 @@
 
 ### Added
 
+- **Links can name one line.** After `#`, a `[[Check-in#^lift-slip]]` link
+  names the line marked `^lift-slip` rather than the note or one of its
+  headings, following the Obsidian block-reference convention. Typing
+  `[[Check-in#^` completes the markers a note carries, each shown with the
+  line it marks; following a link opens the note at that line, and hovering
+  it previews the line under the headings it sits beneath. Markers in fenced
+  code are ignored, the first of a repeated marker wins, and a link to a
+  marker that is gone still opens the note and says so. Deckard reads
+  markers and never writes them, so a note is only as marked up as its
+  author made it.
+
 - **Related Notes writes a link to a result**. The button beside a result's
   score puts a `[[Note#Heading]]` link to that entry at the cursor of the note
   you are editing. It names the heading the entry sits under, without its

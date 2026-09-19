@@ -1,6 +1,8 @@
+import { BLOCK_ID_PATTERN } from '../../core/markdown/parser';
 import {
   BacklinkIndex,
   createNoteTitleMap,
+  findLinkedBlock,
   findLinkedSection,
   findWikiTargetPaths,
   noteTitle,
@@ -50,6 +52,8 @@ export type LinkPreview =
       truncated: boolean;
       /** A `#Heading` the note does not have, so the preview shows its start. */
       missingHeading?: string;
+      /** A `#^id` the note does not carry, so the preview shows its start. */
+      missingBlock?: string;
       /** Other notes that link to this one. */
       backlinkCount: number;
     };
@@ -122,7 +126,16 @@ export function createLinkPreview(
   }
 
   const title = noteTitle(file.filePath);
-  const section = target.heading ? findLinkedSection(file, target.heading) : undefined;
+  const blockLine = target.block ? findLinkedBlock(file, target.block) : undefined;
+  // A link to a line is previewed as that line, under the headings it sits
+  // beneath, because the line is what the reader asked to see.
+  const section = target.block
+    ? blockLine === undefined
+      ? undefined
+      : findSectionAt(file, blockLine)
+    : target.heading
+      ? findLinkedSection(file, target.heading)
+      : undefined;
   const sections = new Map(file.sections.map((entry) => [entry.id, entry]));
   const path = section ? getHeadingPath(section, sections) : [];
   // A note usually opens with a heading of its own name; do not say it twice.
@@ -131,21 +144,48 @@ export function createLinkPreview(
       ? path
       : [title, ...path];
   const excerpt = limitExcerpt(
-    section ? removeFirstLine(section.rawContent) : removeFrontmatter(file.content),
+    blockLine !== undefined
+      ? readBlockLine(file, blockLine)
+      : section
+        ? removeFirstLine(section.rawContent)
+        : removeFrontmatter(file.content),
   );
 
   return {
     kind: 'found',
     title: titlePath.join(' › '),
     filePath: file.filePath,
-    line: section ? section.startLine : 1,
+    line: blockLine ?? (section ? section.startLine : 1),
     excerpt: excerpt.text,
     truncated: excerpt.truncated,
     missingHeading: target.heading && !section ? target.heading : undefined,
+    missingBlock:
+      target.block && blockLine === undefined ? target.block : undefined,
     backlinkCount: new Set(
       backlinks.toNote(file.filePath).map((occurrence) => occurrence.sourcePath),
     ).size,
   };
+}
+
+/** The heading section a line sits under, for a link that names a line. */
+function findSectionAt(file: ParsedFile, line: number): Section | undefined {
+  let best: Section | undefined;
+  for (const section of file.sections) {
+    if (
+      !section.isInline &&
+      section.startLine <= line &&
+      (best === undefined || section.startLine > best.startLine)
+    ) {
+      best = section;
+    }
+  }
+  return best;
+}
+
+/** One `^block-id` line, without the id an author wrote to point at it. */
+function readBlockLine(file: ParsedFile, line: number): string {
+  const text = file.content.split(/\r?\n/)[line - 1] ?? '';
+  return text.replace(BLOCK_ID_PATTERN, '').trim();
 }
 
 /**

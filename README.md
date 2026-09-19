@@ -25,7 +25,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
-| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. |
+| [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. `[[Note#Heading]]` and `[[Note#^line-marker]]` open a heading or one line. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
@@ -113,6 +113,19 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive. A tagged non-heading, non-task line is indexed as its own entry when `deckard.parseInlineTags` is enabled; consecutive tagged prose lines are grouped so wrapped explanations do not become truncated duplicate entries.
 
 A `[[link]]` names a note by its file name without `.md`, or by any name in the note's `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
+
+After `#`, a link can name a heading, as `[[Check-in#Vendor review]]` does, or one line, as `[[Check-in#^lift-slip]]` does. A line is named by the `^marker` written at its end, the way the [Obsidian](https://obsidian.md) block-reference convention writes it:
+
+```markdown
+## Vendor review
+The lift survey slipped because the contractor never confirmed. ^lift-slip
+- [ ] Chase the contract @dana ^chase
+```
+
+- A marker is the last thing on its line, separated from the text, so a caret written in prose is never mistaken for one. Markers inside fenced code are ignored, and when a note repeats one the first line wins.
+- Typing `[[Check-in#^` completes the markers that note carries, each shown with the line it marks, so a link is written by picking the line rather than by remembering its name.
+- Following the link opens the note at that line, and hovering it previews the line under the headings it sits beneath. A link to a marker the note no longer carries still opens the note, and says the line is gone.
+- Deckard reads markers; it never writes them. Your prose stays as marked up as you made it, which is why there is no command to mint one.
 
 By default, use `@` for people and namespaced `#` tags for workspace entities:
 

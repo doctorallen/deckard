@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 
+import { BLOCK_ID_PATTERN } from '../../core/markdown/parser';
 import { measureAsync } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
+  findLinkedBlock,
   findLinkedSection,
   parseWikiTarget,
   resolveWikiTarget,
@@ -73,9 +75,22 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     }
 
     await this.indexer.ready;
+    const index = this.indexer.getSnapshot();
+    // Past a `#^`, the note's own line markers are what can be completed,
+    // not another note's name.
+    const blockContext = getBlockCompletionContext(context.query);
+    if (blockContext) {
+      return this.completeBlockIds(
+        index,
+        blockContext,
+        document,
+        position,
+        context.startColumn,
+      );
+    }
     const query = context.query.toLowerCase();
     // A note is offered by its title and by each of its aliases.
-    return [...this.indexer.getSnapshot().files.values()]
+    return [...index.files.values()]
       .flatMap((file) => [
         {
           filePath: file.filePath,
@@ -106,6 +121,50 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
         item.range = new vscode.Range(
           position.line,
           context.startColumn,
+          position.line,
+          position.character,
+        );
+        return item;
+      });
+  }
+
+  /**
+   * Offers the `^block-id` markers of the note a link names, so a link to a
+   * line is written by picking the line rather than by remembering its id.
+   */
+  private completeBlockIds(
+    index: WorkspaceIndex,
+    context: { note: string; query: string },
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    startColumn: number,
+  ): vscode.CompletionItem[] {
+    const titles = createNoteTitleMap(index);
+    const sourcePath = this.indexer.getFilePath?.(document.uri) ?? '';
+    const filePath = resolveWikiTarget(titles, context.note, sourcePath);
+    const file = filePath ? index.files.get(filePath) : undefined;
+    if (!file?.blockIds) {
+      return [];
+    }
+    const lines = file.content.split(/\r?\n/);
+    const wanted = context.query.toLowerCase();
+    return Object.entries(file.blockIds)
+      .filter(([block]) => block.toLowerCase().includes(wanted))
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([block, line]) => {
+        const item = new vscode.CompletionItem(
+          `^${block}`,
+          vscode.CompletionItemKind.Reference,
+        );
+        // The line itself says more about a marker than its name does.
+        item.detail = (lines[line - 1] ?? '')
+          .replace(BLOCK_ID_PATTERN, '')
+          .trim()
+          .slice(0, 120);
+        item.insertText = `^${block}]]`;
+        item.range = new vscode.Range(
+          position.line,
+          startColumn,
           position.line,
           position.character,
         );
@@ -202,6 +261,24 @@ export function getWikiLinkCompletionContext(
   };
 }
 
+/**
+ * The note and partial id being completed past a `#^`, or nothing when the
+ * caret is not in one. An empty note means the link points into the note it
+ * is written in, as `[[#^id]]` does.
+ */
+export function getBlockCompletionContext(
+  query: string,
+): { note: string; query: string } | undefined {
+  const caret = query.indexOf('#^');
+  if (caret < 0) {
+    return undefined;
+  }
+  return {
+    note: query.slice(0, caret).trim(),
+    query: query.slice(caret + 2),
+  };
+}
+
 function getNoteTitle(filePath: string): string {
   const fileName = filePath.split('/').pop() ?? filePath;
   return fileName.replace(/\.md$/i, '');
@@ -212,7 +289,10 @@ interface WikiLinkTarget {
   readonly filePath: string;
   readonly startOffset: number;
   readonly endOffset: number;
-  /** One-based line of the heading a `#Heading` names, when the note has it. */
+  /**
+   * One-based line the link points into: the heading a `#Heading` names or
+   * the line a `#^id` marks, when the note has it.
+   */
   readonly line?: number;
 }
 
@@ -243,14 +323,19 @@ export function findWikiLinkTargets(
     }
 
     const file = index.files.get(filePath);
+    // A `#^id` names a line, a `#Heading` a section; either opens the note
+    // where it points rather than at its top.
+    const blockLine =
+      target.block && file ? findLinkedBlock(file, target.block) : undefined;
     const section =
       target.heading && file ? findLinkedSection(file, target.heading) : undefined;
+    const line = blockLine ?? section?.startLine;
     links.push({
       title: match[1].trim(),
       filePath,
       startOffset: match.index,
       endOffset: match.index + match[0].length,
-      ...(section ? { line: section.startLine } : {}),
+      ...(line !== undefined ? { line } : {}),
     });
   }
 
