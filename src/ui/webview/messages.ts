@@ -521,6 +521,18 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
         value.query.length <= MAX_QUERY_LENGTH
         ? { type: 'openSearch', query: value.query }
         : undefined;
+    case 'mergeTags':
+      return typeof value.sourceKey === 'string' &&
+        value.sourceKey.length > 0 &&
+        typeof value.targetKey === 'string' &&
+        value.targetKey.length > 0 &&
+        value.sourceKey !== value.targetKey
+        ? {
+            type: 'mergeTags',
+            sourceKey: value.sourceKey,
+            targetKey: value.targetKey,
+          }
+        : undefined;
     case 'reindexWorkspace':
       return Object.keys(value).length === 1
         ? { type: 'reindexWorkspace' }

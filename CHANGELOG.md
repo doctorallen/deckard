@@ -84,6 +84,18 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **Stats says which tags look like one idea spelled twice.** Merging has
+  existed for a while and Home already names the tags that are new and the
+  ones without a hub, but nothing pointed out that `#projct/atlas` and
+  `#project/atlas` are the same tag typed twice, or that `#org/acme` and
+  `#organization/acme` collide. The new list ranks the clearest pairs first —
+  a name written with two markers, in two namespaces, punctuated two ways,
+  pluralized, or mistyped — each pointing from the rarer spelling to the one
+  the workspace already uses, with **Merge** beside it running the ordinary
+  merge, confirmation and preview included. Two letters written the wrong way
+  round count as one typo, which is the mistake tags actually collect, and
+  spelling pairs are compared only within one namespace.
+
 - **A write that reaches several notes is shown before it lands, and can be
   taken back afterwards.** Renaming or merging a tag rewrites every note that
   carries it, most of which were never open, so an editor Undo could not

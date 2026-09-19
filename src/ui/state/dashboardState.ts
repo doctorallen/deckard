@@ -61,6 +61,7 @@ import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
+import { findTagMergeCandidates } from './tagHygiene';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -499,7 +500,22 @@ export function createDeckardStatsSnapshot(
       },
     ),
     ...findOrphanNotes(index),
+    ...findLookalikeTags(index),
   };
+}
+
+/** How many of the tags that look alike the Stats page names. */
+const LOOKALIKE_TAG_LIMIT = 12;
+
+/** Tags that look like two spellings of one idea, the clearest pairs first. */
+function findLookalikeTags(
+  index: WorkspaceIndex,
+): Pick<DeckardStatsSnapshot, 'lookalikeTags' | 'lookalikeTagCount'> {
+  const { candidates, total } = findTagMergeCandidates(
+    index,
+    LOOKALIKE_TAG_LIMIT,
+  );
+  return { lookalikeTags: candidates, lookalikeTagCount: total };
 }
 
 /** How many of the notes nothing links to the Stats page names. */

@@ -480,11 +480,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand(
       'deckard.mergeTag',
-      (requestedTagKey?: unknown) =>
+      (requestedTagKey?: unknown, requestedTargetKey?: unknown) =>
         mergeIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
           preferences,
+          getCommandTagArgument(requestedTargetKey),
         ),
     ),
     vscode.commands.registerCommand(

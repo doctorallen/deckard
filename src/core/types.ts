@@ -650,6 +650,33 @@ export interface StatsAccessItem {
   open: OpenTagMessage | OpenSourceMessage;
 }
 
+/**
+ * Why two tags look like two spellings of one idea, most confusable first:
+ * the same name written with a different marker or under a different
+ * namespace, punctuated differently, pluralized, or simply mistyped.
+ */
+export type TagMergeReason =
+  | 'marker'
+  | 'namespace'
+  | 'separator'
+  | 'plural'
+  | 'spelling';
+
+/** Two tags that look alike, and what merging them would spend and keep. */
+export interface TagMergeCandidate {
+  /** The tag with fewer entries, which a merge spends. */
+  sourceKey: string;
+  sourceLabel: string;
+  sourceCount: number;
+  /** The tag a merge keeps. */
+  targetKey: string;
+  targetLabel: string;
+  targetCount: number;
+  reason: TagMergeReason;
+  /** Why the pair was picked, as the row reads it. */
+  detail: string;
+}
+
 /** A note the Stats page lists by name, which opens at its first line. */
 export interface StatsNoteItem {
   label: string;
@@ -673,6 +700,10 @@ export interface DeckardStatsSnapshot {
   orphanNotes: StatsNoteItem[];
   /** How many such notes there are, listed or not. */
   orphanNoteCount: number;
+  /** Tags that look like two spellings of one idea: the clearest first. */
+  lookalikeTags: TagMergeCandidate[];
+  /** How many such pairs there are, listed or not. */
+  lookalikeTagCount: number;
 }
 
 /** Messages from the Stats page, which only opens what it lists. */
@@ -681,11 +712,19 @@ export interface ReindexWorkspaceMessage {
   type: 'reindexWorkspace';
 }
 
+/** Asks the host to merge one of the tags that look alike into the other. */
+export interface MergeTagsMessage {
+  type: 'mergeTags';
+  sourceKey: string;
+  targetKey: string;
+}
+
 export type StatsMessage =
   | OpenTagMessage
   | OpenSourceMessage
   | OpenSearchMessage
-  | ReindexWorkspaceMessage;
+  | ReindexWorkspaceMessage
+  | MergeTagsMessage;
 
 /** Messages from the sidebar calendar. The host finds each note itself. */
 export type CalendarMessage =

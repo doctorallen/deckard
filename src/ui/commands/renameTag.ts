@@ -93,11 +93,15 @@ export async function renameIndexedTag(
 
 /**
  * Merges one indexed tag into another, chosen from the tags that exist.
+ *
+ * A caller that already knows both ends, such as the pair of tags Stats says
+ * look alike, names them and goes straight to the confirmation.
  */
 export async function mergeIndexedTag(
   indexer: WorkspaceIndexer,
   requestedTagKey?: string,
   preferences?: PreferencesStore,
+  requestedTargetKey?: string,
 ): Promise<TagReference | undefined> {
   try {
     await indexer.ready;
@@ -107,8 +111,14 @@ export async function mergeIndexedTag(
       return undefined;
     }
 
-    const targetTag = await chooseMergeTarget(index, sourceTag);
-    if (!targetTag) {
+    const namedTarget = requestedTargetKey
+      ? index.tags.get(
+          resolveIndexedTagKey(index.tags, requestedTargetKey) ?? '',
+        )
+      : undefined;
+    const targetTag =
+      namedTarget ?? (await chooseMergeTarget(index, sourceTag));
+    if (!targetTag || targetTag.key === sourceTag.key) {
       return undefined;
     }
 

@@ -33,7 +33,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
-| [Stats](#stats) | Index totals, the notes nothing links to, and your most-viewed tags, entities, and notes. |
+| [Stats](#stats) | Index totals, the notes nothing links to, tags that look like one idea spelled twice, and your most-viewed tags, entities, and notes. |
 | [Themes](#themes) | Eight visual styles for Deckard's pages, from the plain default, Corpo, to Replicant, LCARS, and Synthwave. |
 | [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine. |
 
@@ -316,6 +316,20 @@ Choose **Customize** in the View options gear to arrange Home. Drag a widget to 
 ## Stats
 
 Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
+
+### Tags that look alike
+
+Stats lists pairs of tags that look like one idea spelled twice, clearest first, each pointing from the rarer spelling to the one your notes already use. **Merge** on a row merges them through the usual [merge](#merging-tags): the same confirmation, the same preview, and the same [Undo](#previewing-and-undoing-a-write). Select either tag to open its search page and read the entries first.
+
+| A pair reads | Because |
+| --- | --- |
+| `@ren-kade → #person/ren-kade` | the same name written two ways |
+| `#org/acme → #organization/acme` | the same name in two namespaces |
+| `#vendorrisk → #vendor-risk` | the same name punctuated two ways |
+| `#topic/reports → #topic/report` | one is the plural of the other |
+| `#project/atals → #project/atlas` | one or two letters apart, counting two letters written the wrong way round as one |
+
+Spelling pairs are only ever compared inside one namespace, so `#project/relay` and `#risk/relay` are not a pair, and neither are two tags that merely sit in the same namespace. Setting `deckard.entityNamespaceAliases` is the other way to settle a namespace pair: it collapses one namespace into another for good, without touching your notes.
 
 ![Deckard Stats showing index totals and the most-viewed tags, entities, and note entries.](docs/images/stats.png)
 

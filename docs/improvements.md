@@ -163,6 +163,9 @@ furthest.
 
 ### 10. Near-duplicate tags, offered as merges
 
+**Shipped**; see the README's Tags that look alike section. Stats ranks the
+pairs and offers the ordinary merge on each row.
+
 Merging ships, Home already surfaces new tags and tags without a hub, and
 Find already corrects a misspelled word against the words in the notes.
 Nothing points out that `#projct/atlas` and `#project/atlas` are the same
