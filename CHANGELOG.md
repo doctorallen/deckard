@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- **A setting that changes how notes are parsed rebuilds the search cache.**
+  The cache compares a scan against what it holds by path, modified time and
+  size, so a settings change left it holding entries that no longer existed:
+  the files had not moved. It records how its notes were parsed and rebuilds
+  when that changes — including a change made while VS Code was closed, which
+  nothing else could have noticed. `deckard.personMarker` and
+  `deckard.entityNamespaceAliases` had the same latent staleness and are
+  covered by the same record.
+
 - **A heading's own text stops at the next heading of any level.** A parent's
   stored text used to contain its children's, so one sentence sat inside the
   text of every entry above it — four deep in the sample notes — and was

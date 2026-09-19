@@ -126,6 +126,8 @@ A tagged line with no heading above it stays a note whatever the setting says, b
 
 Tasks are outside all of this. A task is its own entry wherever it is written, under every setting.
 
+Changing the setting reindexes the workspace by itself — nothing is written to your notes, and you do not need to run `Deckard: Reindex Workspace`. The search cache remembers how the notes in it were parsed, so it is rebuilt even when the setting was changed while VS Code was closed, which no file's modified time would have revealed.
+
 A `[[link]]` names a note by its file name without `.md`, or by any name in the note's `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. A name two notes share opens neither.
 
 After `#`, a link can name a heading, as `[[Check-in#Vendor review]]` does, or one line, as `[[Check-in#^lift-slip]]` does. A line is named by the `^marker` written at its end, the way the [Obsidian](https://obsidian.md) block-reference convention writes it:

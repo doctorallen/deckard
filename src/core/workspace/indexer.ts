@@ -195,7 +195,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
         this.snapshot = undefined;
         measure(
           'Rebuild search index',
-          () => this.searchStore?.replace(this.files.values()),
+          () =>
+            this.searchStore?.replace(
+              this.files.values(),
+              this.scanner.getParseFingerprint(),
+            ),
           () => `${this.files.size} notes`,
         );
         // What the store handed to its worker is still being written. The
@@ -242,9 +246,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const notesFolderChanged = event.affectsConfiguration(
           'deckard.notesFolder',
         );
-        const inlineTagsChanged = event.affectsConfiguration(
-          'deckard.parseInlineTags',
-        );
+        const inlineTagsChanged =
+          event.affectsConfiguration('deckard.parseInlineTags') ||
+          event.affectsConfiguration('deckard.noteBoundaries');
         const entityNamespaceAliasesChanged = event.affectsConfiguration(
           'deckard.entityNamespaceAliases',
         );

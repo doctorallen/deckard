@@ -16,7 +16,14 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 36);
+    assert.strictEqual(Object.keys(settings).length, 37);
+    // Where one note ends and the next begins.
+    assert.deepStrictEqual(settings['deckard.noteBoundaries'].enum, [
+      'line',
+      'heading',
+      'marked',
+    ]);
+    assert.strictEqual(settings['deckard.noteBoundaries'].default, 'line');
     const activationEvents = extension.packageJSON.activationEvents ?? [];
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.dashboard'));
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.tagOverview'));

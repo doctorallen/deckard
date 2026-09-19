@@ -105,6 +105,64 @@ suite('Local search store', () => {
     }
   });
 
+  test('rebuilds when the notes in it were parsed another way', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const note = (boundaries: 'line' | 'heading') =>
+      parseMarkdown(
+        'check-in.md',
+        '# Check-in #team/harbor\nA line about the #feature/joint-summary review.',
+        { updatedAt: 1 },
+        { noteBoundaries: boundaries },
+      );
+    const store = new SearchStore(vscode.Uri.file(directory));
+    try {
+      store.replace([note('line')], 'line');
+      await store.whenIdle();
+      // Two: the line is its own entry, and the heading's body holds it too.
+      const asLines = store.searchEntries('joint').matches;
+      assert.strictEqual(asLines.length, 2);
+
+      // The file has not changed, so a scan finds it exactly as it left it.
+      // Only the fingerprint says the entries behind it are no longer real.
+      store.replace([note('heading')], 'heading');
+      await store.whenIdle();
+
+      const asHeadings = store.searchEntries('joint').matches;
+      assert.strictEqual(asHeadings.length, 1, 'one entry, not two');
+      assert.strictEqual(asHeadings[0].line, 1, 'and it is the heading');
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('a rescan under the same settings rewrites nothing', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const store = new SearchStore(vscode.Uri.file(directory));
+    const notes = Array.from({ length: 40 }, (_, index) =>
+      parseMarkdown(`note-${index}.md`, `# Note ${index}\nElevator survey.`, {
+        updatedAt: 1,
+      }),
+    );
+    try {
+      store.replace(notes, 'line');
+      await store.whenIdle();
+      assert.strictEqual(store.search('elevator', 100).length, 40);
+
+      // Same files, same settings: the fingerprint matches and the scan is
+      // the cheap comparison it has always been.
+      store.replace(notes, 'line');
+      assert.strictEqual(
+        store.search('elevator', 100).length,
+        40,
+        'nothing was cleared and rewritten behind our back',
+      );
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   test('a rescan finds an edit to a note that states its own updated date', () => {
     const store = new SearchStore(undefined);
     // The edit keeps the note's size and its `updated:` date; only the file's

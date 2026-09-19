@@ -129,6 +129,30 @@ export class WorkspaceScanner {
   }
 
   /**
+   * How every workspace folder is being parsed right now, as one string.
+   *
+   * The full-text cache stores this beside its notes so a settings change
+   * that changes parsing rebuilds it. Nothing else would catch it: the files
+   * are untouched, so a scan finds every note exactly as it left it.
+   */
+  public getParseFingerprint(): string {
+    const folders = this.access.workspaceFolders ?? [];
+    const described = (folders.length > 0 ? folders : [undefined]).map(
+      (folder) => {
+        const options = this.getParseOptions(folder);
+        return [
+          folder?.uri.toString() ?? '',
+          options.noteBoundaries ?? 'line',
+          options.parseInlineTags === false ? 'no-inline' : 'inline',
+          options.personMarker ?? '',
+          JSON.stringify(options.entityNamespaceAliases ?? {}),
+        ].join('\u0000');
+      },
+    );
+    return described.join('\u0001');
+  }
+
+  /**
    * Returns the watcher patterns for all roots using their current settings.
    */
   public getPatterns(): vscode.RelativePattern[] {
