@@ -17,11 +17,13 @@
 - **A search page shows its results a page at a time.** A search that matched
   the workspace used to send, and draw, every note and task on every save:
   about 4.3 MB of card text at 940 notes, growing with the workspace, for the
-  screenful anyone reads. Each list now holds 200 results, about 0.54 MB
-  whatever the workspace holds, with **Previous**, **Next**, the page numbers,
-  and the range being shown under it. Notes and tasks are paged separately.
-  Every count on the page is still of the whole search, and a search that
-  shortens under an open page falls back to the last page it still has.
+  screenful anyone reads. Each list is paged now, with **Previous**, **Next**,
+  the page numbers, and the range being shown under it, and notes and tasks
+  are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results
+  to a page, starting at 30, and the choice is kept, so every search page
+  opens the way the last one was left. Every count on the page is still of
+  the whole search, and a search that shortens under an open page falls back
+  to the last page it still has.
 
 ### Added
 

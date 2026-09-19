@@ -302,7 +302,7 @@ suite('Refining a search', () => {
   });
 
   test('carries one page of a broad search and counts the whole of it', () => {
-    const files = Array.from({ length: 6 }, (_, index) =>
+    const files = Array.from({ length: 25 }, (_, index) =>
       parseMarkdown(
         `notes/note-${index}.md`,
         `# Note ${index} #project/atlas\nProse.\n- [ ] Task ${index} #project/atlas`,
@@ -311,48 +311,48 @@ suite('Refining a search', () => {
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const store = new PreferencesStore(new MemoryMemento());
 
-    // Without a page size a snapshot carries everything, as Home's widgets
-    // need, and says so: one page holding the lot.
-    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas');
-    assert.strictEqual(whole.sections.length, 6);
-    assert.strictEqual(whole.tasks.length, 6);
+    // A caller that asks not to be paged carries everything, as Home's
+    // widgets need, and says so: one page holding the lot.
+    const whole = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      paged: false,
+    });
+    assert.strictEqual(whole.sections.length, 25);
+    assert.strictEqual(whole.tasks.length, 25);
     assert.deepStrictEqual(whole.notePaging, {
       page: 1,
-      size: 6,
+      size: 25,
       pageCount: 1,
-      total: 6,
+      total: 25,
     });
 
-    const first = createSearchPageSnapshot(index, store.value, '#project/atlas', {
-      pageSize: 4,
-    });
+    const paged = { ...store.value, searchPageSize: 10 as const };
+    const first = createSearchPageSnapshot(index, paged, '#project/atlas');
     assert.deepStrictEqual(first.notePaging, {
       page: 1,
-      size: 4,
-      pageCount: 2,
-      total: 6,
+      size: 10,
+      pageCount: 3,
+      total: 25,
     });
-    assert.deepStrictEqual(first.sections, whole.sections.slice(0, 4));
+    assert.deepStrictEqual(first.sections, whole.sections.slice(0, 10));
     // What the page says it found is what the search found, not what it was
     // sent, so turning a page never changes the answer.
-    assert.strictEqual(first.query.matchCounts.notes, 6);
-    assert.strictEqual(first.query.matchCounts.tasks, 6);
+    assert.strictEqual(first.query.matchCounts.notes, 25);
+    assert.strictEqual(first.query.matchCounts.tasks, 25);
     assert.deepStrictEqual(first.taskCounts, whole.taskCounts);
 
-    const second = createSearchPageSnapshot(index, store.value, '#project/atlas', {
-      pageSize: 4,
+    const second = createSearchPageSnapshot(index, paged, '#project/atlas', {
       notePage: 2,
       taskPage: 2,
     });
-    assert.deepStrictEqual(second.sections, whole.sections.slice(4));
-    assert.deepStrictEqual(second.tasks, whole.tasks.slice(4));
+    assert.deepStrictEqual(second.sections, whole.sections.slice(10, 20));
+    assert.deepStrictEqual(second.tasks, whole.tasks.slice(10, 20));
     assert.strictEqual(second.notePaging.page, 2);
 
     store.dispose();
   });
 
   test('puts a page number back inside the pages a search has', () => {
-    const files = Array.from({ length: 3 }, (_, index) =>
+    const files = Array.from({ length: 15 }, (_, index) =>
       parseMarkdown(`notes/note-${index}.md`, `# Note ${index} #project/atlas\nProse.`),
     );
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
@@ -360,27 +360,24 @@ suite('Refining a search', () => {
 
     // A note saved elsewhere can shorten a search while its last page is
     // open. The reader should land on the last page there is, not past it.
-    const past = createSearchPageSnapshot(index, store.value, '#project/atlas', {
-      pageSize: 2,
+    const paged = { ...store.value, searchPageSize: 10 as const };
+    const past = createSearchPageSnapshot(index, paged, '#project/atlas', {
       notePage: 9,
     });
     assert.strictEqual(past.notePaging.page, 2);
-    assert.strictEqual(past.sections.length, 1);
+    assert.strictEqual(past.sections.length, 5);
 
-    const before = createSearchPageSnapshot(index, store.value, '#project/atlas', {
-      pageSize: 2,
+    const before = createSearchPageSnapshot(index, paged, '#project/atlas', {
       notePage: 0,
     });
     assert.strictEqual(before.notePaging.page, 1);
 
     // A search that found nothing still has a page, so the page has a list
     // to be empty in.
-    const none = createSearchPageSnapshot(index, store.value, '#project/nothing', {
-      pageSize: 2,
-    });
+    const none = createSearchPageSnapshot(index, paged, '#project/nothing');
     assert.deepStrictEqual(none.notePaging, {
       page: 1,
-      size: 2,
+      size: 10,
       pageCount: 1,
       total: 0,
     });

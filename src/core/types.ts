@@ -11,6 +11,19 @@ export type TagOverviewSortMode =
 
 export type TagOverviewLayout = 'tabs' | 'split';
 
+/**
+ * The page sizes a search page offers.
+ *
+ * Thirty is a screenful or two, which is what a reader looks through before
+ * narrowing the search instead. The larger sizes are for reading a whole
+ * result through, and cost more to send and draw the larger they are.
+ */
+export const SEARCH_PAGE_SIZES = [10, 30, 50, 100, 200] as const;
+
+export type SearchPageSize = (typeof SEARCH_PAGE_SIZES)[number];
+
+export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
+
 export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 export type TaskFilter = 'all' | 'active' | 'completed';
@@ -276,6 +289,8 @@ export interface PersistedPreferences {
   renderMode: RenderMode;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
+  /** How many notes, and how many tasks, a search page shows at a time. */
+  searchPageSize: SearchPageSize;
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
@@ -488,6 +503,8 @@ export interface SearchPageSnapshot {
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
+  /** The page sizes the reader can choose between. */
+  pageSizes: readonly SearchPageSize[];
   noteColumns: DashboardColumnCount;
   taskColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
@@ -954,6 +971,12 @@ export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
 }
 
+/** Choose how many results a search page shows at a time. */
+export interface SetResultsPerPageMessage {
+  type: 'setResultsPerPage';
+  size: SearchPageSize;
+}
+
 /** Turn one of a search page's lists to another of its pages. */
 export interface SetResultPageMessage {
   type: 'setResultPage';
@@ -1084,6 +1107,7 @@ export type SearchPageMessage =
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
   | SetResultPageMessage
+  | SetResultsPerPageMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =

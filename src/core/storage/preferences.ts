@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 
 import {
   PersistedPreferences,
+  DEFAULT_SEARCH_PAGE_SIZE,
+  SearchPageSize,
+  SEARCH_PAGE_SIZES,
   TagOverviewLayout,
   RelatedNotesSortMode,
   RenderMode,
@@ -43,6 +46,7 @@ const defaultPreferences: PersistedPreferences = {
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
+  searchPageSize: DEFAULT_SEARCH_PAGE_SIZE,
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
@@ -55,6 +59,11 @@ const defaultPreferences: PersistedPreferences = {
   // Filled with DEFAULT_DASHBOARD_WIDGETS when preferences are read.
   dashboardWidgets: [],
 };
+/** Whether a stored value is one of the page sizes a search page offers. */
+function isSearchPageSize(value: unknown): value is SearchPageSize {
+  return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value);
+}
+
 /** How many recent searches are kept. */
 export const RECENT_QUERY_LIMIT = 20;
 
@@ -385,6 +394,16 @@ export class PreferencesStore implements vscode.Disposable {
     tagOverviewSortMode: TagOverviewSortMode,
   ): Promise<void> {
     await this.update({ tagOverviewSortMode });
+  }
+
+  /**
+   * Selects how many results a search page shows at a time, which is kept so
+   * the next page opens the way the last one was left.
+   */
+  public async setSearchPageSize(
+    searchPageSize: SearchPageSize,
+  ): Promise<void> {
+    await this.update({ searchPageSize });
   }
 
   /**
@@ -776,6 +795,7 @@ function normalizePreferences(
   const renderMode = value?.renderMode;
   const tagOverviewSortMode = value?.tagOverviewSortMode;
   const tagOverviewLayout = value?.tagOverviewLayout;
+  const searchPageSize = value?.searchPageSize;
   const relatedNotesSortMode = value?.relatedNotesSortMode;
 
   return {
@@ -821,6 +841,9 @@ function normalizePreferences(
         ? tagOverviewSortMode
         : 'alphabetical',
     tagOverviewLayout: tagOverviewLayout === 'split' ? 'split' : 'tabs',
+    searchPageSize: isSearchPageSize(searchPageSize)
+      ? searchPageSize
+      : DEFAULT_SEARCH_PAGE_SIZE,
     relatedNotesSortMode:
       relatedNotesSortMode === 'newest' ||
       relatedNotesSortMode === 'oldest' ||

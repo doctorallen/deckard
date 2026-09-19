@@ -252,6 +252,10 @@ function createWidget(
         taskFilter: 'active',
         tagTitleDisplayMode: options.tagTitleDisplayMode,
         now: options.now,
+        // A widget takes its own few entries off the top of the whole
+        // result, so it is not the reader's page size that decides what it
+        // has to choose from.
+        paged: false,
       });
       return {
         ...widget,

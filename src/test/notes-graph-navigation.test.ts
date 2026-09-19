@@ -40,6 +40,7 @@ const defaultPreferences: PersistedPreferences = {
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
+  searchPageSize: 30,
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],

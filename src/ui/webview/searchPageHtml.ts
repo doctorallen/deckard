@@ -90,7 +90,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
 .empty-action { margin: 12px 0 0; }
 .pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.page-summary { display: flex; align-items: center; gap: 12px; }
 .page-range { color: var(--muted); font-family: var(--font-mono); }
+.pagination .page-size { font-size: 12px; }
+.pagination .page-size select { min-width: 64px; }
 .page-controls { display: flex; align-items: center; gap: 4px; }
 .pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
 .pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
@@ -189,8 +192,12 @@ ${getQueryEditorScript()}
    * The control that turns a list to another of its pages. A search with one
    * page has no control: there is nowhere to go.
    */
-  function renderPagination(kind, paging) {
-    if (paging.pageCount <= 1) return '';
+  function renderPagination(kind, paging, pageSizes) {
+    const sizes = pageSizes && pageSizes.length ? pageSizes : [paging.size];
+    // The control stays while there is a choice to make about it: a result
+    // that fits the smallest page is one page however it is sized, and the
+    // per-page chooser would have nothing to change.
+    if (paging.pageCount <= 1 && paging.total <= Math.min.apply(null, sizes)) return '';
     const noun = kind === 'notes' ? 'notes' : 'tasks';
     const first = (paging.page - 1) * paging.size + 1;
     const last = Math.min(paging.page * paging.size, paging.total);
@@ -199,6 +206,11 @@ ${getQueryEditorScript()}
         + (enabled ? '' : ' disabled')
         + ' aria-label="' + label + ' page of ' + noun + '">' + label + '</button>';
     };
+    const perPage = '<label class="control-label page-size">Per page:<span class="control-icon"><select data-action="set-results-per-page" aria-label="Results per page">'
+      + sizes.map(function (size) {
+        return '<option value="' + size + '"' + (size === paging.size ? ' selected' : '') + '>' + size + '</option>';
+      }).join('')
+      + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M3 8h7M3 11h4"/></svg></span></label>';
     const numbers = pageNumbers(paging.page, paging.pageCount).map(function (page) {
       if (page === null) return '<span class="page-gap" aria-hidden="true">…</span>';
       const current = page === paging.page;
@@ -206,13 +218,14 @@ ${getQueryEditorScript()}
         + (current ? ' aria-current="page"' : '')
         + ' aria-label="Page ' + page + ' of ' + noun + '">' + page + '</button>';
     }).join('');
+    const steps = paging.pageCount > 1
+      ? step(paging.page - 1, 'Previous', paging.page > 1)
+        + numbers
+        + step(paging.page + 1, 'Next', paging.page < paging.pageCount)
+      : '';
     return '<nav class="pagination" aria-label="' + (kind === 'notes' ? 'Note' : 'Task') + ' pages">'
-      + '<span class="page-range">' + first + '\u2013' + last + ' of ' + paging.total + '</span>'
-      + '<span class="page-controls">'
-      + step(paging.page - 1, 'Previous', paging.page > 1)
-      + numbers
-      + step(paging.page + 1, 'Next', paging.page < paging.pageCount)
-      + '</span></nav>';
+      + '<span class="page-summary"><span class="page-range">' + first + '\u2013' + last + ' of ' + paging.total + '</span>' + perPage + '</span>'
+      + '<span class="page-controls">' + steps + '</span></nav>';
   }
 
   /** Render a title or metadata tag as a direct link to its page. */
@@ -360,8 +373,8 @@ ${getQueryEditorScript()}
     const taskPaging = pagingOf(state.taskPaging, state.tasks.length);
     const notesCount = notePaging.total;
     const tasksCount = taskPaging.total;
-    const notesPagination = renderPagination('notes', notePaging);
-    const tasksPagination = renderPagination('tasks', taskPaging);
+    const notesPagination = renderPagination('notes', notePaging, state.pageSizes);
+    const tasksPagination = renderPagination('tasks', taskPaging, state.pageSizes);
     // An empty side of a search that did find something on the other side is
     // a dead end otherwise: the count is in the tab strip, but nothing says
     // the results are one click away.
@@ -519,6 +532,7 @@ ${getQueryEditorScript()}
     if (editor.handleChange(event)) return;
     const target = event.target;
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
+    if (target.dataset.action === 'set-results-per-page') vscode.postMessage({ type: 'setResultsPerPage', size: Number(target.value) });
     if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
   });
   document.addEventListener('input', function (event) {

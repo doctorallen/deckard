@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { PreferencesStore } from '../core/storage/preferences';
-import { SearchPageSnapshot } from '../core/types';
+import { SearchPageSize, SearchPageSnapshot } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
@@ -32,7 +32,9 @@ suite('Search page behavior', () => {
   const open = (
     notes: Record<string, string>,
     query: string,
-    options: Parameters<typeof createSearchPageSnapshot>[3] = {},
+    options: Parameters<typeof createSearchPageSnapshot>[3] & {
+      pageSize?: SearchPageSize;
+    } = {},
   ): { page: WebviewPage; snapshot: SearchPageSnapshot } => {
     const index = buildWorkspaceIndex(
       new Map(
@@ -45,7 +47,9 @@ suite('Search page behavior', () => {
     store = new PreferencesStore(new MemoryMemento());
     const snapshot = createSearchPageSnapshot(
       index,
-      store.value,
+      options.pageSize === undefined
+        ? store.value
+        : { ...store.value, searchPageSize: options.pageSize },
       query,
       options,
     );
@@ -59,7 +63,7 @@ suite('Search page behavior', () => {
   /** A search of `count` notes that all carry one tag. */
   const openMany = (
     count: number,
-    options: Parameters<typeof createSearchPageSnapshot>[3],
+    options: Parameters<typeof open>[2],
   ): { page: WebviewPage; snapshot: SearchPageSnapshot } => {
     const notes: Record<string, string> = {};
     for (let index = 0; index < count; index += 1) {
@@ -142,19 +146,19 @@ suite('Search page behavior', () => {
   });
 
   test('draws one page of results and counts the whole search', () => {
-    const { page } = openMany(8, { pageSize: 3 });
+    const { page } = openMany(25, { pageSize: 10 });
 
-    assert.strictEqual(page.findAll('.card').length, 3, 'one page is drawn');
+    assert.strictEqual(page.findAll('.card').length, 10, 'one page is drawn');
     assert.strictEqual(
       page.text('[data-search-count="notes"]'),
-      '8',
+      '25',
       'the count is of the whole search, not the page',
     );
-    assert.strictEqual(page.text('.pagination .page-range'), '1\u20133 of 8');
+    assert.strictEqual(page.text('.pagination .page-range'), '1\u201310 of 25');
   });
 
   test('turns to the page a number names', () => {
-    const { page } = openMany(8, { pageSize: 3 });
+    const { page } = openMany(25, { pageSize: 10 });
 
     page.click('.pagination .page-number[data-page="3"]');
 
@@ -166,9 +170,9 @@ suite('Search page behavior', () => {
   });
 
   test('steps to the next page, and marks the one being read', () => {
-    const { page } = openMany(8, { pageSize: 3, notePage: 2 });
+    const { page } = openMany(25, { pageSize: 10, notePage: 2 });
 
-    assert.strictEqual(page.text('.pagination .page-range'), '4\u20136 of 8');
+    assert.strictEqual(page.text('.pagination .page-range'), '11\u201320 of 25');
     assert.strictEqual(
       page.find('.pagination .page-number.is-current').textContent,
       '2',
@@ -184,7 +188,7 @@ suite('Search page behavior', () => {
   });
 
   test('offers no way off either end of the pages', () => {
-    const first = openMany(8, { pageSize: 3 }).page;
+    const first = openMany(25, { pageSize: 10 }).page;
     assert.ok(
       first.find('.pagination .page-step[aria-label^="Previous"]').hasAttribute('disabled'),
       'the first page cannot go back',
@@ -194,8 +198,8 @@ suite('Search page behavior', () => {
     );
     first.dispose();
 
-    const last = openMany(8, { pageSize: 3, notePage: 3 }).page;
-    assert.strictEqual(last.text('.pagination .page-range'), '7\u20138 of 8');
+    const last = openMany(25, { pageSize: 10, notePage: 3 }).page;
+    assert.strictEqual(last.text('.pagination .page-range'), '21\u201325 of 25');
     assert.ok(
       last.find('.pagination .page-step[aria-label^="Next"]').hasAttribute('disabled'),
       'the last page cannot go on',
@@ -203,7 +207,7 @@ suite('Search page behavior', () => {
   });
 
   test('leaves out pages it cannot fit, keeping the ends and the way on', () => {
-    const { page } = openMany(60, { pageSize: 2, notePage: 15 });
+    const { page } = openMany(300, { pageSize: 10, notePage: 15 });
 
     const offered = page
       .findAll('.pagination [data-kind="notes"].page-number')
@@ -212,10 +216,42 @@ suite('Search page behavior', () => {
     assert.strictEqual(page.findAll('.pagination .page-gap').length, 2);
   });
 
-  test('shows no pagination for a search that fits on one page', () => {
+  test('shows no pagination for a search smaller than the smallest page', () => {
     const { page } = openMany(3, { pageSize: 10 });
 
     assert.strictEqual(page.document.querySelector('.pagination'), null);
+  });
+
+  test('keeps the per-page chooser for a result that fills one large page', () => {
+    // One page of 200 holds all 25, but the reader can still ask for ten to
+    // a page, so the control has something to offer and stays.
+    const { page } = openMany(25, { pageSize: 200 });
+
+    assert.strictEqual(page.text('.pagination .page-range'), '1\u201325 of 25');
+    assert.strictEqual(
+      page.document.querySelector('.pagination .page-number'),
+      null,
+      'one page needs no page numbers',
+    );
+    assert.strictEqual(
+      page.find('.pagination select').querySelectorAll('option').length,
+      5,
+    );
+  });
+
+  test('asks for a different page size, and marks the one in use', () => {
+    const { page } = openMany(25, { pageSize: 10 });
+
+    const select = page.find('.pagination select') as HTMLSelectElement;
+    assert.strictEqual(select.value, '10');
+
+    select.value = '50';
+    select.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+
+    assert.deepStrictEqual(page.lastPosted('setResultsPerPage'), {
+      type: 'setResultsPerPage',
+      size: 50,
+    });
   });
 
   test('keeps its search for a window reload', () => {

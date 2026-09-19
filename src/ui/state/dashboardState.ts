@@ -7,6 +7,7 @@ import {
   ParsedFile,
   PersistedPreferences,
   ResultPaging,
+  SEARCH_PAGE_SIZES,
   SearchPageSnapshot,
   Section,
   StatsAccessItem,
@@ -152,11 +153,11 @@ export interface SearchPageOptions {
    */
   suggestWords?: (words: readonly string[]) => ReadonlyMap<string, string>;
   /**
-   * How many results a page of notes or of tasks holds. Without it a
-   * snapshot carries everything the search found, which is what Home's
-   * widgets want and what a page of a whole workspace cannot afford.
+   * False for a caller that wants the whole result rather than a page of it,
+   * such as Home's widgets. A search page is paged by the size the reader
+   * chose, which is kept in their preferences.
    */
-  pageSize?: number;
+  paged?: boolean;
   /** Which page of each list to carry, 1-based and clamped. */
   notePage?: number;
   taskPage?: number;
@@ -226,7 +227,8 @@ export function createSearchPageSnapshot(
   const ranked = cards.sort((left, right) =>
     compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
   );
-  const notePaging = createPaging(ranked.length, options.pageSize, options.notePage);
+  const pageSize = options.paged === false ? undefined : preferences.searchPageSize;
+  const notePaging = createPaging(ranked.length, pageSize, options.notePage);
   const sections = takePage(ranked, notePaging);
   const tasks = sortTasks(
     [...results.tasks],
@@ -236,11 +238,7 @@ export function createSearchPageSnapshot(
   const shownTasks = tasks
     .filter((task) => matchesTaskFilter(task, taskFilter))
     .map((task) => createDashboardTask(task, index.sections));
-  const taskPaging = createPaging(
-    shownTasks.length,
-    options.pageSize,
-    options.taskPage,
-  );
+  const taskPaging = createPaging(shownTasks.length, pageSize, options.taskPage);
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
@@ -313,6 +311,7 @@ export function createSearchPageSnapshot(
       completed: tasks.filter((task) => task.completed).length,
     },
     taskFilter,
+    pageSizes: SEARCH_PAGE_SIZES,
     renderMode: preferences.renderMode,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,

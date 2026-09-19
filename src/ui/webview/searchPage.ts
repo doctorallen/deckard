@@ -31,14 +31,6 @@ import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 
 /**
- * How many notes, and how many tasks, one page of results holds. Enough that
- * a search anyone would read through arrives whole, and small enough that a
- * workspace-wide search is not megabytes of card text through the webview
- * channel on every save.
- */
-const PAGE_SIZE = 200;
-
-/**
  * Opens search pages: one editor tab per search, which a tag's overview is
  * the case of, when the search is that one tag.
  *
@@ -421,7 +413,6 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         originQuery: this.originQuery,
         taskFilter: this.taskFilter,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
-        pageSize: PAGE_SIZE,
         notePage: this.notePage,
         taskPage: this.taskPage,
         enableHeadingTagRelationships: vscode.workspace
@@ -553,6 +544,13 @@ class SearchPanel implements SearchSource, vscode.Disposable {
           this.taskPage = message.page;
         }
         this.refresh();
+        return;
+      case 'setResultsPerPage':
+        // A different page size is a different set of pages, and the number
+        // the reader was on means nothing in it, so both lists start again.
+        this.notePage = 1;
+        this.taskPage = 1;
+        await this.preferences.setSearchPageSize(message.size);
         return;
       case 'setTaskFilter':
         this.taskFilter = message.filter;

@@ -3,6 +3,8 @@ import {
   DashboardMessage,
   NotesGraphMessage,
   RenderMode,
+  SearchPageSize,
+  SEARCH_PAGE_SIZES,
   SearchPageMessage,
   SidebarMessage,
   TagOverviewLayout,
@@ -171,6 +173,10 @@ export function parseSearchPageMessage(
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
+        : undefined;
+    case 'setResultsPerPage':
+      return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
+        ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
         : undefined;
     case 'setResultPage':
       return (value.kind === 'notes' || value.kind === 'tasks') &&
