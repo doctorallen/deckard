@@ -440,6 +440,26 @@ export interface DashboardWidget extends DashboardWidgetConfig {
  * carries the tag, its entity, and its hub note. Any other search is described
  * by its search box alone.
  */
+/**
+ * One page of a search's results.
+ *
+ * A search page shows a page at a time rather than everything it found: a
+ * search that matches a workspace would otherwise send, and draw, every note
+ * on every save — megabytes of card text for the screenful anyone reads.
+ * `total` is of the whole search, so every count on the page is of the search
+ * and not of the page being shown.
+ */
+export interface ResultPaging {
+  /** 1-based, clamped to the pages the search has. */
+  page: number;
+  /** How many results a page holds. */
+  size: number;
+  /** How many pages the results fill; at least one, even when empty. */
+  pageCount: number;
+  /** How many results the search found. */
+  total: number;
+}
+
 export interface SearchPageSnapshot {
   /** The tag the page is about, when the search is that one tag. */
   tag?: TagInfo;
@@ -451,19 +471,13 @@ export interface SearchPageSnapshot {
   /** The search the page was opened with, which Clear returns to. */
   originQuery: string;
   savedViewName?: string;
-  /**
-   * The note cards the page carries, which a broad search limits to the
-   * first `noteLimit` of them.
-   */
+  /** The note cards of the page being shown. */
   sections: TagOverviewCard[];
-  /** How many notes the search found, whether or not they are all carried. */
-  sectionTotal: number;
+  /** Which page of notes these are, and how many there are in all. */
+  notePaging: ResultPaging;
   tasks: DashboardTask[];
-  /**
-   * How many tasks the search found under the active completion filter,
-   * whether or not they are all carried.
-   */
-  taskTotal: number;
+  /** Which page of tasks these are, and how many there are in all. */
+  taskPaging: ResultPaging;
   /** Counts before the active completion filter is applied. */
   taskCounts: {
     all: number;
@@ -940,10 +954,12 @@ export interface ClearOverviewQueryMessage {
   type: 'clearOverviewQuery';
 }
 
-/** Carry the next batch of results, for a search with more than it sent. */
-export interface ShowMoreEntriesMessage {
-  type: 'showMoreEntries';
+/** Turn one of a search page's lists to another of its pages. */
+export interface SetResultPageMessage {
+  type: 'setResultPage';
   kind: 'notes' | 'tasks';
+  /** 1-based, and clamped to the pages the search actually has. */
+  page: number;
 }
 
 /** Remembers a search that was run, for Find and the search boxes. */
@@ -1067,7 +1083,7 @@ export type SearchPageMessage =
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
-  | ShowMoreEntriesMessage
+  | SetResultPageMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =

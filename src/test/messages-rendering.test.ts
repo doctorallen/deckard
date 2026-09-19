@@ -442,11 +442,25 @@ suite('Webview contracts', () => {
       { type: 'saveTagOverviewFilter' },
     );
     assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'showMoreEntries', kind: 'tasks' }),
-      { type: 'showMoreEntries', kind: 'tasks' },
+      parseSearchPageMessage({ type: 'setResultPage', kind: 'tasks', page: 3 }),
+      { type: 'setResultPage', kind: 'tasks', page: 3 },
     );
     assert.strictEqual(
-      parseSearchPageMessage({ type: 'showMoreEntries', kind: 'everything' }),
+      parseSearchPageMessage({ type: 'setResultPage', kind: 'everything', page: 3 }),
+      undefined,
+    );
+    // A page number is a whole number of at least one, whatever a page that
+    // had been tampered with might ask for.
+    assert.strictEqual(
+      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: 0 }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: 1.5 }),
+      undefined,
+    );
+    assert.strictEqual(
+      parseSearchPageMessage({ type: 'setResultPage', kind: 'notes', page: '2' }),
       undefined,
     );
     assert.strictEqual(

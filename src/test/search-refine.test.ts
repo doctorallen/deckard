@@ -301,7 +301,7 @@ suite('Refining a search', () => {
     assert.strictEqual(corrected('#elevatr'), undefined);
   });
 
-  test('carries a batch of a broad search and counts the whole of it', () => {
+  test('carries one page of a broad search and counts the whole of it', () => {
     const files = Array.from({ length: 6 }, (_, index) =>
       parseMarkdown(
         `notes/note-${index}.md`,
@@ -311,26 +311,79 @@ suite('Refining a search', () => {
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const store = new PreferencesStore(new MemoryMemento());
 
+    // Without a page size a snapshot carries everything, as Home's widgets
+    // need, and says so: one page holding the lot.
     const whole = createSearchPageSnapshot(index, store.value, '#project/atlas');
     assert.strictEqual(whole.sections.length, 6);
-    assert.strictEqual(whole.sectionTotal, 6);
     assert.strictEqual(whole.tasks.length, 6);
-    assert.strictEqual(whole.taskTotal, 6);
-
-    const batch = createSearchPageSnapshot(index, store.value, '#project/atlas', {
-      noteLimit: 2,
-      taskLimit: 3,
+    assert.deepStrictEqual(whole.notePaging, {
+      page: 1,
+      size: 6,
+      pageCount: 1,
+      total: 6,
     });
-    assert.strictEqual(batch.sections.length, 2);
-    assert.strictEqual(batch.tasks.length, 3);
+
+    const first = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      pageSize: 4,
+    });
+    assert.deepStrictEqual(first.notePaging, {
+      page: 1,
+      size: 4,
+      pageCount: 2,
+      total: 6,
+    });
+    assert.deepStrictEqual(first.sections, whole.sections.slice(0, 4));
     // What the page says it found is what the search found, not what it was
-    // sent, so asking for the next batch never changes the answer.
-    assert.strictEqual(batch.sectionTotal, 6);
-    assert.strictEqual(batch.taskTotal, 6);
-    assert.strictEqual(batch.query.matchCounts.notes, 6);
-    assert.strictEqual(batch.query.matchCounts.tasks, 6);
-    assert.deepStrictEqual(batch.sections, whole.sections.slice(0, 2));
-    assert.deepStrictEqual(batch.taskCounts, whole.taskCounts);
+    // sent, so turning a page never changes the answer.
+    assert.strictEqual(first.query.matchCounts.notes, 6);
+    assert.strictEqual(first.query.matchCounts.tasks, 6);
+    assert.deepStrictEqual(first.taskCounts, whole.taskCounts);
+
+    const second = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      pageSize: 4,
+      notePage: 2,
+      taskPage: 2,
+    });
+    assert.deepStrictEqual(second.sections, whole.sections.slice(4));
+    assert.deepStrictEqual(second.tasks, whole.tasks.slice(4));
+    assert.strictEqual(second.notePaging.page, 2);
+
+    store.dispose();
+  });
+
+  test('puts a page number back inside the pages a search has', () => {
+    const files = Array.from({ length: 3 }, (_, index) =>
+      parseMarkdown(`notes/note-${index}.md`, `# Note ${index} #project/atlas\nProse.`),
+    );
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const store = new PreferencesStore(new MemoryMemento());
+
+    // A note saved elsewhere can shorten a search while its last page is
+    // open. The reader should land on the last page there is, not past it.
+    const past = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      pageSize: 2,
+      notePage: 9,
+    });
+    assert.strictEqual(past.notePaging.page, 2);
+    assert.strictEqual(past.sections.length, 1);
+
+    const before = createSearchPageSnapshot(index, store.value, '#project/atlas', {
+      pageSize: 2,
+      notePage: 0,
+    });
+    assert.strictEqual(before.notePaging.page, 1);
+
+    // A search that found nothing still has a page, so the page has a list
+    // to be empty in.
+    const none = createSearchPageSnapshot(index, store.value, '#project/nothing', {
+      pageSize: 2,
+    });
+    assert.deepStrictEqual(none.notePaging, {
+      page: 1,
+      size: 2,
+      pageCount: 1,
+      total: 0,
+    });
 
     store.dispose();
   });

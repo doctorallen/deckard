@@ -6,6 +6,7 @@ import {
   Entity,
   ParsedFile,
   PersistedPreferences,
+  ResultPaging,
   SearchPageSnapshot,
   Section,
   StatsAccessItem,
@@ -151,12 +152,14 @@ export interface SearchPageOptions {
    */
   suggestWords?: (words: readonly string[]) => ReadonlyMap<string, string>;
   /**
-   * How many note cards and task rows to carry. The rest are counted and
-   * left behind, so a broad search costs what is on screen rather than what
-   * the workspace holds. Every count the page shows is of the whole result.
+   * How many results a page of notes or of tasks holds. Without it a
+   * snapshot carries everything the search found, which is what Home's
+   * widgets want and what a page of a whole workspace cannot afford.
    */
-  noteLimit?: number;
-  taskLimit?: number;
+  pageSize?: number;
+  /** Which page of each list to carry, 1-based and clamped. */
+  notePage?: number;
+  taskPage?: number;
   now?: number;
 }
 
@@ -223,10 +226,8 @@ export function createSearchPageSnapshot(
   const ranked = cards.sort((left, right) =>
     compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
   );
-  const sections =
-    options.noteLimit === undefined
-      ? ranked
-      : ranked.slice(0, Math.max(options.noteLimit, 0));
+  const notePaging = createPaging(ranked.length, options.pageSize, options.notePage);
+  const sections = takePage(ranked, notePaging);
   const tasks = sortTasks(
     [...results.tasks],
     preferences.taskOrder,
@@ -235,6 +236,11 @@ export function createSearchPageSnapshot(
   const shownTasks = tasks
     .filter((task) => matchesTaskFilter(task, taskFilter))
     .map((task) => createDashboardTask(task, index.sections));
+  const taskPaging = createPaging(
+    shownTasks.length,
+    options.pageSize,
+    options.taskPage,
+  );
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
@@ -298,12 +304,9 @@ export function createSearchPageSnapshot(
           findMatchingSavedQueryName(preferences.savedFilters, parsed)
         : findMatchingSavedQueryName(preferences.savedFilters, parsed),
     sections,
-    sectionTotal: ranked.length,
-    tasks:
-      options.taskLimit === undefined
-        ? shownTasks
-        : shownTasks.slice(0, Math.max(options.taskLimit, 0)),
-    taskTotal: shownTasks.length,
+    notePaging,
+    tasks: takePage(shownTasks, taskPaging),
+    taskPaging,
     taskCounts: {
       all: tasks.length,
       active: tasks.filter((task) => !task.completed).length,
@@ -1075,6 +1078,40 @@ export function getTitleTags(
       label: tagLabels[key] ?? `#${key}`,
     }))
     .filter((tag) => title.includes(tag.label));
+}
+
+/**
+ * Works out which page of a list is being shown.
+ *
+ * A page number is clamped rather than refused, because the results move
+ * under it: a note saved elsewhere can shorten a search while its last page
+ * is open, and the reader should find the last page there rather than an
+ * empty one. Without a page size there is one page holding everything.
+ */
+function createPaging(
+  total: number,
+  size: number | undefined,
+  page: number | undefined,
+): ResultPaging {
+  if (size === undefined || size <= 0) {
+    return { page: 1, size: Math.max(total, 1), pageCount: 1, total };
+  }
+  const pageCount = Math.max(Math.ceil(total / size), 1);
+  return {
+    page: Math.min(Math.max(Math.trunc(page ?? 1), 1), pageCount),
+    size,
+    pageCount,
+    total,
+  };
+}
+
+/** The slice of a list that one page shows. */
+function takePage<T>(entries: T[], paging: ResultPaging): T[] {
+  if (paging.pageCount === 1 && paging.page === 1 && entries.length <= paging.size) {
+    return entries;
+  }
+  const start = (paging.page - 1) * paging.size;
+  return entries.slice(start, start + paging.size);
 }
 
 /**

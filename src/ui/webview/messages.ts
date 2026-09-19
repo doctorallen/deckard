@@ -172,9 +172,12 @@ export function parseSearchPageMessage(
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
         : undefined;
-    case 'showMoreEntries':
-      return value.kind === 'notes' || value.kind === 'tasks'
-        ? { type: 'showMoreEntries', kind: value.kind }
+    case 'setResultPage':
+      return (value.kind === 'notes' || value.kind === 'tasks') &&
+        typeof value.page === 'number' &&
+        Number.isInteger(value.page) &&
+        value.page >= 1
+        ? { type: 'setResultPage', kind: value.kind, page: value.page }
         : undefined;
     case 'toggleTask':
       return typeof value.taskId === 'string' &&

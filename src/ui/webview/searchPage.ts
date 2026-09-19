@@ -31,10 +31,10 @@ import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 
 /**
- * How many note cards and task rows a page carries, and asks for again each
- * time the reader wants more. Enough that a search anyone would read through
- * arrives whole, and small enough that a workspace-wide search is not
- * megabytes of card text through the webview channel on every save.
+ * How many notes, and how many tasks, one page of results holds. Enough that
+ * a search anyone would read through arrives whole, and small enough that a
+ * workspace-wide search is not megabytes of card text through the webview
+ * channel on every save.
  */
 const PAGE_SIZE = 200;
 
@@ -258,13 +258,17 @@ class SearchPanel implements SearchSource, vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private taskFilter: TaskFilter = 'active';
   /**
-   * How many note cards and task rows the page is carrying. A workspace-wide
+   * Which page of notes and of tasks the page is showing. A workspace-wide
    * search used to send, and draw, every one of them on every save: several
    * megabytes through the webview channel, and thousands of cards rebuilt,
-   * for the screenful anyone reads. The page asks for the next batch instead.
+   * for the screenful anyone reads.
+   *
+   * Both are kept as the reader left them, and clamped by the snapshot when
+   * the results move under them, so they are read back from it rather than
+   * trusted.
    */
-  private noteLimit = PAGE_SIZE;
-  private taskLimit = PAGE_SIZE;
+  private notePage = 1;
+  private taskPage = 1;
   /**
    * Search text that does not parse. The box shows it, with its error, while
    * the page keeps the results of the last search that did.
@@ -342,6 +346,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     this.isStale = false;
     const snapshot = measure('Search page', () => this.createSnapshot());
+    // The snapshot clamps a page number to the pages the search has, and a
+    // search shortens under an open page whenever a note is saved. Reading
+    // the clamped numbers back keeps the page the reader is on and the page
+    // the host asks for from drifting apart.
+    this.notePage = snapshot.notePaging.page;
+    this.taskPage = snapshot.taskPaging.page;
     this.lastSnapshot = snapshot;
     this.refineWasInSidebar = snapshot.refineInSidebar === true;
     this.panel.title = getPageTitle(snapshot);
@@ -411,8 +421,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         originQuery: this.originQuery,
         taskFilter: this.taskFilter,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
-        noteLimit: this.noteLimit,
-        taskLimit: this.taskLimit,
+        pageSize: PAGE_SIZE,
+        notePage: this.notePage,
+        taskPage: this.taskPage,
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
@@ -507,9 +518,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     this.invalidQueryText = undefined;
     this.queryText = text;
-    // A different search is a different list, read from its top.
-    this.noteLimit = PAGE_SIZE;
-    this.taskLimit = PAGE_SIZE;
+    // A different search is a different list, read from its first page.
+    this.notePage = 1;
+    this.taskPage = 1;
     this.refresh();
     if (remember && text) {
       await this.preferences.recordRecentQuery(text);
@@ -535,16 +546,19 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'clearOverviewQuery':
         await this.applyQuery(this.originQuery, false);
         return;
-      case 'showMoreEntries':
+      case 'setResultPage':
         if (message.kind === 'notes') {
-          this.noteLimit += PAGE_SIZE;
+          this.notePage = message.page;
         } else {
-          this.taskLimit += PAGE_SIZE;
+          this.taskPage = message.page;
         }
         this.refresh();
         return;
       case 'setTaskFilter':
         this.taskFilter = message.filter;
+        // A different filter is a different list of tasks, read from its
+        // first page rather than from wherever the last list had got to.
+        this.taskPage = 1;
         this.refresh();
         return;
       case 'setRenderMode':

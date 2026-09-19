@@ -56,6 +56,18 @@ suite('Search page behavior', () => {
     return { page, snapshot };
   };
 
+  /** A search of `count` notes that all carry one tag. */
+  const openMany = (
+    count: number,
+    options: Parameters<typeof createSearchPageSnapshot>[3],
+  ): { page: WebviewPage; snapshot: SearchPageSnapshot } => {
+    const notes: Record<string, string> = {};
+    for (let index = 0; index < count; index += 1) {
+      notes[`notes/note-${index}.md`] = `# Note ${index} #project/atlas\nProse.`;
+    }
+    return open(notes, '#project/atlas', options);
+  };
+
   test('draws the notes and tasks a search found', () => {
     const { page } = open(
       {
@@ -129,38 +141,81 @@ suite('Search page behavior', () => {
     assert.strictEqual(page.document.querySelector('.did-you-mean'), null);
   });
 
-  test('draws the batch it was sent and counts the whole search', () => {
-    const notes: Record<string, string> = {};
-    for (let index = 0; index < 8; index += 1) {
-      notes[`notes/note-${index}.md`] = `# Note ${index} #project/atlas\nProse.`;
-    }
-    const { page } = open(notes, '#project/atlas', { noteLimit: 3 });
+  test('draws one page of results and counts the whole search', () => {
+    const { page } = openMany(8, { pageSize: 3 });
 
-    assert.strictEqual(page.findAll('.card').length, 3, 'only the batch is drawn');
+    assert.strictEqual(page.findAll('.card').length, 3, 'one page is drawn');
     assert.strictEqual(
       page.text('[data-search-count="notes"]'),
       '8',
-      'the count is of the whole search, not the batch',
+      'the count is of the whole search, not the page',
     );
+    assert.strictEqual(page.text('.pagination .page-range'), '1\u20133 of 8');
+  });
 
-    page.click('[data-action="show-more-entries"]');
+  test('turns to the page a number names', () => {
+    const { page } = openMany(8, { pageSize: 3 });
 
-    assert.deepStrictEqual(page.lastPosted('showMoreEntries'), {
-      type: 'showMoreEntries',
+    page.click('.pagination .page-number[data-page="3"]');
+
+    assert.deepStrictEqual(page.lastPosted('setResultPage'), {
+      type: 'setResultPage',
       kind: 'notes',
+      page: 3,
     });
   });
 
-  test('asks for nothing more once it has the whole search', () => {
-    const { page } = open(
-      { 'notes/atlas.md': '# Atlas #project/atlas\nProse.' },
-      '#project/atlas',
+  test('steps to the next page, and marks the one being read', () => {
+    const { page } = openMany(8, { pageSize: 3, notePage: 2 });
+
+    assert.strictEqual(page.text('.pagination .page-range'), '4\u20136 of 8');
+    assert.strictEqual(
+      page.find('.pagination .page-number.is-current').textContent,
+      '2',
+    );
+    assert.strictEqual(
+      page.find('.pagination .page-number.is-current').getAttribute('aria-current'),
+      'page',
     );
 
-    assert.strictEqual(
-      page.document.querySelector('[data-action="show-more-entries"]'),
-      null,
+    page.click('.pagination .page-step[aria-label^="Next"]');
+
+    assert.strictEqual(page.lastPosted('setResultPage')?.page, 3);
+  });
+
+  test('offers no way off either end of the pages', () => {
+    const first = openMany(8, { pageSize: 3 }).page;
+    assert.ok(
+      first.find('.pagination .page-step[aria-label^="Previous"]').hasAttribute('disabled'),
+      'the first page cannot go back',
     );
+    assert.ok(
+      !first.find('.pagination .page-step[aria-label^="Next"]').hasAttribute('disabled'),
+    );
+    first.dispose();
+
+    const last = openMany(8, { pageSize: 3, notePage: 3 }).page;
+    assert.strictEqual(last.text('.pagination .page-range'), '7\u20138 of 8');
+    assert.ok(
+      last.find('.pagination .page-step[aria-label^="Next"]').hasAttribute('disabled'),
+      'the last page cannot go on',
+    );
+  });
+
+  test('leaves out pages it cannot fit, keeping the ends and the way on', () => {
+    const { page } = openMany(60, { pageSize: 2, notePage: 15 });
+
+    const offered = page
+      .findAll('.pagination [data-kind="notes"].page-number')
+      .map((button) => button.textContent);
+    assert.deepStrictEqual(offered, ['1', '14', '15', '16', '30']);
+    assert.strictEqual(page.findAll('.pagination .page-gap').length, 2);
+  });
+
+  test('shows no pagination for a search that fits on one page', () => {
+    const { page } = openMany(3, { pageSize: 10 });
+
+    assert.strictEqual(page.document.querySelector('.pagination'), null);
   });
 
   test('keeps its search for a window reload', () => {

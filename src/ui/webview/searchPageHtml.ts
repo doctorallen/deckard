@@ -89,6 +89,14 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
 .empty-action { margin: 12px 0 0; }
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.page-range { color: var(--muted); font-family: var(--font-mono); }
+.page-controls { display: flex; align-items: center; gap: 4px; }
+.pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
+.pagination button:hover:not([disabled]) { border-color: var(--accent); color: var(--accent); }
+.pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
+.pagination .page-number.is-current { border-color: var(--accent); background: var(--accent); color: var(--panel); }
+.page-gap { color: var(--muted); padding: 0 2px; }
 .did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
 .did-you-mean button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
@@ -143,6 +151,70 @@ ${getQueryEditorScript()}
     },
   });
 
+  /**
+   * A list's paging, standing in for a host that did not send any: one page
+   * holding everything, which is what Home's widgets and an older saved page
+   * amount to.
+   */
+  function pagingOf(paging, shown) {
+    if (paging && typeof paging.total === 'number') return paging;
+    return { page: 1, size: Math.max(shown, 1), pageCount: 1, total: shown };
+  }
+
+  /**
+   * The page numbers to offer, with a gap where numbers are left out.
+   *
+   * The first and last pages are always there, because they are where a
+   * reader goes back to, and the pages either side of the current one,
+   * because they are the next step. A gap is a null.
+   */
+  function pageNumbers(current, pageCount) {
+    if (pageCount <= 7) {
+      return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
+    }
+    const wanted = [1, pageCount, current, current - 1, current + 1];
+    const pages = wanted
+      .filter(function (page) { return page >= 1 && page <= pageCount; })
+      .filter(function (page, index, all) { return all.indexOf(page) === index; })
+      .sort(function (left, right) { return left - right; });
+    const withGaps = [];
+    pages.forEach(function (page, index) {
+      if (index > 0 && page - pages[index - 1] > 1) withGaps.push(null);
+      withGaps.push(page);
+    });
+    return withGaps;
+  }
+
+  /**
+   * The control that turns a list to another of its pages. A search with one
+   * page has no control: there is nowhere to go.
+   */
+  function renderPagination(kind, paging) {
+    if (paging.pageCount <= 1) return '';
+    const noun = kind === 'notes' ? 'notes' : 'tasks';
+    const first = (paging.page - 1) * paging.size + 1;
+    const last = Math.min(paging.page * paging.size, paging.total);
+    const step = function (page, label, enabled) {
+      return '<button class="page-step" data-action="set-result-page" data-kind="' + kind + '" data-page="' + page + '"'
+        + (enabled ? '' : ' disabled')
+        + ' aria-label="' + label + ' page of ' + noun + '">' + label + '</button>';
+    };
+    const numbers = pageNumbers(paging.page, paging.pageCount).map(function (page) {
+      if (page === null) return '<span class="page-gap" aria-hidden="true">…</span>';
+      const current = page === paging.page;
+      return '<button class="page-number' + (current ? ' is-current' : '') + '" data-action="set-result-page" data-kind="' + kind + '" data-page="' + page + '"'
+        + (current ? ' aria-current="page"' : '')
+        + ' aria-label="Page ' + page + ' of ' + noun + '">' + page + '</button>';
+    }).join('');
+    return '<nav class="pagination" aria-label="' + (kind === 'notes' ? 'Note' : 'Task') + ' pages">'
+      + '<span class="page-range">' + first + '\u2013' + last + ' of ' + paging.total + '</span>'
+      + '<span class="page-controls">'
+      + step(paging.page - 1, 'Previous', paging.page > 1)
+      + numbers
+      + step(paging.page + 1, 'Next', paging.page < paging.pageCount)
+      + '</span></nav>';
+  }
+
   /** Render a title or metadata tag as a direct link to its page. */
   function renderOverviewTagLink(tag, text) {
     return '<button class="overview-tag-link" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">' + renderTagLabel(text) + '</button>';
@@ -158,8 +230,8 @@ ${getQueryEditorScript()}
     // The notes count is of everything the search found, so narrowing by a
     // word never reads as though the search itself had shrunk to a batch.
     const total = kind === 'notes'
-      ? (state.sectionTotal === undefined ? state.sections.length : state.sectionTotal)
-      : (state.taskTotal === undefined ? state.tasks.length : state.taskTotal);
+      ? pagingOf(state.notePaging, state.sections.length).total
+      : pagingOf(state.taskPaging, state.tasks.length).total;
     let visibleCount = 0;
     document.querySelectorAll('[data-search-entry="' + kind + '"]').forEach(function (entry) {
       const text = entry.dataset.searchText || entry.textContent.toLowerCase();
@@ -284,19 +356,12 @@ ${getQueryEditorScript()}
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + renderOverviewTagLink(focus, state.entity.label) + '</div>'
       : '';
-    const notesCount = state.sectionTotal === undefined ? state.sections.length : state.sectionTotal;
-    const tasksCount = state.taskTotal === undefined ? state.tasks.length : state.taskTotal;
-    // The page carries a batch of a broad search's results. The rest are
-    // counted, and fetched when the reader asks for them.
-    const showMore = function (kind, total, carried) {
-      const unsent = Math.max(total - carried, 0);
-      if (!unsent) return '';
-      const noun = kind === 'notes' ? 'note' : 'task';
-      const label = unsent + ' more ' + (unsent === 1 ? noun : noun + 's') + ' ' + (unsent === 1 ? 'matches' : 'match') + ' this search';
-      return '<p class="empty-action"><button data-action="show-more-entries" data-kind="' + kind + '" title="' + label + '" aria-label="Show more ' + kind + '. ' + label + '">Show more</button></p>';
-    };
-    const showMoreNotes = showMore('notes', notesCount, state.sections.length);
-    const showMoreTasks = showMore('tasks', tasksCount, state.tasks.length);
+    const notePaging = pagingOf(state.notePaging, state.sections.length);
+    const taskPaging = pagingOf(state.taskPaging, state.tasks.length);
+    const notesCount = notePaging.total;
+    const tasksCount = taskPaging.total;
+    const notesPagination = renderPagination('notes', notePaging);
+    const tasksPagination = renderPagination('tasks', taskPaging);
     // An empty side of a search that did find something on the other side is
     // a dead end otherwise: the count is in the tab strip, but nothing says
     // the results are one click away.
@@ -314,11 +379,11 @@ ${getQueryEditorScript()}
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
       : '<div class="empty">' + (state.taskFilter === 'active' ? 'No open tasks match this search.' : 'No tasks match this filter.') + otherResults('tasks') + '</div>';
-    const tasksPaged = tasks + showMoreTasks;
+    const tasksPaged = tasks + tasksPagination;
     if (!tabChosen && state.layout !== 'split') {
       activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
     }
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div>' + showMoreNotes + '<div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></section>';
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div>' + notesPagination + '<div class="empty" data-search-empty="notes" hidden>No notes match your search.</div></section>';
     const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '<div class="empty" data-search-empty="tasks" hidden>No tasks match your search.</div></section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
@@ -415,7 +480,10 @@ ${getQueryEditorScript()}
         saveState();
         render();
       }
-      if (action === 'show-more-entries') { vscode.postMessage({ type: 'showMoreEntries', kind: target.dataset.kind }); return; }
+      if (action === 'set-result-page') {
+        vscode.postMessage({ type: 'setResultPage', kind: target.dataset.kind, page: Number(target.dataset.page) });
+        return;
+      }
       if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
