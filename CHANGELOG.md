@@ -84,6 +84,15 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **What is due today now shows in the status bar.** Every other count
+  Deckard keeps waited for a view to be opened; this one is visible while you
+  are writing code. It reads **3 due today**, counting the same tasks the
+  Agenda's Overdue and Today groups hold, says **1 overdue** and takes the
+  warning colour when something has slipped, and opens the Agenda when
+  selected. A clear day hides it entirely. `deckard.statusBar` turns it off,
+  and `deckard.taskReminderTime`, set to something like `09:00`, has Deckard
+  say once a day what is due, with **Open Agenda** beside it.
+
 - **A new daily note can carry the last one's unfinished tasks in.** A note
   that starts from its template every morning left last night's open tasks
   behind in yesterday's note, which is the habit that keeps daily notes

@@ -734,6 +734,20 @@
             "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task.",
             "order": 2
           },
+          "deckard.statusBar": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show how many tasks are due today in the status bar, which opens the Agenda when selected. The item is hidden while nothing is due.",
+            "order": 6
+          },
+          "deckard.taskReminderTime": {
+            "type": "string",
+            "pattern": "^$|^([01]?\\d|2[0-3]):[0-5]\\d$",
+            "patternErrorMessage": "Write a time of day as HH:MM, or leave it empty for no reminder.",
+            "default": "",
+            "description": "A time of day, such as 09:00, at which Deckard says how many tasks are due. Empty means no reminder.",
+            "order": 7
+          },
           "deckard.agenda.upcomingDays": {
             "type": "number",
             "minimum": 1,

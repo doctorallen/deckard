@@ -215,6 +215,8 @@ blank page into the reason to open one.
 
 ### 15. A status bar count, and optional reminders
 
+**Shipped**; see the README's Status bar and reminders section.
+
 Nothing contributes a status bar item. "3 due today", clicking through to
 the Agenda, is the one Deckard surface visible without opening a view, and
 an optional notification at an hour you choose follows from the same count.

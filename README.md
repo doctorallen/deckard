@@ -20,6 +20,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace. |
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
 | [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
+| [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
 | [Task board](#task-board) | Your tasks as a Kanban board by status, priority, or due date, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, and dependencies, written in either Obsidian Tasks format. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
@@ -395,6 +396,15 @@ Open **Agenda** from the Deckard Activity Bar to see the open tasks that need at
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - The Agenda's badge counts the tasks that are overdue or due today.
 
+## Status bar and reminders
+
+Deckard puts one count in VS Code's status bar: **3 due today**, counting the same open tasks the Agenda's Overdue and Today groups hold. Selecting it opens the Agenda.
+
+- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **4 due today, 1 overdue** — and takes the editor's warning colour.
+- It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
+- `deckard.statusBar` turns it off.
+- `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Agenda** beside it. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
+
 ## Task board
 
 Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Agenda's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
@@ -742,6 +752,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.metadataSuggestions": true,
+	"deckard.statusBar": true,
+	"deckard.taskReminderTime": "",
 	"deckard.board.statusNamespace": "status",
 	"deckard.board.statuses": ["todo", "doing", "waiting"],
 	"deckard.editor.referenceCounts": true,
@@ -787,6 +799,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
+| `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](#status-bar-and-reminders). |
+| `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, at which Deckard says how many tasks are due. Empty means no reminder. |
 | `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |
 | `deckard.board.statuses` | `["todo", "doing", "waiting"]` | The task board's status columns, in order. A status found on a task but not listed gets a column after them. |
 | `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |

@@ -63,6 +63,7 @@ import {
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
 import { AgendaTreeProvider } from './ui/views/agendaTree';
+import { TaskStatusBar } from './ui/views/taskStatusBar';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -194,6 +195,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
   const agenda = new AgendaTreeProvider(indexer);
+  const taskStatusBar = new TaskStatusBar(indexer);
   activeServices = {
     indexer,
     preferences,
@@ -212,6 +214,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     outline,
     queryBlocks,
     agenda,
+    taskStatusBar,
     taskMetadataSuggestions,
     taskBoard,
     editorReferences,
@@ -239,6 +242,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     outline,
     queryBlocks,
     agenda,
+    taskStatusBar,
     taskMetadataSuggestions,
     taskBoard,
     editorReferences,
@@ -541,6 +545,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     void dashboard.showOnStartup();
   }
 
+  // The bar draws as soon as there is an index to count.
+  taskStatusBar.refresh();
+
   void indexer.start().then(async () => {
     const index = indexer.getSnapshot();
     await preferences.prune(
@@ -578,6 +585,7 @@ export function deactivate(): void {
   activeServices?.outline.dispose();
   activeServices?.queryBlocks.dispose();
   activeServices?.agenda.dispose();
+  activeServices?.taskStatusBar.dispose();
   activeServices?.taskMetadataSuggestions.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
@@ -609,6 +617,7 @@ interface ExtensionServices {
   outline: OutlineTreeProvider;
   queryBlocks: QueryBlocks;
   agenda: AgendaTreeProvider;
+  taskStatusBar: TaskStatusBar;
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
