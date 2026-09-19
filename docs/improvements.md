@@ -150,6 +150,10 @@ resolve by their text.
 
 ### 9. Preview and undo for workspace-wide writes
 
+**Shipped**; see the README's Previewing and undoing a write section. A write
+that reaches more than one note opens in VS Code's refactor preview, and
+`Deckard: Undo Last Change` takes the last one back.
+
 Rename Tag and Merge Tag rewrite hundreds of files in one gesture, and the
 merge prompt warns that it cannot be undone. Show the diff before applying,
 the way VS Code's own refactorings preview a rename, and keep the last

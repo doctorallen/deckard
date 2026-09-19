@@ -26,6 +26,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
 | [Renaming notes and headings](#renaming-notes-and-headings) | Renaming a note carries every `[[link]]` that named it along, in the same step, and one command does the same for a heading. |
+| [Previewing and undoing](#previewing-and-undoing-a-write) | A write that reaches several notes is shown in VS Code's refactor preview first, and one command takes the last one back. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. `[[Note#Heading]]` and `[[Note#^line-marker]]` open a heading or one line. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
 | [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
@@ -107,6 +108,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 | **Deckard: Merge Tag…** | Merges one indexed tag into another that already exists, after showing what the merge will change. |
 | **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
+| **Deckard: Undo Last Change** | Puts every note back as it was before Deckard's last workspace-wide write, such as a tag rename or merge. |
 | **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
 | **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
 
@@ -471,6 +473,15 @@ Rename a tag to one that already exists, or run `Deckard: Merge Tag…` and pick
 - Where the kept tag already sits beside the old one on a heading or task line, or in the same front-matter list, the old tag is removed rather than repeated. Inside a sentence it is replaced, so the sentence still reads.
 - Favorites, access counts, Dashboard tag selections, and saved searches move to the kept tag. A plain rename moves them too.
 
+### Previewing and undoing a write
+
+Renaming a tag, merging two, and renaming a heading rewrite notes you never opened, which is further than an editor Undo reaches. Both ends of that are covered:
+
+- **The changes are shown first.** A write that reaches more than one note opens in VS Code's own refactor preview, where each change sits under its note with the line it will become. Leave any of them out by unchecking it, then apply. Deckard reports what actually landed, so a change you left out is not counted and not undone later.
+- `deckard.previewWorkspaceWrites` sets when this happens: `severalNotes` (the default), `always`, or `never`.
+- **Deckard: Undo Last Change** puts the notes back as they were before that write, after saying how many it will restore. A note you have changed since — in the editor or on disk — is left exactly as you left it, and Deckard says how many it left alone. Favorites and saved searches that followed a renamed tag move back with it.
+- One write is kept, and only the last: the way further back is your version control, which is why the notes stay plain Markdown.
+
 Set `deckard.enableHeadingTagRelationships` to `false` to refine by the tags the results carry instead of by related tags, while keeping ordinary tag indexing and note content unchanged.
 
 ## Search
@@ -685,6 +696,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.hoverPreviews": true,
 	"deckard.editor.linkDiagnostics": true,
 	"deckard.updateLinksOnRename": true,
+	"deckard.previewWorkspaceWrites": "severalNotes",
 	"deckard.assistantTools": true,
 	"deckard.mcpServer.enabled": false,
 	"deckard.mcpServer.port": 39217,
@@ -728,6 +740,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
 | `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
 | `deckard.updateLinksOnRename` | `true` | Rewrites every `[[Wiki link]]` that named a note by its old title when the note is renamed, in the same step as the rename. See [Renaming notes and headings](#renaming-notes-and-headings). |
+| `deckard.previewWorkspaceWrites` | `severalNotes` | When a write reaches more than one note, shows it in VS Code's refactor preview first. `always` shows every write, `never` applies them straight away. See [Previewing and undoing a write](#previewing-and-undoing-a-write). |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks with Deckard queries and list tags, after you allow the first call in each session. See [AI assistants](#ai-assistants). |
 | `deckard.mcpServer.enabled` | `false` | Runs a Model Context Protocol server on 127.0.0.1 with the same tools, for Claude Code and other MCP clients that carry its token. See [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients). |
 | `deckard.mcpServer.port` | `39217` | The port the MCP server listens on, on 127.0.0.1. |
@@ -744,7 +757,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ## Source safety and persistence
 
-Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, or approve an entity tag from `Deckard: Link Current Heading to Entity`. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
+Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, rename a note, tag, or heading, or approve an entity tag from `Deckard: Link Current Heading to Entity`. A rename or merge that reaches more than one note is [shown before it is written](#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
 
 Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-note search. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 

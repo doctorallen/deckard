@@ -202,6 +202,10 @@
         "title": "Deckard: Rename Heading"
       },
       {
+        "command": "deckard.undoLastChange",
+        "title": "Deckard: Undo Last Change"
+      },
+      {
         "command": "deckard.showEntryRelatedNotesDebug",
         "title": "Deckard: Debug Related Notes"
       },
@@ -622,6 +626,22 @@
             "default": true,
             "description": "Rewrite every [[Wiki link]] that names a note by its old title when the note is renamed, in the same step as the rename, so one Undo takes back both.",
             "order": 4
+          },
+          "deckard.previewWorkspaceWrites": {
+            "type": "string",
+            "enum": [
+              "severalNotes",
+              "always",
+              "never"
+            ],
+            "enumDescriptions": [
+              "Show a write that reaches more than one note in VS Code's refactor preview first.",
+              "Show every write that changes a note, however few it changes.",
+              "Apply writes without showing them first."
+            ],
+            "default": "severalNotes",
+            "description": "When renaming or merging a tag, and renaming a heading, show the changes in VS Code's refactor preview before they are written, where each one can be left out. Deckard: Undo Last Change takes back whatever was written.",
+            "order": 5
           }
         }
       },

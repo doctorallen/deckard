@@ -8,12 +8,16 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
-  applyLinkRewrites,
+  createLinkRewriteEdit,
   findHeadingAtLine,
   LinkMaintenance,
   planHeadingRenameRewrites,
   planNoteRenameRewrites,
 } from '../ui/commands/linkMaintenance';
+import {
+  applyWorkspaceWrite,
+  WorkspaceWriteHistory,
+} from '../ui/commands/workspaceWrites';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -189,7 +193,13 @@ suite('Link maintenance', () => {
       Buffer.from('Read [[Something else]] now.\n', 'utf8'),
     );
 
-    const updated = await applyLinkRewrites(rewrites);
+    const { edit } = await createLinkRewriteEdit(rewrites);
+    const written = await applyWorkspaceWrite(
+      edit,
+      { label: 'the rename', preview: 'never' },
+      new WorkspaceWriteHistory(),
+    );
+    const updated = written.notes.length;
     const read = async (file: string): Promise<string> =>
       Buffer.from(
         await vscode.workspace.fs.readFile(vscode.Uri.file(file)),

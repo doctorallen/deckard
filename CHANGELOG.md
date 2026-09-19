@@ -84,6 +84,17 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **A write that reaches several notes is shown before it lands, and can be
+  taken back afterwards.** Renaming or merging a tag rewrites every note that
+  carries it, most of which were never open, so an editor Undo could not
+  reach them. The changes now open in VS Code's own refactor preview, where
+  each one sits under its note and can be left out, and Deckard reports what
+  actually landed. `Deckard: Undo Last Change` puts those notes back as they
+  were, leaving alone any note changed since — in the editor or on disk — and
+  saying how many it left. Favorites and saved searches that followed the tag
+  move back with it. `deckard.previewWorkspaceWrites` chooses between
+  `severalNotes`, `always`, and `never`.
+
 - **`Deckard: Rename Heading`** renames the heading the cursor is in and
   carries the links into it along, both `[[Note#Heading]]` elsewhere and
   `[[#Heading]]` in the same note. Tags written on the heading stay on it.

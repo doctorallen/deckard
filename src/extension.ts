@@ -29,6 +29,7 @@ import {
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
+import { undoLastWorkspaceWrite } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
@@ -473,6 +474,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.renameHeading', () =>
       renameHeadingCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.undoLastChange', () =>
+      undoLastWorkspaceWrite(() => indexer.refresh()),
     ),
     vscode.commands.registerCommand(
       'deckard.mergeTag',

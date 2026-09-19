@@ -11,6 +11,7 @@ import {
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
+import { applyWorkspaceWrite } from './workspaceWrites';
 
 /**
  * Keeps `[[links]]` pointing where they pointed before a note or a heading was
@@ -240,28 +241,6 @@ export async function createLinkRewriteEdit(
   return { edit, applied };
 }
 
-/** Applies rewrites and saves the notes they changed. */
-export async function applyLinkRewrites(
-  rewrites: readonly LinkRewrite[],
-): Promise<number> {
-  const { edit, applied } = await createLinkRewriteEdit(rewrites);
-  if (applied.length === 0) {
-    return 0;
-  }
-  if (!(await vscode.workspace.applyEdit(edit))) {
-    return 0;
-  }
-  for (const uri of edit.entries().map(([entryUri]) => entryUri)) {
-    const document = vscode.workspace.textDocuments.find(
-      (open) => open.uri.toString() === uri.toString(),
-    );
-    if (document?.isDirty) {
-      await document.save();
-    }
-  }
-  return applied.length;
-}
-
 /**
  * Follows note renames, rewriting the links that named the note by its old
  * title.
@@ -425,6 +404,8 @@ export async function renameHeadingCommand(
   if (!marks) {
     return undefined;
   }
+  // The heading and the links that name it are one write, so the preview
+  // shows all of it and one Undo takes all of it back.
   const edit = new vscode.WorkspaceEdit();
   edit.replace(
     editor.document.uri,
@@ -436,27 +417,57 @@ export async function renameHeadingCommand(
     ),
     next.trim(),
   );
-  if (!(await vscode.workspace.applyEdit(edit))) {
+  const { edit: linkEdit, applied } = await createLinkRewriteEdit(rewrites);
+  linkEdit.entries().forEach(([uri, edits]) => {
+    edits.forEach((textEdit) => {
+      if (uri.toString() !== editor.document.uri.toString()) {
+        edit.replace(uri, textEdit.range, textEdit.newText);
+      }
+    });
+  });
+  // A link inside the note being renamed sits in the same document as the
+  // heading edit, so it goes in only where it cannot overlap it.
+  applied
+    .filter(
+      (rewrite) =>
+        rewrite.filePath === filePath && rewrite.line !== section.startLine - 1,
+    )
+    .forEach((rewrite) =>
+      edit.replace(
+        editor.document.uri,
+        new vscode.Range(
+          rewrite.line,
+          rewrite.startColumn,
+          rewrite.line,
+          rewrite.endColumn,
+        ),
+        rewrite.text,
+      ),
+    );
+
+  const written = await applyWorkspaceWrite(edit, {
+    label: `the rename of the heading "${heading}"`,
+    description: `Rename the heading to "${next.trim()}"`,
+  });
+  if (!written.applied) {
     void vscode.window.showErrorMessage(
       'Deckard could not rename the heading. VS Code rejected the source edit.',
     );
     return undefined;
   }
-  await editor.document.save();
-
-  const updated = await applyLinkRewrites(rewrites);
   try {
     await indexer.refresh();
   } catch {
     // The watcher picks the notes up; the rename itself is already saved.
   }
+  const others = written.notes.length - 1;
   void vscode.window.showInformationMessage(
-    updated === 0
+    others <= 0
       ? `Renamed the heading to "${next.trim()}".`
-      : `Renamed the heading to "${next.trim()}" and updated ${count(
-          updated,
-          'link',
-          'links',
+      : `Renamed the heading to "${next.trim()}" and the links to it in ${count(
+          others,
+          'other note',
+          'other notes',
         )}.`,
   );
   return next.trim();
