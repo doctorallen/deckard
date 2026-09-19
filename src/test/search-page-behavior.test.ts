@@ -60,6 +60,18 @@ suite('Search page behavior', () => {
     return { page, snapshot };
   };
 
+  /** A workspace with a hub note, a tagged note, and two tasks. */
+  const NOTES: Record<string, string> = {
+    'notes/atlas.md':
+      '---\ndescribes: project/atlas\n---\n# Atlas\nThe hub note body.',
+    'notes/one.md': [
+      '# One #project/atlas #risk/vendor',
+      'The lift is stuck.',
+      '- [ ] Chase it #project/atlas',
+      '- [x] Did it #project/atlas',
+    ].join('\n'),
+  };
+
   /** A search of `count` notes that all carry one tag. */
   const openMany = (
     count: number,
@@ -288,6 +300,164 @@ suite('Search page behavior', () => {
     assert.strictEqual(page.findAll('.card').length, 0);
     assert.strictEqual(page.text('[data-search-count="notes"]'), '0');
     assert.match(page.text('.empty') ?? '', /No notes match/);
+  });
+
+  test('switches the layout, the format, and the columns', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    page.click('[data-action="set-layout"][data-layout="split"]');
+    assert.deepStrictEqual(page.lastPosted('setTagOverviewLayout'), {
+      type: 'setTagOverviewLayout',
+      layout: 'split',
+    });
+
+    page.click('[data-action="set-mode"][data-mode="html"]');
+    assert.deepStrictEqual(page.lastPosted('setRenderMode'), {
+      type: 'setRenderMode',
+      mode: 'html',
+    });
+
+    page.click('[data-action="set-columns"][data-section="notes"][data-value="3"]');
+    assert.deepStrictEqual(page.lastPosted('setSearchColumns'), {
+      type: 'setSearchColumns',
+      section: 'notes',
+      columns: 3,
+    });
+  });
+
+  test('marks the control a reader is already using', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    assert.strictEqual(
+      page.find('[data-action="set-layout"][data-layout="tabs"]').getAttribute('aria-pressed'),
+      'true',
+    );
+    assert.strictEqual(
+      page.find('[data-action="set-layout"][data-layout="split"]').getAttribute('aria-pressed'),
+      'false',
+    );
+  });
+
+  test('moves between the notes and tasks tabs without asking the host', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    const panel = (index: number) =>
+      page.findAll('.overview-tab-panel')[index].hasAttribute('hidden');
+    assert.strictEqual(panel(0), false, 'notes are shown first');
+    assert.strictEqual(panel(1), true);
+
+    page.click('[data-action="set-result-tab"][data-tab="tasks"]');
+
+    assert.strictEqual(panel(0), true);
+    assert.strictEqual(panel(1), false, 'tasks are shown now');
+    assert.strictEqual(
+      page.find('[data-action="set-result-tab"][data-tab="tasks"]').getAttribute('aria-selected'),
+      'true',
+    );
+    assert.strictEqual(
+      page.posted.length,
+      0,
+      'a tab is the page\'s own business, not the host\'s',
+    );
+  });
+
+  test('sends the reader to the results waiting on the other tab', () => {
+    // A task-only search lands on Tasks rather than an empty Notes tab.
+    const { page } = open(NOTES, '#project/atlas is:open');
+
+    assert.strictEqual(page.findAll('.card').length, 0);
+    const other = page.find('[data-action="show-other-results"]');
+    assert.match(other.textContent ?? '', /task/);
+
+    page.click('[data-action="show-other-results"]');
+    assert.strictEqual(
+      page.findAll('.overview-tab-panel')[1].hasAttribute('hidden'),
+      false,
+    );
+  });
+
+  test('shows the note that describes a tag, and offers to write one', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    assert.match(page.text('.hub') ?? '', /The hub note body/);
+
+    page.dispose();
+    const without = open(
+      { 'notes/one.md': '# One #risk/vendor\nProse.' },
+      '#risk/vendor',
+    ).page;
+    assert.match(without.text('.hub-empty') ?? '', /No note describes/);
+
+    without.click('[data-action="create-hub"]');
+    assert.deepStrictEqual(without.lastPosted('createHubNote'), {
+      type: 'createHubNote',
+    });
+  });
+
+  test('completes a task from its checkbox', () => {
+    const { page } = open(NOTES, '#project/atlas', { taskFilter: 'all' });
+
+    const box = page.find('[data-action="toggle-task"]') as HTMLInputElement;
+    box.checked = true;
+    box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+
+    const posted = page.lastPosted('toggleTask');
+    assert.strictEqual(posted?.completed, true);
+    assert.ok(String(posted?.taskId).length > 0, 'the task is named by its id');
+  });
+
+  test('filters tasks by whether they are done', () => {
+    const { page } = open(NOTES, '#project/atlas', { taskFilter: 'all' });
+
+    page.click('[data-action="set-task-filter"][data-filter="completed"]');
+
+    assert.deepStrictEqual(page.lastPosted('setTaskFilter'), {
+      type: 'setTaskFilter',
+      filter: 'completed',
+    });
+  });
+
+  test('sorts the notes a search found', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    const sort = page.find('[data-action="set-sort"]') as HTMLSelectElement;
+    sort.value = 'updated';
+    sort.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+
+    assert.deepStrictEqual(page.lastPosted('setTagOverviewSort'), {
+      type: 'setTagOverviewSort',
+      mode: 'updated',
+    });
+  });
+
+  test('renames a tag from its context menu', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    page.find('.card [data-action="open-tag"]').dispatchEvent(
+      new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
+    );
+    const menu = page.find('#tag-context-menu [data-context-action="rename-tag"]');
+    menu.dispatchEvent(
+      new page.window.MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+
+    assert.ok(String(page.lastPosted('renameTag')?.tagKey).length > 0);
+  });
+
+  test('keeps a search under a name', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    page.click('[data-action="save-filter"]');
+
+    assert.deepStrictEqual(page.lastPosted('saveTagOverviewFilter'), {
+      type: 'saveTagOverviewFilter',
+    });
+  });
+
+  test('draws a namespaced tag as its namespace and its value', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    assert.strictEqual(page.text('.tag-namespace'), '#project/');
+    assert.ok((page.text('.tag-value') ?? '').length > 0);
   });
 
   test('keeps its search for a window reload', () => {

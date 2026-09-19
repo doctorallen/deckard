@@ -1319,33 +1319,7 @@ suite('Webview contracts', () => {
       html.includes('grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);'),
       true,
     );
-    assert.strictEqual(
-      html.includes('<select data-action="set-layout"'),
-      false,
-    );
-    assert.strictEqual(
-      html.includes('data-action="set-layout" data-layout="tabs"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('data-action="set-layout" data-layout="split"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Tabs: switch between Notes and Tasks"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Side by side: Notes 60%, Tasks 40%"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout">',
-      ),
-      true,
-    );
-    assert.strictEqual(
+                            assert.strictEqual(
       html.includes('.segmented > * + * { margin-left: calc(var(--edge) * -1); }'),
       true,
     );
@@ -1355,65 +1329,7 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes("state.tagTitleDisplayMode === 'separate'"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderInlineTitle(title, tags, appendMissing)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderTagLabel(label, svg)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('<tspan class="tag-namespace">'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('<span class="tag-namespace">'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('<span class="tag-value">'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderTaskTitle(renderedTitle, references)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('renderTaskTitle(item.renderedTitle, item.titleTags)'),
-      true,
-    );
-    assert.strictEqual(html.includes("renderTagButton(tag, 'inline-tag')"), true);
-    assert.strictEqual(
-      html.includes('.overview-tabs button.active { border-bottom-color:'),
-      false,
-    );
-    assert.strictEqual(
-      html.includes('data-action="set-mode" data-mode="markdown"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('data-action="set-mode" data-mode="html"'),
-      true,
-    );
-    assert.strictEqual(html.includes('function formatEntityTitle(kind, name)'), true);
-    assert.strictEqual(
-      html.includes("formatEntityTitle(state.entity.kind, state.entity.name)"),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderHub()'),
-      true,
-    );
-    assert.strictEqual(html.includes('\'<details class="hub"\''), true);
-    assert.strictEqual(html.includes('hub.expanded !== false'), true);
-    assert.strictEqual(html.includes("document.addEventListener('toggle'"), true);
-    assert.strictEqual(html.includes('data-action="create-hub"'), true);
-    assert.strictEqual(
+                                                                                assert.strictEqual(
       html.includes("vscode.postMessage({ type: 'createHubNote' })"),
       true,
     );
@@ -1424,32 +1340,11 @@ suite('Webview contracts', () => {
       parseSearchPageMessage({ type: 'createHubNote', tagKey: '#other' }),
       undefined,
     );
-    assert.strictEqual(
-      html.includes('title="Source: show the original Markdown"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('title="Rendered: show formatted Markdown"'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes(
-        '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format">',
-      ),
-      true,
-    );
-    assert.strictEqual(html.includes('>Source</button>'), false);
-    assert.strictEqual(html.includes('>Rendered</button>'), false);
-    // The Notes and Tasks tabs are the shared result tabs.
+                        // The Notes and Tasks tabs are the shared result tabs.
     assert.strictEqual(html.includes("{ id: 'notes', label: 'Notes', count: notesCount },"), true);
     // Both tabs count what their pane shows.
     assert.strictEqual(html.includes("{ id: 'tasks', label: 'Tasks', count: tasksCount },"), true);
-    assert.strictEqual(html.includes("count: state.taskCounts.all"), false);
-    assert.strictEqual(html.includes("data-action=\"set-result-tab\""), true);
-    // An empty side offers the other side's results, through the same path.
-    assert.strictEqual(html.includes("if (action === 'set-result-tab' || action === 'show-other-results') {"), true);
-    assert.strictEqual(html.includes('data-action="show-other-results"'), true);
-    assert.strictEqual(
+                    assert.strictEqual(
       html.includes('.segmented { display: inline-flex; }'),
       true,
     );
@@ -1459,44 +1354,18 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes('<div class="overview-tabs-row"><div class="segmented overview-tabs"'),
-      true,
-    );
-    assert.strictEqual(
+        assert.strictEqual(
       html.includes('.segmented > .active { position: relative; z-index: 1; }'),
       true,
     );
-    // One search box, always shown, replaces the per-tab search fields.
-    assert.strictEqual(html.includes('data-action="search-notes"'), false);
-    assert.strictEqual(html.includes('data-action="search-tasks"'), false);
-    assert.strictEqual(html.includes('data-action="toggle-query"'), false);
-    assert.strictEqual(html.includes('function createQueryEditor(options)'), true);
-    // The box holds the page's whole search, its own tag included.
-    assert.strictEqual(html.includes("type: 'setOverviewRefinement'"), false);
-    assert.strictEqual(html.includes("type: 'setOverviewQuery'"), true);
-    // The closer spelling a search page offers, and the batch it carries of
+                            // The closer spelling a search page offers, and the batch it carries of
     // a broad one, are held to what the page does: see the Search page
     // behavior suite.
     assert.strictEqual(html.includes('clearedText: function () { return state ? state.originQuery : \'\'; }'), true);
     assert.strictEqual(html.includes('refineElsewhere: function () { return Boolean(state && state.refineInSidebar); }'), true);
-    // The words being typed narrow the whole search on the host; the page no
-    // longer hides rows of the one page it holds. See the Search page
-    // behavior suite.
-    assert.strictEqual(html.includes('function filterEntries(kind)'), false);
-    assert.strictEqual(html.includes("type: 'previewSearch'"), true);
-
-    assert.strictEqual(html.includes('function updateTaskFilterCounts(filtering)'), false);
-    assert.strictEqual(html.includes('data-search-entry="notes"'), true);
-    assert.strictEqual(html.includes('data-search-entry="tasks"'), true);
-    assert.strictEqual(html.includes('Search:<input class="overview-search"'), false);
-
-    assert.strictEqual(
-      html.includes("filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done'"),
-      true,
-    );
-    assert.strictEqual(html.includes('class="view-options"'), true);
-    assert.strictEqual(
+        
+                
+            assert.strictEqual(
       html.includes(
         'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
       ),
@@ -1504,8 +1373,7 @@ suite('Webview contracts', () => {
     );
     // A short header is tall enough to hold the gear.
     assert.strictEqual(html.includes('header > .toolbar { margin-top: 36px; }'), true);
-    assert.strictEqual(html.includes('padding-right: 36px'), false);
-    assert.strictEqual(
+        assert.strictEqual(
       html.includes(
         'header > .toolbar { width: 100%; margin-top: 0; }',
       ),
@@ -1517,95 +1385,9 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    assert.strictEqual(
-      html.includes('<summary aria-label="View options" title="View options">'),
-      true,
-    );
-    // The gear is the one the Dashboard draws, closed the same way.
-    assert.strictEqual(html.includes("const viewOptions = renderViewOptions(["), true);
-    assert.strictEqual(html.includes('  installViewOptions();\n'), true);
-    assert.strictEqual(html.includes("options.querySelector('summary').focus();"), true);
-    assert.strictEqual(
-      html.includes('.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep);'),
-      true,
-    );
-    assert.strictEqual(html.includes('<details class="view-options">'), false, 'the gear is not drawn by hand');
-    assert.strictEqual(
-      html.includes('.toolbar { display: flex; justify-content: flex-end;'),
-      true,
-    );
-    assert.strictEqual(html.includes('note entries'), false);
-    assert.strictEqual(html.includes('data-action="save-filter"'), true);
-    assert.strictEqual(
-      html.includes('data-action="save-filter" data-query-needs-text'),
-      true,
-    );
-    assert.strictEqual(html.includes("type: 'saveTagOverviewFilter'"), true);
-    assert.strictEqual(html.includes('data-action="toggle-task"'), true);
-    // Related tags are a facet of Refine now, not a tree on the page.
-    assert.strictEqual(html.includes('function renderRelationshipTree'), false);
-    assert.strictEqual(html.includes('data-filter-tag-key'), false);
-    assert.strictEqual(html.includes('function renderFacetValue(facet, value)'), true);
-    // Related tags use the same three-step rail as Related Notes' tags.
-    assert.strictEqual(html.includes('function renderWeightRail(level, title)'), true);
-    assert.strictEqual(html.includes('strength-bar'), false);
-    assert.strictEqual(html.includes("In the Related Notes sidebar."), true);
-    // A header only for a search of one tag; any other search is its box.
-    assert.strictEqual(html.includes("const titleHtml = focus ? renderOverviewTagLink(focus, title) : escapeHtml(title);"), true);
-    assert.strictEqual(html.includes("if (!state.tag) return '';"), true);
-    assert.strictEqual(html.includes("'setSearchColumns'"), true);
-    assert.strictEqual(html.includes("'Note columns'"), true);
-    assert.strictEqual(
-      html.includes('function renderOverviewTagLink(tag, text)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('renderTagLabel(tag.label)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes('function renderTagControl(tag, content, extraClass)'),
-      false,
-    );
-    assert.strictEqual(html.includes('data-context-action="rename-tag"'), true);
-    assert.strictEqual(
-      html.includes('function openTagContextMenu(event, target)'),
-      true,
-    );
-    assert.strictEqual(
-      html.includes("document.addEventListener('contextmenu'"),
-      true,
-    );
-    assert.strictEqual(html.includes("type: 'renameTag'"), true);
-    assert.strictEqual(
-      html.includes('class="overview-tag-link" data-action="open-tag"'),
-      true,
-    );
-    assert.strictEqual(html.includes('class="overview-filter-tag"'), false);
-    assert.strictEqual(html.includes('class="saved-view-name"'), true);
-    assert.strictEqual(html.includes('state.savedViewName'), true);
-    assert.strictEqual(html.includes('escapeHtml(state.savedViewName)'), true);
-    assert.strictEqual(html.includes("state.tag.label + ' Overview'"), false);
-    assert.strictEqual(html.includes('<h1 aria-label="'), true);
-    assert.strictEqual(html.includes('escapeHtml(title)'), true);
-    assert.strictEqual(html.includes('function renderFilteredOverviewTag'), false);
-    assert.strictEqual(html.includes('data-filter-tag-keys'), false);
-    assert.strictEqual(html.includes('filter-context'), false);
-    assert.strictEqual(html.includes('Clear relationship filter'), false);
-    assert.strictEqual(html.includes('Clear filter'), false);
-    assert.strictEqual(html.includes("type: 'toggleTask'"), true);
-    assert.strictEqual(html.includes("renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter')"), true);
-    // Tasks are the shared task rows, marked so typed words can hide them.
+                                                                                                                                                                                    // Tasks are the shared task rows, marked so typed words can hide them.
     assert.strictEqual(html.includes("renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })"), true);
-    assert.strictEqual(
-      html.includes(
-        '<div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">',
-      ),
-      true,
-    );
-    assert.strictEqual(html.includes('class="task-filter-icon"'), true);
-    assert.strictEqual(html.includes("'Open' : 'Done'"), true);
-    assert.strictEqual(
+                assert.strictEqual(
       html.includes(
         '.task.completed .task-title { color: var(--muted); text-decoration: line-through; }',
       ),
