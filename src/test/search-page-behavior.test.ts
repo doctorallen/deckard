@@ -460,6 +460,45 @@ suite('Search page behavior', () => {
     assert.ok((page.text('.tag-value') ?? '').length > 0);
   });
 
+  test('keeps what is being typed when the draft\'s results arrive', () => {
+    const { page, snapshot } = open(NOTES, '#project/atlas');
+
+    const box = page.find('[data-action="query-input"]') as HTMLInputElement;
+    box.focus();
+    box.value = 'lift';
+    box.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+    assert.strictEqual(box.value, 'lift');
+
+    // The host answers the draft with a fresh snapshot, which redraws the
+    // page. The word being typed has to survive its own results arriving.
+    page.send({ ...snapshot, draftWords: ['lift'] });
+
+    const after = page.find('[data-action="query-input"]') as HTMLInputElement;
+    assert.strictEqual(after.value, 'lift', 'the draft is still in the box');
+    assert.strictEqual(
+      page.document.activeElement,
+      after,
+      'and the caret is still in it, so the next letter lands there',
+    );
+  });
+
+  test('leaves the caret where the typing was, not at the end', () => {
+    const { page, snapshot } = open(NOTES, '#project/atlas');
+
+    const box = page.find('[data-action="query-input"]') as HTMLInputElement;
+    box.focus();
+    box.value = 'lift survey';
+    box.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+    // Mid-word, as it would be while a word is being corrected.
+    box.setSelectionRange(4, 4);
+
+    page.send({ ...snapshot, draftWords: ['lift', 'survey'] });
+
+    const after = page.find('[data-action="query-input"]') as HTMLInputElement;
+    assert.strictEqual(after.selectionStart, 4);
+    assert.strictEqual(after.selectionEnd, 4);
+  });
+
   test('keeps its search for a window reload', () => {
     const { page } = open(
       { 'notes/atlas.md': '# Atlas #project/atlas\nProse.' },

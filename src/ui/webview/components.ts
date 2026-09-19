@@ -1465,6 +1465,15 @@ export function getQueryEditorScript(): string {
     /** A builder value input to focus once the next render settles. */
     let pendingBuilderFocus;
     let restoreFocus = false;
+    /**
+     * Set while the page redraws around the box. A redraw takes the field out
+     * of the document, which the browser reports as the reader leaving it,
+     * and what was typed would be let go as if they had clicked away. The
+     * draft's own results arriving is the commonest redraw of all.
+     */
+    let redrawing = false;
+    /** Where the caret sat when the redraw began, to put it back. */
+    let caretAtRedraw;
     /** Set while the caret is being put back, so the list stays closed. */
     let suppressFocusSuggestions = false;
     /** Set when the reader asked for the box itself, such as by pressing /. */
@@ -1652,6 +1661,7 @@ export function getQueryEditorScript(): string {
     }, true);
     document.addEventListener('focusout', function (event) {
       const target = event.target;
+      if (redrawing) return;
       if (!target || !target.dataset || target.dataset.action !== 'query-input' || !entry) return;
       const next = event.relatedTarget;
       if (pointerInWorkspace || (next && next.closest && next.closest('.query-workspace'))) return;
@@ -2295,8 +2305,25 @@ export function getQueryEditorScript(): string {
         }
       },
 
+      /**
+       * Told before the page redraws, so that taking the field out of the
+       * document is not mistaken for the reader leaving it, and the caret can
+       * be put back where they were typing.
+       */
+      beforeRender: function () {
+        const active = document.activeElement;
+        if (active && active.dataset && active.dataset.action === 'query-input') {
+          redrawing = true;
+          caretAtRedraw = active.selectionStart;
+          restoreFocus = true;
+        }
+      },
+
       /** Restore focus and any open completion list after a redraw. */
       afterRender: function () {
+        const caretWanted = caretAtRedraw;
+        redrawing = false;
+        caretAtRedraw = undefined;
         if (restoreFocus) {
           restoreFocus = false;
           const bar = document.querySelector('[data-suggest-key="query"]');
@@ -2307,7 +2334,13 @@ export function getQueryEditorScript(): string {
             openSuggestionsOnRestore = false;
             bar.focus();
             suppressFocusSuggestions = false;
-            const caret = bar.value ? bar.value.length : 0;
+            const typed = bar.value ? bar.value.length : 0;
+            // Back where they were typing, not at the end: a redraw in the
+            // middle of a word would otherwise move the caret under them.
+            const caret =
+              caretWanted === undefined || caretWanted === null
+                ? typed
+                : Math.min(caretWanted, typed);
             if (bar.setSelectionRange) bar.setSelectionRange(caret, caret);
           }
         }

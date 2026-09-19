@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A word being typed into a search box survives its own results arriving.**
+  Redrawing the page takes the field out of the document, which the browser
+  reports as the reader leaving it, and what was typed was let go as if they
+  had clicked away. It only showed once typing started searching, because
+  that made the draft's own results the commonest redraw of all. The caret
+  goes back where it was rather than to the end, so a redraw in the middle of
+  a word no longer moves it out from under you. The Task board's search box
+  had the same fault and is fixed with it.
+
 ### Changed
 
 - **Typing in a search box narrows the whole search, not the page on screen.**

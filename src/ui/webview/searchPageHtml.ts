@@ -324,6 +324,8 @@ ${getQueryEditorScript()}
   /** Rebuild the page from the latest host snapshot. */
   function render() {
     if (!state) return;
+    // The redraw is about to take the search box out of the document.
+    editor.beforeRender();
     closeTagContextMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
