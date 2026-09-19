@@ -146,6 +146,10 @@
         "title": "Deckard: Capture Under a Heading"
       },
       {
+        "command": "deckard.rollTasksForward",
+        "title": "Deckard: Roll Unfinished Tasks Forward"
+      },
+      {
         "command": "deckard.newNoteFromTemplate",
         "title": "Deckard: New Note from Template"
       },
@@ -488,12 +492,28 @@
             "description": "Template used when creating a monthly note. {month} becomes the month, such as 2026-09, and {date} its first day.",
             "order": 5
           },
+          "deckard.dailyNote.rollover": {
+            "type": "string",
+            "enum": [
+              "off",
+              "move",
+              "copy"
+            ],
+            "enumDescriptions": [
+              "Create today's note from the template alone.",
+              "Move the last daily note's unfinished tasks into today's note.",
+              "Copy them into today's note and leave them where they were."
+            ],
+            "default": "off",
+            "description": "What a newly created daily note does with the unfinished tasks of the last one. Deckard: Roll Unfinished Tasks Forward does the same thing whenever you ask for it.",
+            "order": 6
+          },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
-            "order": 6
+            "order": 7
           },
           "deckard.exclude": {
             "type": "object",
@@ -503,7 +523,7 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` hides.",
-            "order": 7
+            "order": 8
           }
         }
       },

@@ -195,6 +195,10 @@ what this note is actually attached to.
 
 ### 13. Roll unfinished tasks into today's note
 
+**Shipped**; see the README's Carrying unfinished tasks forward section.
+`deckard.dailyNote.rollover` moves or copies them into a newly created daily
+note, and `Deckard: Roll Unfinished Tasks Forward` does it on request.
+
 `Deckard: Create Daily Note` starts from the template alone. Carrying
 yesterday's open tasks forward, either moved or left behind as a link, is
 the most common daily habit in vaults that run Periodic Notes beside Tasks,

@@ -11,6 +11,10 @@ import {
   openAdjacentDailyNote,
   openPeriodicNote,
 } from './ui/commands/dailyNote';
+import {
+  createDailyNoteWithRollover,
+  rollTasksForward,
+} from './ui/commands/rollover';
 import { setTaskRankKeeper } from './ui/commands/taskActions';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
@@ -143,7 +147,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openSearch: (query) => searchPanels.showQuery(query),
       openTaskBoard: (query) => taskBoard.show(query),
       openDailyNote: async () => {
-        await createDailyNote();
+        await createDailyNoteWithRollover(indexer);
       },
       quickAdd: (text) => captureToToday(text),
       createHubNote: async (tagKey) => {
@@ -390,7 +394,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
-      createDailyNote(),
+      createDailyNoteWithRollover(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.rollTasksForward', () =>
+      rollTasksForward(indexer),
     ),
     vscode.commands.registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),

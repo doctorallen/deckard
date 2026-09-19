@@ -84,6 +84,20 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **A new daily note can carry the last one's unfinished tasks in.** A note
+  that starts from its template every morning left last night's open tasks
+  behind in yesterday's note, which is the habit that keeps daily notes
+  honest in every vault that has one. `deckard.dailyNote.rollover` set to
+  `move` takes the unfinished tasks of the nearest earlier daily note into
+  today's; `copy` writes them in and leaves them where they were. Each task
+  is written exactly as it was — dates, priority, people, tags, indentation —
+  and only when its line still reads as Deckard indexed it and today's note
+  does not already hold it, so running it twice changes nothing. Other notes
+  are never touched: a task filed under a project stays filed there. The
+  default is `off`, and `Deckard: Roll Unfinished Tasks Forward` does the
+  same thing whenever you ask. The whole rollover is one write, so
+  `Deckard: Undo Last Change` puts both notes back.
+
 - **`![[Note#Heading]]` embeds draw the note, section, or line they name.**
   A link to a heading or a marked line already resolved, completed, previewed
   on hover and counted as a backlink; an embed is the same reference read in

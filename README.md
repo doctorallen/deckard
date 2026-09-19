@@ -29,7 +29,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Previewing and undoing](#previewing-and-undoing-a-write) | A write that reaches several notes is shown in VS Code's refactor preview first, and one command takes the last one back. |
 | [Wiki links](#markdown-format) | `[[Note]]` links complete note titles and aliases and open the note they name. `[[Note#Heading]]` and `[[Note#^line-marker]]` open a heading or one line. |
 | [Embeds](#embeds) | `![[Note#Heading]]` on a line of its own reads that note, section, or marked line in place, in the Markdown preview. |
-| [Daily notes](#daily-notes) | One command creates or opens today's note from your template. |
+| [Daily notes](#daily-notes) | One command creates or opens today's note from your template, and can carry yesterday's unfinished tasks in. |
 | [Calendar](#calendar) | A month in the sidebar, marking days with a daily note or tasks due. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
@@ -96,6 +96,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Monthly Note** | Creates or opens this month's note, such as `2026-09.md`. |
 | **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
+| **Deckard: Roll Unfinished Tasks Forward** | Carries the unfinished tasks of the last daily note into today's, creating today's note if it is not there yet. |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](#claude-code-and-other-mcp-clients) to Claude Code, offering to turn the server on first. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
@@ -673,6 +674,23 @@ Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut i
 
 `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week, named for its ISO week such as `2026-W37.md`, or for this month, such as `2026-09.md`. Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`, which can use `{week}`, `{month}`, and `{date}`: a week's Monday, or a month's first day.
 
+### Carrying unfinished tasks forward
+
+A daily note that starts from its template every morning leaves last night's open tasks behind in yesterday's note. `deckard.dailyNote.rollover` decides what a newly created daily note does about that:
+
+| Setting | A new daily note |
+| --- | --- |
+| `off` *(default)* | starts from the template alone |
+| `move` | takes the last daily note's unfinished tasks out of it and into today's |
+| `copy` | writes them into today's and leaves them where they were |
+
+- The tasks come from the **nearest daily note before today**, whichever day that is, so a weekend or a week away does not lose them. Other notes are left alone: a task written under a project note stays there, where it was filed.
+- Each task is written exactly as it was, its dates, priority, people, and tags included, and they keep their order and their indentation. They go at the end of today's note, under whatever your template put there.
+- A task is carried only when its line still reads as Deckard indexed it, the same check every other Deckard task edit makes, and never when today's note already holds that line. Running it twice changes nothing.
+- Only a note Deckard creates rolls tasks in, so opening today's note again later in the day carries nothing.
+- `Deckard: Roll Unfinished Tasks Forward` does the same thing whenever you ask, whatever the setting says, creating today's note if it is not there yet. It moves the tasks unless the setting says `copy`.
+- The whole rollover is one write, so `Deckard: Undo Last Change` puts both notes back.
+
 ## Calendar
 
 The **Calendar** view in the Deckard sidebar shows a month of ISO weeks, Monday first. A dot marks a day with a daily note, and a number counts the open tasks due that day, in orange once the day has passed. Select a day to open its daily note, a week number to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month.
@@ -714,6 +732,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.dailyNoteTemplate": "# {date}\n\n",
 	"deckard.weeklyNoteTemplate": "# {week}\n\n",
 	"deckard.monthlyNoteTemplate": "# {month}\n\n",
+	"deckard.dailyNote.rollover": "off",
 	"deckard.templatesFolder": "templates",
 	"deckard.noteBoundaries": "line",
 	"deckard.outline.showTags": true,
@@ -757,6 +776,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
 | `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the ISO week, such as `2026-W37`, and `{date}` its Monday. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `2026-09`, and `{date}` its first day. |
+| `deckard.dailyNote.rollover` | `off` | What a newly created daily note does with the last one's unfinished tasks: `off`, `move`, or `copy`. See [Carrying unfinished tasks forward](#carrying-unfinished-tasks-forward). |
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](#templates), relative to the workspace folder. Deckard does not index it. Leave it empty to turn templates off. |
 | `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](#markdown-format). `line` indexes a tagged non-heading, non-task line as its own entry. `heading` keeps the tag on its line and returns the heading holding it. `marked` is `heading` except for a line carrying a `^block-id`. Tasks are their own entry under all three. |
 | `deckard.parseInlineTags` | `true` | Deprecated: use `deckard.noteBoundaries`. `false` is read as `heading`, which keeps a line's tags searchable through the heading that holds them rather than dropping them. |
@@ -790,7 +810,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 ## Source safety and persistence
 
-Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, rename a note, tag, or heading, or approve an entity tag from `Deckard: Link Current Heading to Entity`. A rename or merge that reaches more than one note is [shown before it is written](#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
+Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, rename a note, tag, or heading, carry unfinished tasks forward, or approve an entity tag from `Deckard: Link Current Heading to Entity`. A rename or merge that reaches more than one note is [shown before it is written](#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
 
 Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-note search. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 
