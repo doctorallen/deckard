@@ -37,6 +37,9 @@ function createIndexer(index) {
     getSnapshot: () => index,
     getFilePath: (uri) => uri.fsPath,
     onDidUpdate: emitter.event,
+    // The real indexer corrects a misspelling from the full-text cache.
+    // These notes are held in memory, so nothing here is misspelled.
+    suggestWords: () => new Map(),
     _emitter: emitter,
   };
 }
@@ -148,7 +151,8 @@ async function removeChips(view) {
   }
 }
 const title = (view) => view.find('h1').textContent.trim();
-const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
+const settle = (milliseconds = 10) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 const tests = [];
 const only = [];
@@ -218,13 +222,22 @@ test('Clear returns the page to its own tag, header and all', async () => {
   assert.notStrictEqual(view.find('[data-action="clear-query"]').getAttribute('disabled'), null);
 });
 
-test('plain words narrow the page as they are typed', async () => {
+test('plain words narrow the whole search as they are typed', async () => {
   const { view } = await openOverview();
   view.posted.length = 0;
   view.type(view.find('[data-action="query-input"]'), 'planning');
 
+  // The page holds one page of the results, so narrowing them is the host's
+  // work: hiding rows here would search what is on screen and call the
+  // answer a search of the workspace. Sent once the typing pauses.
+  assert.deepStrictEqual(view.posted, [], 'a keystroke on its own asks nothing');
+  await settle(300);
+
+  assert.deepStrictEqual(view.posted, [
+    { type: 'previewSearch', words: ['planning'] },
+  ]);
+  await settle(300);
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
-  assert.deepStrictEqual(view.posted, [], 'nothing is asked of the host until Enter');
 });
 
 test('opening a search a page already shows reveals that page', async () => {
