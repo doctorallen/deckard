@@ -74,8 +74,15 @@ export interface DashboardWidgetConfig {
   id: string;
   kind: DashboardWidgetKind;
   width: DashboardWidgetWidth;
-  /** How many entries a list widget shows. */
+  /** How many entries a list widget shows, or holds on a page when paged. */
   count?: number;
+  /**
+   * Whether the widget pages through everything it found rather than showing
+   * the first few and leaving the rest to the view it links to.
+   */
+  paged?: boolean;
+  /** Which page it is showing, 1-based and clamped to the pages it has. */
+  page?: number;
   /** The search a tasks widget lists. */
   query?: string;
   /** The saved search a saved-search widget shows. */
@@ -426,6 +433,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   title: string;
   /** How many entries there are, listed or not. */
   total?: number;
+  /** Which page of its entries it carries, for a widget that is paged. */
+  paging?: ResultPaging;
   tasks?: DashboardTask[];
   tags?: DashboardWidgetTag[];
   notes?: DashboardWidgetNote[];

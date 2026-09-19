@@ -10,6 +10,7 @@ import {
   DashboardWidgetConfig,
   DashboardWidgetKind,
   PersistedPreferences,
+  ResultPaging,
   TagTitleDisplayMode,
   WorkspaceIndex,
 } from '../../core/types';
@@ -85,9 +86,13 @@ export function createDashboardWidgets(
   preferences: PersistedPreferences,
   options: DashboardWidgetOptions,
 ): DashboardWidget[] {
-  return preferences.dashboardWidgets.map((config) =>
-    createWidget(index, preferences, options, config),
-  );
+  return preferences.dashboardWidgets.map((config) => {
+    // A paged widget works out its own paging while it takes its entries,
+    // because only it knows how many it found.
+    const paging: { value?: ResultPaging } = {};
+    const widget = createWidget(index, preferences, options, config, paging);
+    return paging.value ? { ...widget, paging: paging.value } : widget;
+  });
 }
 
 function createWidget(
@@ -95,12 +100,30 @@ function createWidget(
   preferences: PersistedPreferences,
   options: DashboardWidgetOptions,
   config: DashboardWidgetConfig,
+  paging: { value?: ResultPaging },
 ): DashboardWidget {
   const widget: DashboardWidget = {
     ...config,
     title: DASHBOARD_WIDGET_TITLES[config.kind],
   };
   const count = config.count ?? 5;
+  /**
+   * The entries a widget shows: its first few, or one page of them.
+   *
+   * A page number is clamped rather than refused, because the entries move
+   * under it — a task completed elsewhere shortens the list while its last
+   * page is open, and the reader should find the last page there.
+   */
+  const take = <T,>(entries: readonly T[]): T[] => {
+    if (!config.paged) {
+      return entries.slice(0, count);
+    }
+    const pageCount = Math.max(Math.ceil(entries.length / count), 1);
+    const page = Math.min(Math.max(Math.trunc(config.page ?? 1), 1), pageCount);
+    paging.value = { page, size: count, pageCount, total: entries.length };
+    const start = (page - 1) * count;
+    return entries.slice(start, start + count);
+  };
   switch (config.kind) {
     case 'search':
       return {
@@ -134,8 +157,7 @@ function createWidget(
       return {
         ...widget,
         total: tasks.length,
-        tasks: tasks
-          .slice(0, count)
+        tasks: take(tasks)
           .map((task) => createDashboardTask(task, index.sections)),
       };
     }
@@ -161,7 +183,7 @@ function createWidget(
       return {
         ...widget,
         total: favorites.length,
-        tags: favorites.slice(0, count).map((tag) => ({
+        tags: take(favorites).map((tag) => ({
           key: tag.key,
           label: tag.label,
           detail: describeTagMatches(index, tag.key),
@@ -187,7 +209,7 @@ function createWidget(
       return {
         ...widget,
         total: ranked.length,
-        tags: ranked.slice(0, count).map(({ tag }) => ({
+        tags: take(ranked).map(({ tag }) => ({
           key: tag.key,
           label: tag.label,
           detail: describeTagMatches(index, tag.key),
@@ -203,7 +225,7 @@ function createWidget(
       return {
         ...widget,
         total: queries.length,
-        queries: queries.slice(0, count),
+        queries: take(queries),
       };
     }
     case 'recentNotes': {
@@ -224,7 +246,7 @@ function createWidget(
             },
           ];
         });
-      return { ...widget, total: notes.length, notes: notes.slice(0, count) };
+      return { ...widget, total: notes.length, notes: take(notes) };
     }
     case 'stats': {
       const frontmatterNotes = [...index.files.values()].filter(
@@ -289,8 +311,7 @@ function createWidget(
         ...widget,
         today: today.summary,
         total: today.tasks.length,
-        tasks: today.tasks
-          .slice(0, count)
+        tasks: take(today.tasks)
           .map((task) => createDashboardTask(task, index.sections)),
       };
     }
@@ -314,8 +335,7 @@ function createWidget(
       return {
         ...widget,
         total: stale.length,
-        tasks: stale
-          .slice(0, count)
+        tasks: take(stale)
           .map(({ task }) => createDashboardTask(task, index.sections)),
       };
     }
@@ -347,7 +367,7 @@ function createWidget(
         ...widget,
         sourceNote: describeNote(index, filePath),
         total: ranked.length,
-        notes: ranked.slice(0, count).map((note) => ({
+        notes: take(ranked).map((note) => ({
           filePath: note.filePath,
           line: note.sourceLine,
           title: stripTags(note.title).trim() || note.fileName,
@@ -359,7 +379,7 @@ function createWidget(
     }
     case 'tagPairs': {
       const pairs = listTagPairs(index);
-      return { ...widget, total: pairs.length, tagPairs: pairs.slice(0, count) };
+      return { ...widget, total: pairs.length, tagPairs: take(pairs) };
     }
     case 'unhubbedTags': {
       const tags = [...index.tags.values()]
@@ -374,7 +394,7 @@ function createWidget(
       return {
         ...widget,
         total: tags.length,
-        tags: tags.slice(0, count).map((tag) => ({
+        tags: take(tags).map((tag) => ({
           key: tag.key,
           label: tag.label,
           detail: describeTagMatches(index, tag.key),
@@ -399,7 +419,7 @@ function createWidget(
       return {
         ...widget,
         total: tags.length,
-        tags: tags.slice(0, count).map(({ tag, seenAt }) => ({
+        tags: take(tags).map(({ tag, seenAt }) => ({
           key: tag.key,
           label: tag.label,
           detail: `${describeAge(options.now, seenAt)} · ${describeTagMatches(index, tag.key)}`,
@@ -414,8 +434,7 @@ function createWidget(
       return {
         ...widget,
         total: pinned.length,
-        notes: pinned
-          .slice(0, count)
+        notes: take(pinned)
           .map((filePath) => describeNote(index, filePath)),
         ...(source && index.files.has(source)
           ? {

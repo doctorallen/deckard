@@ -89,17 +89,8 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
 .empty-action { margin: 12px 0 0; }
-.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
-.page-summary { display: flex; align-items: center; gap: 12px; }
-.page-range { color: var(--muted); font-family: var(--font-mono); }
 .pagination .page-size { font-size: 12px; }
 .pagination .page-size select { min-width: 64px; }
-.page-controls { display: flex; align-items: center; gap: 4px; }
-.pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
-.pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
-.pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
-.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
-.page-gap { color: var(--muted); padding: 0 2px; }
 .did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
 .did-you-mean button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
@@ -174,32 +165,9 @@ ${getQueryEditorScript()}
   }
 
   /**
-   * The page numbers to offer, with a gap where numbers are left out.
-   *
-   * The first and last pages are always there, because they are where a
-   * reader goes back to, and the pages either side of the current one,
-   * because they are the next step. A gap is a null.
-   */
-  function pageNumbers(current, pageCount) {
-    if (pageCount <= 7) {
-      return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
-    }
-    const wanted = [1, pageCount, current, current - 1, current + 1];
-    const pages = wanted
-      .filter(function (page) { return page >= 1 && page <= pageCount; })
-      .filter(function (page, index, all) { return all.indexOf(page) === index; })
-      .sort(function (left, right) { return left - right; });
-    const withGaps = [];
-    pages.forEach(function (page, index) {
-      if (index > 0 && page - pages[index - 1] > 1) withGaps.push(null);
-      withGaps.push(page);
-    });
-    return withGaps;
-  }
-
-  /**
-   * The control that turns a list to another of its pages. A search with one
-   * page has no control: there is nowhere to go.
+   * The control that turns a list to another of its pages, with the range it
+   * is showing and how many it holds. The steps themselves are the shared
+   * ones every paged list uses.
    */
   function renderPagination(kind, paging, pageSizes) {
     const sizes = pageSizes && pageSizes.length ? pageSizes : [paging.size];
@@ -208,33 +176,14 @@ ${getQueryEditorScript()}
     // per-page chooser would have nothing to change.
     if (paging.pageCount <= 1 && paging.total <= Math.min.apply(null, sizes)) return '';
     const noun = kind === 'notes' ? 'notes' : 'tasks';
-    const first = (paging.page - 1) * paging.size + 1;
-    const last = Math.min(paging.page * paging.size, paging.total);
-    const step = function (page, label, enabled) {
-      return '<button class="page-step" data-action="set-result-page" data-kind="' + kind + '" data-page="' + page + '"'
-        + (enabled ? '' : ' disabled')
-        + ' aria-label="' + label + ' page of ' + noun + '">' + label + '</button>';
-    };
     const perPage = '<label class="control-label page-size">Per page:<span class="control-icon"><select data-action="set-results-per-page" aria-label="Results per page">'
       + sizes.map(function (size) {
         return '<option value="' + size + '"' + (size === paging.size ? ' selected' : '') + '>' + size + '</option>';
       }).join('')
       + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M3 8h7M3 11h4"/></svg></span></label>';
-    const numbers = pageNumbers(paging.page, paging.pageCount).map(function (page) {
-      if (page === null) return '<span class="page-gap" aria-hidden="true">…</span>';
-      const current = page === paging.page;
-      return '<button class="page-number' + (current ? ' is-current' : '') + '" data-action="set-result-page" data-kind="' + kind + '" data-page="' + page + '"'
-        + (current ? ' aria-current="page"' : '')
-        + ' aria-label="Page ' + page + ' of ' + noun + '">' + page + '</button>';
-    }).join('');
-    const steps = paging.pageCount > 1
-      ? step(paging.page - 1, 'Previous', paging.page > 1)
-        + numbers
-        + step(paging.page + 1, 'Next', paging.page < paging.pageCount)
-      : '';
     return '<nav class="pagination" aria-label="' + (kind === 'notes' ? 'Note' : 'Task') + ' pages">'
-      + '<span class="page-summary"><span class="page-range">' + first + '\u2013' + last + ' of ' + paging.total + '</span>' + perPage + '</span>'
-      + '<span class="page-controls">' + steps + '</span></nav>';
+      + '<span class="page-summary"><span class="page-range">' + describePageRange(paging) + '</span>' + perPage + '</span>'
+      + '<span class="page-controls">' + renderPageSteps(paging, 'set-result-page', 'data-kind="' + kind + '"', noun) + '</span></nav>';
   }
 
   /** Render a title or metadata tag as a direct link to its page. */

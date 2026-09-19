@@ -219,6 +219,17 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .settings-icon, .help-icon { fill: currentColor; stroke: none; }
 .filter-count { color: var(--muted); font-size: 10px; }
 
+/* Walking a list a page at a time: a search page's results, a widget's entries. */
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.page-summary { display: flex; align-items: center; gap: 12px; }
+.page-range { color: var(--muted); font-family: var(--font-mono); }
+.page-controls { display: flex; align-items: center; gap: 4px; }
+.pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
+.pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
+.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.page-gap { color: var(--muted); padding: 0 2px; }
+
 /* A chosen segment, in any group of them: the Dashboard's tabs mark their
    own, and this marks every other group the same way, rather than leaving
    them with the inverted treatment a pressed button takes. */
@@ -1282,6 +1293,65 @@ export function getComponentScript(): string {
     if (toTop) next.unshift(key);
     else next.push(key);
     return next;
+  }
+
+  /**
+   * The page numbers to offer, with a gap where numbers are left out.
+   *
+   * The first and last pages are always there, because they are where a
+   * reader goes back to, and the pages either side of the current one,
+   * because they are the next step. A gap is a null.
+   */
+  function pageNumbers(current, pageCount) {
+    if (pageCount <= 7) {
+      return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
+    }
+    const wanted = [1, pageCount, current, current - 1, current + 1];
+    const pages = wanted
+      .filter(function (page) { return page >= 1 && page <= pageCount; })
+      .filter(function (page, index, all) { return all.indexOf(page) === index; })
+      .sort(function (left, right) { return left - right; });
+    const withGaps = [];
+    pages.forEach(function (page, index) {
+      if (index > 0 && page - pages[index - 1] > 1) withGaps.push(null);
+      withGaps.push(page);
+    });
+    return withGaps;
+  }
+
+  /**
+   * Previous, the page numbers, and Next: the control that walks a list.
+   *
+   * Every list that pages uses this one, so a search page and a widget on
+   * Home are walked the same way. \`action\` and \`attributes\` say who is being
+   * paged, and \`noun\` names the entries for a screen reader.
+   */
+  function renderPageSteps(paging, action, attributes, noun) {
+    if (!paging || paging.pageCount <= 1) return '';
+    const own = attributes ? ' ' + attributes : '';
+    const step = function (page, label, enabled) {
+      return '<button class="page-step" data-action="' + action + '" data-page="' + page + '"' + own
+        + (enabled ? '' : ' disabled')
+        + ' aria-label="' + label + ' page of ' + escapeHtml(noun) + '">' + label + '</button>';
+    };
+    const numbers = pageNumbers(paging.page, paging.pageCount).map(function (page) {
+      if (page === null) return '<span class="page-gap" aria-hidden="true">…</span>';
+      const current = page === paging.page;
+      return '<button class="page-number' + (current ? ' is-current' : '') + '" data-action="' + action + '" data-page="' + page + '"' + own
+        + (current ? ' aria-current="page"' : '')
+        + ' aria-label="Page ' + page + ' of ' + escapeHtml(noun) + '">' + page + '</button>';
+    }).join('');
+    return step(paging.page - 1, 'Previous', paging.page > 1)
+      + numbers
+      + step(paging.page + 1, 'Next', paging.page < paging.pageCount);
+  }
+
+  /** "271–300 of 3760", the part of a list a page is showing. */
+  function describePageRange(paging) {
+    if (!paging || !paging.total) return '';
+    const first = (paging.page - 1) * paging.size + 1;
+    const last = Math.min(paging.page * paging.size, paging.total);
+    return first + '\u2013' + last + ' of ' + paging.total;
   }
 `;
 }

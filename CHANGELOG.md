@@ -57,6 +57,15 @@
 
 ### Added
 
+- **A Home widget can page through its entries.** **Paging**, in the widget's
+  gear, turns it from the first few into all of them a page at a time. The
+  widget grows a line of its own holding **Per page**, the entries it is
+  showing, such as *6–10 of 601*, and a chevron either way — a widget is a
+  corner of Home walked a page at a time, so it offers no page numbers the
+  way a search page does. The page is kept with the widget's other settings.
+  The Agenda and a saved search's results stay unpaged: each lists more than
+  one kind of thing, and one page number could not say which it meant.
+
 - **Links can name one line.** After `#`, a `[[Check-in#^lift-slip]]` link
   names the line marked `^lift-slip` rather than the note or one of its
   headings, following the Obsidian block-reference convention. Typing
