@@ -101,6 +101,89 @@ export function countTagMatches(
   return counts;
 }
 
+/** How many notes and tasks a search for two tags together finds. */
+export interface TagPairMatchCount extends TagMatchCount {
+  tags: [string, string];
+}
+
+const tagPairMatchCounts = new WeakMap<
+  WorkspaceIndex,
+  TagPairMatchCount[]
+>();
+
+/**
+ * Two tags, in the order a pair is always keyed in, so the same two tags are
+ * one pair however they were written.
+ */
+function pairKey(left: string, right: string): string {
+  return left < right ? `${left}\u0000${right}` : `${right}\u0000${left}`;
+}
+
+/**
+ * How many notes and tasks `tag = A AND tag = B` finds, for every pair of
+ * tags that any entry carries together.
+ *
+ * Counted over the same units the evaluator tests, with the tags they inherit
+ * from their headings and their note's front matter, so the number beside a
+ * pair is the number the search for that pair opens. Two tags written on one
+ * line are the strongest case of this and no longer the only one: tags that
+ * meet because a heading scopes them both count too, which is how most notes
+ * put tags together.
+ *
+ * A unit carrying n tags contributes n(n-1)/2 pairs, so a unit with an
+ * unreasonable number of tags is left out rather than allowed to dominate
+ * the pass.
+ */
+export function countTagPairMatches(
+  index: WorkspaceIndex,
+): readonly TagPairMatchCount[] {
+  const cached = tagPairMatchCounts.get(index);
+  if (cached) {
+    return cached;
+  }
+  const counts = new Map<string, TagPairMatchCount>();
+  const add = (tagKeys: Set<string>, kind: keyof TagMatchCount): void => {
+    if (tagKeys.size < 2 || tagKeys.size > MAX_TAGS_PER_UNIT) {
+      return;
+    }
+    const keys = [...tagKeys];
+    for (let left = 0; left < keys.length; left += 1) {
+      for (let right = left + 1; right < keys.length; right += 1) {
+        const key = pairKey(keys[left], keys[right]);
+        const count = counts.get(key) ?? {
+          tags: key.split('\u0000') as [string, string],
+          notes: 0,
+          tasks: 0,
+        };
+        count[kind] += 1;
+        counts.set(key, count);
+      }
+    }
+  };
+  const membership = buildTagMembership(index);
+  index.sections.forEach((section) =>
+    add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
+  );
+  index.tasks.forEach((task) =>
+    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
+  );
+  index.files.forEach((file) => {
+    if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
+      add(createFileUnit(membership, file).tagKeys, 'notes');
+    }
+  });
+  const pairs = [...counts.values()];
+  tagPairMatchCounts.set(index, pairs);
+  return pairs;
+}
+
+/**
+ * The most tags an entry may carry before its pairs are skipped. A note that
+ * tags one line with dozens of things says little about any two of them, and
+ * the pairs grow with the square of the count.
+ */
+const MAX_TAGS_PER_UNIT = 40;
+
 /**
  * One thing a condition can be tested against.
  */

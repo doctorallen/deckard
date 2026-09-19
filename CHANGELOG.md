@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- **Tags written together ranks by the notes and tasks carrying both.** It
+  counted only tags written side by side on one line, which is the strongest
+  case and a rare one: in a workspace where tags are written under headings
+  the count was one for every pair, so the list came out alphabetical and
+  looked sorted the wrong way round, and every pair that never shared a line
+  was left out of it entirely. A pair is now counted over the same entries a
+  search for both tags finds, inherited tags included, so the number beside a
+  pair is the number the row opens — `#project/argent-protocol` and
+  `#person/sable-ortiz` read 8, which is what searching for both shows.
+
 - **A word being typed into a search box survives its own results arriving.**
   Redrawing the page takes the field out of the document, which the browser
   reports as the reader leaving it, and what was typed was let go as if they

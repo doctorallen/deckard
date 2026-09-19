@@ -1,5 +1,9 @@
 import { stripTags } from '../../core/markdown/parser';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
+import {
+  countTagMatches,
+  countTagPairMatches,
+  evaluateQuery,
+} from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
   DashboardWidget,
@@ -16,7 +20,6 @@ import {
   createDashboardTask,
   createQueryViewState,
   createSearchPageSnapshot,
-  describeAssociation,
   describeTagMatches,
   getFileName,
   getSavedFilterQuery,
@@ -461,44 +464,44 @@ function describeNote(index: WorkspaceIndex, filePath: string) {
 }
 
 /**
- * Every two tags written together, most often first. Tags written together
- * nearly every time they are written may be one idea under two names.
+ * Every two tags an entry carries together, most often first, counted the way
+ * a search for both counts.
+ *
+ * This used to count only tags written on one line, which is the strongest
+ * case and a rare one: in a workspace where tags are written under headings,
+ * every pair tied at one and the list came out alphabetical. Counting the
+ * entries a search for both finds ranks them, and makes the number beside a
+ * pair the number the row opens.
+ *
+ * Tags written together nearly every time they are written may be one idea
+ * under two names, which is what the overlap says.
  */
 function listTagPairs(index: WorkspaceIndex) {
-  const seen = new Set<string>();
+  const tagCounts = countTagMatches(index);
+  const entriesFor = (tagKey: string): number => {
+    const count = tagCounts.get(tagKey);
+    return count ? count.notes + count.tasks : 0;
+  };
   const pairs: Array<NonNullable<DashboardWidget['tagPairs']>[number]> = [];
-  index.tagAssociations?.forEach((associations, tagKey) => {
-    const tag = index.tags.get(tagKey);
-    for (const association of associations) {
-      const other = index.tags.get(association.associatedTag.key);
-      const count = association.coOccurrenceCount;
-      if (!tag || !other || count <= 0) {
-        continue;
-      }
-      const [first, second] = [tag, other].sort((left, right) =>
-        left.key.localeCompare(right.key),
-      );
-      const pairKey = `${first.key}\u0000${second.key}`;
-      if (first.key === second.key || seen.has(pairKey)) {
-        continue;
-      }
-      seen.add(pairKey);
-      const rarer = Math.min(
-        association.tagSourceUnitCount,
-        association.associatedTagSourceUnitCount,
-      );
-      const overlap = rarer > 0 ? Math.min(1, count / rarer) : 0;
-      pairs.push({
-        tags: [
-          { key: first.key, label: first.label },
-          { key: second.key, label: second.label },
-        ],
-        count,
-        overlap,
-        detail: `${describeAssociation(association)}; together in ${Math.round(overlap * 100)}% of the rarer tag's entries`,
-      });
+  for (const pair of countTagPairMatches(index)) {
+    const first = index.tags.get(pair.tags[0]);
+    const second = index.tags.get(pair.tags[1]);
+    const count = pair.notes + pair.tasks;
+    if (!first || !second || count <= 0) {
+      continue;
     }
-  });
+    const rarer = Math.min(entriesFor(first.key), entriesFor(second.key));
+    const overlap = rarer > 0 ? Math.min(1, count / rarer) : 0;
+    pairs.push({
+      tags: [
+        { key: first.key, label: first.label },
+        { key: second.key, label: second.label },
+      ],
+      count,
+      overlap,
+      detail: `${describeEntryCount(pair)} carry both; that is ${Math.round(overlap * 100)}% of the rarer tag's entries`,
+    });
+  }
   return pairs.sort(
     (left, right) =>
       right.count - left.count ||
@@ -506,6 +509,18 @@ function listTagPairs(index: WorkspaceIndex) {
       left.tags[0].label.localeCompare(right.tags[0].label) ||
       left.tags[1].label.localeCompare(right.tags[1].label),
   );
+}
+
+/** "8 notes", "3 notes and 1 task", for what a pair was counted over. */
+function describeEntryCount(pair: { notes: number; tasks: number }): string {
+  const parts: string[] = [];
+  if (pair.notes > 0) {
+    parts.push(`${pair.notes} note${pair.notes === 1 ? '' : 's'}`);
+  }
+  if (pair.tasks > 0) {
+    parts.push(`${pair.tasks} task${pair.tasks === 1 ? '' : 's'}`);
+  }
+  return parts.join(' and ') || 'Nothing';
 }
 
 /** How long ago a time was, in whole days. */

@@ -261,7 +261,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 | **Quick add** | A field that adds an open task to today's daily note, creating the note if needed | — |
 | **Stale tasks** | Open tasks in notes left unchanged for 7, 14, 30, or 90 days, oldest first | The Task board |
 | **Related notes** | Notes related to the note you had open last, ranked as [Related Notes](#related-notes) ranks them | That note |
-| **Tags written together** | The tag pairs written together most often, with how often and how much the rarer tag's entries overlap; a pair searches for both | The Tags tab |
+| **Tags written together** | The tag pairs carried together by the most notes and tasks, counted as a search for both counts, with how much of the rarer tag's entries they share; a pair searches for both | The Tags tab |
 | **Tags without a hub** | Tags used at least three times with no [hub note](#hub-notes), each with **Create hub** | The Tags tab |
 | **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename**, so a typo is caught early | The Tags tab |
 | **Pinned notes** | Notes you pinned, each with **×** to unpin; **Pin** adds the note you had open last | The notes |

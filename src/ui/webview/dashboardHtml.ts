@@ -235,7 +235,7 @@ ${getQueryEditorScript()}
     quickAdd: { label: 'Quick add', description: "Add a task to today's daily note", repeatable: false, listed: false },
     staleTasks: { label: 'Stale tasks', description: 'Open tasks in notes left unchanged for a while', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 30 },
     relatedNotes: { label: 'Related notes', description: 'Notes related to the note you had open last', repeatable: false, listed: true },
-    tagPairs: { label: 'Tags written together', description: 'Tags most often written together, which may want a hub note or one name', repeatable: false, listed: true },
+    tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
     unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
@@ -596,7 +596,7 @@ ${getQueryEditorScript()}
         const label = '<span class="home-tag-pair">' + renderTagLabel(pair.tags[0].label) + '<span class="home-tag-pair-join">+</span>' + renderTagLabel(pair.tags[1].label) + '</span>';
         return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
       }).join('') + '</div>'
-      : '<p class="home-widget-empty">Tags written on the same line or heading show up here.</p>';
+      : '<p class="home-widget-empty">Two tags carried by the same note or task show up here.</p>';
   }
 
   /** The note a widget follows, and what can be done with it. */
