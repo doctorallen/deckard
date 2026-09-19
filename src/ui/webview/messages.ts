@@ -317,6 +317,13 @@ export function parseSidebarMessage(
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return { type: 'openTag', tagKey: value.tagKey as string };
   }
+  if (value.type === 'insertLink' && isSourceMessage(value)) {
+    return {
+      type: 'insertLink',
+      filePath: value.filePath as string,
+      line: value.line as number,
+    };
+  }
   if (value.type === 'renameTag' && isRenameTagMessage(value)) {
     return value as unknown as SidebarMessage;
   }

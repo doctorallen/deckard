@@ -737,6 +737,16 @@ export interface OpenSourceMessage {
   beside?: boolean;
 }
 
+/**
+ * Write a `[[Note#Heading]]` link to a related note at the cursor of the note
+ * being edited.
+ */
+export interface InsertLinkMessage {
+  type: 'insertLink';
+  filePath: string;
+  line: number;
+}
+
 export interface ToggleTaskMessage {
   type: 'toggleTask';
   taskId: string;
@@ -1056,6 +1066,7 @@ export type SidebarMessage =
   | OpenHelpMessage
   | SetRelatedNotesSortMessage
   | ClearEntryRelatedNotesMessage
+  | InsertLinkMessage
   | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */

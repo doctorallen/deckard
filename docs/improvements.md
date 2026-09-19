@@ -130,8 +130,9 @@ merging; see the README's Tag overviews section and
 
 ## Quick wins
 
-- **Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
-  cursor. Smart Connections supports drag-to-link.
+- ~~**Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
+  cursor. Smart Connections supports drag-to-link.~~ Shipped as the link
+  button on each result.
 - ~~**Extract Tagged Heading leaves a link behind.** It currently removes the
   section with nothing in its place; Note Refactor leaves a `[[link]]` to the
   new note.~~ Shipped: the section is replaced by a `[[link]]` to the new

@@ -1624,6 +1624,17 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(html.includes('Association weight'), true);
     assert.strictEqual(html.includes('Specificity adjustment'), true);
+    // Writing a link to a result sits beside its score, out of the way
+    // until the card is under the pointer or holds the focus.
+    assert.strictEqual(html.includes('data-action="insert-link"'), true);
+    assert.strictEqual(
+      html.includes("vscode.postMessage({ type: 'insertLink', filePath: card.dataset.filePath, line: Number(card.dataset.line) });"),
+      true,
+    );
+    assert.strictEqual(
+      html.includes('.note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }'),
+      true,
+    );
     assert.strictEqual(
       html.includes('.note:hover, .note:focus-within { z-index: 20;'),
       true,

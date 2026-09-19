@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Related Notes writes a link to a result**. The button beside a result's
+  score puts a `[[Note#Heading]]` link to that entry at the cursor of the note
+  you are editing. It names the heading the entry sits under, without its
+  tags, names the note alone when the heading only repeats the note's title,
+  and says so when two notes share the name it has to write.
+
 - **A search page that finds nothing offers a closer spelling**, which until
   now only Find did: **Nothing matched. Search for … instead?** Each
   misspelled word is replaced by the closest word the notes contain, and only

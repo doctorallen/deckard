@@ -9,6 +9,8 @@ import {
 } from '../ui/commands/linkSuggestions';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
+import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { createWikiLink } from '../ui/commands/insertLink';
 
 suite('Wiki link suggestions', () => {
   test('completes workspace note titles inside Wiki links', async () => {
@@ -127,6 +129,66 @@ function createIndex(paths: string[]): WorkspaceIndex {
     updatedAt: Date.now(),
   };
 }
+
+suite('Linking to a related note', () => {
+  const index = buildWorkspaceIndex(
+    new Map(
+      Object.entries({
+        'notes/Atlas.md': [
+          '# Atlas',
+          'The programme.',
+          '## Check-in #project/atlas',
+          'Notes from the call.',
+          'The lift is still stuck #risk/vendor.',
+        ].join('\n'),
+        'notes/Harbor.md': '# Harbor\n## Check-in\nAnother one.',
+        'archive/Harbor.md': '# Harbor\nThe old one.',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    ),
+  );
+  const sectionAt = (filePath: string, heading: string): string | undefined =>
+    [...index.sections.values()].find(
+      (section) => section.filePath === filePath && section.heading.startsWith(heading),
+    )?.id;
+
+  test('names the heading the entry was written under, without its tags', () => {
+    assert.deepStrictEqual(
+      createWikiLink(index, 'notes/Atlas.md', sectionAt('notes/Atlas.md', 'Check-in')),
+      { text: '[[Atlas#Check-in]]' },
+    );
+  });
+
+  test('leaves out a heading that only repeats the note title', () => {
+    assert.deepStrictEqual(
+      createWikiLink(index, 'notes/Atlas.md', sectionAt('notes/Atlas.md', 'Atlas')),
+      { text: '[[Atlas]]' },
+    );
+    assert.deepStrictEqual(createWikiLink(index, 'notes/Atlas.md', undefined), {
+      text: '[[Atlas]]',
+    });
+  });
+
+  test('climbs from a tagged line to the heading above it', () => {
+    const line = [...index.sections.values()].find(
+      (section) => section.isInline && section.filePath === 'notes/Atlas.md',
+    );
+    assert.ok(line, 'the note has a tagged line of its own beneath the heading');
+    assert.strictEqual(
+      createWikiLink(index, 'notes/Atlas.md', line.id).text,
+      '[[Atlas#Check-in]]',
+    );
+  });
+
+  test('says when the name it has to write means more than one note', () => {
+    const link = createWikiLink(
+      index,
+      'notes/Harbor.md',
+      sectionAt('notes/Harbor.md', 'Check-in'),
+    );
+    assert.strictEqual(link.text, '[[Harbor#Check-in]]');
+    assert.match(link.warning ?? '', /2 notes are called/);
+  });
+});
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return {
