@@ -821,6 +821,25 @@ export interface NotesGraphSnapshot {
   tags: [string, string, number][];
   totalNoteCount: number;
   totalTaskCount: number;
+  /** The note the graph is drawn around, when it is drawn around one. */
+  focus?: NotesGraphFocus;
+}
+
+/**
+ * What a local graph is centred on: the note last open in an editor, how far
+ * out it reaches, and whether the graph on screen is that neighbourhood or
+ * the whole workspace.
+ */
+export interface NotesGraphFocus {
+  /** On, and drawn around the note; off, and the whole workspace is drawn. */
+  local: boolean;
+  /** How many hops out from the note the local graph reaches. */
+  depth: number;
+  /** The note it is drawn around, when one is open. */
+  filePath?: string;
+  title?: string;
+  /** How many nodes and edges the whole workspace holds, for the readout. */
+  workspaceNodeCount: number;
 }
 
 export interface NotesGraphConnection {
@@ -854,11 +873,19 @@ export interface NotesGraphClearSelectionMessage {
   type: 'clearSelection';
 }
 
+/** Draw the whole workspace, or the neighbourhood of the note in the editor. */
+export interface NotesGraphSetScopeMessage {
+  type: 'setGraphScope';
+  local: boolean;
+  depth: number;
+}
+
 export type NotesGraphMessage =
   | NotesGraphOpenSourceMessage
   | NotesGraphOpenTagMessage
   | NotesGraphSelectNodeMessage
-  | NotesGraphClearSelectionMessage;
+  | NotesGraphClearSelectionMessage
+  | NotesGraphSetScopeMessage;
 
 export interface OpenSourceMessage {
   type: 'openSource';

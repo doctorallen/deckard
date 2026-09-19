@@ -1,3 +1,4 @@
+import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,
@@ -302,6 +303,16 @@ export function parseNotesGraphMessage(
   }
   if (value.type === 'clearSelection') {
     return { type: 'clearSelection' };
+  }
+  if (
+    value.type === 'setGraphScope' &&
+    typeof value.local === 'boolean' &&
+    typeof value.depth === 'number' &&
+    Number.isInteger(value.depth) &&
+    value.depth >= 1 &&
+    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH
+  ) {
+    return { type: 'setGraphScope', local: value.local, depth: value.depth };
   }
   if (
     value.type === 'openTag' &&

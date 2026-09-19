@@ -474,3 +474,87 @@ function compareNodeKinds(
   const order: NotesGraphNode['kind'][] = ['note', 'task', 'tag'];
   return order.indexOf(left) - order.indexOf(right);
 }
+
+/** The furthest a local graph reaches from the note it is drawn around. */
+export const MAXIMUM_LOCAL_GRAPH_DEPTH = 3;
+
+/** Every node one note puts in the graph: its sections, its tasks, itself. */
+export function findNoteNodeIds(
+  snapshot: NotesGraphSnapshot,
+  filePath: string,
+): string[] {
+  return snapshot.nodes
+    .filter((node) => node.filePath === filePath)
+    .map((node) => node.id);
+}
+
+/**
+ * The neighbourhood of a note: the nodes it holds, everything within `depth`
+ * hops of them, and the edges between what is kept.
+ *
+ * The whole-workspace graph answers what the workspace looks like. This
+ * answers a different question — what this note is actually attached to —
+ * which a ranked list of related notes cannot, since it says what is most
+ * related rather than what is connected to what.
+ */
+export function createLocalGraphSnapshot(
+  snapshot: NotesGraphSnapshot,
+  focusIds: readonly string[],
+  depth: number,
+): NotesGraphSnapshot {
+  const reach = Math.max(1, Math.min(MAXIMUM_LOCAL_GRAPH_DEPTH, Math.floor(depth)));
+  const known = new Set(snapshot.nodes.map((node) => node.id));
+  const kept = new Set(focusIds.filter((id) => known.has(id)));
+  if (kept.size === 0) {
+    return { ...snapshot, nodes: [], edges: [], tags: [], totalNoteCount: 0, totalTaskCount: 0 };
+  }
+
+  const neighbours = new Map<string, string[]>();
+  snapshot.edges.forEach((edge) => {
+    neighbours.set(edge.source, [
+      ...(neighbours.get(edge.source) ?? []),
+      edge.target,
+    ]);
+    neighbours.set(edge.target, [
+      ...(neighbours.get(edge.target) ?? []),
+      edge.source,
+    ]);
+  });
+
+  let frontier = [...kept];
+  for (let hop = 0; hop < reach; hop += 1) {
+    const next: string[] = [];
+    frontier.forEach((id) => {
+      (neighbours.get(id) ?? []).forEach((neighbour) => {
+        if (!kept.has(neighbour)) {
+          kept.add(neighbour);
+          next.push(neighbour);
+        }
+      });
+    });
+    if (next.length === 0) {
+      break;
+    }
+    frontier = next;
+  }
+
+  const nodes = snapshot.nodes.filter((node) => kept.has(node.id));
+  const edges = snapshot.edges.filter(
+    (edge) => kept.has(edge.source) && kept.has(edge.target),
+  );
+  const tagKeys = new Set(
+    nodes
+      .filter((node) => node.kind === 'tag')
+      .map((node) => node.id.slice('tag:'.length)),
+  );
+  return {
+    ...snapshot,
+    nodes,
+    edges,
+    // The checklist offers the tags this neighbourhood actually holds, so
+    // filtering it cannot empty the graph by naming a tag that is not here.
+    tags: snapshot.tags.filter(([key]) => tagKeys.has(key)),
+    totalNoteCount: nodes.filter((node) => node.kind === 'note').length,
+    totalTaskCount: nodes.filter((node) => node.kind === 'task').length,
+  };
+}

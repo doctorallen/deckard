@@ -102,6 +102,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
 .tooltip .tooltip-title { color: var(--text); font: 700 11px var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: 10px var(--font-mono); margin-top: 2px; }
+.focus-note { margin: 2px 0 0; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
 .empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: 12px var(--font-mono); text-transform: uppercase; pointer-events: none; }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
@@ -110,6 +111,14 @@ ${getDeckardThemeCss(getDeckardTheme())}
 <canvas id="graph" tabindex="0" role="application" aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Escape to clear." aria-describedby="graph-legend"></canvas>
 <div class="empty-state" id="empty-state">No indexed notes yet — save a Markdown file with tags or links.</div>
 <div class="overlay" role="group" aria-label="Graph controls">
+  <details class="control-group" open>
+    <summary>Focus</summary>
+    <div class="control-body">
+      <label class="toggle-row" title="Draw only the note open in the editor and what it is connected to."><input type="checkbox" id="local-graph" title="Draw only the note open in the editor and what it is connected to."> Around this note</label>
+      <div class="control-row"><label for="local-depth" title="How many connections out from the note the graph reaches.">Hops out</label><div class="slider-line"><input type="range" id="local-depth" min="1" max="3" step="1" value="1" title="How many connections out from the note the graph reaches."><output id="local-depth-out">1</output></div></div>
+      <p class="focus-note" id="focus-note">Open a note to draw the graph around it.</p>
+    </div>
+  </details>
   <details class="control-group" open>
     <summary>Filters</summary>
     <div class="control-body">
@@ -1785,6 +1794,43 @@ ${getDeckardThemeCss(getDeckardTheme())}
       if (needsRebuild) { rebuildView(); } else { scheduleFrame(); }
     });
   }
+  /**
+   * Drawing around the note in the editor is the host's business: it sends
+   * the neighbourhood rather than the workspace, so the page asks and draws
+   * whatever comes back.
+   */
+  var localGraph = document.getElementById('local-graph');
+  var localDepth = document.getElementById('local-depth');
+  var localDepthOut = document.getElementById('local-depth-out');
+  var focusNote = document.getElementById('focus-note');
+  function requestScope() {
+    localDepthOut.textContent = localDepth.value;
+    vscode.postMessage({
+      type: 'setGraphScope',
+      local: localGraph.checked,
+      depth: Number(localDepth.value),
+    });
+  }
+  localGraph.addEventListener('change', requestScope);
+  localDepth.addEventListener('input', function () {
+    localDepthOut.textContent = localDepth.value;
+  });
+  localDepth.addEventListener('change', requestScope);
+  /** Says which note the graph is drawn around, and what that costs. */
+  function updateFocus() {
+    var focus = snapshot && snapshot.focus;
+    if (!focus) { return; }
+    localGraph.checked = Boolean(focus.local);
+    localDepth.value = String(focus.depth || 1);
+    localDepthOut.textContent = localDepth.value;
+    if (!focus.title) {
+      focusNote.textContent = 'Open a note to draw the graph around it.';
+      return;
+    }
+    focusNote.textContent = focus.local
+      ? focus.title + ' · ' + snapshot.nodes.length + ' of ' + focus.workspaceNodeCount + ' nodes'
+      : 'Around ' + focus.title + ', when this is on.';
+  }
   bindToggle('show-notes', 'showNotes', true);
   bindToggle('show-tasks', 'showTasks', true);
   bindToggle('show-tags', 'showTags', true);
@@ -1972,6 +2018,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
       snapshot = message.data;
       rebuildView();
       renderTagList();
+      updateFocus();
     }
     if (message && message.type === 'highlightNode') {
       externalHoverNodeId = message.nodeId || null;

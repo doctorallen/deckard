@@ -188,6 +188,9 @@ map-of-content note.
 
 ### 12. A local graph
 
+**Shipped**; see the README's Notes Graph section. **Focus → Around this
+note** draws one note's neighbourhood, one to three hops out.
+
 The Notes Graph draws the whole workspace. A second mode, or a sidebar panel
 beside Related Notes, showing the current note's neighbors one or two hops
 out answers a question a ranked list cannot: not what is most related, but

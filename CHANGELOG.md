@@ -84,6 +84,16 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **The Notes Graph can be drawn around one note.** It has always drawn the
+  whole workspace, which says what the workspace looks like; **Focus →
+  Around this note** answers the other question, what this note is actually
+  attached to. **Hops out** reaches one, two, or three connections from the
+  note in the editor — a tag association counting as a hop like any other —
+  and the graph follows the editor as you move between notes. Only the
+  neighbourhood is sent to the page, so a local graph costs a screenful
+  whatever the workspace holds, and the tag checklist narrows to the tags
+  that neighbourhood holds.
+
 - **One edit can be made to everything a search found.** A search page is
   where a set of notes and tasks is already gathered, so **Edit…** in a
   results pane now completes them, reopens them, dates them, or tags them

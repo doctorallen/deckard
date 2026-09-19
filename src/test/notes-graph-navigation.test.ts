@@ -186,5 +186,6 @@ function createIndexer(
     onDidUpdate: () => ({ dispose: () => undefined }),
     getSnapshot: () => snapshot,
     getFilePath: () => 'notes/not-active.md',
+    isNotesFile: () => true,
   } as unknown as WorkspaceIndexer;
 }
