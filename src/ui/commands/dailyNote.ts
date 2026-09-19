@@ -108,23 +108,6 @@ export function ensureDailyNote(
   return ensurePeriodicNote(targetFolder, 'day');
 }
 
-/**
- * Opens the note for this week or this month, creating it from its template
- * when it does not exist yet.
- */
-export async function openPeriodicNote(
-  period: 'week' | 'month',
-): Promise<vscode.Uri | undefined> {
-  const targetFolder = await chooseTargetFolder();
-  if (!targetFolder) {
-    return undefined;
-  }
-  const noteUri = await ensurePeriodicNote(targetFolder, period);
-  const document = await vscode.workspace.openTextDocument(noteUri);
-  await vscode.window.showTextDocument(document, { preview: false });
-  return noteUri;
-}
-
 /** A stretch of the calendar a note can be kept for. */
 export type NotePeriod = 'day' | 'week' | 'month';
 

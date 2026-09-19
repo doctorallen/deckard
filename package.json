@@ -146,6 +146,10 @@
         "title": "Deckard: Capture Under a Heading"
       },
       {
+        "command": "deckard.writeReview",
+        "title": "Deckard: Write a Review"
+      },
+      {
         "command": "deckard.rollTasksForward",
         "title": "Deckard: Roll Unfinished Tasks Forward"
       },
@@ -492,6 +496,12 @@
             "description": "Template used when creating a monthly note. {month} becomes the month, such as 2026-09, and {date} its first day.",
             "order": 5
           },
+          "deckard.periodicNote.review": {
+            "type": "boolean",
+            "default": true,
+            "description": "Write a review into a newly created weekly or monthly note: what was completed, what is still open, the notes written and changed, and the tags first seen in that period. Deckard: Write a Review writes or updates one whenever you ask.",
+            "order": 6
+          },
           "deckard.dailyNote.rollover": {
             "type": "string",
             "enum": [
@@ -506,14 +516,14 @@
             ],
             "default": "off",
             "description": "What a newly created daily note does with the unfinished tasks of the last one. Deckard: Roll Unfinished Tasks Forward does the same thing whenever you ask for it.",
-            "order": 6
+            "order": 7
           },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
-            "order": 7
+            "order": 8
           },
           "deckard.exclude": {
             "type": "object",
@@ -523,7 +533,7 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` hides.",
-            "order": 8
+            "order": 9
           }
         }
       },

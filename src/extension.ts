@@ -10,12 +10,15 @@ import { createHubNote } from './ui/commands/hubNote';
 import {
   createDailyNote,
   openAdjacentDailyNote,
-  openPeriodicNote,
 } from './ui/commands/dailyNote';
 import {
   createDailyNoteWithRollover,
   rollTasksForward,
 } from './ui/commands/rollover';
+import {
+  openPeriodicNoteWithReview,
+  writeReviewCommand,
+} from './ui/commands/review';
 import { setTaskRankKeeper } from './ui/commands/taskActions';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
@@ -427,10 +430,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openAdjacentDailyNote(indexer, 'next'),
     ),
     vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
-      openPeriodicNote('week'),
+      openPeriodicNoteWithReview(indexer, preferences, 'week'),
     ),
     vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
-      openPeriodicNote('month'),
+      openPeriodicNoteWithReview(indexer, preferences, 'month'),
+    ),
+    vscode.commands.registerCommand('deckard.writeReview', () =>
+      writeReviewCommand(indexer, preferences),
     ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
     vscode.commands.registerCommand('deckard.pinNote', () =>

@@ -210,6 +210,10 @@ metadata, editing a checked line — already exists.
 
 ### 14. A generated review page
 
+**Shipped** as a review written into the periodic note itself; see the
+README's Writing a review section. It is Markdown rather than a live page,
+because a review says what that week was.
+
 Weekly and monthly notes open empty. Their natural content is a report the
 query language can already answer: `created = 7d`, `updated > 7d`,
 `done = 7d`, `is:overdue`, and the tags that first appeared this week. That

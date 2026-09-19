@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 43);
+    assert.strictEqual(Object.keys(settings).length, 44);
     // Where one note ends and the next begins.
     assert.deepStrictEqual(settings['deckard.noteBoundaries'].enum, [
       'line',
@@ -49,6 +49,7 @@ suite('Extension Test Suite', () => {
         'deckard.openMonthlyNote',
         'deckard.capture',
         'deckard.captureUnderHeading',
+        'deckard.writeReview',
         'deckard.rollTasksForward',
         'deckard.newNoteFromTemplate',
         'deckard.copyMcpSetup',

@@ -84,6 +84,19 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **A weekly or monthly note opens with its review written in.** A periodic
+  note opened from its template and said nothing, though the index could
+  already answer what the period came to. A review now lists what was
+  completed, what was due by the end of the period and is still open, the
+  notes written and the notes changed, and the tags first seen — as ordinary
+  Markdown, because a review should say what that week was rather than what
+  this week is. It sits between two comments, so writing it again replaces
+  only itself and leaves what you wrote around it. It carries no tags of its
+  own and lists no task as a task, so a review never becomes an entry in the
+  searches it reports on. `Deckard: Write a Review` writes or refreshes one
+  on request, and `deckard.periodicNote.review` turns off the one a new note
+  gets.
+
 - **The Notes Graph can be drawn around one note.** It has always drawn the
   whole workspace, which says what the workspace looks like; **Focus →
   Around this note** answers the other question, what this note is actually
