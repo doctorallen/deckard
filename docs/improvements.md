@@ -233,6 +233,10 @@ half of the product, and it reuses the dates Related Notes already prefers.
 
 ### 17. Assignee, as distinct from mention
 
+**Shipped**; see the README's Who a task is for section. The first person on
+a task line owns it, `assignee` and `is:mine` search by it, and the board
+groups by person.
+
 `@ren-kade` on a task means both "owns this" and "was named here". Marking
 one of them as the assignee — a front-matter default for a note, or a
 convention such as the first person on the line — gives the query language

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { setQueryIdentity } from './core/query/queryEvaluator';
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
@@ -93,6 +94,22 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   log.info(
     `Deckard ${String(context.extension.packageJSON.version)} activated.`,
+  );
+  // Who `is:mine` means. The evaluator is given it once rather than reading
+  // settings from six call sites.
+  const readIdentity = (): void => {
+    setQueryIdentity(
+      vscode.workspace.getConfiguration('deckard').get<string>('me', ''),
+    );
+  };
+  readIdentity();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('deckard.me')) {
+        readIdentity();
+      }
+    }),
+    { dispose: () => setQueryIdentity(undefined) },
   );
   const indexer = new WorkspaceIndexer(
     undefined,

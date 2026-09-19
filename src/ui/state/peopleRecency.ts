@@ -1,3 +1,4 @@
+import { isPersonTag } from '../../core/markdown/parser';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
 
 /**
@@ -8,6 +9,8 @@ import { TagInfo, WorkspaceIndex } from '../../core/types';
  * I not written about since the spring, and what is still open with them.
  */
 
+export { isPersonTag };
+
 /** One person, and when their name was last written. */
 export interface PersonRecency {
   tag: TagInfo;
@@ -17,11 +20,6 @@ export interface PersonRecency {
   openTasks: number;
   /** How many notes, sections, and tasks carry the tag, as the index counts. */
   entries: number;
-}
-
-/** A tag that names a person: an `@` tag, or one under `#person/`. */
-export function isPersonTag(key: string): boolean {
-  return key.startsWith('@') || key.toLocaleLowerCase().startsWith('#person/');
 }
 
 /**

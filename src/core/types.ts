@@ -205,6 +205,11 @@ export interface Task {
   priority?: TaskPriority;
   /** 🔁 repeat rule as written, such as "every week". */
   recurrence?: string;
+  /**
+   * The person the task is for: the first one named on its line. Anyone
+   * named after them is mentioned rather than asked.
+   */
+  assignee?: string;
   /** 🆔 name other tasks use in ⛔ to depend on this one. */
   dependencyId?: string;
   /** ⛔ names of the tasks that must be done first. */
@@ -1222,7 +1227,7 @@ export type SidebarMessage =
   | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */
-export type TaskBoardGroupBy = 'status' | 'priority' | 'due';
+export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee';
 
 export interface TaskBoardCard {
   taskId: string;

@@ -208,6 +208,44 @@ interface QueryUnit {
   blocked?: boolean;
   /** Open, and an open task is waiting for it. */
   blocking?: boolean;
+  /** The person the task is for: the first one named on its line. */
+  assignee?: string;
+}
+
+/**
+ * Who `is:mine` means, set once from `deckard.me`.
+ *
+ * The evaluator runs in six places, none of which reads settings, so the
+ * identity is given to it rather than passed through every call. Without one
+ * `is:mine` matches nothing, which is what an unanswered question should do.
+ */
+let queryIdentity: string | undefined;
+
+export function setQueryIdentity(person: string | undefined): void {
+  queryIdentity = person?.trim() ? person.trim() : undefined;
+}
+
+export function getQueryIdentity(): string | undefined {
+  return queryIdentity;
+}
+
+/**
+ * Whether a written person matches a task's assignee, however either is
+ * written: `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name one
+ * person.
+ */
+export function matchesPerson(written: string, assignee?: string): boolean {
+  if (!assignee) {
+    return false;
+  }
+  return personName(written) === personName(assignee);
+}
+
+function personName(value: string): string {
+  const text = value.trim().toLocaleLowerCase();
+  const withoutMarker = text.startsWith('@') ? text.slice(1) : text;
+  const separator = withoutMarker.lastIndexOf('/');
+  return separator < 0 ? withoutMarker : withoutMarker.slice(separator + 1);
 }
 
 /**
@@ -352,6 +390,7 @@ function createTaskUnit(
     priority: task.priority,
     dependencyId: task.dependencyId,
     dependsOn: task.dependsOn,
+    assignee: task.assignee,
     blocked:
       !task.completed &&
       (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
@@ -428,7 +467,27 @@ function matchesCondition(
       return matchesTaskDate(condition, unit, unit.doneAt, 'past');
     case 'priority':
       return matchesPriority(condition, unit);
+    case 'assignee':
+      return matchesAssignee(condition, unit);
   }
+}
+
+/**
+ * Answers `assignee = @ren-kade` and `assignee = none`. Only a task has one,
+ * so a query using it returns no notes, as the date fields do.
+ */
+function matchesAssignee(
+  condition: QueryConditionNode,
+  unit: QueryUnit,
+): boolean {
+  if (unit.kind !== 'task') {
+    return false;
+  }
+  const matched =
+    condition.value.toLocaleLowerCase() === 'none'
+      ? unit.assignee === undefined
+      : matchesPerson(condition.value, unit.assignee);
+  return applyNegation(condition, matched);
 }
 
 /**
@@ -520,6 +579,12 @@ function matchesIs(
       return unit.blocked === true;
     case 'blocking':
       return unit.blocking === true;
+    case 'mine':
+      return queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee);
+    case 'assigned':
+      return unit.assignee !== undefined;
+    case 'unassigned':
+      return unit.assignee === undefined;
     default:
       return false;
   }

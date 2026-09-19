@@ -744,7 +744,7 @@ export function getComponentScript(): string {
   /** The Status, Priority, and Due date switch above a task board. */
   function renderTaskBoardGroupSwitch(groupBy) {
     return '<div class="segmented task-board-group" role="group" aria-label="Group tasks by">'
-      + [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date']].map(function (option) {
+      + [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date'], ['assignee', 'Person']].map(function (option) {
         const active = option[0] === groupBy;
         return '<button type="button" class="' + (active ? 'active' : '') + '" data-action="set-board-group" data-group="' + option[0] + '" aria-pressed="' + active + '">' + option[1] + '</button>';
       }).join('') + '</div>';

@@ -488,7 +488,12 @@ const MAX_BOARD_STATUSES = 50;
  * Keeps the task board's grouping to the three it can lay out.
  */
 export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
-  return value === 'status' || value === 'priority' || value === 'due';
+  return (
+    value === 'status' ||
+    value === 'priority' ||
+    value === 'due' ||
+    value === 'assignee'
+  );
 }
 
 /**

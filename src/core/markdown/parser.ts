@@ -880,6 +880,14 @@ function normalizeTagReferences(
   return [...normalized.values()];
 }
 
+/**
+ * Whether a tag key names a person: an `@` tag, whatever marker was typed for
+ * it, or one under the `#person/` namespace.
+ */
+export function isPersonTag(key: string): boolean {
+  return key.startsWith('@') || key.toLocaleLowerCase().startsWith('#person/');
+}
+
 function normalizeTagKey(
   key: string,
   entityNamespaceAliases?: EntityNamespaceAliases,
@@ -1366,6 +1374,9 @@ function findTasks(
         dueAt: dueDate?.at,
         dueText: dueDate?.text,
         ...omitUndefined({
+          // The first person written on the task line owns it; anyone named
+          // after them is mentioned, not asked.
+          assignee: inlineTags.find((tag) => isPersonTag(tag.key))?.key,
           scheduledAt: parseIsoDate(fields.scheduled),
           startAt: parseIsoDate(fields.start),
           doneAt: parseIsoDate(fields.done),

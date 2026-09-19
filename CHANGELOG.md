@@ -84,6 +84,19 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **A task knows who it is for.** `@ren-kade` on a task meant both "owns
+  this" and "was named here", so there was no way to ask what was waiting on
+  whom. The first person named on a task line is now the person it is for,
+  and anyone after them is mentioned rather than asked — nothing new is
+  written into your notes, since this reads the people you were already
+  writing. `assignee = @dana`, `assignee = none`, `is:assigned`, and
+  `is:unassigned` search by it, `@dana` and `#person/dana` name the same
+  person whichever way either side writes it, and `is:mine` finds what is
+  yours once `deckard.me` says who you are. The Task board groups by
+  **Person**, busiest first with **Nobody named** at the end; those columns
+  take no dropped cards, because who a task is for is written in its
+  sentence.
+
 - **Home says who you have not written about lately.** People are
   first-class in the index, but nothing said when a name last came up, which
   is the question a 1:1 or a standing meeting asks. The **People gone quiet**

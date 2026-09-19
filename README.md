@@ -21,8 +21,8 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
 | [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
-| [Task board](#task-board) | Your tasks as a Kanban board by status, priority, or due date, where dragging a card rewrites the task in its note, or as a ranked list. |
-| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, and dependencies, written in either Obsidian Tasks format. |
+| [Task board](#task-board) | Your tasks as a Kanban board by status, priority, due date, or person, where dragging a card rewrites the task in its note, or as a ranked list. |
+| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and who a task is for, written in either Obsidian Tasks format. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
@@ -84,7 +84,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | --- | --- |
 | **Deckard: Open Dashboard** | Opens workspace totals, Home, and tags. |
 | **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
-| **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, or due date. |
+| **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, or the person each task is for. |
 | **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
@@ -242,6 +242,21 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 - Completing a task with a 🔁 rule writes its next occurrence on the line above, as Tasks does. The due date, or else the scheduled or start date, moves forward by the rule, and the other dates keep their distance from it; a rule ending in `when done` counts from today instead. The new task drops the ✅ date, the 🆔, and any block id.
 - Deckard understands `every day`, `every 3 weeks`, `every month`, `every year`, `every weekday`, `every Monday`, `every week on Tuesday, Friday`, `every month on the 15th`, and `every month on the last`, each optionally followed by `when done`. For any other rule it completes the task, adds no next occurrence, and tells you so.
 - Only `[ ]`, `[x]`, and `[X]` checkboxes are tasks, so a Tasks `[-]` cancelled task is not indexed.
+
+### Who a task is for
+
+The first person named on a task line is the person it is for; anyone named after them is mentioned rather than asked:
+
+```markdown
+- [ ] Chase the contractor @dana with @ren-kade   <!-- Dana's task -->
+- [ ] Send the proposal #person/ren-kade          <!-- Ren's task -->
+- [ ] Book the room                               <!-- nobody's yet -->
+```
+
+- Nothing new is written into your notes: this reads the people you were already writing. `@dana` and `#person/dana` name the same person, whichever way either side writes it.
+- Search for them with `assignee = @dana`, `assignee = none`, `is:assigned`, or `is:unassigned`.
+- Set `deckard.me` to your own name, such as `@ren-kade`, and `is:mine` finds what is yours. Left empty, `is:mine` finds nothing rather than guessing.
+- The [Task board](#task-board) groups by **Person**, a column each, busiest first, with **Nobody named** at the end — the waiting-on view. Its columns take no dropped cards: who a task is for is written in its sentence, which is yours to word, not a drag's to guess.
 
 ### Dataview format
 
@@ -598,6 +613,8 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `is:due` | Open tasks due within the next seven days, overdue ones included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
 | `is:blocked`, `is:blocking` | Open tasks waiting for a task that is still open, and the open tasks they wait for. |
+| `is:mine` | Tasks for the person `deckard.me` names. Without that setting it finds nothing. |
+| `is:assigned`, `is:unassigned` | Tasks that name a person, and tasks that name nobody. |
 | `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, `priority`, `id`, and `dependsOn` work the same way. |
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
 
@@ -615,6 +632,7 @@ The fields:
 | `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `scheduled <= today`, `due = none` |
 | `done` | A task's ✅ date, with windows counted back from today. | `done = 7d` |
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. A task without a priority counts as `none`, which ranks between `medium` and `low`. | `priority >= high` |
+| `assignee` | The person a task is for: the first one named on its line, or `none` for a task naming nobody. `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name the same person. Only tasks can satisfy it. | `assignee = @ren-kade` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
@@ -755,6 +773,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.metadataSuggestions": true,
+	"deckard.me": "",
 	"deckard.statusBar": true,
 	"deckard.taskReminderTime": "",
 	"deckard.board.statusNamespace": "status",
@@ -802,6 +821,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
+| `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](#who-a-task-is-for). |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](#status-bar-and-reminders). |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, at which Deckard says how many tasks are due. Empty means no reminder. |
 | `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |

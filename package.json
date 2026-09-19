@@ -734,6 +734,12 @@
             "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task.",
             "order": 2
           },
+          "deckard.me": {
+            "type": "string",
+            "default": "",
+            "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you. Empty means is:mine finds nothing.",
+            "order": 5
+          },
           "deckard.statusBar": {
             "type": "boolean",
             "default": true,
