@@ -124,6 +124,12 @@
   command has two names: the palette offers **Edit Task** when the cursor is
   on a task and **Add Task** when it is not, and both run the same editor.
 
+- **A review is named by the days it covers**, such as *Review of
+  2026-09-14 to 2026-09-20*, rather than by a week number that says little
+  read back; the note it sits in still names the period. What Deckard says
+  when it writes one now offers **Open**, which opens the note at the review,
+  and **Undo**, which takes the review back out of it.
+
 - **A weekly or monthly note opens with its review written in.** A periodic
   note opened from its template and said nothing, though the index could
   already answer what the period came to. A review now lists what was

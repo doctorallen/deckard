@@ -777,7 +777,9 @@ A review reads the index for that period and says:
 | **Notes changed** | Notes written earlier and changed in it |
 | **New tags** | Tags Deckard first saw in the period |
 
+- A review is **named by the days it covers** — *Review of 2026-09-14 to 2026-09-20* — since a week number says little when you read it back. The note it is in still says which period it is.
 - It is **ordinary Markdown**, not a live query, because a review should say what that week was rather than what this week is. Run it again and it is rewritten from the index as it stands.
+- When one is written, Deckard says so with **Open** to read it — at the review itself — and **Undo** to take it back out of the note.
 - It sits between `<!-- deckard:review -->` and `<!-- deckard:review:end -->`. Writing it again replaces what is between them and leaves everything you wrote around it exactly where it is.
 - Each note and task links to its note with a `[[link]]`, so the review is a way back into the week.
 - **The review carries no tags of its own.** Task and note titles are written without their tags, and new tags are listed in a fenced block, since fenced code is the one place Deckard does not read a tag. A review is about that work; it should not become an entry for every tag it mentions, nor list its tasks as tasks again.

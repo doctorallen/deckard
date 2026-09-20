@@ -15,8 +15,13 @@ import { noteTitle } from '../../core/workspace/backlinks';
 
 /** The stretch of days a review covers. */
 export interface ReviewRange {
-  /** What the period is called, such as `2026-W38` or `2026-09`. */
-  label: string;
+  /** What the period's note is called, such as `2026-W38` or `2026-09`. */
+  name: string;
+  /**
+   * What the review is called: the days it covers. A week's number says
+   * little to anyone reading it back; the days it held say what happened.
+   */
+  title: string;
   /** Local midnight the period starts, and the midnight after it ends. */
   start: number;
   end: number;
@@ -136,12 +141,11 @@ export function formatReview(
 ): string {
   const limit = options.limit ?? DEFAULT_LIMIT;
   const { range } = summary;
-  const days = `${formatIsoDate(range.start)} to ${formatIsoDate(range.end - 1)}`;
   const lines = [
     REVIEW_START,
-    `## Review of ${range.label}`,
+    `## Review of ${range.title}`,
     '',
-    `*${days}. Written by Deckard; run the review again to bring it up to date.*`,
+    `*${range.name}. Written by Deckard; run the review again to bring it up to date.*`,
     '',
     [
       `**Done:** ${summary.completed.length}`,

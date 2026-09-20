@@ -19,7 +19,8 @@ import {
 const DAY = 24 * 60 * 60 * 1000;
 /** Monday 2026-09-14 to Sunday 2026-09-20. */
 const range = {
-  label: '2026-W38',
+  name: '2026-W38',
+  title: '2026-09-14 to 2026-09-20',
   start: new Date(2026, 8, 14).getTime(),
   end: new Date(2026, 8, 21).getTime(),
 };
@@ -115,8 +116,11 @@ suite('Periodic review', () => {
     );
     assert.ok(review.startsWith(REVIEW_START), review);
     assert.ok(review.endsWith(REVIEW_END));
-    assert.ok(review.includes('## Review of 2026-W38'));
-    assert.ok(review.includes('2026-09-14 to 2026-09-20'));
+    assert.ok(
+      review.includes('## Review of 2026-09-14 to 2026-09-20'),
+      'a review is named by the days it covers, not by a week number',
+    );
+    assert.ok(review.includes('*2026-W38.'), 'which note it is still says so');
     assert.ok(review.includes('**Done:** 1 · **Still open:** 1'));
     assert.ok(review.includes('- Send the proposal — [[2026-09-15]] (done 2026-09-16)'));
 
@@ -160,12 +164,14 @@ suite('Periodic review', () => {
 
   test('knows which days a week and a month cover', () => {
     const week = getReviewRange('week', new Date(2026, 8, 17));
-    assert.strictEqual(week.label, '2026-W38');
+    assert.strictEqual(week.name, '2026-W38');
+    assert.strictEqual(week.title, '2026-09-14 to 2026-09-20');
     assert.strictEqual(new Date(week.start).getDate(), 14, 'Monday');
     assert.strictEqual(week.end - week.start, 7 * DAY);
 
     const month = getReviewRange('month', new Date(2026, 8, 17));
-    assert.strictEqual(month.label, '2026-09');
+    assert.strictEqual(month.name, '2026-09');
+    assert.strictEqual(month.title, '2026-09-01 to 2026-09-30');
     assert.strictEqual(new Date(month.start).getDate(), 1);
     assert.strictEqual(new Date(month.end).getMonth(), 9, 'October starts it');
 
@@ -196,7 +202,7 @@ suite('Periodic review', () => {
       await vscode.workspace.fs.readFile(uri),
     ).toString('utf8');
     assert.ok(written.startsWith('# 2026-W38\n\nWhat I meant to do.'));
-    assert.ok(written.includes('## Review of 2026-W38'));
+    assert.ok(written.includes('## Review of 2026-09-14 to 2026-09-20'));
     await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
   });
 });

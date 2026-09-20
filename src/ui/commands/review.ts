@@ -4,10 +4,12 @@ import { PreferencesStore } from '../../core/storage/preferences';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   formatReview,
+  REVIEW_START,
   ReviewRange,
   summarizeReview,
   writeReviewInto,
 } from '../state/reviewState';
+import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
@@ -15,7 +17,8 @@ import {
   getPeriodicNoteUri,
   NotePeriod,
 } from './dailyNote';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { revealLine } from './navigation';
+import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
 
 /**
  * Writes a week's or a month's review into its periodic note.
@@ -44,8 +47,15 @@ export function getReviewRange(
     period === 'week'
       ? new Date(year, month - 1, date + 7)
       : new Date(year, month, 1);
-  return { label: name, start: start.getTime(), end: end.getTime() };
+  return {
+    name,
+    title: `${formatIsoDate(start.getTime())} to ${formatIsoDate(end.getTime() - DAY)}`,
+    start: start.getTime(),
+    end: end.getTime(),
+  };
 }
+
+const DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Writes the review of a period into its note, creating the note when it is
@@ -73,7 +83,7 @@ export async function writeReview(
   const document = await vscode.workspace.openTextDocument(noteUri);
   const updated = writeReviewInto(document.getText(), review);
   if (updated === document.getText()) {
-    return range.label;
+    return range.title;
   }
 
   const edit = new vscode.WorkspaceEdit();
@@ -86,7 +96,7 @@ export async function writeReview(
     updated,
   );
   const written = await applyWorkspaceWrite(edit, {
-    label: `the review of ${range.label}`,
+    label: `the review of ${range.title}`,
     // One note, written by asking for it; the reader is watching it happen.
     preview: 'never',
   });
@@ -99,11 +109,58 @@ export async function writeReview(
     // The watcher picks the note up; the review itself is written.
   }
   if (!options.silent) {
-    void vscode.window.showInformationMessage(
-      `Wrote the review of ${range.label}: ${summary.completed.length} done, ${summary.slipped.length} still open.`,
+    void offerReview(
+      `Wrote the review of ${range.title}: ${summary.completed.length} done, ${summary.slipped.length} still open.`,
+      noteUri,
+      indexer,
     );
   }
-  return range.label;
+  return range.title;
+}
+
+/**
+ * Says the review is written, and offers the two things a reader wants next:
+ * to read it, and to take it back.
+ */
+async function offerReview(
+  message: string,
+  noteUri: vscode.Uri,
+  indexer: Pick<WorkspaceIndexer, 'refresh'>,
+): Promise<void> {
+  const choice = await vscode.window.showInformationMessage(
+    message,
+    'Open',
+    'Undo',
+  );
+  if (choice === 'Open') {
+    const document = await vscode.workspace.openTextDocument(noteUri);
+    const editor = await vscode.window.showTextDocument(document, {
+      preview: false,
+    });
+    // Open it where the review is, which is what the message was about.
+    const line = document
+      .getText()
+      .split(/\r?\n/)
+      .findIndex((text) => text.includes(REVIEW_START));
+    if (line >= 0) {
+      revealLine(editor, line + 1);
+    }
+    return;
+  }
+  if (choice !== 'Undo') {
+    return;
+  }
+  const undone = await workspaceWrites.undo();
+  try {
+    await indexer.refresh();
+  } catch {
+    // The watcher picks the note up; the note itself is back.
+  }
+  void vscode.window.showInformationMessage(
+    undone && undone.restored > 0
+      ? 'Took the review back out of the note.'
+      : 'Deckard could not undo that: the note has changed since.',
+  );
 }
 
 /**
