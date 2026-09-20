@@ -23,6 +23,7 @@ import { setTaskRankKeeper } from './ui/commands/taskActions';
 import {
   editTaskCommand,
   TaskEditorActions,
+  TaskLineContext,
 } from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
@@ -141,6 +142,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagSuggestions = new TagCompletionProvider(indexer);
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
+  const taskLineContext = new TaskLineContext();
   const editorReferences = new EditorReferences(indexer);
   const assistantTools = new AssistantTools(indexer);
   const mcpServer = new DeckardMcpServer(
@@ -242,6 +244,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskStatusBar,
     taskMetadataSuggestions,
     taskEditorActions,
+    taskLineContext,
     taskBoard,
     editorReferences,
     linkHealth,
@@ -271,6 +274,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskStatusBar,
     taskMetadataSuggestions,
     taskEditorActions,
+    taskLineContext,
     taskBoard,
     editorReferences,
     linkHealth,
@@ -445,7 +449,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.writeReview', () =>
       writeReviewCommand(indexer, preferences),
     ),
+    // One editor, two names: which one the palette offers is decided by
+    // whether the cursor is on a task.
     vscode.commands.registerCommand('deckard.editTask', () =>
+      editTaskCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
@@ -621,6 +630,7 @@ export function deactivate(): void {
   activeServices?.taskStatusBar.dispose();
   activeServices?.taskMetadataSuggestions.dispose();
   activeServices?.taskEditorActions.dispose();
+  activeServices?.taskLineContext.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
   activeServices?.linkHealth.dispose();
@@ -654,6 +664,7 @@ interface ExtensionServices {
   taskStatusBar: TaskStatusBar;
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
   taskEditorActions: TaskEditorActions;
+  taskLineContext: TaskLineContext;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
   linkHealth: LinkHealth;

@@ -426,7 +426,7 @@ export async function editTaskCommand(
     ),
   );
   const edited = await editTaskDraft(draft, {
-    title: existing ? 'Edit task' : 'New task',
+    title: existing ? 'Edit task' : 'Add task',
     ...(index ? { index } : {}),
     now,
   });
@@ -457,6 +457,57 @@ export async function editTaskCommand(
   );
   editor.selection = new vscode.Selection(caret, caret);
   return written;
+}
+
+/** Whether the cursor is on a task line, which names the command. */
+const ON_TASK_LINE = 'deckard.onTaskLine';
+
+/**
+ * Keeps `deckard.onTaskLine` in step with the cursor, so the palette offers
+ * **Edit Task** on a task and **Add Task** anywhere else.
+ *
+ * Two commands rather than one word that is wrong half the time: a context
+ * key and a `when` clause is how VS Code says which of two related commands
+ * applies, and both run the same editor.
+ */
+export class TaskLineContext implements vscode.Disposable {
+  private readonly disposables: vscode.Disposable[] = [];
+  private onTaskLine: boolean | undefined;
+
+  public constructor() {
+    this.disposables.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) =>
+        this.sync(editor),
+      ),
+      vscode.window.onDidChangeTextEditorSelection((event) =>
+        this.sync(event.textEditor),
+      ),
+      // Typing `- [ ] ` turns the line the cursor is on into a task.
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        if (event.document === vscode.window.activeTextEditor?.document) {
+          this.sync(vscode.window.activeTextEditor);
+        }
+      }),
+    );
+    this.sync(vscode.window.activeTextEditor);
+  }
+
+  public dispose(): void {
+    this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+  }
+
+  /** Reads the cursor's line, and tells VS Code only when the answer moves. */
+  public sync(editor: vscode.TextEditor | undefined): void {
+    const next =
+      editor !== undefined &&
+      isMarkdownFile(editor.document.uri) &&
+      isTaskLine(editor.document.lineAt(editor.selection.active.line).text);
+    if (next === this.onTaskLine) {
+      return;
+    }
+    this.onTaskLine = next;
+    void vscode.commands.executeCommand('setContext', ON_TASK_LINE, next);
+  }
 }
 
 /**

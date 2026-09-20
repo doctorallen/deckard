@@ -84,7 +84,8 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
-- **`Deckard: Edit Task` builds or edits a whole task at once.** Metadata
+- **`Deckard: Edit Task` and `Deckard: Add Task` build or edit a whole task
+  at once.** Metadata
   could be typed after `/` one marker at a time, which is fine for adding a
   due date and poor for writing a task that has several of them. The command
   opens the task on the cursor's line as a list of its fields — description,
@@ -95,7 +96,9 @@
   Nothing is written until **Write the task**, the line keeps its format and
   the parts Deckard does not edit, including a trailing `^block-id`, and the
   editor is also on the lightbulb as **Edit task…**. A line that is not a
-  task yet becomes one, keeping what was written on it.
+  task yet becomes one, keeping what was written on it — which is why the
+  command has two names: the palette offers **Edit Task** when the cursor is
+  on a task and **Add Task** when it is not, and both run the same editor.
 
 - **A weekly or monthly note opens with its review written in.** A periodic
   note opened from its template and said nothing, though the index could

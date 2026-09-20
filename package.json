@@ -142,6 +142,10 @@
         "title": "Deckard: Edit Task"
       },
       {
+        "command": "deckard.addTask",
+        "title": "Deckard: Add Task"
+      },
+      {
         "command": "deckard.capture",
         "title": "Deckard: Capture"
       },
@@ -267,6 +271,14 @@
           "when": "false"
         },
         {
+          "command": "deckard.editTask",
+          "when": "editorLangId == markdown && deckard.onTaskLine"
+        },
+        {
+          "command": "deckard.addTask",
+          "when": "editorLangId == markdown && !deckard.onTaskLine"
+        },
+        {
           "command": "deckard.pinNote",
           "when": "editorLangId == markdown"
         },
@@ -323,7 +335,13 @@
         "command": "deckard.editTask",
         "key": "ctrl+shift+alt+t",
         "mac": "cmd+shift+alt+t",
-        "when": "editorTextFocus && editorLangId == markdown"
+        "when": "editorTextFocus && editorLangId == markdown && deckard.onTaskLine"
+      },
+      {
+        "command": "deckard.addTask",
+        "key": "ctrl+shift+alt+t",
+        "mac": "cmd+shift+alt+t",
+        "when": "editorTextFocus && editorLangId == markdown && !deckard.onTaskLine"
       },
       {
         "command": "deckard.quickFind.complete",

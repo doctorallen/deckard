@@ -98,7 +98,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, such as `2026-W37.md`, with [its review](#writing-a-review) written in. |
 | **Deckard: Open Monthly Note** | Creates or opens this month's note, such as `2026-09.md`, with its review written in. |
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
-| **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Builds or edits the task on the cursor's line, field by field; see [Editing a whole task](#editing-a-whole-task). |
+| **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Edits the task on the cursor's line, field by field; see [Editing a whole task](#editing-a-whole-task). |
+| **Deckard: Add Task** | The same editor, under the name it goes by when the cursor is not on a task: the same shortcut writes a new one where you are. |
 | **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the unfinished tasks of the last daily note into today's, creating today's note if it is not there yet. |
@@ -274,7 +275,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 
 ### Editing a whole task
 
-`Deckard: Edit Task` opens the task on the cursor's line as a list of its fields, so a whole task can be built or changed in one place rather than typed marker by marker. On a line that is not a task yet, whatever is written on it becomes the description; on an empty line, you start from nothing.
+One command opens the task on the cursor's line as a list of its fields, so a whole task can be built or changed in one place rather than typed marker by marker. It goes by the name that fits where the cursor is: **Deckard: Edit Task** on a task line, and **Deckard: Add Task** anywhere else, with the same shortcut for both. On a line that is not a task yet, whatever is written on it becomes the description; on an empty line, you start from nothing.
 
 The pick lists every field with what the task says now, headed by the line as it will be written, so the Markdown is in front of you the whole way through. Choosing a field opens its own step and comes back:
 

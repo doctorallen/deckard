@@ -48,6 +48,7 @@ suite('Extension Test Suite', () => {
         'deckard.openWeeklyNote',
         'deckard.openMonthlyNote',
         'deckard.editTask',
+        'deckard.addTask',
         'deckard.capture',
         'deckard.captureUnderHeading',
         'deckard.writeReview',
