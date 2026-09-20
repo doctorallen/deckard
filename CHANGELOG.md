@@ -179,9 +179,9 @@
   that neighbourhood holds.
 
 - **One edit can be made to everything a search found.** A search page is
-  where a set of notes and tasks is already gathered, so **Edit…** in a
+  where a set of notes and tasks is already gathered, so **Bulk Edit** in a
   results pane now completes them, reopens them, dates them, or tags them
-  together. Deckard asks what to do and then lists the results with every one
+  together, from **Bulk Edit** beside the pane's heading. Deckard asks what to do and then lists the results with every one
   chosen, in VS Code's own list, so unpicking any leaves it alone. Every line
   is compared with the line the index recorded before it is touched — the
   check a single checkbox already made — so a task edited since is left as
