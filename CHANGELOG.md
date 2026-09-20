@@ -84,6 +84,14 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **Undo puts notes back without opening them.** Taking back a write that
+  reached several notes opened every one of them in the editor, leaving a
+  row of tabs to close after undoing one thing. A note nobody has on screen
+  is written straight to disk now; one that is open, or has unsaved changes,
+  still goes through its editor so what is on screen stays in step. The
+  rollover's message also offers **Open**, for the day's note it wrote into,
+  which it may have just created.
+
 - **A rollover reaches past yesterday.** It read the single most recent
   daily note and stopped there, so a task left open on Friday did not come
   forward on Monday if the weekend had a note, and a workspace whose last

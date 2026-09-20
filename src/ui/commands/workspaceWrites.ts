@@ -65,6 +65,7 @@ export class WorkspaceWriteHistory {
     }
     const edit = new vscode.WorkspaceEdit();
     const documents: vscode.TextDocument[] = [];
+    const quiet: { uri: vscode.Uri; text: string }[] = [];
     let skipped = 0;
 
     for (const note of write.notes) {
@@ -85,8 +86,15 @@ export class WorkspaceWriteHistory {
         skipped += 1;
         continue;
       }
-      edit.replace(note.uri, wholeDocument(document), note.before);
-      documents.push(document);
+      // A note nobody has open is written straight to disk. Going through
+      // the editor would open every note an undo touches, which is a lot of
+      // tabs to close after taking one thing back.
+      if (isOpenInEditor(note.uri) || document.isDirty) {
+        edit.replace(note.uri, wholeDocument(document), note.before);
+        documents.push(document);
+      } else {
+        quiet.push({ uri: note.uri, text: note.before });
+      }
     }
 
     if (documents.length > 0 && !(await vscode.workspace.applyEdit(edit))) {
@@ -97,11 +105,18 @@ export class WorkspaceWriteHistory {
         await document.save();
       }
     }
-    if (documents.length > 0) {
+    for (const note of quiet) {
+      await vscode.workspace.fs.writeFile(
+        note.uri,
+        Buffer.from(note.text, 'utf8'),
+      );
+    }
+    const restored = documents.length + quiet.length;
+    if (restored > 0) {
       await write.restore?.();
     }
     this.last = undefined;
-    return { label: write.label, restored: documents.length, skipped };
+    return { label: write.label, restored, skipped };
   }
 }
 
@@ -264,6 +279,13 @@ export async function undoLastWorkspaceWrite(
         )} changed since and ${result.skipped === 1 ? 'was' : 'were'} left alone.`,
   );
   return result;
+}
+
+/** Whether a note is on screen, and so has to be written through its editor. */
+function isOpenInEditor(uri: vscode.Uri): boolean {
+  return vscode.window.visibleTextEditors.some(
+    (editor) => editor.document.uri.toString() === uri.toString(),
+  );
 }
 
 /** A note as it stands on disk, or nothing when it cannot be read. */

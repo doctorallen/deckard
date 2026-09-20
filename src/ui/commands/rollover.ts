@@ -253,16 +253,25 @@ export async function rollTasksForward(
     // The watcher picks the notes up; the tasks themselves are written.
   }
   if (!options.silent || result.carried > 0) {
-    // A rollover writes into notes nobody opened, so the way back is offered
-    // where it is announced rather than left to be remembered.
-    void offerUndo(describeRollover(result, mode), result.carried > 0, indexer);
+    // A rollover writes into notes nobody opened, so both the note it wrote
+    // into and the way back are offered where it is announced.
+    void offerRollover(
+      describeRollover(result, mode),
+      todayUri,
+      result.carried > 0,
+      indexer,
+    );
   }
   return result;
 }
 
-/** Says what a rollover did, with Undo beside it when it wrote anything. */
-async function offerUndo(
+/**
+ * Says what a rollover did, and offers what a reader wants next: today's
+ * note, which may have just been created, and the way back.
+ */
+async function offerRollover(
   message: string,
+  todayUri: vscode.Uri,
   wrote: boolean,
   indexer: Pick<WorkspaceIndexer, 'refresh'>,
 ): Promise<void> {
@@ -270,7 +279,16 @@ async function offerUndo(
     void vscode.window.showInformationMessage(message);
     return;
   }
-  const choice = await vscode.window.showInformationMessage(message, 'Undo');
+  const choice = await vscode.window.showInformationMessage(
+    message,
+    'Open',
+    'Undo',
+  );
+  if (choice === 'Open') {
+    const document = await vscode.workspace.openTextDocument(todayUri);
+    await vscode.window.showTextDocument(document, { preview: false });
+    return;
+  }
   if (choice !== 'Undo') {
     return;
   }

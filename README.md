@@ -803,7 +803,7 @@ A daily note that starts from its template every morning leaves last night's ope
 - A task is carried only when its line still reads as Deckard indexed it, the same check every other Deckard task edit makes, and never when today's note already holds that line. Running it twice changes nothing.
 - Only a note Deckard creates rolls tasks in, so opening today's note again later in the day carries nothing.
 - `Deckard: Roll Unfinished Tasks Forward` does the same thing whenever you ask, whatever the setting says, creating today's note if it is not there yet. It moves the tasks unless the setting says `copy`.
-- The whole rollover is one write, and what it says when it is done has **Undo** beside it. `Deckard: Undo Last Change` does the same thing later.
+- The whole rollover is one write. What it says when it is done offers **Open**, for the day's note it wrote into — which it may have just created — and **Undo**, which puts every note back without opening any of them. `Deckard: Undo Last Change` does the same thing later.
 
 ## Calendar
 
