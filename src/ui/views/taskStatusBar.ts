@@ -8,7 +8,7 @@ import { createAgenda } from '../state/agendaState';
  *
  * Everything else Deckard shows waits for a view to be opened. This is the
  * one count visible while you are writing code, and selecting it opens the
- * Agenda, where the tasks themselves are.
+ * Tasks view, where the tasks themselves are.
  */
 
 /** Open tasks that want attention today: overdue ones, and today's. */
@@ -71,7 +71,7 @@ interface StatusBarIndexSource {
   getSnapshot(): WorkspaceIndex;
 }
 
-/** The command that opens the Agenda, which VS Code contributes per view. */
+/** The command that opens the Tasks view, contributed by VS Code per view. */
 const SHOW_AGENDA = 'deckard.agenda.focus';
 
 export class TaskStatusBar implements vscode.Disposable {
@@ -142,7 +142,7 @@ export class TaskStatusBar implements vscode.Disposable {
     this.item.text = `$(checklist) ${text}`;
     this.item.tooltip = `Deckard: ${describeDueTasksAtLength(
       counts,
-    )} Select to open the Agenda.`;
+    )} Select to open Tasks.`;
     // Overdue work is the one state worth colouring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
@@ -186,9 +186,9 @@ export class TaskStatusBar implements vscode.Disposable {
     }
     const choice = await vscode.window.showInformationMessage(
       `Deckard: ${describeDueTasksAtLength(counts)}`,
-      'Open Agenda',
+      'Open Tasks',
     );
-    if (choice === 'Open Agenda') {
+    if (choice === 'Open Tasks') {
       await vscode.commands.executeCommand(SHOW_AGENDA);
     }
   }

@@ -1,6 +1,7 @@
 import {
   addDays,
   formatIsoDate,
+  formatTaskMetadata,
   startOfDay,
   TASK_PRIORITY_RANKS,
 } from '../../core/markdown/taskMetadata';
@@ -67,14 +68,20 @@ const GROUP_LABELS: Readonly<Record<string, string>> = {
   upcoming: 'Upcoming',
 };
 
-/** Priority groups, strongest first, with the tasks that carry none between. */
+/**
+ * Priority groups, strongest first, with the tasks carrying none at the end.
+ *
+ * A query ranks no priority between medium and low, the way Tasks does, but
+ * a reader looking down the Agenda wants what was marked before what was
+ * not, so the unmarked group is last.
+ */
 const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
   'highest',
   'high',
   'medium',
-  'none',
   'low',
   'lowest',
+  'none',
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -171,7 +178,12 @@ function groupByPriority(
       : [
           {
             id: `priority:${priority}`,
-            label: priority === 'none' ? 'No priority' : capitalize(priority),
+            // The marker the task itself carries, so the group reads the way
+            // the line does.
+            label:
+              priority === 'none'
+                ? 'No priority'
+                : `${formatTaskMetadata('priority', priority, 'emoji')} ${capitalize(priority)}`,
             entries: [...held].sort(order),
           },
         ];

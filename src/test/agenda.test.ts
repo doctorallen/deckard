@@ -80,10 +80,14 @@ suite('Agenda', () => {
         group.entries.map((entry) => entry.task.id),
       ]);
 
-    assert.deepStrictEqual(grouped('priority'), [
-      ['High', ['overdue']],
-      ['No priority', ['due-today', 'upcoming']],
-    ]);
+    assert.deepStrictEqual(
+      grouped('priority'),
+      [
+        ['⏫ High', ['overdue']],
+        ['No priority', ['due-today', 'upcoming']],
+      ],
+      'a group is marked the way its tasks are, and the unmarked one is last',
+    );
     assert.deepStrictEqual(grouped('status'), [
       // The busiest group first, and the tasks carrying no status last.
       ['Doing', ['due-today']],

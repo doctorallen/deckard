@@ -84,11 +84,16 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
-- **The Agenda groups by what you choose.** It grouped one way — Overdue,
+- **The Agenda is now the Tasks view**, which is what it lists. Its settings
+  keep their `deckard.agenda.…` names, so nothing configured has to change.
+
+- **The Tasks view groups by what you choose.** It grouped one way — Overdue,
   Today, Upcoming — which is the right default and the wrong one as soon as
   you want to see a person's work, or everything waiting, or what is most
   important. **Group by** in its title offers **Due status**, **Priority**,
-  **Status**, and **Person**, kept in `deckard.agenda.groupBy`. The tasks are
+  **Status**, and **Person**, kept in `deckard.agenda.groupBy`. Priority
+  groups are marked with the emoji their task lines use, and **No priority**
+  sits last, where a reader looks for it. The tasks are
   the same whichever is chosen, so grouping changes the axis rather than the
   list. Within a group, tasks ranked on the Task board lead in the order they
   were dragged into, and the rest follow as they did before.

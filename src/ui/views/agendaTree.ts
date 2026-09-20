@@ -35,10 +35,16 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   upcoming: new vscode.ThemeIcon('calendar'),
 };
 
-/** The icon a group takes when the Agenda is grouped by something else. */
-const GROUPING_ICONS: Readonly<Record<AgendaGroupBy, vscode.ThemeIcon>> = {
+/**
+ * The icon a group takes when the Agenda is grouped by something else. A
+ * priority group carries the marker the tasks themselves are written with,
+ * so it needs no icon beside it.
+ */
+const GROUPING_ICONS: Readonly<
+  Record<AgendaGroupBy, vscode.ThemeIcon | undefined>
+> = {
   due: new vscode.ThemeIcon('calendar'),
-  priority: new vscode.ThemeIcon('arrow-up'),
+  priority: undefined,
   status: new vscode.ThemeIcon('circle-outline'),
   assignee: new vscode.ThemeIcon('person'),
 };
@@ -271,7 +277,7 @@ export async function pickAgendaGrouping(): Promise<AgendaGroupBy | undefined> {
       detail: grouping.detail,
       id: grouping.id,
     })),
-    { title: 'Group the Agenda by', placeHolder: 'Choose what its groups are' },
+    { title: 'Group tasks by', placeHolder: 'Choose what the groups are' },
   );
   if (!chosen || chosen.id === current) {
     return undefined;
