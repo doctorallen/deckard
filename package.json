@@ -546,12 +546,19 @@
             "description": "What a newly created daily note does with the unfinished tasks of the last one. Deckard: Roll Unfinished Tasks Forward does the same thing whenever you ask for it.",
             "order": 7
           },
+          "deckard.dailyNote.rolloverDays": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "How many days back a rollover looks for unfinished tasks. 0 reaches as far back as your daily notes go, so a task left open before a week away still comes forward.",
+            "order": 8
+          },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
-            "order": 8
+            "order": 9
           },
           "deckard.exclude": {
             "type": "object",
@@ -561,7 +568,7 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` hides.",
-            "order": 9
+            "order": 10
           }
         }
       },

@@ -84,6 +84,16 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **A rollover reaches past yesterday.** It read the single most recent
+  daily note and stopped there, so a task left open on Friday did not come
+  forward on Monday if the weekend had a note, and a workspace whose last
+  daily note happened to be finished reported that nothing was waiting while
+  older notes still held open tasks. Every earlier daily note is read now,
+  oldest first, and `deckard.dailyNote.rolloverDays` bounds how far back —
+  the default, `0`, reaches as far as the notes go. What it says when it is
+  done names how many notes it drew from and the oldest day among them, and
+  carries **Undo** beside it.
+
 - **Pinning pins the note you are in, not the file it is in.** A note in
   Deckard is an entry, but a pin was a path: pinning from inside a note's
   sixth section put the file on Home, titled with its first heading and

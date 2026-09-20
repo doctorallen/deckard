@@ -11,9 +11,10 @@ import {
   formatLocalDate,
   getPeriodicNoteUri,
   listDailyNotes,
+  parseLocalDate,
 } from './dailyNote';
 import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
 
 /**
  * Carries yesterday's unfinished tasks into today's note.
@@ -26,10 +27,9 @@ import { applyWorkspaceWrite } from './workspaceWrites';
 
 /** What a rollover would carry, and where from. */
 export interface RolloverPlan {
-  /** The nearest daily note before today. */
-  fromPath: string;
-  fromDate: string;
-  /** Its open tasks, in the order they are written. */
+  /** The daily notes it draws from, oldest first. */
+  fromDates: string[];
+  /** Their open tasks: oldest note first, and in the order each writes them. */
   tasks: Task[];
 }
 
@@ -44,25 +44,52 @@ export function getRolloverMode(uri?: vscode.Uri): RolloverMode {
 }
 
 /**
- * The unfinished tasks of the nearest daily note before today, or nothing
- * when there is no such note or nothing is left open in it.
+ * The unfinished tasks waiting in earlier daily notes, oldest first.
+ *
+ * Every earlier daily note is read, not only yesterday's: a task left open
+ * on Friday is still open on Monday, and a week away leaves a gap wider than
+ * that again. `lookbackDays` bounds how far back it reaches, and zero, the
+ * default, reaches as far as the daily notes go.
  */
 export function planRollover(
   index: WorkspaceIndex,
   today: string,
+  lookbackDays = 0,
 ): RolloverPlan | undefined {
-  const previous = [...listDailyNotes(index)]
-    .reverse()
-    .find((note) => note.date < today);
-  if (!previous) {
+  const earliest =
+    lookbackDays > 0
+      ? formatLocalDate(
+          new Date(
+            (parseLocalDate(today)?.getTime() ?? Date.now()) -
+              lookbackDays * 24 * 60 * 60 * 1000,
+          ),
+        )
+      : undefined;
+  const notes = listDailyNotes(index).filter(
+    (note) => note.date < today && (earliest === undefined || note.date >= earliest),
+  );
+  if (notes.length === 0) {
     return undefined;
   }
+  const byPath = new Map(notes.map((note) => [note.filePath, note.date]));
   const tasks = [...index.tasks.values()]
-    .filter((task) => task.filePath === previous.filePath && !task.completed)
-    .sort((left, right) => left.lineNumber - right.lineNumber);
-  return tasks.length === 0
-    ? undefined
-    : { fromPath: previous.filePath, fromDate: previous.date, tasks };
+    .filter((task) => !task.completed && byPath.has(task.filePath))
+    .sort(
+      (left, right) =>
+        (byPath.get(left.filePath) ?? '').localeCompare(
+          byPath.get(right.filePath) ?? '',
+        ) || left.lineNumber - right.lineNumber,
+    );
+  if (tasks.length === 0) {
+    return undefined;
+  }
+  const carried = new Set(tasks.map((task) => task.filePath));
+  return {
+    fromDates: notes
+      .filter((note) => carried.has(note.filePath))
+      .map((note) => note.date),
+    tasks,
+  };
 }
 
 /** What a rollover did, so the command can say it in one sentence. */
@@ -70,7 +97,10 @@ export interface RolloverResult {
   carried: number;
   /** Tasks left behind: already in today's note, or changed since indexing. */
   skipped: number;
-  fromDate: string;
+  /** The days it drew from, oldest first. */
+  fromDates: string[];
+  /** How many notes it actually took tasks out of. */
+  notes: number;
 }
 
 /**
@@ -87,28 +117,41 @@ export async function applyRollover(
   todayUri: vscode.Uri,
   mode: Exclude<RolloverMode, 'off'>,
 ): Promise<RolloverResult | undefined> {
-  const fromUri = await resolveSourceUri(plan.fromPath);
-  if (!fromUri) {
-    return undefined;
-  }
-  const [today, from] = await Promise.all([
-    vscode.workspace.openTextDocument(todayUri),
-    vscode.workspace.openTextDocument(fromUri),
-  ]);
+  const today = await vscode.workspace.openTextDocument(todayUri);
   const todayText = today.getText();
   const todayLines = new Set(
     todayText.split(/\r?\n/).map((line) => line.trim()),
   );
 
+  // Each note the plan draws from is read once, and each task is compared
+  // with the line the index recorded before it is moved.
+  const sources = new Map<string, { uri: vscode.Uri; document: vscode.TextDocument }>();
+  for (const filePath of new Set(plan.tasks.map((task) => task.filePath))) {
+    const uri = await resolveSourceUri(filePath);
+    if (!uri) {
+      continue;
+    }
+    try {
+      sources.set(filePath, {
+        uri,
+        document: await vscode.workspace.openTextDocument(uri),
+      });
+    } catch {
+      continue;
+    }
+  }
+
   const carried: Task[] = [];
   let skipped = 0;
   plan.tasks.forEach((task) => {
+    const source = sources.get(task.filePath);
     const line = task.lineNumber - 1;
     // The task has to still read as it did when it was indexed, and must not
     // already be in today's note, which is what running this twice would do.
     if (
-      line >= from.lineCount ||
-      from.lineAt(line).text !== task.sourceLineText ||
+      !source ||
+      line >= source.document.lineCount ||
+      source.document.lineAt(line).text !== task.sourceLineText ||
       todayLines.has(task.sourceLineText.trim())
     ) {
       skipped += 1;
@@ -116,8 +159,9 @@ export async function applyRollover(
     }
     carried.push(task);
   });
+  const drawnFrom = new Set(carried.map((task) => task.filePath));
   if (carried.length === 0) {
-    return { carried: 0, skipped, fromDate: plan.fromDate };
+    return { carried: 0, skipped, fromDates: plan.fromDates, notes: 0 };
   }
 
   const eol = todayText.includes('\r\n') ? '\r\n' : '\n';
@@ -133,29 +177,39 @@ export async function applyRollover(
   );
   if (mode === 'move') {
     carried.forEach((task) => {
+      const source = sources.get(task.filePath);
+      if (!source) {
+        return;
+      }
       const line = task.lineNumber - 1;
+      const document = source.document;
       edit.delete(
-        fromUri,
-        line + 1 < from.lineCount
+        source.uri,
+        line + 1 < document.lineCount
           ? new vscode.Range(line, 0, line + 1, 0)
           : new vscode.Range(
               Math.max(line - 1, 0),
-              line > 0 ? from.lineAt(line - 1).text.length : 0,
+              line > 0 ? document.lineAt(line - 1).text.length : 0,
               line,
-              from.lineAt(line).text.length,
+              document.lineAt(line).text.length,
             ),
       );
     });
   }
 
   const written = await applyWorkspaceWrite(edit, {
-    label: `carrying ${count(carried.length, 'task', 'tasks')} forward from ${plan.fromDate}`,
-    // A rollover is one gesture over two notes; showing it every morning
+    label: `carrying ${count(carried.length, 'task', 'tasks')} forward`,
+    // A rollover is one gesture over a few notes; showing it every morning
     // would be in the way. Undo is what takes it back.
     preview: 'never',
   });
   return written.applied
-    ? { carried: carried.length, skipped, fromDate: plan.fromDate }
+    ? {
+        carried: carried.length,
+        skipped,
+        fromDates: plan.fromDates,
+        notes: drawnFrom.size,
+      }
     : undefined;
 }
 
@@ -177,6 +231,7 @@ export async function rollTasksForward(
   const plan = planRollover(
     indexer.getSnapshot(),
     formatLocalDate(new Date()),
+    getRolloverLookbackDays(folder.uri),
   );
   if (!plan) {
     if (!options.silent) {
@@ -198,20 +253,55 @@ export async function rollTasksForward(
     // The watcher picks the notes up; the tasks themselves are written.
   }
   if (!options.silent || result.carried > 0) {
-    void vscode.window.showInformationMessage(describeRollover(result, mode));
+    // A rollover writes into notes nobody opened, so the way back is offered
+    // where it is announced rather than left to be remembered.
+    void offerUndo(describeRollover(result, mode), result.carried > 0, indexer);
   }
   return result;
 }
 
-/** One sentence for what a rollover did. */
+/** Says what a rollover did, with Undo beside it when it wrote anything. */
+async function offerUndo(
+  message: string,
+  wrote: boolean,
+  indexer: Pick<WorkspaceIndexer, 'refresh'>,
+): Promise<void> {
+  if (!wrote) {
+    void vscode.window.showInformationMessage(message);
+    return;
+  }
+  const choice = await vscode.window.showInformationMessage(message, 'Undo');
+  if (choice !== 'Undo') {
+    return;
+  }
+  const undone = await workspaceWrites.undo();
+  try {
+    await indexer.refresh();
+  } catch {
+    // The watcher picks the notes up; the notes themselves are back.
+  }
+  void vscode.window.showInformationMessage(
+    undone && undone.restored > 0
+      ? `Put ${undone.restored} ${undone.restored === 1 ? 'note' : 'notes'} back.`
+      : 'Deckard could not undo that: the notes have changed since.',
+  );
+}
+
+/** One sentence for what a rollover did, and which days it drew from. */
 export function describeRollover(
   result: RolloverResult,
   mode: Exclude<RolloverMode, 'off'>,
 ): string {
+  const oldest = result.fromDates[0];
   if (result.carried === 0) {
-    return `Nothing was carried forward from ${result.fromDate}: its open tasks are already in today's note or have changed since.`;
+    return `Nothing was carried forward: the open tasks in your earlier daily notes are already in today's note, or have changed since.`;
   }
   const verb = mode === 'move' ? 'Moved' : 'Copied';
+  // Where from: one day by name, several as the span they cover.
+  const from =
+    result.notes <= 1
+      ? ` from ${result.fromDates[result.fromDates.length - 1] ?? oldest}`
+      : ` from ${result.notes} daily notes, back to ${oldest}`;
   const left =
     result.skipped === 0
       ? ''
@@ -220,7 +310,15 @@ export function describeRollover(
     result.carried,
     'unfinished task',
     'unfinished tasks',
-  )} forward from ${result.fromDate}.${left}`;
+  )} forward${from}.${left}`;
+}
+
+/** How far back a rollover looks, in days; zero reaches as far as the notes. */
+export function getRolloverLookbackDays(uri?: vscode.Uri): number {
+  const days = vscode.workspace
+    .getConfiguration('deckard', uri)
+    .get<number>('dailyNote.rolloverDays', 0);
+  return Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
 }
 
 function count(value: number, singular: string, plural: string): string {

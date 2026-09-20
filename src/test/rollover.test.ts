@@ -39,22 +39,53 @@ const yesterday = [
 ].join('\n');
 
 suite('Task rollover', () => {
-  test('carries only what is still open in the last daily note', () => {
+  test('carries what is open in every earlier daily note, oldest first', () => {
     const plan = planRollover(
       indexOf({
         'notes/2026-09-18.md': yesterday,
-        'notes/2026-09-17.md': '# 2026-09-17\n\n- [ ] Older and still open\n',
+        'notes/2026-09-11.md': '# 2026-09-11\n\n- [ ] Left open a week ago\n',
+        'notes/2026-09-17.md': '# 2026-09-17\n\n- [x] Finished that day\n',
         'notes/Atlas.md': '# Atlas\n\n- [ ] Not a daily note\n',
       }),
       '2026-09-19',
     );
-    assert.strictEqual(plan?.fromDate, '2026-09-18');
+    assert.deepStrictEqual(plan?.fromDates, ['2026-09-11', '2026-09-18']);
     assert.deepStrictEqual(
       plan?.tasks.map((task) => task.sourceLineText),
       [
+        '- [ ] Left open a week ago',
         '- [ ] Chase the contractor 📅 2026-09-19 @dana',
         '  - [ ] Get the survey back',
       ],
+      'the oldest note first, and each note in the order it writes them',
+    );
+  });
+
+  test('a task left open on Friday comes forward on Monday', () => {
+    const plan = planRollover(
+      indexOf({
+        'notes/2026-09-18.md': '# 2026-09-18\n\n- [ ] Chase the contractor\n',
+      }),
+      '2026-09-21',
+    );
+    assert.deepStrictEqual(plan?.fromDates, ['2026-09-18']);
+    assert.strictEqual(plan?.tasks.length, 1);
+  });
+
+  test('looks back only as far as it is asked to', () => {
+    const notes = indexOf({
+      'notes/2026-08-12.md': '# 2026-08-12\n\n- [ ] Open since August\n',
+      'notes/2026-09-18.md': '# 2026-09-18\n\n- [x] Done\n',
+    });
+    assert.strictEqual(
+      planRollover(notes, '2026-09-19')?.tasks.length,
+      1,
+      'with no limit, an older note is still read',
+    );
+    assert.strictEqual(
+      planRollover(notes, '2026-09-19', 14),
+      undefined,
+      'a fortnight does not reach August',
     );
   });
 
@@ -92,7 +123,8 @@ suite('Task rollover', () => {
     assert.deepStrictEqual(result, {
       carried: 2,
       skipped: 0,
-      fromDate: '2026-09-18',
+      fromDates: ['2026-09-18'],
+      notes: 1,
     });
     assert.strictEqual(
       await read(todayUri),
@@ -147,7 +179,8 @@ suite('Task rollover', () => {
     assert.deepStrictEqual(again, {
       carried: 0,
       skipped: 2,
-      fromDate: '2026-09-18',
+      fromDates: ['2026-09-18'],
+      notes: 0,
     });
     assert.strictEqual(
       (await read(todayUri)).split('Chase the contractor').length - 1,
@@ -183,20 +216,67 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 
-  test('says in one sentence what it did', () => {
+  test('says in one sentence what it did, and where from', () => {
     assert.strictEqual(
-      describeRollover({ carried: 3, skipped: 0, fromDate: '2026-09-18' }, 'move'),
+      describeRollover(
+        { carried: 3, skipped: 0, fromDates: ['2026-09-18'], notes: 1 },
+        'move',
+      ),
       'Moved 3 unfinished tasks forward from 2026-09-18.',
     );
     assert.strictEqual(
-      describeRollover({ carried: 1, skipped: 2, fromDate: '2026-09-18' }, 'copy'),
+      describeRollover(
+        {
+          carried: 5,
+          skipped: 0,
+          fromDates: ['2026-08-12', '2026-09-09', '2026-09-18'],
+          notes: 3,
+        },
+        'move',
+      ),
+      'Moved 5 unfinished tasks forward from 3 daily notes, back to 2026-08-12.',
+    );
+    assert.strictEqual(
+      describeRollover(
+        { carried: 1, skipped: 2, fromDates: ['2026-09-18'], notes: 1 },
+        'copy',
+      ),
       'Copied 1 unfinished task forward from 2026-09-18. 2 tasks stayed behind, already carried or changed since.',
     );
     assert.ok(
-      describeRollover({ carried: 0, skipped: 1, fromDate: '2026-09-18' }, 'move').startsWith(
-        'Nothing was carried forward',
-      ),
+      describeRollover(
+        { carried: 0, skipped: 1, fromDates: ['2026-09-18'], notes: 0 },
+        'move',
+      ).startsWith('Nothing was carried forward'),
     );
+  });
+
+  test('takes tasks out of each note it drew them from', async () => {
+    const root = await createTemporaryRoot();
+    const older = vscode.Uri.joinPath(root, '2026-09-11.md');
+    const newer = vscode.Uri.joinPath(root, '2026-09-18.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-09-19.md');
+    await write(older, '# 2026-09-11\n\n- [ ] Open since last week\n');
+    await write(newer, '# 2026-09-18\n\n- [ ] Chase the contractor\n');
+    await write(todayUri, '# 2026-09-19\n\n');
+    const plan = planRollover(
+      indexOf({
+        [older.fsPath]: '# 2026-09-11\n\n- [ ] Open since last week\n',
+        [newer.fsPath]: '# 2026-09-18\n\n- [ ] Chase the contractor\n',
+      }),
+      '2026-09-19',
+    );
+    assert.ok(plan);
+
+    const result = await applyRollover(plan, todayUri, 'move');
+    assert.strictEqual(result?.carried, 2);
+    assert.strictEqual(result.notes, 2, 'two notes gave a task up');
+    const today = await read(todayUri);
+    assert.ok(today.includes('- [ ] Open since last week'), today);
+    assert.ok(today.includes('- [ ] Chase the contractor'));
+    assert.ok(!(await read(older)).includes('- [ ]'), 'the older note let go');
+    assert.ok(!(await read(newer)).includes('- [ ]'), 'and so did the newer');
+    await deleteTemporaryRoot(root);
   });
 });
 
