@@ -1127,7 +1127,9 @@ function isPinRecord(value: unknown): value is Record<string, unknown> {
  * reaching into the view layer that resolves them.
  */
 export function pinKey(pin: PinnedNote): string {
-  return [pin.filePath, pin.heading ?? '', pin.occurrence ?? 0].join('\u0000');
+  // Printable, because a row carries this key in an HTML attribute and a
+  // separator such as NUL does not survive being written into one.
+  return JSON.stringify([pin.filePath, pin.heading ?? '', pin.occurrence ?? 0]);
 }
 
 function uniqueStrings(values: readonly unknown[] | undefined): string[] {

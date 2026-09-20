@@ -216,7 +216,7 @@ suite('Dashboard Home widgets', () => {
         line: 1,
         title: 'Atlas hub',
         detail: 'hub.md · notes',
-        pinKey: 'notes/hub.md\u0000\u00000',
+        pinKey: '["notes/hub.md","",0]',
       },
     ]);
     assert.strictEqual(pinned.total, 1, 'a pinned note that is gone is left out');

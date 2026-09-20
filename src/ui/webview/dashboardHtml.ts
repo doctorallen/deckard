@@ -689,7 +689,8 @@ ${getQueryEditorScript()}
       case 'pinnedNotes':
         // Home lists pins and lets go of them; pinning happens where the
         // note is: the editor, a search result, or the command.
-        return renderHomeNotes(widget.notes, 'Pin the note you are in with “Deckard: Pin Note to Home”, or right-click a search result.', true, function (note) {
+        // A pin names an entry, so its row opens at that entry's line.
+        return renderHomeNotes(widget.notes, 'Pin the note you are in with “Deckard: Pin Note to Home”, or right-click a search result.', false, function (note) {
           return renderRowAction('unpin-note', 'data-pin-key="' + escapeHtml(note.pinKey || '') + '"', '×', 'Unpin ' + note.title);
         });
       case 'savedQuery':
