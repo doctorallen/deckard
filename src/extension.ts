@@ -335,6 +335,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,
+    // Dragging a task onto another ranks it there; onto a group, it joins
+    // that group through the same checked edit the board writes.
+    dragAndDropController: agenda,
   });
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);

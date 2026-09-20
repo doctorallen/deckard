@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import { Task, WorkspaceIndex } from '../core/types';
 import { createAgenda } from '../ui/state/agendaState';
+import { groupColumnId } from '../ui/views/agendaTree';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -116,6 +117,19 @@ suite('Agenda', () => {
       ['last-due', 'later', 'first-due'],
       'the ranked ones lead, and the rest keep their own order',
     );
+  });
+
+  test('knows which groups a dropped task can join', () => {
+    assert.strictEqual(groupColumnId('priority:high', 'priority'), 'priority:high');
+    assert.strictEqual(groupColumnId('priority:none', 'priority'), 'priority:');
+    assert.strictEqual(groupColumnId('doing', 'status'), 'status:doing');
+    assert.strictEqual(groupColumnId('none', 'status'), 'status:');
+    assert.strictEqual(groupColumnId('today', 'due'), 'due:today');
+    // Overdue covers a range of days and a person is written in a sentence,
+    // so neither names one edit a drop could make.
+    assert.strictEqual(groupColumnId('overdue', 'due'), undefined);
+    assert.strictEqual(groupColumnId('upcoming', 'due'), undefined);
+    assert.strictEqual(groupColumnId('@dana', 'assignee'), undefined);
   });
 
   test('is empty when no open task has a date in range', () => {

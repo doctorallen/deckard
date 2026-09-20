@@ -2,7 +2,16 @@ import * as vscode from 'vscode';
 
 import { Task, WorkspaceIndex } from '../../core/types';
 import { resolveSourceUri } from '../commands/navigation';
-import { toggleTask } from '../commands/taskActions';
+import {
+  readTaskMetadataFormat,
+  toggleTask,
+  updateTaskLine,
+} from '../commands/taskActions';
+import { mergeOrder } from '../state/dashboardState';
+import {
+  resolveTaskMove,
+  TaskBoardOptions,
+} from '../state/taskBoardState';
 import {
   AGENDA_GROUPINGS,
   AgendaEntry,
@@ -20,6 +29,7 @@ interface AgendaIndexSource {
 interface AgendaPreferences {
   readonly onDidChange: vscode.Event<unknown>;
   readonly value: { taskOrder: string[] };
+  setTaskOrder(taskOrder: string[]): Promise<void>;
 }
 
 type AgendaNode =
@@ -61,9 +71,19 @@ const GROUPING_ICONS: Readonly<
  * groups are rebuilt whenever the index changes and when the window regains
  * focus, because what counts as today moves at midnight.
  */
+/** What a dragged task carries: the ids being moved, in the order drawn. */
+const AGENDA_TASK_MIME = 'application/vnd.code.tree.deckard.agenda';
+
 export class AgendaTreeProvider
-  implements vscode.TreeDataProvider<AgendaNode>, vscode.Disposable
+  implements
+    vscode.TreeDataProvider<AgendaNode>,
+    vscode.TreeDragAndDropController<AgendaNode>,
+    vscode.Disposable
 {
+  public readonly dragMimeTypes = [AGENDA_TASK_MIME];
+  public readonly dropMimeTypes = [AGENDA_TASK_MIME];
+  /** The groups as they were last drawn, which a drop reads to rank within. */
+  private drawn: AgendaGroup[] = [];
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
@@ -151,6 +171,7 @@ export class AgendaTreeProvider
         : undefined,
       urgent,
     );
+    this.drawn = groups;
     return groups.map((group) => ({
       kind: 'group' as const,
       group,
@@ -160,6 +181,108 @@ export class AgendaTreeProvider
 
   public dispose(): void {
     this.disposables.forEach((disposable) => disposable.dispose());
+  }
+
+  /** Carries the tasks being dragged, and only tasks. */
+  public handleDrag(
+    source: readonly AgendaNode[],
+    data: vscode.DataTransfer,
+  ): void {
+    const taskIds = source
+      .filter((node) => node.kind === 'task')
+      .map((node) => (node as { entry: AgendaEntry }).entry.task.id);
+    if (taskIds.length > 0) {
+      data.set(AGENDA_TASK_MIME, new vscode.DataTransferItem(taskIds));
+    }
+  }
+
+  /**
+   * Dropping a task on another ranks it there; dropping it on a group makes
+   * the task belong to that group.
+   *
+   * Ranking is a preference, so it writes nothing to a note. Changing a
+   * group writes what the Task board's own drop writes, through the same
+   * checked edit, and a group that names no single edit — an overdue day,
+   * a person in a sentence — says so rather than guessing.
+   */
+  public async handleDrop(
+    target: AgendaNode | undefined,
+    data: vscode.DataTransfer,
+  ): Promise<void> {
+    const dragged = data.get(AGENDA_TASK_MIME)?.value as string[] | undefined;
+    if (!target || !dragged?.length) {
+      return;
+    }
+    const tasks = dragged
+      .map((taskId) => this.indexer.getTask(taskId))
+      .filter((task): task is Task => task !== undefined);
+    if (tasks.length === 0) {
+      return;
+    }
+    if (target.kind === 'task') {
+      await this.rankBefore(tasks, target.entry.task.id);
+      return;
+    }
+    await this.moveToGroup(tasks, target);
+  }
+
+  /** Puts the dragged tasks in front of the one they were dropped on. */
+  private async rankBefore(
+    tasks: readonly Task[],
+    targetId: string,
+  ): Promise<void> {
+    if (!this.preferences || !this.index) {
+      return;
+    }
+    const drawnIds = this.drawn.flatMap((group) =>
+      group.entries.map((entry) => entry.task.id),
+    );
+    const moving = new Set(tasks.map((task) => task.id));
+    if (moving.has(targetId)) {
+      return;
+    }
+    const ordered: string[] = [];
+    for (const taskId of drawnIds.filter((id) => !moving.has(id))) {
+      if (taskId === targetId) {
+        ordered.push(...tasks.map((task) => task.id));
+      }
+      ordered.push(taskId);
+    }
+    await this.preferences.setTaskOrder(
+      mergeOrder(ordered, this.index.tasks.keys()),
+    );
+    this.refresh();
+  }
+
+  /** Writes what belonging to a group means, or says why it cannot. */
+  private async moveToGroup(
+    tasks: readonly Task[],
+    target: { group: AgendaGroup; groupBy: AgendaGroupBy },
+  ): Promise<void> {
+    const columnId = groupColumnId(target.group.id, target.groupBy);
+    if (!columnId) {
+      void vscode.window.showInformationMessage(
+        `Deckard cannot write "${target.group.label}" on a task: it is not one edit. Drag it on the Task board, or edit the task.`,
+      );
+      return;
+    }
+    const options = readBoardOptions();
+    for (const task of tasks) {
+      const move = resolveTaskMove(task, columnId, options);
+      if (move.kind === 'refused') {
+        void vscode.window.showWarningMessage(move.reason);
+        continue;
+      }
+      if (move.kind === 'unchanged') {
+        continue;
+      }
+      if (move.kind === 'complete') {
+        await toggleTask(task, true);
+        continue;
+      }
+      await updateTaskLine(task, (line) => move.edit(line), move.label);
+    }
+    this.refresh();
   }
 
   private refresh(): void {
@@ -297,6 +420,43 @@ function getStatusNamespace(): string {
     .getConfiguration('deckard')
     .get<string>('board.statusNamespace', 'status');
   return value.trim() || 'status';
+}
+
+/**
+ * The Task board column a group means, when it means one.
+ *
+ * Due groups cover a range of days rather than one date, and a person is
+ * written in a task's own sentence, so neither names an edit a drop could
+ * make; the board refuses those drops for the same reason.
+ */
+export function groupColumnId(
+  groupId: string,
+  groupBy: AgendaGroupBy,
+): string | undefined {
+  if (groupBy === 'priority') {
+    const priority = groupId.slice('priority:'.length);
+    return `priority:${priority === 'none' ? '' : priority}`;
+  }
+  if (groupBy === 'status') {
+    return `status:${groupId === 'none' ? '' : groupId}`;
+  }
+  if (groupBy === 'due') {
+    return groupId === 'today' ? 'due:today' : undefined;
+  }
+  return undefined;
+}
+
+/** The board settings a drop writes with, read the way the board reads them. */
+function readBoardOptions(): TaskBoardOptions {
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  return {
+    now: Date.now(),
+    statuses: configuration.get<string[]>('board.statuses', []) ?? [],
+    statusNamespace:
+      configuration.get<string>('board.statusNamespace', 'status').trim() ||
+      'status',
+    format: readTaskMetadataFormat(configuration),
+  };
 }
 
 function getUpcomingDays(): number {

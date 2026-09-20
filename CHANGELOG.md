@@ -84,6 +84,13 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **Tasks can be dragged in the Tasks view.** Dropping one on another ranks
+  it there, in the same order the Task board's list uses, which writes
+  nothing to your notes. Dropping one on a group makes it belong to that
+  group — a priority, a status, or **Today** — through the same checked edit
+  the board's drops make. **Overdue**, **Upcoming** and a person name no
+  single edit, so those drops say so rather than guessing.
+
 - **The Agenda is now the Tasks view**, which is what it lists. Its settings
   keep their `deckard.agenda.…` names, so nothing configured has to change.
 

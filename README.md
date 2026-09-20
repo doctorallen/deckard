@@ -459,6 +459,7 @@ Open **Tasks** from the Deckard Activity Bar to see the open tasks that need att
   - **Person** groups by [who each task is for](#who-a-task-is-for), busiest first, with **Nobody named** last.
 - Within a group, tasks you have ranked on the [Task board](#task-board) lead in the order you dragged them into; the rest follow by date, or by priority in **Today**.
 - Each task shows why it is listed, its priority, and its file, plus `blocked by …` while a task it waits for with ⛔ is still open. Select a task to open its line.
+- **Drag a task onto another** to rank it there, which writes nothing to your notes — it is the same rank the [Task board's](#task-board) list uses. **Drag a task onto a group** to make it belong to that group: a priority, a status, or **Today**, each written through the same checked edit the board's drops make. A group that names no single edit — **Overdue**, **Upcoming**, or a person, who is written in the task's own sentence — says so rather than guessing.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - The view's badge counts the tasks that are overdue or due today, whatever it is grouped by.
 
