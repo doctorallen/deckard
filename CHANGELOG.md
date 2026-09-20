@@ -84,12 +84,24 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **Refine says what a click does to the search.** Each value sat between a
+  − and a + that were invisible until hovered while still holding their
+  width open, and the tooltip described the modifiers without naming what
+  they wrote. The two buttons are gone, and hovering a value now reads the
+  three things a click can do in the words of the query itself: **AND** this
+  clause, **AND NOT** it, or **OR** it with the value chosen before. The
+  search page, the Task board and the sidebar all say it the same way, and
+  <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd> and
+  <kbd>Shift</kbd>+<kbd>Enter</kbd> do the same from the keyboard.
+
 - **Tasks can be dragged in the Tasks view.** Dropping one on another ranks
   it there, in the same order the Task board's list uses, which writes
   nothing to your notes. Dropping one on a group makes it belong to that
-  group — a priority, a status, or **Today** — through the same checked edit
-  the board's drops make. **Overdue**, **Upcoming** and a person name no
-  single edit, so those drops say so rather than guessing.
+  group — a priority, a status, **Today**, or a person — through the same
+  checked edit the board's drops make; a person is handed the task by
+  rewriting the name on its line, leaving anyone else named there a mention,
+  and **Nobody named** takes the name off. **Overdue** and **Upcoming** cover
+  a range of days rather than one, so they name no edit and say so.
 
 - **The Agenda is now the Tasks view**, which is what it lists. Its settings
   keep their `deckard.agenda.…` names, so nothing configured has to change.

@@ -13,6 +13,7 @@ import {
   formatIsoDate,
   parseRecurrence,
   TaskDateField,
+  TaskMetadataFormat,
 } from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -466,6 +467,23 @@ export function setAssignee(
     (person ? written[0].label : '') +
     description.slice(at + first.length);
   return replaced.replace(/[ \t]{2,}/g, ' ').trim();
+}
+
+/**
+ * Rewrites a task line so a person is the one it is for, or so it is for
+ * nobody. Everything else the line holds — its dates, its priority, its
+ * marker — is written back as it was.
+ */
+export function assignTaskLine(
+  line: string,
+  person: string | undefined,
+  format: TaskMetadataFormat = 'emoji',
+): string {
+  const draft = parseTaskDraft(line, format);
+  return formatTaskDraft({
+    ...draft,
+    description: setAssignee(draft.description, person),
+  });
 }
 
 /** Writes a tag at the end of the description, unless it is already there. */

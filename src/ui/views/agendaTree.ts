@@ -3,10 +3,12 @@ import * as vscode from 'vscode';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { resolveSourceUri } from '../commands/navigation';
 import {
+  quoteTaskTitle,
   readTaskMetadataFormat,
   toggleTask,
   updateTaskLine,
 } from '../commands/taskActions';
+import { assignTaskLine } from '../commands/taskEditor';
 import { mergeOrder } from '../state/dashboardState';
 import {
   resolveTaskMove,
@@ -259,6 +261,24 @@ export class AgendaTreeProvider
     tasks: readonly Task[],
     target: { group: AgendaGroup; groupBy: AgendaGroupBy },
   ): Promise<void> {
+    // Who a task is for is the first person written on its line, so handing
+    // it over rewrites that name and leaves the rest of the line alone.
+    if (target.groupBy === 'assignee') {
+      const person =
+        target.group.id === 'none' ? undefined : target.group.label;
+      const format = readBoardOptions().format;
+      for (const task of tasks) {
+        await updateTaskLine(
+          task,
+          (line) => assignTaskLine(line, person, format),
+          person
+            ? `${quoteTaskTitle(task)} is for ${person}.`
+            : `${quoteTaskTitle(task)} is for nobody now.`,
+        );
+      }
+      this.refresh();
+      return;
+    }
     const columnId = groupColumnId(target.group.id, target.groupBy);
     if (!columnId) {
       void vscode.window.showInformationMessage(
@@ -425,9 +445,9 @@ function getStatusNamespace(): string {
 /**
  * The Task board column a group means, when it means one.
  *
- * Due groups cover a range of days rather than one date, and a person is
- * written in a task's own sentence, so neither names an edit a drop could
- * make; the board refuses those drops for the same reason.
+ * A person is not one of these: a task is handed over by rewriting the name
+ * on its line, which the view does itself. Due groups other than Today cover
+ * a range of days rather than one date, so they name no edit at all.
  */
 export function groupColumnId(
   groupId: string,

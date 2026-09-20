@@ -125,11 +125,14 @@ suite('Agenda', () => {
     assert.strictEqual(groupColumnId('doing', 'status'), 'status:doing');
     assert.strictEqual(groupColumnId('none', 'status'), 'status:');
     assert.strictEqual(groupColumnId('today', 'due'), 'due:today');
-    // Overdue covers a range of days and a person is written in a sentence,
-    // so neither names one edit a drop could make.
+    // Overdue and Upcoming cover a range of days, so neither names one edit.
     assert.strictEqual(groupColumnId('overdue', 'due'), undefined);
     assert.strictEqual(groupColumnId('upcoming', 'due'), undefined);
-    assert.strictEqual(groupColumnId('@dana', 'assignee'), undefined);
+    assert.strictEqual(
+      groupColumnId('@dana', 'assignee'),
+      undefined,
+      'a person is not a board column: the view rewrites the name itself',
+    );
   });
 
   test('is empty when no open task has a date in range', () => {

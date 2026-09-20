@@ -10,6 +10,7 @@ import {
 } from '../core/markdown/taskDraft';
 import {
   appendTag,
+  assignTaskLine,
   completeDraft,
   createEditorRows,
   editTaskCommand,
@@ -152,6 +153,22 @@ suite('Task editor', () => {
     assert.strictEqual(
       setAssignee('Chase the contractor', '#project/atlas'),
       'Chase the contractor',
+    );
+  });
+
+  test('hands a whole task line over, keeping everything else on it', () => {
+    assert.strictEqual(
+      assignTaskLine('- [ ] Chase the contractor ⏫ 📅 2026-09-25', '@dana'),
+      '- [ ] Chase the contractor @dana ⏫ 📅 2026-09-25',
+    );
+    assert.strictEqual(
+      assignTaskLine('- [ ] Chase it @dana with @ren-kade 📅 2026-09-25', '@mara-vale'),
+      '- [ ] Chase it @mara-vale with @ren-kade 📅 2026-09-25',
+    );
+    assert.strictEqual(
+      assignTaskLine('- [ ] Chase it @dana 📅 2026-09-25 ^chase', undefined),
+      '- [ ] Chase it 📅 2026-09-25 ^chase',
+      'nobody takes the name off, and the marker still ends the line',
     );
   });
 

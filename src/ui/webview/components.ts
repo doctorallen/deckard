@@ -1441,13 +1441,10 @@ export function getQueryEditorCss(): string {
 .query-facets-empty { color: var(--muted); font-size: 11px; }
 /* A value and its two other modes read as one control. The modes stay out of
    the way until the value is hovered or something in it has focus. */
-.query-facet-value-group { display: inline-flex; align-items: stretch; }
+
 /* The mode is held back by staying hidden until the value is hovered, not by
    a muted color, which would be muted against whatever ground a theme gives
    its controls rather than against the page. */
-.query-facet-mode { min-width: 20px; min-height: 26px; margin-left: -1px; padding: 0 4px; border-color: var(--line); font-size: 11px; opacity: 0; }
-.query-facet-value-group:hover .query-facet-mode, .query-facet-mode:focus-visible { opacity: 1; }
-@media (hover: none) { .query-facet-mode { opacity: 1; } }
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
@@ -1817,19 +1814,38 @@ export function getQueryEditorScript(): string {
       }).join('') + '</div>' + count + '</section>';
     }
 
-    /** One value of a facet, with how strongly it is related when it is a tag. */
+    /**
+     * What clicking a Refine value does to the search, in the words of the
+     * query it writes. A reader is choosing between AND, OR and NOT, so the
+     * tooltip names them rather than describing them.
+     */
+    function describeFacetValue(value) {
+      const clause = value.clause || '';
+      return [
+        value.detail ? value.detail : '',
+        'Click — AND ' + clause + ': keep only results that match it',
+        'Alt-click — AND NOT ' + clause + ': leave those results out',
+        'Shift-click — OR ' + clause + ': widen the last value chosen here, so either matches',
+      ].filter(Boolean).join('\\n');
+    }
+
+    /**
+     * One value of a facet, with how strongly it is related when it is a tag.
+     *
+     * A value is one button. It used to sit between a hidden − and +, which
+     * held their width open whether or not anyone hovered; the same three
+     * things are said by the click, Alt-click and Shift-click the tooltip
+     * spells out, and a keyboard does them with Enter, Alt-Enter and
+     * Shift-Enter on the focused value.
+     */
     function renderFacetValue(facet, value) {
       const isTag = facet.id === 'tags' || facet.id === 'related';
       const hasStrength = typeof value.strength === 'number';
-      const help = 'Show only these. Alt-click to leave them out; Shift-click to allow them as well.';
-      const title = value.detail ? value.detail + '. ' + help : help;
+      const name = value.label;
+      const title = describeFacetValue(value);
       const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
       const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
-      return '<span class="query-facet-value-group">'
-        + '<button class="query-facet-value" data-action="facet"' + shared + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + value.label + strength + ', ' + value.count) + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(value.label) : escapeHtml(value.label)) + '<span class="query-facet-count">' + value.count + '</span></button>'
-        + '<button class="query-facet-mode" data-action="facet-exclude"' + shared + ' title="Leave these out" aria-label="' + escapeHtml('Leave ' + value.label + ' out of the search') + '">&minus;</button>'
-        + '<button class="query-facet-mode" data-action="facet-or"' + shared + ' title="Allow these as well" aria-label="' + escapeHtml('Allow ' + value.label + ' as well') + '">+</button>'
-        + '</span>';
+      return '<button class="query-facet-value" data-action="facet"' + shared + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
     }
 
     /** How many of each kind of result the applied search matches. */
@@ -2528,10 +2544,6 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'facet') {
           refine(target.dataset.clause, target.dataset.facetId, event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and');
-          return true;
-        }
-        if (action === 'facet-exclude' || action === 'facet-or') {
-          refine(target.dataset.clause, target.dataset.facetId, action === 'facet-exclude' ? 'exclude' : 'or');
           return true;
         }
         if (action === 'builder-add-group') {

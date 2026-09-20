@@ -459,7 +459,8 @@ Open **Tasks** from the Deckard Activity Bar to see the open tasks that need att
   - **Person** groups by [who each task is for](#who-a-task-is-for), busiest first, with **Nobody named** last.
 - Within a group, tasks you have ranked on the [Task board](#task-board) lead in the order you dragged them into; the rest follow by date, or by priority in **Today**.
 - Each task shows why it is listed, its priority, and its file, plus `blocked by …` while a task it waits for with ⛔ is still open. Select a task to open its line.
-- **Drag a task onto another** to rank it there, which writes nothing to your notes — it is the same rank the [Task board's](#task-board) list uses. **Drag a task onto a group** to make it belong to that group: a priority, a status, or **Today**, each written through the same checked edit the board's drops make. A group that names no single edit — **Overdue**, **Upcoming**, or a person, who is written in the task's own sentence — says so rather than guessing.
+- **Drag a task onto another** to rank it there, which writes nothing to your notes — it is the same rank the [Task board's](#task-board) list uses.
+- **Drag a task onto a group** to make it belong to that group, written into the task through the same checked edit the board's drops make: a **priority**, a **status**, **Today** for a due date, or a **person**, which rewrites who the task is for and leaves anyone else named on the line as a mention. **Nobody named** takes the name off. **Overdue** and **Upcoming** cover a range of days rather than one, so they name no edit and say so.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - The view's badge counts the tasks that are overdue or due today, whatever it is grouped by.
 
@@ -654,9 +655,10 @@ Search pages, Home's search widget, and the Task board have the same search box.
 
 Under the search box, **Refine** counts what the results could still be narrowed by: open and done tasks, due dates (overdue, the next seven days, later, or none), the tags the results carry, when notes were last updated, and the folders they are in. Each value shows how many of the current results it keeps, and a value that would keep all of them, or none, is not offered.
 
-- Select a value to add it to the search.
-- <kbd>Alt</kbd>-select it to leave those results out instead.
-- <kbd>Shift</kbd>-select a second value of the same kind to allow either, such as open *or* done tasks.
+- Select a value to add it to the search with **AND**, keeping only the results that match it.
+- <kbd>Alt</kbd>-select it to add it with **AND NOT**, leaving those results out.
+- <kbd>Shift</kbd>-select it to add it with **OR**, widening the value chosen before it so either matches — open *or* done tasks, say.
+- Hovering a value says which of the three a click, Alt-click, and Shift-click writes, in the words of the query itself. From the keyboard, <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd>, and <kbd>Shift</kbd>+<kbd>Enter</kbd> on a focused value do the same.
 
 Every value adds ordinary query text, so a refined search can be saved, copied into a query block, or edited in the builder. A search of one tag, or of several tags joined by AND, lists related **Tags** instead of counting the tags the results carry, since associations are ranked better than a count can be: strongest first, with a three-step rail showing each one's strength beside the strongest, and kept even when every result carries them, since they still say how the tags relate. While the Related Notes sidebar is open beside the page, Refine is [shown there](#refine-a-search-from-the-sidebar).
 

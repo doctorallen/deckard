@@ -183,19 +183,33 @@ ${getComponentScript()}
     }).join('');
   }
 
-  /** One value of a facet: a tag opens, and its + narrows by it. */
+  /**
+   * What clicking a value does to the search, named as the query names it,
+   * so the three modifiers do not have to be remembered.
+   */
+  function describeRefineValue(value) {
+    const clause = value.clause || '';
+    return [
+      value.detail ? value.detail : '',
+      'Click — AND ' + clause + ': keep only results that match it',
+      'Alt-click — AND NOT ' + clause + ': leave those results out',
+      'Shift-click — OR ' + clause + ': widen the last value chosen here, so either matches',
+    ].filter(Boolean).join('\\n');
+  }
+
+  /** One value of a facet: a tag opens, and the row narrows by it. */
   function renderRefineValue(facet, value) {
     const narrow = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
-    const help = 'Alt-click to leave these out; Shift-click to allow them as well.';
+    const help = describeRefineValue(value);
     if (facet.id === 'related' || facet.id === 'tags') {
       const hasStrength = typeof value.strength === 'number';
       const strengthText = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
       // The row narrows the search by the tag; the icon beside it opens the
       // tag's own page in a new tab.
-      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' title="' + escapeHtml((value.detail ? value.detail + '. ' : '') + 'Add to the search. ' + help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
+      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' title="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
         + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" title="Open ' + escapeHtml(value.label) + ' in a new tab"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/></svg></button></div>';
     }
-    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" title="Show only these. ' + help + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
+    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" title="' + escapeHtml(help) + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
   }
 
   /**
@@ -213,7 +227,7 @@ ${getComponentScript()}
       : '';
     const heading = '<div class="refine-heading"><h2>Refine</h2>' + subject
       + (facets.length && String(query.text || '').trim()
-        ? '<p class="refine-hint">Select a value to add it to the search. Alt-click leaves it out; Shift-click allows it beside the one already chosen. The icon beside a tag opens it in a new tab.</p>'
+        ? '<p class="refine-hint">Selecting a value adds it to the search with AND; Alt-click adds it with AND NOT, and Shift-click with OR, widening the value chosen before it. The icon beside a tag opens it in a new tab.</p>'
         : '')
       + '</div>';
     if (!String(query.text || '').trim()) {
