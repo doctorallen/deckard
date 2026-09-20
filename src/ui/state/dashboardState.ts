@@ -62,6 +62,7 @@ import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
+import { createPinForLine, pinKey } from './pinnedNotes';
 import { findTagMergeCandidates } from './tagHygiene';
 
 /**
@@ -219,11 +220,24 @@ export function createSearchPageSnapshot(
         tasks: [...index.tasks.values()],
         files: listFrontmatterOnlyFiles(index),
       };
+  // Which entries are pinned, so a card's menu offers pinning or unpinning
+  // rather than one word that is wrong half the time.
+  const pinnedKeys = new Set(
+    (preferences.pinnedNotes ?? []).map((pin) => pinKey(pin)),
+  );
   const cardFor = (section: Section): TagOverviewCard =>
     createTagOverviewCard(
       section,
       preferences.sectionAccessCounts,
       tagTitleDisplayMode,
+      pinnedKeys.size > 0 &&
+        pinnedKeys.has(
+          pinKey(
+            createPinForLine(index, section.filePath, section.startLine) ?? {
+              filePath: section.filePath,
+            },
+          ),
+        ),
     );
   const plainTerms = getPlainTextTerms(drafted.node);
   const cards = plainTerms
@@ -1022,11 +1036,13 @@ function createTagOverviewCard(
   section: Section,
   sectionAccessCounts: Record<string, number>,
   tagTitleDisplayMode: TagTitleDisplayMode,
+  pinned = false,
 ): TagOverviewCard {
   return {
     id: section.id,
     filePath: section.filePath,
     heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    ...(pinned ? { pinned } : {}),
     titleTags: getTitleTags(
       section.tags,
       section.tagLabels,

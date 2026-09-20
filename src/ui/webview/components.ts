@@ -700,9 +700,12 @@ export function getComponentScript(): string {
     tagContextKey = undefined;
   }
 
-  function openTagContextMenu(event, target) {
-    const tagKey = target.dataset.tagKey;
-    if (!tagKey) return;
+  /**
+   * A menu where the pointer is, of whatever a page offers there. Each item
+   * is { action, label } and posts its action through the page's handler.
+   */
+  function openContextMenu(event, items) {
+    if (!items.length) return;
     event.preventDefault();
     closeTagContextMenu();
     if (!tagContextMenu) {
@@ -712,13 +715,23 @@ export function getComponentScript(): string {
       tagContextMenu.setAttribute('role', 'menu');
       document.body.appendChild(tagContextMenu);
     }
-    tagContextKey = tagKey;
-    tagContextMenu.innerHTML = '<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>';
+    tagContextMenu.innerHTML = items.map(function (item) {
+      return '<button type="button" role="menuitem" data-context-action="' + escapeHtml(item.action) + '">' + escapeHtml(item.label) + '</button>';
+    }).join('');
     tagContextMenu.hidden = false;
     const bounds = tagContextMenu.getBoundingClientRect();
     tagContextMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
     tagContextMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
     tagContextMenu.querySelector('button').focus();
+  }
+
+  function openTagContextMenu(event, target) {
+    const tagKey = target.dataset.tagKey;
+    if (!tagKey) return;
+    // Opening closes whatever was open, which lets go of the tag it was
+    // about, so this menu's tag is remembered after that and not before.
+    openContextMenu(event, [{ action: 'rename-tag', label: 'Rename tag' }]);
+    tagContextKey = tagKey;
   }
 
   function installTagContextMenu(onAction) {

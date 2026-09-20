@@ -357,7 +357,7 @@ export interface PersistedPreferences {
    */
   tagFirstSeen?: Record<string, number>;
   /** Notes pinned to Home, by path, in the order they were pinned. */
-  pinnedNotes?: string[];
+  pinnedNotes?: PinnedNote[];
 }
 
 /**
@@ -429,6 +429,8 @@ export interface DashboardWidgetNote {
   line: number;
   title: string;
   detail: string;
+  /** For a pinned note, the pin its row lets go of. */
+  pinKey?: string;
 }
 
 /** Two tags written together, as Home lists them. */
@@ -487,10 +489,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   searchState?: QueryViewState;
   tagPairs?: DashboardWidgetTagPair[];
   today?: DashboardWidgetToday;
-  /** The note a related-notes widget ranks by, or a note Home can pin. */
+  /** The note a related-notes widget ranks by. */
   sourceNote?: DashboardWidgetNote;
-  /** Whether the note in the editor last is already pinned. */
-  sourcePinned?: boolean;
 }
 
 /**
@@ -587,6 +587,8 @@ export interface TagOverviewCard {
   id: string;
   filePath: string;
   heading: string;
+  /** Whether this entry is pinned to Home, so a menu says which it offers. */
+  pinned?: boolean;
   titleTags: TagReference[];
   tags: TagReference[];
   rawContent: string;
@@ -1008,10 +1010,31 @@ export interface CreateTagHubMessage {
   tagKey: string;
 }
 
-/** Pins a note to Home, or unpins it. */
+/**
+ * A note pinned to Home: an entry of a file, or the file itself.
+ *
+ * A note in Deckard is a heading and what is written under it, so a pin
+ * names one. It is kept as what a reader would use to find that heading
+ * again rather than as the section's id, which is a hash of the heading's
+ * line and text and changes whenever anything above it is written.
+ */
+export interface PinnedNote {
+  filePath: string;
+  /** The heading it pins, as written; absent when it pins the whole note. */
+  heading?: string;
+  headingLevel?: number;
+  /** Which heading of that text and level it is, counted from zero. */
+  occurrence?: number;
+}
+
+/** Pins the note at a line to Home, or unpins the pin a row names. */
 export interface PinNoteMessage {
   type: 'pinNote' | 'unpinNote';
   filePath: string;
+  /** The line whose entry is pinned; the whole note without one. */
+  line?: number;
+  /** Which pin to remove, as `pinKey` writes it. */
+  pinKey?: string;
 }
 
 /** Opens a note at its top. */
@@ -1227,6 +1250,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | PinNoteMessage
   | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage

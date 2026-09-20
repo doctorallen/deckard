@@ -37,6 +37,9 @@ import { CalendarView } from './ui/webview/calendar';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
+import { setNotePinnedCommand } from './ui/commands/pinNote';
+import { createPinForLine } from './ui/state/pinnedNotes';
+import { pinKey } from './core/storage/preferences';
 import {
   LinkMaintenance,
   renameHeadingCommand,
@@ -139,6 +142,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
   );
   const tagDecorations = new EditorTagDecorations();
+  // The hover on an entry offers to pin it, so it has to know which entries
+  // are pinned; preferences answer, and a change redraws the hovers.
+  const readPinned = (): void => {
+    tagDecorations.setPinnedReader((filePath, line) => {
+      const pin = createPinForLine(
+        indexer.getSnapshot(),
+        indexer.getFilePath(vscode.Uri.file(filePath)),
+        line,
+      );
+      return pin !== undefined && preferences.isPinned(pinKey(pin));
+    });
+  };
+  readPinned();
+  context.subscriptions.push(preferences.onDidChange(() => readPinned()));
   const tagSuggestions = new TagCompletionProvider(indexer);
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
@@ -458,11 +475,29 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       editTaskCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
-    vscode.commands.registerCommand('deckard.pinNote', () =>
-      setNotePinned(indexer, preferences, true),
+    // The hover on a tagged entry passes the line it was shown on, so it
+    // pins that entry rather than wherever the cursor happens to be.
+    vscode.commands.registerCommand(
+      'deckard.pinNote',
+      (documentUri?: unknown, line?: unknown) =>
+        setNotePinnedCommand(
+          indexer,
+          preferences,
+          true,
+          typeof documentUri === 'string' ? documentUri : undefined,
+          typeof line === 'number' ? line : undefined,
+        ),
     ),
-    vscode.commands.registerCommand('deckard.unpinNote', () =>
-      setNotePinned(indexer, preferences, false),
+    vscode.commands.registerCommand(
+      'deckard.unpinNote',
+      (documentUri?: unknown, line?: unknown) =>
+        setNotePinnedCommand(
+          indexer,
+          preferences,
+          false,
+          typeof documentUri === 'string' ? documentUri : undefined,
+          typeof line === 'number' ? line : undefined,
+        ),
     ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
       capture(indexer, 'heading'),
@@ -749,26 +784,3 @@ async function showTagOverview(
   }
 }
 
-/** Pins the note in the editor to Home's Pinned notes, or unpins it. */
-async function setNotePinned(
-  indexer: WorkspaceIndexer,
-  preferences: PreferencesStore,
-  pinned: boolean,
-): Promise<void> {
-  const uri = vscode.window.activeTextEditor?.document.uri;
-  if (!uri || !indexer.isNotesFile(uri)) {
-    void vscode.window.showInformationMessage(
-      'Open a note in the notes folder to pin it to Home.',
-    );
-    return;
-  }
-  const filePath = indexer.getFilePath(uri);
-  const name = filePath.split('/').pop() ?? filePath;
-  if (pinned) {
-    await preferences.pinNote(filePath);
-    void vscode.window.showInformationMessage(`Pinned ${name} to Home.`);
-  } else {
-    await preferences.unpinNote(filePath);
-    void vscode.window.showInformationMessage(`Unpinned ${name} from Home.`);
-  }
-}

@@ -247,7 +247,7 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */
@@ -276,6 +276,24 @@ ${getQueryEditorScript()}
    * Edit every result of this search at once. The host asks what to do and
    * which of them, so the page hands over the intent and nothing else.
    */
+  /** The result a card context menu is about, while the menu is open. */
+  var cardContext = null;
+
+  /** Pinning, on the results a search already gathered. */
+  function openCardContextMenu(event, card) {
+    cardContext = {
+      filePath: card.dataset.filePath,
+      line: Number(card.dataset.line),
+      pinned: card.dataset.pinned === 'true',
+    };
+    openContextMenu(event, [
+      {
+        action: 'pin-note',
+        label: cardContext.pinned ? 'Unpin from Home' : 'Pin to Home',
+      },
+    ]);
+  }
+
   function editResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Edit these tasks' : 'Edit these notes';
@@ -395,9 +413,14 @@ ${getQueryEditorScript()}
     const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
     if (contextAction) {
       const tagKey = tagContextKey;
+      const card = cardContext;
       closeTagContextMenu();
+      cardContext = null;
       if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
         vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
+      }
+      if (contextAction.dataset.contextAction === 'pin-note' && card) {
+        vscode.postMessage({ type: card.pinned ? 'unpinNote' : 'pinNote', filePath: card.filePath, line: card.line });
       }
       return;
     }
@@ -444,8 +467,15 @@ ${getQueryEditorScript()}
     }
   });
   document.addEventListener('contextmenu', function (event) {
-    const target = event.target.closest('[data-tag-key]');
-    if (target) openTagContextMenu(event, target);
+    const tag = event.target.closest('[data-tag-key]');
+    if (tag) {
+      openTagContextMenu(event, tag);
+      return;
+    }
+    // A result carries what a pin needs: its note, and the line its entry
+    // starts on. The host turns that into a pin on the entry itself.
+    const card = event.target.closest('.card');
+    if (card) openCardContextMenu(event, card);
   });
   document.addEventListener('keydown', function (event) {
     if (editor.handleKeydown(event)) return;

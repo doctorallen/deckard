@@ -686,14 +686,12 @@ ${getQueryEditorScript()}
         });
       case 'quietPeople':
         return renderHomeTags(widget.tags, 'Everyone you write about has come up in the last ' + (widget.days || 90) + ' days.');
-      case 'pinnedNotes': {
-        const source = widget.sourceNote && !widget.sourcePinned
-          ? renderSourceNote('Open:', widget.sourceNote, renderRowAction('pin-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Pin', 'Pin ' + widget.sourceNote.title + ' to Home'))
-          : '';
-        return source + renderHomeNotes(widget.notes, 'Pin a note with “Deckard: Pin Note to Home” to keep it here.', true, function (note) {
-          return renderRowAction('unpin-note', 'data-file-path="' + escapeHtml(note.filePath) + '"', '×', 'Unpin ' + note.title);
+      case 'pinnedNotes':
+        // Home lists pins and lets go of them; pinning happens where the
+        // note is: the editor, a search result, or the command.
+        return renderHomeNotes(widget.notes, 'Pin the note you are in with “Deckard: Pin Note to Home”, or right-click a search result.', true, function (note) {
+          return renderRowAction('unpin-note', 'data-pin-key="' + escapeHtml(note.pinKey || '') + '"', '×', 'Unpin ' + note.title);
         });
-      }
       case 'savedQuery':
         if (widget.missing) return '<p class="home-widget-empty">This saved search was removed. <button type="button" data-action="customize-home">Pick another</button></p>';
         // A search saved on the Task Board finds tasks alone.
@@ -1031,8 +1029,7 @@ ${getQueryEditorScript()}
       if (action === 'create-tag-hub') send({ type: 'createTagHub', tagKey: target.dataset.tagKey });
       if (action === 'rename-tag') send({ type: 'renameTag', tagKey: target.dataset.tagKey });
       if (action === 'open-note') send({ type: 'openNote', filePath: target.dataset.filePath });
-      if (action === 'pin-note') send({ type: 'pinNote', filePath: target.dataset.filePath });
-      if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath });
+      if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath || ' ', pinKey: target.dataset.pinKey });
       if (action === 'open-search') send({ type: 'openSearch', query: target.dataset.query || '' });
       if (action === 'open-task-board') send({ type: 'openTaskBoard', query: target.dataset.query || '' });
       if (action === 'open-view') send({ type: 'openView', view: target.dataset.view });

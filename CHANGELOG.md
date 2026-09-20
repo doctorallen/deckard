@@ -84,6 +84,20 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **Pinning pins the note you are in, not the file it is in.** A note in
+  Deckard is an entry, but a pin was a path: pinning from inside a note's
+  sixth section put the file on Home, titled with its first heading and
+  opening at line 1. A pin now names the entry — kept as the heading's text,
+  its level and which heading of that text it is, and resolved each time
+  Home draws, so writing above a pinned heading does not lose it. A heading
+  that is gone leaves the pin on its note and says so rather than vanishing,
+  and a pin kept from an earlier version still means the whole note.
+  Pinning moved to where the note is, too: the command pins the entry the
+  cursor is in, the hover on a tagged entry offers **Pin … to Home** beside
+  its related notes, and a search result offers it on right-click — each
+  with **Undo** beside what it says. Home's own **Pin** button is gone,
+  since Home is the one place the note being pinned is not in front of you.
+
 - **`Deckard: Edit Task` and `Deckard: Add Task` build or edit a whole task
   at once.** Metadata
   could be typed after `/` one marker at a time, which is fine for adding a

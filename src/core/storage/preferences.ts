@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import {
   PersistedPreferences,
+  PinnedNote,
   DEFAULT_SEARCH_PAGE_SIZE,
   SearchPageSize,
   SEARCH_PAGE_SIZES,
@@ -350,20 +351,31 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /** Pins a note to Home, after the notes pinned before it. */
-  public async pinNote(filePath: string): Promise<void> {
+  public async pinNote(pin: PinnedNote): Promise<void> {
     const pinnedNotes = this.preferences.pinnedNotes ?? [];
-    if (pinnedNotes.includes(filePath) || pinnedNotes.length >= PINNED_NOTE_LIMIT) {
+    if (
+      pinnedNotes.some((candidate) => pinKey(candidate) === pinKey(pin)) ||
+      pinnedNotes.length >= PINNED_NOTE_LIMIT
+    ) {
       return;
     }
-    await this.update({ pinnedNotes: [...pinnedNotes, filePath] });
+    await this.update({ pinnedNotes: [...pinnedNotes, pin] });
   }
 
-  public async unpinNote(filePath: string): Promise<void> {
+  /** Unpins the pin a row names, by the key `pinKey` writes for it. */
+  public async unpinNote(key: string): Promise<void> {
     await this.update({
       pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
-        (candidate) => candidate !== filePath,
+        (candidate) => pinKey(candidate) !== key,
       ),
     });
+  }
+
+  /** Whether something is already pinned, by its key. */
+  public isPinned(key: string): boolean {
+    return (this.preferences.pinnedNotes ?? []).some(
+      (candidate) => pinKey(candidate) === key,
+    );
   }
 
   public async setDashboardMode(mode: DashboardMode): Promise<void> {
@@ -744,8 +756,10 @@ export class PreferencesStore implements vscode.Disposable {
       ),
       savedFilters,
       tagFirstSeen,
+      // A pin is kept while its note is there, whatever became of the
+      // heading it named: the heading is resolved when Home draws.
       pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
-        (filePath) => validFiles?.has(filePath) ?? true,
+        (pin) => validFiles?.has(pin.filePath) ?? true,
       ),
     };
     // Every index update prunes, and it rarely removes anything. Writing
@@ -888,7 +902,7 @@ function normalizePreferences(
     ...(typeof value?.tagFirstSeen === 'object' && value.tagFirstSeen !== null
       ? { tagFirstSeen: normalizeFirstSeenTimes(value.tagFirstSeen) }
       : {}),
-    pinnedNotes: uniqueStrings(value?.pinnedNotes).slice(0, PINNED_NOTE_LIMIT),
+    pinnedNotes: normalizePinnedNotes(value?.pinnedNotes),
   };
 }
 
@@ -1060,6 +1074,62 @@ function normalizeSearchQuery(value: string | undefined): string {
 /**
  * Removes duplicate and empty identifiers before they reach ordering logic.
  */
+/**
+ * Reads the pins a workspace kept, whichever shape they were written in.
+ *
+ * Pins were paths before a pin could name an entry, so a string is read as a
+ * pin on the whole note — which is what it meant.
+ */
+export function normalizePinnedNotes(value: unknown): PinnedNote[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const pins: PinnedNote[] = [];
+  for (const entry of value) {
+    const pin =
+      typeof entry === 'string'
+        ? { filePath: entry }
+        : isPinRecord(entry) && typeof entry.filePath === 'string'
+          ? {
+              filePath: entry.filePath,
+              ...(typeof entry.heading === 'string' && entry.heading
+                ? { heading: entry.heading }
+                : {}),
+              ...(typeof entry.headingLevel === 'number' &&
+              Number.isInteger(entry.headingLevel)
+                ? { headingLevel: entry.headingLevel }
+                : {}),
+              ...(typeof entry.occurrence === 'number' &&
+              Number.isInteger(entry.occurrence) &&
+              entry.occurrence >= 0
+                ? { occurrence: entry.occurrence }
+                : {}),
+            }
+          : undefined;
+    if (!pin || !pin.filePath) {
+      continue;
+    }
+    if (!pins.some((kept) => pinKey(kept) === pinKey(pin))) {
+      pins.push(pin);
+    }
+  }
+  return pins.slice(0, PINNED_NOTE_LIMIT);
+}
+
+/** Whether a stored value could be a pin at all. */
+function isPinRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
+ * A pin's identity: its note, the heading it named, and which heading of
+ * that text it was. Kept here so preferences can compare pins without
+ * reaching into the view layer that resolves them.
+ */
+export function pinKey(pin: PinnedNote): string {
+  return [pin.filePath, pin.heading ?? '', pin.occurrence ?? 0].join('\u0000');
+}
+
 function uniqueStrings(values: readonly unknown[] | undefined): string[] {
   return [
     ...new Set(

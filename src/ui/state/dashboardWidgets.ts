@@ -29,6 +29,7 @@ import {
 } from './dashboardState';
 import { frecencyScore } from './frecency';
 import { listQuietPeople } from './peopleRecency';
+import { pinKey, resolvePin } from './pinnedNotes';
 import {
   collectFileTags,
   rankRelatedNotes,
@@ -445,22 +446,13 @@ function createWidget(
       };
     }
     case 'pinnedNotes': {
-      const pinned = (preferences.pinnedNotes ?? []).filter((filePath) =>
-        index.files.has(filePath),
-      );
-      const source = options.sourceNotePath;
-      return {
-        ...widget,
-        total: pinned.length,
-        notes: take(pinned)
-          .map((filePath) => describeNote(index, filePath)),
-        ...(source && index.files.has(source)
-          ? {
-              sourceNote: describeNote(index, source),
-              sourcePinned: pinned.includes(source),
-            }
-          : {}),
-      };
+      // A pin names an entry, so each row is resolved against the index: the
+      // heading it was put on, or the note when that heading is gone.
+      const pinned = (preferences.pinnedNotes ?? []).flatMap((pin) => {
+        const resolved = resolvePin(index, pin);
+        return resolved ? [{ ...resolved, pinKey: pinKey(pin) }] : [];
+      });
+      return { ...widget, total: pinned.length, notes: take(pinned) };
     }
   }
 }

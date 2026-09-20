@@ -92,7 +92,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
-| **Deckard: Pin Note to Home** | Adds the note in the editor to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
+| **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, such as `2026-W37.md`, with [its review](#writing-a-review) written in. |
@@ -362,9 +362,17 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 | **Tags without a hub** | Tags used at least three times with no [hub note](#hub-notes), each with **Create hub** | The Tags tab |
 | **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename**, so a typo is caught early | The Tags tab |
 | **People gone quiet** | The people you have not written about for 30, 60, 90, or 180 days, longest ago first, each with how long it has been and what is still open with them | The Tags tab |
-| **Pinned notes** | Notes you pinned, each with **×** to unpin; **Pin** adds the note you had open last | The notes |
+| **Pinned notes** | The notes you pinned, each with **×** to let go of it | The note, at the heading you pinned |
 
-Pin the note in the editor with `Deckard: Pin Note to Home`, and unpin it with `Deckard: Unpin Note from Home`. A tag is new from the first time Deckard indexes it; the tags in use when Deckard first kept track are not new.
+A tag is new from the first time Deckard indexes it; the tags in use when Deckard first kept track are not new.
+
+**Pinning happens where the note is**, since a note in Deckard is an entry — a heading and what is written under it — and Home is the one place where the note being pinned is not in front of you. Three ways, all pinning the entry rather than the file:
+
+- `Deckard: Pin Note to Home` pins the entry the cursor is in, and `Deckard: Unpin Note from Home` lets it go.
+- **Hovering a tagged entry** in the editor offers **Pin … to Home** beside **Show related notes for …**, and **Unpin** once it is pinned.
+- **Right-clicking a result** on a search page offers the same for that result.
+
+Each says what it did with **Undo** beside it. A pin is kept as the heading's text, its level, and which heading of that text it is, and is found again each time Home draws — so writing above a pinned heading, or promoting it, does not lose the pin. A heading that is gone leaves the pin on its note, saying the heading was not found, rather than disappearing. A note with no heading above the cursor, such as a front-matter-only note, is pinned whole, which is what pins were before they could name an entry: pins kept from earlier versions still point where they did.
 
 **People gone quiet** reads `@` tags and `#person/…` tags together, so one person written both ways is counted as the two tags they are — [Stats](#tags-that-look-alike) says when that is what has happened. A name was last written on the day of the newest note carrying it, dated the way Deckard dates every note: a `updated:` field first, then a daily note's day, then the file. Someone whose notes carry no date at all is left out rather than guessed at. Selecting a person opens their search page, where the entries themselves are.
 

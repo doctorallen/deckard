@@ -26,6 +26,7 @@ import {
 } from '../state/dashboardState';
 import { isWritten } from '../state/searchFacets';
 import { editResults } from '../commands/bulkEditPrompts';
+import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
@@ -653,6 +654,17 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         }
         return;
       }
+      case 'pinNote':
+      case 'unpinNote':
+        // A result is an entry, so pinning one pins that entry rather than
+        // the file it is written in.
+        await setPinned(
+          this.indexer.getSnapshot(),
+          this.preferences,
+          { filePath: message.filePath, line: message.line ?? 1 },
+          message.type === 'pinNote',
+        );
+        return;
       case 'editResults':
         await editResults(message.kind, this.currentResults());
         return;

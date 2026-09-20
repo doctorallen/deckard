@@ -3,6 +3,7 @@ import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,
   NotesGraphMessage,
+  PinNoteMessage,
   RenderMode,
   SearchPageSize,
   SEARCH_PAGE_SIZES,
@@ -143,15 +144,40 @@ export function parseDashboardMessage(
       return typeof value.tagKey === 'string' && value.tagKey.length > 0
         ? { type: 'createTagHub', tagKey: value.tagKey }
         : undefined;
-    case 'pinNote':
-    case 'unpinNote':
     case 'openNote':
       return typeof value.filePath === 'string' && value.filePath.length > 0
         ? { type: value.type, filePath: value.filePath }
         : undefined;
+    case 'pinNote':
+    case 'unpinNote':
+      return parsePinMessage(value);
     default:
       return undefined;
   }
+}
+
+/**
+ * A pin names the entry at a line, and an unpin names the pin a row carries.
+ */
+export function parsePinMessage(
+  value: Record<string, unknown>,
+): PinNoteMessage | undefined {
+  if (typeof value.filePath !== 'string' || !value.filePath) {
+    return undefined;
+  }
+  const type = value.type === 'unpinNote' ? 'unpinNote' : 'pinNote';
+  return {
+    type,
+    filePath: value.filePath,
+    ...(typeof value.line === 'number' &&
+    Number.isInteger(value.line) &&
+    value.line >= 1
+      ? { line: value.line }
+      : {}),
+    ...(typeof value.pinKey === 'string' && value.pinKey
+      ? { pinKey: value.pinKey }
+      : {}),
+  };
 }
 
 /** A quick-add task is one line. */
@@ -190,6 +216,9 @@ export function parseSearchPageMessage(
       return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
         ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
         : undefined;
+    case 'pinNote':
+    case 'unpinNote':
+      return parsePinMessage(value);
     case 'editResults':
       return value.kind === 'notes' || value.kind === 'tasks'
         ? { type: 'editResults', kind: value.kind }
