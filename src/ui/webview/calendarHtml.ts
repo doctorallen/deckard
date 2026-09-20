@@ -10,8 +10,8 @@ import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Draws the sidebar calendar: a month of weeks from Sunday to Saturday.
- * Every day and the month title is a button that asks the host to open its
- * note; the host decides what exists and what to create.
+ * Every day, every week, and the month title is a button that asks the host
+ * to open its note; the host decides what exists and what to create.
  */
 export function getCalendarHtml(webview: vscode.Webview): string {
   const nonce = createNonce();
@@ -29,7 +29,12 @@ export function getCalendarHtml(webview: vscode.Webview): string {
 main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber); }
 .calendar-header { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
+/* The week opens its note and marks whether it has one; it is not a date,
+   so it is drawn as a rail beside the days rather than as another cell. */
+.week-label { align-self: stretch; width: 14px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); font: 9px var(--font-mono); }
+.week-label.has-note { color: var(--cyan); }
+.week-label:hover, .week-label:focus-visible { color: var(--amber); }
 .weekday { padding: 2px 0; color: var(--muted); font: 10px var(--font-mono); text-align: center; }
 /* Every day is the same three rows, whether or not it has anything to mark,
    so a note or a due count never moves the date it belongs to. */
@@ -79,8 +84,14 @@ ${getComponentScript()}
     return '<button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button>';
   }
 
+  /**
+   * The week beside its row. A row runs Sunday to Saturday while a week note
+   * is an ISO week, Monday to Sunday, so the label says which days its note
+   * is for rather than leaving the reader to work it out.
+   */
   function renderWeek(week) {
-    return week.days.map(renderDay).join('');
+    const label = 'Week ' + week.week + ', Monday ' + week.date + (week.notePath ? ', weekly note' : '');
+    return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(week.week.slice(6)) + '</button>' + week.days.map(renderDay).join('');
   }
 
   function render() {
@@ -92,7 +103,7 @@ ${getComponentScript()}
       '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.nextMonth) + '" aria-label="Next month" title="Next month">&rsaquo;</button>' +
       (state.month === state.currentMonth ? '' : '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.currentMonth) + '">Today</button>') +
       '</div>';
-    const weekdays = WEEKDAYS.map(function (name) { return '<span class="weekday">' + name + '</span>'; }).join('');
+    const weekdays = '<span class="weekday" aria-hidden="true"></span>' + WEEKDAYS.map(function (name) { return '<span class="weekday">' + name + '</span>'; }).join('');
     document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '">' + weekdays + state.weeks.map(renderWeek).join('') + '</div>';
   }
 

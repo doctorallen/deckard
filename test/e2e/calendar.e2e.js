@@ -96,11 +96,17 @@ test('stepping months goes through the host, and Today comes back', async () => 
   assert.ok(!monthButton('Today'));
 });
 
-test('selecting today opens its daily note', async () => {
+test("selecting today opens its daily note, and the week opens the week's note", async () => {
   const { view, day } = await openCalendar();
   view.click(day(today));
   await settle();
-  assert.deepStrictEqual(opened, [`/notes/${today}.md`]);
+  const week = view
+    .findAll('[data-action="open-week"]')
+    .find((button) => (button.getAttribute('aria-label') || '').startsWith(`Week ${thisWeek},`));
+  assert.ok(week, "the week's note is marked on its label");
+  view.click(week);
+  await settle();
+  assert.deepStrictEqual(opened, [`/notes/${today}.md`, `/notes/${thisWeek}.md`]);
 });
 
 test('every day is drawn the same, so a marked day does not move its date', async () => {
@@ -119,10 +125,9 @@ test('every day is drawn the same, so a marked day does not move its date', asyn
     marked.querySelector('.day-number'),
     'and the date has a place of its own',
   );
-  assert.strictEqual(
-    view.findAll('[data-action="open-week"]').length,
-    0,
-    'the week number column is gone',
+  assert.ok(
+    view.findAll('[data-action="open-week"]').length > 0,
+    'the week beside each row still opens its note',
   );
 });
 
