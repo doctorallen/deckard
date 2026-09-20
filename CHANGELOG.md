@@ -84,6 +84,13 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **The Task board searches instead of filtering, and opens on what is
+  open.** Its All/Open/Done switch was obeyed by the list and ignored by the
+  board, which quietly filtered one view and not the other. The switch is
+  gone: the search box says the same thing for both views, and the board
+  opens on `is:open`, since a board is for what is still to do. Clear the
+  box for every task, or search `is:done` for the finished ones.
+
 - **The calendar keeps its dates still, and starts its weeks on Sunday.** A
   day with a note or a due count drew taller content than a day without one,
   and a button centres what it holds, so dates wandered up and down the grid

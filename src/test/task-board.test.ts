@@ -174,14 +174,18 @@ suite('Task board', () => {
   test('lists the searched tasks when shown as a list, with the settings it edits', () => {
     const listed = createTaskBoard(
       createIndex(),
-      preferencesWith({ taskBoardLayout: 'list', taskBoardTaskFilter: 'completed' }),
-      { query: '' },
+      preferencesWith({ taskBoardLayout: 'list' }),
+      { query: 'is:done' },
       options,
     );
     assert.strictEqual(listed.layout, 'list');
     assert.deepStrictEqual(listed.columns, []);
-    assert.deepStrictEqual(listed.tasks?.map((item) => item.task.id).sort(), ['file', 'ship']);
-    assert.deepStrictEqual(listed.taskCounts, { all: 6, active: 4, completed: 2 });
+    assert.deepStrictEqual(
+      listed.tasks?.map((item) => item.task.id).sort(),
+      ['file', 'ship'],
+      'the list shows what the search found, with no filter of its own',
+    );
+    assert.deepStrictEqual(listed.taskCounts, { all: 2, active: 0, completed: 2 });
     assert.deepStrictEqual(listed.settings, { statuses: ['todo', 'doing'], statusNamespace: 'status' });
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });
@@ -192,9 +196,10 @@ suite('Task board', () => {
       { type: 'setTaskLayout', layout: 'list' },
     );
     assert.strictEqual(parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'grid' }), undefined);
-    assert.deepStrictEqual(
+    assert.strictEqual(
       parseTaskBoardMessage({ type: 'setTaskFilter', filter: 'completed' }),
-      { type: 'setTaskFilter', filter: 'completed' },
+      undefined,
+      'the board searches instead of filtering, so it sends no filter',
     );
     assert.deepStrictEqual(
       parseTaskBoardMessage({ type: 'setTaskSort', mode: 'created' }),

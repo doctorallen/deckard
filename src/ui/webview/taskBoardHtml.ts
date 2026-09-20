@@ -217,25 +217,18 @@ ${getQueryEditorScript()}
       { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board']], state.layout, 'Task layout') },
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
     ]);
-    const shown = state.taskCounts && state.taskCounts[state.taskFilter] !== undefined
-      ? state.taskCounts[state.taskFilter]
-      : state.taskCount;
+    const shown = state.taskCount;
     const total = shown + (shown === 1 ? ' task' : ' tasks');
-    // The filter applies to both layouts, so its switch belongs in both: it
-    // used to vanish on the board while still quietly filtering the list.
-    const viewRow = '<div class="board-view-row">'
-      + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter')
-      + '</div>';
     const list = (state.tasks || []).length
       ? state.tasks.map(function (item) {
         return renderTaskListRow(item, { draggable: canRank(), titleDisplay: state.tagTitleDisplayMode });
       }).join('')
       : '<div class="empty">' + (state.taskCount
-        ? 'No tasks match this filter.'
+        ? 'No tasks match this search.'
         : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. A #' + escapeHtml(state.settings.statusNamespace) + '/… tag on a task puts it in a column.') + '</div>';
     const content = isList
-      ? viewRow + '<div class="task-list">' + list + '</div>'
-      : viewRow + renderTaskBoard(state, isCardVisible);
+      ? '<div class="task-list">' + list + '</div>'
+      : renderTaskBoard(state, isCardVisible);
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>'
       + '<div class="board-header-actions"><span class="board-total">' + total + '</span>' + renderHelpButton('board') + viewOptions + '</div></header>'
@@ -299,7 +292,6 @@ ${getQueryEditorScript()}
       if (action === 'open-tag') post({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
-      if (action === 'set-task-filter') post({ type: 'setTaskFilter', filter: target.dataset.filter });
       if (action === 'remove-status') {
         const statuses = state.settings.statuses.slice();
         statuses.splice(Number(target.dataset.index), 1);

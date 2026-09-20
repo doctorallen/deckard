@@ -120,7 +120,6 @@ export function createTaskBoard(
   const tasks = selectTasks(index, search.query);
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
-  const taskFilter = preferences.taskBoardTaskFilter;
 
   const board: TaskBoardLayout =
     layout === 'board'
@@ -146,10 +145,12 @@ export function createTaskBoard(
       },
     ),
     layout,
+    // Both layouts show what the search found. The board page used to keep
+    // an All/Open/Done switch beside the search box, which only the list
+    // obeyed; a search says the same thing, for both, in one place.
     tasks:
       layout === 'list'
         ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
-            .filter((task) => matchesTaskFilter(task, taskFilter))
             .map((task) => createDashboardTask(task, index.sections))
         : undefined,
     taskCounts: {
@@ -157,7 +158,6 @@ export function createTaskBoard(
       active: tasks.filter((task) => !task.completed).length,
       completed: tasks.filter((task) => task.completed).length,
     },
-    taskFilter,
     taskSortMode: preferences.taskSortMode,
     tagTitleDisplayMode,
     settings: {

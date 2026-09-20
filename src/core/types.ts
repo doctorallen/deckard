@@ -347,8 +347,7 @@ export interface PersistedPreferences {
   taskBoardLayout: TaskLayout;
   /** What the Task Board's columns group tasks by. */
   taskBoardGroup: TaskBoardGroupBy;
-  /** Which tasks the Task Board's list shows. */
-  taskBoardTaskFilter: TaskFilter;
+
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];
   /**
@@ -1330,9 +1329,8 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   layout: TaskLayout;
   /** The searched tasks as a list, present when `layout` is `list`. */
   tasks?: DashboardTask[];
-  /** How many searched tasks each of All, Open, and Done keeps. */
+  /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
-  taskFilter: TaskFilter;
   taskSortMode: TaskSortMode;
   tagTitleDisplayMode: TagTitleDisplayMode;
   /** The board settings the page's view options edit. */
@@ -1405,7 +1403,6 @@ export type TaskBoardMessage =
   | SetBoardGroupMessage
   | SetBoardQueryMessage
   | SetTaskLayoutMessage
-  | SetTaskFilterMessage
   | SetTaskSortMessage
   | ReorderTasksMessage
   | SetBoardStatusesMessage

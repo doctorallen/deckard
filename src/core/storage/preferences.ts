@@ -53,7 +53,6 @@ const defaultPreferences: PersistedPreferences = {
   savedFilters: [],
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
-  taskBoardTaskFilter: 'active',
   tagAccessTimes: {},
   sectionAccessTimes: {},
   recentQueries: [],
@@ -326,12 +325,6 @@ export class PreferencesStore implements vscode.Disposable {
     taskBoardGroup: TaskBoardGroupBy,
   ): Promise<void> {
     await this.update({ taskBoardGroup });
-  }
-
-  public async setTaskBoardTaskFilter(
-    taskBoardTaskFilter: TaskFilter,
-  ): Promise<void> {
-    await this.update({ taskBoardTaskFilter });
   }
 
   /**
@@ -882,11 +875,6 @@ function normalizePreferences(
       value?.taskBoardGroup === 'priority' || value?.taskBoardGroup === 'due'
         ? value.taskBoardGroup
         : 'status',
-    taskBoardTaskFilter:
-      value?.taskBoardTaskFilter === 'all' ||
-      value?.taskBoardTaskFilter === 'completed'
-        ? value.taskBoardTaskFilter
-        : 'active',
     tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
     sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
     recentQueries: uniqueStrings(

@@ -493,10 +493,6 @@ export function parseTaskBoardMessage(
       return value.layout === 'list' || value.layout === 'board'
         ? { type: 'setTaskLayout', layout: value.layout }
         : undefined;
-    case 'setTaskFilter':
-      return isTaskFilter(value.filter)
-        ? { type: 'setTaskFilter', filter: value.filter }
-        : undefined;
     case 'setTaskSort':
       return isTaskSortMode(value.mode)
         ? { type: 'setTaskSort', mode: value.mode }

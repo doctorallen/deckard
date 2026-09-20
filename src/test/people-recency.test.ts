@@ -29,7 +29,6 @@ const preferences: PersistedPreferences = {
   dashboardViewState: { mode: 'home', tagSearchQuery: '' },
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
-  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',

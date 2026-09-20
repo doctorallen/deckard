@@ -93,7 +93,6 @@ suite('Preferences store', () => {
     await store.setDashboardColumns('notes', 2);
     await store.setDashboardColumns('tags', 4);
     await store.setDashboardMode('browse');
-    await store.setTaskBoardTaskFilter('completed');
     await store.setTaskBoardLayout('list');
     await store.setTaskBoardGroup('due');
     await store.setDashboardSearch('tags', 'atlas');
@@ -117,7 +116,6 @@ suite('Preferences store', () => {
       mode: 'browse',
       tagSearchQuery: 'atlas',
     });
-    assert.strictEqual(store.value.taskBoardTaskFilter, 'completed');
     assert.strictEqual(store.value.taskBoardLayout, 'list');
     assert.strictEqual(store.value.taskBoardGroup, 'due');
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
@@ -177,7 +175,11 @@ suite('Preferences store', () => {
     });
     assert.strictEqual(store.value.taskBoardLayout, 'board');
     assert.strictEqual(store.value.taskBoardGroup, 'status');
-    assert.strictEqual(store.value.taskBoardTaskFilter, 'active');
+    assert.strictEqual(
+      'taskBoardTaskFilter' in store.value,
+      false,
+      'the board searches rather than keeping a filter of its own',
+    );
     assert.strictEqual('dashboardTaskLayout' in store.value, false);
 
     store.dispose();
