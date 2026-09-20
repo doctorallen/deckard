@@ -42,7 +42,7 @@ suite('Task editor', () => {
         'Start: Not set',
         'Priority: high',
         'Repeats: every week',
-        'For: Nobody named',
+        'Assignee: Nobody named',
         'Blocked by: b2',
         'Add a tag: Written at the end of the description',
         'Write the task: Enter',

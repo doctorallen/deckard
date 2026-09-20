@@ -118,6 +118,14 @@ suite('Preferences store', () => {
     });
     assert.strictEqual(store.value.taskBoardLayout, 'list');
     assert.strictEqual(store.value.taskBoardGroup, 'due');
+    // Every grouping the board offers survives being read back.
+    await store.setTaskBoardGroup('assignee');
+    assert.strictEqual(store.value.taskBoardGroup, 'assignee');
+    assert.strictEqual(
+      new PreferencesStore(memento).value.taskBoardGroup,
+      'assignee',
+      'a grouping is kept, not quietly turned back into status',
+    );
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
 

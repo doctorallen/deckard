@@ -113,7 +113,7 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
       field: 'recurrence',
     },
     {
-      label: '$(person) For',
+      label: '$(person) Assignee',
       description: value(readAssignee(draft.description), 'Nobody named'),
       field: 'assignee',
     },

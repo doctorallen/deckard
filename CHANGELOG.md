@@ -135,7 +135,7 @@
 - **The task editor says who a task is for.** Assignees shipped as "the
   first person named on the line", but the editor had no field for one, so
   the only way to hand a task over was to write the name in the right place
-  yourself. **For** offers the people your notes already name: choosing one
+  yourself. **Assignee** offers the people your notes already name: choosing one
   replaces whoever was named first, anyone named after them stays a mention,
   and **Nobody** takes the first name off, which hands the task to whoever
   is named next.

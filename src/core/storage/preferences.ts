@@ -871,8 +871,12 @@ function normalizePreferences(
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
     taskBoardLayout: value?.taskBoardLayout === 'list' ? 'list' : 'board',
+    // Every grouping the board offers is read back, or choosing one would
+    // be forgotten the next time preferences were read.
     taskBoardGroup:
-      value?.taskBoardGroup === 'priority' || value?.taskBoardGroup === 'due'
+      value?.taskBoardGroup === 'priority' ||
+      value?.taskBoardGroup === 'due' ||
+      value?.taskBoardGroup === 'assignee'
         ? value.taskBoardGroup
         : 'status',
     tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),

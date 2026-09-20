@@ -286,13 +286,13 @@ The pick lists every field with what the task says now, headed by the line as it
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
 | **Repeats** | A common rule, or any rule you write |
-| **For** | Who the task is for — the first person named in its words; see [Who a task is for](#who-a-task-is-for) |
+| **Assignee** | Who the task is for — the first person named in its words; see [Who a task is for](#who-a-task-is-for) |
 | **Blocked by** | The `🆔` ids of the tasks that come first |
 | **Add a tag** | A tag from your workspace, or a new one, written at the end of the description |
 
 Dates are written the way people write them — `2026-09-25`, `today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `+2w`, `1 month` — and the box says which day it read as you type, such as *Friday 2026-09-25*. An empty answer clears the date, and words Deckard cannot read as a day are refused rather than guessed at.
 
-- **For** offers the people your notes already name, or takes a new one. Naming someone replaces whoever was named first, since that is who the task is for; anyone named after them was a mention and stays one. **Nobody** takes the first name off, which hands the task to whoever is named next.
+- **Assignee** offers the people your notes already name, or takes a new one. Naming someone replaces whoever was named first, since that is who the task is for; anyone named after them was a mention and stays one. **Nobody** takes the first name off, which hands the task to whoever is named next.
 - **Nothing is written until you choose Write the task.** Escape leaves the line as it was.
 - The line is written in the format it already uses, or `deckard.tasks.metadataFormat` for a task with no metadata yet, and in the order [Tasks](https://publish.obsidian.md/tasks) writes it.
 - Everything Deckard does not offer to edit is kept: a `^block-id` stays at the end of the line, an `🏁` on-completion marker stays where it was, and a `➕` created date is left alone.
