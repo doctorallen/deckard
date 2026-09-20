@@ -23,6 +23,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
 | [Task board](#task-board) | Your tasks as a Kanban board by status, priority, due date, or person, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and who a task is for, written in either Obsidian Tasks format. |
+| [Task editor](#editing-a-whole-task) | One command builds or edits a whole task — dates in plain words, priority, repeat rule, what it waits for — and writes the line. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
@@ -97,6 +98,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, such as `2026-W37.md`, with [its review](#writing-a-review) written in. |
 | **Deckard: Open Monthly Note** | Creates or opens this month's note, such as `2026-09.md`, with its review written in. |
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
+| **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Builds or edits the task on the cursor's line, field by field; see [Editing a whole task](#editing-a-whole-task). |
 | **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the unfinished tasks of the last daily note into today's, creating today's note if it is not there yet. |
@@ -269,6 +271,30 @@ Tasks can also be written in the plugin's text-only Dataview format, and Deckard
 ```
 
 The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`, `priority`, `repeat`, `id`, and `dependsOn`, in square or round brackets. Other Dataview fields, such as `[owner:: Ren]`, stay part of the title. When Deckard writes a date, such as a completion date or a repeating task's next dates, it uses the format the task already uses. For a task with no metadata yet, `deckard.tasks.metadataFormat` chooses.
+
+### Editing a whole task
+
+`Deckard: Edit Task` opens the task on the cursor's line as a list of its fields, so a whole task can be built or changed in one place rather than typed marker by marker. On a line that is not a task yet, whatever is written on it becomes the description; on an empty line, you start from nothing.
+
+The pick lists every field with what the task says now, headed by the line as it will be written, so the Markdown is in front of you the whole way through. Choosing a field opens its own step and comes back:
+
+| Field | What it takes |
+| --- | --- |
+| **Description** | The words, tags and people included |
+| **Status** | Open or done — completing writes the ✅ date a checkbox would, and reopening takes it away |
+| **Due**, **Scheduled**, **Start** | A date in plain words |
+| **Priority** | Highest to lowest, or none |
+| **Repeats** | A common rule, or any rule you write |
+| **Blocked by** | The `🆔` ids of the tasks that come first |
+| **Add a tag** | A tag from your workspace, or a new one, written at the end of the description |
+
+Dates are written the way people write them — `2026-09-25`, `today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `+2w`, `1 month` — and the box says which day it read as you type, such as *Friday 2026-09-25*. An empty answer clears the date, and words Deckard cannot read as a day are refused rather than guessed at.
+
+- **Nothing is written until you choose Write the task.** Escape leaves the line as it was.
+- The line is written in the format it already uses, or `deckard.tasks.metadataFormat` for a task with no metadata yet, and in the order [Tasks](https://publish.obsidian.md/tasks) writes it.
+- Everything Deckard does not offer to edit is kept: a `^block-id` stays at the end of the line, an `🏁` on-completion marker stays where it was, and a `➕` created date is left alone.
+- The editor works on the line in the editor, not on the index, so an unsaved note edits like any other.
+- It is also on the lightbulb: put the cursor in a task line and **Edit task…** is offered as a refactoring.
 
 ### Typing metadata
 

@@ -20,6 +20,10 @@ import {
   writeReviewCommand,
 } from './ui/commands/review';
 import { setTaskRankKeeper } from './ui/commands/taskActions';
+import {
+  editTaskCommand,
+  TaskEditorActions,
+} from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -136,6 +140,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const tagDecorations = new EditorTagDecorations();
   const tagSuggestions = new TagCompletionProvider(indexer);
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
+  const taskEditorActions = new TaskEditorActions();
   const editorReferences = new EditorReferences(indexer);
   const assistantTools = new AssistantTools(indexer);
   const mcpServer = new DeckardMcpServer(
@@ -236,6 +241,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     agenda,
     taskStatusBar,
     taskMetadataSuggestions,
+    taskEditorActions,
     taskBoard,
     editorReferences,
     linkHealth,
@@ -264,6 +270,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     agenda,
     taskStatusBar,
     taskMetadataSuggestions,
+    taskEditorActions,
     taskBoard,
     editorReferences,
     linkHealth,
@@ -438,6 +445,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.writeReview', () =>
       writeReviewCommand(indexer, preferences),
     ),
+    vscode.commands.registerCommand('deckard.editTask', () =>
+      editTaskCommand(indexer),
+    ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
     vscode.commands.registerCommand('deckard.pinNote', () =>
       setNotePinned(indexer, preferences, true),
@@ -610,6 +620,7 @@ export function deactivate(): void {
   activeServices?.agenda.dispose();
   activeServices?.taskStatusBar.dispose();
   activeServices?.taskMetadataSuggestions.dispose();
+  activeServices?.taskEditorActions.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
   activeServices?.linkHealth.dispose();
@@ -642,6 +653,7 @@ interface ExtensionServices {
   agenda: AgendaTreeProvider;
   taskStatusBar: TaskStatusBar;
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
+  taskEditorActions: TaskEditorActions;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
   linkHealth: LinkHealth;

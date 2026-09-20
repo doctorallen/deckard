@@ -84,6 +84,19 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **`Deckard: Edit Task` builds or edits a whole task at once.** Metadata
+  could be typed after `/` one marker at a time, which is fine for adding a
+  due date and poor for writing a task that has several of them. The command
+  opens the task on the cursor's line as a list of its fields — description,
+  status, due, scheduled, start, priority, repeat rule, what it waits for,
+  and a tag — headed by the line as it will be written, and each field opens
+  its own step and comes back. Dates are taken in plain words (`friday`,
+  `next monday`, `in 3 days`, `+2w`), with the day read back as you type.
+  Nothing is written until **Write the task**, the line keeps its format and
+  the parts Deckard does not edit, including a trailing `^block-id`, and the
+  editor is also on the lightbulb as **Edit task…**. A line that is not a
+  task yet becomes one, keeping what was written on it.
+
 - **A weekly or monthly note opens with its review written in.** A periodic
   note opened from its template and said nothing, though the index could
   already answer what the period came to. A review now lists what was
