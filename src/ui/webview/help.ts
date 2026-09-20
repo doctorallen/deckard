@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { getHelpHtml } from './helpHtml';
+import { getHelpHtml, HelpManifest } from './helpHtml';
 
 /**
  * Hosts Deckard's self-contained product guide in a reusable webview panel.
@@ -9,7 +9,14 @@ export class HelpPanel implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
 
-  public constructor(private readonly extensionUri: vscode.Uri) {}
+  public constructor(
+    private readonly extensionUri: vscode.Uri,
+    /**
+     * What the extension contributes, so the commands and settings tables
+     * describe this version rather than a copy written beside them.
+     */
+    private readonly manifest: HelpManifest = {},
+  ) {}
 
   public show(): void {
     if (!this.panel) {
@@ -51,13 +58,14 @@ export class HelpPanel implements vscode.Disposable {
       'resources',
       'deckard.svg',
     );
-    panel.webview.html = getHelpHtml(panel.webview, this.extensionUri);
+    panel.webview.html = getHelpHtml(panel.webview, this.extensionUri, this.manifest);
     this.panelDisposables = [
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.theme') && this.panel) {
           this.panel.webview.html = getHelpHtml(
             this.panel.webview,
             this.extensionUri,
+            this.manifest,
           );
         }
       }),

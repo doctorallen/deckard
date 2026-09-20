@@ -223,7 +223,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       await searchPanels.show(tagKey);
     },
   );
-  const help = new HelpPanel(context.extensionUri);
+  const help = new HelpPanel(
+    context.extensionUri,
+    context.extension.packageJSON.contributes,
+  );
   const notesGraph = new NotesGraphPanel(
     indexer,
     context.extensionUri,

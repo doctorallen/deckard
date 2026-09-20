@@ -8,11 +8,149 @@ import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { getFavoriteHeartAssetUris } from './icons';
 
 /**
+ * What the Help page reads from the extension's own manifest.
+ *
+ * The commands and settings tables are built from what Deckard actually
+ * contributes rather than from a copy of it, so a feature cannot ship with
+ * the guide still describing the workspace before it.
+ */
+export interface HelpManifest {
+  commands?: { command: string; title: string }[];
+  configuration?: {
+    title?: string;
+    properties?: Record<
+      string,
+      { default?: unknown; description?: string; markdownDescription?: string }
+    >;
+  }[];
+  keybindings?: { command: string; key?: string; mac?: string; when?: string }[];
+}
+
+/** A short line for what a command is for, beyond the name it goes by. */
+const COMMAND_NOTES: Readonly<Record<string, string>> = {
+  'deckard.showDashboard': 'Workspace totals, Home, and every tag.',
+  'deckard.showNotesGraph':
+    'The whole workspace as a map, or one note’s neighbourhood.',
+  'deckard.showTaskBoard': 'Tasks as columns, or as a ranked list.',
+  'deckard.showStats':
+    'Index totals, notes nothing links to, and tags that look alike.',
+  'deckard.showHelp': 'This guide.',
+  'deckard.showLog': 'What Deckard did, and how long each step took.',
+  'deckard.reindexWorkspace': 'Reads every note again.',
+  'deckard.createDailyNote':
+    'Creates or opens today’s note, carrying yesterday’s unfinished tasks in when asked to.',
+  'deckard.pinNote': 'Pins the note the cursor is in to Home.',
+  'deckard.unpinNote': 'Lets that pin go.',
+  'deckard.previousDailyNote': 'The nearest daily note before this one.',
+  'deckard.nextDailyNote': 'The nearest daily note after this one.',
+  'deckard.openWeeklyNote': 'This week’s note, with its review written in.',
+  'deckard.openMonthlyNote': 'This month’s note, with its review written in.',
+  'deckard.writeReview':
+    'Writes, or brings up to date, the review in this week’s or this month’s note.',
+  'deckard.rollTasksForward':
+    'Carries unfinished tasks from earlier daily notes into today’s.',
+  'deckard.capture': 'Adds a task to today’s note from anywhere.',
+  'deckard.captureUnderHeading': 'Adds a task under a heading you choose.',
+  'deckard.editTask': 'Opens the task on the cursor’s line, field by field.',
+  'deckard.addTask': 'The same editor, where there is no task yet.',
+  'deckard.newNoteFromTemplate': 'A new note from one of your templates.',
+  'deckard.copyMcpSetup': 'Copies the command that adds Deckard to Claude Code.',
+  'deckard.resetMcpToken': 'Makes a new token, so old setups stop working.',
+  'deckard.extractHeading':
+    'Moves a tagged section into a note of its own, leaving a link behind.',
+  'deckard.showTagOverview': 'Opens a tag’s search page.',
+  'deckard.search': 'A search page, ready for a search.',
+  'deckard.searchWorkspace': 'Finds notes, tasks, and tags as you type.',
+  'deckard.searchNotes': 'Opens a search page on a query you write.',
+  'deckard.linkCurrentHeading': 'Adds an approved entity tag to this heading.',
+  'deckard.moveTagsToFrontmatter': 'Moves a note’s inline tags into its front matter.',
+  'deckard.renameTag': 'Renames a tag everywhere it is written.',
+  'deckard.mergeTag': 'Merges one tag into another, after saying what that costs.',
+  'deckard.renameHeading':
+    'Renames the heading the cursor is in and carries its links along.',
+  'deckard.undoLastChange': 'Puts the notes back as they were before the last write.',
+  'deckard.agenda.setGrouping': 'What the Tasks view’s groups are.',
+  'deckard.outline.enableFollowCursor': 'Selects the heading the cursor is in.',
+  'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',
+};
+
+/** The commands the manifest contributes, as a table of what each is for. */
+function renderCommandTable(manifest: HelpManifest): string {
+  const commands = (manifest.commands ?? []).filter((command) =>
+    command.title.startsWith('Deckard:'),
+  );
+  if (commands.length === 0) {
+    return '';
+  }
+  const keys = new Map(
+    (manifest.keybindings ?? [])
+      .filter((binding) => binding.key)
+      .map((binding) => [binding.command, binding]),
+  );
+  const rows = commands
+    .map((command) => {
+      const binding = keys.get(command.command);
+      const shortcut = binding
+        ? `<br><span class="shortcut">${escapeHtml(
+            `${binding.mac ?? binding.key} on macOS, ${binding.key} elsewhere`,
+          )}</span>`
+        : '';
+      return `<tr><td><strong>${escapeHtml(
+        command.title.replace(/^Deckard: /, ''),
+      )}</strong>${shortcut}</td><td>${escapeHtml(
+        COMMAND_NOTES[command.command] ?? '',
+      )}</td></tr>`;
+    })
+    .join('');
+  return `<div class="table-scroll"><table><caption>Every command Deckard contributes, as the palette lists them under “Deckard:”</caption><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/** Every setting, grouped as the settings editor groups them. */
+function renderSettingsTables(manifest: HelpManifest): string {
+  const groups = manifest.configuration ?? [];
+  if (groups.length === 0) {
+    return '';
+  }
+  return groups
+    .map((group) => {
+      const rows = Object.entries(group.properties ?? {})
+        .map(([key, property]) => {
+          const value =
+            property.default === '' || property.default === undefined
+              ? 'Empty'
+              : JSON.stringify(property.default);
+          const description =
+            property.description ?? property.markdownDescription ?? '';
+          return `<tr><td><code>${escapeHtml(key)}</code></td><td><code>${escapeHtml(
+            value,
+          )}</code></td><td>${escapeHtml(description)}</td></tr>`;
+        })
+        .join('');
+      return rows
+        ? `<div class="table-scroll"><table><caption>${escapeHtml(
+            group.title ?? 'Settings',
+          )}</caption><thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : '';
+    })
+    .join('');
+}
+
+/** The escaping the page's own markup uses; nothing here is user content. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
  * Builds a static, navigable Help page so guidance is available offline.
  */
 export function getHelpHtml(
   webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
   extensionUri: vscode.Uri,
+  manifest: HelpManifest = {},
 ): string {
   const nonce = createNonce();
   const logoUri = webview
@@ -57,6 +195,18 @@ pre code { border: 0; padding: 0; color: inherit; background: transparent; }
 ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
+/* Reference tables: commands, markers, query fields, settings. */
+table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 13px; }
+caption { margin-bottom: 6px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { color: var(--cyan); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+td:first-child { white-space: normal; }
+tbody tr:hover { background: var(--panel); }
+.table-scroll { overflow-x: auto; }
+/* The navigation groups its sections, so a long guide stays scannable. */
+.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+nav a.nav-sub { padding-left: 16px; font-size: 12px; }
+section { scroll-margin-top: 20px; }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
 
 /* Help is a two-column reference: navigation beside the article. */
@@ -87,145 +237,240 @@ ${getDeckardThemeCss(getDeckardTheme())}
   <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
     <a href="#quick-start">Quick start</a>
-    <a href="#commands">Commands</a>
-    <a href="#tags">Tags and people</a>
-    <a href="#frontmatter">Front matter</a>
-    <a href="#home">Home</a>
-    <a href="#search">Search pages</a>
-    <a href="#tasks">Tasks and the Task Board</a>
-    <a href="#graph">Notes Graph</a>
-    <a href="#connections">Find connections</a>
-    <a href="#advanced">Settings</a>
-    <a href="#privacy">Privacy and safety</a>
+    <span class="nav-group">Writing</span>
+    <a class="nav-sub" href="#tags">Tags and people</a>
+    <a class="nav-sub" href="#frontmatter">Front matter</a>
+    <a class="nav-sub" href="#links">Links and embeds</a>
+    <a class="nav-sub" href="#boundaries">What counts as a note</a>
+    <span class="nav-group">Tasks</span>
+    <a class="nav-sub" href="#tasks">Writing tasks</a>
+    <a class="nav-sub" href="#task-metadata">Task metadata</a>
+    <a class="nav-sub" href="#task-views">Tasks view and board</a>
+    <span class="nav-group">Finding</span>
+    <a class="nav-sub" href="#search">Search</a>
+    <a class="nav-sub" href="#query">Query language</a>
+    <a class="nav-sub" href="#query-blocks">Query blocks</a>
+    <a class="nav-sub" href="#connections">Related notes and the graph</a>
+    <span class="nav-group">Keeping notes</span>
+    <a class="nav-sub" href="#home">Home and pins</a>
+    <a class="nav-sub" href="#tidy">Renaming and tidying</a>
+    <a class="nav-sub" href="#periodic">Days, weeks, months</a>
+    <span class="nav-group">Reference</span>
+    <a class="nav-sub" href="#commands">Commands</a>
+    <a class="nav-sub" href="#advanced">Settings</a>
+    <a class="nav-sub" href="#assistants">AI assistants</a>
+    <a class="nav-sub" href="#privacy">Privacy and safety</a>
   </nav>
   <article>
     <header>
       <p class="eyebrow">DECKARD / FIELD GUIDE</p>
       <h1>Help</h1>
-      <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write.</p>
+      <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
     </header>
 
     <section id="quick-start">
       <h2>Quick start</h2>
       <div class="steps">
-        <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard Activity Bar icon for Related Notes.</p></div></div>
-        <div class="step"><span class="step-number"></span><div><h3>Add a few tags</h3><p>Use simple tags such as <code>#follow-up</code>; entities are optional. Add <code>@mara-vale</code> for people or namespaced tags such as <code>#project/neon-relay</code> and <code>#management/performance</code> when that extra structure is useful. Type a marker for completion suggestions.</p></div></div>
-        <div class="step"><span class="step-number"></span><div><h3>Explore the connections</h3><p>Select the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar to open Related Notes. While viewing a Markdown note, select the Dashboard icon <svg class="inline-icon dashboard-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg> in Related Notes, run <code>Deckard: Open Dashboard</code>, or Cmd/Ctrl-click a tag to open its page.</p></div></div>
+        <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar for Related Notes, the Outline, Tasks, and the Calendar.</p></div></div>
+        <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
+        <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what.</p></div></div>
       </div>
-    </section>
-
-    <section id="commands">
-      <h2>Command reference</h2>
-      <p>Open the Command Palette and run any of these commands:</p>
-      <ul>
-        <li><code>Deckard: Open Dashboard</code> opens workspace totals and the Dashboard's Home and Tags tabs.</li>
-        <li><code>Deckard: Open Search Page</code> opens a search page listing every note, ready for a search.</li>
-        <li><code>Deckard: Open Notes Graph</code> opens an interactive map of every indexed note, task, and tag connection.</li>
-        <li><code>Deckard: Show Stats</code> shows index totals and local view counts.</li>
-        <li><code>Deckard: Show Log</code> opens Deckard's log. Anything that takes 100 ms or longer is listed as <code>Slow:</code>; set the log's level to Debug in the Output panel to see every timing.</li>
-        <li><code>Deckard: Open Help</code> opens this guide.</li>
-        <li><code>Deckard: Reindex Workspace</code> performs a full scan of the workspace Markdown scope.</li>
-        <li><code>Deckard: Create Daily Note</code> creates or opens today&apos;s note.</li>
-        <li><code>Deckard: Pin Note to Home</code> adds the note in the editor to Home&apos;s Pinned notes; <code>Deckard: Unpin Note from Home</code> removes it.</li>
-        <li><code>Deckard: Open Previous Daily Note</code> and <code>Deckard: Open Next Daily Note</code> step to the nearest daily note before or after the one in the editor, or today.</li>
-        <li><code>Deckard: Open Weekly Note</code> and <code>Deckard: Open Monthly Note</code> create or open this week&apos;s note, such as <code>2026-W37.md</code>, or this month&apos;s, such as <code>2026-09.md</code>, from <code>deckard.weeklyNoteTemplate</code> or <code>deckard.monthlyNoteTemplate</code>.</li>
-        <li><code>Deckard: Capture</code> adds a task to today&apos;s note without leaving your editor; typing <code>#</code> or <code>@</code> suggests tags. <code>Deckard: Capture Under a Heading</code> adds it under a heading you choose.</li>
-        <li><code>Deckard: New Note from Template</code> creates a note from a Markdown file in the templates folder, filling in <code>{title}</code>, <code>{date}</code>, <code>{time}</code>, and an answer for each <code>{ask:Question}</code>. A template named after a namespace, such as <code>person.md</code>, starts new hub notes for that namespace.</li>
-        <li><code>Deckard: Extract Tagged Heading</code> moves a tagged heading section into a new note and leaves a <code>[[link]]</code> to it.</li>
-        <li><code>Deckard: Show Tag Overview</code> opens a tag's search page or, when no tag is supplied, a tag picker.</li>
-        <li><code>Deckard: Find</code> (<kbd>Cmd/Ctrl+Shift+Alt+F</kbd>) searches notes, tasks, tags, and saved views as you type. Words, <code>#tags</code>, and shorthands such as <code>is:open</code> work together, and Tab completes the word you are typing.</li>
-        <li><code>Deckard: Link Current Heading to Entity</code> adds an approved canonical tag to the current heading.</li>
-        <li><code>Deckard: Move Inline Tags to Front Matter</code> moves explicit active-note tags into merged note-level front matter.</li>
-        <li><code>Deckard: Rename Tag</code> searches indexed tags and replaces the selected tag throughout its source notes.</li>
-        <li><code>Deckard: Merge Tag…</code> merges one indexed tag into another after showing what the merge will change.</li>
-        <li><code>Deckard: Follow Cursor in Outline</code> and <code>Deckard: Stop Following Cursor in Outline</code> switch whether the Outline selects the heading under the cursor.</li>
-      </ul>
+      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Show Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there.</p>
     </section>
 
     <section id="tags">
       <h2>Tags and people</h2>
       <div class="cards">
-        <div class="card"><h3>Built-in and custom entities</h3><p>Use <code>@person</code>, <code>#project/name</code>, <code>#topic/name</code>, <code>#org/name</code>, and <code>#meeting/name</code> for built-in entity types. Any namespaced tag such as <code>#management/performance</code> creates a new entity namespace on the fly and opens as <strong>Management: Performance</strong>. Namespace aliases can map custom names onto either a built-in or another custom namespace.</p></div>
-        <div class="card"><h3>Lightweight tags</h3><p>Use unnamespaced tags such as <code>#follow-up</code> for ordinary labels. They remain distinct from namespaced entities while appearing alongside them in the Dashboard's unified <strong>Tags</strong> catalog.</p></div>
-        <div class="card"><h3>Tag associations</h3><p><strong>Associated tags</strong> are Deckard's suggestion that two tags belong together. Writing tags together on one heading, task, or tagged line is the strongest signal because you deliberately put them together. Deckard preserves that raw evidence and normalizes Related Notes relevance by support and tag prevalence, so generic tags do not dominate. Tags in a heading and its nested headings receive a lighter connection. On a search page for a tag, or for several tags joined by AND, <strong>Refine</strong> lists them under <strong>Tags</strong>, strongest first, with a three-step rail showing each one's strength beside the strongest; hover one to see how often the tags were written together or shared a heading. Select a related tag to add it to the search, which narrows the page to the entries that carry both. Front-matter and inherited tags provide note context but never create synthetic associations.</p></div>
-        <div class="card" id="search"><h3>Search pages and tag overviews</h3><p>Every search opens a search page in its own editor tab, and a tag's overview is the search page for that one tag. Tags are highlighted in Markdown; Cmd/Ctrl-click one to open its page, which shows the tag or entity as its title and its hub note above its entries. Add anything to the search, such as another tag, words, or <code>is:open</code>, and the page becomes an ordinary search: the search box and its <strong>Builder</strong> show everything it is filtering by, and <strong>Clear</strong> returns to the tag the page opened with. A tag on a bullet list item includes its indented child bullets in the related note. Namespaced tags keep their normal value color while the <code>#namespace/</code> prefix is muted for quick scanning. The search box shows each term as a chip with a <strong>×</strong> to remove it; type the next term after the chips, choose a completion to add it at once, or press Enter to add what you typed. Backspace in an empty box removes the last chip, and text you did not add is let go when you leave the box. Plain words hide what they do not match as you type. <strong>Refine</strong> narrows by related tags, task state, due and update dates, and folders. Use <strong>Save</strong> to keep the search as a saved view, and the <strong>View options</strong> gear to choose <strong>Tabs</strong> or <strong>Side by side</strong>, switch Markdown rendering, and set note and task columns. The Tasks tab opens on <strong>Open</strong> tasks and has an <strong>All</strong>/<strong>Open</strong>/<strong>Done</strong> filter with safe checkboxes that update the original Markdown task. Opening a search a page already shows reveals that page. Right-click a tag on the Dashboard, a search page, or Related Notes to open its tag actions.</p></div>
-        <div class="card"><h3>Hub notes</h3><p>Add <code>describes: project/atlas</code> to a note&apos;s front matter to make it the hub for <code>#project/atlas</code>. The tag&apos;s page then opens with that note and its other front-matter fields, and hovering the tag names it. Write the tag without its <code>#</code> or in quotes, because YAML reads an unquoted <code>#</code> as the start of a comment. A tag&apos;s page without a hub offers <strong>Create hub note</strong>. Select the hub&apos;s title row to collapse it; <code>deckard.tagOverview.hubNoteExpanded</code> chooses whether hubs start open, which they do by default.</p></div>
-        <div class="card"><h3>Rename tags</h3><p>Run <code>Deckard: Rename Tag</code> to search indexed tags, select one, and replace it in every matching source occurrence. You can also right-click any tag on the Dashboard, a search page, or Related Notes and choose <strong>Rename tag</strong>, or use the separate <strong>Rename</strong> action in a Markdown tag hover. Enter a complete replacement such as <code>#management/new-name</code>, or enter only a new name to keep the selected tag&apos;s marker and namespace. Source changes are rejected when a note changed after it was indexed. Renaming to a tag that already exists merges the two, after showing each tag&apos;s entries and the merged total, because renaming back cannot separate them; <code>Deckard: Merge Tag…</code> does the same from a list of existing tags. Favorites, access counts, and saved views move to the new tag.</p></div>
-        <div class="card"><h3>Favorites</h3><p>In the Dashboard, use the red outlined <span class="favorite-heart" aria-hidden="true"></span> control to favorite a tag; it becomes solid <span class="favorite-heart filled" aria-hidden="true"></span> and moves into Favorites. Favorites always appear before other tags in every sort. Select it again to remove the favorite.</p></div>
-        <div class="card"><h3>Rank tags</h3><p>To manually order tags, choose <strong>Rank</strong> in the tag sort control, then drag a row above or below another row. Right-click a tag or entity row to choose <strong>Rename tag</strong>; in Rank mode, the same menu also offers <strong>Move to top</strong> or <strong>Move to bottom</strong>. Ordering is stored only in Deckard preferences and never reorders Markdown source.</p></div>
+        <div class="card"><h3>Lightweight tags</h3><p>A plain <code>#tag</code> on a heading, a task, or a line of prose is indexed with no setup. Tag names take letters, numbers, <code>_</code>, <code>-</code>, and <code>/</code> namespace segments; a number alone is not a tag, so a date such as <code>#2026</code> stays text.</p></div>
+        <div class="card"><h3>People and entities</h3><p><code>@mara-vale</code> names a person. <code>#project/…</code>, <code>#topic/…</code>, <code>#organization/…</code>, and <code>#meeting/…</code> name entities; any other namespace becomes one on first use. <code>deckard.personMarker</code> changes the marker, and <code>deckard.entityNamespaceAliases</code> folds one namespace into another.</p></div>
+        <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbours.</p></div>
+        <div class="card"><h3>Associated tags</h3><p>Tags written together on one heading, task, or line are remembered as related, and tags that meet under a shared heading count more lightly. Related Notes and Refine both rank with that evidence, normalized so a common tag is not promoted for being common.</p></div>
+        <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu.</p></div>
+        <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
       </div>
     </section>
 
     <section id="frontmatter">
       <h2>Front matter</h2>
-      <p>Note-level YAML front matter supplies context to every heading and task without repeating the same tags in the body.</p>
+      <p>YAML at the top of a note tags the whole note: <code>tags:</code>, and the typed fields <code>people:</code>, <code>projects:</code>, <code>topics:</code>, <code>organizations:</code>, and <code>meetings:</code>, which map to <code>@person</code> and the matching <code>#namespace/…</code> tags. <code>aliases:</code> gives the note other names that <code>[[links]]</code> resolve, <code>describes:</code> makes it a <a href="#tidy">hub note</a>, and <code>created:</code> / <code>updated:</code> are the dates Deckard dates it by.</p>
       <pre><code>---
-projects: [neon-relay]
-people: [mara-vale]
-topics: [signal-integrity]
+project: neon-relay
+people: [mara-vale, ren-kade]
+aliases: [Relay, The Relay]
+updated: 2026-09-20
 ---</code></pre>
-      <p>Supported singular and plural keys are <code>person</code>/<code>people</code>, <code>project</code>/<code>projects</code>, <code>topic</code>/<code>topics</code>, <code>organization</code>/<code>organizations</code>, <code>meeting</code>/<code>meetings</code>, and <code>tag</code>/<code>tags</code>. Values are highlighted and Cmd/Ctrl-clickable, and metadata-only notes still create indexed tag overviews even without a heading or task.</p>
-      <p class="note">Use <code>Deckard: Move Inline Tags to Front Matter</code> when the tags apply to the whole note. It merges existing metadata and removes explicit source tags.</p>
+      <p><code>Deckard: Move Inline Tags to Front Matter</code> collects a note’s inline tags into these fields. Use it when the context belongs to every heading in the note, since that is what a front-matter tag means.</p>
+    </section>
+
+    <section id="links">
+      <h2>Links and embeds</h2>
+      <div class="cards">
+        <div class="card"><h3>Wiki links</h3><p><code>[[Note]]</code> names a note by its file name without <code>.md</code>, or by an alias. <code>[[Note#Heading]]</code> opens a heading and <code>[[Note#^marker]]</code> one line. Typing <code>[[</code> completes titles and aliases; typing <code>#^</code> completes the markers a note carries.</p></div>
+        <div class="card"><h3>Embeds</h3><p><code>![[Note]]</code> on a line of its own draws that note in the Markdown preview; <code>![[Note#Heading]]</code> draws the section, <code>![[Note#^id]]</code> the marked line, and <code>![[#Heading]]</code> a heading of the note you are in. An embed inside a sentence stays the text you typed.</p></div>
+        <div class="card"><h3>Renaming keeps links</h3><p>Renaming or moving a note rewrites every link that named it, in the same step, so one Undo takes back both. <code>Deckard: Rename Heading</code> does the same for a heading. <code>deckard.updateLinksOnRename</code> turns it off.</p></div>
+        <div class="card"><h3>Broken links</h3><p>A link to a note that does not exist is marked in the editor with a <strong>Create note</strong> fix; a name two notes share is a warning, since it opens neither. <code>Deckard: Show Stats</code> lists the notes nothing links to.</p></div>
+      </div>
+    </section>
+
+    <section id="boundaries">
+      <h2>What counts as a note</h2>
+      <p>A “note” in Deckard is an entry: a heading and what is written under it, a task, or a tagged line. <code>deckard.noteBoundaries</code> decides what a tagged line is:</p>
+      <div class="table-scroll"><table><caption>deckard.noteBoundaries</caption><thead><tr><th>Setting</th><th>A tagged line is</th><th>A search for that tag returns</th></tr></thead><tbody>
+        <tr><td><code>line</code> <em>(default)</em></td><td>a note of its own</td><td>that line</td></tr>
+        <tr><td><code>heading</code></td><td>part of the heading above it</td><td>the heading holding the line</td></tr>
+        <tr><td><code>marked</code></td><td>part of the heading above it, unless it carries a <code>^marker</code></td><td>the heading, or the marked line itself</td></tr>
+      </tbody></table></div>
+      <p>A tag written in prose is never copied onto the heading: it stays where it was written, and the heading answers for it because it contains that line. Tasks are outside all of this — a task is its own entry under every setting. Changing the setting reindexes by itself and writes nothing to your notes.</p>
     </section>
 
     <section id="tasks">
-      <h2>Tasks and the Task Board</h2>
+      <h2>Writing tasks</h2>
       <div class="cards">
-        <div class="card"><h3>Checklist tasks</h3><p>Deckard recognizes <code>- [ ]</code>, <code>* [ ]</code>, and <code>+ [ ]</code>. Tasks inherit their nearest heading's tags and can add their own.</p></div>
-        <div class="card"><h3>Obsidian Tasks format</h3><p>Deckard reads the Obsidian Tasks emoji markers: 📅 due, ⏳ scheduled, 🛫 start, and ✅ done dates, 🔺 ⏫ 🔼 🔽 ⏬ priorities, 🔁 repeat rules, and 🆔 ⛔ dependencies. The markers leave task titles and appear as details. Completing a task adds its ✅ date, and completing a repeating task writes its next occurrence on the line above. Query them with <code>due</code>, <code>scheduled</code>, <code>start</code>, <code>done</code>, and <code>priority</code>, such as <code>due &lt; today</code> or <code>priority &gt;= high</code>. The text-only Dataview format, such as <code>[due:: 2026-09-20] [priority:: high]</code>, works too. Type <code>/</code> after a space in a task to pick a date, priority, repeat rule, or dependency instead of typing it.</p></div>
-        <div class="card"><h3>Agenda</h3><p>The <strong>Agenda</strong> view in the Deckard Activity Bar groups open tasks into <strong>Overdue</strong>, <strong>Today</strong>, and <strong>Upcoming</strong>. Select a task to open its line, or check its box to complete it. <code>deckard.agenda.upcomingDays</code> sets how far ahead Upcoming looks.</p></div>
-        <div class="card" id="board"><h3>Task board</h3><p>Run <code>Deckard: Open Task Board</code>, or select the board icon in the sidebar toolbar or the Agenda's title, to see tasks as a Kanban board grouped by status tag (such as <code>#status/doing</code>), priority, or due date. Drag a card to another column, or choose one from its <strong>⋯</strong> menu, to rewrite the task in its note; dropping it on <strong>Done</strong> completes it. Search the tasks with the same search box as the Dashboard. The <strong>View options</strong> gear switches between the board and a ranked list, and edits the status columns: drag them into order, add, or remove them, and Deckard saves them to <code>deckard.board.statuses</code>.</p></div>
-        <div class="card"><h3>Due dates</h3><p>Add an ISO date such as <code>2026-09-12</code>, a month/day date, or <code>next Friday</code>. The Dashboard shows upcoming dates in green and overdue dates in red.</p></div>
-        <div class="card"><h3>Dashboard navigation</h3><p>The Dashboard opens on <strong>Home</strong>; use its accessible Home/Tags tabs or Left/Right Arrow keys to switch. Its title identifies the active tab. Deckard saves the selected tab, the tag search, and the tag column choice for future Dashboard sessions. Searches open search pages, and tasks have their own page, the Task board.</p></div>
-        <div class="card" id="home"><h3>Home</h3><p><strong>Home</strong> is made of widgets you choose: a search box that opens a search page, the tasks a search finds, the Agenda, favorite and frequent tags, saved searches and their results, recent searches, recently opened notes, workspace totals, today's daily note, a Quick add field for today's note, stale tasks, notes related to the note you had open last, tags written together, tags without a hub note, new tags, and pinned notes. Pin a note with <strong>Deckard: Pin Note to Home</strong>. Each widget links to where its entries live, such as the Task board or a search page. Choose <strong>Customize</strong> in the View options gear to arrange them: drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, the search a tasks widget runs, or how many days a look-back widget covers; remove it with <strong>×</strong>; and add more from <strong>+ Add widget</strong>. <strong>Reset</strong> restores the widgets Home started with, and <strong>Done</strong> finishes.</p></div>
-        <div class="card"><h3>Task list</h3><p>Set the Task board's <strong>View options</strong> to <strong>List</strong> to see the searched tasks as rows, with the joined <strong>All</strong>/<strong>Open</strong>/<strong>Done</strong> filter and counts and the <strong>Sort: Rank/Created/Updated</strong> control. Use checkboxes to update the original Markdown task safely; search pages have the same status filter and checkboxes. With <strong>Rank</strong> selected, drag a task above or below another to set its display order, or right-click it to move it to the top or bottom. Creation-date and update-date sorts are fixed automatically, so dragging is disabled in those modes. Task ranking is stored only in Deckard preferences; it never reorders task lines in your notes.</p></div>
-        <div class="card"><h3>Browse tags</h3><p>Use <strong>Tags</strong> to browse namespaced entities and lightweight tags together. Search filters the full catalog, and <strong>Namespace</strong> narrows it to one namespace, or to tags without one; favorites remain first, and opening, context-menu actions, and Rank ordering work as they do elsewhere in the Dashboard. Use View options to choose one through four tag columns. Your <strong>Saved searches</strong> are listed below the tags, where each can be opened or removed.</p></div>
+        <div class="card"><h3>Checklist tasks</h3><p>A task is an unordered checklist item: <code>- [ ] Send the proposal</code>, with <code>-</code>, <code>*</code>, or <code>+</code>, and <code>[x]</code> when it is done. Checking a box anywhere in Deckard writes the same checked edit into the note, including the ✅ date and the next occurrence of a repeating task.</p></div>
+        <div class="card"><h3>The task editor</h3><p><code>Deckard: Edit Task</code> on a task line — and <code>Deckard: Add Task</code> anywhere else — opens every field at once: description, status, dates, priority, repeat rule, assignee, and a tag. Dates are taken in plain words: <code>friday</code>, <code>next monday</code>, <code>in 3 days</code>, <code>+2w</code>. It is on the lightbulb too, as <strong>Edit task…</strong>.</p></div>
+        <div class="card"><h3>Typing metadata</h3><p>Type <code>/</code> after a space inside a task to pick a due date, a priority, a repeat rule, or a dependency without remembering the markers. Suggestions use the format the task already uses, or <code>deckard.tasks.metadataFormat</code> for a task with none.</p></div>
+        <div class="card"><h3>Who a task is for</h3><p>The first person named on a task line is the person it is for; anyone named after them is mentioned. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours.</p></div>
+        <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code> adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note.</p></div>
+        <div class="card"><h3>Dependencies</h3><p><code>🆔 a1</code> names a task, and <code>⛔ a1</code> waits for it. A task is blocked while something it waits for is still open, which <code>is:blocked</code> and <code>is:blocking</code> search and the Tasks view says beneath the task.</p></div>
       </div>
     </section>
 
-    <section id="connections">
-      <h2>Find connections</h2>
+    <section id="task-metadata">
+      <h2>Task metadata</h2>
+      <p>Deckard reads the <a href="https://publish.obsidian.md/tasks">Obsidian Tasks</a> formats, both the emoji one and Dataview fields, and writes back whichever a task already uses.</p>
+      <div class="table-scroll"><table><caption>Markers, in the order Deckard writes them</caption><thead><tr><th>Marker</th><th>Dataview</th><th>Means</th></tr></thead><tbody>
+        <tr><td>🔺 ⏫ 🔼 🔽 ⏬</td><td><code>[priority:: high]</code></td><td>Priority, highest to lowest</td></tr>
+        <tr><td>🔁 every week</td><td><code>[repeat:: every week]</code></td><td>Repeat rule; completing writes the next occurrence</td></tr>
+        <tr><td>🛫 2026-09-20</td><td><code>[start:: 2026-09-20]</code></td><td>Not actionable before this day</td></tr>
+        <tr><td>⏳ 2026-09-21</td><td><code>[scheduled:: 2026-09-21]</code></td><td>The day you plan to work on it</td></tr>
+        <tr><td>📅 2026-09-22</td><td><code>[due:: 2026-09-22]</code></td><td>Due date</td></tr>
+        <tr><td>✅ 2026-09-23</td><td><code>[completion:: 2026-09-23]</code></td><td>Written when the task is completed</td></tr>
+        <tr><td>🆔 a1 / ⛔ b2</td><td><code>[id:: a1]</code></td><td>This task’s name, and what it waits for</td></tr>
+      </tbody></table></div>
+      <p>A date written in a task’s sentence, such as <em>by Friday</em>, is read as a due date when the note is a daily note, but Deckard will not rewrite it: there is no marker it could safely change.</p>
+    </section>
+
+    <section id="task-views">
+      <h2>Tasks view and Task board</h2>
       <div class="cards">
-        <div class="card"><h3>Related Notes</h3><p>Open Related Notes while editing a saved Markdown note to find entries that may concern the same work.</p><ul><li><strong>Shared tags</strong> are the strongest signal.</li><li><strong>Parent-heading tags</strong> add lighter distance-weighted context to any selected entry; <strong>child-heading tags</strong> and tagged <strong>child items</strong> add the same context when the selected entry is a heading, with child items receiving an additional level of decay.</li><li><strong>Normalized associated tags</strong> and entry Wiki links provide supporting evidence. Capped section-scoped lexical similarity adjusts the score of an entry that already qualifies, but shared wording never makes an entry related on its own.</li></ul><p>For example, an entry with both <code>#project/atlas</code> and <code>#follow-up</code> ranks above one connected only through an associated <code>#risk/vendor</code> tag. Repeated normalized association evidence helps with diminishing returns, so indirect connections cannot overtake a complete direct match.</p><p>Each result includes its heading path beneath the source filename and line. Hover a tagged heading, line, or task to choose <strong>Show related notes for [entry]</strong>; use <strong>Show whole document</strong> to return. A nested entry with the same tags ranks above its broad parent heading because it is more specific. Active tags are listed one per row, each with a segmented <strong>Rail</strong> strength marker and a count of the notes and tasks carrying it; hover or focus a tag to see its exact Related Notes weight.</p><p>Hover a result percentage for a short explanation, or choose <strong>Debug related notes for [entry]</strong> for selected-tag weights, including whether each tag came from the selected entry, parent ancestry, a child heading, or a child item, plus raw and normalized association support, entry/file links, lexical terms, optional recency, and specificity adjustments. On that page, a <strong>source unit</strong> is one distinct tagged heading, tagged line, task, or heading relationship, not necessarily a whole file. <strong>Raw evidence</strong> is the starting association strength; <strong>normalized relevance</strong> adjusts it for repeated support and tag popularity; <strong>BM25 lexical similarity</strong> (also written <strong>BM-25</strong>) is a capped search-style match that gives distinctive shared words more influence than common words. Use <strong>Relevance</strong>, <strong>Newest</strong>, <strong>Oldest</strong>, or <strong>Most accessed</strong> to sort results. The list shows 50 results at a time; select <strong>Show more</strong> for the next 50.</p><p>While a search page or the Task board is the active editor, Related Notes shows that search&apos;s <strong>Refine</strong> options instead, so the page keeps its height for results: every facet, with related tags and their strength rails. The page keeps its search and counts, and terms are removed in its search box. Select a value to add it to the search; Alt-click leaves the value out, and Shift-click allows it beside the value already chosen. The open icon beside a related tag opens that tag&apos;s page in a new tab. The page shows a single Refine line while the sidebar is open, and its full Refine box again when the sidebar is closed.</p></div>
-        <div class="card"><h3>Outline</h3><p>The <strong>Outline</strong> view sits under Related Notes in the Deckard Activity Bar and lists the active Markdown file's headings as a tree. Heading markers and tags are removed from each title, and the heading's own tags are shown beside it, so the structure and its labels read as two columns. Untagged headings are kept so tagged headings stay where you wrote them, headings inside fenced code blocks are ignored, and a numeric hash such as <code>Sprint #3</code> stays in the title because it is not a tag. A heading written as nothing but tags shows those tags as its title. The tree follows the file as you type rather than waiting for a save. Select a heading to jump to its line; right-click one that carries tags for <strong>Open Tag Overview</strong> and <strong>Rename Tag</strong>. Drag the view between the primary and secondary sidebar like any other VS Code view, and use the eye control in its title to stop it following the cursor. Headings written in the underlined <code>Title</code>/<code>===</code> style are not shown, matching how Deckard indexes notes elsewhere.</p></div>
-        <div class="card"><h3>Wiki links</h3><p>Write <code>[[Project Neon Relay]]</code> to link a note by filename, or <code>[[Project Neon Relay#Decision]]</code> to link one of its headings. A note&apos;s <code>aliases:</code> front matter gives it other names that links can use. A link to a missing note is marked, with a <strong>Create note</strong> quick fix. Completion suggests note titles; Cmd/Ctrl-click opens a unique matching note. Hover a link to preview what it points at.</p></div>
-        <div class="card"><h3>References in the editor</h3><p>Counts above a note's lines show how many notes link to it, how many links name each heading, and how many open tasks sit under each heading; select one to list them in the references peek. A tagged heading also shows how many entries in other notes share one of the tags written on it; select that count to open Related Notes on the heading, which lists them along with weaker matches. Hover a tag to see its note and task counts and recent entries. Turn these off with <code>deckard.editor.referenceCounts</code> and <code>deckard.editor.hoverPreviews</code>.</p></div>
-        <div class="card" id="graph"><h3>Notes Graph</h3><p>Run <code>Deckard: Open Notes Graph</code> or select the graph icon in Related Notes, next to the Dashboard icon, to see the whole workspace as a force-directed map. The layout detects weighted visual communities from structural links and prevalence-adjusted tag evidence, then positions notes and tasks around virtual community anchors. Hidden tag nodes do not add high-mass repulsion; enable <strong>Show tags</strong> to reveal membership and learned tag-association links. Wiki links and heading nesting remain visible structural links. Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange a cluster. Select any note, task, or tag dot to show its direct <strong>Connected nodes</strong> in the sidebar. Select the current node at the top of the sidebar to open its note/task source or tag overview. Select a connected sidebar card to move the graph selection, or Cmd/Ctrl-click it to open that connection. Returning to a Markdown editor restores the normal Related Notes display. Use <strong>Filters</strong> to search, restrict by tags, or independently toggle notes, tasks, tag nodes, and orphans. In <strong>Display</strong>, adjust node size, link thickness, label zoom, <strong>Connection density</strong>, <strong>Tag prevalence bias</strong>, and <strong>Secondary bridge strength</strong>; turn on <strong>Show all links</strong> to compare the unfiltered graph, or use <strong>Reset graph settings</strong> to restore defaults, clear filters, and reframe the view. The default graph uses a prevalence-aware local backbone: direct Wiki links and headings seed visual communities, tag memberships are scored against a target community size, and each node retains only its strongest connections. The sidebar still uses every indexed relationship. <strong>Forces</strong> reshapes the layout with cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance controls.</p></div>
-        <div class="card"><h3>Query blocks</h3><p>Write a Deckard query in a <code>&#96;&#96;&#96;deckard</code> code fence to keep a live list of matching notes and tasks inside a note. The Markdown preview shows the results with links to each source line; tasks are listed open first, soonest due date first. Above the fence in the editor, Deckard shows the totals and an <strong>Open in search</strong> action. Add <code>sort=title</code>, <code>sort=created</code>, or <code>sort=updated</code>, and <code>limit=10</code>, after <code>deckard</code> to order and shorten the lists. Typing <code>#</code> or <code>@</code> inside the block suggests indexed tags.</p></div>
-        <div class="card"><h3>AI assistants</h3><p>AI assistants in VS Code that use language model tools, such as GitHub Copilot in agent mode, can call <code>deckard_query</code> to run a Deckard query over your notes and tasks, and <code>deckard_list_tags</code> to find the exact tag to query. Results carry each note's path and line. Deckard sends nothing anywhere itself; what a tool returns goes to the assistant that asked, so VS Code asks you to allow the first call in each session. Set <code>deckard.assistantTools</code> to <code>false</code> to hide both tools.</p></div>
-        <div class="card"><h3>Find</h3><p>Run <code>Deckard: Find</code> for results as you type: titles first, then the notes that mention your words, ranked by relevance. Choose <strong>Show all</strong> to see every result on a search page.</p></div>
-        <div class="card"><h3>Stats</h3><p>Run <code>Deckard: Show Stats</code> for index totals and local view counts for tags, entities, and note entries. Select a counted tag to open its overview, or a note entry to open its note. It also lists the notes nothing links to, leaving out daily, weekly, and monthly notes.</p></div>
-        <div class="card"><h3>Calendar</h3><p>The <strong>Calendar</strong> view in the Deckard sidebar shows a month, Monday first. A dot marks a day with a daily note and a number counts its open tasks due. Select a day, a week number, or the month&apos;s name to open its note; Deckard offers to create one that does not exist yet.</p></div>
-        <div class="card"><h3>Claude Code and other MCP clients</h3><p>Turn on <code>deckard.mcpServer.enabled</code> to run a Model Context Protocol server on this computer with Deckard&apos;s query and tag tools. It listens on 127.0.0.1 only and needs its token; <code>Deckard: Copy MCP Server Setup</code> copies the command that adds it to Claude Code, and <code>Deckard: Reset MCP Server Token</code> retires old setups.</p></div>
+        <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
+        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list.</p></div>
+        <div class="card"><h3>Editing many at once</h3><p><strong>Bulk Edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
+        <div class="card"><h3>What is due</h3><p>The status bar reads <strong>3 due today</strong> while anything is, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>
+    </section>
+
+    <section id="search">
+      <h2>Search</h2>
+      <div class="cards">
+        <div class="card"><h3>Find</h3><p><code>Deckard: Search Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page.</p></div>
+        <div class="card"><h3>Search pages</h3><p>Opening a tag collects every entry that carries it, with the tags it is most often written with. Any other search opens the same kind of page. Each page has the same search box, with completions and a visual builder.</p></div>
+        <div class="card"><h3>Refine</h3><p>Under the box, <strong>Refine</strong> counts what the results could be narrowed by. Selecting a value adds it with <strong>AND</strong>; Alt-click adds <strong>AND NOT</strong>, and Shift-click adds <strong>OR</strong>, widening the value chosen before it. Every value writes ordinary query text, so a refined search can be saved or copied into a note.</p></div>
+        <div class="card"><h3>Saving a search</h3><p><strong>Save</strong> beside the box keeps a search, which reopens on the page it was saved from and can sit on Home as a widget. Recent searches are kept too.</p></div>
+      </div>
+    </section>
+
+    <section id="query">
+      <h2>Query language</h2>
+      <p>A query is what you type into Find, a search box, a <a href="#query-blocks">query block</a>, or an <a href="#assistants">AI assistant</a>. Terms combine with <code>AND</code>, <code>OR</code>, <code>NOT</code>, and parentheses; <code>AND</code> binds tighter than <code>OR</code>, adjacent terms are joined by an implicit <code>AND</code>, and <code>-</code> or <code>!</code> negates a term. A bare <code>#tag</code> is a tag condition and a bare word is a text condition.</p>
+      <pre><code>(tag = #project/atlas AND tag = @ren-kade) OR (tag = #risk/vendor AND text ~ "elevator")</code></pre>
+      <div class="table-scroll"><table><caption>Shorthands, written the way GitHub writes them</caption><thead><tr><th>Shorthand</th><th>Finds</th></tr></thead><tbody>
+        <tr><td><code>is:open</code>, <code>is:done</code></td><td>Open or completed tasks.</td></tr>
+        <tr><td><code>is:overdue</code>, <code>is:due</code></td><td>Past their due date, or due within seven days.</td></tr>
+        <tr><td><code>is:task</code>, <code>is:note</code></td><td>Every task, or note entries without tasks.</td></tr>
+        <tr><td><code>is:blocked</code>, <code>is:blocking</code></td><td>Waiting for an open task, and the tasks they wait for.</td></tr>
+        <tr><td><code>is:mine</code></td><td>Tasks for the person <code>deckard.me</code> names.</td></tr>
+        <tr><td><code>is:assigned</code>, <code>is:unassigned</code></td><td>Tasks that name a person, and tasks that name nobody.</td></tr>
+        <tr><td><code>has:due</code>, <code>no:due</code></td><td>With or without a date. <code>scheduled</code>, <code>start</code>, <code>done</code>, <code>priority</code>, <code>id</code>, and <code>dependsOn</code> work the same way.</td></tr>
+        <tr><td><code>in:notes/work</code></td><td>A folder and everything inside it; <code>*</code> and <code>?</code> are wildcards.</td></tr>
+      </tbody></table></div>
+      <div class="table-scroll"><table><caption>Fields</caption><thead><tr><th>Field</th><th>Matches</th><th>Example</th></tr></thead><tbody>
+        <tr><td><code>tag</code></td><td>A tag, including inherited and front-matter tags. <code>*</code> and <code>?</code> are wildcards.</td><td><code>tag = #risk/*</code></td></tr>
+        <tr><td><code>text</code></td><td>Words in a body or a task line. <code>:</code> and <code>~</code> match a substring; <code>=</code> a whole word.</td><td><code>text ~ elevator</code></td></tr>
+        <tr><td><code>task</code></td><td><code>open</code>, <code>done</code>, or <code>any</code>. Only tasks satisfy it.</td><td><code>task = open</code></td></tr>
+        <tr><td><code>due</code>, <code>scheduled</code>, <code>start</code></td><td>A task date: a day, <code>today</code>, <code>tomorrow</code>, a window such as <code>7d</code>, or <code>none</code>.</td><td><code>due &lt; today</code></td></tr>
+        <tr><td><code>done</code></td><td>A task’s ✅ date, with windows counted back from today.</td><td><code>done = 7d</code></td></tr>
+        <tr><td><code>priority</code></td><td><code>highest</code> to <code>lowest</code>, and <code>none</code>.</td><td><code>priority &gt;= high</code></td></tr>
+        <tr><td><code>assignee</code></td><td>Who a task is for, or <code>none</code>. <code>@dana</code> and <code>#person/dana</code> name the same person.</td><td><code>assignee = @dana</code></td></tr>
+        <tr><td><code>kind</code></td><td>An entity namespace, <code>person</code> included.</td><td><code>kind = project</code></td></tr>
+        <tr><td><code>file</code>, <code>path</code></td><td>A file name or a workspace-relative path, with wildcards.</td><td><code>file = 2026-09-*.md</code></td></tr>
+        <tr><td><code>created</code>, <code>updated</code></td><td>A date, a window such as <code>30d</code>, or <code>today</code>.</td><td><code>updated &gt; 7d</code></td></tr>
+      </tbody></table></div>
+      <p>Operators are <code>=</code>, <code>!=</code>, <code>~</code> (contains), <code>!~</code>, and <code>&gt;</code> <code>&gt;=</code> <code>&lt;</code> <code>&lt;=</code> for dates and priorities. A window such as <code>7d</code> is compared by its far end, so <code>updated &gt; 7d</code> means within the last seven days and <code>due &lt; 7d</code> means due within the next seven, overdue included. Every operator has an opposite, so any one condition can be negated without <code>NOT</code>.</p>
+    </section>
+
+    <section id="query-blocks">
+      <h2>Query blocks</h2>
+      <p>A <code>deckard</code> code fence keeps a live list inside a note. The Markdown preview replaces the fence with what the query matches; the editor shows the totals above it with <strong>Open in search</strong>.</p>
+      <pre><code>&#96;&#96;&#96;deckard sort=updated limit=10
+tag = #project/atlas AND task = open
+&#96;&#96;&#96;</code></pre>
+      <p><code>sort=title|created|updated</code> and <code>limit=10</code> follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
+    </section>
+
+    <section id="connections">
+      <h2>Related notes and the graph</h2>
+      <div class="cards">
+        <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing.</p></div>
+        <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
+        <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighbourhood instead, one to three hops out, following the editor as you move between notes.</p></div>
+        <div class="card"><h3>Stats</h3><p>Index totals, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and entries you open most.</p></div>
+      </div>
+    </section>
+
+    <section id="home">
+      <h2>Home and pins</h2>
+      <p>The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Agenda, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
+      <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
+    </section>
+
+    <section id="tidy">
+      <h2>Renaming and tidying</h2>
+      <div class="cards">
+        <div class="card"><h3>Rename and merge tags</h3><p><code>Deckard: Rename Tag</code> rewrites a tag everywhere it is written, leaving prose and fenced code alone. Renaming into a tag that exists is a merge, which says first how many entries each has and how many carry both.</p></div>
+        <div class="card"><h3>Tags that look alike</h3><p>Stats ranks the pairs that look like one idea spelled twice — a name written with two markers, in two namespaces, punctuated two ways, pluralized, or mistyped — each with <strong>Merge</strong> beside it.</p></div>
+        <div class="card"><h3>Hub notes</h3><p>A note whose front matter says <code>describes: [project/atlas]</code> leads that tag’s page, and its other fields are shown as the tag’s properties. Home lists the frequently used tags that have no hub yet.</p></div>
+        <div class="card"><h3>Before and after a write</h3><p>A write that reaches more than one note opens in VS Code’s refactor preview first, where any change can be left out. <code>Deckard: Undo Last Change</code> puts those notes back afterwards, leaving alone any note that changed since.</p></div>
+        <div class="card"><h3>Extracting a section</h3><p><code>Deckard: Extract Tagged Heading</code> moves a tagged section, and everything nested under it, into a note of its own and leaves a <code>[[link]]</code> in its place.</p></div>
+        <div class="card"><h3>Templates</h3><p><code>Deckard: New Note from Template</code> creates a note from a file in your templates folder, filling in the date, the title, and anything the template asks for.</p></div>
+      </div>
+    </section>
+
+    <section id="periodic">
+      <h2>Days, weeks, and months</h2>
+      <div class="cards">
+        <div class="card"><h3>Daily notes</h3><p><code>Deckard: Create Daily Note</code> creates or opens today’s note from your template, and the previous and next commands step between the days that have one.</p></div>
+        <div class="card"><h3>Carrying tasks forward</h3><p>Set <code>deckard.dailyNote.rollover</code> to <code>move</code> or <code>copy</code> and a new daily note takes the unfinished tasks of every earlier daily note with it, oldest first. <code>Deckard: Roll Unfinished Tasks Forward</code> does it on request, with <strong>Undo</strong> beside what it says.</p></div>
+        <div class="card"><h3>Reviews</h3><p>A weekly or monthly note opens with a review written into it: what was completed, what slipped, the notes written and changed, and the tags first seen. It is ordinary Markdown, named by the days it covers, and rewritten in place when you run it again.</p></div>
+        <div class="card"><h3>Calendar</h3><p>A month in the sidebar, Sunday to Saturday. A dot marks a day with a note and a number counts what is due, in orange once the day has passed. The week beside a row opens that week’s note.</p></div>
+      </div>
+    </section>
+
+    <section id="commands">
+      <h2>Commands</h2>
+      <p>Every Deckard command is in the Command Palette under <strong>Deckard:</strong>. A command that acts on “the note” acts on the note in the editor, and one that acts on “the task” acts on the line your cursor is in.</p>
+      ${renderCommandTable(manifest)}
     </section>
 
     <section id="advanced">
       <h2>Settings</h2>
-      <div class="cards">
-        <div class="card"><h3>Choose a theme</h3><p><code>deckard.theme</code> defaults to <code>corpo</code>, a plain style that follows your VS Code colors. Choose <code>replicant</code>, <code>oblivion</code>, <code>lcars</code>, <code>synthwave</code>, <code>tomcat</code>, <code>fellowship</code>, or <code>cooper</code> for one of Deckard's film-inspired styles.</p></div>
-        <div class="card"><h3>Open the Dashboard on startup</h3><p><code>deckard.dashboard.openOnStartup</code> defaults to <code>false</code>. Turn it on to open the Dashboard when VS Code starts in a workspace where Deckard has indexed notes.</p></div>
-        <div class="card"><h3>Control the note scope</h3><p><code>deckard.notesFolder</code> is optional. Leave it empty to index all workspace Markdown, or set a workspace-relative folder to limit the index. <code>deckard.exclude</code> leaves files and folders out by glob pattern, written like VS Code&apos;s <code>files.exclude</code>: <code>{ "**/archive": true }</code> leaves out every <code>archive</code> folder and the notes in it.</p></div>
-        <div class="card"><h3>Set the daily note template</h3><p><code>deckard.dailyNoteTemplate</code> supplies the text for new daily notes. It defaults to <code># {date}\\n\\n</code>; <code>{date}</code> becomes the local <code>YYYY-MM-DD</code> date.</p></div>
-        <div class="card"><h3>Limit related-note matching</h3><p><code>deckard.enableKeywordLinks</code> lets significant shared keywords adjust the scores of related entries by default. Shared keywords never make an entry related on their own. Disable it to rank by shared tags and intentional Wiki links only.</p></div>
-        <div class="card"><h3>Control tag autocomplete</h3><p><code>deckard.enableTagAutocomplete</code> shows indexed tag and people suggestions by default. Disable it without changing tag indexing, highlighting, or Cmd/Ctrl-click navigation.</p></div>
-        <div class="card"><h3>Customize entity aliases</h3><p><code>deckard.entityNamespaceAliases</code> maps one namespace to another, including completely custom targets. For example, <code>{ "proj": "project", "leadership": "management" }</code> makes <code>#proj/atlas</code> a project and collapses <code>#leadership/performance</code> into <code>#management/performance</code>.</p></div>
-        <div class="card"><h3>Customize people markers</h3><p><code>deckard.personMarker</code> defaults to <code>@</code>. Set it to <code>~</code> to use <code>~mara-vale</code> for people and keep <code>@inbox</code> as a lightweight tag.</p></div>
-        <div class="card"><h3>Inline entries</h3><p><code>deckard.parseInlineTags</code> controls whether tagged non-heading, non-task lines become separate note entries. Consecutive tagged prose lines are grouped into one entry so wrapped text does not create truncated duplicate titles. A tagged unordered or numbered list item includes its indented child bullets. Headings and tasks are always indexed.</p></div>
-        <div class="card"><h3>Highlight note sections</h3><p><code>deckard.highlightNoteSections</code> defaults to <code>true</code> and gently highlights tagged note sections in Markdown editors. Disable it when you prefer no visual section treatment; moving the cursor through a tagged entry will still focus Related Notes on that entry.</p></div>
-        <div class="card"><h3>Follow the cursor</h3><p><code>deckard.autoSelectNoteSections</code> defaults to <code>true</code> and focuses Related Notes on the tagged entry under the cursor. Disable it to keep the sidebar focused on the whole document unless you choose a tagged entry manually.</p></div>
-        <div class="card"><h3>Outline tags and cursor</h3><p><code>deckard.outline.showTags</code> defaults to <code>true</code> and shows each heading's tags beside it in the Outline; disable it for titles only. <code>deckard.outline.followCursor</code> defaults to <code>true</code> and selects the heading containing the cursor, and the eye control in the Outline title switches the same setting. <code>deckard.outline.inheritedTags</code> defaults to <code>false</code>; enable it to also show the front-matter tags every heading in the file inherits.</p></div>
-        <div class="card"><h3>Note and task title tags</h3><p><code>deckard.tagTitleDisplayMode</code> defaults to <code>inline</code>, keeping source tags in Related Notes, search page, and Dashboard note and task titles as clickable buttons. Set it to <code>separate</code> to pull overview tags out into dedicated controls after each title.</p></div>
-        <div class="card"><h3>Tag associations</h3><p><code>deckard.enableHeadingTagRelationships</code> defaults to <code>true</code> and offers related tags under <strong>Tags</strong> in Refine: connections made when tags are written together or appear in nearby heading context. Set the setting to <code>false</code> to refine by the tags the results carry instead, without changing ordinary tag indexing or note content.</p></div>
-      </div>
+      <p>Every setting below is in VS Code’s settings editor under <strong>Deckard</strong>, and can be set per workspace. This table is built from what Deckard contributes, so it says what your version actually has.</p>
+      ${renderSettingsTables(manifest)}
+    </section>
+
+    <section id="assistants">
+      <h2>AI assistants</h2>
+      <p>Deckard gives assistants inside VS Code two read-only tools — <code>deckard_query</code> and <code>deckard_list_tags</code> — so Copilot in agent mode, or any other assistant using VS Code’s language model tools, can answer questions from the index Deckard already keeps. You allow the first call in each session. <code>deckard.assistantTools</code> turns them off.</p>
+      <p>For Claude Code and other MCP clients, <code>deckard.mcpServer.enabled</code> runs a local server on 127.0.0.1 with the same tools, and <code>Deckard: Copy MCP Server Setup</code> copies the command that adds it, token included. <code>Deckard: Reset MCP Server Token</code> makes a new token, so every copied setup stops working.</p>
+      <p class="note">Deckard answers with what it has indexed: paths, lines, titles, and tags. It never sends your notes anywhere itself — an assistant reads the answer, and what that assistant does next is between you and it.</p>
     </section>
 
     <section id="privacy">
       <h2>Privacy and source safety</h2>
-      <p>Your Markdown remains the source of truth. Deckard writes note text only for explicit task toggles, heading extraction, approved entity links, daily notes, or the inline-tag migration command.</p>
-      <p>Search uses a workspace-scoped local SQLite cache. Deckard does not send note content to an AI model or external service.</p>
-    </section>
-  </article>
+      <p>Your Markdown is the source of truth. The index and the search cache are stored locally, under this workspace’s storage, and no note content is sent to any service by Deckard.</p>
+      <p>Deckard changes a note only when you use a task checkbox, edit a task, extract a tagged heading, rename a note, tag, or heading, carry tasks forward, write a review, edit a search’s results, or approve an entity tag. Every one of those compares what it is about to change with what was indexed, and refuses when the line has moved on. Writes that reach several notes are shown first and can be taken back with <code>Deckard: Undo Last Change</code>.</p>
+      <p>Favorites, sorting, pins, widget layout, and view counts live in VS Code’s own storage, never in your notes.</p>
+    </article>
 </main>
 </body>
 </html>`;

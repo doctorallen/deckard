@@ -84,6 +84,16 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **The Help page is a reference again.** It had grown into a wall of cards
+  that said less than the README and had fallen behind the extension: the
+  settings were prose, the query language had no table, and features shipped
+  without it noticing. Its commands and settings tables are now built from
+  what Deckard actually contributes, so they cannot go stale, and a test
+  holds the page to that — every contributed command and setting has to
+  appear on it. The guide is grouped in the navigation (Writing, Tasks,
+  Finding, Keeping notes, Reference), with tables for the task markers, the
+  query shorthands and fields, what counts as a note, and every setting.
+
 - **Refine says what a click does to the search.** Each value sat between a
   − and a + that were invisible until hovered while still holding their
   width open, and the tooltip described the modifiers without naming what
