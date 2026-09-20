@@ -84,6 +84,15 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **The calendar keeps its dates still, and starts its weeks on Sunday.** A
+  day with a note or a due count drew taller content than a day without one,
+  and a button centres what it holds, so dates wandered up and down the grid
+  depending on what each day had. Every day is now the same three rows — the
+  date, a dot, a count — drawn whether or not there is anything to mark. The
+  week-number column is gone, and weeks run Sunday to Saturday; a weekly
+  note is opened with `Deckard: Open Weekly Note`, and a row still belongs to
+  the ISO week its weekdays fall in.
+
 - **Undo puts notes back without opening them.** Taking back a write that
   reached several notes opened every one of them in the editor, leaving a
   row of tabs to close after undoing one thing. A note nobody has on screen

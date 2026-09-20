@@ -20,11 +20,11 @@ export interface CalendarDay {
   dueCount: number;
 }
 
-/** One ISO week in the calendar, Monday first. */
+/** One row of the calendar: seven days, Sunday first. */
 export interface CalendarWeek {
-  /** The ISO week, such as 2026-W37. */
+  /** The ISO week its weekdays belong to, such as 2026-W37. */
   week: string;
-  /** Its Monday, as YYYY-MM-DD. */
+  /** That ISO week's Monday, as YYYY-MM-DD, which its note is named for. */
   date: string;
   /** The week's note, when it has one. */
   notePath?: string;
@@ -52,9 +52,13 @@ const monthTitle = new Intl.DateTimeFormat('en', {
 });
 
 /**
- * One month as the calendar shows it: whole ISO weeks, Monday first, with each
- * day's daily note and the open tasks due that day, and the notes kept for
- * each week and for the month.
+ * One month as the calendar shows it: whole weeks from Sunday to Saturday,
+ * with each day's daily note and the open tasks due that day, and the notes
+ * kept for each week and for the month.
+ *
+ * A row is named by the ISO week its weekdays fall in — the week of the
+ * Monday inside it — so a weekly note still belongs to the row that holds
+ * its working days.
  */
 export function createCalendar(
   index: WorkspaceIndex,
@@ -90,16 +94,21 @@ export function createCalendar(
 
   const weeks: CalendarWeek[] = [];
   for (
-    let monday = new Date(year, monthNumber - 1, 1 - ((first.getDay() + 6) % 7));
-    monday <= last;
-    monday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7)
+    let sunday = new Date(year, monthNumber - 1, 1 - first.getDay());
+    sunday <= last;
+    sunday = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + 7)
   ) {
+    const monday = new Date(
+      sunday.getFullYear(),
+      sunday.getMonth(),
+      sunday.getDate() + 1,
+    );
     const week = getPeriodicNote('week', monday).name;
     const days = Array.from({ length: 7 }, (_, offset): CalendarDay => {
       const day = new Date(
-        monday.getFullYear(),
-        monday.getMonth(),
-        monday.getDate() + offset,
+        sunday.getFullYear(),
+        sunday.getMonth(),
+        sunday.getDate() + offset,
       );
       const date = formatLocalDate(day);
       const notePath = dailyNotes.get(date);

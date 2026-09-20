@@ -23,8 +23,20 @@ suite('Calendar', () => {
     calendar.weeks.flatMap((week) => week.days).map((day) => [day.date, day]),
   );
 
-  test('lays out whole ISO weeks, Monday first', () => {
+  test('lays out whole weeks, Sunday first', () => {
     assert.strictEqual(calendar.title, 'September 2026');
+    assert.deepStrictEqual(
+      calendar.weeks.map((week) => week.days[0].date),
+      ['2026-08-30', '2026-09-06', '2026-09-13', '2026-09-20', '2026-09-27'],
+      'every row opens on a Sunday',
+    );
+    assert.deepStrictEqual(
+      calendar.weeks.map((week) => week.days[6].date.slice(8)),
+      ['05', '12', '19', '26', '03'],
+      'and closes on a Saturday',
+    );
+    // A row is still named by the ISO week its weekdays fall in, so a weekly
+    // note belongs to the row holding its working days.
     assert.deepStrictEqual(
       calendar.weeks.map((week) => [week.week, week.date]),
       [
@@ -37,7 +49,7 @@ suite('Calendar', () => {
     );
     assert.strictEqual(days.get('2026-08-31')?.inMonth, false);
     assert.strictEqual(days.get('2026-09-01')?.inMonth, true);
-    assert.strictEqual(calendar.weeks[4].days[6].date, '2026-10-04');
+    assert.strictEqual(calendar.weeks[4].days[6].date, '2026-10-03');
     assert.deepStrictEqual(
       [calendar.previousMonth, calendar.nextMonth, calendar.currentMonth],
       ['2026-08', '2026-10', '2026-09'],
@@ -62,8 +74,8 @@ suite('Calendar', () => {
     assert.strictEqual(shiftMonth('2026-01', -1), '2025-12');
     assert.strictEqual(
       createCalendar(index, '2027-02', new Date(2026, 8, 13)).weeks.length,
-      4,
-      'February 2027 starts on a Monday and fills four weeks',
+      5,
+      'February 2027 starts on a Monday, so its first row opens the day before',
     );
   });
 
