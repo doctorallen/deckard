@@ -13,6 +13,8 @@ import {
   completeDraft,
   createEditorRows,
   editTaskCommand,
+  readAssignee,
+  setAssignee,
   setDraftDate,
   setDraftDependencies,
   TaskEditorActions,
@@ -40,6 +42,7 @@ suite('Task editor', () => {
         'Start: Not set',
         'Priority: high',
         'Repeats: every week',
+        'For: Nobody named',
         'Blocked by: b2',
         'Add a tag: Written at the end of the description',
         'Write the task: Enter',
@@ -113,6 +116,51 @@ suite('Task editor', () => {
     assert.deepStrictEqual(draft.dependsOn, ['b2', 'c3']);
     assert.strictEqual(formatTaskDraft(draft), '- [ ] Ship it ⛔ b2, c3');
     assert.deepStrictEqual(setDraftDependencies(draft, '').dependsOn, []);
+  });
+
+  test('says who a task is for, and hands it to someone else', () => {
+    assert.strictEqual(
+      readAssignee('Chase the contractor @dana with @ren-kade'),
+      '@dana',
+      'the first person named owns it; the second is mentioned',
+    );
+    assert.strictEqual(readAssignee('Chase the contractor'), undefined);
+    assert.strictEqual(
+      readAssignee('Send the proposal #person/ren-kade'),
+      '#person/ren-kade',
+    );
+
+    assert.strictEqual(
+      setAssignee('Chase the contractor @dana with @ren-kade', '@mara-vale'),
+      'Chase the contractor @mara-vale with @ren-kade',
+      'the one who was first is replaced, and a mention stays a mention',
+    );
+    assert.strictEqual(
+      setAssignee('Chase the contractor', '@dana'),
+      'Chase the contractor @dana',
+    );
+    assert.strictEqual(
+      setAssignee('Chase the contractor @dana with @ren-kade', undefined),
+      'Chase the contractor with @ren-kade',
+      'taking the first name off hands the task to whoever is named next',
+    );
+    assert.strictEqual(
+      setAssignee('Chase the contractor', 'dana'),
+      'Chase the contractor',
+      'only a person tag names a person',
+    );
+    assert.strictEqual(
+      setAssignee('Chase the contractor', '#project/atlas'),
+      'Chase the contractor',
+    );
+  });
+
+  test('the editor shows who a task is for beside its other fields', () => {
+    const rows = createEditorRows(
+      parseTaskDraft('- [ ] Chase the contractor @dana with @ren-kade'),
+    );
+    const forRow = rows.find((row) => row.field === 'assignee');
+    assert.strictEqual(forRow?.description, '@dana');
   });
 
   test('adds a tag to the words, once, and only a real one', () => {

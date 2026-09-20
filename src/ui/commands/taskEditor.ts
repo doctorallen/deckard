@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { extractTags } from '../../core/markdown/parser';
+import { extractTags, isPersonTag } from '../../core/markdown/parser';
 import {
   describeTaskDate,
   formatTaskDraft,
@@ -43,6 +43,7 @@ type DraftField =
   | 'start'
   | 'priority'
   | 'recurrence'
+  | 'assignee'
   | 'dependsOn'
   | 'tag';
 
@@ -110,6 +111,11 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
       label: '$(sync) Repeats',
       description: value(draft.recurrence, 'Never'),
       field: 'recurrence',
+    },
+    {
+      label: '$(person) For',
+      description: value(readAssignee(draft.description), 'Nobody named'),
+      field: 'assignee',
     },
     {
       label: '$(circle-slash) Blocked by',
@@ -294,6 +300,26 @@ async function readField(
         ? undefined
         : setDraftDependencies(draft, written);
     }
+    case 'assignee': {
+      const chosen = await pickOrWrite({
+        title: 'Who is it for?',
+        placeholder: 'Choose a person, write one, or choose Nobody',
+        items: [
+          { label: 'Nobody', description: 'Take the name off the task' },
+          ...people(options.index),
+        ],
+      });
+      if (chosen === undefined) {
+        return undefined;
+      }
+      return {
+        ...draft,
+        description: setAssignee(
+          draft.description,
+          chosen === 'Nobody' ? undefined : chosen.trim(),
+        ),
+      };
+    }
     case 'tag':
       return addTag(draft, options.index);
     default:
@@ -355,6 +381,20 @@ async function addTag(
     : undefined;
 }
 
+/** The people the workspace already writes about, most used first. */
+function people(index: TaskEditorIndex | undefined): vscode.QuickPickItem[] {
+  return index
+    ? [...index.getSnapshot().tags.values()]
+        .filter((tag) => isPersonTag(tag.key))
+        .sort((left, right) => right.count - left.count)
+        .slice(0, TAG_SUGGESTION_LIMIT)
+        .map((tag) => ({
+          label: tag.label,
+          description: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
+        }))
+    : [];
+}
+
 /** How many of the workspace's tags the tag step offers. */
 const TAG_SUGGESTION_LIMIT = 200;
 
@@ -384,6 +424,48 @@ function pickOrWrite(options: {
     });
     pick.show();
   });
+}
+
+/**
+ * Who the task is for: the first person named in its words, which is what
+ * the index reads as its assignee.
+ */
+export function readAssignee(description: string): string | undefined {
+  return extractTags(description).find((tag) => isPersonTag(tag.key))?.label;
+}
+
+/**
+ * Names a person as the one the task is for.
+ *
+ * The assignee is the first person on the line, so naming someone else
+ * replaces the person who was first; anyone named after them was a mention
+ * and stays one. Clearing takes the first person out, which hands the task
+ * to whoever was named next — which is what the line then says.
+ */
+export function setAssignee(
+  description: string,
+  person: string | undefined,
+): string {
+  const people = extractTags(description).filter((tag) =>
+    isPersonTag(tag.key),
+  );
+  const written = person ? extractTags(person) : [];
+  if (person && (written.length !== 1 || !isPersonTag(written[0].key))) {
+    return description;
+  }
+  if (people.length === 0) {
+    return person ? appendTag(description, written[0].label) : description;
+  }
+  const first = people[0].label;
+  const at = description.indexOf(first);
+  if (at < 0) {
+    return description;
+  }
+  const replaced =
+    description.slice(0, at) +
+    (person ? written[0].label : '') +
+    description.slice(at + first.length);
+  return replaced.replace(/[ \t]{2,}/g, ' ').trim();
 }
 
 /** Writes a tag at the end of the description, unless it is already there. */

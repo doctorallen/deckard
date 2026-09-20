@@ -108,6 +108,14 @@
   with **Undo** beside what it says. Home's own **Pin** button is gone,
   since Home is the one place the note being pinned is not in front of you.
 
+- **The task editor says who a task is for.** Assignees shipped as "the
+  first person named on the line", but the editor had no field for one, so
+  the only way to hand a task over was to write the name in the right place
+  yourself. **For** offers the people your notes already name: choosing one
+  replaces whoever was named first, anyone named after them stays a mention,
+  and **Nobody** takes the first name off, which hands the task to whoever
+  is named next.
+
 - **`Deckard: Edit Task` and `Deckard: Add Task` build or edit a whole task
   at once.** Metadata
   could be typed after `/` one marker at a time, which is fine for adding a
