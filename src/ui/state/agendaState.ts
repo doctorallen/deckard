@@ -4,7 +4,7 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
 } from '../../core/markdown/taskMetadata';
-import { Task, WorkspaceIndex } from '../../core/types';
+import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
 
@@ -20,7 +20,26 @@ import { stripTrailingTags } from './queryBlockState';
  * A task appears once, in the first group that applies.
  */
 
-export type AgendaGroupId = 'overdue' | 'today' | 'upcoming';
+export type AgendaGroupId = string;
+
+/** What the Agenda's groups are: when a task is wanted, or what it carries. */
+export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee';
+
+/** The ways the Agenda can be grouped, in the order the picker offers them. */
+export const AGENDA_GROUPINGS: readonly {
+  id: AgendaGroupBy;
+  label: string;
+  detail: string;
+}[] = [
+  {
+    id: 'due',
+    label: 'Due status',
+    detail: 'Overdue, Today, and Upcoming',
+  },
+  { id: 'priority', label: 'Priority', detail: 'Highest to lowest' },
+  { id: 'status', label: 'Status', detail: 'The #status/… tag on each task' },
+  { id: 'assignee', label: 'Person', detail: 'Who each task is for' },
+];
 
 export interface AgendaEntry {
   task: Task;
@@ -42,11 +61,21 @@ export interface AgendaGroup {
 
 const GROUP_ORDER: readonly AgendaGroupId[] = ['overdue', 'today', 'upcoming'];
 
-const GROUP_LABELS: Readonly<Record<AgendaGroupId, string>> = {
+const GROUP_LABELS: Readonly<Record<string, string>> = {
   overdue: 'Overdue',
   today: 'Today',
   upcoming: 'Upcoming',
 };
+
+/** Priority groups, strongest first, with the tasks that carry none between. */
+const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
+  'highest',
+  'high',
+  'medium',
+  'none',
+  'low',
+  'lowest',
+];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -64,7 +93,23 @@ export function createAgenda(
   index: WorkspaceIndex,
   now: number,
   upcomingDays: number,
+  groupBy: AgendaGroupBy = 'due',
+  statusNamespace = 'status',
+  /**
+   * The order a reader dragged their tasks into, from preferences. A task
+   * they placed leads its group; the rest follow in the order the group
+   * would have had anyway.
+   */
+  taskOrder: readonly string[] = [],
 ): AgendaGroup[] {
+  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
+  const byRank =
+    (fallback: (left: AgendaEntry, right: AgendaEntry) => number) =>
+    (left: AgendaEntry, right: AgendaEntry): number => {
+      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftRank - rightRank || fallback(left, right);
+    };
   const today = startOfDay(now);
   const tomorrow = addDays(today, 1);
   const horizon = addDays(today, Math.max(1, upcomingDays) + 1);
@@ -89,15 +134,115 @@ export function createAgenda(
     }
   }
 
-  return GROUP_ORDER.map((id) => ({
+  const byDue = GROUP_ORDER.map((id) => ({
     id,
-    label: GROUP_LABELS[id],
+    label: GROUP_LABELS[id] ?? id,
     // Today is a to-do list, so importance leads; the other groups read as a
     // timeline.
     entries: (groups.get(id) ?? []).sort(
-      id === 'today' ? compareByPriority : compareByDate,
+      byRank(id === 'today' ? compareByPriority : compareByDate),
     ),
   })).filter((group) => group.entries.length > 0);
+  if (groupBy === 'due') {
+    return byDue;
+  }
+  // The Agenda holds the same tasks whichever way it is grouped: the open
+  // ones wanted within its horizon. Only the axis changes.
+  const entries = byDue.flatMap((group) => group.entries);
+  const order = byRank(compareByDate);
+  return groupBy === 'priority'
+    ? groupByPriority(entries, order)
+    : groupBy === 'status'
+      ? groupByStatus(entries, statusNamespace, order)
+      : groupByAssignee(entries, index, order);
+}
+
+/** Every priority that any entry carries, strongest first. */
+function groupByPriority(
+  entries: readonly AgendaEntry[],
+  order: (left: AgendaEntry, right: AgendaEntry) => number,
+): AgendaGroup[] {
+  return PRIORITY_ORDER.flatMap((priority) => {
+    const held = entries.filter(
+      (entry) => (entry.task.priority ?? 'none') === priority,
+    );
+    return held.length === 0
+      ? []
+      : [
+          {
+            id: `priority:${priority}`,
+            label: priority === 'none' ? 'No priority' : capitalize(priority),
+            entries: [...held].sort(order),
+          },
+        ];
+  });
+}
+
+/** The status written on each task's own line, busiest status first. */
+function groupByStatus(
+  entries: readonly AgendaEntry[],
+  namespace: string,
+  order: (left: AgendaEntry, right: AgendaEntry) => number,
+): AgendaGroup[] {
+  const prefix = `#${namespace.toLowerCase()}/`;
+  const statusOf = (entry: AgendaEntry): string =>
+    (entry.task.associationTagGroups?.[0] ?? [])
+      .map((tag) => tag.key.toLowerCase())
+      .find((key) => key.startsWith(prefix))
+      ?.slice(prefix.length) ?? '';
+  return collect(
+    entries,
+    statusOf,
+    (status) => (status ? capitalize(status.replace(/[-_]+/g, ' ')) : 'No status'),
+    order,
+  );
+}
+
+/** Who each task is for, busiest first, with the unnamed ones last. */
+function groupByAssignee(
+  entries: readonly AgendaEntry[],
+  index: WorkspaceIndex,
+  order: (left: AgendaEntry, right: AgendaEntry) => number,
+): AgendaGroup[] {
+  return collect(
+    entries,
+    (entry) => entry.task.assignee ?? '',
+    (key) => (key ? (index.tags.get(key)?.label ?? key) : 'Nobody named'),
+    order,
+  );
+}
+
+/**
+ * Groups entries by a key, busiest group first, with the group of entries
+ * that have no key of their own last however many it holds.
+ */
+function collect(
+  entries: readonly AgendaEntry[],
+  keyOf: (entry: AgendaEntry) => string,
+  labelOf: (key: string) => string,
+  order: (left: AgendaEntry, right: AgendaEntry) => number,
+): AgendaGroup[] {
+  const held = new Map<string, AgendaEntry[]>();
+  entries.forEach((entry) => {
+    const key = keyOf(entry);
+    held.set(key, [...(held.get(key) ?? []), entry]);
+  });
+  return [...held.entries()]
+    .sort(
+      (left, right) =>
+        Number(left[0] === '') - Number(right[0] === '') ||
+        right[1].length - left[1].length ||
+        labelOf(left[0]).localeCompare(labelOf(right[0])),
+    )
+    .map(([key, group]) => ({
+      id: `${key || 'none'}`,
+      label: labelOf(key),
+      entries: [...group].sort(order),
+    }));
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function placeTask(

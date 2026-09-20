@@ -238,6 +238,11 @@
         "title": "Rename Tag…"
       },
       {
+        "command": "deckard.agenda.setGrouping",
+        "title": "Deckard: Group the Agenda By…",
+        "icon": "$(group-by-ref-type)"
+      },
+      {
         "command": "deckard.outline.enableFollowCursor",
         "title": "Deckard: Follow Cursor in Outline",
         "icon": "$(eye-closed)"
@@ -296,6 +301,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "deckard.agenda.setGrouping",
+          "when": "view == deckard.agenda",
+          "group": "navigation@0"
+        },
         {
           "command": "deckard.showTaskBoard",
           "when": "view == deckard.agenda",
@@ -798,6 +808,24 @@
             "default": "",
             "description": "A time of day, such as 09:00, at which Deckard says how many tasks are due. Empty means no reminder.",
             "order": 7
+          },
+          "deckard.agenda.groupBy": {
+            "type": "string",
+            "enum": [
+              "due",
+              "priority",
+              "status",
+              "assignee"
+            ],
+            "enumDescriptions": [
+              "Overdue, Today, and Upcoming.",
+              "Highest to lowest, with the tasks carrying no priority between.",
+              "The #status/… tag written on each task.",
+              "Who each task is for: the first person named on its line."
+            ],
+            "default": "due",
+            "description": "What the Agenda's groups are. The group control in the Agenda's title sets the same thing.",
+            "order": 3
           },
           "deckard.agenda.upcomingDays": {
             "type": "number",

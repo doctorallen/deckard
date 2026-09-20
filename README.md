@@ -19,7 +19,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace, or of one note's neighbourhood. |
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
-| [Agenda](#agenda) | Open tasks grouped into Overdue, Today, and Upcoming, which you can complete from their checkboxes. |
+| [Agenda](#agenda) | Open tasks grouped by due status, priority, status, or person, which you can complete from their checkboxes. |
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
 | [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, or person, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and who a task is for, written in either Obsidian Tasks format. |
@@ -453,6 +453,11 @@ Open **Agenda** from the Deckard Activity Bar to see the open tasks that need at
 - **Overdue** lists tasks whose due date has passed, oldest first.
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
 - **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead.
+- **Group by** in the Agenda's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones inside the Agenda's horizon — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
+  - **Priority** runs highest to lowest, with the tasks carrying no priority between medium and low, where they rank.
+  - **Status** reads the `#status/…` tag written on each task line, busiest group first, with **No status** last. It follows `deckard.board.statusNamespace`.
+  - **Person** groups by [who each task is for](#who-a-task-is-for), busiest first, with **Nobody named** last.
+- Within a group, tasks you have ranked on the [Task board](#task-board) lead in the order you dragged them into; the rest follow by date, or by priority in **Today**.
 - Each task shows why it is listed, its priority, and its file, plus `blocked by …` while a task it waits for with ⛔ is still open. Select a task to open its line.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - The Agenda's badge counts the tasks that are overdue or due today.
@@ -854,6 +859,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.showTags": true,
 	"deckard.outline.followCursor": true,
 	"deckard.outline.inheritedTags": false,
+	"deckard.agenda.groupBy": "due",
 	"deckard.agenda.upcomingDays": 7,
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
@@ -904,6 +910,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
+| `deckard.agenda.groupBy` | `due` | What the Agenda's groups are: `due`, `priority`, `status`, or `assignee`. The group control in its title sets the same thing. |
 | `deckard.agenda.upcomingDays` | `7` | How many days ahead the Agenda's **Upcoming** group looks for due, scheduled, and start dates. |
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |

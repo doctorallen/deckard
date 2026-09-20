@@ -62,6 +62,58 @@ suite('Agenda', () => {
     ]);
   });
 
+  test('groups by priority, status, or person, over the same tasks', () => {
+    const index = createIndex([
+      createTask({ id: 'overdue', dueAt: at(9, 10), priority: 'high' }),
+      createTask({
+        id: 'due-today',
+        dueAt: at(9, 13),
+        assignee: '@dana',
+        associationTagGroups: [[{ key: '#status/doing', label: '#status/doing' }]],
+      }),
+      createTask({ id: 'upcoming', dueAt: at(9, 18), assignee: '@dana' }),
+      createTask({ id: 'undated' }),
+    ]);
+    const grouped = (groupBy: 'priority' | 'status' | 'assignee') =>
+      createAgenda(index, now, 7, groupBy).map((group) => [
+        group.label,
+        group.entries.map((entry) => entry.task.id),
+      ]);
+
+    assert.deepStrictEqual(grouped('priority'), [
+      ['High', ['overdue']],
+      ['No priority', ['due-today', 'upcoming']],
+    ]);
+    assert.deepStrictEqual(grouped('status'), [
+      // The busiest group first, and the tasks carrying no status last.
+      ['Doing', ['due-today']],
+      ['No status', ['overdue', 'upcoming']],
+    ]);
+    assert.deepStrictEqual(grouped('assignee'), [
+      ['@dana', ['due-today', 'upcoming']],
+      ['Nobody named', ['overdue']],
+    ]);
+  });
+
+  test('puts the tasks a reader ranked at the top of their group', () => {
+    const index = createIndex([
+      createTask({ id: 'first-due', dueAt: at(9, 14) }),
+      createTask({ id: 'later', dueAt: at(9, 16) }),
+      createTask({ id: 'last-due', dueAt: at(9, 18) }),
+    ]);
+    assert.deepStrictEqual(
+      createAgenda(index, now, 7)[0].entries.map((entry) => entry.task.id),
+      ['first-due', 'later', 'last-due'],
+      'by date until a reader says otherwise',
+    );
+    assert.deepStrictEqual(
+      createAgenda(index, now, 7, 'due', 'status', ['last-due', 'later'])[0]
+        .entries.map((entry) => entry.task.id),
+      ['last-due', 'later', 'first-due'],
+      'the ranked ones lead, and the rest keep their own order',
+    );
+  });
+
   test('is empty when no open task has a date in range', () => {
     assert.deepStrictEqual(
       createAgenda(createIndex([createTask({ id: 'undated' })]), now, 7),

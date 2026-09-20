@@ -74,7 +74,10 @@ import {
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
-import { AgendaTreeProvider } from './ui/views/agendaTree';
+import {
+  AgendaTreeProvider,
+  pickAgendaGrouping,
+} from './ui/views/agendaTree';
 import { TaskStatusBar } from './ui/views/taskStatusBar';
 
 let activeServices: ExtensionServices | undefined;
@@ -238,7 +241,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
-  const agenda = new AgendaTreeProvider(indexer);
+  const agenda = new AgendaTreeProvider(indexer, preferences);
   const taskStatusBar = new TaskStatusBar(indexer);
   activeServices = {
     indexer,
@@ -367,6 +370,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           await renameIndexedTag(indexer, tagKey, preferences);
         }
       },
+    ),
+    vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
+      pickAgendaGrouping(),
     ),
     vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
       setOutlineFollowCursor(true),

@@ -84,6 +84,15 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **The Agenda groups by what you choose.** It grouped one way — Overdue,
+  Today, Upcoming — which is the right default and the wrong one as soon as
+  you want to see a person's work, or everything waiting, or what is most
+  important. **Group by** in its title offers **Due status**, **Priority**,
+  **Status**, and **Person**, kept in `deckard.agenda.groupBy`. The tasks are
+  the same whichever is chosen, so grouping changes the axis rather than the
+  list. Within a group, tasks ranked on the Task board lead in the order they
+  were dragged into, and the rest follow as they did before.
+
 - **The Task board searches instead of filtering, and opens on what is
   open.** Its All/Open/Done switch was obeyed by the list and ignored by the
   board, which quietly filtered one view and not the other. The switch is
