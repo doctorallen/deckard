@@ -252,6 +252,11 @@ export class WorkspaceScanner {
           '@',
         ),
       ),
+      assigneeFromPersonTag:
+        this.getConfiguration(workspaceFolder).get<boolean>(
+          'tasks.assigneeFromPersonTag',
+          false,
+        ) === true,
     };
   }
 

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 
-import { extractTags, isPersonTag } from '../../core/markdown/parser';
+import {
+  extractTags,
+  isPersonTag,
+  readPerson,
+} from '../../core/markdown/parser';
 import {
   describeTaskDate,
   formatTaskDraft,
@@ -115,7 +119,7 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
     },
     {
       label: '$(person) Assignee',
-      description: value(readAssignee(draft.description), 'Nobody named'),
+      description: value(draft.assignee, 'Nobody named'),
       field: 'assignee',
     },
     {
@@ -313,13 +317,17 @@ async function readField(
       if (chosen === undefined) {
         return undefined;
       }
-      return {
-        ...draft,
-        description: setAssignee(
-          draft.description,
-          chosen === 'Nobody' ? undefined : chosen.trim(),
-        ),
-      };
+      if (chosen === 'Nobody') {
+        return { ...draft, assignee: undefined };
+      }
+      const person = readPerson(chosen);
+      if (!person) {
+        void vscode.window.showWarningMessage(
+          `Deckard cannot read "${chosen.trim()}" as a person.`,
+        );
+        return draft;
+      }
+      return { ...draft, assignee: person };
     }
     case 'tag':
       return addTag(draft, options.index);
@@ -424,65 +432,6 @@ function pickOrWrite(options: {
       resolve(value);
     });
     pick.show();
-  });
-}
-
-/**
- * Who the task is for: the first person named in its words, which is what
- * the index reads as its assignee.
- */
-export function readAssignee(description: string): string | undefined {
-  return extractTags(description).find((tag) => isPersonTag(tag.key))?.label;
-}
-
-/**
- * Names a person as the one the task is for.
- *
- * The assignee is the first person on the line, so naming someone else
- * replaces the person who was first; anyone named after them was a mention
- * and stays one. Clearing takes the first person out, which hands the task
- * to whoever was named next — which is what the line then says.
- */
-export function setAssignee(
-  description: string,
-  person: string | undefined,
-): string {
-  const people = extractTags(description).filter((tag) =>
-    isPersonTag(tag.key),
-  );
-  const written = person ? extractTags(person) : [];
-  if (person && (written.length !== 1 || !isPersonTag(written[0].key))) {
-    return description;
-  }
-  if (people.length === 0) {
-    return person ? appendTag(description, written[0].label) : description;
-  }
-  const first = people[0].label;
-  const at = description.indexOf(first);
-  if (at < 0) {
-    return description;
-  }
-  const replaced =
-    description.slice(0, at) +
-    (person ? written[0].label : '') +
-    description.slice(at + first.length);
-  return replaced.replace(/[ \t]{2,}/g, ' ').trim();
-}
-
-/**
- * Rewrites a task line so a person is the one it is for, or so it is for
- * nobody. Everything else the line holds — its dates, its priority, its
- * marker — is written back as it was.
- */
-export function assignTaskLine(
-  line: string,
-  person: string | undefined,
-  format: TaskMetadataFormat = 'emoji',
-): string {
-  const draft = parseTaskDraft(line, format);
-  return formatTaskDraft({
-    ...draft,
-    description: setAssignee(draft.description, person),
   });
 }
 

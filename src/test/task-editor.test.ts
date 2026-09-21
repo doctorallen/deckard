@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+
+import { readPerson } from '../core/markdown/parser';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -10,12 +12,9 @@ import {
 } from '../core/markdown/taskDraft';
 import {
   appendTag,
-  assignTaskLine,
   completeDraft,
   createEditorRows,
   editTaskCommand,
-  readAssignee,
-  setAssignee,
   setDraftDate,
   setDraftDependencies,
   TaskEditorActions,
@@ -119,65 +118,35 @@ suite('Task editor', () => {
     assert.deepStrictEqual(setDraftDependencies(draft, '').dependsOn, []);
   });
 
-  test('says who a task is for, and hands it to someone else', () => {
+  test('reads a person however they are written', () => {
+    assert.strictEqual(readPerson('@dana'), '@dana');
+    assert.strictEqual(readPerson('dana'), '@dana', 'a bare name takes the marker');
+    assert.strictEqual(readPerson('#person/ren-kade'), '#person/ren-kade');
+    assert.strictEqual(readPerson('  @dana  '), '@dana');
     assert.strictEqual(
-      readAssignee('Chase the contractor @dana with @ren-kade'),
-      '@dana',
-      'the first person named owns it; the second is mentioned',
+      readPerson('#project/atlas'),
+      undefined,
+      'a tag that is not a person names nobody',
     );
-    assert.strictEqual(readAssignee('Chase the contractor'), undefined);
-    assert.strictEqual(
-      readAssignee('Send the proposal #person/ren-kade'),
-      '#person/ren-kade',
-    );
-
-    assert.strictEqual(
-      setAssignee('Chase the contractor @dana with @ren-kade', '@mara-vale'),
-      'Chase the contractor @mara-vale with @ren-kade',
-      'the one who was first is replaced, and a mention stays a mention',
-    );
-    assert.strictEqual(
-      setAssignee('Chase the contractor', '@dana'),
-      'Chase the contractor @dana',
-    );
-    assert.strictEqual(
-      setAssignee('Chase the contractor @dana with @ren-kade', undefined),
-      'Chase the contractor with @ren-kade',
-      'taking the first name off hands the task to whoever is named next',
-    );
-    assert.strictEqual(
-      setAssignee('Chase the contractor', 'dana'),
-      'Chase the contractor',
-      'only a person tag names a person',
-    );
-    assert.strictEqual(
-      setAssignee('Chase the contractor', '#project/atlas'),
-      'Chase the contractor',
-    );
-  });
-
-  test('hands a whole task line over, keeping everything else on it', () => {
-    assert.strictEqual(
-      assignTaskLine('- [ ] Chase the contractor ⏫ 📅 2026-09-25', '@dana'),
-      '- [ ] Chase the contractor @dana ⏫ 📅 2026-09-25',
-    );
-    assert.strictEqual(
-      assignTaskLine('- [ ] Chase it @dana with @ren-kade 📅 2026-09-25', '@mara-vale'),
-      '- [ ] Chase it @mara-vale with @ren-kade 📅 2026-09-25',
-    );
-    assert.strictEqual(
-      assignTaskLine('- [ ] Chase it @dana 📅 2026-09-25 ^chase', undefined),
-      '- [ ] Chase it 📅 2026-09-25 ^chase',
-      'nobody takes the name off, and the marker still ends the line',
-    );
+    assert.strictEqual(readPerson('@dana and @ren-kade'), undefined);
+    assert.strictEqual(readPerson(''), undefined);
   });
 
   test('the editor shows who a task is for beside its other fields', () => {
     const rows = createEditorRows(
       parseTaskDraft('- [ ] Chase the contractor @dana with @ren-kade'),
     );
-    const forRow = rows.find((row) => row.field === 'assignee');
-    assert.strictEqual(forRow?.description, '@dana');
+    assert.strictEqual(
+      rows.find((row) => row.field === 'assignee')?.description,
+      'Nobody named',
+      'a person in the words is mentioned, not asked',
+    );
+    assert.strictEqual(
+      createEditorRows(
+        parseTaskDraft('- [ ] Chase the contractor @ren-kade 👤 @dana'),
+      ).find((row) => row.field === 'assignee')?.description,
+      '@dana',
+    );
   });
 
   test('adds a tag to the words, once, and only a real one', () => {

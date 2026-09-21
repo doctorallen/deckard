@@ -3,12 +3,10 @@ import * as vscode from 'vscode';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { resolveSourceUri } from '../commands/navigation';
 import {
-  quoteTaskTitle,
   readTaskMetadataFormat,
   toggleTask,
   updateTaskLine,
 } from '../commands/taskActions';
-import { assignTaskLine } from '../commands/taskEditor';
 import { mergeOrder } from '../state/dashboardState';
 import {
   resolveTaskMove,
@@ -45,6 +43,7 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   ),
   today: new vscode.ThemeIcon('target'),
   upcoming: new vscode.ThemeIcon('calendar'),
+  nodate: new vscode.ThemeIcon('inbox'),
 };
 
 /**
@@ -66,7 +65,8 @@ const GROUPING_ICONS: Readonly<
  * by when they are wanted, by priority, by status, or by who they are for.
  *
  * The tasks are the same whichever grouping is chosen — the open ones inside
- * the Agenda's horizon — so switching changes the axis rather than the list.
+ * the Agenda's horizon, and the undated ones when they are shown — so
+ * switching changes the axis rather than the list.
  *
  * Checking a task's box completes it through the same source-safe edit the
  * Dashboard uses, so its ✅ date and next occurrence are written too. The
@@ -154,6 +154,7 @@ export class AgendaTreeProvider
     }
     const days = getUpcomingDays();
     const groupBy = getAgendaGrouping();
+    const undated = getShowUndated();
     const groups = createAgenda(
       this.index,
       Date.now(),
@@ -161,15 +162,18 @@ export class AgendaTreeProvider
       groupBy,
       getStatusNamespace(),
       this.preferences?.value.taskOrder ?? [],
+      undated,
     );
     // The badge counts what is overdue or due today however the Agenda is
     // grouped, since that is what it is a badge for.
     const urgent = createAgenda(this.index, Date.now(), days)
-      .filter((group) => group.id !== 'upcoming')
+      .filter((group) => group.id === 'overdue' || group.id === 'today')
       .reduce((total, group) => total + group.entries.length, 0);
     this.setStatus(
       groups.length === 0
-        ? `Nothing is overdue, due today, or coming up in the next ${days} days.`
+        ? `Nothing is overdue, due today, or coming up in the next ${days} days${
+            undated ? ', and nothing is waiting without a date' : ''
+          }.`
         : undefined,
       urgent,
     );
@@ -261,24 +265,6 @@ export class AgendaTreeProvider
     tasks: readonly Task[],
     target: { group: AgendaGroup; groupBy: AgendaGroupBy },
   ): Promise<void> {
-    // Who a task is for is the first person written on its line, so handing
-    // it over rewrites that name and leaves the rest of the line alone.
-    if (target.groupBy === 'assignee') {
-      const person =
-        target.group.id === 'none' ? undefined : target.group.label;
-      const format = readBoardOptions().format;
-      for (const task of tasks) {
-        await updateTaskLine(
-          task,
-          (line) => assignTaskLine(line, person, format),
-          person
-            ? `${quoteTaskTitle(task)} is for ${person}.`
-            : `${quoteTaskTitle(task)} is for nobody now.`,
-        );
-      }
-      this.refresh();
-      return;
-    }
     const columnId = groupColumnId(target.group.id, target.groupBy);
     if (!columnId) {
       void vscode.window.showInformationMessage(
@@ -460,6 +446,10 @@ export function groupColumnId(
   if (groupBy === 'status') {
     return `status:${groupId === 'none' ? '' : groupId}`;
   }
+  if (groupBy === 'assignee') {
+    // The group's id is the person's tag key, which is what the field holds.
+    return `assignee:${groupId === 'none' ? '' : groupId}`;
+  }
   if (groupBy === 'due') {
     return groupId === 'today' ? 'due:today' : undefined;
   }
@@ -477,6 +467,13 @@ function readBoardOptions(): TaskBoardOptions {
       'status',
     format: readTaskMetadataFormat(configuration),
   };
+}
+
+/** Whether undated open tasks join the Agenda, from `deckard.agenda.showUndated`. */
+export function getShowUndated(): boolean {
+  return vscode.workspace
+    .getConfiguration('deckard')
+    .get<boolean>('agenda.showUndated', true);
 }
 
 function getUpcomingDays(): number {

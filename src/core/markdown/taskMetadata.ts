@@ -10,6 +10,10 @@ import { TaskPriority } from '../types';
  * - [ ] Send proposal [due:: 2026-09-20] [priority:: high] [repeat:: every week]
  * ```
  *
+ * Deckard adds one field of its own in the same two formats, 👤 and
+ * `[assignee:: …]`, because Tasks has no way to say who a task is for and a
+ * person's name in the sentence says only that they were mentioned.
+ *
  * The first line uses the emoji format and the second the text-only Dataview
  * format. Deckard reads a field wherever it appears on the line, which is more
  * lenient than Tasks, and writes new fields where Tasks would: at the end of
@@ -32,6 +36,8 @@ export interface TaskMetadata {
   id?: string;
   /** ⛔ names of the tasks that must be done first. */
   dependsOn: string[];
+  /** 👤 the person the task is for, as written: `@dana`. */
+  assignee?: string;
 }
 
 export type TaskDateField =
@@ -48,7 +54,8 @@ export type TaskMetadataField =
   | 'priority'
   | 'repeat'
   | 'id'
-  | 'dependsOn';
+  | 'dependsOn'
+  | 'assignee';
 
 /** Each date marker, including the alternative emoji Tasks also accepts. */
 const DATE_MARKERS: Readonly<Record<TaskDateField, string>> = {
@@ -84,6 +91,7 @@ const DATAVIEW_KEYS: Readonly<Record<TaskMetadataField, string>> = {
   repeat: 'repeat',
   id: 'id',
   dependsOn: 'dependsOn',
+  assignee: 'assignee',
 };
 
 /** Dataview keys, lowercased, mapped to the field they hold. */
@@ -131,6 +139,15 @@ const DEPENDS_ON_PATTERN = new RegExp(
   'gu',
 );
 const ON_COMPLETION_PATTERN = /🏁\uFE0F?[ \t]*(?:keep|delete)/giu;
+/**
+ * 👤 and the person the task is for, written as the tag is: `👤 @dana`,
+ * `👤 #person/dana`, or the bare name. 🧑 is read too, since either emoji is
+ * what a hand reaches for, but 👤 is what Deckard writes.
+ */
+const ASSIGNEE_PATTERN = new RegExp(
+  `[ \\t]*(?:👤|🧑)${VARIATION}[ \\t]*([@#]?${NAME}(?:/${NAME})*)`,
+  'gu',
+);
 /** A Dataview inline field in square or round brackets, `[due:: 2026-09-20]`. */
 const DATAVIEW_FIELD_PATTERN =
   /\[[ \t]*([A-Za-z]+)[ \t]*::[ \t]*([^\]]*?)[ \t]*\]|\([ \t]*([A-Za-z]+)[ \t]*::[ \t]*([^)]*?)[ \t]*\)/gu;
@@ -219,6 +236,11 @@ export function parseTaskMetadata(text: string): {
       usesEmoji = true;
       return ' ';
     })
+    .replace(ASSIGNEE_PATTERN, (_match, person: string) => {
+      usesEmoji = true;
+      metadata.assignee ??= person;
+      return ' ';
+    })
     // A trailing `^block-id` is only a link target in Obsidian.
     .replace(BLOCK_ID_PATTERN, '');
 
@@ -250,6 +272,8 @@ export function formatTaskMetadata(
       return `🆔 ${value}`;
     case 'dependsOn':
       return `⛔ ${value}`;
+    case 'assignee':
+      return `👤 ${value}`;
     default:
       return `${DATE_EMOJI[field]} ${value}`;
   }
@@ -305,6 +329,36 @@ export function setTaskPriority(
     prefix +
     (priority
       ? appendToTaskText(cleared, formatTaskMetadata('priority', priority, format))
+      : cleared)
+  );
+}
+
+/**
+ * Sets or clears the person a task is for, replacing whichever marker or
+ * field it had. A new one is written in the line's format.
+ *
+ * The person is written as the tag is — `@dana` — so the name on the line and
+ * the name in the people index are the same string. Any other mention of a
+ * person in the sentence is left alone: that is the point of the field.
+ */
+export function setTaskAssignee(
+  line: string,
+  checkboxColumn: number,
+  person: string | undefined,
+  preferredFormat: TaskMetadataFormat = 'emoji',
+): string {
+  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
+  const format = parseTaskMetadata(text).format ?? preferredFormat;
+  const cleared = text
+    .replace(ASSIGNEE_PATTERN, '')
+    .replace(
+      /[ \t]*(?:\[[ \t]*assignee[ \t]*::[^\]]*\]|\([ \t]*assignee[ \t]*::[^)]*\))/giu,
+      '',
+    );
+  return (
+    prefix +
+    (person
+      ? appendToTaskText(cleared, formatTaskMetadata('assignee', person, format))
       : cleared)
   );
 }
@@ -572,6 +626,9 @@ function readField(
       return;
     case 'id':
       metadata.id ??= value || undefined;
+      return;
+    case 'assignee':
+      metadata.assignee ??= value || undefined;
       return;
     case 'dependsOn':
       metadata.dependsOn.push(

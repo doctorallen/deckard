@@ -22,7 +22,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Tasks view](#tasks-view) | Open tasks grouped by due status, priority, status, or person, which you can complete from their checkboxes. |
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
 | [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, or person, where dragging a card rewrites the task in its note, or as a ranked list. |
-| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and who a task is for, written in either Obsidian Tasks format. |
+| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and a 👤 field for who a task is for, written in either Obsidian Tasks format. |
 | [Task editor](#editing-a-whole-task) | One command builds or edits a whole task — dates in plain words, priority, repeat rule, what it waits for — and writes the line. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
@@ -250,18 +250,21 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 
 ### Who a task is for
 
-The first person named on a task line is the person it is for; anyone named after them is mentioned rather than asked:
+A `👤` field says who a task is for. Notes name people for all sorts of reasons — a task can be *about* someone without being *theirs* — so being asked to do something is written down rather than inferred from the sentence:
 
 ```markdown
-- [ ] Chase the contractor @dana with @ren-kade   <!-- Dana's task -->
-- [ ] Send the proposal #person/ren-kade          <!-- Ren's task -->
+- [ ] Chase the contractor @ren-kade 👤 @dana     <!-- Dana's task; Ren is mentioned -->
+- [ ] Send the proposal [assignee:: #person/ren-kade]  <!-- Ren's task -->
+- [ ] Write up what @dana said                    <!-- about Dana, nobody's task -->
 - [ ] Book the room                               <!-- nobody's yet -->
 ```
 
-- Nothing new is written into your notes: this reads the people you were already writing. `@dana` and `#person/dana` name the same person, whichever way either side writes it.
+- `👤` and `[assignee:: …]` are the same field in the two [task metadata](#task-metadata) formats, and Deckard writes whichever one the line already uses. `🧑` is read too.
+- The person is named as their tag is written, so `@dana` in the field is the same `@dana` the rest of your notes and the [people](#people) views already know. `@dana` and `#person/dana` name the same person, whichever way either side writes it.
 - Search for them with `assignee = @dana`, `assignee = none`, `is:assigned`, or `is:unassigned`.
 - Set `deckard.me` to your own name, such as `@ren-kade`, and `is:mine` finds what is yours. Left empty, `is:mine` finds nothing rather than guessing.
-- The [Task board](#task-board) groups by **Person**, a column each, busiest first, with **Nobody named** at the end — the waiting-on view. Its columns take no dropped cards: who a task is for is written in its sentence, which is yours to word, not a drag's to guess.
+- The [Task board](#task-board) groups by **Person**, a column each, busiest first, with **Nobody named** at the end — the waiting-on view. Dropping a card on a person writes the field, and dropping it on **Nobody named** clears it; the words of the task are never touched.
+- Deckard read the first person in a task's words as its owner before this field existed. `deckard.tasks.assigneeFromPersonTag` turns that reading back on for lines that carry no `👤`.
 
 ### Dataview format
 
@@ -271,7 +274,7 @@ Tasks can also be written in the plugin's text-only Dataview format, and Deckard
 - [ ] Send the proposal [due:: 2026-09-20] [scheduled:: 2026-09-18] [priority:: high] [repeat:: every week]
 ```
 
-The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`, `priority`, `repeat`, `id`, and `dependsOn`, in square or round brackets. Other Dataview fields, such as `[owner:: Ren]`, stay part of the title. When Deckard writes a date, such as a completion date or a repeating task's next dates, it uses the format the task already uses. For a task with no metadata yet, `deckard.tasks.metadataFormat` chooses.
+The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`, `priority`, `repeat`, `id`, `dependsOn`, and Deckard's own `assignee`, in square or round brackets. Other Dataview fields, such as `[owner:: Ren]`, stay part of the title. When Deckard writes a date, such as a completion date or a repeating task's next dates, it uses the format the task already uses. For a task with no metadata yet, `deckard.tasks.metadataFormat` chooses.
 
 ### Editing a whole task
 
@@ -286,13 +289,13 @@ The pick lists every field with what the task says now, headed by the line as it
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
 | **Repeats** | A common rule, or any rule you write |
-| **Assignee** | Who the task is for — the first person named in its words; see [Who a task is for](#who-a-task-is-for) |
+| **Assignee** | Who the task is for — its `👤` field; see [Who a task is for](#who-a-task-is-for) |
 | **Blocked by** | The `🆔` ids of the tasks that come first |
 | **Add a tag** | A tag from your workspace, or a new one, written at the end of the description |
 
 Dates are written the way people write them — `2026-09-25`, `today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `+2w`, `1 month` — and the box says which day it read as you type, such as *Friday 2026-09-25*. An empty answer clears the date, and words Deckard cannot read as a day are refused rather than guessed at.
 
-- **Assignee** offers the people your notes already name, or takes a new one. Naming someone replaces whoever was named first, since that is who the task is for; anyone named after them was a mention and stays one. **Nobody** takes the first name off, which hands the task to whoever is named next.
+- **Assignee** offers the people your notes already name, or takes a new one — `dana` and `@dana` both read as the person. It writes the `👤` field and leaves the words alone, so a person the task mentions stays mentioned. **Nobody** takes the field off.
 - **Nothing is written until you choose Write the task.** Escape leaves the line as it was.
 - The line is written in the format it already uses, or `deckard.tasks.metadataFormat` for a task with no metadata yet, and in the order [Tasks](https://publish.obsidian.md/tasks) writes it.
 - Everything Deckard does not offer to edit is kept: a `^block-id` stays at the end of the line, an `🏁` on-completion marker stays where it was, and a `➕` created date is left alone.
@@ -306,6 +309,7 @@ Type `/` after a space in a task to pick metadata instead of typing it:
 - **due today**, **due tomorrow**, **due in a week**, and **due on a date**, with the same choices for scheduled and start dates;
 - the five priorities, from **highest priority** to **lowest priority**;
 - common repeat rules, or **repeats on a rule** to write your own;
+- **for @dana** for each person your notes name often, and **for a person** to write one;
 - **task id**, and **depends on** each open task's id.
 
 Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the format the task already uses, or `deckard.tasks.metadataFormat` for a task without metadata. Set `deckard.tasks.metadataSuggestions` to `false` to turn them off.
@@ -452,8 +456,9 @@ Open **Tasks** from the Deckard Activity Bar to see the open tasks that need att
 
 - **Overdue** lists tasks whose due date has passed, oldest first.
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
-- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead.
-- **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones inside the view's horizon — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
+- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead; a dated task beyond the horizon waits there rather than in **No date**.
+- **No date** collects open tasks carrying no due, scheduled, or start date, most important first, at the end of the view. It is there in every grouping — a task nobody dated is still a task — and `deckard.agenda.showUndated` turns it off for a view about dates alone.
+- **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones inside the view's horizon, and the undated ones while they are shown — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
   - **Priority** runs highest to lowest, each group marked with the same emoji the task lines use, and **No priority** last.
   - **Status** reads the `#status/…` tag written on each task line, busiest group first, with **No status** last. It follows `deckard.board.statusNamespace`.
   - **Person** groups by [who each task is for](#who-a-task-is-for), busiest first, with **Nobody named** last.
@@ -700,7 +705,7 @@ The fields:
 | `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `scheduled <= today`, `due = none` |
 | `done` | A task's ✅ date, with windows counted back from today. | `done = 7d` |
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. A task without a priority counts as `none`, which ranks between `medium` and `low`. | `priority >= high` |
-| `assignee` | The person a task is for: the first one named on its line, or `none` for a task naming nobody. `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name the same person. Only tasks can satisfy it. | `assignee = @ren-kade` |
+| `assignee` | The person a task is for: whoever its `👤` field names, or `none` for a task that carries none. `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name the same person. Only tasks can satisfy it. | `assignee = @ren-kade` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
@@ -868,8 +873,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.inheritedTags": false,
 	"deckard.agenda.groupBy": "due",
 	"deckard.agenda.upcomingDays": 7,
+	"deckard.agenda.showUndated": true,
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
+	"deckard.tasks.assigneeFromPersonTag": false,
 	"deckard.tasks.metadataSuggestions": true,
 	"deckard.me": "",
 	"deckard.statusBar": true,
@@ -919,9 +926,11 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](#tasks-view) groups are: `due`, `priority`, `status`, or `assignee`. The group control in its title sets the same thing. |
 | `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group looks for due, scheduled, and start dates. |
+| `deckard.agenda.showUndated` | `true` | Collect open tasks that carry no due, scheduled, or start date in a **No date** group at the end of the Tasks view. |
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
-| `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
+| `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, people, and dependencies after typing `/` in a task. |
+| `deckard.tasks.assigneeFromPersonTag` | `false` | Read the first person named in a task's words as the person it is for, as Deckard did before the `👤` field; see [Who a task is for](#who-a-task-is-for). |
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](#who-a-task-is-for). |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](#status-bar-and-reminders). |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, at which Deckard says how many tasks are due. Empty means no reminder. |

@@ -452,11 +452,31 @@ export function getTaskBoardCss(): string {
 .board-count { color: var(--muted); }
 /* A column with hundreds of tasks scrolls in place: without this one long
    column made the whole page hundreds of cards tall, and dragging to a far
-   column meant scrolling away from both. */
-.board-column { max-height: calc(100vh - 220px); overflow: hidden; }
+   column meant scrolling away from both.
+
+   The cards take a row of their own that is allowed to shrink — minmax(0, 1fr)
+   rather than the automatic minimum, which is the content's own height. An
+   auto row sizes to its cards however tall they are, so the column clipped
+   them at its max-height and the cards below could not be reached at all. */
+.board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
 .board-column-title { position: sticky; top: 0; z-index: 1; background: var(--panel-deep); padding-bottom: 6px; }
-.board-cards { display: grid; align-content: start; gap: 8px; min-height: 48px; overflow-y: auto; }
+/* overflow-y alone would compute overflow-x to auto, and then anything that
+   reaches past the right edge — a theme's hover nudge, a focus outline — puts
+   a horizontal scrollbar under a column that has nothing to scroll sideways. */
+.board-cards {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 48px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
 .board-card { position: relative; }
+/* Themes slide a row right on hover, which reads well across a wide list and
+   badly in a column this narrow: the card had nowhere to go but out. It keeps
+   the border and ground the same hover gives every other surface. Written to
+   outweigh the theme sheet, which is laid down after this one. */
+.board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
 .board-card .task-title { padding-right: 26px; }
 .board-details { margin: 0; }

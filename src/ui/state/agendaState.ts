@@ -17,6 +17,10 @@ import { stripTrailingTags } from './queryBlockState';
  * - **Today**: due today, or scheduled for today or earlier and already
  *   started.
  * - **Upcoming**: due, scheduled, or starting within the next few days.
+ * - **No date**: open, but carrying no due, scheduled, or start date at all.
+ *   The Agenda is a list of what is wanted, and a task nobody dated is still
+ *   wanted; it waits at the end rather than going unseen. Callers ask for it,
+ *   because the Agenda also feeds counts that mean "due".
  *
  * A task appears once, in the first group that applies.
  */
@@ -60,12 +64,18 @@ export interface AgendaGroup {
   entries: AgendaEntry[];
 }
 
-const GROUP_ORDER: readonly AgendaGroupId[] = ['overdue', 'today', 'upcoming'];
+const GROUP_ORDER: readonly AgendaGroupId[] = [
+  'overdue',
+  'today',
+  'upcoming',
+  'nodate',
+];
 
 const GROUP_LABELS: Readonly<Record<string, string>> = {
   overdue: 'Overdue',
   today: 'Today',
   upcoming: 'Upcoming',
+  nodate: 'No date',
 };
 
 /**
@@ -85,6 +95,12 @@ const PRIORITY_ORDER: readonly (TaskPriority | 'none')[] = [
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * The date an undated task sorts by. Nothing placed it, so it sorts after
+ * everything a date placed, in whichever grouping mixes the two.
+ */
+const NO_DATE = Number.MAX_SAFE_INTEGER;
 
 interface Placement {
   group: AgendaGroupId;
@@ -108,6 +124,11 @@ export function createAgenda(
    * would have had anyway.
    */
   taskOrder: readonly string[] = [],
+  /**
+   * Whether open tasks carrying no date join the Agenda in a No date group.
+   * Off by default, so the counts that mean "due" stay about dates.
+   */
+  includeUndated = false,
 ): AgendaGroup[] {
   const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
   const byRank =
@@ -133,7 +154,7 @@ export function createAgenda(
     if (task.completed) {
       continue;
     }
-    const placement = placeTask(task, today, tomorrow, horizon);
+    const placement = placeTask(task, today, tomorrow, horizon, includeUndated);
     if (placement) {
       groups
         .get(placement.group)
@@ -144,10 +165,12 @@ export function createAgenda(
   const byDue = GROUP_ORDER.map((id) => ({
     id,
     label: GROUP_LABELS[id] ?? id,
-    // Today is a to-do list, so importance leads; the other groups read as a
-    // timeline.
+    // Today and No date are to-do lists, so importance leads; the other
+    // groups read as a timeline.
     entries: (groups.get(id) ?? []).sort(
-      byRank(id === 'today' ? compareByPriority : compareByDate),
+      byRank(
+        id === 'today' || id === 'nodate' ? compareByPriority : compareByDate,
+      ),
     ),
   })).filter((group) => group.entries.length > 0);
   if (groupBy === 'due') {
@@ -262,8 +285,20 @@ function placeTask(
   today: number,
   tomorrow: number,
   horizon: number,
+  includeUndated: boolean,
 ): Placement | undefined {
   const { dueAt, scheduledAt, startAt } = task;
+  if (
+    dueAt === undefined &&
+    scheduledAt === undefined &&
+    startAt === undefined
+  ) {
+    // No date to read, so no date to show: the entry carries its priority and
+    // its note instead.
+    return includeUndated
+      ? { group: 'nodate', at: NO_DATE, reason: '' }
+      : undefined;
+  }
   if (dueAt !== undefined && dueAt < today) {
     return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt)}` };
   }

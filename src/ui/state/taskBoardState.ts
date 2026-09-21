@@ -3,6 +3,7 @@ import {
   appendToTaskText,
   formatIsoDate,
   parseTaskMetadata,
+  setTaskAssignee,
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
@@ -10,6 +11,7 @@ import {
   TASK_PRIORITY_RANKS,
   TaskMetadataFormat,
 } from '../../core/markdown/taskMetadata';
+import { readPerson } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
@@ -316,10 +318,20 @@ export function resolveTaskMove(
         'Drop a task on Today, Tomorrow, or No due date to change its due date.',
       );
     }
-    case 'assignee':
-      return refuse(
-        'Who a task is for is written in its sentence, so Deckard leaves it for you to change.',
-      );
+    case 'assignee': {
+      const person = value ? readPerson(value) : undefined;
+      if (value && !person) {
+        return refuse(`Deckard cannot read "${value}" as a person.`);
+      }
+      if (!task.completed && (task.assignee ?? '') === (person ?? '')) {
+        return { kind: 'unchanged' };
+      }
+      return {
+        kind: 'edit',
+        label: person ? `For ${person}` : 'For nobody',
+        edit: (line) => setTaskAssignee(reopen(line), column, person, options.format),
+      };
+    }
     default:
       return refuse('Deckard does not know that column.');
   }
@@ -452,13 +464,13 @@ function createAssigneeColumns(
       .map(([key, tasks]) => ({
         id: `assignee:${key}`,
         label: label(key),
-        droppable: false,
+        droppable: true,
         tasks,
       })),
     {
       id: 'assignee:',
       label: 'Nobody named',
-      droppable: false,
+      droppable: true,
       tasks: unassigned,
     },
   ];

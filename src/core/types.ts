@@ -206,8 +206,8 @@ export interface Task {
   /** 🔁 repeat rule as written, such as "every week". */
   recurrence?: string;
   /**
-   * The person the task is for: the first one named on its line. Anyone
-   * named after them is mentioned rather than asked.
+   * 👤 the person the task is for, as their tag is written. Anyone else named
+   * on the line is mentioned rather than asked.
    */
   assignee?: string;
   /** 🆔 name other tasks use in ⛔ to depend on this one. */

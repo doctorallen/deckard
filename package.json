@@ -782,6 +782,12 @@
             "description": "Format Deckard writes for a task that has no metadata yet, in / suggestions and completion dates. A task that already uses one format keeps it, and Deckard reads both.",
             "order": 1
           },
+          "deckard.tasks.assigneeFromPersonTag": {
+            "type": "boolean",
+            "default": false,
+            "description": "Treat the first person named in a task's words as the person it is for, the way Deckard read tasks before the \ud83d\udc64 field existed. Off, only \ud83d\udc64 (or [assignee:: \u2026]) says who a task is for, and a name in the sentence is a mention.",
+            "order": 3
+          },
           "deckard.tasks.metadataSuggestions": {
             "type": "boolean",
             "scope": "resource",
@@ -833,6 +839,12 @@
             "maximum": 90,
             "default": 7,
             "description": "How many days ahead the Tasks view's Upcoming group looks for due, scheduled, and start dates.",
+            "order": 3
+          },
+          "deckard.agenda.showUndated": {
+            "type": "boolean",
+            "default": true,
+            "description": "Collect open tasks that carry no due, scheduled, or start date in a No date group at the end of the Tasks view. Turn this off to keep the view about what is dated.",
             "order": 3
           },
           "deckard.board.statuses": {

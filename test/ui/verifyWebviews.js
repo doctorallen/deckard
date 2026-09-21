@@ -45,6 +45,13 @@ const LAYOUT_CONTRACTS = {
     ['main', 'max-width', 'none'],
     ['main', 'border-top', 'var(--cyan)'],
     ['.board', 'grid-auto-flow', 'column'],
+    // A column that cannot shrink its cards row clips the tasks below the
+    // fold with no way to reach them.
+    ['.board-column', 'grid-template-rows', 'minmax(0, 1fr)'],
+    // overflow-y on its own computes overflow-x to auto, and then a hover
+    // nudge or a focus ring puts a horizontal scrollbar under the column.
+    ['.board-cards', 'overflow-x', 'hidden'],
+    ['.board-cards .board-card:hover', 'transform', 'none'],
   ],
 };
 

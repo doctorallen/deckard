@@ -208,7 +208,7 @@ interface QueryUnit {
   blocked?: boolean;
   /** Open, and an open task is waiting for it. */
   blocking?: boolean;
-  /** The person the task is for: the first one named on its line. */
+  /** The person the task is for: whoever its 👤 field names. */
   assignee?: string;
 }
 

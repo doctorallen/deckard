@@ -1607,7 +1607,7 @@ export function describeQueryField(field: string): string {
     case 'priority':
       return 'highest, high, medium, none, low, or lowest';
     case 'assignee':
-      return 'The person a task is for: the first one named on its line, or none';
+      return 'The person a task is for: whoever its 👤 field names, or none';
     case 'kind':
       return 'An entity namespace such as project or person';
     case 'file':

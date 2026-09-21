@@ -128,17 +128,70 @@ suite('Agenda', () => {
     // Overdue and Upcoming cover a range of days, so neither names one edit.
     assert.strictEqual(groupColumnId('overdue', 'due'), undefined);
     assert.strictEqual(groupColumnId('upcoming', 'due'), undefined);
+    // No date means three dates cleared, which is not one edit either.
+    assert.strictEqual(groupColumnId('nodate', 'due'), undefined);
     assert.strictEqual(
       groupColumnId('@dana', 'assignee'),
-      undefined,
-      'a person is not a board column: the view rewrites the name itself',
+      'assignee:@dana',
+      'a person group is the board column that writes the 👤 field',
     );
+    assert.strictEqual(groupColumnId('none', 'assignee'), 'assignee:');
   });
 
   test('is empty when no open task has a date in range', () => {
     assert.deepStrictEqual(
       createAgenda(createIndex([createTask({ id: 'undated' })]), now, 7),
       [],
+    );
+  });
+
+  test('ends with the undated tasks when they are asked for', () => {
+    const groups = createAgenda(
+      createIndex([
+        createTask({ id: 'due-today', dueAt: at(9, 13) }),
+        createTask({ id: 'undated' }),
+        createTask({ id: 'undated-important', priority: 'high' }),
+        createTask({ id: 'undated-done', completed: true }),
+        createTask({ id: 'too-far', dueAt: at(9, 30) }),
+      ]),
+      now,
+      7,
+      'due',
+      'status',
+      [],
+      true,
+    );
+
+    assert.deepStrictEqual(
+      groups.map((group) => [
+        group.label,
+        group.entries.map((entry) => entry.task.id),
+      ]),
+      [
+        ['Today', ['due-today']],
+        // Last, and a to-do list within itself: what was marked leads. A
+        // dated task out past the horizon is still the horizon's business.
+        ['No date', ['undated-important', 'undated']],
+      ],
+    );
+    assert.deepStrictEqual(
+      groups[1].entries[1].details,
+      ['tasks.md'],
+      'no date to read means no date said',
+    );
+  });
+
+  test('carries the undated tasks into the other groupings', () => {
+    const index = createIndex([
+      createTask({ id: 'due-today', dueAt: at(9, 13), assignee: '@dana' }),
+      createTask({ id: 'undated', assignee: '@dana' }),
+    ]);
+    assert.deepStrictEqual(
+      createAgenda(index, now, 7, 'assignee', 'status', [], true).map(
+        (group) => [group.label, group.entries.map((entry) => entry.task.id)],
+      ),
+      [['@dana', ['due-today', 'undated']]],
+      'the undated task follows the dated ones inside its group',
     );
   });
 });
