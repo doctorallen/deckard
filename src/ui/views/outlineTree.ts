@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { measure } from '../../core/timing';
+import { writeSetting } from '../commands/settings';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   buildOutline,
@@ -337,14 +338,14 @@ export async function syncOutlineFollowCursorContext(): Promise<void> {
  * Turns following on or off for every window, matching how the setting reads.
  */
 export async function setOutlineFollowCursor(enabled: boolean): Promise<void> {
-  await vscode.workspace
-    .getConfiguration('deckard')
-    .update(
-      'outline.followCursor',
-      enabled,
-      vscode.ConfigurationTarget.Global,
-    );
-  await syncOutlineFollowCursorContext();
+  const written = await writeSetting(
+    'outline.followCursor',
+    enabled,
+    vscode.ConfigurationTarget.Global,
+  );
+  if (written) {
+    await syncOutlineFollowCursorContext();
+  }
 }
 
 /**

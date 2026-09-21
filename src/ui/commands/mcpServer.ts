@@ -16,6 +16,7 @@ import {
   PARSE_ERROR,
 } from '../../core/mcp/mcpProtocol';
 import { measure } from '../../core/timing';
+import { writeSetting } from './settings';
 import { WorkspaceIndex } from '../../core/types';
 import {
   answerQuery,
@@ -156,11 +157,14 @@ export class DeckardMcpServer implements vscode.Disposable {
       if (choice !== 'Turn On') {
         return;
       }
-      await configuration.update(
+      const written = await writeSetting(
         'mcpServer.enabled',
         true,
         vscode.ConfigurationTarget.Global,
       );
+      if (!written) {
+        return;
+      }
     }
     const port = configuration.get<number>('mcpServer.port', DEFAULT_MCP_PORT);
     await vscode.env.clipboard.writeText(

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { Task, WorkspaceIndex } from '../../core/types';
 import { resolveSourceUri } from '../commands/navigation';
+import { writeSetting } from '../commands/settings';
 import {
   readTaskMetadataFormat,
   toggleTask,
@@ -411,14 +412,12 @@ export async function pickAgendaGrouping(): Promise<AgendaGroupBy | undefined> {
   if (!chosen || chosen.id === current) {
     return undefined;
   }
-  await vscode.workspace
-    .getConfiguration('deckard')
-    .update(
-      'agenda.groupBy',
-      chosen.id,
-      vscode.ConfigurationTarget.Global,
-    );
-  return chosen.id;
+  const written = await writeSetting(
+    'agenda.groupBy',
+    chosen.id,
+    vscode.ConfigurationTarget.Global,
+  );
+  return written ? chosen.id : undefined;
 }
 
 function getStatusNamespace(): string {
