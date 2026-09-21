@@ -7,7 +7,12 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { getIsoWeekStart, getReviewRange } from '../ui/commands/review';
+import { formatLocalDate } from '../ui/commands/dailyNote';
+import {
+  findOpenPeriod,
+  getIsoWeekStart,
+  getReviewRange,
+} from '../ui/commands/review';
 import {
   formatReview,
   REVIEW_END,
@@ -19,7 +24,7 @@ import {
 const DAY = 24 * 60 * 60 * 1000;
 /** Monday 2026-09-14 to Sunday 2026-09-20. */
 const range = {
-  name: '2026-W38',
+  name: 'week-2026-09-14-2026-09-20',
   title: '2026-09-14 to 2026-09-20',
   start: new Date(2026, 8, 14).getTime(),
   end: new Date(2026, 8, 21).getTime(),
@@ -120,7 +125,10 @@ suite('Periodic review', () => {
       review.includes('## Review of 2026-09-14 to 2026-09-20'),
       'a review is named by the days it covers, not by a week number',
     );
-    assert.ok(review.includes('*2026-W38.'), 'which note it is still says so');
+    assert.ok(
+      review.includes('*week-2026-09-14-2026-09-20.'),
+      'the note it is written in still says which it is',
+    );
     assert.ok(review.includes('**Done:** 1 · **Still open:** 1'));
     assert.ok(review.includes('- Send the proposal — [[2026-09-15]] (done 2026-09-16)'));
 
@@ -163,19 +171,37 @@ suite('Periodic review', () => {
   });
 
   test('knows which days a week and a month cover', () => {
+    // A week is the Calendar's row: Sunday to Saturday, and named for it.
     const week = getReviewRange('week', new Date(2026, 8, 17));
-    assert.strictEqual(week.name, '2026-W38');
-    assert.strictEqual(week.title, '2026-09-14 to 2026-09-20');
-    assert.strictEqual(new Date(week.start).getDate(), 14, 'Monday');
+    assert.strictEqual(week.name, 'week-2026-09-13-2026-09-19');
+    assert.strictEqual(week.title, '2026-09-13 to 2026-09-19');
+    assert.strictEqual(new Date(week.start).getDay(), 0, 'Sunday');
     assert.strictEqual(week.end - week.start, 7 * DAY);
 
     const month = getReviewRange('month', new Date(2026, 8, 17));
-    assert.strictEqual(month.name, '2026-09');
+    assert.strictEqual(month.name, 'month-september-2026');
     assert.strictEqual(month.title, '2026-09-01 to 2026-09-30');
     assert.strictEqual(new Date(month.start).getDate(), 1);
     assert.strictEqual(new Date(month.end).getMonth(), 9, 'October starts it');
 
     assert.strictEqual(getIsoWeekStart(2026, 38).getDate(), 14);
+  });
+
+  test('reads which period a note is for from its name', () => {
+    const period = (name: string) => {
+      const found = findOpenPeriod(name);
+      return found && [found.period, formatLocalDate(found.day)];
+    };
+    assert.deepStrictEqual(period('week-2026-09-13-2026-09-19'), [
+      'week',
+      '2026-09-13',
+    ]);
+    assert.deepStrictEqual(period('month-september-2026'), ['month', '2026-09-01']);
+    // The names Deckard wrote before still say which period they are for.
+    assert.deepStrictEqual(period('2026-W38'), ['week', '2026-09-14']);
+    assert.deepStrictEqual(period('2026-09'), ['month', '2026-09-01']);
+    assert.strictEqual(findOpenPeriod('2026-09-13'), undefined, 'a daily note');
+    assert.strictEqual(findOpenPeriod('Atlas'), undefined);
   });
 
   test('writes the review into the note on disk', async () => {

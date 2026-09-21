@@ -13,9 +13,12 @@ import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
+  findExistingPeriodicNote,
+  getPeriodEnd,
   getPeriodicNote,
-  getPeriodicNoteUri,
+  getPeriodStart,
   NotePeriod,
+  parseLocalDate,
 } from './dailyNote';
 import { revealLine } from './navigation';
 import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
@@ -40,22 +43,23 @@ export function getReviewRange(
   period: Exclude<NotePeriod, 'day'>,
   day: Date,
 ): ReviewRange {
-  const { name, variables } = getPeriodicNote(period, day);
-  const [year, month, date] = variables.date.split('-').map(Number);
-  const start = new Date(year, month - 1, date);
-  const end =
-    period === 'week'
-      ? new Date(year, month - 1, date + 7)
-      : new Date(year, month, 1);
+  const { name } = getPeriodicNote(period, day);
+  const start = getPeriodStart(period, day);
+  const last = getPeriodEnd(period, start);
+  // The day after the last, so a date inside the period is `>= start` and
+  // `< end` whatever hour it carries.
+  const end = new Date(
+    last.getFullYear(),
+    last.getMonth(),
+    last.getDate() + 1,
+  );
   return {
     name,
-    title: `${formatIsoDate(start.getTime())} to ${formatIsoDate(end.getTime() - DAY)}`,
+    title: `${formatIsoDate(start.getTime())} to ${formatIsoDate(last.getTime())}`,
     start: start.getTime(),
     end: end.getTime(),
   };
 }
-
-const DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Writes the review of a period into its note, creating the note when it is
@@ -201,9 +205,8 @@ export async function openPeriodicNoteWithReview(
   if (!folder) {
     return undefined;
   }
-  const noteUri = getPeriodicNoteUri(folder, period, new Date());
-  const isNew = !(await exists(noteUri));
-  await ensurePeriodicNote(folder, period, new Date());
+  const isNew = !(await findExistingPeriodicNote(folder, period, new Date()));
+  const noteUri = await ensurePeriodicNote(folder, period, new Date());
   if (isNew && isReviewOnCreateEnabled(folder.uri)) {
     await writeReview(indexer, preferences, period, new Date(), {
       silent: true,
@@ -214,22 +217,36 @@ export async function openPeriodicNoteWithReview(
   return noteUri;
 }
 
-/** The period the note in the editor is for, when it is a periodic note. */
-function findOpenPeriod():
-  | { period: Exclude<NotePeriod, 'day'>; day: Date }
-  | undefined {
-  const name = vscode.window.activeTextEditor?.document.uri.path
+/**
+ * The period the note in the editor is for, whichever name it goes by: the
+ * days a note holds, or the ISO week and year-month Deckard wrote before.
+ */
+export function findOpenPeriod(
+  fileName = vscode.window.activeTextEditor?.document.uri.path
     .split('/')
     .pop()
-    ?.replace(/\.md$/i, '');
-  if (!name) {
+    ?.replace(/\.md$/i, ''),
+): { period: Exclude<NotePeriod, 'day'>; day: Date } | undefined {
+  if (!fileName) {
     return undefined;
   }
-  const week = /^(\d{4})-W(\d{2})$/.exec(name);
+  const span = /^week-(\d{4}-\d{2}-\d{2})-\d{4}-\d{2}-\d{2}$/i.exec(fileName);
+  const start = span ? parseLocalDate(span[1]) : undefined;
+  if (start) {
+    return { period: 'week', day: start };
+  }
+  const named = /^month-([a-z]+)-(\d{4})$/i.exec(fileName);
+  if (named) {
+    const month = MONTHS.indexOf(named[1].toLowerCase());
+    if (month >= 0) {
+      return { period: 'month', day: new Date(Number(named[2]), month, 1) };
+    }
+  }
+  const week = /^(\d{4})-W(\d{2})$/.exec(fileName);
   if (week) {
     return { period: 'week', day: getIsoWeekStart(Number(week[1]), Number(week[2])) };
   }
-  const month = /^(\d{4})-(\d{2})$/.exec(name);
+  const month = /^(\d{4})-(\d{2})$/.exec(fileName);
   return month
     ? {
         period: 'month',
@@ -238,6 +255,21 @@ function findOpenPeriod():
     : undefined;
 }
 
+const MONTHS = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
+
 /** The Monday of an ISO week, which is the day its note is named for. */
 export function getIsoWeekStart(year: number, week: number): Date {
   const january4 = new Date(year, 0, 4);
@@ -245,11 +277,3 @@ export function getIsoWeekStart(year: number, week: number): Date {
   return new Date(year, 0, 4 - weekday + (week - 1) * 7);
 }
 
-async function exists(uri: vscode.Uri): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
-}

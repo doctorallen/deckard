@@ -525,13 +525,13 @@
           "deckard.weeklyNoteTemplate": {
             "type": "string",
             "default": "# {week}\n\n",
-            "description": "Template used when creating a weekly note. {week} becomes the ISO week, such as 2026-W37, {date} its Monday, and {month} that Monday's month.",
+            "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its Sunday, and {month} that Sunday's month, such as September 2026.",
             "order": 4
           },
           "deckard.monthlyNoteTemplate": {
             "type": "string",
             "default": "# {month}\n\n",
-            "description": "Template used when creating a monthly note. {month} becomes the month, such as 2026-09, and {date} its first day.",
+            "description": "Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
             "order": 5
           },
           "deckard.periodicNote.review": {

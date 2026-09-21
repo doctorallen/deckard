@@ -100,10 +100,12 @@ test("selecting today opens its daily note, and the week opens the week's note",
   const { view, day } = await openCalendar();
   view.click(day(today));
   await settle();
+  // The week beside a row is a mark rather than a number; the row it belongs
+  // to is the one holding today.
   const week = view
     .findAll('[data-action="open-week"]')
-    .find((button) => (button.getAttribute('aria-label') || '').startsWith(`Week ${thisWeek},`));
-  assert.ok(week, "the week's note is marked on its label");
+    .find((button) => button.classList.contains('has-note'));
+  assert.ok(week, "the week that has a note is marked");
   view.click(week);
   await settle();
   assert.deepStrictEqual(opened, [`/notes/${today}.md`, `/notes/${thisWeek}.md`]);

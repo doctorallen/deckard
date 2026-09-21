@@ -84,6 +84,17 @@
   all, because a link names a title and not a path.
   `deckard.updateLinksOnRename` turns it off.
 
+- **A week or month note is named for the days it holds.**
+  `week-2026-09-13-2026-09-19.md` and `month-september-2026.md` say what they
+  are from a file list, where `2026-W38.md` said little. A week runs Sunday
+  to Saturday, as the Calendar draws it, so one row of the calendar is one
+  week note; `{week}` in a template becomes those days and `{month}` becomes
+  *September 2026*, matching the names. The names Deckard wrote before are
+  still read, and still opened for their period, so a workspace holding
+  `2026-W38.md` goes on using it rather than gaining a second note for the
+  same week. The Calendar's week rail is a mark rather than a number, since
+  the note is named for the days the row already shows.
+
 - **The Help page is a reference again.** It had grown into a wall of cards
   that said less than the README and had fallen behind the extension: the
   settings were prose, the query language had no table, and features shipped

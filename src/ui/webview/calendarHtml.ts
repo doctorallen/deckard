@@ -32,9 +32,10 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
 /* The week opens its note and marks whether it has one; it is not a date,
    so it is drawn as a rail beside the days rather than as another cell. */
-.week-label { align-self: stretch; width: 14px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); font: 9px var(--font-mono); }
+.week-label { display: grid; align-self: stretch; width: 18px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); place-items: center; }
+.week-label svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; }
 .week-label.has-note { color: var(--cyan); }
-.week-label:hover, .week-label:focus-visible { color: var(--amber); }
+.week-label:hover, .week-label:focus-visible { color: var(--amber); background: none; }
 .weekday { padding: 2px 0; color: var(--muted); font: 10px var(--font-mono); text-align: center; }
 /* Every day is the same three rows, whether or not it has anything to mark,
    so a note or a due count never moves the date it belongs to. */
@@ -85,13 +86,16 @@ ${getComponentScript()}
   }
 
   /**
-   * The week beside its row. A row runs Sunday to Saturday while a week note
-   * is an ISO week, Monday to Sunday, so the label says which days its note
-   * is for rather than leaving the reader to work it out.
+   * The week beside its row, as a mark rather than a number: a week note is
+   * named for the days it holds, so a number would say nothing the row does
+   * not. What it opens is in its tooltip.
    */
   function renderWeek(week) {
-    const label = 'Week ' + week.week + ', Monday ' + week.date + (week.notePath ? ', weekly note' : '');
-    return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(week.week.slice(6)) + '</button>' + week.days.map(renderDay).join('');
+    const days = week.days[0].date + ' to ' + week.days[6].date;
+    const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
+    return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
+      + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6.5h11M6 3.5v3M10 3.5v3"/></svg>'
+      + '</button>' + week.days.map(renderDay).join('');
   }
 
   function render() {

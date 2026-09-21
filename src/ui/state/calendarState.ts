@@ -1,7 +1,9 @@
 import { WorkspaceIndex } from '../../core/types';
 import {
+  findPeriodicNoteNames,
   formatLocalDate,
   getPeriodicNote,
+  isPeriodicNoteName,
   listDailyNotes,
 } from '../commands/dailyNote';
 
@@ -20,11 +22,11 @@ export interface CalendarDay {
   dueCount: number;
 }
 
-/** One row of the calendar: seven days, Sunday first. */
+/** One row of the calendar: seven days, Sunday to Saturday. */
 export interface CalendarWeek {
-  /** The ISO week its weekdays belong to, such as 2026-W37. */
+  /** The week's note name, such as week-2026-09-13-2026-09-19. */
   week: string;
-  /** That ISO week's Monday, as YYYY-MM-DD, which its note is named for. */
+  /** Its Sunday, as YYYY-MM-DD, which the week's note is found from. */
   date: string;
   /** The week's note, when it has one. */
   notePath?: string;
@@ -56,9 +58,8 @@ const monthTitle = new Intl.DateTimeFormat('en', {
  * with each day's daily note and the open tasks due that day, and the notes
  * kept for each week and for the month.
  *
- * A row is named by the ISO week its weekdays fall in — the week of the
- * Monday inside it — so a weekly note still belongs to the row that holds
- * its working days.
+ * A row is a week in its own right: the note it opens is named for the days
+ * the row holds.
  */
 export function createCalendar(
   index: WorkspaceIndex,
@@ -76,14 +77,19 @@ export function createCalendar(
       dailyNotes.set(note.date, note.filePath);
     }
   }
-  // Weekly and monthly notes by name, such as 2026-W37 or 2026-09.
+  // Weekly and monthly notes by name, under either naming.
   const periodicNotes = new Map<string, string>();
   for (const filePath of [...index.files.keys()].sort()) {
     const name = (filePath.split('/').pop() ?? '').replace(/\.md$/i, '');
-    if (/^\d{4}-(?:W\d{2}|\d{2})$/.test(name) && !periodicNotes.has(name)) {
+    if (isPeriodicNoteName(name) && !periodicNotes.has(name)) {
       periodicNotes.set(name, filePath);
     }
   }
+  /** The note a period keeps, whichever of its names it goes by. */
+  const periodicNote = (period: 'week' | 'month', day: Date): string | undefined =>
+    findPeriodicNoteNames(period, day)
+      .map((name) => periodicNotes.get(name))
+      .find(Boolean);
   const dueCounts = new Map<string, number>();
   for (const task of index.tasks.values()) {
     if (!task.completed && task.dueAt !== undefined) {
@@ -98,12 +104,9 @@ export function createCalendar(
     sunday <= last;
     sunday = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + 7)
   ) {
-    const monday = new Date(
-      sunday.getFullYear(),
-      sunday.getMonth(),
-      sunday.getDate() + 1,
-    );
-    const week = getPeriodicNote('week', monday).name;
+    // A row is a week: Sunday to Saturday, which is what its note is named
+    // for and what its review covers.
+    const week = getPeriodicNote('week', sunday).name;
     const days = Array.from({ length: 7 }, (_, offset): CalendarDay => {
       const day = new Date(
         sunday.getFullYear(),
@@ -121,16 +124,16 @@ export function createCalendar(
         dueCount: dueCounts.get(date) ?? 0,
       };
     });
-    const notePath = periodicNotes.get(week);
+    const notePath = periodicNote('week', sunday);
     weeks.push({
       week,
-      date: formatLocalDate(monday),
+      date: formatLocalDate(sunday),
       ...(notePath ? { notePath } : {}),
       days,
     });
   }
 
-  const notePath = periodicNotes.get(month);
+  const notePath = periodicNote('month', first);
   return {
     month,
     title: monthTitle.format(first),

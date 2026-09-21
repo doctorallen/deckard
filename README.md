@@ -95,8 +95,8 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
-| **Deckard: Open Weekly Note** | Creates or opens this week's note, such as `2026-W37.md`, with [its review](#writing-a-review) written in. |
-| **Deckard: Open Monthly Note** | Creates or opens this month's note, such as `2026-09.md`, with its review written in. |
+| **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |
+| **Deckard: Open Monthly Note** | Creates or opens this month's note, `month-september-2026.md`, with its review written in. |
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
 | **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Edits the task on the cursor's line, field by field; see [Editing a whole task](#editing-a-whole-task). |
 | **Deckard: Add Task** | The same editor, under the name it goes by when the cursor is not on a task: the same shortcut writes a new one where you are. |
@@ -771,7 +771,11 @@ Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut i
 
 `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the one in the editor, skipping days without a note. From any other note they start from today.
 
-`Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week, named for its ISO week such as `2026-W37.md`, or for this month, such as `2026-09.md`. Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`, which can use `{week}`, `{month}`, and `{date}`: a week's Monday, or a month's first day.
+`Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week or this month, **named for the days it holds**: `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, as the [Calendar](#calendar) draws it.
+
+Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. `{week}` becomes the days the period covers — *2026-09-13 to 2026-09-19* — `{month}` the month as *September 2026*, and `{date}` the first day: a week's Sunday, or a month's first.
+
+Notes Deckard named before, `2026-W38.md` and `2026-09.md`, are still read and still opened for their period, so a workspace that has them goes on using them rather than gaining a second note for the same week. Rename one to the new form whenever you like; nothing needs migrating.
 
 ### Writing a review
 
@@ -815,7 +819,7 @@ A daily note that starts from its template every morning leaves last night's ope
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, or the month's name to open the month's note; a weekly note is `Deckard: Open Weekly Note`. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month.
 
 ## Quick capture
 
@@ -902,8 +906,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
-| `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the ISO week, such as `2026-W37`, and `{date}` its Monday. |
-| `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `2026-09`, and `{date}` its first day. |
+| `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its Sunday. |
+| `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `September 2026`, and `{date}` its first day. |
 | `deckard.periodicNote.review` | `true` | Writes a review into a newly created weekly or monthly note. See [Writing a review](#writing-a-review). |
 | `deckard.dailyNote.rollover` | `off` | What a newly created daily note does with the last one's unfinished tasks: `off`, `move`, or `copy`. See [Carrying unfinished tasks forward](#carrying-unfinished-tasks-forward). |
 | `deckard.dailyNote.rolloverDays` | `0` | How many days back a rollover looks for unfinished tasks. `0` reaches as far as your daily notes go. |
