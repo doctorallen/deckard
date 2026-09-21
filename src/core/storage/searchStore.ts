@@ -122,9 +122,18 @@ export class SearchStore implements vscode.Disposable {
    * a path, a time, and a size per note. The writing it asks for is what
    * goes to the worker, so a rescan that changed nothing sends nothing.
    */
-  public replace(files: Iterable<ParsedFile>): void {
-    // The text index is rebuilt whole if it ever drifted from its entries.
-    const rebuild = this.writer.hasDrifted();
+  public replace(files: Iterable<ParsedFile>, parseFingerprint?: string): void {
+    // The text index is rebuilt whole if it ever drifted from its entries, or
+    // if the notes in it were parsed under settings that have since changed:
+    // the files are the same, so nothing else would notice.
+    const reparsed =
+      parseFingerprint !== undefined &&
+      this.writer.readParseFingerprint() !== parseFingerprint;
+    const rebuild = this.writer.hasDrifted() || reparsed;
+    if (reparsed) {
+      this.stored = undefined;
+      this.writer.writeParseFingerprint(parseFingerprint);
+    }
     this.stored ??= this.writer.readStoredNotes();
     const changes = compareToStored(this.stored, files, rebuild);
     this.record(changes);

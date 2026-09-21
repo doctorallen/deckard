@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { setQueryIdentity } from './core/query/queryEvaluator';
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
@@ -9,9 +10,21 @@ import { createHubNote } from './ui/commands/hubNote';
 import {
   createDailyNote,
   openAdjacentDailyNote,
-  openPeriodicNote,
 } from './ui/commands/dailyNote';
+import {
+  createDailyNoteWithRollover,
+  rollTasksForward,
+} from './ui/commands/rollover';
+import {
+  openPeriodicNoteWithReview,
+  writeReviewCommand,
+} from './ui/commands/review';
 import { setTaskRankKeeper } from './ui/commands/taskActions';
+import {
+  editTaskCommand,
+  TaskEditorActions,
+  TaskLineContext,
+} from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -24,7 +37,15 @@ import { CalendarView } from './ui/webview/calendar';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
+import { setNotePinnedCommand } from './ui/commands/pinNote';
+import { createPinForLine } from './ui/state/pinnedNotes';
+import { pinKey } from './core/storage/preferences';
+import {
+  LinkMaintenance,
+  renameHeadingCommand,
+} from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
+import { undoLastWorkspaceWrite } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
@@ -53,7 +74,11 @@ import {
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
-import { AgendaTreeProvider } from './ui/views/agendaTree';
+import {
+  AgendaTreeProvider,
+  pickAgendaGrouping,
+} from './ui/views/agendaTree';
+import { TaskStatusBar } from './ui/views/taskStatusBar';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -84,6 +109,22 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   log.info(
     `Deckard ${String(context.extension.packageJSON.version)} activated.`,
   );
+  // Who `is:mine` means. The evaluator is given it once rather than reading
+  // settings from six call sites.
+  const readIdentity = (): void => {
+    setQueryIdentity(
+      vscode.workspace.getConfiguration('deckard').get<string>('me', ''),
+    );
+  };
+  readIdentity();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('deckard.me')) {
+        readIdentity();
+      }
+    }),
+    { dispose: () => setQueryIdentity(undefined) },
+  );
   const indexer = new WorkspaceIndexer(
     undefined,
     new SearchStore(context.storageUri),
@@ -104,8 +145,24 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
   );
   const tagDecorations = new EditorTagDecorations();
+  // The hover on an entry offers to pin it, so it has to know which entries
+  // are pinned; preferences answer, and a change redraws the hovers.
+  const readPinned = (): void => {
+    tagDecorations.setPinnedReader((filePath, line) => {
+      const pin = createPinForLine(
+        indexer.getSnapshot(),
+        indexer.getFilePath(vscode.Uri.file(filePath)),
+        line,
+      );
+      return pin !== undefined && preferences.isPinned(pinKey(pin));
+    });
+  };
+  readPinned();
+  context.subscriptions.push(preferences.onDidChange(() => readPinned()));
   const tagSuggestions = new TagCompletionProvider(indexer);
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
+  const taskEditorActions = new TaskEditorActions();
+  const taskLineContext = new TaskLineContext();
   const editorReferences = new EditorReferences(indexer);
   const assistantTools = new AssistantTools(indexer);
   const mcpServer = new DeckardMcpServer(
@@ -120,6 +177,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkSuggestions = new WikiLinkCompletionProvider(indexer);
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
+  const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer);
   const taskBoard = new TaskBoardPanel(
     indexer,
@@ -137,7 +195,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openSearch: (query) => searchPanels.showQuery(query),
       openTaskBoard: (query) => taskBoard.show(query),
       openDailyNote: async () => {
-        await createDailyNote();
+        await createDailyNoteWithRollover(indexer);
       },
       quickAdd: (text) => captureToToday(text),
       createHubNote: async (tagKey) => {
@@ -165,7 +223,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       await searchPanels.show(tagKey);
     },
   );
-  const help = new HelpPanel(context.extensionUri);
+  const help = new HelpPanel(
+    context.extensionUri,
+    context.extension.packageJSON.contributes,
+  );
   const notesGraph = new NotesGraphPanel(
     indexer,
     context.extensionUri,
@@ -183,7 +244,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
-  const agenda = new AgendaTreeProvider(indexer);
+  const agenda = new AgendaTreeProvider(indexer, preferences);
+  const taskStatusBar = new TaskStatusBar(indexer);
   activeServices = {
     indexer,
     preferences,
@@ -202,10 +264,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     outline,
     queryBlocks,
     agenda,
+    taskStatusBar,
     taskMetadataSuggestions,
+    taskEditorActions,
+    taskLineContext,
     taskBoard,
     editorReferences,
     linkHealth,
+    linkMaintenance,
     calendar,
     quickFind,
   };
@@ -228,10 +294,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     outline,
     queryBlocks,
     agenda,
+    taskStatusBar,
     taskMetadataSuggestions,
+    taskEditorActions,
+    taskLineContext,
     taskBoard,
     editorReferences,
     linkHealth,
+    linkMaintenance,
     calendar,
     assistantTools,
     mcpServer,
@@ -268,6 +338,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,
+    // Dragging a task onto another ranks it there; onto a group, it joins
+    // that group through the same checked edit the board writes.
+    dragAndDropController: agenda,
   });
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
@@ -303,6 +376,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           await renameIndexedTag(indexer, tagKey, preferences);
         }
       },
+    ),
+    vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
+      pickAgendaGrouping(),
     ),
     vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
       setOutlineFollowCursor(true),
@@ -382,7 +458,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
-      createDailyNote(),
+      createDailyNoteWithRollover(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.rollTasksForward', () =>
+      rollTasksForward(indexer),
     ),
     vscode.commands.registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),
@@ -391,17 +470,46 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       openAdjacentDailyNote(indexer, 'next'),
     ),
     vscode.commands.registerCommand('deckard.openWeeklyNote', () =>
-      openPeriodicNote('week'),
+      openPeriodicNoteWithReview(indexer, preferences, 'week'),
     ),
     vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
-      openPeriodicNote('month'),
+      openPeriodicNoteWithReview(indexer, preferences, 'month'),
+    ),
+    vscode.commands.registerCommand('deckard.writeReview', () =>
+      writeReviewCommand(indexer, preferences),
+    ),
+    // One editor, two names: which one the palette offers is decided by
+    // whether the cursor is on a task.
+    vscode.commands.registerCommand('deckard.editTask', () =>
+      editTaskCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.addTask', () =>
+      editTaskCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
-    vscode.commands.registerCommand('deckard.pinNote', () =>
-      setNotePinned(indexer, preferences, true),
+    // The hover on a tagged entry passes the line it was shown on, so it
+    // pins that entry rather than wherever the cursor happens to be.
+    vscode.commands.registerCommand(
+      'deckard.pinNote',
+      (documentUri?: unknown, line?: unknown) =>
+        setNotePinnedCommand(
+          indexer,
+          preferences,
+          true,
+          typeof documentUri === 'string' ? documentUri : undefined,
+          typeof line === 'number' ? line : undefined,
+        ),
     ),
-    vscode.commands.registerCommand('deckard.unpinNote', () =>
-      setNotePinned(indexer, preferences, false),
+    vscode.commands.registerCommand(
+      'deckard.unpinNote',
+      (documentUri?: unknown, line?: unknown) =>
+        setNotePinnedCommand(
+          indexer,
+          preferences,
+          false,
+          typeof documentUri === 'string' ? documentUri : undefined,
+          typeof line === 'number' ? line : undefined,
+        ),
     ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
       capture(indexer, 'heading'),
@@ -464,13 +572,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           preferences,
         ),
     ),
+    vscode.commands.registerCommand('deckard.renameHeading', () =>
+      renameHeadingCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.undoLastChange', () =>
+      undoLastWorkspaceWrite(() => indexer.refresh()),
+    ),
     vscode.commands.registerCommand(
       'deckard.mergeTag',
-      (requestedTagKey?: unknown) =>
+      (requestedTagKey?: unknown, requestedTargetKey?: unknown) =>
         mergeIndexedTag(
           indexer,
           getCommandTagArgument(requestedTagKey),
           preferences,
+          getCommandTagArgument(requestedTargetKey),
         ),
     ),
     vscode.commands.registerCommand(
@@ -519,6 +634,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     void dashboard.showOnStartup();
   }
 
+  // The bar draws as soon as there is an index to count.
+  taskStatusBar.refresh();
+
   void indexer.start().then(async () => {
     const index = indexer.getSnapshot();
     await preferences.prune(
@@ -556,10 +674,14 @@ export function deactivate(): void {
   activeServices?.outline.dispose();
   activeServices?.queryBlocks.dispose();
   activeServices?.agenda.dispose();
+  activeServices?.taskStatusBar.dispose();
   activeServices?.taskMetadataSuggestions.dispose();
+  activeServices?.taskEditorActions.dispose();
+  activeServices?.taskLineContext.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
   activeServices?.linkHealth.dispose();
+  activeServices?.linkMaintenance.dispose();
   activeServices?.calendar.dispose();
   activeServices?.quickFind.dispose();
   activeServices = undefined;
@@ -586,10 +708,14 @@ interface ExtensionServices {
   outline: OutlineTreeProvider;
   queryBlocks: QueryBlocks;
   agenda: AgendaTreeProvider;
+  taskStatusBar: TaskStatusBar;
   taskMetadataSuggestions: TaskMetadataCompletionProvider;
+  taskEditorActions: TaskEditorActions;
+  taskLineContext: TaskLineContext;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
   linkHealth: LinkHealth;
+  linkMaintenance: LinkMaintenance;
   calendar: CalendarView;
   quickFind: QuickFind;
 }
@@ -670,26 +796,3 @@ async function showTagOverview(
   }
 }
 
-/** Pins the note in the editor to Home's Pinned notes, or unpins it. */
-async function setNotePinned(
-  indexer: WorkspaceIndexer,
-  preferences: PreferencesStore,
-  pinned: boolean,
-): Promise<void> {
-  const uri = vscode.window.activeTextEditor?.document.uri;
-  if (!uri || !indexer.isNotesFile(uri)) {
-    void vscode.window.showInformationMessage(
-      'Open a note in the notes folder to pin it to Home.',
-    );
-    return;
-  }
-  const filePath = indexer.getFilePath(uri);
-  const name = filePath.split('/').pop() ?? filePath;
-  if (pinned) {
-    await preferences.pinNote(filePath);
-    void vscode.window.showInformationMessage(`Pinned ${name} to Home.`);
-  } else {
-    await preferences.unpinNote(filePath);
-    void vscode.window.showInformationMessage(`Unpinned ${name} from Home.`);
-  }
-}

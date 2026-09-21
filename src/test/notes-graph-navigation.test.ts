@@ -36,7 +36,6 @@ const defaultPreferences: PersistedPreferences = {
   },
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
-  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -186,5 +185,6 @@ function createIndexer(
     onDidUpdate: () => ({ dispose: () => undefined }),
     getSnapshot: () => snapshot,
     getFilePath: () => 'notes/not-active.md',
+    isNotesFile: () => true,
   } as unknown as WorkspaceIndexer;
 }

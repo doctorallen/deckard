@@ -35,6 +35,11 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .label { overflow-wrap: anywhere; }
 .detail { margin-top: 3px; color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .count { color: var(--green); font-size: 16px; }
+/* A pair that looks alike: both tags on one line, with what to do about it. */
+.pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.pair-tag { padding: 2px 6px; font-size: 12px; }
+.pair-arrow { color: var(--muted); }
+.merge { min-height: 22px; padding: 2px 8px; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
 @media (max-width: 600px) { main { padding: 16px; } }
 
 /* Stats leads with a green rule and lists plain empty states. */
@@ -72,6 +77,21 @@ ${getComponentScript()}
       return '<li><div class="row stat-row" role="button" tabindex="0" title="' + escapeHtml(hint) + '" data-list="' + listName + '" data-index="' + index + '"><div><div class="label">' + label + '</div><div class="detail">' + escapeHtml(item.detail) + '</div></div>' + (item.count === undefined ? '' : '<strong class="count">' + item.count + '</strong>') + '</div></li>';
     }).join('') + '</ol>';
   }
+  /**
+   * Two tags that look like one idea spelled twice, pointing from the rarer
+   * spelling to the one the workspace already uses. Merge hands both keys to
+   * the host, which confirms the merge the way the tag list does.
+   */
+  function lookalikeList() {
+    const pairs = state.lookalikeTags;
+    if (!pairs.length) return '<p class="empty">No two tags look like one idea spelled twice.</p>';
+    return '<ol class="list">' + pairs.map(function (pair, index) {
+      const source = '<button type="button" class="tag-open pair-tag" data-action="open-lookalike" data-index="' + index + '" data-side="source" title="Open this tag in a search page">' + renderTagLabel(pair.sourceLabel) + '</button>';
+      const target = '<button type="button" class="tag-open pair-tag" data-action="open-lookalike" data-index="' + index + '" data-side="target" title="Open this tag in a search page">' + renderTagLabel(pair.targetLabel) + '</button>';
+      const merge = '<button type="button" class="merge" data-action="merge-lookalike" data-index="' + index + '" title="Merge ' + escapeHtml(pair.sourceLabel) + ' into ' + escapeHtml(pair.targetLabel) + '" aria-label="Merge ' + escapeHtml(pair.sourceLabel) + ' into ' + escapeHtml(pair.targetLabel) + '">Merge</button>';
+      return '<li><div class="row stat-row"><div><div class="label pair">' + source + '<span class="pair-arrow" aria-hidden="true">&rarr;</span>' + target + '</div><div class="detail">' + escapeHtml(pair.detail) + '</div></div>' + merge + '</div></li>';
+    }).join('') + '</ol>';
+  }
   // A row posts the message the host projected for it, so the page never
   // decides what a tag or a line opens.
   function openRow(row) {
@@ -90,6 +110,16 @@ ${getComponentScript()}
     }
     if (action && action.dataset.action === 'reindex') {
       vscode.postMessage({ type: 'reindexWorkspace' });
+      return;
+    }
+    if (action && action.dataset.action === 'open-lookalike') {
+      const pair = state && state.lookalikeTags[Number(action.dataset.index)];
+      if (pair) vscode.postMessage({ type: 'openTag', tagKey: action.dataset.side === 'target' ? pair.targetKey : pair.sourceKey });
+      return;
+    }
+    if (action && action.dataset.action === 'merge-lookalike') {
+      const pair = state && state.lookalikeTags[Number(action.dataset.index)];
+      if (pair) vscode.postMessage({ type: 'mergeTags', sourceKey: pair.sourceKey, targetKey: pair.targetKey });
       return;
     }
     const row = findRow(event);
@@ -116,7 +146,8 @@ ${getComponentScript()}
       metric('Unlinked notes', state.orphanNoteCount)
     ].join('');
     const unlisted = state.orphanNoteCount - state.orphanNotes.length;
-    const orphans = '<section class="views" aria-label="Link statistics"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article></section>';
+    const unlistedPairs = state.lookalikeTagCount - state.lookalikeTags.length;
+    const orphans = '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article></section>';
     document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + ' <button type="button" class="reindex" data-action="reindex" title="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {

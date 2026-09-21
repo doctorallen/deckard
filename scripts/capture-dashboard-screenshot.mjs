@@ -121,7 +121,7 @@ const viewConfiguration = {
       "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Task Board' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('.board-column'))",
   },
   'query-blocks': {
-    scene: `await openNote('2026-09-09.md', '## Task review', 0, 'AtTop');
+    scene: `await openNote('2026-09-19.md', '## Task review', 0, 'AtTop');
     await run('markdown.showPreviewToSide');`,
     keepLayout: true,
     webviewExtension: 'vscode.markdown-language-features',
@@ -149,7 +149,7 @@ const viewConfiguration = {
     await run('deckard.outline.focus');`,
     keepLayout: true,
     target: 'workbench',
-    collapsePanes: ['Related Notes', 'Agenda'],
+    collapsePanes: ['Related Notes', 'Tasks'],
     output: 'docs/images/outline.png',
     title: 'Outline',
     renderedAssertion: expandedPaneWithRows('Outline'),
@@ -162,8 +162,8 @@ const viewConfiguration = {
     target: 'workbench',
     collapsePanes: ['Related Notes', 'Outline'],
     output: 'docs/images/agenda.png',
-    title: 'Agenda',
-    renderedAssertion: expandedPaneWithRows('Agenda'),
+    title: 'Tasks',
+    renderedAssertion: expandedPaneWithRows('Tasks'),
   },
 };
 const selectedView = viewConfiguration[view];

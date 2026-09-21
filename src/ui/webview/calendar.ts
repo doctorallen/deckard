@@ -5,6 +5,7 @@ import { WorkspaceIndex } from '../../core/types';
 import {
   chooseTargetFolder,
   ensurePeriodicNote,
+  findPeriodicNoteNames,
   formatLocalDate,
   getPeriodicNote,
   listDailyNotes,
@@ -154,14 +155,16 @@ export class CalendarView
       return;
     }
     const { name } = getPeriodicNote(period, day);
+    // A week or month may be kept under the name Deckard writes now or the
+    // one it wrote before, and either is that period's note.
+    const names = new Set(findPeriodicNoteNames(period, day));
     const existing =
       period === 'day'
         ? undefined
         : [...this.indexer.getSnapshot().files.keys()]
             .sort()
-            .find(
-              (filePath) =>
-                (filePath.split('/').pop() ?? '').replace(/\.md$/i, '') === name,
+            .find((filePath) =>
+              names.has((filePath.split('/').pop() ?? '').replace(/\.md$/i, '')),
             );
     if (existing) {
       await openSourceAt(existing, 1);

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
+import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { formatQuery } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { measure } from '../../core/timing';
@@ -11,7 +12,9 @@ import {
   SearchPageMessage,
   SearchPageSnapshot,
   SearchRefineState,
+  Section,
   TagTitleDisplayMode,
+  Task,
   TaskFilter,
   WorkspaceIndex,
 } from '../../core/types';
@@ -22,6 +25,8 @@ import {
   resolveQueryTagIntersection,
 } from '../state/dashboardState';
 import { isWritten } from '../state/searchFacets';
+import { editResults } from '../commands/bulkEditPrompts';
+import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
 import { openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
@@ -649,10 +654,62 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         }
         return;
       }
+      case 'pinNote':
+      case 'unpinNote':
+        // A result is an entry, so pinning one pins that entry rather than
+        // the file it is written in.
+        await setPinned(
+          this.indexer.getSnapshot(),
+          this.preferences,
+          { filePath: message.filePath, line: message.line ?? 1 },
+          message.type === 'pinNote',
+        );
+        return;
+      case 'editResults':
+        await editResults(message.kind, this.currentResults());
+        return;
       case 'openSource':
         await this.openSource(message.filePath, message.line);
         return;
     }
+  }
+
+  /**
+   * Everything the page's search found, rather than the page of it on
+   * screen: an edit made to results means all of them.
+   *
+   * A page with no search of its own shows every note, which is not a set
+   * anyone means to edit at once, so there the results are the ones drawn.
+   */
+  private currentResults(): {
+    tasks: readonly Task[];
+    sections: readonly Section[];
+  } {
+    const index = this.indexer.getSnapshot();
+    const snapshot = this.currentSnapshot();
+    const node = this.queryText.trim()
+      ? parseQuery(this.queryText).node
+      : undefined;
+    if (!node) {
+      return {
+        tasks: snapshot.tasks.map((item) => item.task),
+        sections: snapshot.sections.flatMap((card) => {
+          const section = index.sections.get(card.id);
+          return section ? [section] : [];
+        }),
+      };
+    }
+    const results = evaluateQuery(index, node);
+    return {
+      tasks: results.tasks.filter((task) =>
+        this.taskFilter === 'all'
+          ? true
+          : this.taskFilter === 'completed'
+            ? task.completed
+            : !task.completed,
+      ),
+      sections: results.sections,
+    };
   }
 
   private currentSnapshot(): SearchPageSnapshot {

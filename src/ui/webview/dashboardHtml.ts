@@ -248,6 +248,7 @@ ${getQueryEditorScript()}
     tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
     unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
+    quietPeople: { label: 'People gone quiet', description: 'People you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
   };
 
@@ -683,14 +684,15 @@ ${getQueryEditorScript()}
         return renderHomeTags(widget.tags, 'No tag was first seen in the last ' + (widget.days || 14) + ' days.', function (tag) {
           return renderRowAction('rename-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Rename', 'Rename ' + tag.label + ' everywhere');
         });
-      case 'pinnedNotes': {
-        const source = widget.sourceNote && !widget.sourcePinned
-          ? renderSourceNote('Open:', widget.sourceNote, renderRowAction('pin-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Pin', 'Pin ' + widget.sourceNote.title + ' to Home'))
-          : '';
-        return source + renderHomeNotes(widget.notes, 'Pin a note with “Deckard: Pin Note to Home” to keep it here.', true, function (note) {
-          return renderRowAction('unpin-note', 'data-file-path="' + escapeHtml(note.filePath) + '"', '×', 'Unpin ' + note.title);
+      case 'quietPeople':
+        return renderHomeTags(widget.tags, 'Everyone you write about has come up in the last ' + (widget.days || 90) + ' days.');
+      case 'pinnedNotes':
+        // Home lists pins and lets go of them; pinning happens where the
+        // note is: the editor, a search result, or the command.
+        // A pin names an entry, so its row opens at that entry's line.
+        return renderHomeNotes(widget.notes, 'Pin the note you are in with “Deckard: Pin Note to Home”, or right-click a search result.', false, function (note) {
+          return renderRowAction('unpin-note', 'data-pin-key="' + escapeHtml(note.pinKey || '') + '"', '×', 'Unpin ' + note.title);
         });
-      }
       case 'savedQuery':
         if (widget.missing) return '<p class="home-widget-empty">This saved search was removed. <button type="button" data-action="customize-home">Pick another</button></p>';
         // A search saved on the Task Board finds tasks alone.
@@ -717,6 +719,7 @@ ${getQueryEditorScript()}
       case 'staleTasks': return link('open-task-board', 'data-query="is:open"', 'Task Board');
       case 'unhubbedTags':
       case 'newTags':
+      case 'quietPeople':
       case 'tagPairs': return link('set-dashboard-mode', 'data-dashboard-mode="browse"', 'All tags');
       case 'relatedNotes': return widget.sourceNote ? link('open-note', 'data-file-path="' + escapeHtml(widget.sourceNote.filePath) + '"', 'Open note') : '';
       case 'savedQuery':
@@ -1027,8 +1030,7 @@ ${getQueryEditorScript()}
       if (action === 'create-tag-hub') send({ type: 'createTagHub', tagKey: target.dataset.tagKey });
       if (action === 'rename-tag') send({ type: 'renameTag', tagKey: target.dataset.tagKey });
       if (action === 'open-note') send({ type: 'openNote', filePath: target.dataset.filePath });
-      if (action === 'pin-note') send({ type: 'pinNote', filePath: target.dataset.filePath });
-      if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath });
+      if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath || ' ', pinKey: target.dataset.pinKey });
       if (action === 'open-search') send({ type: 'openSearch', query: target.dataset.query || '' });
       if (action === 'open-task-board') send({ type: 'openTaskBoard', query: target.dataset.query || '' });
       if (action === 'open-view') send({ type: 'openView', view: target.dataset.view });

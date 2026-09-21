@@ -17,7 +17,7 @@ import {
  * The host stays the one that decides what to write, and splits each note
  * into its rows before sending it. Comparing a scan against the cache reads a
  * path, a time, and a size per note and is cheap; splitting a note is about
- * 3% of writing it. So a rescan that changed nothing sends nothing, and a
+ * 3% of writing it. So a res››can that changed nothing sends nothing, and a
  * note is never parsed a second time or a second way.
  */
 

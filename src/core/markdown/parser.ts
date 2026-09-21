@@ -63,11 +63,24 @@ const reservedNamespace = 'tag-at';
 
 export interface MarkdownParseOptions {
   parseInlineTags?: boolean;
+  /** What counts as a note inside a file; see `deckard.noteBoundaries`. */
+  noteBoundaries?: NoteBoundaries;
   entityNamespaceAliases?: EntityNamespaceAliases;
   personMarker?: string;
 }
 
 export type EntityNamespaceAliases = Readonly<Record<string, string>>;
+
+/**
+ * Where one note ends and the next begins.
+ *
+ * `line` — a tagged line is a note of its own, as Deckard has always read it.
+ * `heading` — only headings are notes. A tagged line keeps its tags and its
+ *   place, and the heading containing it is what a search returns.
+ * `marked` — as `heading`, except a line carrying a `^block-id`, which its
+ *   author has made addressable and which stays a note of its own.
+ */
+export type NoteBoundaries = 'line' | 'heading' | 'marked';
 
 const defaultEntityNamespaceAliases: Record<string, string> = {
   project: 'project',
@@ -206,18 +219,27 @@ export function parseMarkdown(
       personMarker,
     ),
   );
-  const inlineSections =
+  const taggedLines = findInlineSections(
+    filePath,
+    lines,
+    fencedLines,
+    headingSections,
+    dates,
+    frontmatter.tags,
+    personMarker,
+  );
+  // Outside `line`, a tagged line is not a note: its tags stay on the line
+  // and the heading holding it is what a search returns. The old
+  // `parseInlineTags: false` dropped those tags entirely; read as `heading`
+  // they keep answering, through the heading that holds them.
+  const inlineSections = foldTaggedLines(
+    taggedLines,
+    headingSections,
+    lines,
     options.parseInlineTags === false
-      ? []
-      : findInlineSections(
-          filePath,
-          lines,
-          fencedLines,
-          headingSections,
-          dates,
-          frontmatter.tags,
-          personMarker,
-        );
+      ? 'heading'
+      : options.noteBoundaries ?? 'line',
+  );
   const sections = [...headingSections, ...inlineSections].sort(
     (left, right) => left.startLine - right.startLine,
   );
@@ -858,6 +880,14 @@ function normalizeTagReferences(
   return [...normalized.values()];
 }
 
+/**
+ * Whether a tag key names a person: an `@` tag, whatever marker was typed for
+ * it, or one under the `#person/` namespace.
+ */
+export function isPersonTag(key: string): boolean {
+  return key.startsWith('@') || key.toLocaleLowerCase().startsWith('#person/');
+}
+
 function normalizeTagKey(
   key: string,
   entityNamespaceAliases?: EntityNamespaceAliases,
@@ -1014,12 +1044,22 @@ function createSection(
     .slice(headingIndex + 1)
     .find((candidate) => candidate.level <= heading.level);
   const endLine = nextBoundary ? nextBoundary.lineNumber - 1 : lines.length;
+  // The section's own body stops at the next heading of any level, so a
+  // parent's text does not contain its children's and a line belongs to the
+  // text of exactly one entry.
+  const nextHeading = headings[headingIndex + 1];
+  const bodyEndLine = nextHeading
+    ? Math.min(nextHeading.lineNumber - 1, endLine)
+    : endLine;
   const headingTags = extractTags(heading.text, undefined, personMarker);
   const sectionTags = mergeTagReferences(frontmatterTags, headingTags);
   const tagLabels = Object.fromEntries(
     sectionTags.map((tag) => [tag.key, tag.label]),
   );
   const rawContent = lines.slice(heading.lineNumber - 1, endLine).join('\n');
+  const bodyContent = lines
+    .slice(heading.lineNumber - 1, bodyEndLine)
+    .join('\n');
   const parentHeading = findNearestParentHeading(headings, headingIndex);
 
   return {
@@ -1036,11 +1076,68 @@ function createSection(
     tagLabels,
     links: extractWikiLinks(rawContent),
     rawContent,
+    bodyContent,
     startLine: heading.lineNumber,
     endLine,
+    bodyEndLine,
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
   };
+}
+
+/**
+ * Decides which tagged lines stay notes of their own, and hands the rest to
+ * the heading that holds them.
+ *
+ * A folded line is not copied onto its heading: its tags are recorded against
+ * the line they are written on, so the heading matches a search for one of
+ * them because it contains that line, and the match can say which line. The
+ * heading's own tags stay what its author wrote on it.
+ *
+ * A line with no heading above it is kept as a note whatever the setting
+ * says, because folding it would drop its tags on the floor.
+ */
+function foldTaggedLines(
+  taggedLines: Section[],
+  headingSections: Section[],
+  lines: string[],
+  boundaries: NoteBoundaries,
+): Section[] {
+  if (boundaries === 'line') {
+    return taggedLines;
+  }
+  const byId = new Map(headingSections.map((section) => [section.id, section]));
+  const kept: Section[] = [];
+  for (const line of taggedLines) {
+    const host = line.parentSectionId
+      ? byId.get(line.parentSectionId)
+      : undefined;
+    // Consecutive tagged lines are read as one entry, so a marker written on
+    // any of them marks the entry they form.
+    const marked =
+      boundaries === 'marked' &&
+      lines
+        .slice(line.startLine - 1, line.endLine)
+        .some((text) => BLOCK_ID_PATTERN.test(text));
+    if (!host || marked) {
+      kept.push(line);
+      continue;
+    }
+    const labels = line.tagLabels ?? {};
+    const bodyTags = line.tags.map((key) => ({
+      key,
+      label: labels[key] ?? key,
+      line: line.startLine,
+    }));
+    host.bodyTags = [...(host.bodyTags ?? []), ...bodyTags];
+    // The tags of one line stay one group, so "written together" keeps
+    // meaning "written on the same line" rather than "under one heading".
+    host.associationTagGroups = [
+      ...(host.associationTagGroups ?? []),
+      bodyTags.map(({ key, label }) => ({ key, label })),
+    ];
+  }
+  return kept;
 }
 
 /**
@@ -1207,8 +1304,10 @@ function createInlineSection(
     ),
     links: extractWikiLinks(rawContent || sourceLine),
     rawContent,
+    bodyContent: rawContent,
     startLine: lineNumber,
     endLine,
+    bodyEndLine: endLine,
     createdAt: metadata?.createdAt,
     updatedAt: metadata?.updatedAt,
   };
@@ -1275,6 +1374,9 @@ function findTasks(
         dueAt: dueDate?.at,
         dueText: dueDate?.text,
         ...omitUndefined({
+          // The first person written on the task line owns it; anyone named
+          // after them is mentioned, not asked.
+          assignee: inlineTags.find((tag) => isPersonTag(tag.key))?.key,
           scheduledAt: parseIsoDate(fields.scheduled),
           startAt: parseIsoDate(fields.start),
           doneAt: parseIsoDate(fields.done),
@@ -1298,9 +1400,18 @@ function findTasks(
  * The day a daily note is for: a YYYY-MM-DD file name, or failing that a
  * top-level heading that holds such a date.
  */
-/** Whether a note is named for a week or a month, as `2026-W37.md` or `2026-09.md` are. */
+/**
+ * Whether a note is named for a week or a month, as
+ * `week-2026-09-13-2026-09-19.md` and `month-september-2026.md` are, or as
+ * `2026-W37.md` and `2026-09.md` were.
+ */
 export function isPeriodicNotePath(filePath: string): boolean {
-  return /(?:^|\/)\d{4}-(?:W\d{2}|\d{2})\.md$/i.test(filePath);
+  const name = (filePath.split('/').pop() ?? '').replace(/\.md$/i, '');
+  return (
+    /^week-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}$/i.test(name) ||
+    /^month-[a-z]+-\d{4}$/i.test(name) ||
+    /^\d{4}-(?:W\d{2}|\d{2})$/i.test(name)
+  );
 }
 
 export function findDailyNoteDate(

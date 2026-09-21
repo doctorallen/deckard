@@ -4,6 +4,21 @@
 
 ### Fixed
 
+- **A setting that changes how notes are parsed rebuilds the search cache.**
+  The cache compares a scan against what it holds by path, modified time and
+  size, so a settings change left it holding entries that no longer existed:
+  the files had not moved. It records how its notes were parsed and rebuilds
+  when that changes — including a change made while VS Code was closed, which
+  nothing else could have noticed. `deckard.personMarker` and
+  `deckard.entityNamespaceAliases` had the same latent staleness and are
+  covered by the same record.
+
+- **A heading's own text stops at the next heading of any level.** A parent's
+  stored text used to contain its children's, so one sentence sat inside the
+  text of every entry above it — four deep in the sample notes — and was
+  excerpted, indexed and counted once for each. A section now carries its own
+  body as well as the subtree that Extract moves.
+
 - **Tags written together ranks by the notes and tasks carrying both.** It
   counted only tags written side by side on one line, which is the strongest
   case and a rare one: in a workspace where tags are written under headings
@@ -56,6 +71,287 @@
   to the last page it still has.
 
 ### Added
+
+- **Renaming a note carries its links with it.** A `[[link]]` names a note by
+  its title, so renaming one in the Explorer broke every link to it and left
+  the diagnostics to report the wreckage afterwards. The links are rewritten
+  as part of the rename, so one Undo takes back both, and Deckard says how
+  many it changed in how many notes. Only links that resolved to the renamed
+  note are touched: one written through an alias the note keeps still opens
+  it, and one naming a different note that shares the title is not Deckard's
+  to change. A heading, a `^marker`, and display text after `|` are kept as
+  they were written, and a note that only moves folders changes no link at
+  all, because a link names a title and not a path.
+  `deckard.updateLinksOnRename` turns it off.
+
+- **A week or month note is named for the days it holds.**
+  `week-2026-09-13-2026-09-19.md` and `month-september-2026.md` say what they
+  are from a file list, where `2026-W38.md` said little. A week runs Sunday
+  to Saturday, as the Calendar draws it, so one row of the calendar is one
+  week note; `{week}` in a template becomes those days and `{month}` becomes
+  *September 2026*, matching the names. The names Deckard wrote before are
+  still read, and still opened for their period, so a workspace holding
+  `2026-W38.md` goes on using it rather than gaining a second note for the
+  same week. The Calendar's week rail is a mark rather than a number, since
+  the note is named for the days the row already shows.
+
+- **The Help page is a reference again.** It had grown into a wall of cards
+  that said less than the README and had fallen behind the extension: the
+  settings were prose, the query language had no table, and features shipped
+  without it noticing. Its commands and settings tables are now built from
+  what Deckard actually contributes, so they cannot go stale, and a test
+  holds the page to that — every contributed command and setting has to
+  appear on it. The guide is grouped in the navigation (Writing, Tasks,
+  Finding, Keeping notes, Reference), with tables for the task markers, the
+  query shorthands and fields, what counts as a note, and every setting.
+
+- **Refine says what a click does to the search.** Each value sat between a
+  − and a + that were invisible until hovered while still holding their
+  width open, and the tooltip described the modifiers without naming what
+  they wrote. The two buttons are gone, and hovering a value now reads the
+  three things a click can do in the words of the query itself: **AND** this
+  clause, **AND NOT** it, or **OR** it with the value chosen before. The
+  search page, the Task board and the sidebar all say it the same way, and
+  <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd> and
+  <kbd>Shift</kbd>+<kbd>Enter</kbd> do the same from the keyboard.
+
+- **Tasks can be dragged in the Tasks view.** Dropping one on another ranks
+  it there, in the same order the Task board's list uses, which writes
+  nothing to your notes. Dropping one on a group makes it belong to that
+  group — a priority, a status, **Today**, or a person — through the same
+  checked edit the board's drops make; a person is handed the task by
+  rewriting the name on its line, leaving anyone else named there a mention,
+  and **Nobody named** takes the name off. **Overdue** and **Upcoming** cover
+  a range of days rather than one, so they name no edit and say so.
+
+- **The Agenda is now the Tasks view**, which is what it lists. Its settings
+  keep their `deckard.agenda.…` names, so nothing configured has to change.
+
+- **The Tasks view groups by what you choose.** It grouped one way — Overdue,
+  Today, Upcoming — which is the right default and the wrong one as soon as
+  you want to see a person's work, or everything waiting, or what is most
+  important. **Group by** in its title offers **Due status**, **Priority**,
+  **Status**, and **Person**, kept in `deckard.agenda.groupBy`. Priority
+  groups are marked with the emoji their task lines use, and **No priority**
+  sits last, where a reader looks for it. The tasks are
+  the same whichever is chosen, so grouping changes the axis rather than the
+  list. Within a group, tasks ranked on the Task board lead in the order they
+  were dragged into, and the rest follow as they did before.
+
+- **The Task board searches instead of filtering, and opens on what is
+  open.** Its All/Open/Done switch was obeyed by the list and ignored by the
+  board, which quietly filtered one view and not the other. The switch is
+  gone: the search box says the same thing for both views, and the board
+  opens on `is:open`, since a board is for what is still to do. Clear the
+  box for every task, or search `is:done` for the finished ones.
+
+- **The calendar keeps its dates still, and starts its weeks on Sunday.** A
+  day with a note or a due count drew taller content than a day without one,
+  and a button centres what it holds, so dates wandered up and down the grid
+  depending on what each day had. Every day is now the same three rows — the
+  date, a dot, a count — drawn whether or not there is anything to mark. The
+  week-number column is gone, and weeks run Sunday to Saturday; a weekly
+  note is opened with `Deckard: Open Weekly Note`, and a row still belongs to
+  the ISO week its weekdays fall in.
+
+- **Undo puts notes back without opening them.** Taking back a write that
+  reached several notes opened every one of them in the editor, leaving a
+  row of tabs to close after undoing one thing. A note nobody has on screen
+  is written straight to disk now; one that is open, or has unsaved changes,
+  still goes through its editor so what is on screen stays in step. The
+  rollover's message also offers **Open**, for the day's note it wrote into,
+  which it may have just created.
+
+- **A rollover reaches past yesterday.** It read the single most recent
+  daily note and stopped there, so a task left open on Friday did not come
+  forward on Monday if the weekend had a note, and a workspace whose last
+  daily note happened to be finished reported that nothing was waiting while
+  older notes still held open tasks. Every earlier daily note is read now,
+  oldest first, and `deckard.dailyNote.rolloverDays` bounds how far back —
+  the default, `0`, reaches as far as the notes go. What it says when it is
+  done names how many notes it drew from and the oldest day among them, and
+  carries **Undo** beside it.
+
+- **Pinning pins the note you are in, not the file it is in.** A note in
+  Deckard is an entry, but a pin was a path: pinning from inside a note's
+  sixth section put the file on Home, titled with its first heading and
+  opening at line 1. A pin now names the entry — kept as the heading's text,
+  its level and which heading of that text it is, and resolved each time
+  Home draws, so writing above a pinned heading does not lose it. A heading
+  that is gone leaves the pin on its note and says so rather than vanishing,
+  and a pin kept from an earlier version still means the whole note.
+  Pinning moved to where the note is, too: the command pins the entry the
+  cursor is in, the hover on a tagged entry offers **Pin … to Home** beside
+  its related notes, and a search result offers it on right-click — each
+  with **Undo** beside what it says. Home's own **Pin** button is gone,
+  since Home is the one place the note being pinned is not in front of you.
+
+- **The task editor says who a task is for.** Assignees shipped as "the
+  first person named on the line", but the editor had no field for one, so
+  the only way to hand a task over was to write the name in the right place
+  yourself. **Assignee** offers the people your notes already name: choosing one
+  replaces whoever was named first, anyone named after them stays a mention,
+  and **Nobody** takes the first name off, which hands the task to whoever
+  is named next.
+
+- **`Deckard: Edit Task` and `Deckard: Add Task` build or edit a whole task
+  at once.** Metadata
+  could be typed after `/` one marker at a time, which is fine for adding a
+  due date and poor for writing a task that has several of them. The command
+  opens the task on the cursor's line as a list of its fields — description,
+  status, due, scheduled, start, priority, repeat rule, what it waits for,
+  and a tag — headed by the line as it will be written, and each field opens
+  its own step and comes back. Dates are taken in plain words (`friday`,
+  `next monday`, `in 3 days`, `+2w`), with the day read back as you type.
+  Nothing is written until **Write the task**, the line keeps its format and
+  the parts Deckard does not edit, including a trailing `^block-id`, and the
+  editor is also on the lightbulb as **Edit task…**. A line that is not a
+  task yet becomes one, keeping what was written on it — which is why the
+  command has two names: the palette offers **Edit Task** when the cursor is
+  on a task and **Add Task** when it is not, and both run the same editor.
+
+- **A review is named by the days it covers**, such as *Review of
+  2026-09-14 to 2026-09-20*, rather than by a week number that says little
+  read back; the note it sits in still names the period. What Deckard says
+  when it writes one now offers **Open**, which opens the note at the review,
+  and **Undo**, which takes the review back out of it.
+
+- **A weekly or monthly note opens with its review written in.** A periodic
+  note opened from its template and said nothing, though the index could
+  already answer what the period came to. A review now lists what was
+  completed, what was due by the end of the period and is still open, the
+  notes written and the notes changed, and the tags first seen — as ordinary
+  Markdown, because a review should say what that week was rather than what
+  this week is. It sits between two comments, so writing it again replaces
+  only itself and leaves what you wrote around it. It carries no tags of its
+  own and lists no task as a task, so a review never becomes an entry in the
+  searches it reports on. `Deckard: Write a Review` writes or refreshes one
+  on request, and `deckard.periodicNote.review` turns off the one a new note
+  gets.
+
+- **The Notes Graph can be drawn around one note.** It has always drawn the
+  whole workspace, which says what the workspace looks like; **Focus →
+  Around this note** answers the other question, what this note is actually
+  attached to. **Hops out** reaches one, two, or three connections from the
+  note in the editor — a tag association counting as a hop like any other —
+  and the graph follows the editor as you move between notes. Only the
+  neighbourhood is sent to the page, so a local graph costs a screenful
+  whatever the workspace holds, and the tag checklist narrows to the tags
+  that neighbourhood holds.
+
+- **One edit can be made to everything a search found.** A search page is
+  where a set of notes and tasks is already gathered, so **Bulk Edit** in a
+  results pane now completes them, reopens them, dates them, or tags them
+  together, from **Bulk Edit** beside the pane's heading. Deckard asks what to do and then lists the results with every one
+  chosen, in VS Code's own list, so unpicking any leaves it alone. Every line
+  is compared with the line the index recorded before it is touched — the
+  check a single checkbox already made — so a task edited since is left as
+  its author left it and counted; completing works exactly as a checkbox
+  does, next occurrence included; and a tag is not written twice on a line
+  that carries it. The whole edit is one write, previewed when it reaches
+  more than one note and taken back by `Deckard: Undo Last Change`.
+
+- **A task knows who it is for.** `@ren-kade` on a task meant both "owns
+  this" and "was named here", so there was no way to ask what was waiting on
+  whom. The first person named on a task line is now the person it is for,
+  and anyone after them is mentioned rather than asked — nothing new is
+  written into your notes, since this reads the people you were already
+  writing. `assignee = @dana`, `assignee = none`, `is:assigned`, and
+  `is:unassigned` search by it, `@dana` and `#person/dana` name the same
+  person whichever way either side writes it, and `is:mine` finds what is
+  yours once `deckard.me` says who you are. The Task board groups by
+  **Person**, busiest first with **Nobody named** at the end; those columns
+  take no dropped cards, because who a task is for is written in its
+  sentence.
+
+- **Home says who you have not written about lately.** People are
+  first-class in the index, but nothing said when a name last came up, which
+  is the question a 1:1 or a standing meeting asks. The **People gone quiet**
+  widget lists the people missing from the last 30, 60, 90, or 180 days,
+  longest ago first, each with how long it has been and what is still open
+  with them. It reads `@` tags and `#person/…` tags together, dates a name by
+  the newest note carrying it — front matter first, then a daily note's day,
+  then the file — and leaves out anyone whose notes carry no date at all
+  rather than guessing.
+
+- **What is due today now shows in the status bar.** Every other count
+  Deckard keeps waited for a view to be opened; this one is visible while you
+  are writing code. It reads **3 due today**, counting the same tasks the
+  Agenda's Overdue and Today groups hold, says **1 overdue** and takes the
+  warning colour when something has slipped, and opens the Agenda when
+  selected. A clear day hides it entirely. `deckard.statusBar` turns it off,
+  and `deckard.taskReminderTime`, set to something like `09:00`, has Deckard
+  say once a day what is due, with **Open Agenda** beside it.
+
+- **A new daily note can carry the last one's unfinished tasks in.** A note
+  that starts from its template every morning left last night's open tasks
+  behind in yesterday's note, which is the habit that keeps daily notes
+  honest in every vault that has one. `deckard.dailyNote.rollover` set to
+  `move` takes the unfinished tasks of the nearest earlier daily note into
+  today's; `copy` writes them in and leaves them where they were. Each task
+  is written exactly as it was — dates, priority, people, tags, indentation —
+  and only when its line still reads as Deckard indexed it and today's note
+  does not already hold it, so running it twice changes nothing. Other notes
+  are never touched: a task filed under a project stays filed there. The
+  default is `off`, and `Deckard: Roll Unfinished Tasks Forward` does the
+  same thing whenever you ask. The whole rollover is one write, so
+  `Deckard: Undo Last Change` puts both notes back.
+
+- **`![[Note#Heading]]` embeds draw the note, section, or line they name.**
+  A link to a heading or a marked line already resolved, completed, previewed
+  on hover and counted as a backlink; an embed is the same reference read in
+  place, in VS Code's Markdown preview. `![[Note]]` draws a whole note
+  without its front matter, `![[Note#Heading]]` the heading and everything
+  nested under it, `![[Note#^id]]` the one marked line without its marker,
+  and `![[#Heading]]` a heading of the note being read — that last one from
+  the editor's own text, so it keeps up as you type. Each embed is headed by
+  what it read and links to its source line. It needs no minted block ids,
+  which is the part Deckard deliberately leaves out. An embed inside a
+  sentence stays the text you typed, attachments such as `![[diagram.png]]`
+  are left alone, and an embed inside an embed stops at three deep.
+
+- **Stats says which tags look like one idea spelled twice.** Merging has
+  existed for a while and Home already names the tags that are new and the
+  ones without a hub, but nothing pointed out that `#projct/atlas` and
+  `#project/atlas` are the same tag typed twice, or that `#org/acme` and
+  `#organization/acme` collide. The new list ranks the clearest pairs first —
+  a name written with two markers, in two namespaces, punctuated two ways,
+  pluralized, or mistyped — each pointing from the rarer spelling to the one
+  the workspace already uses, with **Merge** beside it running the ordinary
+  merge, confirmation and preview included. Two letters written the wrong way
+  round count as one typo, which is the mistake tags actually collect, and
+  spelling pairs are compared only within one namespace.
+
+- **A write that reaches several notes is shown before it lands, and can be
+  taken back afterwards.** Renaming or merging a tag rewrites every note that
+  carries it, most of which were never open, so an editor Undo could not
+  reach them. The changes now open in VS Code's own refactor preview, where
+  each one sits under its note and can be left out, and Deckard reports what
+  actually landed. `Deckard: Undo Last Change` puts those notes back as they
+  were, leaving alone any note changed since — in the editor or on disk — and
+  saying how many it left. Favorites and saved searches that followed the tag
+  move back with it. `deckard.previewWorkspaceWrites` chooses between
+  `severalNotes`, `always`, and `never`.
+
+- **`Deckard: Rename Heading`** renames the heading the cursor is in and
+  carries the links into it along, both `[[Note#Heading]]` elsewhere and
+  `[[#Heading]]` in the same note. Tags written on the heading stay on it.
+
+- **`deckard.noteBoundaries` decides what counts as a note inside a file.** A
+  tagged line has always been a note of its own, so a search for a tag written
+  in prose returned the sentence rather than the heading the sentence was
+  about. Set to `heading`, a tagged line is no longer an entry: its tags stay
+  on the line, and the heading holding the line is what a search returns —
+  nothing is copied onto the heading, so a heading still shows only the tags
+  its author wrote there, and the match knows which line answered it. A tag
+  written in a body does not travel: not up to the headings above it, not
+  across to the lines beside it. `marked` is the same, except that a line
+  carrying a `^block-id` stays a note of its own, because its author said so.
+  A tagged line with no heading above it always stays a note. Tasks are their
+  own entry under every setting. The default is `line`, so nothing moves
+  unless you ask it to, and `deckard.parseInlineTags` is deprecated: `false`
+  now reads as `heading`, which keeps a line's tags searchable rather than
+  dropping them.
 
 - **A Home widget can page through its entries.** **Paging**, in the widget's
   gear, turns it from the first few into all of them a page at a time. The

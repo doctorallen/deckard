@@ -30,11 +30,19 @@ import { getTaskBoardHtml } from './taskBoardHtml';
  * and the reindex that follows sends the saved state back. A move that cannot
  * be written refreshes the board, which puts the card back.
  */
+/** What the Task Board searches for until it is told otherwise. */
+export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
+
 export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
   private panelDisposables: vscode.Disposable[] = [];
-  private query = '';
+  /**
+   * The search the board opens on. A board is for what is still to do, so
+   * it starts there and says so in its box, where it can be cleared or
+   * changed like any other search.
+   */
+  private query = DEFAULT_TASK_BOARD_QUERY;
   /** A search typed that does not parse, shown with its error. */
   private invalidQuery: string | undefined;
   /** Whether the index changed while the panel was hidden. */
@@ -319,9 +327,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'setTaskLayout':
         await this.preferences.setTaskBoardLayout(message.layout);
         return;
-      case 'setTaskFilter':
-        await this.preferences.setTaskBoardTaskFilter(message.filter);
-        return;
+
       case 'setTaskSort':
         await this.preferences.setTaskSortMode(message.mode);
         return;

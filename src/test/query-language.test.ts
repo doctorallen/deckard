@@ -514,8 +514,7 @@ function createPreferences(): PersistedPreferences {
     },
     taskBoardLayout: 'board',
     taskBoardGroup: 'status',
-    taskBoardTaskFilter: 'active',
-    renderMode: 'markdown',
+      renderMode: 'markdown',
     tagOverviewSortMode: 'alphabetical',
     tagOverviewLayout: 'tabs',
   searchPageSize: 30,
@@ -553,6 +552,7 @@ function createIndex(): WorkspaceIndex {
       tags: ['#project/atlas'],
       headingTags: [{ key: '#project/atlas', label: '#project/atlas' }],
       rawContent: '',
+      bodyContent: '',
     }),
     createSection({
       id: 'atlas-child',
@@ -645,8 +645,10 @@ function createSection(values: Partial<Section> & { id: string }): Section {
     tagLabels: {},
     links: [],
     rawContent: '',
+    bodyContent: '',
     startLine: 1,
     endLine: 2,
+    bodyEndLine: 2,
     ...values,
   };
 }

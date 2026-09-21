@@ -16,7 +16,14 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 36);
+    assert.strictEqual(Object.keys(settings).length, 46);
+    // Where one note ends and the next begins.
+    assert.deepStrictEqual(settings['deckard.noteBoundaries'].enum, [
+      'line',
+      'heading',
+      'marked',
+    ]);
+    assert.strictEqual(settings['deckard.noteBoundaries'].default, 'line');
     const activationEvents = extension.packageJSON.activationEvents ?? [];
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.dashboard'));
     assert.ok(activationEvents.includes('onWebviewPanel:deckard.tagOverview'));
@@ -40,8 +47,12 @@ suite('Extension Test Suite', () => {
         'deckard.nextDailyNote',
         'deckard.openWeeklyNote',
         'deckard.openMonthlyNote',
+        'deckard.editTask',
+        'deckard.addTask',
         'deckard.capture',
         'deckard.captureUnderHeading',
+        'deckard.writeReview',
+        'deckard.rollTasksForward',
         'deckard.newNoteFromTemplate',
         'deckard.copyMcpSetup',
         'deckard.resetMcpToken',
@@ -55,10 +66,13 @@ suite('Extension Test Suite', () => {
         'deckard.moveTagsToFrontmatter',
         'deckard.renameTag',
         'deckard.mergeTag',
+        'deckard.renameHeading',
+        'deckard.undoLastChange',
         'deckard.showEntryRelatedNotesDebug',
         'deckard.outline.revealSection',
         'deckard.outline.openTagOverview',
         'deckard.outline.renameTag',
+        'deckard.agenda.setGrouping',
         'deckard.outline.enableFollowCursor',
         'deckard.outline.disableFollowCursor',
       ],

@@ -27,6 +27,7 @@ import {
 import {
   findDailyNoteDate,
   isPeriodicNotePath,
+  isPersonTag,
   stripTags,
 } from '../../core/markdown/parser';
 import {
@@ -61,6 +62,8 @@ import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
+import { createPinForLine, pinKey } from './pinnedNotes';
+import { findTagMergeCandidates } from './tagHygiene';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -217,11 +220,24 @@ export function createSearchPageSnapshot(
         tasks: [...index.tasks.values()],
         files: listFrontmatterOnlyFiles(index),
       };
+  // Which entries are pinned, so a card's menu offers pinning or unpinning
+  // rather than one word that is wrong half the time.
+  const pinnedKeys = new Set(
+    (preferences.pinnedNotes ?? []).map((pin) => pinKey(pin)),
+  );
   const cardFor = (section: Section): TagOverviewCard =>
     createTagOverviewCard(
       section,
       preferences.sectionAccessCounts,
       tagTitleDisplayMode,
+      pinnedKeys.size > 0 &&
+        pinnedKeys.has(
+          pinKey(
+            createPinForLine(index, section.filePath, section.startLine) ?? {
+              filePath: section.filePath,
+            },
+          ),
+        ),
     );
   const plainTerms = getPlainTextTerms(drafted.node);
   const cards = plainTerms
@@ -499,7 +515,22 @@ export function createDeckardStatsSnapshot(
       },
     ),
     ...findOrphanNotes(index),
+    ...findLookalikeTags(index),
   };
+}
+
+/** How many of the tags that look alike the Stats page names. */
+const LOOKALIKE_TAG_LIMIT = 12;
+
+/** Tags that look like two spellings of one idea, the clearest pairs first. */
+function findLookalikeTags(
+  index: WorkspaceIndex,
+): Pick<DeckardStatsSnapshot, 'lookalikeTags' | 'lookalikeTagCount'> {
+  const { candidates, total } = findTagMergeCandidates(
+    index,
+    LOOKALIKE_TAG_LIMIT,
+  );
+  return { lookalikeTags: candidates, lookalikeTagCount: total };
 }
 
 /** How many of the notes nothing links to the Stats page names. */
@@ -1005,11 +1036,13 @@ function createTagOverviewCard(
   section: Section,
   sectionAccessCounts: Record<string, number>,
   tagTitleDisplayMode: TagTitleDisplayMode,
+  pinned = false,
 ): TagOverviewCard {
   return {
     id: section.id,
     filePath: section.filePath,
     heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    ...(pinned ? { pinned } : {}),
     titleTags: getTitleTags(
       section.tags,
       section.tagLabels,
@@ -1438,6 +1471,20 @@ export function createQuerySuggestions(
     value,
     label: value,
   }));
+  // A task's assignee is a person, so the people in the index are what it
+  // completes with, plus the way to ask for the tasks nobody was named on.
+  const people: QuerySuggestion[] = [
+    ...[...index.tags.values()]
+      .filter((tag) => isPersonTag(tag.key))
+      .sort((left, right) => right.count - left.count)
+      .slice(0, QUERY_TAG_SUGGESTION_LIMIT)
+      .map((tag) => ({
+        value: tag.key,
+        label: tag.label,
+        detail: describeTagMatches(index, tag.key),
+      })),
+    { value: 'none', label: 'none', detail: 'tasks that name nobody' },
+  ];
   const folders: QuerySuggestion[] = collectFolders(filePaths)
     .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
     .map((folder) => ({ value: folder, label: folder }));
@@ -1468,6 +1515,7 @@ export function createQuerySuggestions(
       start: taskDates,
       done: [...dates, noDate],
       priority: priorities,
+      assignee: people,
       created: dates,
       updated: dates,
     },
@@ -1504,6 +1552,9 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
   { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
   { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
+  { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person deckard.me names' },
+  { value: 'is:assigned', label: 'is:assigned', detail: 'Tasks that name a person' },
+  { value: 'is:unassigned', label: 'is:unassigned', detail: 'Tasks that name nobody' },
 ];
 
 const HAS_SUGGESTIONS = [
@@ -1538,7 +1589,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:task, is:note, is:blocked, or is:blocking';
+      return 'is:open, is:done, is:overdue, is:due, is:task, is:note, is:blocked, is:blocking, is:mine, is:assigned, or is:unassigned';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':
@@ -1555,6 +1606,8 @@ export function describeQueryField(field: string): string {
       return 'A task completion date (✅): 2026-09-13, today, 7d back, or none';
     case 'priority':
       return 'highest, high, medium, none, low, or lowest';
+    case 'assignee':
+      return 'The person a task is for: the first one named on its line, or none';
     case 'kind':
       return 'An entity namespace such as project or person';
     case 'file':

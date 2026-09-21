@@ -578,12 +578,13 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       case 'pinNote':
-        if (index.files.has(message.filePath)) {
-          await this.preferences.pinNote(message.filePath);
-        }
+        // Home lists pins; it does not make them, since the note being
+        // pinned is the one place Home cannot show you.
         return;
       case 'unpinNote':
-        await this.preferences.unpinNote(message.filePath);
+        if (message.pinKey) {
+          await this.preferences.unpinNote(message.pinKey);
+        }
         return;
     }
   }

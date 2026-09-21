@@ -21,6 +21,15 @@ function assertWebviewScriptParses(html: string): void {
   assert.doesNotThrow(() => new Function(script));
 }
 
+/** Deckard's own manifest, which the Help page is built from. */
+function extension(): vscode.Extension<unknown> {
+  const found = vscode.extensions.all.find(
+    (candidate) => candidate.packageJSON.name === 'deckard-notes',
+  );
+  assert.ok(found, 'Deckard is installed in the test host');
+  return found;
+}
+
 suite('Webview contracts', () => {
   test('renders tag-clustered graph relationships', () => {
     const html = getNotesGraphHtml({
@@ -1179,83 +1188,76 @@ suite('Webview contracts', () => {
     );
                                                                                                                                                       });
 
-  test('renders Help navigation for quick-start and advanced sections', () => {
+  test('keeps the Help page in step with what Deckard contributes', () => {
+    // The commands and settings tables are built from the manifest, so this
+    // holds the page to it rather than to a copy of its words: a command or
+    // a setting added later is in the guide the moment it is contributed.
+    const manifest = extension().packageJSON.contributes;
     const html = getHelpHtml(
       {
         cspSource: 'vscode-webview://deckard',
         asWebviewUri: (resource) => resource,
       },
       vscode.Uri.file('/deckard'),
+      manifest,
     );
 
-    assert.strictEqual(html.includes('href="#quick-start"'), true);
-    assert.strictEqual(html.includes('href="#commands"'), true);
-    assert.strictEqual(html.includes('href="#advanced"'), true);
-    assert.strictEqual(html.includes('<section id="quick-start">'), true);
-    assert.strictEqual(html.includes('<section id="commands">'), true);
-    assert.strictEqual(html.includes('<section id="advanced">'), true);
-    assert.strictEqual(html.includes('Tag associations'), true);
-    assert.strictEqual(html.includes('Associated tags'), true);
-    assert.strictEqual(html.includes('.step, .card { min-width: 0;'), true);
-    assert.strictEqual(html.includes('code { overflow-wrap: anywhere;'), true);
-    assert.strictEqual(
-      html.includes('.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }'),
-      true,
-    );
-
-    for (const command of [
-      'Deckard: Open Dashboard',
-      'Deckard: Show Stats',
-      'Deckard: Open Help',
-      'Deckard: Reindex Workspace',
-      'Deckard: Create Daily Note',
-      'Deckard: Extract Tagged Heading',
-      'Deckard: Show Tag Overview',
-      'Deckard: Find',
-      'Deckard: Link Current Heading to Entity',
-      'Deckard: Move Inline Tags to Front Matter',
-    ]) {
-      assert.strictEqual(html.includes(command), true);
+    const commands: { command: string; title: string }[] =
+      manifest?.commands ?? [];
+    assert.ok(commands.length > 0);
+    for (const command of commands.filter((entry) =>
+      entry.title.startsWith('Deckard:'),
+    )) {
+      assert.ok(
+        html.includes(command.title.replace('Deckard: ', '')),
+        `Help lists ${command.title}`,
+      );
     }
 
-    for (const setting of [
-      'deckard.notesFolder',
-      'deckard.exclude',
-      'deckard.dailyNoteTemplate',
-      'deckard.parseInlineTags',
-      'deckard.highlightNoteSections',
-      'deckard.autoSelectNoteSections',
-      'deckard.tagTitleDisplayMode',
-      'deckard.enableHeadingTagRelationships',
-      'deckard.enableTagAutocomplete',
-      'deckard.enableKeywordLinks',
-      'deckard.entityNamespaceAliases',
-      'deckard.personMarker',
-    ]) {
-      assert.strictEqual(html.includes(setting), true);
+    const settings: string[] = (manifest?.configuration ?? []).flatMap(
+      (group: { properties?: Record<string, unknown> }) =>
+        Object.keys(group.properties ?? {}),
+    );
+    assert.ok(settings.length > 0);
+    for (const setting of settings) {
+      assert.ok(html.includes(setting), `Help lists ${setting}`);
     }
 
-    assert.strictEqual(html.includes('Favorites always appear before'), true);
-    assert.strictEqual(html.includes('Move to top'), true);
-    assert.strictEqual(html.includes('#follow-up'), true);
-    assert.strictEqual(html.includes('Saved searches'), true);
-    assert.strictEqual(html.includes('Home/Tags tabs'), true);
-    assert.strictEqual(html.includes('Search/Tags tabs'), false);
-    assert.strictEqual(html.includes('<h3>Home</h3>'), true);
-    assert.strictEqual(html.includes('<h3>Search pages and tag overviews</h3>'), true);
-    assert.strictEqual(html.includes('Deckard: Open Search Page'), true);
-    assert.strictEqual(html.includes('<h3>Task list</h3>'), true);
-    assert.strictEqual(html.includes('Sort: Rank/Created/Updated'), true);
-    assert.strictEqual(html.includes('Browse tags'), true);
-    assert.strictEqual(html.includes('resources/deckard.svg'), true);
-    assert.strictEqual(html.includes('favorite-heart-outline.svg'), true);
-    assert.strictEqual(html.includes('favorite-heart-filled.svg'), true);
-    assert.strictEqual(
-      html.includes('When no Markdown editor is active'),
-      false,
+    // Every section the navigation offers is a section of the page.
+    const links = [...html.matchAll(/href="#([a-z-]+)"/g)].map(
+      (match) => match[1],
     );
-    assert.strictEqual(html.includes('M2 2h5v5H2zm7 0h5v3H9'), true);
-    assert.strictEqual(html.includes('class="favorite-heart filled"'), true);
+    assert.ok(links.length >= 20, 'the guide is navigable in parts');
+    for (const link of new Set(links)) {
+      assert.ok(
+        html.includes(`<section id="${link}">`),
+        `#${link} is a section`,
+      );
+    }
+    for (const section of ['quick-start', 'commands', 'advanced', 'query', 'tasks']) {
+      assert.ok(links.includes(section), `the navigation offers #${section}`);
+    }
+  });
+
+  test('renders the Help page as a reference, tables and all', () => {
+    const html = getHelpHtml(
+      {
+        cspSource: 'vscode-webview://deckard',
+        asWebviewUri: (resource) => resource,
+      },
+      vscode.Uri.file('/deckard'),
+      extension().packageJSON.contributes,
+    );
+
+    assert.ok(html.includes('<caption>Fields</caption>'), 'the query fields');
+    assert.ok(
+      html.includes('<caption>Markers, in the order Deckard writes them</caption>'),
+      'the task markers',
+    );
+    assert.ok(html.includes('deckard.noteBoundaries'), 'what counts as a note');
+    assert.ok(html.includes('resources/deckard.svg'), 'the logo it ships with');
+    assert.ok(html.includes('Associated tags'), 'how tags relate');
+    assert.ok(html.includes('#follow-up'), 'a tag anyone can write');
   });
 
   test('accepts only valid sidebar navigation messages', () => {

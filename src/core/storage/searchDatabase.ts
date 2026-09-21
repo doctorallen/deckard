@@ -79,6 +79,10 @@ export function openSearchDatabase(databasePath: string): DatabaseSync {
     );
     CREATE VIRTUAL TABLE IF NOT EXISTS entries_vocab
       USING fts5vocab(entries_fts, 'row');
+    CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    ) STRICT;
   `);
   return database;
 }
@@ -173,6 +177,28 @@ export class SearchWriter {
       });
     }
     return stored;
+  }
+
+  /**
+   * How the cached notes were parsed, as the scanner described it when they
+   * were written. A cache written under other settings holds entries that no
+   * longer exist — different ids, different tags — and a scan cannot tell,
+   * because the files themselves have not changed.
+   */
+  public readParseFingerprint(): string | undefined {
+    const row = this.database
+      .prepare("SELECT value FROM meta WHERE key = 'parse'")
+      .get();
+    return row ? String(row.value) : undefined;
+  }
+
+  public writeParseFingerprint(fingerprint: string): void {
+    this.database
+      .prepare(
+        `INSERT INTO meta (key, value) VALUES ('parse', ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      )
+      .run(fingerprint);
   }
 
   /** True when the text index has drifted from the entries it indexes. */
@@ -343,7 +369,9 @@ export function createSearchEntries(file: ParsedFile): SearchEntry[] {
     title: section.heading,
     headings: [fileName, ...headingPath(section.parentSectionId)].join(' / '),
     tags: tagText(section.tags, section.tagLabels),
-    body: section.rawContent,
+    // The section's own text: a parent's row no longer repeats every word of
+    // its children, which used to make one sentence match four entries.
+    body: section.bodyContent ?? section.rawContent,
   }));
   file.tasks.forEach((task) => {
     entries.push({

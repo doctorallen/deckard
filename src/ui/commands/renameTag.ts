@@ -18,6 +18,7 @@ import {
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
+import { applyWorkspaceWrite } from './workspaceWrites';
 
 interface RenameTagOptions {
   entityNamespaceAliases?: EntityNamespaceAliases;
@@ -92,11 +93,15 @@ export async function renameIndexedTag(
 
 /**
  * Merges one indexed tag into another, chosen from the tags that exist.
+ *
+ * A caller that already knows both ends, such as the pair of tags Stats says
+ * look alike, names them and goes straight to the confirmation.
  */
 export async function mergeIndexedTag(
   indexer: WorkspaceIndexer,
   requestedTagKey?: string,
   preferences?: PreferencesStore,
+  requestedTargetKey?: string,
 ): Promise<TagReference | undefined> {
   try {
     await indexer.ready;
@@ -106,8 +111,14 @@ export async function mergeIndexedTag(
       return undefined;
     }
 
-    const targetTag = await chooseMergeTarget(index, sourceTag);
-    if (!targetTag) {
+    const namedTarget = requestedTargetKey
+      ? index.tags.get(
+          resolveIndexedTagKey(index.tags, requestedTargetKey) ?? '',
+        )
+      : undefined;
+    const targetTag =
+      namedTarget ?? (await chooseMergeTarget(index, sourceTag));
+    if (!targetTag || targetTag.key === sourceTag.key) {
       return undefined;
     }
 
@@ -358,20 +369,30 @@ async function rewriteTag(
     });
   });
 
-  if (!(await vscode.workspace.applyEdit(edit))) {
+  // The write is shown first when it reaches more than one note, and kept
+  // afterwards, so `Deckard: Undo Last Change` can take the whole of it back.
+  const written = await applyWorkspaceWrite(edit, {
+    label: `the ${verb} of ${sourceTag.label} ${joiner} ${replacement.label}`,
+    description: `${verb === 'merge' ? 'Merge' : 'Rename'} ${sourceTag.label} ${joiner} ${replacement.label}`,
+    restore: async () => {
+      await preferences?.replaceTagKey(
+        targetKey ?? replacement.key,
+        sourceTag.key,
+      );
+      await indexer.refresh();
+    },
+  });
+  if (!written.applied) {
     void vscode.window.showErrorMessage(
       `Deckard could not ${verb} ${sourceTag.label}. VS Code rejected the source edit.`,
     );
     return undefined;
   }
-
-  for (const file of plan.files) {
-    if (!(await file.document.save())) {
-      void vscode.window.showErrorMessage(
-        `Deckard ${done.toLowerCase()} ${sourceTag.label} in memory but could not save ${file.document.uri.fsPath}.`,
-      );
-      return undefined;
-    }
+  if (written.notes.length === 0) {
+    void vscode.window.showInformationMessage(
+      `Deckard left ${sourceTag.label} as it was.`,
+    );
+    return undefined;
   }
 
   // Favorites, ranking, and saved views follow the tag. This runs before the
@@ -387,9 +408,9 @@ async function rewriteTag(
   }
   void vscode.window.showInformationMessage(
     `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
-      plan.occurrenceCount,
-      'occurrence',
-      'occurrences',
+      written.notes.length,
+      'note',
+      'notes',
     )}.`,
   );
   return replacement;

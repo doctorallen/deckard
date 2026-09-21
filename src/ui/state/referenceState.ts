@@ -147,7 +147,7 @@ export function createLinkPreview(
     blockLine !== undefined
       ? readBlockLine(file, blockLine)
       : section
-        ? removeFirstLine(section.rawContent)
+        ? removeFirstLine(section.bodyContent ?? section.rawContent)
         : removeFrontmatter(file.content),
   );
 

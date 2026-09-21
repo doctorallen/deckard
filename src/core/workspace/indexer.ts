@@ -195,7 +195,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
         this.snapshot = undefined;
         measure(
           'Rebuild search index',
-          () => this.searchStore?.replace(this.files.values()),
+          () =>
+            this.searchStore?.replace(
+              this.files.values(),
+              this.scanner.getParseFingerprint(),
+            ),
           () => `${this.files.size} notes`,
         );
         // What the store handed to its worker is still being written. The
@@ -242,9 +246,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const notesFolderChanged = event.affectsConfiguration(
           'deckard.notesFolder',
         );
-        const inlineTagsChanged = event.affectsConfiguration(
-          'deckard.parseInlineTags',
-        );
+        const inlineTagsChanged =
+          event.affectsConfiguration('deckard.parseInlineTags') ||
+          event.affectsConfiguration('deckard.noteBoundaries');
         const entityNamespaceAliasesChanged = event.affectsConfiguration(
           'deckard.entityNamespaceAliases',
         );
@@ -425,13 +429,24 @@ export function buildWorkspaceIndex(
     });
     file.sections.forEach((section) => {
       sections.set(section.id, section);
-      section.tags.forEach((tagKey) => {
-        const tag = getOrCreateTag(tags, tagKey, section.tagLabels[tagKey]);
+      // A tag written on one of the section's own body lines finds the
+      // section too: the tag stayed on its line, and the section is what
+      // holds the line.
+      const bodyTagLabels = new Map(
+        (section.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
+      );
+      const tagKeys = [
+        ...new Set([...section.tags, ...bodyTagLabels.keys()]),
+      ];
+      tagKeys.forEach((tagKey) => {
+        const label =
+          section.tagLabels[tagKey] ?? bodyTagLabels.get(tagKey) ?? tagKey;
+        const tag = getOrCreateTag(tags, tagKey, label);
         tag.sectionIds.push(section.id);
         addEntityReference(
           entities,
           tagKey,
-          section.tagLabels[tagKey] ?? tagKey,
+          label,
           'section',
           section.id,
           section.updatedAt,

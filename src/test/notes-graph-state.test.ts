@@ -3,8 +3,10 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
+  createLocalGraphSnapshot,
   createNotesGraphConnections,
   createNotesGraphSnapshot,
+  findNoteNodeIds,
 } from '../ui/state/notesGraphState';
 import {
   parseNotesGraphMessage,
@@ -13,6 +15,89 @@ import {
 import { NotesGraphSnapshot, ParsedFile } from '../core/types';
 
 suite('Notes graph state', () => {
+  test('draws one note and what it is attached to, a hop at a time', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n\nSee [[relay]].'),
+      parseMarkdown('notes/relay.md', '# Relay #project/atlas'),
+      parseMarkdown('notes/far.md', '# Far away #topic/other'),
+    ]);
+    const focus = findNoteNodeIds(snapshot, 'notes/atlas.md');
+    assert.strictEqual(focus.length, 1, 'the note is one heading');
+
+    const titles = (depth: number): string[] =>
+      createLocalGraphSnapshot(snapshot, focus, depth)
+        .nodes.map((node) => node.title)
+        .sort();
+    assert.deepStrictEqual(
+      titles(1),
+      ['#project/atlas', 'Atlas', 'Relay'],
+      'the note, the tag it carries, and the note it links to',
+    );
+    assert.ok(
+      !titles(2).includes('Far away'),
+      'a note sharing nothing stays out however far the graph reaches',
+    );
+  });
+
+  test('keeps only the edges between what it kept', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas'),
+      parseMarkdown('notes/relay.md', '# Relay #project/atlas #risk/vendor'),
+      parseMarkdown('notes/vendor.md', '# Vendor #risk/vendor'),
+    ]);
+    // Atlas reaches Relay through the tag they share: two hops, not one.
+    const local = createLocalGraphSnapshot(
+      snapshot,
+      findNoteNodeIds(snapshot, 'notes/atlas.md'),
+      2,
+    );
+    const kept = new Set(local.nodes.map((node) => node.id));
+    assert.ok(local.edges.length > 0);
+    local.edges.forEach((edge) => {
+      assert.ok(kept.has(edge.source) && kept.has(edge.target), edge.id);
+    });
+    assert.deepStrictEqual(
+      local.tags.map(([key]) => key),
+      ['#project/atlas', '#risk/vendor'],
+      'the tags this neighbourhood holds, a tag association being a hop like any other',
+    );
+    assert.strictEqual(
+      local.totalNoteCount,
+      2,
+      'Vendor is a hop further out than this reaches',
+    );
+  });
+
+  test('draws nothing for a note the graph does not hold', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas'),
+    ]);
+    assert.deepStrictEqual(findNoteNodeIds(snapshot, 'notes/gone.md'), []);
+    const empty = createLocalGraphSnapshot(snapshot, [], 2);
+    assert.deepStrictEqual(empty.nodes, []);
+    assert.deepStrictEqual(empty.edges, []);
+    assert.strictEqual(empty.totalNoteCount, 0);
+  });
+
+  test('accepts the scope a graph asks for, and no other', () => {
+    assert.deepStrictEqual(
+      parseNotesGraphMessage({ type: 'setGraphScope', local: true, depth: 2 }),
+      { type: 'setGraphScope', local: true, depth: 2 },
+    );
+    for (const message of [
+      { type: 'setGraphScope', local: true, depth: 0 },
+      { type: 'setGraphScope', local: true, depth: 9 },
+      { type: 'setGraphScope', local: true, depth: 1.5 },
+      { type: 'setGraphScope', local: 'yes', depth: 1 },
+    ]) {
+      assert.strictEqual(
+        parseNotesGraphMessage(message),
+        undefined,
+        JSON.stringify(message),
+      );
+    }
+  });
+
   test('connects notes to a shared tag anchor', () => {
     const snapshot = buildSnapshot([
       parseMarkdown('notes/a.md', '# Alpha #project/atlas'),

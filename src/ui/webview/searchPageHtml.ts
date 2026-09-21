@@ -69,6 +69,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .overview-pane-controls { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; text-transform: uppercase; }
+.edit-results { flex: 0 0 auto; min-height: 24px; margin-left: 10px; padding: 2px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -246,7 +247,7 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */
@@ -271,6 +272,34 @@ ${getQueryEditorScript()}
   }
 
   /** Rebuild the page from the latest host snapshot. */
+  /**
+   * Edit every result of this search at once. The host asks what to do and
+   * which of them, so the page hands over the intent and nothing else.
+   */
+  /** The result a card context menu is about, while the menu is open. */
+  var cardContext = null;
+
+  /** Pinning, on the results a search already gathered. */
+  function openCardContextMenu(event, card) {
+    cardContext = {
+      filePath: card.dataset.filePath,
+      line: Number(card.dataset.line),
+      pinned: card.dataset.pinned === 'true',
+    };
+    openContextMenu(event, [
+      {
+        action: 'pin-note',
+        label: cardContext.pinned ? 'Unpin from Home' : 'Pin to Home',
+      },
+    ]);
+  }
+
+  function editResultsButton(kind, count) {
+    if (!count) return '';
+    const label = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
+    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk Edit</button>';
+  }
+
   function render() {
     if (!state) return;
     // The redraw is about to take the search box out of the document.
@@ -319,8 +348,10 @@ ${getQueryEditorScript()}
     if (!tabChosen && state.layout !== 'split') {
       activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
     }
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2></div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2><div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '</section>';
+    // Bulk Edit belongs beside the heading it acts on, not out with the
+    // controls that change how the pane is shown.
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + editResultsButton('notes', notesCount) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + editResultsButton('tasks', tasksCount) + '<div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
@@ -384,9 +415,14 @@ ${getQueryEditorScript()}
     const contextAction = event.target.closest('#tag-context-menu [data-context-action]');
     if (contextAction) {
       const tagKey = tagContextKey;
+      const card = cardContext;
       closeTagContextMenu();
+      cardContext = null;
       if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
         vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
+      }
+      if (contextAction.dataset.contextAction === 'pin-note' && card) {
+        vscode.postMessage({ type: card.pinned ? 'unpinNote' : 'pinNote', filePath: card.filePath, line: card.line });
       }
       return;
     }
@@ -400,6 +436,7 @@ ${getQueryEditorScript()}
       if (action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
       if (action === 'set-layout') vscode.postMessage({ type: 'setTagOverviewLayout', layout: target.dataset.layout });
       if (action === 'set-task-filter') vscode.postMessage({ type: 'setTaskFilter', filter: target.dataset.filter });
+      if (action === 'edit-results') vscode.postMessage({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'set-columns') {
         const columns = Number(target.dataset.value);
         const section = target.dataset.section;
@@ -432,8 +469,15 @@ ${getQueryEditorScript()}
     }
   });
   document.addEventListener('contextmenu', function (event) {
-    const target = event.target.closest('[data-tag-key]');
-    if (target) openTagContextMenu(event, target);
+    const tag = event.target.closest('[data-tag-key]');
+    if (tag) {
+      openTagContextMenu(event, tag);
+      return;
+    }
+    // A result carries what a pin needs: its note, and the line its entry
+    // starts on. The host turns that into a pin on the entry itself.
+    const card = event.target.closest('.card');
+    if (card) openCardContextMenu(event, card);
   });
   document.addEventListener('keydown', function (event) {
     if (editor.handleKeydown(event)) return;

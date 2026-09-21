@@ -23,21 +23,32 @@ suite('Calendar', () => {
     calendar.weeks.flatMap((week) => week.days).map((day) => [day.date, day]),
   );
 
-  test('lays out whole ISO weeks, Monday first', () => {
+  test('lays out whole weeks, Sunday first', () => {
     assert.strictEqual(calendar.title, 'September 2026');
+    assert.deepStrictEqual(
+      calendar.weeks.map((week) => week.days[0].date),
+      ['2026-08-30', '2026-09-06', '2026-09-13', '2026-09-20', '2026-09-27'],
+      'every row opens on a Sunday',
+    );
+    assert.deepStrictEqual(
+      calendar.weeks.map((week) => week.days[6].date.slice(8)),
+      ['05', '12', '19', '26', '03'],
+      'and closes on a Saturday',
+    );
+    // A row is a week in its own right, named for the days it holds.
     assert.deepStrictEqual(
       calendar.weeks.map((week) => [week.week, week.date]),
       [
-        ['2026-W36', '2026-08-31'],
-        ['2026-W37', '2026-09-07'],
-        ['2026-W38', '2026-09-14'],
-        ['2026-W39', '2026-09-21'],
-        ['2026-W40', '2026-09-28'],
+        ['week-2026-08-30-2026-09-05', '2026-08-30'],
+        ['week-2026-09-06-2026-09-12', '2026-09-06'],
+        ['week-2026-09-13-2026-09-19', '2026-09-13'],
+        ['week-2026-09-20-2026-09-26', '2026-09-20'],
+        ['week-2026-09-27-2026-10-03', '2026-09-27'],
       ],
     );
     assert.strictEqual(days.get('2026-08-31')?.inMonth, false);
     assert.strictEqual(days.get('2026-09-01')?.inMonth, true);
-    assert.strictEqual(calendar.weeks[4].days[6].date, '2026-10-04');
+    assert.strictEqual(calendar.weeks[4].days[6].date, '2026-10-03');
     assert.deepStrictEqual(
       [calendar.previousMonth, calendar.nextMonth, calendar.currentMonth],
       ['2026-08', '2026-10', '2026-09'],
@@ -62,8 +73,8 @@ suite('Calendar', () => {
     assert.strictEqual(shiftMonth('2026-01', -1), '2025-12');
     assert.strictEqual(
       createCalendar(index, '2027-02', new Date(2026, 8, 13)).weeks.length,
-      4,
-      'February 2027 starts on a Monday and fills four weeks',
+      5,
+      'February 2027 starts on a Monday, so its first row opens the day before',
     );
   });
 

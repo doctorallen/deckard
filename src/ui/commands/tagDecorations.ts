@@ -7,6 +7,7 @@ import {
   parseMarkdown,
 } from '../../core/markdown/parser';
 import { measure } from '../../core/timing';
+import { createPinHoverUri } from './pinNote';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
 /**
@@ -24,6 +25,12 @@ const decorationDelayMs = 150;
  */
 export class EditorTagDecorations implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
+  /**
+   * Whether an entry is pinned, so its hover offers pinning or unpinning.
+   * The decorations know nothing of preferences themselves; the extension
+   * hands them the one question they need answered.
+   */
+  private isPinned: (filePath: string, line: number) => boolean = () => false;
   /** Redraws waiting for typing to pause, by document URI. */
   private readonly pendingUpdates = new Map<
     string,
@@ -103,6 +110,16 @@ export class EditorTagDecorations implements vscode.Disposable {
    * Releases the shared decoration type, pending redraws, and every
    * document/editor listener.
    */
+  /** Tells the hovers how to ask whether an entry is pinned. */
+  public setPinnedReader(
+    isPinned: (filePath: string, line: number) => boolean,
+  ): void {
+    this.isPinned = isPinned;
+    vscode.window.visibleTextEditors.forEach((editor) =>
+      this.updateEditor(editor),
+    );
+  }
+
   public dispose(): void {
     this.pendingUpdates.forEach((handle) => clearTimeout(handle));
     this.pendingUpdates.clear();
@@ -252,6 +269,8 @@ export class EditorTagDecorations implements vscode.Disposable {
             entry.title,
             editor.document.uri.toString(),
             entry.startLine,
+            undefined,
+            this.isPinned(editor.document.uri.fsPath, entry.startLine),
           ),
         };
       }),
@@ -377,17 +396,30 @@ export function createEntryRelatedNotesHoverMessage(
   includeDebug = vscode.workspace
     .getConfiguration('deckard')
     .get<boolean>('developerMode', false),
+  /** Whether this entry is already pinned, which names the pin link. */
+  pinned = false,
 ): vscode.MarkdownString {
   const safeTitle = escapeMarkdown(title);
   const debugLink = includeDebug
     ? `  \n[Debug related notes for ${safeTitle}](${createEntryRelatedNotesDebugUri(documentUri, lineNumber)})`
     : '';
+  // Pinning belongs beside the other thing this entry can do, since this
+  // hover is where an entry is already in front of the reader.
+  const pinLink = `  \n[${
+    pinned ? 'Unpin' : 'Pin'
+  } ${safeTitle} ${pinned ? 'from' : 'to'} Home](${createPinHoverUri(
+    documentUri,
+    lineNumber,
+    pinned,
+  )})`;
   const hover = new vscode.MarkdownString(
-    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})${debugLink}`,
+    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})${pinLink}${debugLink}`,
   );
   hover.isTrusted = {
     enabledCommands: [
       'deckard.showEntryRelatedNotes',
+      'deckard.pinNote',
+      'deckard.unpinNote',
       ...(includeDebug ? ['deckard.showEntryRelatedNotesDebug'] : []),
     ],
   };

@@ -120,7 +120,6 @@ export function createTaskBoard(
   const tasks = selectTasks(index, search.query);
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
-  const taskFilter = preferences.taskBoardTaskFilter;
 
   const board: TaskBoardLayout =
     layout === 'board'
@@ -146,10 +145,12 @@ export function createTaskBoard(
       },
     ),
     layout,
+    // Both layouts show what the search found. The board page used to keep
+    // an All/Open/Done switch beside the search box, which only the list
+    // obeyed; a search says the same thing, for both, in one place.
     tasks:
       layout === 'list'
         ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
-            .filter((task) => matchesTaskFilter(task, taskFilter))
             .map((task) => createDashboardTask(task, index.sections))
         : undefined,
     taskCounts: {
@@ -157,7 +158,6 @@ export function createTaskBoard(
       active: tasks.filter((task) => !task.completed).length,
       completed: tasks.filter((task) => task.completed).length,
     },
-    taskFilter,
     taskSortMode: preferences.taskSortMode,
     tagTitleDisplayMode,
     settings: {
@@ -194,7 +194,9 @@ export function layoutTaskBoard(
       ? createStatusColumns(open, options)
       : groupBy === 'priority'
         ? createPriorityColumns(open)
-        : createDueColumns(open, options.now);
+        : groupBy === 'assignee'
+          ? createAssigneeColumns(open, index)
+          : createDueColumns(open, options.now);
 
   const columns: TaskBoardColumn[] = [
     ...drafts.map((draft) => ({
@@ -314,6 +316,10 @@ export function resolveTaskMove(
         'Drop a task on Today, Tomorrow, or No due date to change its due date.',
       );
     }
+    case 'assignee':
+      return refuse(
+        'Who a task is for is written in its sentence, so Deckard leaves it for you to change.',
+      );
     default:
       return refuse('Deckard does not know that column.');
   }
@@ -413,6 +419,49 @@ function createPriorityColumns(open: Task[]): ColumnDraft[] {
     droppable: true,
     tasks: open.filter((task) => (task.priority ?? '') === priority),
   }));
+}
+
+/**
+ * One column per person a task names, busiest first, with the tasks nobody
+ * was named on last.
+ *
+ * Dropping a card is not offered: naming someone changes what a sentence
+ * says, which is the author's to write, not a drag's to guess.
+ */
+function createAssigneeColumns(
+  open: Task[],
+  index: WorkspaceIndex,
+): ColumnDraft[] {
+  const byPerson = new Map<string, Task[]>();
+  const unassigned: Task[] = [];
+  open.forEach((task) => {
+    if (!task.assignee) {
+      unassigned.push(task);
+      return;
+    }
+    byPerson.set(task.assignee, [...(byPerson.get(task.assignee) ?? []), task]);
+  });
+  const label = (key: string): string => index.tags.get(key)?.label ?? key;
+  return [
+    ...[...byPerson.entries()]
+      .sort(
+        (left, right) =>
+          right[1].length - left[1].length ||
+          label(left[0]).localeCompare(label(right[0])),
+      )
+      .map(([key, tasks]) => ({
+        id: `assignee:${key}`,
+        label: label(key),
+        droppable: false,
+        tasks,
+      })),
+    {
+      id: 'assignee:',
+      label: 'Nobody named',
+      droppable: false,
+      tasks: unassigned,
+    },
+  ];
 }
 
 /**

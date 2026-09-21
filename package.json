@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.17.0",
+  "version": "1.18.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -53,7 +53,7 @@
           {
             "id": "deckard.walkthrough.openHome",
             "title": "See the workspace",
-            "description": "Home collects today's note, your tasks, the Agenda, and the searches you keep.\n[Open the Dashboard](command:deckard.showDashboard)",
+            "description": "Home collects today's note, your tasks, what is due, and the searches you keep.\n[Open the Dashboard](command:deckard.showDashboard)",
             "media": {
               "markdown": "resources/walkthrough/home.md"
             }
@@ -138,12 +138,28 @@
         "title": "Deckard: Open Monthly Note"
       },
       {
+        "command": "deckard.editTask",
+        "title": "Deckard: Edit Task"
+      },
+      {
+        "command": "deckard.addTask",
+        "title": "Deckard: Add Task"
+      },
+      {
         "command": "deckard.capture",
         "title": "Deckard: Capture"
       },
       {
         "command": "deckard.captureUnderHeading",
         "title": "Deckard: Capture Under a Heading"
+      },
+      {
+        "command": "deckard.writeReview",
+        "title": "Deckard: Write a Review"
+      },
+      {
+        "command": "deckard.rollTasksForward",
+        "title": "Deckard: Roll Unfinished Tasks Forward"
       },
       {
         "command": "deckard.newNoteFromTemplate",
@@ -198,6 +214,14 @@
         "title": "Deckard: Merge Tag…"
       },
       {
+        "command": "deckard.renameHeading",
+        "title": "Deckard: Rename Heading"
+      },
+      {
+        "command": "deckard.undoLastChange",
+        "title": "Deckard: Undo Last Change"
+      },
+      {
         "command": "deckard.showEntryRelatedNotesDebug",
         "title": "Deckard: Debug Related Notes"
       },
@@ -212,6 +236,11 @@
       {
         "command": "deckard.outline.renameTag",
         "title": "Rename Tag…"
+      },
+      {
+        "command": "deckard.agenda.setGrouping",
+        "title": "Deckard: Group Tasks By…",
+        "icon": "$(group-by-ref-type)"
       },
       {
         "command": "deckard.outline.enableFollowCursor",
@@ -247,6 +276,14 @@
           "when": "false"
         },
         {
+          "command": "deckard.editTask",
+          "when": "editorLangId == markdown && deckard.onTaskLine"
+        },
+        {
+          "command": "deckard.addTask",
+          "when": "editorLangId == markdown && !deckard.onTaskLine"
+        },
+        {
           "command": "deckard.pinNote",
           "when": "editorLangId == markdown"
         },
@@ -264,6 +301,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "deckard.agenda.setGrouping",
+          "when": "view == deckard.agenda",
+          "group": "navigation@0"
+        },
         {
           "command": "deckard.showTaskBoard",
           "when": "view == deckard.agenda",
@@ -300,6 +342,18 @@
         "mac": "cmd+shift+alt+f"
       },
       {
+        "command": "deckard.editTask",
+        "key": "ctrl+shift+alt+t",
+        "mac": "cmd+shift+alt+t",
+        "when": "editorTextFocus && editorLangId == markdown && deckard.onTaskLine"
+      },
+      {
+        "command": "deckard.addTask",
+        "key": "ctrl+shift+alt+t",
+        "mac": "cmd+shift+alt+t",
+        "when": "editorTextFocus && editorLangId == markdown && !deckard.onTaskLine"
+      },
+      {
         "command": "deckard.quickFind.complete",
         "key": "tab",
         "when": "inQuickOpen && deckard.quickFindOpen"
@@ -330,9 +384,9 @@
         },
         {
           "id": "deckard.agenda",
-          "name": "Agenda",
+          "name": "Tasks",
           "icon": "resources/deckard.svg",
-          "contextualTitle": "Deckard Agenda"
+          "contextualTitle": "Deckard Tasks"
         },
         {
           "id": "deckard.calendar",
@@ -471,21 +525,50 @@
           "deckard.weeklyNoteTemplate": {
             "type": "string",
             "default": "# {week}\n\n",
-            "description": "Template used when creating a weekly note. {week} becomes the ISO week, such as 2026-W37, {date} its Monday, and {month} that Monday's month.",
+            "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its Sunday, and {month} that Sunday's month, such as September 2026.",
             "order": 4
           },
           "deckard.monthlyNoteTemplate": {
             "type": "string",
             "default": "# {month}\n\n",
-            "description": "Template used when creating a monthly note. {month} becomes the month, such as 2026-09, and {date} its first day.",
+            "description": "Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
             "order": 5
+          },
+          "deckard.periodicNote.review": {
+            "type": "boolean",
+            "default": true,
+            "description": "Write a review into a newly created weekly or monthly note: what was completed, what is still open, the notes written and changed, and the tags first seen in that period. Deckard: Write a Review writes or updates one whenever you ask.",
+            "order": 6
+          },
+          "deckard.dailyNote.rollover": {
+            "type": "string",
+            "enum": [
+              "off",
+              "move",
+              "copy"
+            ],
+            "enumDescriptions": [
+              "Create today's note from the template alone.",
+              "Move the last daily note's unfinished tasks into today's note.",
+              "Copy them into today's note and leave them where they were."
+            ],
+            "default": "off",
+            "description": "What a newly created daily note does with the unfinished tasks of the last one. Deckard: Roll Unfinished Tasks Forward does the same thing whenever you ask for it.",
+            "order": 7
+          },
+          "deckard.dailyNote.rolloverDays": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "How many days back a rollover looks for unfinished tasks. 0 reaches as far back as your daily notes go, so a task left open before a week away still comes forward.",
+            "order": 8
           },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
-            "order": 6
+            "order": 9
           },
           "deckard.exclude": {
             "type": "object",
@@ -495,17 +578,34 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` hides.",
-            "order": 7
+            "order": 10
           }
         }
       },
       {
         "title": "Tags and People",
         "properties": {
+          "deckard.noteBoundaries": {
+            "type": "string",
+            "scope": "resource",
+            "enum": [
+              "line",
+              "heading",
+              "marked"
+            ],
+            "enumDescriptions": [
+              "A tagged line is a note of its own.",
+              "Only headings are notes. A tagged line keeps its tags and its place, and the heading holding it is what a search returns.",
+              "As Heading, except a line marked with a ^block-id, which stays a note of its own."
+            ],
+            "default": "line",
+            "description": "Where one note ends and the next begins inside a Markdown file. Tasks are always their own entry, wherever they are written."
+          },
           "deckard.parseInlineTags": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
+            "markdownDeprecationMessage": "Use `#deckard.noteBoundaries#` instead. `false` is read as `heading`.",
             "description": "Index tags on non-heading Markdown lines as standalone entries.",
             "order": 0
           },
@@ -595,6 +695,28 @@
             "default": true,
             "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note.",
             "order": 3
+          },
+          "deckard.updateLinksOnRename": {
+            "type": "boolean",
+            "default": true,
+            "description": "Rewrite every [[Wiki link]] that names a note by its old title when the note is renamed, in the same step as the rename, so one Undo takes back both.",
+            "order": 4
+          },
+          "deckard.previewWorkspaceWrites": {
+            "type": "string",
+            "enum": [
+              "severalNotes",
+              "always",
+              "never"
+            ],
+            "enumDescriptions": [
+              "Show a write that reaches more than one note in VS Code's refactor preview first.",
+              "Show every write that changes a note, however few it changes.",
+              "Apply writes without showing them first."
+            ],
+            "default": "severalNotes",
+            "description": "When renaming or merging a tag, and renaming a heading, show the changes in VS Code's refactor preview before they are written, where each one can be left out. Deckard: Undo Last Change takes back whatever was written.",
+            "order": 5
           }
         }
       },
@@ -667,12 +789,50 @@
             "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task.",
             "order": 2
           },
+          "deckard.me": {
+            "type": "string",
+            "default": "",
+            "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you. Empty means is:mine finds nothing.",
+            "order": 5
+          },
+          "deckard.statusBar": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show how many tasks are due today in the status bar, which opens the Tasks view when selected. The item is hidden while nothing is due.",
+            "order": 6
+          },
+          "deckard.taskReminderTime": {
+            "type": "string",
+            "pattern": "^$|^([01]?\\d|2[0-3]):[0-5]\\d$",
+            "patternErrorMessage": "Write a time of day as HH:MM, or leave it empty for no reminder.",
+            "default": "",
+            "description": "A time of day, such as 09:00, at which Deckard says how many tasks are due. Empty means no reminder.",
+            "order": 7
+          },
+          "deckard.agenda.groupBy": {
+            "type": "string",
+            "enum": [
+              "due",
+              "priority",
+              "status",
+              "assignee"
+            ],
+            "enumDescriptions": [
+              "Overdue, Today, and Upcoming.",
+              "Highest to lowest, with the tasks carrying no priority between.",
+              "The #status/… tag written on each task.",
+              "Who each task is for: the first person named on its line."
+            ],
+            "default": "due",
+            "description": "What the Tasks view's groups are. The group control in its title sets the same thing.",
+            "order": 3
+          },
           "deckard.agenda.upcomingDays": {
             "type": "number",
             "minimum": 1,
             "maximum": 90,
             "default": 7,
-            "description": "How many days ahead the Agenda's Upcoming group looks for due, scheduled, and start dates.",
+            "description": "How many days ahead the Tasks view's Upcoming group looks for due, scheduled, and start dates.",
             "order": 3
           },
           "deckard.board.statuses": {

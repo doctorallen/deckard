@@ -171,6 +171,51 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(page.lastPosted('setDashboardColumns')?.section, 'tags');
   });
 
+  test('a pinned note opens at the entry it pinned, and lets go of it', () => {
+    const { page } = open(
+      {
+        dashboardWidgets: [
+          { id: 'p', kind: 'pinnedNotes', width: 'full', count: 5 },
+        ],
+        pinnedNotes: [
+          {
+            filePath: 'notes/one.md',
+            heading: 'Deeper #project/atlas',
+            headingLevel: 2,
+            occurrence: 0,
+          },
+        ],
+      },
+      {
+        'notes/one.md': [
+          '# One #project/atlas',
+          'Prose.',
+          '## Deeper #project/atlas',
+          'More prose.',
+        ].join('\n'),
+      },
+    );
+
+    const row = page.document.querySelector('.home-list [data-action]');
+    assert.ok(row, 'the pin has a row');
+    page.click('.home-list [data-action="open-source"]');
+    assert.deepStrictEqual(page.lastPosted('openSource'), {
+      type: 'openSource',
+      filePath: 'notes/one.md',
+      line: 3,
+    });
+
+    page.click('[data-action="unpin-note"]');
+    const unpinned = page.lastPosted('unpinNote') as
+      | { pinKey?: string }
+      | undefined;
+    assert.ok(unpinned?.pinKey, 'the row says which pin to let go of');
+    assert.ok(
+      !/[\u0000-\u001f]/.test(unpinned.pinKey),
+      'a key travels through an HTML attribute, so it has to be printable',
+    );
+  });
+
   test('draws the widgets Home is set to show', () => {
     const { page, snapshot } = open();
 

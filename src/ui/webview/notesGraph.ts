@@ -10,9 +10,13 @@ import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openSourceAt } from '../commands/navigation';
 import {
+  createLocalGraphSnapshot,
   createNotesGraphConnections,
   createNotesGraphSnapshot,
+  findNoteNodeIds,
+  MAXIMUM_LOCAL_GRAPH_DEPTH,
 } from '../state/notesGraphState';
+import { isMarkdownFile } from '../../core/workspace/scanner';
 import { parseNotesGraphMessage } from './messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
 
@@ -28,6 +32,20 @@ export class NotesGraphPanel implements vscode.Disposable {
   private snapshot: NotesGraphSnapshot | undefined;
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
+  /**
+   * Whether the graph is drawn around one note, and how far out it reaches.
+   *
+   * The whole workspace says what the workspace looks like; a neighbourhood
+   * says what one note is attached to, which is the question asked with a
+   * note open.
+   */
+  private scope: { local: boolean; depth: number } = { local: false, depth: 1 };
+  /**
+   * The note the graph is drawn around: the one last open in an editor. The
+   * graph is itself an editor tab, so the note it is about has to be
+   * remembered rather than read from whatever is active now.
+   */
+  private focusPath: string | undefined;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -50,6 +68,12 @@ export class NotesGraphPanel implements vscode.Disposable {
           this.refresh();
         }
       }),
+    );
+    this.rememberNote(vscode.window.activeTextEditor);
+    this.disposables.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) =>
+        this.rememberNote(editor),
+      ),
     );
   }
 
@@ -168,6 +192,22 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
   }
 
+  /** Follows the note being written, so a local graph follows it too. */
+  private rememberNote(editor: vscode.TextEditor | undefined): void {
+    const uri = editor?.document.uri;
+    if (!uri || !isMarkdownFile(uri) || !this.indexer.isNotesFile(uri)) {
+      return;
+    }
+    const filePath = this.indexer.getFilePath(uri);
+    if (filePath === this.focusPath) {
+      return;
+    }
+    this.focusPath = filePath;
+    if (this.scope.local) {
+      this.refresh();
+    }
+  }
+
   private refresh(): void {
     if (!this.panel) {
       return;
@@ -236,6 +276,18 @@ export class NotesGraphPanel implements vscode.Disposable {
       return;
     }
 
+    if (message.type === 'setGraphScope') {
+      this.scope = {
+        local: message.local,
+        depth: Math.max(
+          1,
+          Math.min(MAXIMUM_LOCAL_GRAPH_DEPTH, message.depth),
+        ),
+      };
+      this.refresh();
+      return;
+    }
+
     if (this.isKnownSourceLocation(message.filePath, message.line)) {
       await openSourceAt(message.filePath, message.line);
     }
@@ -281,7 +333,38 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
   }
 
+  /**
+   * The graph as the page should draw it: the whole workspace, or the
+   * neighbourhood of the note in the editor.
+   *
+   * The narrowing happens here rather than in the page, so a local graph
+   * sends only the nodes it holds — a screenful, whatever the workspace
+   * holds — instead of everything and a rule for hiding most of it.
+   */
   private getSnapshot(): NotesGraphSnapshot {
+    const workspace = this.getWorkspaceSnapshot();
+    const focus = {
+      local: this.scope.local,
+      depth: this.scope.depth,
+      workspaceNodeCount: workspace.nodes.length,
+      ...(this.focusPath
+        ? { filePath: this.focusPath, title: getNoteTitle(this.focusPath) }
+        : {}),
+    };
+    if (!this.scope.local || !this.focusPath) {
+      return { ...workspace, focus };
+    }
+    return {
+      ...createLocalGraphSnapshot(
+        workspace,
+        findNoteNodeIds(workspace, this.focusPath),
+        this.scope.depth,
+      ),
+      focus,
+    };
+  }
+
+  private getWorkspaceSnapshot(): NotesGraphSnapshot {
     const index = this.indexer.getSnapshot();
     if (!this.snapshot || this.snapshot.updatedAt !== index.updatedAt) {
       this.snapshot = createNotesGraphSnapshot(index);
@@ -309,4 +392,9 @@ export class NotesGraphPanel implements vscode.Disposable {
         line === 1,
     );
   }
+}
+
+/** A note's title: its file name without the extension. */
+function getNoteTitle(filePath: string): string {
+  return (filePath.split('/').pop() ?? filePath).replace(/\.md$/i, '');
 }

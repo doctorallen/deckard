@@ -9,9 +9,9 @@ import {
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
- * Draws the sidebar calendar: a month of ISO weeks, Monday first. Every day,
- * every week label, and the month title is a button that asks the host to
- * open its note; the host decides what exists and what to create.
+ * Draws the sidebar calendar: a month of weeks from Sunday to Saturday.
+ * Every day, every week, and the month title is a button that asks the host
+ * to open its note; the host decides what exists and what to create.
  */
 export function getCalendarHtml(webview: vscode.Webview): string {
   const nonce = createNonce();
@@ -30,14 +30,21 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .calendar-header { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
-.weekday { padding: 2px 0; color: var(--muted); font: 10px var(--font-mono); text-align: center; }
-.week-label { padding: 0 4px; border: 0; background: none; color: var(--muted); font: 10px var(--font-mono); }
+/* The week opens its note and marks whether it has one; it is not a date,
+   so it is drawn as a rail beside the days rather than as another cell. */
+.week-label { display: grid; align-self: stretch; width: 18px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); place-items: center; }
+.week-label svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; }
 .week-label.has-note { color: var(--cyan); }
-.day { min-height: 32px; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: 12px var(--font-mono); text-align: center; }
+.week-label:hover, .week-label:focus-visible { color: var(--amber); background: none; }
+.weekday { padding: 2px 0; color: var(--muted); font: 10px var(--font-mono); text-align: center; }
+/* Every day is the same three rows, whether or not it has anything to mark,
+   so a note or a due count never moves the date it belongs to. */
+.day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: 12px var(--font-mono); text-align: center; }
 .day.outside { opacity: 0.45; }
 .day.today { border-color: var(--amber); }
-.note-dot { display: block; width: 5px; height: 5px; margin: 2px auto 0; border-radius: 50%; background: var(--cyan); }
-.due { display: block; color: var(--green); font-size: 9px; }
+.day-number { line-height: 15px; }
+.note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
+.due { color: var(--green); font-size: 9px; line-height: 11px; }
 .due.overdue { color: var(--warning-orange); }
 ${getDeckardThemeCss(getDeckardTheme())}
 </style>
@@ -50,7 +57,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
   const vscode = acquireVsCodeApi();
   let state;
 ${getComponentScript()}
-  const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   function post(message) { vscode.postMessage(message); }
 
@@ -68,17 +75,27 @@ ${getComponentScript()}
     if (!day.inMonth) classes.push('outside');
     if (day.isToday) classes.push('today');
     const label = escapeHtml(describeDay(day, overdue));
-    const dot = day.notePath ? '<span class="note-dot" aria-hidden="true"></span>' : '';
-    const due = day.dueCount > 0 ? '<span class="due' + (overdue ? ' overdue' : '') + '" aria-hidden="true">' + day.dueCount + '</span>' : '';
+    // Both rows are always drawn, empty when there is nothing to mark, so
+    // the number above them sits in the same place in every cell.
+    const dot = day.notePath ? '<span class="note-dot" aria-hidden="true"></span>' : '<span aria-hidden="true"></span>';
+    const due = '<span class="due' + (overdue ? ' overdue' : '') + '" aria-hidden="true">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>';
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = state.focusDate ? day.date === state.focusDate : day.isToday;
-    return '<button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '">' + day.day + dot + due + '</button>';
+    return '<button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button>';
   }
 
+  /**
+   * The week beside its row, as a mark rather than a number: a week note is
+   * named for the days it holds, so a number would say nothing the row does
+   * not. What it opens is in its tooltip.
+   */
   function renderWeek(week) {
-    const label = 'Week ' + week.week + (week.notePath ? ', weekly note' : '');
-    return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(week.week.slice(6)) + '</button>' + week.days.map(renderDay).join('');
+    const days = week.days[0].date + ' to ' + week.days[6].date;
+    const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
+    return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
+      + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6.5h11M6 3.5v3M10 3.5v3"/></svg>'
+      + '</button>' + week.days.map(renderDay).join('');
   }
 
   function render() {

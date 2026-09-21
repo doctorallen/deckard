@@ -128,6 +128,171 @@ merging; see the README's Tag overviews section and
   explicit merge, showing combined counts and warning that it cannot be
   undone.
 
+## A second pass, over the source
+
+The suggestions above came from the plugin download charts. These came from
+reading Deckard's own source for what it still does not do. Each one was
+checked against `src/` and the README, and none of them restates something
+already shipped or already named elsewhere in this document.
+
+### 8. Update links when a note is renamed or moved
+
+**Shipped**; see the README's Renaming notes and headings section. Renaming a
+note rewrites the links that named it, in the same step as the rename, and
+`Deckard: Rename Heading` does the same for one heading.
+
+Nothing listens to `vscode.workspace.onWillRenameFiles`, so moving or
+renaming a note quietly breaks every `[[Note]]`, `[[Note#Heading]]`, and
+`[[Note#^marker]]` that points at it. Link health (#4) reports that breakage
+afterwards as a diagnostic; rewriting the links inside the rename prevents
+it. Renaming a heading deserves the same treatment, since heading links
+resolve by their text.
+
+### 9. Preview and undo for workspace-wide writes
+
+**Shipped**; see the README's Previewing and undoing a write section. A write
+that reaches more than one note opens in VS Code's refactor preview, and
+`Deckard: Undo Last Change` takes the last one back.
+
+Rename Tag and Merge Tag rewrite hundreds of files in one gesture, and the
+merge prompt warns that it cannot be undone. Show the diff before applying,
+the way VS Code's own refactorings preview a rename, and keep the last
+Deckard write as a `Deckard: Undo Last Change`. It is the promise the rest
+of source safety already makes, extended to the two commands that reach
+furthest.
+
+### 10. Near-duplicate tags, offered as merges
+
+**Shipped**; see the README's Tags that look alike section. Stats ranks the
+pairs and offers the ordinary merge on each row.
+
+Merging ships, Home already surfaces new tags and tags without a hub, and
+Find already corrects a misspelled word against the words in the notes.
+Nothing points out that `#projct/atlas` and `#project/atlas` are the same
+idea, or that `#org/acme` and `#organization/acme` collide once
+`deckard.entityNamespaceAliases` is read. A hygiene panel in Stats that
+ranks close pairs and offers **Merge** finishes a feature that is already
+built.
+
+### 11. Embeds: `![[Note#Heading]]`
+
+**Shipped**; see the README's Embeds section. The preview draws a whole note,
+a heading with everything under it, or one marked line.
+
+Heading and `^marker` references already resolve, complete, preview, and
+count as backlinks, and `extendMarkdownIt` already replaces a `deckard`
+fence with live results. Rendering an embed in the Markdown preview is that
+same machinery pointed at a different token, and it needs no minted block
+ids, which is the part deliberately left out. It is how most vaults build a
+map-of-content note.
+
+### 12. A local graph
+
+**Shipped**; see the README's Notes Graph section. **Focus → Around this
+note** draws one note's neighbourhood, one to three hops out.
+
+The Notes Graph draws the whole workspace. A second mode, or a sidebar panel
+beside Related Notes, showing the current note's neighbors one or two hops
+out answers a question a ranked list cannot: not what is most related, but
+what this note is actually attached to.
+
+### 13. Roll unfinished tasks into today's note
+
+**Shipped**; see the README's Carrying unfinished tasks forward section.
+`deckard.dailyNote.rollover` moves or copies them into a newly created daily
+note, and `Deckard: Roll Unfinished Tasks Forward` does it on request.
+
+`Deckard: Create Daily Note` starts from the template alone. Carrying
+yesterday's open tasks forward, either moved or left behind as a link, is
+the most common daily habit in vaults that run Periodic Notes beside Tasks,
+and every piece of it — finding the previous daily note, reading task
+metadata, editing a checked line — already exists.
+
+### 14. A generated review page
+
+**Shipped** as a review written into the periodic note itself; see the
+README's Writing a review section. It is Markdown rather than a live page,
+because a review says what that week was.
+
+Weekly and monthly notes open empty. Their natural content is a report the
+query language can already answer: `created = 7d`, `updated > 7d`,
+`done = 7d`, `is:overdue`, and the tags that first appeared this week. That
+is assembly rather than new evaluation, and it turns a periodic note from a
+blank page into the reason to open one.
+
+### 15. A status bar count, and optional reminders
+
+**Shipped**; see the README's Status bar and reminders section.
+
+Nothing contributes a status bar item. "3 due today", clicking through to
+the Agenda, is the one Deckard surface visible without opening a view, and
+an optional notification at an hour you choose follows from the same count.
+
+### 16. When you last wrote about a person
+
+**Shipped** as Home's People gone quiet widget; see the README's Home
+section.
+
+People are first-class in the index, but nothing tracks recency by person:
+who has not appeared in ninety days, when a name was last written, what is
+open that mentions them. On a person's hub note that is the 1:1 and meeting
+half of the product, and it reuses the dates Related Notes already prefers.
+
+### 17. Assignee, as distinct from mention
+
+**Shipped**; see the README's Who a task is for section. The first person on
+a task line owns it, `assignee` and `is:mine` search by it, and the board
+groups by person.
+
+`@ren-kade` on a task means both "owns this" and "was named here". Marking
+one of them as the assignee — a front-matter default for a note, or a
+convention such as the first person on the line — gives the query language
+`assignee = @ren-kade` and `is:mine`, and gives the board and the Agenda a
+waiting-on column.
+
+### 18. Export a search
+
+Deckard reads the workspace and writes back into it; nothing leaves. A
+search page, tag overview, or query block result copied out as Markdown, as
+CSV, or as a table on the clipboard makes a result set usable in a pull
+request, an issue, or a message, while the index itself still never leaves
+the machine.
+
+### 19. Import an existing vault
+
+The method behind this document is Obsidian adjacency, but migration is the
+step before any of it: Logseq `::` properties and `#[[nested tags]]`, a
+Notion CSV-and-folder export, Roam JSON. One import command that rewrites
+them into Deckard's tags and `[[links]]` is what lets a vault arrive at all.
+
+### 20. A headless CLI over the same index
+
+The parser, the query evaluator, the SQLite cache, and an MCP server all
+exist. `deckard query "tag = #project/atlas AND is:open"` in a terminal, a
+git hook, or CI — fail the build when a note carries an overdue task — is a
+thin shell over them, and it reaches people who are not in VS Code at the
+moment they need an answer.
+
+### 21. Bulk actions on search results
+
+**Shipped**; see the README's Editing a search's results section. **Edit…**
+in a results pane completes, reopens, dates, or tags everything the search
+found, choosing the results in a quick pick rather than with checkboxes drawn
+on the page. Every line is compared with the line the index recorded, and the
+whole edit is one previewed, undoable write.
+
+Moving notes into a folder was deliberately left out: that is a file
+operation the Explorer already does, and #8 now carries their links along, so
+Deckard would only be adding a second way to do it — one its Undo could not
+take back.
+
+Select rows on a search page and add a tag, complete the tasks, set a due
+date, or move the notes into a folder. This is the largest single saving
+here and the furthest from the source-safety rules, so it needs the
+line-by-line comparison each task edit already makes, and probably the
+preview from #9 before it. Worth deciding deliberately rather than by
+omission.
+
 ## Quick wins
 
 - ~~**Insert link** on Related Notes results, placing `[[Note#Heading]]` at the
@@ -177,6 +342,11 @@ Code, would need a separate local MCP server.
 4. ~~Link health and aliases.~~ Shipped.
 5. ~~Reference counts, previews, and backlinks.~~ Shipped.
 6. ~~Periodic notes and calendar.~~ Shipped. ~~Tag hub pages~~ shipped, with tag merging.
+7. From the second pass, in order: rename-aware links (#8), which closes a
+   correctness hole rather than adding a feature; embeds (#11), the cheapest
+   real capability given what the preview already does; and the daily
+   rollover with the review page (#13, #14), which make periodic notes earn
+   their settings.
 
 Typed schemas, block references, canvas, and Git-aware collaboration from the
 earlier roadmap follow once these are in place.

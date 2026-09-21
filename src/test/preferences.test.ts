@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { PreferencesStore } from '../core/storage/preferences';
+import { pinKey, PreferencesStore } from '../core/storage/preferences';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -93,7 +93,6 @@ suite('Preferences store', () => {
     await store.setDashboardColumns('notes', 2);
     await store.setDashboardColumns('tags', 4);
     await store.setDashboardMode('browse');
-    await store.setTaskBoardTaskFilter('completed');
     await store.setTaskBoardLayout('list');
     await store.setTaskBoardGroup('due');
     await store.setDashboardSearch('tags', 'atlas');
@@ -117,9 +116,16 @@ suite('Preferences store', () => {
       mode: 'browse',
       tagSearchQuery: 'atlas',
     });
-    assert.strictEqual(store.value.taskBoardTaskFilter, 'completed');
     assert.strictEqual(store.value.taskBoardLayout, 'list');
     assert.strictEqual(store.value.taskBoardGroup, 'due');
+    // Every grouping the board offers survives being read back.
+    await store.setTaskBoardGroup('assignee');
+    assert.strictEqual(store.value.taskBoardGroup, 'assignee');
+    assert.strictEqual(
+      new PreferencesStore(memento).value.taskBoardGroup,
+      'assignee',
+      'a grouping is kept, not quietly turned back into status',
+    );
     assert.deepStrictEqual(store.value.sectionAccessCounts, { 'section-1': 1 });
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
 
@@ -177,7 +183,11 @@ suite('Preferences store', () => {
     });
     assert.strictEqual(store.value.taskBoardLayout, 'board');
     assert.strictEqual(store.value.taskBoardGroup, 'status');
-    assert.strictEqual(store.value.taskBoardTaskFilter, 'active');
+    assert.strictEqual(
+      'taskBoardTaskFilter' in store.value,
+      false,
+      'the board searches rather than keeping a filter of its own',
+    );
     assert.strictEqual('dashboardTaskLayout' in store.value, false);
 
     store.dispose();
@@ -299,21 +309,35 @@ suite('Preferences store', () => {
 
   test('pins notes once, in order, and forgets pinned notes that are gone', async () => {
     const store = new PreferencesStore(new MemoryMemento());
-    await store.pinNote('notes/a.md');
-    await store.pinNote('notes/b.md');
-    await store.pinNote('notes/a.md');
-    assert.deepStrictEqual(store.value.pinnedNotes, ['notes/a.md', 'notes/b.md']);
+    const paths = (): (string | undefined)[] =>
+      (store.value.pinnedNotes ?? []).map((pin) => pin.filePath);
+    await store.pinNote({ filePath: 'notes/a.md' });
+    await store.pinNote({ filePath: 'notes/b.md' });
+    await store.pinNote({ filePath: 'notes/a.md' });
+    assert.deepStrictEqual(paths(), ['notes/a.md', 'notes/b.md']);
 
-    await store.unpinNote('notes/a.md');
-    assert.deepStrictEqual(store.value.pinnedNotes, ['notes/b.md']);
+    // Two entries of one note are two pins, told apart by their headings.
+    await store.pinNote({ filePath: 'notes/b.md', heading: 'Decision' });
+    assert.strictEqual(store.value.pinnedNotes?.length, 3);
 
-    await store.pinNote('notes/c.md');
+    await store.unpinNote(pinKey({ filePath: 'notes/a.md' }));
+    assert.deepStrictEqual(paths(), ['notes/b.md', 'notes/b.md']);
+    assert.strictEqual(store.isPinned(pinKey({ filePath: 'notes/a.md' })), false);
+    assert.strictEqual(
+      store.isPinned(pinKey({ filePath: 'notes/b.md', heading: 'Decision' })),
+      true,
+    );
+
+    await store.unpinNote(
+      pinKey({ filePath: 'notes/b.md', heading: 'Decision' }),
+    );
+    await store.pinNote({ filePath: 'notes/c.md' });
     await store.prune([], [], undefined, undefined, ['notes/c.md']);
-    assert.deepStrictEqual(store.value.pinnedNotes, ['notes/c.md']);
+    assert.deepStrictEqual(paths(), ['notes/c.md']);
 
     await store.prune([], []);
     assert.deepStrictEqual(
-      store.value.pinnedNotes,
+      paths(),
       ['notes/c.md'],
       'without the index\'s files, pins are kept',
     );

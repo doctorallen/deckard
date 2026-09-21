@@ -1,7 +1,9 @@
+import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
   DashboardMessage,
   NotesGraphMessage,
+  PinNoteMessage,
   RenderMode,
   SearchPageSize,
   SEARCH_PAGE_SIZES,
@@ -142,15 +144,40 @@ export function parseDashboardMessage(
       return typeof value.tagKey === 'string' && value.tagKey.length > 0
         ? { type: 'createTagHub', tagKey: value.tagKey }
         : undefined;
-    case 'pinNote':
-    case 'unpinNote':
     case 'openNote':
       return typeof value.filePath === 'string' && value.filePath.length > 0
         ? { type: value.type, filePath: value.filePath }
         : undefined;
+    case 'pinNote':
+    case 'unpinNote':
+      return parsePinMessage(value);
     default:
       return undefined;
   }
+}
+
+/**
+ * A pin names the entry at a line, and an unpin names the pin a row carries.
+ */
+export function parsePinMessage(
+  value: Record<string, unknown>,
+): PinNoteMessage | undefined {
+  if (typeof value.filePath !== 'string' || !value.filePath) {
+    return undefined;
+  }
+  const type = value.type === 'unpinNote' ? 'unpinNote' : 'pinNote';
+  return {
+    type,
+    filePath: value.filePath,
+    ...(typeof value.line === 'number' &&
+    Number.isInteger(value.line) &&
+    value.line >= 1
+      ? { line: value.line }
+      : {}),
+    ...(typeof value.pinKey === 'string' && value.pinKey
+      ? { pinKey: value.pinKey }
+      : {}),
+  };
 }
 
 /** A quick-add task is one line. */
@@ -188,6 +215,13 @@ export function parseSearchPageMessage(
     case 'setResultsPerPage':
       return (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
         ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
+        : undefined;
+    case 'pinNote':
+    case 'unpinNote':
+      return parsePinMessage(value);
+    case 'editResults':
+      return value.kind === 'notes' || value.kind === 'tasks'
+        ? { type: 'editResults', kind: value.kind }
         : undefined;
     case 'setResultPage':
       return (value.kind === 'notes' || value.kind === 'tasks') &&
@@ -298,6 +332,16 @@ export function parseNotesGraphMessage(
   }
   if (value.type === 'clearSelection') {
     return { type: 'clearSelection' };
+  }
+  if (
+    value.type === 'setGraphScope' &&
+    typeof value.local === 'boolean' &&
+    typeof value.depth === 'number' &&
+    Number.isInteger(value.depth) &&
+    value.depth >= 1 &&
+    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH
+  ) {
+    return { type: 'setGraphScope', local: value.local, depth: value.depth };
   }
   if (
     value.type === 'openTag' &&
@@ -449,10 +493,6 @@ export function parseTaskBoardMessage(
       return value.layout === 'list' || value.layout === 'board'
         ? { type: 'setTaskLayout', layout: value.layout }
         : undefined;
-    case 'setTaskFilter':
-      return isTaskFilter(value.filter)
-        ? { type: 'setTaskFilter', filter: value.filter }
-        : undefined;
     case 'setTaskSort':
       return isTaskSortMode(value.mode)
         ? { type: 'setTaskSort', mode: value.mode }
@@ -488,7 +528,12 @@ const MAX_BOARD_STATUSES = 50;
  * Keeps the task board's grouping to the three it can lay out.
  */
 export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
-  return value === 'status' || value === 'priority' || value === 'due';
+  return (
+    value === 'status' ||
+    value === 'priority' ||
+    value === 'due' ||
+    value === 'assignee'
+  );
 }
 
 /**
@@ -520,6 +565,18 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
       return typeof value.query === 'string' &&
         value.query.length <= MAX_QUERY_LENGTH
         ? { type: 'openSearch', query: value.query }
+        : undefined;
+    case 'mergeTags':
+      return typeof value.sourceKey === 'string' &&
+        value.sourceKey.length > 0 &&
+        typeof value.targetKey === 'string' &&
+        value.targetKey.length > 0 &&
+        value.sourceKey !== value.targetKey
+        ? {
+            type: 'mergeTags',
+            sourceKey: value.sourceKey,
+            targetKey: value.targetKey,
+          }
         : undefined;
     case 'reindexWorkspace':
       return Object.keys(value).length === 1

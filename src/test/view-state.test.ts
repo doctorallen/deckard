@@ -55,7 +55,6 @@ const defaultPreferences: PersistedPreferences = {
   },
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
-  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -303,7 +302,7 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('lists the Task Board\'s tasks filtered, in their explicit order', () => {
+  test('lists the Task Board\'s searched tasks in their explicit order', () => {
     const tasks = [
       createTask('first', false, 1, ['#work']),
       createTask('second', true, 2),
@@ -322,6 +321,14 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(board.columns, [], 'a list lays out no columns');
     assert.deepStrictEqual(
       board.tasks?.map((item) => item.task.title),
+      ['third', 'first', 'second'],
+      'the list shows every task the search found, ranked as the reader ranked them',
+    );
+    // What the board searches for is what narrows it now; the filter the
+    // page used to keep was obeyed by the list alone.
+    assert.deepStrictEqual(
+      createTaskBoard(index, preferences, { query: 'is:open' }, boardOptions)
+        .tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
     assert.strictEqual(matchesTaskFilter(tasks[1], 'completed'), true);

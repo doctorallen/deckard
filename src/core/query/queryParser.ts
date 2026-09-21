@@ -73,6 +73,9 @@ export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
   starts: 'start',
   done: 'done',
   priority: 'priority',
+  assignee: 'assignee',
+  assigned: 'assignee',
+  owner: 'assignee',
   kind: 'kind',
   type: 'kind',
   namespace: 'kind',
@@ -115,6 +118,11 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   waiting: 'blocked',
   blocking: 'blocking',
   blocker: 'blocking',
+  mine: 'mine',
+  me: 'mine',
+  assigned: 'assigned',
+  unassigned: 'unassigned',
+  anyone: 'unassigned',
 };
 
 /**
@@ -643,7 +651,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, due, blocked, or blocking — not "${value}".`,
+          message: `is: accepts open, done, task, note, overdue, due, blocked, blocking, mine, assigned, or unassigned — not "${value}".`,
           severity: 'error',
           start,
           end,

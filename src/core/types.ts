@@ -63,6 +63,7 @@ export type DashboardWidgetKind =
   | 'tagPairs'
   | 'unhubbedTags'
   | 'newTags'
+  | 'quietPeople'
   | 'pinnedNotes';
 
 /** Whether a widget takes one of Home's two columns or both. */
@@ -151,11 +152,36 @@ export interface Section {
   tags: string[];
   tagLabels: Record<string, string>;
   links: string[];
+  /** The section and everything nested inside it, which is what Extract moves. */
   rawContent: string;
+  /**
+   * The section's own text: its heading and the lines under it, stopping at
+   * the next heading of any level. A parent's own body does not contain its
+   * children's, so a line belongs to the text of exactly one entry.
+   */
+  bodyContent: string;
   startLine: number;
+  /** The last line of the section and everything nested inside it. */
   endLine: number;
+  /** The last line of the section's own body, before any nested heading. */
+  bodyEndLine: number;
+  /**
+   * Tags written on the section's own body lines, each with the line that
+   * carries it.
+   *
+   * The tag stays where its author wrote it. A heading matches a search for
+   * one of these because it contains the line, not because the tag was moved
+   * onto the heading — so `tags` remains what was written on the heading
+   * itself, and a match can say which line answered it.
+   */
+  bodyTags?: SectionBodyTag[];
   createdAt?: number;
   updatedAt?: number;
+}
+
+export interface SectionBodyTag extends TagReference {
+  /** One-based line the tag is written on. */
+  line: number;
 }
 
 export interface Task {
@@ -179,6 +205,11 @@ export interface Task {
   priority?: TaskPriority;
   /** 🔁 repeat rule as written, such as "every week". */
   recurrence?: string;
+  /**
+   * The person the task is for: the first one named on its line. Anyone
+   * named after them is mentioned rather than asked.
+   */
+  assignee?: string;
   /** 🆔 name other tasks use in ⛔ to depend on this one. */
   dependencyId?: string;
   /** ⛔ names of the tasks that must be done first. */
@@ -316,8 +347,7 @@ export interface PersistedPreferences {
   taskBoardLayout: TaskLayout;
   /** What the Task Board's columns group tasks by. */
   taskBoardGroup: TaskBoardGroupBy;
-  /** Which tasks the Task Board's list shows. */
-  taskBoardTaskFilter: TaskFilter;
+
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];
   /**
@@ -326,7 +356,7 @@ export interface PersistedPreferences {
    */
   tagFirstSeen?: Record<string, number>;
   /** Notes pinned to Home, by path, in the order they were pinned. */
-  pinnedNotes?: string[];
+  pinnedNotes?: PinnedNote[];
 }
 
 /**
@@ -398,6 +428,8 @@ export interface DashboardWidgetNote {
   line: number;
   title: string;
   detail: string;
+  /** For a pinned note, the pin its row lets go of. */
+  pinKey?: string;
 }
 
 /** Two tags written together, as Home lists them. */
@@ -456,10 +488,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   searchState?: QueryViewState;
   tagPairs?: DashboardWidgetTagPair[];
   today?: DashboardWidgetToday;
-  /** The note a related-notes widget ranks by, or a note Home can pin. */
+  /** The note a related-notes widget ranks by. */
   sourceNote?: DashboardWidgetNote;
-  /** Whether the note in the editor last is already pinned. */
-  sourcePinned?: boolean;
 }
 
 /**
@@ -556,6 +586,8 @@ export interface TagOverviewCard {
   id: string;
   filePath: string;
   heading: string;
+  /** Whether this entry is pinned to Home, so a menu says which it offers. */
+  pinned?: boolean;
   titleTags: TagReference[];
   tags: TagReference[];
   rawContent: string;
@@ -625,6 +657,33 @@ export interface StatsAccessItem {
   open: OpenTagMessage | OpenSourceMessage;
 }
 
+/**
+ * Why two tags look like two spellings of one idea, most confusable first:
+ * the same name written with a different marker or under a different
+ * namespace, punctuated differently, pluralized, or simply mistyped.
+ */
+export type TagMergeReason =
+  | 'marker'
+  | 'namespace'
+  | 'separator'
+  | 'plural'
+  | 'spelling';
+
+/** Two tags that look alike, and what merging them would spend and keep. */
+export interface TagMergeCandidate {
+  /** The tag with fewer entries, which a merge spends. */
+  sourceKey: string;
+  sourceLabel: string;
+  sourceCount: number;
+  /** The tag a merge keeps. */
+  targetKey: string;
+  targetLabel: string;
+  targetCount: number;
+  reason: TagMergeReason;
+  /** Why the pair was picked, as the row reads it. */
+  detail: string;
+}
+
 /** A note the Stats page lists by name, which opens at its first line. */
 export interface StatsNoteItem {
   label: string;
@@ -648,6 +707,10 @@ export interface DeckardStatsSnapshot {
   orphanNotes: StatsNoteItem[];
   /** How many such notes there are, listed or not. */
   orphanNoteCount: number;
+  /** Tags that look like two spellings of one idea: the clearest first. */
+  lookalikeTags: TagMergeCandidate[];
+  /** How many such pairs there are, listed or not. */
+  lookalikeTagCount: number;
 }
 
 /** Messages from the Stats page, which only opens what it lists. */
@@ -656,11 +719,19 @@ export interface ReindexWorkspaceMessage {
   type: 'reindexWorkspace';
 }
 
+/** Asks the host to merge one of the tags that look alike into the other. */
+export interface MergeTagsMessage {
+  type: 'mergeTags';
+  sourceKey: string;
+  targetKey: string;
+}
+
 export type StatsMessage =
   | OpenTagMessage
   | OpenSourceMessage
   | OpenSearchMessage
-  | ReindexWorkspaceMessage;
+  | ReindexWorkspaceMessage
+  | MergeTagsMessage;
 
 /** Messages from the sidebar calendar. The host finds each note itself. */
 export type CalendarMessage =
@@ -751,6 +822,25 @@ export interface NotesGraphSnapshot {
   tags: [string, string, number][];
   totalNoteCount: number;
   totalTaskCount: number;
+  /** The note the graph is drawn around, when it is drawn around one. */
+  focus?: NotesGraphFocus;
+}
+
+/**
+ * What a local graph is centred on: the note last open in an editor, how far
+ * out it reaches, and whether the graph on screen is that neighbourhood or
+ * the whole workspace.
+ */
+export interface NotesGraphFocus {
+  /** On, and drawn around the note; off, and the whole workspace is drawn. */
+  local: boolean;
+  /** How many hops out from the note the local graph reaches. */
+  depth: number;
+  /** The note it is drawn around, when one is open. */
+  filePath?: string;
+  title?: string;
+  /** How many nodes and edges the whole workspace holds, for the readout. */
+  workspaceNodeCount: number;
 }
 
 export interface NotesGraphConnection {
@@ -784,11 +874,19 @@ export interface NotesGraphClearSelectionMessage {
   type: 'clearSelection';
 }
 
+/** Draw the whole workspace, or the neighbourhood of the note in the editor. */
+export interface NotesGraphSetScopeMessage {
+  type: 'setGraphScope';
+  local: boolean;
+  depth: number;
+}
+
 export type NotesGraphMessage =
   | NotesGraphOpenSourceMessage
   | NotesGraphOpenTagMessage
   | NotesGraphSelectNodeMessage
-  | NotesGraphClearSelectionMessage;
+  | NotesGraphClearSelectionMessage
+  | NotesGraphSetScopeMessage;
 
 export interface OpenSourceMessage {
   type: 'openSource';
@@ -911,10 +1009,31 @@ export interface CreateTagHubMessage {
   tagKey: string;
 }
 
-/** Pins a note to Home, or unpins it. */
+/**
+ * A note pinned to Home: an entry of a file, or the file itself.
+ *
+ * A note in Deckard is a heading and what is written under it, so a pin
+ * names one. It is kept as what a reader would use to find that heading
+ * again rather than as the section's id, which is a hash of the heading's
+ * line and text and changes whenever anything above it is written.
+ */
+export interface PinnedNote {
+  filePath: string;
+  /** The heading it pins, as written; absent when it pins the whole note. */
+  heading?: string;
+  headingLevel?: number;
+  /** Which heading of that text and level it is, counted from zero. */
+  occurrence?: number;
+}
+
+/** Pins the note at a line to Home, or unpins the pin a row names. */
 export interface PinNoteMessage {
   type: 'pinNote' | 'unpinNote';
   filePath: string;
+  /** The line whose entry is pinned; the whole note without one. */
+  line?: number;
+  /** Which pin to remove, as `pinKey` writes it. */
+  pinKey?: string;
 }
 
 /** Opens a note at its top. */
@@ -1003,6 +1122,15 @@ export interface PreviewSearchMessage {
 export interface SetResultsPerPageMessage {
   type: 'setResultsPerPage';
   size: SearchPageSize;
+}
+
+/**
+ * Edit every result of a search at once: the page asks, and the host offers
+ * the edits its results can take.
+ */
+export interface EditResultsMessage {
+  type: 'editResults';
+  kind: 'notes' | 'tasks';
 }
 
 /** Turn one of a search page's lists to another of its pages. */
@@ -1121,6 +1249,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | PinNoteMessage
   | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage
@@ -1137,6 +1266,7 @@ export type SearchPageMessage =
   | SetResultPageMessage
   | SetResultsPerPageMessage
   | PreviewSearchMessage
+  | EditResultsMessage
   | CreateHubNoteMessage;
 
 export type SidebarMessage =
@@ -1157,7 +1287,7 @@ export type SidebarMessage =
   | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */
-export type TaskBoardGroupBy = 'status' | 'priority' | 'due';
+export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee';
 
 export interface TaskBoardCard {
   taskId: string;
@@ -1199,9 +1329,8 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   layout: TaskLayout;
   /** The searched tasks as a list, present when `layout` is `list`. */
   tasks?: DashboardTask[];
-  /** How many searched tasks each of All, Open, and Done keeps. */
+  /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
-  taskFilter: TaskFilter;
   taskSortMode: TaskSortMode;
   tagTitleDisplayMode: TagTitleDisplayMode;
   /** The board settings the page's view options edit. */
@@ -1274,7 +1403,6 @@ export type TaskBoardMessage =
   | SetBoardGroupMessage
   | SetBoardQueryMessage
   | SetTaskLayoutMessage
-  | SetTaskFilterMessage
   | SetTaskSortMessage
   | ReorderTasksMessage
   | SetBoardStatusesMessage

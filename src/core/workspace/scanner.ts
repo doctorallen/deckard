@@ -7,6 +7,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
   MarkdownParseOptions,
+  NoteBoundaries,
   parseMarkdown,
 } from '../markdown/parser';
 import { reportError } from '../timing';
@@ -35,6 +36,11 @@ export type ScanProgress = (completed: number, total: number) => void;
  * requiring a live VS Code workspace, while the default adapter uses VS Code
  * storage and file APIs in production.
  */
+/** The configured note boundary, falling back when the setting is stale. */
+function getNoteBoundaries(value: unknown): NoteBoundaries {
+  return value === 'heading' || value === 'marked' ? value : 'line';
+}
+
 export class WorkspaceScanner {
   public constructor(
     private readonly access: WorkspaceFileAccess = createDefaultAccess(),
@@ -123,6 +129,30 @@ export class WorkspaceScanner {
   }
 
   /**
+   * How every workspace folder is being parsed right now, as one string.
+   *
+   * The full-text cache stores this beside its notes so a settings change
+   * that changes parsing rebuilds it. Nothing else would catch it: the files
+   * are untouched, so a scan finds every note exactly as it left it.
+   */
+  public getParseFingerprint(): string {
+    const folders = this.access.workspaceFolders ?? [];
+    const described = (folders.length > 0 ? folders : [undefined]).map(
+      (folder) => {
+        const options = this.getParseOptions(folder);
+        return [
+          folder?.uri.toString() ?? '',
+          options.noteBoundaries ?? 'line',
+          options.parseInlineTags === false ? 'no-inline' : 'inline',
+          options.personMarker ?? '',
+          JSON.stringify(options.entityNamespaceAliases ?? {}),
+        ].join('\u0000');
+      },
+    );
+    return described.join('\u0001');
+  }
+
+  /**
    * Returns the watcher patterns for all roots using their current settings.
    */
   public getPatterns(): vscode.RelativePattern[] {
@@ -203,6 +233,12 @@ export class WorkspaceScanner {
       parseInlineTags: this.getConfiguration(workspaceFolder).get<boolean>(
         'parseInlineTags',
         true,
+      ),
+      noteBoundaries: getNoteBoundaries(
+        this.getConfiguration(workspaceFolder).get<unknown>(
+          'noteBoundaries',
+          'line',
+        ),
       ),
       entityNamespaceAliases: getEntityNamespaceAliases(
         this.getConfiguration(workspaceFolder).get<unknown>(

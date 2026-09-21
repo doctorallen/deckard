@@ -16,6 +16,9 @@
  * Obsidian Tasks metadata, so only tasks can satisfy them. The remaining
  * fields describe the source unit itself.
  *
+ * `assignee` reads the person a task is for: the first one named on its
+ * line. Only tasks can satisfy it, the way the date fields work.
+ *
  * `is`, `has`, and `in` are shorthands for filters people reach for often,
  * written GitHub-style as `is:open`, `has:due`, `no:due`, or `in:notes/work`.
  * Each is one short token for something that otherwise takes one or two
@@ -31,6 +34,7 @@ export type QueryField =
   | 'start'
   | 'done'
   | 'priority'
+  | 'assignee'
   | 'has'
   | 'kind'
   | 'file'
@@ -49,6 +53,7 @@ export const QUERY_FIELDS: readonly QueryField[] = [
   'start',
   'done',
   'priority',
+  'assignee',
   'has',
   'kind',
   'file',
@@ -73,6 +78,9 @@ export const QUERY_IS_VALUES = [
   'due',
   'blocked',
   'blocking',
+  'mine',
+  'assigned',
+  'unassigned',
 ] as const;
 
 /** Values `has:` and `no:` accept: a task date, a priority, or an id. */
@@ -132,6 +140,7 @@ export const QUERY_FIELD_OPERATORS: Readonly<
   start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  assignee: ['eq', 'neq'],
   has: ['eq', 'neq'],
   kind: ['eq', 'neq'],
   file: ['eq', 'neq', 'contains', 'notContains'],

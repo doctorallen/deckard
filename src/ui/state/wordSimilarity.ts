@@ -234,13 +234,22 @@ export function getSectionLexicalContent(
   return content;
 }
 
-/** A section's own text, without the text of the headings nested in it. */
+/**
+ * A section's own text, without the text of the headings nested in it.
+ *
+ * The parser works this out now, so this reads the field. A section parsed
+ * before the field existed is measured the old way, by cutting the nested
+ * headings back out of the whole subtree.
+ */
 function readSectionLexicalContent(
   section: Section,
   fileSections: Section[],
 ): string {
   if (section.isInline) {
     return section.rawContent || section.heading;
+  }
+  if (section.bodyContent !== undefined) {
+    return section.bodyContent;
   }
   const lines = section.rawContent.split(/\r?\n/);
   const excludedChildren = fileSections

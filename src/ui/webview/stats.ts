@@ -130,6 +130,21 @@ export class StatsPanel implements vscode.Disposable {
       return;
     }
 
+    // A pair that looks alike is merged by the same command the tag list
+    // uses, so the merge is confirmed, previewed, and undoable as usual.
+    if (message.type === 'mergeTags') {
+      const sourceKey = resolveIndexedTagKey(index.tags, message.sourceKey);
+      const targetKey = resolveIndexedTagKey(index.tags, message.targetKey);
+      if (sourceKey && targetKey && sourceKey !== targetKey) {
+        await vscode.commands.executeCommand(
+          'deckard.mergeTag',
+          sourceKey,
+          targetKey,
+        );
+      }
+      return;
+    }
+
     // The page is where staleness shows, so it is also where it is fixed.
     if (message.type === 'reindexWorkspace') {
       await vscode.commands.executeCommand('deckard.reindexWorkspace');

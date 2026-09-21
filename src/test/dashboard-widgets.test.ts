@@ -33,7 +33,6 @@ const preferences: PersistedPreferences = {
   dashboardViewState: { mode: 'home', tagSearchQuery: '' },
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
-  taskBoardTaskFilter: 'active',
   renderMode: 'markdown',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
@@ -187,7 +186,10 @@ suite('Dashboard Home widgets', () => {
       index,
       {
         ...preferences,
-        pinnedNotes: ['notes/hub.md', 'notes/gone.md'],
+        pinnedNotes: [
+          { filePath: 'notes/hub.md' },
+          { filePath: 'notes/gone.md' },
+        ],
         dashboardWidgets: [
           { id: 'r', kind: 'relatedNotes', width: 'half', count: 5 },
           { id: 'p', kind: 'pinnedNotes', width: 'half', count: 5 },
@@ -208,11 +210,20 @@ suite('Dashboard Home widgets', () => {
     assert.ok(related.notes?.every((note) => note.filePath !== 'notes/old.md'));
 
     assert.deepStrictEqual(pinned.notes, [
-      { filePath: 'notes/hub.md', line: 1, title: 'Atlas hub', detail: 'hub.md · notes' },
+      {
+        filePath: 'notes/hub.md',
+        line: 1,
+        title: 'Atlas hub',
+        detail: 'hub.md · notes',
+        pinKey: '["notes/hub.md","",0]',
+      },
     ]);
     assert.strictEqual(pinned.total, 1, 'a pinned note that is gone is left out');
-    assert.strictEqual(pinned.sourceNote?.filePath, 'notes/old.md');
-    assert.strictEqual(pinned.sourcePinned, false);
+    assert.strictEqual(
+      pinned.sourceNote,
+      undefined,
+      'Home lists pins; it does not offer to make one',
+    );
 
     const [nothingOpen] = widgets(
       [{ id: 'r', kind: 'relatedNotes', width: 'half' }],
