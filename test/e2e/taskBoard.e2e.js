@@ -94,7 +94,9 @@ test('searches tasks with the search box every search page uses', async () => {
   const { view, preferences, cards } = await openBoard();
   assert.ok(view.find('.query-workspace'), 'the shared search box is drawn');
   assert.strictEqual(view.find('#board-query'), null, 'the old filter form is gone');
-  assert.deepStrictEqual(cards(), ['audit', 'call', 'room', 'ship']);
+  // The board opens on a search of its own: the tasks still open.
+  assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'is:open');
+  assert.deepStrictEqual(cards(), ['audit', 'call', 'room']);
 
   const bar = view.find('[data-action="query-input"]');
   view.type(bar, 'tag = #project/atlas');
@@ -102,22 +104,33 @@ test('searches tasks with the search box every search page uses', async () => {
   await delay(10);
 
   assert.deepStrictEqual(cards(), ['audit', 'call']);
-  assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'tag = #project/atlas');
+  // What is typed narrows the search the board opened on, rather than
+  // replacing it, so the board still holds its own tasks.
+  assert.strictEqual(
+    view.find('.query-bar-shell').getAttribute('data-query-text'),
+    'is:open AND tag = #project/atlas',
+  );
   assert.strictEqual(view.find('[data-action="query-input"]').value, '', 'the search is a chip now');
   // The count names tasks alone, since the board finds nothing else.
   assert.strictEqual(view.find('.query-facets-count').textContent, '2 tasks');
-  assert.deepStrictEqual(preferences.value.recentQueries, ['tag = #project/atlas']);
-  assert.strictEqual(view.state.query, 'tag = #project/atlas', 'a reload reopens the search');
+  assert.deepStrictEqual(preferences.value.recentQueries, ['is:open AND tag = #project/atlas']);
+  assert.strictEqual(
+    view.state.query,
+    'is:open AND tag = #project/atlas',
+    'a reload reopens the search',
+  );
 
   view.click(view.find('[data-action="clear-query"]'));
   await delay(10);
-  assert.deepStrictEqual(cards(), ['audit', 'call', 'room', 'ship']);
+  assert.deepStrictEqual(cards(), ['audit', 'call', 'room', 'ship'], 'clearing it shows finished tasks too');
 });
 
 test('saves its search as a view that reopens on the Task Board', async () => {
   const { view, preferences, index } = await openBoard();
   const save = () => view.find('[data-action="save-board-search"]');
   assert.ok(save(), 'Save sits in the search bar');
+  view.click(view.find('[data-action="clear-query"]'));
+  await delay(10);
   assert.notStrictEqual(save().getAttribute('disabled'), null, 'with no search, there is nothing to save');
 
   const bar = view.find('[data-action="query-input"]');
@@ -227,9 +240,17 @@ test('the gear switches between columns and a list, and stays open', async () =>
   assert.ok(view.find('[data-action="set-task-sort"]'), 'the list can be sorted');
   assert.ok(view.find('.task-list .task-row.is-draggable'), 'ranked rows can be dragged');
 
-  view.click(view.find('[data-action="set-task-filter"][data-filter="completed"]'));
+  // There is no All/Open/Done switch here: the board's search is its filter,
+  // so finished tasks are asked for the same way as anything else.
+  assert.strictEqual(view.find('[data-action="set-task-filter"]'), null, 'the status switch is gone');
+  const bar = () => view.find('[data-action="query-input"]');
+  view.click(view.find('[data-action="clear-query"]'));
+  await delay(10);
+  view.type(bar(), 'is:done');
+  view.keydown(bar(), 'Enter');
   await delay(10);
   assert.deepStrictEqual(view.findAll('.task-list .task-row').map((row) => row.dataset.taskId), ['ship']);
+  view.find('.view-options').setAttribute('open', '');
 
   view.change(view.find('[data-action="set-task-sort"]'), 'created');
   await delay(10);

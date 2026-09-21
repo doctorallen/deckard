@@ -524,15 +524,19 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
   try {
     const { view, navigation, preferences } = await openDashboard(
       createNotesIndex(),
-      (store) => store.setDashboardWidgets([
-        { id: 'today', kind: 'todayNote', width: 'half' },
-        { id: 'add', kind: 'quickAdd', width: 'full' },
-        { id: 'related', kind: 'relatedNotes', width: 'half' },
-        { id: 'pairs', kind: 'tagPairs', width: 'half' },
-        { id: 'hubs', kind: 'unhubbedTags', width: 'half' },
-        { id: 'pins', kind: 'pinnedNotes', width: 'half' },
-        { id: 'stale', kind: 'staleTasks', width: 'half' },
-      ]),
+      async (store) => {
+        await store.setDashboardWidgets([
+          { id: 'today', kind: 'todayNote', width: 'half' },
+          { id: 'add', kind: 'quickAdd', width: 'full' },
+          { id: 'related', kind: 'relatedNotes', width: 'half' },
+          { id: 'pairs', kind: 'tagPairs', width: 'half' },
+          { id: 'hubs', kind: 'unhubbedTags', width: 'half' },
+          { id: 'pins', kind: 'pinnedNotes', width: 'half' },
+          { id: 'stale', kind: 'staleTasks', width: 'half' },
+        ]);
+        // Pinning happens where the note is, so Home is opened with one.
+        await store.pinNote({ filePath: 'notes/current.md' });
+      },
       {
         isNotesFile: () => true,
         getFilePath: (uri) => uri.fsPath.replace(/^\//, ''),
@@ -578,12 +582,15 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
     await delay(20);
     assert.strictEqual(navigation.opened[4], 'hub #risk/vendor');
 
-    // The note in the editor can be pinned, and then unpinned.
-    view.click(widget('pins').querySelector('[data-action="pin-note"]'));
-    await delay(20);
-    assert.deepStrictEqual(preferences.value.pinnedNotes, ['notes/current.md']);
-    assert.strictEqual(widget('pins').querySelector('[data-action="pin-note"]'), null, 'a pinned note is not offered again');
-    assert.strictEqual(widget('pins').querySelector('[data-action="open-note"]').dataset.filePath, 'notes/current.md');
+    // Home lists what was pinned elsewhere, opens it where the pin was put,
+    // and lets go of it.
+    assert.strictEqual(
+      widget('pins').querySelector('[data-action="pin-note"]'),
+      null,
+      'Home does not pin: it lists the pins',
+    );
+    const pin = widget('pins').querySelector('[data-action="open-source"]');
+    assert.strictEqual(pin.dataset.filePath, 'notes/current.md');
     view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
     await delay(20);
     assert.deepStrictEqual(preferences.value.pinnedNotes, []);
