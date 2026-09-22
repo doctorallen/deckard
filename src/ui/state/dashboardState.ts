@@ -13,7 +13,6 @@ import {
   StatsAccessItem,
   TagInfo,
   Task,
-  TaskFilter,
   TagTitleDisplayMode,
   TagOverviewCard,
   TagOverviewHub,
@@ -146,7 +145,6 @@ export function getSavedFilterQuery(filter: {
 export interface SearchPageOptions {
   /** The search the page was opened with, which Clear returns to. */
   originQuery?: string;
-  taskFilter?: TaskFilter;
   tagTitleDisplayMode?: TagTitleDisplayMode;
   /** Whether tags are related by their headings as well as written together. */
   enableHeadingTagRelationships?: boolean;
@@ -205,7 +203,6 @@ export function createSearchPageSnapshot(
     .filter(Boolean);
   const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
   const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
-  const taskFilter = options.taskFilter ?? 'active';
   const tagKeys = resolveQueryTagIntersection(index, parsed);
   const focusTag =
     tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
@@ -264,9 +261,7 @@ export function createSearchPageSnapshot(
     preferences.taskOrder,
     preferences.taskSortMode,
   );
-  const shownTasks = tasks
-    .filter((task) => matchesTaskFilter(task, taskFilter))
-    .map((task) => createDashboardTask(task, index.sections));
+  const shownTasks = tasks.map((task) => createDashboardTask(task, index.sections));
   const taskPaging = createPaging(shownTasks.length, pageSize, options.taskPage);
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
@@ -340,7 +335,6 @@ export function createSearchPageSnapshot(
       active: tasks.filter((task) => !task.completed).length,
       completed: tasks.filter((task) => task.completed).length,
     },
-    taskFilter,
     pageSizes: SEARCH_PAGE_SIZES,
     renderMode: preferences.renderMode,
     sortMode: preferences.tagOverviewSortMode,
@@ -726,21 +720,6 @@ export function mergeOrder(
   ];
 }
 
-/**
- * Applies status and tag filters independently; selected tags use OR semantics.
- */
-export function matchesTaskFilter(
-  task: Task,
-  taskFilter: TaskFilter,
-  selectedTaskTags: string[] = [],
-): boolean {
-  return (
-    (taskFilter === 'all' ||
-      (taskFilter === 'completed' ? task.completed : !task.completed)) &&
-    (selectedTaskTags.length === 0 ||
-      selectedTaskTags.some((tagKey) => task.tags.includes(tagKey)))
-  );
-}
 
 /**
  * Filters an existing task list without treating an empty selection as a

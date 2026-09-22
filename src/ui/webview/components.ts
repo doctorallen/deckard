@@ -359,14 +359,6 @@ export function getSurfaceCss(): string {
 .task-title a { color: var(--cyan); }
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .task-summary { display: grid; gap: 7px; }
-.task-filter-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.task-filter-toggle button {
-  display: inline-flex;
-  min-width: var(--control-height);
-  align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
-}
 
 
 .metrics {
@@ -726,12 +718,6 @@ export function getComponentScript(): string {
     return template.innerHTML;
   }
 
-  /** The list, open-box, and checked-box icons used by task filters. */
-  function taskFilterIcon(filter) {
-    if (filter === 'all') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 4h8M5 8h8M5 12h8"/><circle cx="2.5" cy="4" r=".5"/><circle cx="2.5" cy="8" r=".5"/><circle cx="2.5" cy="12" r=".5"/></svg>';
-    if (filter === 'active') return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>';
-    return '<svg class="task-filter-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="m5.5 8 1.7 1.7 3.3-3.3"/></svg>';
-  }
 
   /**
    * Right-click actions for any element carrying a tag key.
@@ -1094,14 +1080,6 @@ export function getComponentScript(): string {
     }).join('') + '</div></div>';
   }
 
-  /** The All, Open, and Done switch over a list of tasks. */
-  function renderTaskFilterSwitch(selected, counts, action) {
-    return '<div class="segmented task-filter-toggle" role="group" aria-label="Task status filter">' + ['all', 'active', 'completed'].map(function (filter) {
-      const label = filter === 'all' ? 'All' : filter === 'active' ? 'Open' : 'Done';
-      const description = label + ' tasks, ' + counts[filter];
-      return '<button class="' + (selected === filter ? 'active' : '') + '" data-action="' + escapeHtml(action) + '" data-filter="' + filter + '" aria-label="' + description + '" aria-pressed="' + (selected === filter) + '" title="' + description + '">' + taskFilterIcon(filter) + '<span>' + label + '</span><span class="filter-count">' + counts[filter] + '</span></button>';
-    }).join('') + '</div>';
-  }
 
   /**
    * Rows a reader ranks by dragging them, or by Move to top and Move to

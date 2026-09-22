@@ -455,13 +455,10 @@ suite('Webview contracts', () => {
       }),
       undefined,
     );
-    assert.deepStrictEqual(
-      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'active' }),
-      { type: 'setTaskFilter', filter: 'active' },
-    );
     assert.strictEqual(
-      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'random' }),
+      parseSearchPageMessage({ type: 'setTaskFilter', filter: 'active' }),
       undefined,
+      'the search is the filter; the page keeps none of its own',
     );
     assert.deepStrictEqual(
       parseSearchPageMessage({ type: 'openTag', tagKey: 'other' }),
@@ -774,7 +771,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.saved-filter-remove.saved-filter-remove, .task-filter-toggle .filter-count { color: #050505; }',
+        '.saved-filter-remove.saved-filter-remove { color: #050505; }',
       ),
       true,
     );
@@ -865,12 +862,6 @@ suite('Webview contracts', () => {
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
         '.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover',
-      ),
-      true,
-    );
-    assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
-        '.task-filter-toggle button { border-radius: 0; }',
       ),
       true,
     );

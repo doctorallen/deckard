@@ -26,7 +26,6 @@ export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
 
 export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
-export type TaskFilter = 'all' | 'active' | 'completed';
 
 /** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
 export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
@@ -547,7 +546,6 @@ export interface SearchPageSnapshot {
     active: number;
     completed: number;
   };
-  taskFilter: TaskFilter;
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
@@ -936,11 +934,6 @@ export interface SetEntitySortMessage {
   mode: TagSortMode;
 }
 
-export interface SetTaskFilterMessage {
-  type: 'setTaskFilter';
-  filter: TaskFilter;
-}
-
 export interface ReorderTasksMessage {
   type: 'reorderTasks';
   taskIds: string[];
@@ -1257,7 +1250,6 @@ export type SearchPageMessage =
   | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage
-  | SetTaskFilterMessage
   | SetRenderModeMessage
   | OpenTagMessage
   | RenameTagMessage

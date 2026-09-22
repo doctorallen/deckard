@@ -7,7 +7,6 @@ import {
   createDashboardSnapshot,
   createDashboardTask,
   createSearchPageSnapshot,
-  matchesTaskFilter,
   sortDashboardNotes,
   sortEntities,
   sortTasks,
@@ -30,7 +29,6 @@ import {
   TagOverviewCard,
   TagInfo,
   Task,
-  TaskFilter,
   WorkspaceIndex,
 } from '../core/types';
 
@@ -73,7 +71,6 @@ function overview(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   tagKey: string,
-  taskFilter: TaskFilter = 'active',
   tagTitleDisplayMode: 'inline' | 'separate' = 'inline',
   enableHeadingTagRelationships = true,
   addedTagKeys: string[] = [],
@@ -82,7 +79,7 @@ function overview(
     index,
     preferences,
     [tagKey, ...addedTagKeys].join(' AND '),
-    { taskFilter, tagTitleDisplayMode, enableHeadingTagRelationships },
+    { tagTitleDisplayMode, enableHeadingTagRelationships },
   );
 }
 
@@ -331,10 +328,6 @@ suite('Dashboard state', () => {
         .tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
-    assert.strictEqual(matchesTaskFilter(tasks[1], 'completed'), true);
-    assert.strictEqual(matchesTaskFilter(tasks[1], 'active'), false);
-    assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['#work']), true);
-    assert.strictEqual(matchesTaskFilter(tasks[0], 'active', ['home']), false);
   });
 
   test('sorts a search page\'s notes and lays them out in their columns', () => {
@@ -490,7 +483,6 @@ suite('Dashboard state', () => {
         ],
       },
       '#project/atlas',
-      'active',
       'inline',
       true,
       ['#follow-up'],
@@ -1299,7 +1291,7 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
     assert.strictEqual(snapshot.layout, 'tabs');
 
-    const separate = overview(index, preferences, '#work', 'active', 'separate');
+    const separate = overview(index, preferences, '#work', 'separate');
     assert.strictEqual(separate.sections[0].heading, 'Heading');
   });
 
@@ -1319,7 +1311,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#child',
-      'active',
       'inline',
       true,
       ['#parent'],
@@ -1339,7 +1330,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#parent',
-      'active',
       'inline',
       true,
       ['#child'],
@@ -1373,7 +1363,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#focus',
-      'active',
       'inline',
       true,
       ['#first', '#second', '#first'],
@@ -1444,7 +1433,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#second',
-      'active',
       'inline',
       true,
       ['#first'],
@@ -1488,7 +1476,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#hub/relationship-overview',
-      'active',
       'inline',
       false,
     );
@@ -1508,32 +1495,22 @@ suite('Dashboard state', () => {
     );
     const index = buildWorkspaceIndex(new Map([[parsed.filePath, parsed]]));
 
-    const all = overview(index, defaultPreferences, '#work', 'all');
-    const active = overview(index, defaultPreferences, '#work', 'active');
-    const completed = overview(index, defaultPreferences, '#work', 'completed');
+    const all = overview(index, defaultPreferences, '#work');
+    const open = createSearchPageSnapshot(index, defaultPreferences, '#work AND is:open');
+    const done = createSearchPageSnapshot(index, defaultPreferences, '#work AND is:done');
 
-    assert.strictEqual(all.taskFilter, 'all');
     assert.deepStrictEqual(all.taskCounts, {
       all: 2,
       active: 1,
       completed: 1,
     });
-    assert.strictEqual(
-      createSearchPageSnapshot(index, defaultPreferences, '#work').taskFilter,
-      'active',
-    );
     assert.deepStrictEqual(
       all.tasks.map((item) => item.task.title),
       ['Active task', 'Completed task'],
+      'the page shows every task the search found; the search is the filter',
     );
-    assert.deepStrictEqual(
-      active.tasks.map((item) => item.task.title),
-      ['Active task'],
-    );
-    assert.deepStrictEqual(
-      completed.tasks.map((item) => item.task.title),
-      ['Completed task'],
-    );
+    assert.deepStrictEqual(open.tasks.map((item) => item.task.title), ['Active task']);
+    assert.deepStrictEqual(done.tasks.map((item) => item.task.title), ['Completed task']);
   });
 
   test('includes inline-only notes in tag overview cards', () => {
@@ -1647,7 +1624,7 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(page.tag?.key, '#work');
 
-    const separate = overview(index, defaultPreferences, '#work', 'active', 'separate');
+    const separate = overview(index, defaultPreferences, '#work', 'separate');
     assert.deepStrictEqual(
       separate.sections.map((note) => note.heading),
       ['Alpha', 'Beta', 'Zeta'],
@@ -1683,7 +1660,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#focus',
-      'active',
       'inline',
       true,
       ['#task'],
@@ -1732,7 +1708,6 @@ suite('Dashboard state', () => {
       index,
       defaultPreferences,
       '#project/atlas',
-      'active',
       'inline',
       true,
       ['#meeting'],

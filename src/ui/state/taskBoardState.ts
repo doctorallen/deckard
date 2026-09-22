@@ -31,7 +31,6 @@ import { renderMarkdownInline } from '../webview/rendering';
 import {
   createDashboardTask,
   createQueryViewState,
-  matchesTaskFilter,
   sortTasks,
 } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';

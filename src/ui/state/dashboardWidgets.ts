@@ -282,7 +282,6 @@ function createWidget(
       }
       const query = getSavedFilterQuery(filter);
       const page = createSearchPageSnapshot(index, preferences, query, {
-        taskFilter: 'active',
         tagTitleDisplayMode: options.tagTitleDisplayMode,
         now: options.now,
         // A widget takes its own few entries off the top of the whole

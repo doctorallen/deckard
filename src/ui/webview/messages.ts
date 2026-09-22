@@ -15,7 +15,6 @@ import {
   RelatedNotesSortMode,
   TagSortMode,
   TaskSortMode,
-  TaskFilter,
   DashboardMode,
   DashboardSearchField,
   TaskBoardGroupBy,
@@ -235,10 +234,6 @@ export function parseSearchPageMessage(
       return typeof value.taskId === 'string' &&
         typeof value.completed === 'boolean'
         ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
-        : undefined;
-    case 'setTaskFilter':
-      return isTaskFilter(value.filter)
-        ? { type: 'setTaskFilter', filter: value.filter }
         : undefined;
     case 'setRenderMode':
       return isRenderMode(value.mode)
@@ -684,9 +679,6 @@ function isTagSortMode(value: unknown): value is TagSortMode {
 /**
  * Keeps task filtering constrained to the three supported dashboard states.
  */
-function isTaskFilter(value: unknown): value is TaskFilter {
-  return value === 'all' || value === 'active' || value === 'completed';
-}
 
 function isDashboardColumnCount(value: unknown): value is 1 | 2 | 3 | 4 {
   return value === 1 || value === 2 || value === 3 || value === 4;

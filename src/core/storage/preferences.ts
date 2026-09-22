@@ -25,7 +25,6 @@ import {
   DashboardWidgetConfig,
   DashboardWidgetKind,
   TaskBoardGroupBy,
-  TaskFilter,
   TaskLayout,
 } from '../types';
 

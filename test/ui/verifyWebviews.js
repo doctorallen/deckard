@@ -86,7 +86,7 @@ const CONTENT_ROWS = [
 ];
 const SHARED_HELPERS = [
   'escapeHtml', 'renderTagLabel', 'renderTagButton', 'renderInlineTitle',
-  'renderTaskTitle', 'taskFilterIcon', 'formatEntityTitle',
+  'renderTaskTitle', 'formatEntityTitle',
   'closeTagContextMenu', 'openTagContextMenu', 'installTagContextMenu',
   'renderTaskBoard', 'renderTaskBoardCard', 'renderTaskBoardGroupSwitch',
   'installTaskBoard',
