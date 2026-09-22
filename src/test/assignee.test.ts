@@ -114,16 +114,25 @@ suite('Task assignees', () => {
     );
   });
 
-  test('is:mine is who the setting says, and nobody until it says', () => {
-    assert.deepStrictEqual(found('is:mine'), [], 'nobody is me yet');
+  test('is:mine is who the setting says, and whatever is for nobody', () => {
+    assert.deepStrictEqual(
+      found('is:mine'),
+      ['Book the room', 'Write up what @dana said'],
+      'with no name yet, only what nobody was asked to do',
+    );
     setQueryIdentity('@dana');
     assert.deepStrictEqual(
       found('is:mine AND is:open'),
-      ['Chase the contractor @ren-kade'],
-      'the task that only mentions me is not mine to do',
+      ['Chase the contractor @ren-kade', 'Book the room', 'Write up what @dana said'],
+      'mine by name, and mine by default; a mention alone is neither',
     );
     setQueryIdentity('#person/ren-kade');
-    assert.deepStrictEqual(found('is:mine'), ['Send the proposal']);
+    assert.deepStrictEqual(found('is:mine AND is:assigned'), ['Send the proposal']);
+    assert.deepStrictEqual(
+      found('is:mine AND assignee = none'),
+      ['Book the room', 'Write up what @dana said'],
+      'assignee = none is the default kind alone',
+    );
   });
 
   test('is:assigned and is:unassigned split the tasks', () => {

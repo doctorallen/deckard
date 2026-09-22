@@ -217,7 +217,8 @@ interface QueryUnit {
  *
  * The evaluator runs in six places, none of which reads settings, so the
  * identity is given to it rather than passed through every call. Without one
- * `is:mine` matches nothing, which is what an unanswered question should do.
+ * `is:mine` is only the tasks for nobody in particular: what is mine by
+ * default, with nothing yet mine by name.
  */
 let queryIdentity: string | undefined;
 
@@ -580,7 +581,12 @@ function matchesIs(
     case 'blocking':
       return unit.blocking === true;
     case 'mine':
-      return queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee);
+      // A task nobody was asked to do falls to whoever is reading, so what
+      // carries no 👤 is mine, and what names me is mine once I have a name.
+      return (
+        unit.assignee === undefined ||
+        (queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee))
+      );
     case 'assigned':
       return unit.assignee !== undefined;
     case 'unassigned':

@@ -262,7 +262,7 @@ A `👤` field says who a task is for. Notes name people for all sorts of reason
 - `👤` and `[assignee:: …]` are the same field in the two [task metadata](#task-metadata) formats, and Deckard writes whichever one the line already uses. `🧑` is read too.
 - The person is named as their tag is written, so `@dana` in the field is the same `@dana` the rest of your notes and the [people](#people) views already know. `@dana` and `#person/dana` name the same person, whichever way either side writes it.
 - Search for them with `assignee = @dana`, `assignee = none`, `is:assigned`, or `is:unassigned`.
-- Set `deckard.me` to your own name, such as `@ren-kade`, and `is:mine` finds what is yours. Left empty, `is:mine` finds nothing rather than guessing.
+- `is:mine` finds what is yours: the tasks whose `👤` names you, once `deckard.me` says who you are — `@ren-kade`, say — and the tasks for nobody in particular, which fall to whoever is reading. `assignee = none` is the second kind alone.
 - The [Task board](#task-board) groups by **Person**, a column each, busiest first, with **Nobody named** at the end — the waiting-on view. Dropping a card on a person writes the field, and dropping it on **Nobody named** clears it; the words of the task are never touched.
 - Deckard read the first person in a task's words as its owner before this field existed. `deckard.tasks.assigneeFromPersonTag` turns that reading back on for lines that carry no `👤`.
 
@@ -687,7 +687,7 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `is:due` | Open tasks due within the next seven days, overdue ones included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
 | `is:blocked`, `is:blocking` | Open tasks waiting for a task that is still open, and the open tasks they wait for. |
-| `is:mine` | Tasks for the person `deckard.me` names. Without that setting it finds nothing. |
+| `is:mine` | Tasks for the person `deckard.me` names, and tasks for nobody in particular. Without that setting, only the latter. |
 | `is:assigned`, `is:unassigned` | Tasks that name a person, and tasks that name nobody. |
 | `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, `priority`, `id`, and `dependsOn` work the same way. |
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |

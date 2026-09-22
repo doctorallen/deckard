@@ -798,7 +798,7 @@
           "deckard.me": {
             "type": "string",
             "default": "",
-            "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you. Empty means is:mine finds nothing.",
+            "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you as well as the ones for nobody in particular. Empty means is:mine finds only the latter.",
             "order": 5
           },
           "deckard.statusBar": {
