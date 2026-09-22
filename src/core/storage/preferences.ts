@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 
 import {
+  isTaskColumnId,
+  TableSort,
+  TaskColumnId,
+} from '../../ui/state/resultTable';
+import {
   PersistedPreferences,
   PinnedNote,
   DEFAULT_SEARCH_PAGE_SIZE,
@@ -53,6 +58,8 @@ const defaultPreferences: PersistedPreferences = {
   savedFilters: [],
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
+  taskTableColumns: undefined,
+  taskTableSort: undefined,
   tagAccessTimes: {},
   sectionAccessTimes: {},
   recentQueries: [],
@@ -325,6 +332,16 @@ export class PreferencesStore implements vscode.Disposable {
     taskBoardGroup: TaskBoardGroupBy,
   ): Promise<void> {
     await this.update({ taskBoardGroup });
+  }
+
+  /** Chooses the table layout's columns; the title is always among them. */
+  public async setTaskTableColumns(columns: TaskColumnId[]): Promise<void> {
+    await this.update({ taskTableColumns: normalizeTableColumns(columns) });
+  }
+
+  /** Sorts the table layout by a column, or by nothing: the rank order. */
+  public async setTaskTableSort(sort: TableSort | undefined): Promise<void> {
+    await this.update({ taskTableSort: normalizeTableSort(sort) });
   }
 
   /**
@@ -870,7 +887,12 @@ function normalizePreferences(
         : 'tags',
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
-    taskBoardLayout: value?.taskBoardLayout === 'list' ? 'list' : 'board',
+    taskBoardLayout:
+      value?.taskBoardLayout === 'list' || value?.taskBoardLayout === 'table'
+        ? value.taskBoardLayout
+        : 'board',
+    taskTableColumns: normalizeTableColumns(value?.taskTableColumns),
+    taskTableSort: normalizeTableSort(value?.taskTableSort),
     // Every grouping the board offers is read back, or choosing one would
     // be forgotten the next time preferences were read.
     taskBoardGroup:
@@ -1248,4 +1270,25 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     recentQueries: [...(value.recentQueries ?? [])],
     dashboardWidgets: cloneWidgets(value.dashboardWidgets),
   };
+}
+
+/** The columns a stored value names, title first; nothing for an empty or unusable value. */
+function normalizeTableColumns(value: unknown): TaskColumnId[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const columns = value.filter(isTaskColumnId);
+  const unique = ['title' as const, ...columns.filter((column) => column !== 'title')]
+    .filter((column, at, all) => all.indexOf(column) === at);
+  return unique.length > 1 ? unique : undefined;
+}
+
+function normalizeTableSort(value: unknown): TableSort | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const { column, direction } = value as { column?: unknown; direction?: unknown };
+  return isTaskColumnId(column)
+    ? { column, direction: direction === 'desc' ? 'desc' : 'asc' }
+    : undefined;
 }

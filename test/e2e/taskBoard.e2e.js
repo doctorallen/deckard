@@ -293,6 +293,48 @@ test('the gear switches between columns and a list, and stays open', async () =>
   assert.ok(view.find('[data-action="set-board-group"]'), 'with its grouping');
 });
 
+test('the gear turns the board into a table, whose headers sort and whose columns are chosen', async () => {
+  const { view, preferences } = await openBoard();
+  view.find('.view-options').setAttribute('open', '');
+  view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
+  await delay(10);
+  assert.strictEqual(preferences.value.taskBoardLayout, 'table');
+  assert.ok(view.find('.result-table'), 'the tasks are a table now');
+  assert.deepStrictEqual(
+    view.findAll('.result-table .result-row').map((row) => row.dataset.taskId).sort(),
+    ['audit', 'call', 'room'],
+    'the same open tasks the search found',
+  );
+  assert.deepStrictEqual(
+    view.findAll('.result-table th button').map((button) => button.textContent),
+    ['Task', 'Due', 'Priority', 'For', 'Note'],
+  );
+
+  view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
+  await delay(10);
+  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'asc' });
+  view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
+  await delay(10);
+  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'desc' }, 'the same header again turns it round');
+  assert.ok(view.find('th.is-sorted'), 'the sorted column is marked');
+  view.click(view.findAll('[data-action="set-table-sort"]').find((button) => !button.dataset.value));
+  await delay(10);
+  assert.strictEqual(preferences.value.taskTableSort, undefined, 'Rank order clears it');
+
+  view.find('.view-options').setAttribute('open', '');
+  const title = view.find('[data-action="toggle-table-column"][data-value="title"]');
+  assert.notStrictEqual(title.getAttribute('disabled'), null, 'the title cannot be taken away');
+  const status = view.find('[data-action="toggle-table-column"][data-value="status"]');
+  status.checked = true;
+  view.change(status);
+  await delay(10);
+  assert.deepStrictEqual(
+    preferences.value.taskTableColumns,
+    ['title', 'due', 'priority', 'assignee', 'status', 'note'],
+    'a column joins in the order the picker lists it',
+  );
+});
+
 test('the gear edits the status columns without opening settings', async () => {
   const { view, lastState } = await openBoard();
   const columns = () =>

@@ -355,7 +355,7 @@ updated: 2026-09-20
       <h2>Tasks view and Task board</h2>
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
-        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list.</p></div>
+        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list.</p></div>
         <div class="card"><h3>Editing many at once</h3><p><strong>Bulk Edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>The status bar reads <strong>3 due today</strong> while anything is, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>

@@ -368,6 +368,25 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'setTaskSort':
         await this.preferences.setTaskSortMode(message.mode);
         return;
+      case 'setTableSort': {
+        // The same column again turns the sort round; none is the rank order.
+        const current = this.preferences.value.taskTableSort;
+        await this.preferences.setTaskTableSort(
+          message.column === undefined
+            ? undefined
+            : {
+                column: message.column,
+                direction:
+                  current?.column === message.column && current.direction === 'asc'
+                    ? 'desc'
+                    : 'asc',
+              },
+        );
+        return;
+      }
+      case 'setTableColumns':
+        await this.preferences.setTaskTableColumns(message.columns);
+        return;
       case 'reorderTasks':
         if (this.preferences.value.taskSortMode === 'rank') {
           await this.preferences.setTaskOrder(

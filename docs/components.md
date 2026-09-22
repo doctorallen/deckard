@@ -268,6 +268,18 @@ search results and the Task Board's list layout.
 | `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
+### Result table
+
+`.result-table` in `getTaskListCss()` styles the Task Board's table layout:
+`th` holds a `button[data-action="set-table-sort"]` that fills the cell,
+`.is-sorted` marks the sorted column, `.result-row` rows carry the same
+`data-task-id`, `data-file-path`, and `data-line` a `.task-row` does so the
+page's open and toggle handlers serve both, and `td.is-overdue` and
+`td.is-muted` are the two states a cell can be in. The host makes the rows
+and cells with the column model in `src/ui/state/resultTable.ts`, which a
+query block's `view=table` shares, so the page only draws them.
+`.table-columns` is the gear's column picker.
+
 ### `.row`
 
 Every openable row uses this, so none of them can quietly ship without the

@@ -1,3 +1,4 @@
+import { isTaskColumnId } from '../state/resultTable';
 import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
@@ -494,8 +495,18 @@ export function parseTaskBoardMessage(
         ? { type: 'setBoardQuery', query: value.query }
         : undefined;
     case 'setTaskLayout':
-      return value.layout === 'list' || value.layout === 'board'
+      return value.layout === 'list' || value.layout === 'board' || value.layout === 'table'
         ? { type: 'setTaskLayout', layout: value.layout }
+        : undefined;
+    case 'setTableSort':
+      return value.column === undefined
+        ? { type: 'setTableSort' }
+        : isTaskColumnId(value.column)
+          ? { type: 'setTableSort', column: value.column }
+          : undefined;
+    case 'setTableColumns':
+      return Array.isArray(value.columns) && value.columns.every(isTaskColumnId)
+        ? { type: 'setTableColumns', columns: [...value.columns] }
         : undefined;
     case 'setTaskSort':
       return isTaskSortMode(value.mode)

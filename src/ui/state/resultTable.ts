@@ -3,7 +3,13 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
 } from '../../core/markdown/taskMetadata';
-import { TaskPriority } from '../../core/types';
+import {
+  TableCell,
+  TableSort,
+  TableSortDirection,
+  TaskColumnId,
+  TaskPriority,
+} from '../../core/types';
 
 /**
  * A query's results as rows, with the query's own fields as columns.
@@ -14,21 +20,7 @@ import { TaskPriority } from '../../core/types';
  * is shown. The surfaces differ only in how they draw a cell.
  */
 
-export type TaskColumnId =
-  | 'title'
-  | 'due'
-  | 'scheduled'
-  | 'start'
-  | 'done'
-  | 'priority'
-  | 'assignee'
-  | 'status'
-  | 'tags'
-  | 'note'
-  | 'created'
-  | 'updated'
-  | 'blockedBy'
-  | 'id';
+export type { TableCell, TableSort, TableSortDirection, TaskColumnId };
 
 export interface TaskColumn {
   id: TaskColumnId;
@@ -128,15 +120,6 @@ export interface TableTask {
   dependencyId?: string;
 }
 
-/**
- * One cell: its text, and what it is, so a surface can colour an overdue
- * date or strike a finished title without knowing which column it drew.
- */
-export interface TableCell {
-  text: string;
-  kind?: 'overdue' | 'muted';
-}
-
 /** The cells of one task, in the order of `columns`. */
 export function createTaskCells(
   task: TableTask,
@@ -185,13 +168,6 @@ export function createTaskCells(
         return { text: '' };
     }
   });
-}
-
-export type TableSortDirection = 'asc' | 'desc';
-
-export interface TableSort {
-  column: TaskColumnId;
-  direction: TableSortDirection;
 }
 
 /**

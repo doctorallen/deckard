@@ -16,7 +16,6 @@ against the current source so that nothing here duplicates a shipped feature.
 | Priority | Status | Supporting plugins |
 | --- | --- | --- |
 | Typed front matter schemas and explicit relations | Open. Hub notes (`describes:`) are the natural home for typed properties. | Breadcrumbs, Metadata Menu, Supercharged Links |
-| A table view for saved queries | Open. The query language, builder, saved searches, query blocks, board, and calendar exist; a result set as a sortable table does not. | Dataview, Bases (core) |
 | Canvas or whiteboard | Open, low priority | Excalidraw, Advanced Canvas |
 | Git-aware collaboration | Open, keep light since VS Code has SCM built in | Obsidian Git |
 | Minting block ids | Deliberately left out. `[[Note#^id]]` resolves, completes, previews, and counts as a backlink; writing a `^id` is the author's. | Obsidian block references |
@@ -68,9 +67,10 @@ flow is already there.
 
 ## Sequencing
 
-Typed schemas first, since hub notes give them a home and the table view
-wants them; then the table view; export and the CLI are small once the query
-evaluator is the only thing they need. Import, canvas, and Git-aware
+Typed schemas first, since hub notes give them a home and the table — which
+ships for tasks, in query blocks and on the board — wants them for notes;
+export and the CLI are small once the query evaluator is the only thing they
+need. Import, canvas, and Git-aware
 collaboration follow, in that order, if at all.
 
 ## Research sources

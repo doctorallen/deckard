@@ -537,6 +537,29 @@ export function getTaskListCss(): string {
 .rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .rank-context-menu[hidden] { display: none; }
 .rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
+.result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.result-table th, .result-table td { padding: 7px 9px; border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+/* A header is the button that sorts by it, filling the cell so the whole label is the target. */
+.result-table th button { display: flex; width: 100%; gap: 5px; align-items: center; min-height: 0; border: 0; padding: 7px 9px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
+.result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
+/* The sorted column is told by weight and its arrow, not a colour: amber on a panel is too faint for a small label in some themes.
+   Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
+.result-table th.is-sorted button { color: var(--text); font-weight: 700; }
+.result-table th.is-sorted button:hover, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
+.result-table .result-check { width: 24px; padding-right: 0; }
+.result-table .result-row { cursor: pointer; }
+/* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
+.result-table .result-row:hover td { border-bottom-color: var(--amber); }
+.result-table .result-row:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: -1px; }
+.result-table .result-row.completed .result-title { color: var(--muted); text-decoration: line-through; }
+.result-table .result-title { color: var(--cyan); }
+.result-table td.is-overdue { color: var(--favorite-red); font-weight: 700; }
+.result-table td.is-muted { color: var(--muted); }
+.result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--toxic-green); }
+/* The gear's column picker: one line per column, the title fixed. */
+.table-columns { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; text-transform: none; }
+.table-columns label { display: flex; gap: 6px; align-items: center; font: 12px var(--font-mono); }
 @media (max-width: 720px) { .task-list { grid-template-columns: 1fr; } }`;
 }
 
