@@ -29,6 +29,14 @@ import {
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
+/** What `findStale` reports: deliberate choices the index no longer backs. */
+export interface StalePreferences {
+  favoriteTags: string[];
+  favoriteEntities: string[];
+  pinnedNotes: PinnedNote[];
+  savedFilters: SavedFilter[];
+}
+
 /** Set once the machine-wide store has handed its content to a workspace. */
 const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
 
@@ -851,18 +859,6 @@ export class PreferencesStore implements vscode.Disposable {
           ),
         )
       : this.preferences.sectionAccessTimes;
-    const savedFilters = this.preferences.savedFilters.flatMap((filter) => {
-      // A saved query can name tags that do not exist yet, or none at all, so
-      // only tag-set filters are pruned against the index.
-      if (filter.query) {
-        return [filter];
-      }
-      const tagKeys = filter.tagKeys.filter((tagKey) => validTags.has(tagKey));
-      return tagKeys.length >= 2
-        ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
-        : [];
-    });
-    const savedFilterIds = new Set(savedFilters.map((filter) => filter.id));
     // Every tag in the first index is known; a tag seen after that is new
     // from the moment it is seen, until it is gone again.
     const previousFirstSeen = this.preferences.tagFirstSeen;
@@ -872,19 +868,13 @@ export class PreferencesStore implements vscode.Disposable {
         previousFirstSeen ? (previousFirstSeen[tagKey] ?? now) : 0,
       ]),
     );
-    const validFiles = validFilePathSet;
+    // Only what Deckard derived is collected here: counts, orders, times,
+    // and when a tag was first seen. A favourite, a pin, a saved search and a
+    // Home widget were each chosen on purpose, and an index that no longer
+    // mentions one is not a reason to throw it away — it is a reason to say
+    // so and let the reader decide. `findStale` finds them; the Tidy command
+    // asks.
     const changes: Partial<PersistedPreferences> = {
-      dashboardWidgets: this.preferences.dashboardWidgets.filter(
-        (widget) =>
-          widget.kind !== 'savedQuery' ||
-          (widget.filterId !== undefined && savedFilterIds.has(widget.filterId)),
-      ),
-      favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
-        validTags.has(tagKey),
-      ),
-      favoriteEntities: this.preferences.favoriteEntities.filter(
-        (entityKey) => validEntities?.has(entityKey) ?? true,
-      ),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -903,19 +893,77 @@ export class PreferencesStore implements vscode.Disposable {
           ([entityKey]) => validEntities?.has(entityKey) ?? true,
         ),
       ),
-      savedFilters,
       tagFirstSeen,
-      // A pin is kept while its note is there, whatever became of the
-      // heading it named: the heading is resolved when Home draws.
-      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
-        (pin) => validFiles?.has(pin.filePath) ?? true,
-      ),
     };
     // Every index update prunes, and it rarely removes anything. Writing
     // anyway would make every view that follows preferences refresh twice.
     if (this.hasChanges(changes)) {
       await this.update(changes);
     }
+  }
+
+  /**
+   * The deliberate choices that point at nothing the index has any more: a
+   * favourite whose tag is gone, a pin whose note is gone, a tag-set search
+   * left with fewer than two of its tags. Nothing here is removed by Deckard
+   * on its own; the Tidy command shows the list and asks.
+   *
+   * A saved query is never stale: it can name tags that do not exist yet.
+   */
+  public findStale(
+    validTagKeys: Iterable<string>,
+    validEntityKeys: Iterable<string>,
+    validFilePaths: Iterable<string>,
+  ): StalePreferences {
+    const validTags = new Set(validTagKeys);
+    const validEntities = new Set(validEntityKeys);
+    const validFiles = new Set(validFilePaths);
+    return {
+      favoriteTags: this.preferences.favoriteTags.filter(
+        (tagKey) => !validTags.has(tagKey),
+      ),
+      favoriteEntities: this.preferences.favoriteEntities.filter(
+        (entityKey) => !validEntities.has(entityKey),
+      ),
+      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
+        (pin) => !validFiles.has(pin.filePath),
+      ),
+      savedFilters: this.preferences.savedFilters.filter(
+        (filter) =>
+          !filter.query &&
+          filter.tagKeys.filter((tagKey) => validTags.has(tagKey)).length < 2,
+      ),
+    };
+  }
+
+  /** Removes what `findStale` found, once a reader has agreed to it. */
+  public async removeStale(stale: StalePreferences): Promise<void> {
+    const tags = new Set(stale.favoriteTags);
+    const entities = new Set(stale.favoriteEntities);
+    const pins = new Set(stale.pinnedNotes.map(pinKey));
+    const filters = new Set(stale.savedFilters.map((filter) => filter.id));
+    if (!tags.size && !entities.size && !pins.size && !filters.size) {
+      return;
+    }
+    await this.update({
+      favoriteTags: this.preferences.favoriteTags.filter((key) => !tags.has(key)),
+      favoriteEntities: this.preferences.favoriteEntities.filter(
+        (key) => !entities.has(key),
+      ),
+      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
+        (pin) => !pins.has(pinKey(pin)),
+      ),
+      savedFilters: this.preferences.savedFilters.filter(
+        (filter) => !filters.has(filter.id),
+      ),
+      // A widget that showed a removed search leaves Home with it.
+      dashboardWidgets: this.preferences.dashboardWidgets.filter(
+        (widget) =>
+          widget.kind !== 'savedQuery' ||
+          widget.filterId === undefined ||
+          !filters.has(widget.filterId),
+      ),
+    });
   }
 
   private hasChanges(changes: Partial<PersistedPreferences>): boolean {

@@ -78,6 +78,7 @@ suite('Extension Test Suite', () => {
         'deckard.outline.disableFollowCursor',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
+        'deckard.tidyPreferences',
       ],
     );
     assert.strictEqual(

@@ -307,7 +307,7 @@ suite('Preferences store', () => {
     store.dispose();
   });
 
-  test('pins notes once, in order, and forgets pinned notes that are gone', async () => {
+  test('pins notes once, in order, and only lets go of a pin when asked', async () => {
     const store = new PreferencesStore(new MemoryMemento());
     const paths = (): (string | undefined)[] =>
       (store.value.pinnedNotes ?? []).map((pin) => pin.filePath);
@@ -332,15 +332,14 @@ suite('Preferences store', () => {
       pinKey({ filePath: 'notes/b.md', heading: 'Decision' }),
     );
     await store.pinNote({ filePath: 'notes/c.md' });
+    // A pin is a choice. The index no longer having its note is reported,
+    // never acted on: Deckard says so and the reader decides.
     await store.prune([], [], undefined, undefined, ['notes/c.md']);
+    assert.deepStrictEqual(paths(), ['notes/b.md', 'notes/c.md']);
+    const stale = store.findStale([], [], ['notes/c.md']);
+    assert.deepStrictEqual(stale.pinnedNotes.map((pin) => pin.filePath), ['notes/b.md']);
+    await store.removeStale(stale);
     assert.deepStrictEqual(paths(), ['notes/c.md']);
-
-    await store.prune([], []);
-    assert.deepStrictEqual(
-      paths(),
-      ['notes/c.md'],
-      'without the index\'s files, pins are kept',
-    );
     store.dispose();
   });
 
@@ -356,7 +355,7 @@ suite('Preferences store', () => {
     store.dispose();
   });
 
-  test('upserts saved multi-tag filters and prunes missing tags', async () => {
+  test('upserts saved multi-tag filters and reports one whose tags are gone', async () => {
     const memento = new MemoryMemento();
     const store = new PreferencesStore(memento);
 
@@ -383,7 +382,13 @@ suite('Preferences store', () => {
       },
     ]);
 
+    // Losing one of its two tags leaves the search unable to find anything,
+    // but it is still the reader's, so pruning reports it rather than removing it.
     await store.prune(['#project/atlas'], [], []);
+    assert.strictEqual(store.value.savedFilters.length, 1);
+    const stale = store.findStale(['#project/atlas'], [], []);
+    assert.deepStrictEqual(stale.savedFilters.map((filter) => filter.id), [first.id]);
+    await store.removeStale(stale);
     assert.deepStrictEqual(store.value.savedFilters, []);
     store.dispose();
   });

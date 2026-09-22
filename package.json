@@ -266,6 +266,10 @@
         "command": "deckard.disableZenMode",
         "title": "Deckard: Leave Zen Mode",
         "icon": "$(screen-full)"
+      },
+      {
+        "command": "deckard.tidyPreferences",
+        "title": "Deckard: Tidy Favourites, Pins, and Saved Searches"
       }
     ],
     "menus": {

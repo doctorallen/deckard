@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- **Deckard no longer deletes a favourite, a pin, or a saved search on its
+  own.** Pruning used to remove any of them whose tag or note the index had
+  stopped mentioning, which treated a guess as a decision. Now it collects
+  only what Deckard derived for itself — view counts, access order, when a
+  tag was first seen — and leaves what a reader chose alone. `Deckard: Tidy
+  Favourites, Pins, and Saved Searches` lists what points at nothing in this
+  workspace any more and removes it only when asked; a saved query is never
+  on that list, since it can name a tag that does not exist yet.
+
 - **Favourites, pins and view counts survive opening another folder.** They
   were kept machine-wide, and every index update deleted any key the current
   workspace did not contain — so opening any other folder holding a Markdown

@@ -67,6 +67,7 @@ import { TaskBoardPanel } from './ui/webview/taskBoard';
 import { ActiveSearch } from './ui/webview/activeSearch';
 import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
+import { tidyPreferences } from './ui/commands/tidyPreferences';
 import {
   OutlineTreeProvider,
   pickOutlineTag,
@@ -408,6 +409,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.disableZenMode', () =>
       setZenMode(false),
+    ),
+    vscode.commands.registerCommand('deckard.tidyPreferences', () =>
+      tidyPreferences(indexer, preferences),
     ),
   );
   context.subscriptions.push(

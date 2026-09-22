@@ -64,12 +64,58 @@ suite('Preference pruning', () => {
     assert.strictEqual(store.value.pinnedNotes?.length, 1);
     assert.strictEqual(memento.writes, writes, 'and it writes nothing');
 
-    // An index that holds something is authoritative again, and a key it does
-    // not have is still removed.
+    // An index that holds something is authoritative again for what Deckard
+    // derived: a count for a tag it no longer has goes. What the reader chose
+    // stays, whatever the index says.
     await store.prune(['#project/other'], [], ['other-section'], [], ['notes/other.md']);
-    assert.deepStrictEqual(store.value.favoriteTags, []);
     assert.deepStrictEqual(store.value.tagAccessCounts, {});
-    assert.strictEqual(store.value.pinnedNotes?.length, 0);
+    assert.deepStrictEqual(store.value.favoriteTags, ['#project/relay']);
+    assert.strictEqual(store.value.pinnedNotes?.length, 1);
+  });
+
+  test('never removes a favourite, a pin, or a saved search on its own', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.toggleFavorite('#project/relay');
+    await store.toggleFavoriteEntity('#person/ren');
+    await store.pinNote({ filePath: 'notes/relay.md', heading: 'Relay' });
+    await store.saveSavedFilter('Both', ['#project/relay', '#risk/vendor']);
+    await store.saveSavedQueryFilter('Query', 'is:open');
+
+    // Nothing in the index matches any of it.
+    await store.prune(['#other'], [], ['other-section'], ['#person/other'], ['notes/other.md']);
+
+    assert.deepStrictEqual(store.value.favoriteTags, ['#project/relay']);
+    assert.deepStrictEqual(store.value.favoriteEntities, ['#person/ren']);
+    assert.strictEqual(store.value.pinnedNotes?.length, 1);
+    assert.strictEqual(store.value.savedFilters.length, 2);
+  });
+
+  test('says what points nowhere, and removes only that when asked', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.toggleFavorite('#project/relay');
+    await store.toggleFavorite('#project/gone');
+    await store.toggleFavoriteEntity('#person/ren');
+    await store.pinNote({ filePath: 'notes/relay.md', heading: 'Relay' });
+    await store.pinNote({ filePath: 'notes/gone.md' });
+    await store.saveSavedFilter('Both', ['#project/relay', '#risk/vendor']);
+    await store.saveSavedFilter('Orphaned', ['#project/gone', '#risk/gone']);
+    await store.saveSavedQueryFilter('Query', 'tag = #project/gone');
+
+    const stale = store.findStale(
+      ['#project/relay', '#risk/vendor'],
+      ['#person/ren'],
+      ['notes/relay.md'],
+    );
+    assert.deepStrictEqual(stale.favoriteTags, ['#project/gone']);
+    assert.deepStrictEqual(stale.favoriteEntities, []);
+    assert.deepStrictEqual(stale.pinnedNotes.map((pin) => pin.filePath), ['notes/gone.md']);
+    assert.deepStrictEqual(stale.savedFilters.map((filter) => filter.name), ['Orphaned'],
+      'a saved query is never stale: it can name a tag that does not exist yet');
+
+    await store.removeStale(stale);
+    assert.deepStrictEqual(store.value.favoriteTags, ['#project/relay']);
+    assert.deepStrictEqual(store.value.pinnedNotes?.map((pin) => pin.filePath), ['notes/relay.md']);
+    assert.deepStrictEqual(store.value.savedFilters.map((filter) => filter.name), ['Both', 'Query']);
   });
 
   test('still removes keys the index no longer has', async () => {
