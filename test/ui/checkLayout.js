@@ -100,6 +100,24 @@ function createSurfaces() {
       clippers: ['.board-column'],
       hovered: ['.board-card'],
     },
+    {
+      // As narrow as a reader is likely to drag the sidebar: the page's own
+      // floor is 220px.
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => createSidebarSnapshot(
+        index,
+        'notes/atlas.md',
+        files.get('notes/atlas.md'),
+        true,
+        'tags',
+        {},
+        'inline',
+      ),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note'],
+    },
   ];
 }
 
@@ -132,14 +150,29 @@ function probeScript(surface) {
   }
   // The elements reaching past a scroller's right edge, widest first, so a
   // failure names what grew rather than only that something did.
+  function name(el) {
+    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.classList.length ? '.' + [...el.classList].join('.') : '');
+  }
   function wide(scroller) {
     const edge = scroller.getBoundingClientRect().left + scroller.clientWidth;
-    return [...scroller.querySelectorAll('*')]
+    const past = [...scroller.querySelectorAll('*')]
       .map((el) => ({ el, right: el.getBoundingClientRect().right }))
       .filter((entry) => entry.right > edge + 0.5)
       .sort((a, b) => b.right - a.right)
       .slice(0, 4)
-      .map((entry) => entry.el.tagName.toLowerCase() + '.' + [...entry.el.classList].join('.') + ' +' + Math.round(entry.right - edge) + 'px');
+      .map((entry) => name(entry.el) + ' +' + Math.round(entry.right - edge) + 'px');
+    if (past.length) return past;
+    // Nothing's own box reaches past the edge, so a ::before or ::after does.
+    // Hiding elements one at a time until the overflow goes finds whose.
+    const found = [];
+    for (const el of [...scroller.querySelectorAll('*')].slice(0, 400)) {
+      const was = el.style.display;
+      el.style.display = 'none';
+      const gone = scroller.scrollWidth <= scroller.clientWidth;
+      el.style.display = was;
+      if (gone) { found.push(name(el) + ' (a pseudo-element of it, or inside it)'); if (found.length > 3) break; }
+    }
+    return found;
   }
   const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];
   let target = null;

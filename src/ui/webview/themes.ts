@@ -393,7 +393,7 @@ body {
 main { border-color: var(--slate-border); border-top-color: var(--line-strong); background: transparent; box-shadow: none; }
 main::before, main::after { content: ''; position: absolute; width: 16px; height: 16px; pointer-events: none; }
 main::before { top: -1px; left: -1px; border-top: 2px solid var(--line-strong); border-left: 2px solid var(--line-strong); }
-main::after { right: -1px; bottom: -1px; border-right: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); }
+main::after { right: 0; bottom: 0; border-right: 2px solid var(--line-strong); border-bottom: 2px solid var(--line-strong); }
 header { position: relative; border-color: var(--line); }
 header::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 4px; background-image: repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 12px); opacity: .45; }
 h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font-display); font-weight: 300; letter-spacing: .2em; text-transform: uppercase; }
