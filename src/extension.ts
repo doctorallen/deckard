@@ -76,6 +76,7 @@ import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
 import {
   AgendaTreeProvider,
+  getAgendaQuery,
   pickAgendaGrouping,
 } from './ui/views/agendaTree';
 import { TaskStatusBar } from './ui/views/taskStatusBar';
@@ -379,6 +380,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(),
+    ),
+    // The board is the search editor: the view's search opens there to be
+    // tried and changed, and its Tasks view button keeps it.
+    vscode.commands.registerCommand('deckard.agenda.editQuery', () =>
+      taskBoard.show(getAgendaQuery()),
     ),
     vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
       setOutlineFollowCursor(true),

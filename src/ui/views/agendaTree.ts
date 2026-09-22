@@ -187,6 +187,10 @@ export class AgendaTreeProvider
           : undefined,
       urgent,
     );
+    // The view's own line says what it lists, when that is not everything.
+    if (this.view) {
+      this.view.description = query || undefined;
+    }
     this.drawn = groups;
     return groups.map((group) => ({
       kind: 'group' as const,
@@ -480,7 +484,7 @@ function readBoardOptions(): TaskBoardOptions {
 }
 
 /** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */
-function getAgendaQuery(): string {
+export function getAgendaQuery(): string {
   return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
 }
 

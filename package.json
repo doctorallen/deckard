@@ -76,7 +76,7 @@
       },
       {
         "view": "deckard.agenda",
-        "contents": "Tasks with a due or scheduled date appear here.\n\nWrite one in a note as a checklist item with a date, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)"
+        "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)"
       }
     ],
     "commands": [
@@ -238,6 +238,11 @@
         "title": "Rename Tag…"
       },
       {
+        "command": "deckard.agenda.editQuery",
+        "title": "Deckard: Edit What the Tasks View Lists…",
+        "icon": "$(search)"
+      },
+      {
         "command": "deckard.agenda.setGrouping",
         "title": "Deckard: Group Tasks By…",
         "icon": "$(group-by-ref-type)"
@@ -302,14 +307,19 @@
       ],
       "view/title": [
         {
-          "command": "deckard.agenda.setGrouping",
+          "command": "deckard.agenda.editQuery",
           "when": "view == deckard.agenda",
           "group": "navigation@0"
         },
         {
-          "command": "deckard.showTaskBoard",
+          "command": "deckard.agenda.setGrouping",
           "when": "view == deckard.agenda",
           "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showTaskBoard",
+          "when": "view == deckard.agenda",
+          "group": "navigation@2"
         },
         {
           "command": "deckard.outline.enableFollowCursor",

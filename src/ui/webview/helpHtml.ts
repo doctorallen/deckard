@@ -69,6 +69,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.renameHeading':
     'Renames the heading the cursor is in and carries its links along.',
   'deckard.undoLastChange': 'Puts the notes back as they were before the last write.',
+  'deckard.agenda.editQuery': 'What the Tasks view lists, opened on the Task Board to try and change.',
   'deckard.agenda.setGrouping': 'What the Tasks view’s groups are.',
   'deckard.outline.enableFollowCursor': 'Selects the heading the cursor is in.',
   'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',

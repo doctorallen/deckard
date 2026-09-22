@@ -1,7 +1,11 @@
 import * as assert from 'assert';
 
 import { Task, WorkspaceIndex } from '../core/types';
-import { createAgenda, selectAgendaTasks } from '../ui/state/agendaState';
+import {
+  createAgenda,
+  normalizeAgendaQuery,
+  selectAgendaTasks,
+} from '../ui/state/agendaState';
 import { groupColumnId } from '../ui/views/agendaTree';
 
 const at = (month: number, day: number): number =>
@@ -150,6 +154,13 @@ suite('Agenda', () => {
       ),
       [],
     );
+  });
+
+  test('keeps a search the way the view reads it', () => {
+    assert.strictEqual(normalizeAgendaQuery('is:open'), '', 'the board opens on what the view always means');
+    assert.strictEqual(normalizeAgendaQuery('  is:open AND is:mine '), 'is:mine');
+    assert.strictEqual(normalizeAgendaQuery('is:mine AND is:open'), 'is:mine AND is:open', 'only the leading one is implied');
+    assert.strictEqual(normalizeAgendaQuery('#project/atlas'), '#project/atlas');
   });
 
   test('lists the tasks it is given, and no others', () => {

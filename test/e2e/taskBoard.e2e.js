@@ -166,6 +166,32 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   assert.deepStrictEqual(opened, ['board #project/atlas is:open']);
 });
 
+test('hands its search to the Tasks view, and says when the view has it', async () => {
+  const { view } = await openBoard();
+  const button = () => view.find('[data-action="use-for-agenda"]');
+  assert.ok(button(), 'Tasks view sits beside Save');
+  assert.ok(button().classList.contains('active'), 'the view lists every open task, and so does a board with no search');
+
+  // The board opens on is:open, so the search is cleared before it is typed.
+  view.click(view.find('[data-action="clear-query"]'));
+  await delay(10);
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, 'is:mine');
+  view.keydown(bar, 'Enter');
+  await delay(10);
+  assert.ok(!button().classList.contains('active'), 'the view does not list this search yet');
+
+  view.click(button());
+  await delay(10);
+  assert.deepStrictEqual(
+    vscode._test.configurationUpdates.map((update) => [update.name, update.value]),
+    [['deckard.agenda.query', 'is:mine']],
+    "the search is written as the view's own",
+  );
+  assert.strictEqual(vscode._test.configurationUpdates[0].target, vscode.ConfigurationTarget.Global);
+  assert.ok(button().classList.contains('active'), "lit once the view lists the board's search");
+});
+
 test('shows a line for Refine while the sidebar holds it', async () => {
   const { view, activeSearch, board } = await openBoard();
   const bar = view.find('[data-action="query-input"]');

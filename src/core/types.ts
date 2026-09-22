@@ -1337,6 +1337,8 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   settings: TaskBoardSettings;
   /** Whether the sidebar is showing this search's Refine options. */
   refineInSidebar?: boolean;
+  /** Whether the Tasks view lists this search, so the board can say so. */
+  agendaListsThisSearch?: boolean;
 }
 
 /** The `deckard.board` settings, as the Task Board's view options show them. */
@@ -1385,6 +1387,11 @@ export interface SaveBoardSearchMessage {
   type: 'saveBoardSearch';
 }
 
+/** Makes the Tasks view list the Task Board's search. */
+export interface UseSearchForAgendaMessage {
+  type: 'useSearchForAgenda';
+}
+
 /** Asks the board to show every task a column is holding back. */
 export interface ShowColumnRestMessage {
   type: 'showColumnRest';
@@ -1395,6 +1402,7 @@ export type TaskBoardMessage =
   | OpenHelpMessage
   | ShowColumnRestMessage
   | SaveBoardSearchMessage
+  | UseSearchForAgendaMessage
   | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage

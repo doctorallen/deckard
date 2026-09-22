@@ -453,6 +453,10 @@ export function parseTaskBoardMessage(
       return Object.keys(value).length === 1
         ? { type: 'saveBoardSearch' }
         : undefined;
+    case 'useSearchForAgenda':
+      return Object.keys(value).length === 1
+        ? { type: 'useSearchForAgenda' }
+        : undefined;
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as TaskBoardMessage)

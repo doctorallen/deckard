@@ -95,7 +95,10 @@ ${getQueryEditorScript()}
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     // Saving sits with the search it saves; the saved search reopens here.
     actions: function (hasText) {
-      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      // The Tasks view lists a search of its own; this is where it is edited.
+      const listed = !!(state && state.agendaListsThisSearch);
+      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
+        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>';
     },
   });
 
@@ -291,6 +294,7 @@ ${getQueryEditorScript()}
       const action = target.dataset.action;
       if (action === 'open-tag') post({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
+      if (action === 'use-for-agenda') post({ type: 'useSearchForAgenda' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
         const statuses = state.settings.statuses.slice();
