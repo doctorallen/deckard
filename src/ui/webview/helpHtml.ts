@@ -106,13 +106,14 @@ function renderCommandTable(manifest: HelpManifest): string {
   return `<div class="table-scroll"><table><caption>Every command Deckard contributes, as the palette lists them under “Deckard:”</caption><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-/** Every setting, grouped as the settings editor groups them. */
+/**
+ * Every setting, grouped as the settings editor groups them — in one table,
+ * a heading row per group, so the columns line up from the first group to
+ * the last. As a table each, every group sized its columns by its own
+ * content, and a reader's eye had to find the default column again at each.
+ */
 function renderSettingsTables(manifest: HelpManifest): string {
-  const groups = manifest.configuration ?? [];
-  if (groups.length === 0) {
-    return '';
-  }
-  return groups
+  const groups = (manifest.configuration ?? [])
     .map((group) => {
       const rows = Object.entries(group.properties ?? {})
         .map(([key, property]) => {
@@ -128,12 +129,15 @@ function renderSettingsTables(manifest: HelpManifest): string {
         })
         .join('');
       return rows
-        ? `<div class="table-scroll"><table><caption>${escapeHtml(
+        ? `<tbody><tr class="table-group"><th scope="rowgroup" colspan="3">${escapeHtml(
             group.title ?? 'Settings',
-          )}</caption><thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div>`
+          )}</th></tr>${rows}</tbody>`
         : '';
     })
     .join('');
+  return groups
+    ? `<div class="table-scroll"><table><caption>Every setting Deckard contributes, as the settings editor groups them</caption><thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>${groups}</table></div>`
+    : '';
 }
 
 /** The escaping the page's own markup uses; nothing here is user content. */
@@ -196,6 +200,12 @@ code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line);
 .favorite-heart.filled { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 pre { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--panel); padding: 12px; color: var(--text); }
 pre code { border: 0; padding: 0; color: inherit; background: transparent; }
+/* A cell breaks between words, never inside one, so a column is at least as
+   wide as its longest word — a setting's name, a command's — and the table
+   shares the rest by content. Broken anywhere, a column could be crushed to
+   five characters a line, and every column with a long sentence beside it was.
+   A table too wide for the page scrolls in .table-scroll instead. */
+th, td, table code { overflow-wrap: break-word; }
 ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
@@ -206,6 +216,10 @@ th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-ali
 th { color: var(--cyan); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 td:first-child { white-space: normal; }
 tbody tr:hover { background: var(--panel); }
+/* A group's name inside the settings table: a heading row, ruled under like
+   the column header, so a group starts somewhere the eye can find. */
+.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.table-group:hover { background: transparent; }
 .table-scroll { overflow-x: auto; }
 /* The navigation groups its sections, so a long guide stays scannable. */
 .nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
