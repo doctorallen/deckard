@@ -336,10 +336,7 @@ export class DashboardPanel implements vscode.Disposable {
             widgets: createDashboardWidgets(index, viewPreferences, {
               now: Date.now(),
               upcomingDays: configuration.get<number>('agenda.upcomingDays', 7),
-              showUndated: configuration.get<boolean>(
-                'agenda.showUndated',
-                true,
-              ),
+              agendaQuery: configuration.get<string>('agenda.query', ''),
               tagTitleDisplayMode,
               sourceNotePath: this.getSourceNotePath(),
               relatedNotes: {

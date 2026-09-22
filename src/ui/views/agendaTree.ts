@@ -19,6 +19,7 @@ import {
   AgendaGroup,
   AgendaGroupBy,
   createAgenda,
+  selectAgendaTasks,
 } from '../state/agendaState';
 
 interface AgendaIndexSource {
@@ -44,8 +45,12 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   ),
   today: new vscode.ThemeIcon('target'),
   upcoming: new vscode.ThemeIcon('calendar'),
+  later: new vscode.ThemeIcon('history'),
   nodate: new vscode.ThemeIcon('inbox'),
 };
+
+/** The groups that start folded: what can wait, out of the way of what cannot. */
+const FOLDED_GROUPS: ReadonlySet<string> = new Set(['later', 'nodate']);
 
 /**
  * The icon a group takes when the Agenda is grouped by something else. A
@@ -65,9 +70,9 @@ const GROUPING_ICONS: Readonly<
  * Lists open tasks that need attention soon in the Deckard sidebar, grouped
  * by when they are wanted, by priority, by status, or by who they are for.
  *
- * The tasks are the same whichever grouping is chosen — the open ones inside
- * the Agenda's horizon, and the undated ones when they are shown — so
- * switching changes the axis rather than the list.
+ * The tasks are the same whichever grouping is chosen — the open ones
+ * `deckard.agenda.query` finds, or every open one — so switching changes the
+ * axis rather than the list.
  *
  * Checking a task's box completes it through the same source-safe edit the
  * Dashboard uses, so its ✅ date and next occurrence are written too. The
@@ -155,27 +160,31 @@ export class AgendaTreeProvider
     }
     const days = getUpcomingDays();
     const groupBy = getAgendaGrouping();
-    const undated = getShowUndated();
-    const groups = createAgenda(
-      this.index,
-      Date.now(),
-      days,
+    const query = getAgendaQuery();
+    const selected = selectAgendaTasks(this.index, query);
+    const groups = createAgenda(this.index, Date.now(), {
+      tasks: selected.tasks,
+      upcomingDays: days,
       groupBy,
-      getStatusNamespace(),
-      this.preferences?.value.taskOrder ?? [],
-      undated,
-    );
+      statusNamespace: getStatusNamespace(),
+      taskOrder: this.preferences?.value.taskOrder ?? [],
+    });
     // The badge counts what is overdue or due today however the Agenda is
     // grouped, since that is what it is a badge for.
-    const urgent = createAgenda(this.index, Date.now(), days)
+    const urgent = createAgenda(this.index, Date.now(), {
+      tasks: selected.tasks,
+      upcomingDays: days,
+    })
       .filter((group) => group.id === 'overdue' || group.id === 'today')
       .reduce((total, group) => total + group.entries.length, 0);
     this.setStatus(
-      groups.length === 0
-        ? `Nothing is overdue, due today, or coming up in the next ${days} days${
-            undated ? ', and nothing is waiting without a date' : ''
-          }.`
-        : undefined,
+      selected.error
+        ? `deckard.agenda.query does not parse — ${selected.error} Showing every open task.`
+        : groups.length === 0
+          ? query
+            ? 'No open task matches deckard.agenda.query.'
+            : 'No open tasks.'
+          : undefined,
       urgent,
     );
     this.drawn = groups;
@@ -339,7 +348,9 @@ function createGroupItem(
 ): vscode.TreeItem {
   const item = new vscode.TreeItem(
     group.label,
-    vscode.TreeItemCollapsibleState.Expanded,
+    FOLDED_GROUPS.has(group.id)
+      ? vscode.TreeItemCollapsibleState.Collapsed
+      : vscode.TreeItemCollapsibleState.Expanded,
   );
   item.id = `agenda:${group.id}`;
   item.description = String(group.entries.length);
@@ -468,11 +479,9 @@ function readBoardOptions(): TaskBoardOptions {
   };
 }
 
-/** Whether undated open tasks join the Agenda, from `deckard.agenda.showUndated`. */
-export function getShowUndated(): boolean {
-  return vscode.workspace
-    .getConfiguration('deckard')
-    .get<boolean>('agenda.showUndated', true);
+/** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */
+function getAgendaQuery(): string {
+  return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
 }
 
 function getUpcomingDays(): number {

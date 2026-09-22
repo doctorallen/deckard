@@ -841,10 +841,10 @@
             "description": "How many days ahead the Tasks view's Upcoming group looks for due, scheduled, and start dates.",
             "order": 3
           },
-          "deckard.agenda.showUndated": {
-            "type": "boolean",
-            "default": true,
-            "description": "Collect open tasks that carry no due, scheduled, or start date in a No date group at the end of the Tasks view. Turn this off to keep the view about what is dated.",
+          "deckard.agenda.query": {
+            "type": "string",
+            "default": "",
+            "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
             "order": 3
           },
           "deckard.board.statuses": {

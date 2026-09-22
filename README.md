@@ -450,15 +450,16 @@ Headings written in the underlined `Title`/`===` style are not shown, matching h
 
 ## Tasks view
 
-Open **Tasks** from the Deckard Activity Bar to see the open tasks that need attention soon. Like the Outline, it can be dragged into either sidebar.
+Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by when they are wanted. Like the Outline, it can be dragged into either sidebar.
 
 ![Deckard's Tasks view grouping open tasks into Overdue, Today, and Upcoming beside a note with dated tasks.](docs/images/agenda.png)
 
 - **Overdue** lists tasks whose due date has passed, oldest first.
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
-- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead; a dated task beyond the horizon waits there rather than in **No date**.
-- **No date** collects open tasks carrying no due, scheduled, or start date, most important first, at the end of the view. It is there in every grouping — a task nobody dated is still a task — and `deckard.agenda.showUndated` turns it off for a view about dates alone.
-- **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones inside the view's horizon, and the undated ones while they are shown — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
+- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. `deckard.agenda.upcomingDays` sets how far that reaches.
+- **Later** holds the dated tasks past that, by the date each waits for, and **No date** the open tasks carrying no due, scheduled, or start date at all, most important first. Both start folded, out of the way of what cannot wait.
+- **What the view lists** is every open task, or the open tasks a search finds: set `deckard.agenda.query` to any [query](#query-language), such as `is:mine` for your own, `#project/atlas` for one project's, or `has:due OR has:scheduled OR has:start` to leave undated tasks out. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list, so the view, the widget, and the number agree. A query that does not parse hides nothing and says so at the top of the view.
+- **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones `deckard.agenda.query` finds, or every open one — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
   - **Priority** runs highest to lowest, each group marked with the same emoji the task lines use, and **No priority** last.
   - **Status** reads the `#status/…` tag written on each task line, busiest group first, with **No status** last. It follows `deckard.board.statusNamespace`.
   - **Person** groups by [who each task is for](#who-a-task-is-for), busiest first, with **Nobody named** last.
@@ -873,7 +874,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.inheritedTags": false,
 	"deckard.agenda.groupBy": "due",
 	"deckard.agenda.upcomingDays": 7,
-	"deckard.agenda.showUndated": true,
+	"deckard.agenda.query": "",
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.assigneeFromPersonTag": false,
@@ -925,8 +926,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](#tasks-view) groups are: `due`, `priority`, `status`, or `assignee`. The group control in its title sets the same thing. |
-| `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group looks for due, scheduled, and start dates. |
-| `deckard.agenda.showUndated` | `true` | Collect open tasks that carry no due, scheduled, or start date in a **No date** group at the end of the Tasks view. |
+| `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group reaches; a dated task past that is in **Later**. |
+| `deckard.agenda.query` | Empty | A [query](#query-language) that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as `is:mine`. Empty means every open task. |
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, people, and dependencies after typing `/` in a task. |

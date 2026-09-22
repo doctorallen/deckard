@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { Task, WorkspaceIndex } from '../core/types';
-import { createAgenda } from '../ui/state/agendaState';
+import { createAgenda, selectAgendaTasks } from '../ui/state/agendaState';
 import { groupColumnId } from '../ui/views/agendaTree';
 
 const at = (month: number, day: number): number =>
@@ -24,7 +24,7 @@ suite('Agenda', () => {
         createTask({ id: 'undated' }),
       ]),
       now,
-      7,
+      { upcomingDays: 7 },
     );
 
     assert.deepStrictEqual(
@@ -34,6 +34,9 @@ suite('Agenda', () => {
         // Today puts the more important task first.
         ['today', ['scheduled', 'due-today']],
         ['upcoming', ['not-started', 'upcoming']],
+        // Past the horizon is still a date; no date at all comes last.
+        ['later', ['too-far']],
+        ['nodate', ['undated']],
       ],
     );
     assert.deepStrictEqual(groups[1].entries[0].details, [
@@ -54,7 +57,7 @@ suite('Agenda', () => {
         createTask({ id: 'second', dueAt: at(9, 13), dependsOn: ['a1'] }),
       ]),
       now,
-      7,
+      { upcomingDays: 7 },
     );
     assert.deepStrictEqual(groups[0].entries[0].details, [
       'due today',
@@ -76,7 +79,7 @@ suite('Agenda', () => {
       createTask({ id: 'undated' }),
     ]);
     const grouped = (groupBy: 'priority' | 'status' | 'assignee') =>
-      createAgenda(index, now, 7, groupBy).map((group) => [
+      createAgenda(index, now, { upcomingDays: 7, groupBy }).map((group) => [
         group.label,
         group.entries.map((entry) => entry.task.id),
       ]);
@@ -85,18 +88,18 @@ suite('Agenda', () => {
       grouped('priority'),
       [
         ['⏫ High', ['overdue']],
-        ['No priority', ['due-today', 'upcoming']],
+        ['No priority', ['due-today', 'upcoming', 'undated']],
       ],
       'a group is marked the way its tasks are, and the unmarked one is last',
     );
     assert.deepStrictEqual(grouped('status'), [
       // The busiest group first, and the tasks carrying no status last.
       ['Doing', ['due-today']],
-      ['No status', ['overdue', 'upcoming']],
+      ['No status', ['overdue', 'upcoming', 'undated']],
     ]);
     assert.deepStrictEqual(grouped('assignee'), [
       ['@dana', ['due-today', 'upcoming']],
-      ['Nobody named', ['overdue']],
+      ['Nobody named', ['overdue', 'undated']],
     ]);
   });
 
@@ -107,12 +110,12 @@ suite('Agenda', () => {
       createTask({ id: 'last-due', dueAt: at(9, 18) }),
     ]);
     assert.deepStrictEqual(
-      createAgenda(index, now, 7)[0].entries.map((entry) => entry.task.id),
+      createAgenda(index, now, { upcomingDays: 7 })[0].entries.map((entry) => entry.task.id),
       ['first-due', 'later', 'last-due'],
       'by date until a reader says otherwise',
     );
     assert.deepStrictEqual(
-      createAgenda(index, now, 7, 'due', 'status', ['last-due', 'later'])[0]
+      createAgenda(index, now, { upcomingDays: 7, taskOrder: ['last-due', 'later'] })[0]
         .entries.map((entry) => entry.task.id),
       ['last-due', 'later', 'first-due'],
       'the ranked ones lead, and the rest keep their own order',
@@ -138,14 +141,41 @@ suite('Agenda', () => {
     assert.strictEqual(groupColumnId('none', 'assignee'), 'assignee:');
   });
 
-  test('is empty when no open task has a date in range', () => {
+  test('is empty when every task is done', () => {
     assert.deepStrictEqual(
-      createAgenda(createIndex([createTask({ id: 'undated' })]), now, 7),
+      createAgenda(
+        createIndex([createTask({ id: 'done', completed: true })]),
+        now,
+        { upcomingDays: 7 },
+      ),
       [],
     );
   });
 
-  test('ends with the undated tasks when they are asked for', () => {
+  test('lists the tasks it is given, and no others', () => {
+    const index = createIndex([
+      createTask({ id: 'mine', dueAt: at(9, 13), assignee: '@dana' }),
+      createTask({ id: 'theirs', dueAt: at(9, 13), assignee: '@ren-kade' }),
+      createTask({ id: 'nobodys' }),
+    ]);
+    const ids = (query: string) =>
+      createAgenda(index, now, {
+        tasks: selectAgendaTasks(index, query).tasks,
+        upcomingDays: 7,
+      }).flatMap((group) => group.entries.map((entry) => entry.task.id));
+    assert.deepStrictEqual(ids(''), ['mine', 'theirs', 'nobodys'], 'empty is everything');
+    assert.deepStrictEqual(ids('assignee = @dana'), ['mine']);
+    assert.deepStrictEqual(
+      ids('has:due OR has:scheduled OR has:start'),
+      ['mine', 'theirs'],
+      'the query is how the undated ones are left out',
+    );
+    const broken = selectAgendaTasks(index, 'due >');
+    assert.strictEqual(broken.tasks.length, 3, 'a query that does not parse hides nothing');
+    assert.ok(broken.error, 'and says why');
+  });
+
+  test('ends with the undated tasks, a to-do list of their own', () => {
     const groups = createAgenda(
       createIndex([
         createTask({ id: 'due-today', dueAt: at(9, 13) }),
@@ -153,13 +183,10 @@ suite('Agenda', () => {
         createTask({ id: 'undated-important', priority: 'high' }),
         createTask({ id: 'undated-done', completed: true }),
         createTask({ id: 'too-far', dueAt: at(9, 30) }),
+        createTask({ id: 'waiting', scheduledAt: at(9, 1), startAt: at(10, 15) }),
       ]),
       now,
-      7,
-      'due',
-      'status',
-      [],
-      true,
+      { upcomingDays: 7 },
     );
 
     assert.deepStrictEqual(
@@ -169,13 +196,19 @@ suite('Agenda', () => {
       ]),
       [
         ['Today', ['due-today']],
-        // Last, and a to-do list within itself: what was marked leads. A
-        // dated task out past the horizon is still the horizon's business.
+        // Past the horizon, by the date each waits for: the one not started
+        // until October is placed by its start, not the schedule it missed.
+        ['Later', ['too-far', 'waiting']],
+        // Last, and a to-do list within itself: what was marked leads.
         ['No date', ['undated-important', 'undated']],
       ],
     );
+    assert.deepStrictEqual(groups[1].entries[1].details, [
+      'starts Thu 2026-10-15',
+      'tasks.md',
+    ]);
     assert.deepStrictEqual(
-      groups[1].entries[1].details,
+      groups[2].entries[1].details,
       ['tasks.md'],
       'no date to read means no date said',
     );
@@ -187,7 +220,7 @@ suite('Agenda', () => {
       createTask({ id: 'undated', assignee: '@dana' }),
     ]);
     assert.deepStrictEqual(
-      createAgenda(index, now, 7, 'assignee', 'status', [], true).map(
+      createAgenda(index, now, { upcomingDays: 7, groupBy: 'assignee' }).map(
         (group) => [group.label, group.entries.map((entry) => entry.task.id)],
       ),
       [['@dana', ['due-today', 'undated']]],

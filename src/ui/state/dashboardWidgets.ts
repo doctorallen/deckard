@@ -15,7 +15,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { formatLocalDate, listDailyNotes } from '../commands/dailyNote';
-import { createAgenda } from './agendaState';
+import { createAgenda, selectAgendaTasks } from './agendaState';
 import {
   createDashboardSavedFilters,
   createDashboardTask,
@@ -46,11 +46,8 @@ export interface DashboardWidgetOptions {
   now: number;
   /** How far ahead the agenda widget looks, from `deckard.agenda.upcomingDays`. */
   upcomingDays: number;
-  /**
-   * Whether the agenda widget ends with undated open tasks, from
-   * `deckard.agenda.showUndated`, so Home and the Tasks view agree.
-   */
-  showUndated?: boolean;
+  /** What the agenda widget lists, from `deckard.agenda.query`. */
+  agendaQuery?: string;
   tagTitleDisplayMode: TagTitleDisplayMode;
   /** The note last open in an editor, which Home can rank by and pin. */
   sourceNotePath?: string;
@@ -170,15 +167,10 @@ function createWidget(
       };
     }
     case 'agenda': {
-      const groups = createAgenda(
-        index,
-        options.now,
-        options.upcomingDays,
-        'due',
-        'status',
-        [],
-        options.showUndated ?? false,
-      );
+      const groups = createAgenda(index, options.now, {
+        tasks: selectAgendaTasks(index, options.agendaQuery ?? '').tasks,
+        upcomingDays: options.upcomingDays,
+      });
       return {
         ...widget,
         total: groups.reduce((sum, group) => sum + group.entries.length, 0),
