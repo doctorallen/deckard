@@ -10,6 +10,15 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
+import {
+  compareTasksByColumn,
+  isTaskColumnId,
+  parseTaskColumns,
+  TableSortDirection,
+  TableTask,
+  TASK_COLUMNS,
+  TaskColumnId,
+} from './resultTable';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -23,13 +32,14 @@ import { getHeadingPath } from './dashboardState';
 /** The fence language that marks a query block. */
 export const QUERY_BLOCK_LANGUAGE = 'deckard';
 
-export type QueryBlockSort = 'title' | 'created' | 'updated';
+/**
+ * What a block sorts by: any column a task has. Notes know only `title`,
+ * `created`, and `updated`, and keep their order under any other.
+ */
+export type QueryBlockSort = TaskColumnId;
 
-const QUERY_BLOCK_SORTS: readonly QueryBlockSort[] = [
-  'title',
-  'created',
-  'updated',
-];
+/** How a block shows its tasks: rows of text, or a table of columns. */
+export type QueryBlockView = 'list' | 'table';
 
 /**
  * Display options written after the fence language, as in
@@ -38,8 +48,17 @@ const QUERY_BLOCK_SORTS: readonly QueryBlockSort[] = [
 export interface QueryBlockOptions {
   /** Undefined keeps each list's natural order. */
   sort?: QueryBlockSort;
+  /**
+   * Which way `sort` runs. Undefined is newest first for `created` and
+   * `updated`, as a block always sorted them, and ascending otherwise.
+   */
+  direction?: TableSortDirection;
   /** Most items shown in each list. The totals still count every match. */
   limit?: number;
+  /** Tasks as a table, with `columns`. Undefined is the list. */
+  view?: QueryBlockView;
+  /** The table's columns, in order; the defaults when omitted. */
+  columns?: TaskColumnId[];
   /**
    * Options that could not be understood. They are reported beside the
    * results instead of hiding them, so a typo never blanks the block.
@@ -75,8 +94,18 @@ export interface QueryBlockItem {
   dueAt?: number;
   dueText?: string;
   scheduledAt?: number;
+  startAt?: number;
+  doneAt?: number;
   priority?: TaskPriority;
   recurrence?: string;
+  /** The person's tag as written, such as `@dana`. */
+  assignee?: string;
+  /** The `#status/…` name on the line, without the namespace. */
+  status?: string;
+  /** Tag labels, as written on the line. */
+  tags?: string[];
+  dependsOn?: string[];
+  dependencyId?: string;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -118,11 +147,31 @@ export function parseQueryBlockInfo(
     const name = match?.[1].toLowerCase();
     const value = match?.[2].toLowerCase() ?? '';
     if (name === 'sort') {
-      if (isQueryBlockSort(value)) {
+      if (isTaskColumnId(value)) {
         options.sort = value;
       } else {
         options.warnings.push(
-          `sort must be title, created, or updated, not "${value}".`,
+          `sort must be a column, such as title, due, priority, created, or updated, not "${value}".`,
+        );
+      }
+    } else if (name === 'dir') {
+      if (value === 'asc' || value === 'desc') {
+        options.direction = value;
+      } else {
+        options.warnings.push(`dir must be asc or desc, not "${value}".`);
+      }
+    } else if (name === 'view') {
+      if (value === 'table' || value === 'list') {
+        options.view = value;
+      } else {
+        options.warnings.push(`view must be list or table, not "${value}".`);
+      }
+    } else if (name === 'columns') {
+      const parsed = parseTaskColumns(value);
+      options.columns = parsed.columns;
+      if (parsed.unknown.length > 0) {
+        options.warnings.push(
+          `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`,
         );
       }
     } else if (name === 'limit') {
@@ -135,7 +184,7 @@ export function parseQueryBlockInfo(
       }
     } else {
       options.warnings.push(
-        `Unknown option "${attribute}". Use sort= or limit=.`,
+        `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, or columns=.`,
       );
     }
   }
@@ -236,16 +285,22 @@ export function getQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,
   options: QueryBlockOptions,
+  statusNamespace = 'status',
 ): QueryBlockSnapshot {
   let snapshots = snapshotCache.get(index);
   if (!snapshots) {
     snapshots = new Map();
     snapshotCache.set(index, snapshots);
   }
-  const key = JSON.stringify([new Date().toDateString(), queryText, options]);
+  const key = JSON.stringify([
+    new Date().toDateString(),
+    queryText,
+    options,
+    statusNamespace,
+  ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
-    snapshot = createQueryBlockSnapshot(index, queryText, options);
+    snapshot = createQueryBlockSnapshot(index, queryText, options, statusNamespace);
     snapshots.set(key, snapshot);
   }
   return snapshot;
@@ -255,6 +310,8 @@ export function createQueryBlockSnapshot(
   index: WorkspaceIndex,
   queryText: string,
   options: QueryBlockOptions,
+  /** The namespace of the status tags, from `deckard.board.statusNamespace`. */
+  statusNamespace = 'status',
 ): QueryBlockSnapshot {
   const query = queryText.trim();
   const optionMessages = options.warnings.map(
@@ -301,10 +358,10 @@ export function createQueryBlockSnapshot(
   const notes = [
     ...results.sections.map((section) => createSectionItem(section, index)),
     ...results.files.map(createFileItem),
-  ].sort(createNoteComparator(options.sort));
+  ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
-    .map((task) => createTaskItem(task, index))
-    .sort(createTaskComparator(options.sort));
+    .map((task) => createTaskItem(task, index, statusNamespace))
+    .sort(createTaskComparator(options.sort, options.direction));
 
   return {
     query,
@@ -375,10 +432,19 @@ function createFileItem(file: ParsedFile): QueryBlockItem {
   };
 }
 
-function createTaskItem(task: Task, index: WorkspaceIndex): QueryBlockItem {
+function createTaskItem(
+  task: Task,
+  index: WorkspaceIndex,
+  statusNamespace: string,
+): QueryBlockItem {
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
+  const statusPrefix = `#${statusNamespace.toLowerCase()}/`;
+  const status = task.tags
+    .map((key) => key.toLowerCase())
+    .find((key) => key.startsWith(statusPrefix))
+    ?.slice(statusPrefix.length);
   return {
     id: task.id,
     title: stripTrailingTags(task.title) || task.title.trim(),
@@ -390,8 +456,15 @@ function createTaskItem(task: Task, index: WorkspaceIndex): QueryBlockItem {
     dueAt: task.dueAt,
     dueText: task.dueText,
     scheduledAt: task.scheduledAt,
+    startAt: task.startAt,
+    doneAt: task.doneAt,
     priority: task.priority,
     recurrence: task.recurrence,
+    assignee: task.assignee,
+    status,
+    tags: task.tags.map((key) => task.tagLabels[key] ?? key),
+    dependsOn: task.dependsOn,
+    dependencyId: task.dependencyId,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   };
@@ -413,11 +486,21 @@ export function stripTrailingTags(text: string): string {
 /**
  * Orders notes alphabetically unless a date sort puts the newest first.
  */
+/** Which way a sort runs when the block does not say: dates newest first. */
+function directionOf(
+  sort: QueryBlockSort | undefined,
+  direction: TableSortDirection | undefined,
+): TableSortDirection {
+  return direction ?? (sort === 'created' || sort === 'updated' ? 'desc' : 'asc');
+}
+
 function createNoteComparator(
   sort: QueryBlockSort | undefined,
+  direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
+  const sign = direction === 'asc' ? -1 : 1;
   return (left, right) =>
-    compareBySort(left, right, sort) || compareTitles(left, right);
+    sign * compareBySort(left, right, sort) || compareTitles(left, right);
 }
 
 /**
@@ -427,18 +510,31 @@ function createNoteComparator(
  */
 function createTaskComparator(
   sort: QueryBlockSort | undefined,
+  direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
+  const byColumn =
+    sort === undefined
+      ? undefined
+      : compareTasksByColumn({ column: sort, direction: directionOf(sort, direction) });
   return (left, right) =>
     (left.completed ? 1 : 0) - (right.completed ? 1 : 0) ||
-    (sort === undefined
+    (byColumn === undefined
       ? compareAscending(left.dueAt, right.dueAt) ||
         comparePriority(left, right) ||
         compareSource(left, right)
-      : sort === 'title'
-        ? compareTitles(left, right)
-        : compareBySort(left, right, sort) || compareSource(left, right));
+      : byColumn(toTableTask(left), toTableTask(right)) ||
+        compareSource(left, right));
 }
 
+/** A block's item as the table model reads it. */
+export function toTableTask(item: QueryBlockItem): TableTask {
+  return { ...item, completed: item.completed === true };
+}
+
+/**
+ * A note's part of a sort: its dates, newest first before the direction is
+ * applied. A note has no other column, so any other sort leaves it be.
+ */
 function compareBySort(
   left: QueryBlockItem,
   right: QueryBlockItem,
@@ -487,9 +583,6 @@ function compareDescending(left?: number, right?: number): number {
   return right - left;
 }
 
-function isQueryBlockSort(value: string): value is QueryBlockSort {
-  return (QUERY_BLOCK_SORTS as readonly string[]).includes(value);
-}
 
 function pluralize(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;

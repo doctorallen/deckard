@@ -37,6 +37,65 @@ suite('Deckard query blocks', () => {
     assert.strictEqual(options?.warnings.length, 3);
   });
 
+  test('reads a table view, its columns, and a sort by any column', () => {
+    assert.deepStrictEqual(
+      parseQueryBlockInfo('deckard view=table columns=due,for,status sort=priority dir=desc'),
+      {
+        view: 'table',
+        columns: ['title', 'due', 'assignee', 'status'],
+        sort: 'priority',
+        direction: 'desc',
+        warnings: [],
+      },
+    );
+    const options = parseQueryBlockInfo('deckard view=grid columns=due,colour dir=up');
+    assert.strictEqual(options?.view, undefined);
+    assert.deepStrictEqual(options?.columns, ['title', 'due'], 'the columns it knows are kept');
+    assert.strictEqual(options?.warnings.length, 3);
+    assert.match(options?.warnings[1] ?? '', /no "colour"/);
+  });
+
+  test('sorts tasks by a column, and by date newest first as before', () => {
+    const titles = (info: string) =>
+      createQueryBlockSnapshot(createIndex(), 'tag = #project/atlas', {
+        ...parseQueryBlockInfo(info)!,
+      }).tasks.map((task) => task.title);
+    assert.deepStrictEqual(
+      titles('deckard sort=due'),
+      ['Send summary', 'Draft agenda', 'Book room', 'Collect export'],
+      'open first, soonest due first, undated last, then done',
+    );
+    assert.deepStrictEqual(
+      titles('deckard sort=due dir=desc'),
+      ['Draft agenda', 'Send summary', 'Book room', 'Collect export'],
+      'desc turns the dates round and still keeps undated last',
+    );
+    assert.deepStrictEqual(
+      titles('deckard sort=title'),
+      ['Book room', 'Draft agenda', 'Send summary', 'Collect export'],
+    );
+  });
+
+  test('draws tasks as a table with the columns asked for', () => {
+    const html = renderQueryBlockHtml(
+      'tag = #project/atlas',
+      parseQueryBlockInfo('deckard view=table columns=due,note')!,
+      createIndex(),
+      undefined,
+      new Date(2026, 8, 13).getTime(),
+    );
+    assert.ok(html.includes('<table class="deckard-query-table">'));
+    assert.ok(
+      html.includes('<thead><tr><th scope="col">Task</th><th scope="col">Due</th><th scope="col">Note</th></tr></thead>'),
+      'the title leads, then the columns named',
+    );
+    assert.ok(html.includes('<td class="is-overdue">2026-09-01</td>'), 'an overdue date is marked');
+    assert.ok(html.includes('href="/notes/Atlas%20plan.md#L'), 'the title still links to its line');
+    assert.ok(html.includes('class="deckard-query-row is-done"'), 'a done task is struck');
+    assert.strictEqual(html.split('deckard-query-list').length, 2, 'one list: the notes, above the table');
+    assert.ok(html.indexOf('deckard-query-list') < html.indexOf('deckard-query-table'));
+  });
+
   test('finds blocks with CommonMark fence rules', () => {
     const text = [
       '# Note',
