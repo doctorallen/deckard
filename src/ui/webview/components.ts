@@ -459,7 +459,7 @@ export function getTaskBoardCss(): string {
    auto row sizes to its cards however tall they are, so the column clipped
    them at its max-height and the cards below could not be reached at all. */
 .board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
-.board-column-title { position: sticky; top: 0; z-index: 1; background: var(--panel-deep); padding-bottom: 6px; }
+.board-column-title { padding-bottom: 6px; }
 /* overflow-y alone would compute overflow-x to auto, and then anything that
    reaches past the right edge — a theme's hover nudge, a focus outline — puts
    a horizontal scrollbar under a column that has nothing to scroll sideways. */
