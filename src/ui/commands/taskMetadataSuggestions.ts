@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { findFencedLines } from '../../core/markdown/parser';
+import { findFencedLines, isPersonTag } from '../../core/markdown/parser';
 import {
   addDays,
   formatIsoDate,
@@ -31,6 +31,8 @@ const TASK_CHECKBOX = /^\s*[-*+][ \t]+\[[ xX]\](?=[ \t])/;
 const SLASH_QUERY = /(?:^|[ \t])\/([A-Za-z-]*)$/;
 
 const PRIORITIES = ['highest', 'high', 'medium', 'low', 'lowest'];
+/** How many people the list offers before it becomes a list of everyone. */
+const PERSON_SUGGESTION_LIMIT = 8;
 const REPEAT_RULES = [
   'every day',
   'every weekday',
@@ -176,6 +178,19 @@ function createSuggestions(
       value: '${1:every 2 weeks}',
       snippet: true,
     },
+    ...collectPeople(index).map(
+      ({ key, label }): MetadataSuggestion => ({
+        label: `for ${label}`,
+        field: 'assignee',
+        value: key,
+      }),
+    ),
+    {
+      label: 'for a person',
+      field: 'assignee',
+      value: '${1:@name}',
+      snippet: true,
+    },
     { label: 'task id', field: 'id', value: '${1:id}', snippet: true },
     ...collectOpenTaskIds(index).map(
       ({ id, title }): MetadataSuggestion => ({
@@ -186,6 +201,17 @@ function createSuggestions(
       }),
     ),
   ];
+}
+
+/** The people the workspace writes about most, to hand a task to. */
+function collectPeople(
+  index: WorkspaceIndex,
+): Array<{ key: string; label: string }> {
+  return [...index.tags.values()]
+    .filter((tag) => isPersonTag(tag.key))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, PERSON_SUGGESTION_LIMIT)
+    .map((tag) => ({ key: tag.label, label: tag.label }));
 }
 
 /**

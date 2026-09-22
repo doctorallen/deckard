@@ -4,8 +4,9 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { helpIcon, notesGraphIcon, taskBoardIcon } from './icons';
 
 /**
@@ -54,7 +55,15 @@ export function getSidebarNotesHtml(
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.sidebar-toolbar { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
+/* The toolbar drops under the name when the panel is narrower than both, as
+   VS Code lets a sidebar be, rather than reaching past its edge. */
+.sidebar-header { flex-wrap: wrap; }
+.sidebar-toolbar { display: flex; flex: 0 0 auto; margin-left: auto; justify-content: flex-end; gap: 6px; }
+/* Themes slide a row right on hover, which reads well across a wide list and
+   badly in a panel this narrow: the row has nowhere to go but out, and the
+   panel answers with a scrollbar. The hover keeps its border and ground.
+   Written to outweigh the theme sheet, which is laid down after this one. */
+body .note:hover { transform: none; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
@@ -135,10 +144,10 @@ button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
 .source { margin-top: 4px; font-size: 10px; }
 .empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading related notes...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">

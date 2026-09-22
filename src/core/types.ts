@@ -26,7 +26,6 @@ export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
 
 export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
-export type TaskFilter = 'all' | 'active' | 'completed';
 
 /** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
 export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
@@ -206,8 +205,8 @@ export interface Task {
   /** 🔁 repeat rule as written, such as "every week". */
   recurrence?: string;
   /**
-   * The person the task is for: the first one named on its line. Anyone
-   * named after them is mentioned rather than asked.
+   * 👤 the person the task is for, as their tag is written. Anyone else named
+   * on the line is mentioned rather than asked.
    */
   assignee?: string;
   /** 🆔 name other tasks use in ⛔ to depend on this one. */
@@ -345,6 +344,10 @@ export interface PersistedPreferences {
   recentQueries?: string[];
   /** How the Task Board shows its tasks. */
   taskBoardLayout: TaskLayout;
+  /** The table layout's columns, in order; the defaults when unset. */
+  taskTableColumns?: TaskColumnId[];
+  /** What the table layout is sorted by; unset is the rank order. */
+  taskTableSort?: TableSort;
   /** What the Task Board's columns group tasks by. */
   taskBoardGroup: TaskBoardGroupBy;
 
@@ -543,7 +546,6 @@ export interface SearchPageSnapshot {
     active: number;
     completed: number;
   };
-  taskFilter: TaskFilter;
   renderMode: RenderMode;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
@@ -932,11 +934,6 @@ export interface SetEntitySortMessage {
   mode: TagSortMode;
 }
 
-export interface SetTaskFilterMessage {
-  type: 'setTaskFilter';
-  filter: TaskFilter;
-}
-
 export interface ReorderTasksMessage {
   type: 'reorderTasks';
   taskIds: string[];
@@ -1195,6 +1192,12 @@ export interface OpenHelpMessage {
   type: 'openHelp';
 }
 
+/** The gear's zen row, on every page that has a gear. */
+export interface SetZenModeMessage {
+  type: 'setZenMode';
+  enabled: boolean;
+}
+
 export interface SetRelatedNotesSortMessage {
   type: 'setRelatedNotesSort';
   mode: RelatedNotesSortMode;
@@ -1221,6 +1224,7 @@ export interface ClearEntryRelatedNotesMessage {
 }
 
 export type DashboardMessage =
+  | SetZenModeMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | ToggleFavoriteMessage
@@ -1249,11 +1253,11 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | SetZenModeMessage
   | PinNoteMessage
   | OpenHelpMessage
   | OpenSourceMessage
   | ToggleTaskMessage
-  | SetTaskFilterMessage
   | SetRenderModeMessage
   | OpenTagMessage
   | RenameTagMessage
@@ -1329,6 +1333,8 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   layout: TaskLayout;
   /** The searched tasks as a list, present when `layout` is `list`. */
   tasks?: DashboardTask[];
+  /** The searched tasks as rows and columns, present when `layout` is `table`. */
+  table?: TaskTable;
   /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
   taskSortMode: TaskSortMode;
@@ -1337,6 +1343,26 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   settings: TaskBoardSettings;
   /** Whether the sidebar is showing this search's Refine options. */
   refineInSidebar?: boolean;
+  /** Whether the Tasks view lists this search, so the board can say so. */
+  agendaListsThisSearch?: boolean;
+}
+
+/** The Task Board's table: the columns shown, every column there is, and the rows. */
+export interface TaskTable {
+  columns: { id: TaskColumnId; label: string }[];
+  available: { id: TaskColumnId; label: string }[];
+  /** The column the rows are ordered by; none means the list's own order. */
+  sort?: TableSort;
+  rows: TaskTableRow[];
+}
+
+export interface TaskTableRow {
+  taskId: string;
+  filePath: string;
+  line: number;
+  completed: boolean;
+  /** One cell per column, in the columns' order. */
+  cells: TableCell[];
 }
 
 /** The `deckard.board` settings, as the Task Board's view options show them. */
@@ -1346,7 +1372,56 @@ export interface TaskBoardSettings {
 }
 
 /** Whether the Task Board shows its tasks as a list or as columns. */
-export type TaskLayout = 'list' | 'board';
+export type TaskLayout = 'list' | 'board' | 'table';
+
+/**
+ * A table of tasks: the query's results as rows, its fields as columns. The
+ * model that makes the cells and sorts the rows is `resultTable.ts`; these
+ * are the names a snapshot, a message, and a preference carry.
+ */
+export type TaskColumnId =
+  | 'title'
+  | 'due'
+  | 'scheduled'
+  | 'start'
+  | 'done'
+  | 'priority'
+  | 'assignee'
+  | 'status'
+  | 'tags'
+  | 'note'
+  | 'created'
+  | 'updated'
+  | 'blockedBy'
+  | 'id';
+
+export type TableSortDirection = 'asc' | 'desc';
+
+export interface TableSort {
+  column: TaskColumnId;
+  direction: TableSortDirection;
+}
+
+/**
+ * One cell: its text, and what it is, so a surface can colour an overdue
+ * date or quieten a file name without knowing which column it drew.
+ */
+export interface TableCell {
+  text: string;
+  kind?: 'overdue' | 'muted';
+}
+
+/** Sorts the table by a column; the same column again turns it round, and none clears it. */
+export interface SetTableSortMessage {
+  type: 'setTableSort';
+  column?: TaskColumnId;
+}
+
+/** Chooses the table's columns. */
+export interface SetTableColumnsMessage {
+  type: 'setTableColumns';
+  columns: TaskColumnId[];
+}
 
 export interface SetTaskLayoutMessage {
   type: 'setTaskLayout';
@@ -1385,6 +1460,11 @@ export interface SaveBoardSearchMessage {
   type: 'saveBoardSearch';
 }
 
+/** Makes the Tasks view list the Task Board's search. */
+export interface UseSearchForAgendaMessage {
+  type: 'useSearchForAgenda';
+}
+
 /** Asks the board to show every task a column is holding back. */
 export interface ShowColumnRestMessage {
   type: 'showColumnRest';
@@ -1392,9 +1472,11 @@ export interface ShowColumnRestMessage {
 }
 
 export type TaskBoardMessage =
+  | SetZenModeMessage
   | OpenHelpMessage
   | ShowColumnRestMessage
   | SaveBoardSearchMessage
+  | UseSearchForAgendaMessage
   | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage
@@ -1404,6 +1486,8 @@ export type TaskBoardMessage =
   | SetBoardQueryMessage
   | SetTaskLayoutMessage
   | SetTaskSortMessage
+  | SetTableSortMessage
+  | SetTableColumnsMessage
   | ReorderTasksMessage
   | SetBoardStatusesMessage
   | SetBoardStatusNamespaceMessage;

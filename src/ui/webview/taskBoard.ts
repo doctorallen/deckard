@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
+import { setZenMode } from './zenMode';
 
 import { parseQuery } from '../../core/query/queryParser';
 import { PreferencesStore } from '../../core/storage/preferences';
@@ -12,10 +14,12 @@ import {
   readTaskBoardOptions,
   updateTaskBoardSetting,
 } from '../commands/taskBoardActions';
+import { writeSetting } from '../commands/settings';
 import {
   mergeOrder,
   normalizeTagTitleDisplayMode,
 } from '../state/dashboardState';
+import { normalizeAgendaQuery } from '../state/agendaState';
 import { createTaskBoard } from '../state/taskBoardState';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseTaskBoardMessage } from './messages';
@@ -69,7 +73,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           // The page reloads and asks for state again when it is ready.
           this.renderHtml();
         } else if (
@@ -248,7 +252,42 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         tagTitleDisplayMode,
       ),
       refineInSidebar: this.activeSearch.isRefineInSidebar(this),
+      agendaListsThisSearch:
+        normalizeAgendaQuery(
+          vscode.workspace
+            .getConfiguration('deckard')
+            .get<string>('agenda.query', ''),
+        ) === normalizeAgendaQuery(this.query),
     };
+  }
+
+  /**
+   * Makes the Tasks view list this search. The board is where a search is
+   * tried with its results in view, so this is how the view's search is
+   * edited: open it here, change it, keep it.
+   */
+  private async useSearchForAgenda(): Promise<void> {
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    const query = normalizeAgendaQuery(this.query);
+    if (normalizeAgendaQuery(configuration.get<string>('agenda.query', '')) === query) {
+      void vscode.window.showInformationMessage(
+        'The Tasks view lists this search already.',
+      );
+      return;
+    }
+    // The value goes where it is already set, as the board's own settings do.
+    const target =
+      configuration.inspect('agenda.query')?.workspaceValue !== undefined
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+    if (await writeSetting('agenda.query', query, target, configuration)) {
+      void vscode.window.showInformationMessage(
+        query
+          ? `The Tasks view lists "${query}" now.`
+          : 'The Tasks view lists every open task now.',
+      );
+      this.refresh();
+    }
   }
 
   /**
@@ -308,6 +347,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     const index = this.indexer.getSnapshot();
 
     switch (message.type) {
+      case 'setZenMode':
+        await setZenMode(message.enabled);
+        return;
       case 'ready':
         this.refresh();
         return;
@@ -331,6 +373,25 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'setTaskSort':
         await this.preferences.setTaskSortMode(message.mode);
         return;
+      case 'setTableSort': {
+        // The same column again turns the sort round; none is the rank order.
+        const current = this.preferences.value.taskTableSort;
+        await this.preferences.setTaskTableSort(
+          message.column === undefined
+            ? undefined
+            : {
+                column: message.column,
+                direction:
+                  current?.column === message.column && current.direction === 'asc'
+                    ? 'desc'
+                    : 'asc',
+              },
+        );
+        return;
+      }
+      case 'setTableColumns':
+        await this.preferences.setTaskTableColumns(message.columns);
+        return;
       case 'reorderTasks':
         if (this.preferences.value.taskSortMode === 'rank') {
           await this.preferences.setTaskOrder(
@@ -343,6 +404,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         return;
       case 'saveBoardSearch':
         await this.saveSearch();
+        return;
+      case 'useSearchForAgenda':
+        await this.useSearchForAgenda();
         return;
       case 'setBoardStatuses':
         await updateTaskBoardSetting('statuses', [

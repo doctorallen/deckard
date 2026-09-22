@@ -190,6 +190,61 @@ suite('Task board', () => {
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });
 
+  test('shows the searched tasks as a table, sorted by a column when asked', () => {
+    const tabled = createTaskBoard(
+      createIndex(),
+      preferencesWith({ taskBoardLayout: 'table' }),
+      { query: '' },
+      options,
+    );
+    assert.strictEqual(tabled.layout, 'table');
+    assert.strictEqual(tabled.tasks, undefined, 'the list is not sent as well');
+    assert.deepStrictEqual(
+      tabled.table?.columns.map((column) => column.id),
+      ['title', 'due', 'priority', 'assignee', 'note'],
+      'the default columns until others are chosen',
+    );
+    assert.strictEqual(tabled.table?.available.length, 14);
+    assert.strictEqual(tabled.table?.rows.length, tabled.taskCounts.all);
+    assert.ok(
+      tabled.table?.rows.every((row) => row.cells.length === 5 && row.cells[0].text),
+      'every row has a cell per column and a title',
+    );
+
+    const chosen = createTaskBoard(
+      createIndex(),
+      preferencesWith({
+        taskBoardLayout: 'table',
+        taskTableColumns: ['title', 'status'],
+        taskTableSort: { column: 'title', direction: 'desc' },
+      }),
+      { query: '' },
+      options,
+    );
+    const titles = chosen.table?.rows.map((row) => row.cells[0].text) ?? [];
+    assert.deepStrictEqual(titles, [...titles].sort().reverse(), 'sorted by title, last first');
+    assert.deepStrictEqual(chosen.table?.columns.map((column) => column.label), ['Task', 'Status']);
+    assert.deepStrictEqual(chosen.table?.sort, { column: 'title', direction: 'desc' });
+  });
+
+  test('accepts the table messages, and refuses a column it does not have', () => {
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'table' }),
+      { type: 'setTaskLayout', layout: 'table' },
+    );
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setTableSort', column: 'due' }),
+      { type: 'setTableSort', column: 'due' },
+    );
+    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setTableSort' }), { type: 'setTableSort' });
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'colour' }), undefined);
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'setTableColumns', columns: ['title', 'due'] }),
+      { type: 'setTableColumns', columns: ['title', 'due'] },
+    );
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableColumns', columns: ['due', 7] }), undefined);
+  });
+
   test('accepts the Task Board’s layout, list, and settings messages', () => {
     assert.deepStrictEqual(
       parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'list' }),

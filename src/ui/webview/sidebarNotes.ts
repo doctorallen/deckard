@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../core/timing';
@@ -103,7 +104,7 @@ export class SidebarNotesView
         ) {
           this.refresh();
         }
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           this.renderHtml();
           this.refresh();
         }

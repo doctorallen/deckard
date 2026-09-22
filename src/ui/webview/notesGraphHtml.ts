@@ -3,8 +3,9 @@ import * as vscode from 'vscode';
 import {
   createNonce,
   getBaseCss,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Builds the Notes Graph document: a full-viewport Canvas 2D force-directed
@@ -104,10 +105,10 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .tooltip .tooltip-meta { color: var(--muted); font: 10px var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
 .empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: 12px var(--font-mono); text-transform: uppercase; pointer-events: none; }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <canvas id="graph" tabindex="0" role="application" aria-label="Notes graph. Press Tab or the arrow keys to move between nodes, Enter to open one, Escape to clear." aria-describedby="graph-legend"></canvas>
 <div class="empty-state" id="empty-state">No indexed notes yet — save a Markdown file with tags or links.</div>
 <div class="overlay" role="group" aria-label="Graph controls">

@@ -67,6 +67,12 @@ export interface MarkdownParseOptions {
   noteBoundaries?: NoteBoundaries;
   entityNamespaceAliases?: EntityNamespaceAliases;
   personMarker?: string;
+  /**
+   * Whether a task with no 👤 field is owned by the first person named in its
+   * sentence, as Deckard read it before the field existed; see
+   * `deckard.tasks.assigneeFromPersonTag`.
+   */
+  assigneeFromPersonTag?: boolean;
 }
 
 export type EntityNamespaceAliases = Readonly<Record<string, string>>;
@@ -252,6 +258,7 @@ export function parseMarkdown(
     frontmatter.tags,
     personMarker,
     dateAnchor,
+    options.assigneeFromPersonTag ?? false,
   );
 
   const blockIds = findBlockIds(lines, fencedLines);
@@ -884,8 +891,65 @@ function normalizeTagReferences(
  * Whether a tag key names a person: an `@` tag, whatever marker was typed for
  * it, or one under the `#person/` namespace.
  */
+/**
+ * The person a task is for: the one its 👤 field names, and nobody otherwise.
+ *
+ * A name in the sentence says only that the task mentions them — notes are
+ * written about people as often as for them — so asking someone to do
+ * something is written down rather than guessed. `assigneeFromPersonTag`
+ * restores the older reading, where the first person on the line owned it.
+ *
+ * The written name is answered with the tag key from the line itself when one
+ * matches, so the person the task points at is the person the index holds.
+ */
+function readAssignee(
+  written: string | undefined,
+  inlineTags: readonly TagReference[],
+  assigneeFromPersonTag: boolean,
+): string | undefined {
+  const people = inlineTags.filter((tag) => isPersonTag(tag.key));
+  if (written === undefined) {
+    return assigneeFromPersonTag ? people[0]?.key : undefined;
+  }
+  const name = personTagName(written);
+  return (
+    people.find((tag) => personTagName(tag.key) === name)?.key ?? written
+  );
+}
+
+/** A person's name without its marker or namespace, for comparing the two. */
+function personTagName(value: string): string {
+  const text = value.trim().toLocaleLowerCase();
+  const bare = text.startsWith('@') ? text.slice(1) : text;
+  const separator = bare.lastIndexOf('/');
+  return separator < 0 ? bare : bare.slice(separator + 1);
+}
+
 export function isPersonTag(key: string): boolean {
   return key.startsWith('@') || key.toLocaleLowerCase().startsWith('#person/');
+}
+
+/**
+ * A person as a task's 👤 field should name them, or nothing when the words
+ * are not one person: `dana`, `@dana` and `#person/dana` all come back as the
+ * tag they are, so the field and the people index hold the same string.
+ */
+export function readPerson(
+  written: string,
+  personMarker = '@',
+): string | undefined {
+  const text = written.trim();
+  for (const candidate of [text, `${personMarker}${text}`]) {
+    const tags = extractTags(candidate, undefined, personMarker);
+    if (
+      tags.length === 1 &&
+      isPersonTag(tags[0].key) &&
+      tags[0].label === candidate
+    ) {
+      return tags[0].label;
+    }
+  }
+  return undefined;
 }
 
 function normalizeTagKey(
@@ -1329,6 +1393,8 @@ function findTasks(
   personMarker?: string,
   /** The day loose dates such as "next Friday" count from. */
   dateAnchor?: number,
+  /** See `readAssignee`. */
+  assigneeFromPersonTag = false,
 ): Task[] {
   return lines.flatMap((line, lineIndex) => {
     if (fencedLines.has(lineIndex)) {
@@ -1374,9 +1440,11 @@ function findTasks(
         dueAt: dueDate?.at,
         dueText: dueDate?.text,
         ...omitUndefined({
-          // The first person written on the task line owns it; anyone named
-          // after them is mentioned, not asked.
-          assignee: inlineTags.find((tag) => isPersonTag(tag.key))?.key,
+          assignee: readAssignee(
+            fields.assignee,
+            inlineTags,
+            assigneeFromPersonTag,
+          ),
           scheduledAt: parseIsoDate(fields.scheduled),
           startAt: parseIsoDate(fields.start),
           doneAt: parseIsoDate(fields.done),

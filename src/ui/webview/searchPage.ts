@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
+import { setZenMode } from './zenMode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -15,7 +17,6 @@ import {
   Section,
   TagTitleDisplayMode,
   Task,
-  TaskFilter,
   WorkspaceIndex,
 } from '../../core/types';
 import {
@@ -62,7 +63,7 @@ export class SearchPanels implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           this.panels.forEach((panel) => panel.renderHtml());
           this.refresh();
         } else if (
@@ -253,7 +254,6 @@ interface SearchPanelHost {
 class SearchPanel implements SearchSource, vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
-  private taskFilter: TaskFilter = 'active';
   /**
    * Which page of notes and of tasks the page is showing. A workspace-wide
    * search used to send, and draw, every one of them on every save: several
@@ -422,7 +422,6 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       this.queryText,
       {
         originQuery: this.originQuery,
-        taskFilter: this.taskFilter,
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         notePage: this.notePage,
         taskPage: this.taskPage,
@@ -551,6 +550,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
    */
   private async handleValidMessage(message: SearchPageMessage): Promise<void> {
     switch (message.type) {
+      case 'setZenMode':
+        await setZenMode(message.enabled);
+        return;
       case 'setOverviewQuery':
         await this.applyQuery(message.query, message.remember !== false);
         return;
@@ -588,13 +590,6 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         this.notePage = 1;
         this.taskPage = 1;
         await this.preferences.setSearchPageSize(message.size);
-        return;
-      case 'setTaskFilter':
-        this.taskFilter = message.filter;
-        // A different filter is a different list of tasks, read from its
-        // first page rather than from wherever the last list had got to.
-        this.taskPage = 1;
-        this.refresh();
         return;
       case 'setRenderMode':
         await this.preferences.setRenderMode(message.mode);
@@ -701,13 +696,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     }
     const results = evaluateQuery(index, node);
     return {
-      tasks: results.tasks.filter((task) =>
-        this.taskFilter === 'all'
-          ? true
-          : this.taskFilter === 'completed'
-            ? task.completed
-            : !task.completed,
-      ),
+      // The search is the filter: is:open, is:done, and the rest say which
+      // tasks, so the pane shows every task the search found.
+      tasks: results.tasks,
       sections: results.sections,
     };
   }

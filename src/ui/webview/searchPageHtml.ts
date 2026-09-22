@@ -6,8 +6,9 @@ import {
   getComponentScript,
   getQueryEditorCss,
   getQueryEditorScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Builds a search page: the search box, the tag or entity a one-tag search is
@@ -101,10 +102,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
    positioned against. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading search...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
@@ -343,7 +344,7 @@ ${getQueryEditorScript()}
       : '<div class="empty">' + (state.tag && !drafting ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
-      : '<div class="empty">' + (state.taskFilter === 'active' ? 'No open tasks match this search.' : 'No tasks match this filter.') + otherResults('tasks') + '</div>';
+      : '<div class="empty">' + 'No tasks match this search.' + otherResults('tasks') + '</div>';
     const tasksPaged = tasks + tasksPagination;
     if (!tabChosen && state.layout !== 'split') {
       activeTab = notesCount === 0 && tasksCount > 0 ? 'tasks' : 'notes';
@@ -351,7 +352,7 @@ ${getQueryEditorScript()}
     // Bulk Edit belongs beside the heading it acts on, not out with the
     // controls that change how the pane is shown.
     const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + editResultsButton('notes', notesCount) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + editResultsButton('tasks', tasksCount) + '<div class="overview-pane-controls">' + renderTaskFilterSwitch(state.taskFilter, state.taskCounts, 'set-task-filter') + '</div></div>' + tasksPaged + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + editResultsButton('tasks', tasksCount) + '</div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
@@ -367,6 +368,7 @@ ${getQueryEditorScript()}
       { label: 'Format', html: formatControls },
       { label: 'Note columns', html: columnChoices('notes', state.noteColumns) },
       { label: 'Task columns', html: columnChoices('tasks', state.taskColumns) },
+      renderZenOption(),
     ]);
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span></label>';
     const savedViewName = state.savedViewName
@@ -435,7 +437,6 @@ ${getQueryEditorScript()}
       const action = target.dataset.action;
       if (action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
       if (action === 'set-layout') vscode.postMessage({ type: 'setTagOverviewLayout', layout: target.dataset.layout });
-      if (action === 'set-task-filter') vscode.postMessage({ type: 'setTaskFilter', filter: target.dataset.filter });
       if (action === 'edit-results') vscode.postMessage({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'set-columns') {
         const columns = Number(target.dataset.value);

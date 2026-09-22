@@ -66,6 +66,7 @@ import { StatsPanel } from './ui/webview/stats';
 import { TaskBoardPanel } from './ui/webview/taskBoard';
 import { ActiveSearch } from './ui/webview/activeSearch';
 import { SearchPanels } from './ui/webview/searchPage';
+import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import {
   OutlineTreeProvider,
   pickOutlineTag,
@@ -76,6 +77,7 @@ import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
 import {
   AgendaTreeProvider,
+  getAgendaQuery,
   pickAgendaGrouping,
 } from './ui/views/agendaTree';
 import { TaskStatusBar } from './ui/views/taskStatusBar';
@@ -345,6 +347,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
   void syncOutlineFollowCursorContext();
+  void syncZenModeContext();
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'deckard.outline.revealSection',
@@ -380,11 +383,22 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(),
     ),
+    // The board is the search editor: the view's search opens there to be
+    // tried and changed, and its Tasks view button keeps it.
+    vscode.commands.registerCommand('deckard.agenda.editQuery', () =>
+      taskBoard.show(getAgendaQuery()),
+    ),
     vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
       setOutlineFollowCursor(true),
     ),
     vscode.commands.registerCommand('deckard.outline.disableFollowCursor', () =>
       setOutlineFollowCursor(false),
+    ),
+    vscode.commands.registerCommand('deckard.enableZenMode', () =>
+      setZenMode(true),
+    ),
+    vscode.commands.registerCommand('deckard.disableZenMode', () =>
+      setZenMode(false),
     ),
   );
   context.subscriptions.push(

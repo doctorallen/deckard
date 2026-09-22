@@ -8,6 +8,9 @@
 //
 //   npm run test:ui
 const { pages } = require('./pages.js');
+// Required after pages.js, which is what redirects 'vscode' to the stub.
+const { getZenCss } = require('../../out/ui/webview/components.js');
+const zenSheet = getZenCss().trim();
 /**
  * Layout each page must still have after the cascade.
  *
@@ -45,6 +48,13 @@ const LAYOUT_CONTRACTS = {
     ['main', 'max-width', 'none'],
     ['main', 'border-top', 'var(--cyan)'],
     ['.board', 'grid-auto-flow', 'column'],
+    // A column that cannot shrink its cards row clips the tasks below the
+    // fold with no way to reach them.
+    ['.board-column', 'grid-template-rows', 'minmax(0, 1fr)'],
+    // overflow-y on its own computes overflow-x to auto, and then a hover
+    // nudge or a focus ring puts a horizontal scrollbar under the column.
+    ['.board-cards', 'overflow-x', 'hidden'],
+    ['.board-cards .board-card:hover', 'transform', 'none'],
   ],
 };
 
@@ -79,10 +89,10 @@ const CONTENT_ROWS = [
 ];
 const SHARED_HELPERS = [
   'escapeHtml', 'renderTagLabel', 'renderTagButton', 'renderInlineTitle',
-  'renderTaskTitle', 'taskFilterIcon', 'formatEntityTitle',
+  'renderTaskTitle', 'formatEntityTitle',
   'closeTagContextMenu', 'openTagContextMenu', 'installTagContextMenu',
   'renderTaskBoard', 'renderTaskBoardCard', 'renderTaskBoardGroupSwitch',
-  'installTaskBoard',
+  'installTaskBoard', 'renderZenOption',
 ];
 let fail = 0;
 for (const [name, render] of pages) {
@@ -135,6 +145,15 @@ for (const [name, render] of pages) {
         `${selector} { ${property} } should include "${expected}", got "${actual ?? 'nothing'}"`,
       );
     }
+  }
+
+  // Zen is the last layer. Its rules only beat a theme's because they come
+  // after them — LCARS' .metric:nth-child(3n + 2)::before ties with
+  // body.zen .metric::before on specificity, so position is what decides it.
+  if (!styles.includes(zenSheet)) {
+    problems.push('the zen sheet is missing or altered after getZenCss()');
+  } else if (styles.trimEnd() !== styles.slice(0, styles.indexOf(zenSheet)) + zenSheet) {
+    problems.push('the zen sheet is not the last layer in the style block');
   }
 
   // Tokens must be declared once, by the shared sheet.

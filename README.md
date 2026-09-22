@@ -22,7 +22,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Tasks view](#tasks-view) | Open tasks grouped by due status, priority, status, or person, which you can complete from their checkboxes. |
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
 | [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, or person, where dragging a card rewrites the task in its note, or as a ranked list. |
-| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and who a task is for, written in either Obsidian Tasks format. |
+| [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and a 👤 field for who a task is for, written in either Obsidian Tasks format. |
 | [Task editor](#editing-a-whole-task) | One command builds or edits a whole task — dates in plain words, priority, repeat rule, what it waits for — and writes the line. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
@@ -65,6 +65,18 @@ Set `deckard.theme` to choose the visual style used by Deckard webviews. The def
 | <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220"> | <img src="docs/images/dashboard-synthwave.png" alt="Synthwave theme Dashboard." width="220"> |
 | **Cooper** | | |
 | <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Dashboard." width="220"> | | |
+
+## Zen mode
+
+Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, or run `Deckard: Zen Mode`, to turn Deckard's own chrome down.
+
+Zen mode is not a theme, and it does not replace one. A theme picks the colours; zen picks how much frame is drawn around them, so the two compose — any of the eight themes above can be read in zen.
+
+**What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's totals are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
+
+**What it does not change.** Every button, filter, tab, count, checkbox, and tag stays exactly where it was — zen hides ornament and folds provenance, and removes no functionality. The folded text is moved off-screen rather than out of the page, so a screen reader still announces it and find-in-page still finds it. A task's due date, priority, and overdue marker never fold: they are the point of a task row. Nor does a search that Deckard could not parse stop saying so.
+
+**What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.
 
 ## Get started
 
@@ -250,18 +262,21 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 
 ### Who a task is for
 
-The first person named on a task line is the person it is for; anyone named after them is mentioned rather than asked:
+A `👤` field says who a task is for. Notes name people for all sorts of reasons — a task can be *about* someone without being *theirs* — so being asked to do something is written down rather than inferred from the sentence:
 
 ```markdown
-- [ ] Chase the contractor @dana with @ren-kade   <!-- Dana's task -->
-- [ ] Send the proposal #person/ren-kade          <!-- Ren's task -->
+- [ ] Chase the contractor @ren-kade 👤 @dana     <!-- Dana's task; Ren is mentioned -->
+- [ ] Send the proposal [assignee:: #person/ren-kade]  <!-- Ren's task -->
+- [ ] Write up what @dana said                    <!-- about Dana, nobody's task -->
 - [ ] Book the room                               <!-- nobody's yet -->
 ```
 
-- Nothing new is written into your notes: this reads the people you were already writing. `@dana` and `#person/dana` name the same person, whichever way either side writes it.
+- `👤` and `[assignee:: …]` are the same field in the two [task metadata](#task-metadata) formats, and Deckard writes whichever one the line already uses. `🧑` is read too.
+- The person is named as their tag is written, so `@dana` in the field is the same `@dana` the rest of your notes and the [people](#people) views already know. `@dana` and `#person/dana` name the same person, whichever way either side writes it.
 - Search for them with `assignee = @dana`, `assignee = none`, `is:assigned`, or `is:unassigned`.
-- Set `deckard.me` to your own name, such as `@ren-kade`, and `is:mine` finds what is yours. Left empty, `is:mine` finds nothing rather than guessing.
-- The [Task board](#task-board) groups by **Person**, a column each, busiest first, with **Nobody named** at the end — the waiting-on view. Its columns take no dropped cards: who a task is for is written in its sentence, which is yours to word, not a drag's to guess.
+- `is:mine` finds what is yours: the tasks whose `👤` names you, once `deckard.me` says who you are — `@ren-kade`, say — and the tasks for nobody in particular, which fall to whoever is reading. `assignee = none` is the second kind alone.
+- The [Task board](#task-board) groups by **Person**, a column each, busiest first, with **Nobody named** at the end — the waiting-on view. Dropping a card on a person writes the field, and dropping it on **Nobody named** clears it; the words of the task are never touched.
+- Deckard read the first person in a task's words as its owner before this field existed. `deckard.tasks.assigneeFromPersonTag` turns that reading back on for lines that carry no `👤`.
 
 ### Dataview format
 
@@ -271,7 +286,7 @@ Tasks can also be written in the plugin's text-only Dataview format, and Deckard
 - [ ] Send the proposal [due:: 2026-09-20] [scheduled:: 2026-09-18] [priority:: high] [repeat:: every week]
 ```
 
-The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`, `priority`, `repeat`, `id`, and `dependsOn`, in square or round brackets. Other Dataview fields, such as `[owner:: Ren]`, stay part of the title. When Deckard writes a date, such as a completion date or a repeating task's next dates, it uses the format the task already uses. For a task with no metadata yet, `deckard.tasks.metadataFormat` chooses.
+The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`, `priority`, `repeat`, `id`, `dependsOn`, and Deckard's own `assignee`, in square or round brackets. Other Dataview fields, such as `[owner:: Ren]`, stay part of the title. When Deckard writes a date, such as a completion date or a repeating task's next dates, it uses the format the task already uses. For a task with no metadata yet, `deckard.tasks.metadataFormat` chooses.
 
 ### Editing a whole task
 
@@ -286,13 +301,13 @@ The pick lists every field with what the task says now, headed by the line as it
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
 | **Repeats** | A common rule, or any rule you write |
-| **Assignee** | Who the task is for — the first person named in its words; see [Who a task is for](#who-a-task-is-for) |
+| **Assignee** | Who the task is for — its `👤` field; see [Who a task is for](#who-a-task-is-for) |
 | **Blocked by** | The `🆔` ids of the tasks that come first |
 | **Add a tag** | A tag from your workspace, or a new one, written at the end of the description |
 
 Dates are written the way people write them — `2026-09-25`, `today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `+2w`, `1 month` — and the box says which day it read as you type, such as *Friday 2026-09-25*. An empty answer clears the date, and words Deckard cannot read as a day are refused rather than guessed at.
 
-- **Assignee** offers the people your notes already name, or takes a new one. Naming someone replaces whoever was named first, since that is who the task is for; anyone named after them was a mention and stays one. **Nobody** takes the first name off, which hands the task to whoever is named next.
+- **Assignee** offers the people your notes already name, or takes a new one — `dana` and `@dana` both read as the person. It writes the `👤` field and leaves the words alone, so a person the task mentions stays mentioned. **Nobody** takes the field off.
 - **Nothing is written until you choose Write the task.** Escape leaves the line as it was.
 - The line is written in the format it already uses, or `deckard.tasks.metadataFormat` for a task with no metadata yet, and in the order [Tasks](https://publish.obsidian.md/tasks) writes it.
 - Everything Deckard does not offer to edit is kept: a `^block-id` stays at the end of the line, an `🏁` on-completion marker stays where it was, and a `➕` created date is left alone.
@@ -306,6 +321,7 @@ Type `/` after a space in a task to pick metadata instead of typing it:
 - **due today**, **due tomorrow**, **due in a week**, and **due on a date**, with the same choices for scheduled and start dates;
 - the five priorities, from **highest priority** to **lowest priority**;
 - common repeat rules, or **repeats on a rule** to write your own;
+- **for @dana** for each person your notes name often, and **for a person** to write one;
 - **task id**, and **depends on** each open task's id.
 
 Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the format the task already uses, or `deckard.tasks.metadataFormat` for a task without metadata. Set `deckard.tasks.metadataSuggestions` to `false` to turn them off.
@@ -446,14 +462,16 @@ Headings written in the underlined `Title`/`===` style are not shown, matching h
 
 ## Tasks view
 
-Open **Tasks** from the Deckard Activity Bar to see the open tasks that need attention soon. Like the Outline, it can be dragged into either sidebar.
+Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by when they are wanted. Like the Outline, it can be dragged into either sidebar.
 
 ![Deckard's Tasks view grouping open tasks into Overdue, Today, and Upcoming beside a note with dated tasks.](docs/images/agenda.png)
 
 - **Overdue** lists tasks whose due date has passed, oldest first.
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
-- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. Set `deckard.agenda.upcomingDays` to look further ahead.
-- **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones inside the view's horizon — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
+- **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. `deckard.agenda.upcomingDays` sets how far that reaches.
+- **Later** holds the dated tasks past that, by the date each waits for, and **No date** the open tasks carrying no due, scheduled, or start date at all, most important first. Both start folded, out of the way of what cannot wait.
+- **What the view lists** is every open task, or the open tasks a search finds: set `deckard.agenda.query` to any [query](#query-language), such as `is:mine` for your own, `#project/atlas` for one project's, or `has:due OR has:scheduled OR has:start` to leave undated tasks out. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list, so the view, the widget, and the number agree. A query that does not parse hides nothing and says so at the top of the view. The search icon in the view's title opens its search on the [Task board](#task-board), where it can be tried and changed with the results in view; the board's **Tasks view** button then keeps it. The view's title line shows the search it lists.
+- **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones `deckard.agenda.query` finds, or every open one — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
   - **Priority** runs highest to lowest, each group marked with the same emoji the task lines use, and **No priority** last.
   - **Status** reads the `#status/…` tag written on each task line, busiest group first, with **No status** last. It follows `deckard.board.statusNamespace`.
   - **Person** groups by [who each task is for](#who-a-task-is-for), busiest first, with **Nobody named** last.
@@ -484,7 +502,8 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 - **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
 - Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
 - Search the tasks with the same [search box](#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks, and a search you run is added to your recent searches. The board opens on `is:open`, since a board is for what is still to do; clear the box for every task, or search `is:done` for the finished ones.
-- **Save**, beside the search box, keeps the search as a saved search that reopens on the Task board.
+- **Save**, beside the search box, keeps the search as a saved search that reopens on the Task board. **Tasks view** makes the [Tasks view](#tasks-view) list the search instead; it is lit while the view lists the board's current one.
+- **Table** shows the same tasks as rows and columns: the title, due date, priority, who it is for, and its note by default, and any of a task's other fields — scheduled, start, done, status, tags, created, updated, what it is blocked by, its id — chosen in the gear's **Columns**. A column header sorts by it, again turns the sort round, and **Rank order** under the search box goes back to the order you ranked; a task with nothing in the column comes last either way. The checkbox completes the task and the row opens it. A [query block](#query-blocks) draws the same table inside a note with `view=table`.
 - **List** shows the same tasks as rows, with **Sort: Rank/Created/Updated**. In Rank, drag a row or right-click it to move it to the top or bottom; date sorting uses the source file's timestamps. The grouping switch sits under the search box while the board is shown, and the sort while the list is. Both show exactly what the search found: the page has no separate All/Open/Done filter, because the search box says the same thing for both.
 - **Status columns** in the gear lists the status columns in order. Drag a column's row to reorder it, or right-click it to move it first or last; add one, remove one with its **×**, and set the tag namespace a status is written with. Deckard saves these to `deckard.board.statuses` and `deckard.board.statusNamespace`, in the workspace's settings when it already sets them and in your user settings otherwise.
 - Select a card to open its line, or one of its tags to open that tag's overview. Only a status written on the task line counts, not one inherited from a heading, because moving the card could not change it.
@@ -546,7 +565,7 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 - **One tag is its overview.** A search of exactly one tag shows the tag, or the entity it names, as the page's title, and the [hub note](#hub-notes) that describes it above its entries. The hub's own entries are not listed again below it.
 - **Anything more is a search.** Add another tag, words, or a condition such as `is:open`, and the page becomes an ordinary search: its [search box](#the-search-box) and **Builder** show everything it is filtering by, and the title says **Search**. **Clear** returns the page to the tag it opened with.
 - **Refine** narrows the results. On a page of one tag, or of several tags joined by AND, it offers related **Tags** first, strongest first, with a three-step rail for each one's strength; select one to add it to the search.
-- Notes and Tasks are two tabs, or side by side; the Tasks list opens on **Open** tasks and has an **All**/**Open**/**Done** filter, with checkboxes that update the original Markdown task.
+- Notes and Tasks are two tabs, or side by side. The Tasks list shows every task the search found — the search is the filter, so `is:open` or `is:done` in the box narrows it — with checkboxes that update the original Markdown task.
 - Sort notes alphabetically, by creation date, by update date, or by most accessed, on the line under the search box.
 - A broad search is shown a page at a time, with **Previous**, **Next**, and the page numbers under each list, and the range it is showing, such as *271–300 of 3,760*. Notes and tasks are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results to a page; it starts at 30 and is remembered, so every search page opens the way you left the last one. The counts beside Notes and Tasks, the Refine counts, and the filtering you do by typing in the search box are all of the whole search, never of the page. Changing the search, the page size, or the Open/Done filter returns to the first page, and a search that shortens while its last page is open moves you back to the last page it still has.
 - The **View options** gear chooses **Tabs** or **Side by side**, the original Markdown source or a rendered view, and one through four columns for notes and for tasks.
@@ -681,7 +700,7 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `is:due` | Open tasks due within the next seven days, overdue ones included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
 | `is:blocked`, `is:blocking` | Open tasks waiting for a task that is still open, and the open tasks they wait for. |
-| `is:mine` | Tasks for the person `deckard.me` names. Without that setting it finds nothing. |
+| `is:mine` | Tasks for the person `deckard.me` names, and tasks for nobody in particular. Without that setting, only the latter. |
 | `is:assigned`, `is:unassigned` | Tasks that name a person, and tasks that name nobody. |
 | `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, `priority`, `id`, and `dependsOn` work the same way. |
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
@@ -700,7 +719,7 @@ The fields:
 | `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `scheduled <= today`, `due = none` |
 | `done` | A task's ✅ date, with windows counted back from today. | `done = 7d` |
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. A task without a priority counts as `none`, which ranks between `medium` and `low`. | `priority >= high` |
-| `assignee` | The person a task is for: the first one named on its line, or `none` for a task naming nobody. `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name the same person. Only tasks can satisfy it. | `assignee = @ren-kade` |
+| `assignee` | The person a task is for: whoever its `👤` field names, or `none` for a task that carries none. `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name the same person. Only tasks can satisfy it. | `assignee = @ren-kade` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
@@ -722,11 +741,20 @@ tag = #project/atlas AND task = open
 ```
 ````
 
+Or as a table of the tasks, with the columns you name:
+
+````markdown
+```deckard view=table columns=due,priority,for sort=due
+tag = #project/atlas AND is:open
+```
+````
+
 ![A note's deckard query blocks beside the Markdown preview, which lists the tasks each query matches.](docs/images/query-blocks.png)
 
 - The Markdown preview replaces the fence with what the query matches, notes first and then tasks. Each result is its own row: a title that links to its source line, and beneath it the headings above it and its file name. The file name is left out when the first heading already names it, as a daily note's date heading does. Tags written after a title are removed from it, while tags inside the sentence, such as the people in a task, are kept. Following a link behaves like any other link to a note, so `markdown.preview.openMarkdownLinks` decides whether it opens in the preview or the editor.
 - Notes are listed alphabetically. Tasks are listed open first, soonest due date first, then in source order; completed tasks are struck through and overdue due dates are highlighted.
-- After `deckard`, `sort=title`, `sort=created`, or `sort=updated` reorders both lists, and date sorts put the newest first. `limit=10` shows at most ten notes and ten tasks, while the header still reports the full totals.
+- After `deckard`, `sort=` reorders the results by any column a task has — `title`, `due`, `scheduled`, `start`, `done`, `priority`, `for`, `status`, `note`, `created`, or `updated` — with `dir=asc` or `dir=desc` to say which way; dates sort newest first unless told otherwise, and a task with nothing in the column comes last either way. Notes know only `title`, `created`, and `updated`. `limit=10` shows at most ten notes and ten tasks, while the header still reports the full totals.
+- `view=table` draws the tasks as a table instead of a list, with `columns=due,priority,for,note` choosing the columns in order; the title is always first. The columns are the ones `sort=` accepts, plus `tags`, `blocked` (what a task waits for), and `id`. Without `columns=`, a table shows the title, due date, priority, who it is for, and its note. Notes stay a list above the table.
 - In the editor, the line above the fence shows the totals and **Open in search**, which opens the same query on a search page, where you can refine it.
 - Results refresh when any note in the workspace changes, not only the note that holds the block.
 - A query that does not parse shows its error in place of results. An unknown option is reported as a warning, and the rest of the block still runs.
@@ -868,8 +896,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.inheritedTags": false,
 	"deckard.agenda.groupBy": "due",
 	"deckard.agenda.upcomingDays": 7,
+	"deckard.agenda.query": "",
 	"deckard.tasks.addDoneDate": true,
 	"deckard.tasks.metadataFormat": "emoji",
+	"deckard.tasks.assigneeFromPersonTag": false,
 	"deckard.tasks.metadataSuggestions": true,
 	"deckard.me": "",
 	"deckard.statusBar": true,
@@ -903,6 +933,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
 | `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` hides. |
 | `deckard.theme` | `corpo` | Selects the visual style for Deckard webviews: `corpo`, which follows your VS Code theme, or one of `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
+| `deckard.zenMode` | `false` | Turns Deckard's own chrome down in every webview: decorative labels and the grid backdrop are hidden, borders and headings thin out, and each row's file and line fold away until the row is hovered or focused. No control, count, or tag is removed. See [Zen mode](#zen-mode). |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
@@ -918,10 +949,12 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](#tasks-view) groups are: `due`, `priority`, `status`, or `assignee`. The group control in its title sets the same thing. |
-| `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group looks for due, scheduled, and start dates. |
+| `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group reaches; a dated task past that is in **Later**. |
+| `deckard.agenda.query` | Empty | A [query](#query-language) that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as `is:mine`. Empty means every open task. |
 | `deckard.tasks.addDoneDate` | `true` | Adds a completion date when Deckard completes a task, and removes it when the task is reopened. Disable it to change only the checkbox. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). A task that already uses one keeps it. Deckard reads both either way. |
-| `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, and dependencies after typing `/` in a task. |
+| `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, people, and dependencies after typing `/` in a task. |
+| `deckard.tasks.assigneeFromPersonTag` | `false` | Read the first person named in a task's words as the person it is for, as Deckard did before the `👤` field; see [Who a task is for](#who-a-task-is-for). |
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](#who-a-task-is-for). |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](#status-bar-and-reminders). |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, at which Deckard says how many tasks are due. Empty means no reminder. |

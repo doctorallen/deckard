@@ -10,7 +10,14 @@ import {
   QueryBlockMessage,
   QueryBlockOptions,
   QueryBlockSnapshot,
+  toTableTask,
 } from '../state/queryBlockState';
+import {
+  createTaskCells,
+  DEFAULT_TASK_COLUMNS,
+  getTaskColumn,
+  TaskColumnId,
+} from '../state/resultTable';
 
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
 
@@ -22,6 +29,8 @@ export interface QueryBlockPreviewSource {
   getIndex(): WorkspaceIndex | undefined;
   /** Called whenever a block renders, so the host knows a preview reads the index. */
   onDidRender?(): void;
+  /** The namespace of status tags, from `deckard.board.statusNamespace`. */
+  getStatusNamespace?(): string;
 }
 
 /**
@@ -51,6 +60,8 @@ export function addQueryBlockRenderer(
       blockOptions,
       source.getIndex(),
       token.map?.[0],
+      Date.now(),
+      source.getStatusNamespace?.(),
     );
   };
   return md;
@@ -66,6 +77,7 @@ export function renderQueryBlockHtml(
   index: WorkspaceIndex | undefined,
   sourceLine?: number,
   now: number = Date.now(),
+  statusNamespace = 'status',
 ): string {
   const open =
     sourceLine === undefined
@@ -81,7 +93,7 @@ export function renderQueryBlockHtml(
     ].join('');
   }
 
-  const snapshot = getQueryBlockSnapshot(index, queryText, options);
+  const snapshot = getQueryBlockSnapshot(index, queryText, options, statusNamespace);
   return [
     open,
     renderHeader(
@@ -89,7 +101,7 @@ export function renderQueryBlockHtml(
       snapshot.hasError ? undefined : describeQueryBlockCounts(snapshot),
     ),
     ...snapshot.messages.map(renderMessage),
-    ...(snapshot.hasError ? [] : renderResults(snapshot, now)),
+    ...(snapshot.hasError ? [] : renderResults(snapshot, options, now)),
     '</div>',
   ].join('');
 }
@@ -126,15 +138,66 @@ function renderMessage(message: QueryBlockMessage): string {
   return `<p class="${className}">${escapeHtml(message.text)}</p>`;
 }
 
-function renderResults(snapshot: QueryBlockSnapshot, now: number): string[] {
+function renderResults(
+  snapshot: QueryBlockSnapshot,
+  options: QueryBlockOptions,
+  now: number,
+): string[] {
   if (snapshot.noteCount === 0 && snapshot.taskCount === 0) {
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
   }
   return [
     ...renderGroup('notes', 'Notes', snapshot.notes, snapshot.noteCount, renderNote),
-    ...renderGroup('tasks', 'Tasks', snapshot.tasks, snapshot.taskCount, (item) =>
-      renderTask(item, now),
-    ),
+    ...(options.view === 'table'
+      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], now)
+      : renderGroup('tasks', 'Tasks', snapshot.tasks, snapshot.taskCount, (item) =>
+          renderTask(item, now),
+        )),
+  ];
+}
+
+/**
+ * The tasks as a table, one column per field named. The title cell keeps the
+ * checkbox and the link to the source line; the rest are the cells the shared
+ * column model makes, so a due date is overdue here the way it is on the
+ * board. Notes stay a list above it: they have no columns of their own yet.
+ */
+function renderTaskTable(
+  snapshot: QueryBlockSnapshot,
+  columns: readonly TaskColumnId[],
+  now: number,
+): string[] {
+  if (snapshot.tasks.length === 0) {
+    return [];
+  }
+  const head = columns
+    .map((column) => `<th scope="col">${escapeHtml(getTaskColumn(column).label)}</th>`)
+    .join('');
+  const rows = snapshot.tasks.map((item) => {
+    const done = item.completed === true;
+    const cells = createTaskCells(toTableTask(item), columns, now).map((cell, at) => {
+      const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '']
+        .filter(Boolean)
+        .join(' ');
+      const open = classes ? `<td class="${classes}">` : '<td>';
+      if (columns[at] === 'title') {
+        return `${open}<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${done ? '☑' : '☐'}</span> ${renderLink(item)}</td>`;
+      }
+      return `${open}${escapeHtml(cell.text)}</td>`;
+    });
+    return `<tr class="deckard-query-row${done ? ' is-done' : ''}">${cells.join('')}</tr>`;
+  });
+  return [
+    '<div class="deckard-query-group deckard-query-tasks">',
+    '<div class="deckard-query-group-title">Tasks</div>',
+    '<table class="deckard-query-table">',
+    `<thead><tr>${head}</tr></thead>`,
+    `<tbody>${rows.join('')}</tbody>`,
+    '</table>',
+    snapshot.taskCount > snapshot.tasks.length
+      ? `<p class="deckard-query-message">Showing ${snapshot.tasks.length} of ${snapshot.taskCount} tasks.</p>`
+      : '',
+    '</div>',
   ];
 }
 

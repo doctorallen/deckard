@@ -4,8 +4,9 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Builds the Stats page from host-projected index and access data. Each
@@ -46,10 +47,10 @@ export function getStatsHtml(webview: vscode.Webview): string {
 main { max-width: 1100px; border-top: 2px solid var(--green); }
 .eyebrow { margin: 0 0 6px; }
 .empty { margin-top: 0; border: 0; background: none; padding: 16px 12px; }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading statistics...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">

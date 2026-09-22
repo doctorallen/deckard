@@ -16,8 +16,8 @@
  * Obsidian Tasks metadata, so only tasks can satisfy them. The remaining
  * fields describe the source unit itself.
  *
- * `assignee` reads the person a task is for: the first one named on its
- * line. Only tasks can satisfy it, the way the date fields work.
+ * `assignee` reads the person a task is for: whoever the 👤 field on its
+ * line names. Only tasks can satisfy it, the way the date fields work.
  *
  * `is`, `has`, and `in` are shorthands for filters people reach for often,
  * written GitHub-style as `is:open`, `has:due`, `no:due`, or `in:notes/work`.

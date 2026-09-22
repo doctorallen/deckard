@@ -39,6 +39,8 @@ export interface TaskDraft {
   id?: string;
   /** ⛔ the names of the tasks this one waits for. */
   dependsOn: string[];
+  /** 👤 the person the task is for, as the tag is written: `@dana`. */
+  assignee?: string;
   /**
    * Parts of the line Deckard does not edit but must not lose: an
    * on-completion marker, and a trailing `^block-id`.
@@ -119,6 +121,8 @@ export function formatTaskDraft(draft: TaskDraft): string {
     ...(draft.dependsOn.length > 0
       ? [formatTaskMetadata('dependsOn', draft.dependsOn.join(', '), draft.format)]
       : []),
+    // Who it is for reads last, where a reader looks for it.
+    ...write('assignee', draft.assignee),
     ...draft.extras,
   ];
   const checkbox = draft.prefix.replace(

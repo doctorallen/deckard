@@ -3,8 +3,9 @@ import * as vscode from 'vscode';
 import {
   createNonce,
   getBaseCss,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { getFavoriteHeartAssetUris } from './icons';
 
 /**
@@ -69,6 +70,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.renameHeading':
     'Renames the heading the cursor is in and carries its links along.',
   'deckard.undoLastChange': 'Puts the notes back as they were before the last write.',
+  'deckard.agenda.editQuery': 'What the Tasks view lists, opened on the Task Board to try and change.',
   'deckard.agenda.setGrouping': 'What the Tasks view’s groups are.',
   'deckard.outline.enableFollowCursor': 'Selects the heading the cursor is in.',
   'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',
@@ -105,13 +107,14 @@ function renderCommandTable(manifest: HelpManifest): string {
   return `<div class="table-scroll"><table><caption>Every command Deckard contributes, as the palette lists them under “Deckard:”</caption><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-/** Every setting, grouped as the settings editor groups them. */
+/**
+ * Every setting, grouped as the settings editor groups them — in one table,
+ * a heading row per group, so the columns line up from the first group to
+ * the last. As a table each, every group sized its columns by its own
+ * content, and a reader's eye had to find the default column again at each.
+ */
 function renderSettingsTables(manifest: HelpManifest): string {
-  const groups = manifest.configuration ?? [];
-  if (groups.length === 0) {
-    return '';
-  }
-  return groups
+  const groups = (manifest.configuration ?? [])
     .map((group) => {
       const rows = Object.entries(group.properties ?? {})
         .map(([key, property]) => {
@@ -127,12 +130,15 @@ function renderSettingsTables(manifest: HelpManifest): string {
         })
         .join('');
       return rows
-        ? `<div class="table-scroll"><table><caption>${escapeHtml(
+        ? `<tbody><tr class="table-group"><th scope="rowgroup" colspan="3">${escapeHtml(
             group.title ?? 'Settings',
-          )}</caption><thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div>`
+          )}</th></tr>${rows}</tbody>`
         : '';
     })
     .join('');
+  return groups
+    ? `<div class="table-scroll"><table><caption>Every setting Deckard contributes, as the settings editor groups them</caption><thead><tr><th>Setting</th><th>Default</th><th>What it does</th></tr></thead>${groups}</table></div>`
+    : '';
 }
 
 /** The escaping the page's own markup uses; nothing here is user content. */
@@ -173,7 +179,10 @@ nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--li
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
-article { min-width: 0; }
+/* Prose here is full of inline code chips, each a border and a pixel of padding
+   taller than its text; a line box the chips fit inside keeps two on
+   neighbouring lines from touching. */
+article { min-width: 0; line-height: 1.55; }
 h1, h2, h3 { line-height: 1.2; }
 p { margin: 0 0 12px; }
 .steps, .cards { display: grid; gap: 10px; }
@@ -192,6 +201,12 @@ code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line);
 .favorite-heart.filled { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 pre { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--panel); padding: 12px; color: var(--text); }
 pre code { border: 0; padding: 0; color: inherit; background: transparent; }
+/* A cell breaks between words, never inside one, so a column is at least as
+   wide as its longest word — a setting's name, a command's — and the table
+   shares the rest by content. Broken anywhere, a column could be crushed to
+   five characters a line, and every column with a long sentence beside it was.
+   A table too wide for the page scrolls in .table-scroll instead. */
+th, td, table code { overflow-wrap: break-word; }
 ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
@@ -202,6 +217,10 @@ th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-ali
 th { color: var(--cyan); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 td:first-child { white-space: normal; }
 tbody tr:hover { background: var(--panel); }
+/* A group's name inside the settings table: a heading row, ruled under like
+   the column header, so a group starts somewhere the eye can find. */
+.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.table-group:hover { background: transparent; }
 .table-scroll { overflow-x: auto; }
 /* The navigation groups its sections, so a long guide stays scannable. */
 .nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
@@ -229,10 +248,10 @@ h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.2; }
   h1 { font-size: 24px; }
   .cards { grid-template-columns: 1fr; }
 }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main>
   <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
@@ -256,6 +275,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     <a class="nav-sub" href="#tidy">Renaming and tidying</a>
     <a class="nav-sub" href="#periodic">Days, weeks, months</a>
     <span class="nav-group">Reference</span>
+    <a class="nav-sub" href="#zen">Zen mode</a>
     <a class="nav-sub" href="#commands">Commands</a>
     <a class="nav-sub" href="#advanced">Settings</a>
     <a class="nav-sub" href="#assistants">AI assistants</a>
@@ -329,7 +349,7 @@ updated: 2026-09-20
         <div class="card"><h3>Checklist tasks</h3><p>A task is an unordered checklist item: <code>- [ ] Send the proposal</code>, with <code>-</code>, <code>*</code>, or <code>+</code>, and <code>[x]</code> when it is done. Checking a box anywhere in Deckard writes the same checked edit into the note, including the ✅ date and the next occurrence of a repeating task.</p></div>
         <div class="card"><h3>The task editor</h3><p><code>Deckard: Edit Task</code> on a task line — and <code>Deckard: Add Task</code> anywhere else — opens every field at once: description, status, dates, priority, repeat rule, assignee, and a tag. Dates are taken in plain words: <code>friday</code>, <code>next monday</code>, <code>in 3 days</code>, <code>+2w</code>. It is on the lightbulb too, as <strong>Edit task…</strong>.</p></div>
         <div class="card"><h3>Typing metadata</h3><p>Type <code>/</code> after a space inside a task to pick a due date, a priority, a repeat rule, or a dependency without remembering the markers. Suggestions use the format the task already uses, or <code>deckard.tasks.metadataFormat</code> for a task with none.</p></div>
-        <div class="card"><h3>Who a task is for</h3><p>The first person named on a task line is the person it is for; anyone named after them is mentioned. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours.</p></div>
+        <div class="card"><h3>Who a task is for</h3><p>Write <code>👤 @dana</code> on a task — or <code>[assignee:: @dana]</code> in a Dataview vault — to say who it is for. A name in the words is a mention, not an assignment. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours — a task for nobody in particular is yours too.</p></div>
         <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code> adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note.</p></div>
         <div class="card"><h3>Dependencies</h3><p><code>🆔 a1</code> names a task, and <code>⛔ a1</code> waits for it. A task is blocked while something it waits for is still open, which <code>is:blocked</code> and <code>is:blocking</code> search and the Tasks view says beneath the task.</p></div>
       </div>
@@ -354,7 +374,7 @@ updated: 2026-09-20
       <h2>Tasks view and Task board</h2>
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
-        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list.</p></div>
+        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list.</p></div>
         <div class="card"><h3>Editing many at once</h3><p><strong>Bulk Edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>The status bar reads <strong>3 due today</strong> while anything is, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>
@@ -379,7 +399,7 @@ updated: 2026-09-20
         <tr><td><code>is:overdue</code>, <code>is:due</code></td><td>Past their due date, or due within seven days.</td></tr>
         <tr><td><code>is:task</code>, <code>is:note</code></td><td>Every task, or note entries without tasks.</td></tr>
         <tr><td><code>is:blocked</code>, <code>is:blocking</code></td><td>Waiting for an open task, and the tasks they wait for.</td></tr>
-        <tr><td><code>is:mine</code></td><td>Tasks for the person <code>deckard.me</code> names.</td></tr>
+        <tr><td><code>is:mine</code></td><td>Tasks for the person <code>deckard.me</code> names, and tasks for nobody in particular.</td></tr>
         <tr><td><code>is:assigned</code>, <code>is:unassigned</code></td><td>Tasks that name a person, and tasks that name nobody.</td></tr>
         <tr><td><code>has:due</code>, <code>no:due</code></td><td>With or without a date. <code>scheduled</code>, <code>start</code>, <code>done</code>, <code>priority</code>, <code>id</code>, and <code>dependsOn</code> work the same way.</td></tr>
         <tr><td><code>in:notes/work</code></td><td>A folder and everything inside it; <code>*</code> and <code>?</code> are wildcards.</td></tr>
@@ -405,7 +425,7 @@ updated: 2026-09-20
       <pre><code>&#96;&#96;&#96;deckard sort=updated limit=10
 tag = #project/atlas AND task = open
 &#96;&#96;&#96;</code></pre>
-      <p><code>sort=title|created|updated</code> and <code>limit=10</code> follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
+      <p><code>sort=</code> any task column such as <code>due</code> or <code>priority</code>, <code>dir=asc|desc</code>, <code>limit=10</code>, and <code>view=table columns=due,priority,for</code> for the tasks as a table follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
     </section>
 
     <section id="connections">
@@ -444,6 +464,13 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Reviews</h3><p>A weekly or monthly note opens with a review written into it: what was completed, what slipped, the notes written and changed, and the tags first seen. It is ordinary Markdown, named by the days it covers, and rewritten in place when you run it again.</p></div>
         <div class="card"><h3>Calendar</h3><p>A month in the sidebar, Sunday to Saturday. A dot marks a day with a note and a number counts what is due, in orange once the day has passed. The week beside a row opens that week’s note.</p></div>
       </div>
+    </section>
+
+    <section id="zen">
+      <h2>Zen mode</h2>
+      <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
+      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colours.</p>
+      <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
     </section>
 
     <section id="commands">

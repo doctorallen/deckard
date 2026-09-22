@@ -97,7 +97,8 @@ suite('Dashboard Home widgets', () => {
     ]);
     assert.deepStrictEqual(
       agenda.agenda?.map((group) => [group.id, group.count]),
-      [['overdue', 1], ['today', 1]],
+      // The widget is the same list as the Tasks view, undated tasks last.
+      [['overdue', 1], ['today', 1], ['nodate', 1]],
     );
     assert.deepStrictEqual(favorites.tags?.map((tag) => tag.key), ['#project/atlas']);
     assert.match(favorites.tags?.[0].detail ?? '', /1 note · 3 tasks/);

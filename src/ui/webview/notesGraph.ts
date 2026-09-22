@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
 
 import {
   NotesGraphMessage,
@@ -63,7 +64,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           this.renderHtml();
           this.refresh();
         }

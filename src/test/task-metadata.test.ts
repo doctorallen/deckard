@@ -6,6 +6,7 @@ import {
   formatIsoDate,
   parseRecurrence,
   parseTaskMetadata,
+  setTaskAssignee,
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
@@ -186,6 +187,42 @@ suite('Obsidian Tasks metadata', () => {
     assert.strictEqual(
       setTaskLineCompletion('- [x] Ship (completion:: 2026-09-10)', 3, false),
       '- [ ] Ship',
+    );
+  });
+
+  test('writes who a task is for, and leaves the words alone', () => {
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase the contractor ⏫ 📅 2026-09-25', 3, '@dana'),
+      '- [ ] Chase the contractor ⏫ 📅 2026-09-25 👤 @dana',
+    );
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase it @dana with @ren-kade', 3, '@mara-vale'),
+      '- [ ] Chase it @dana with @ren-kade 👤 @mara-vale',
+      'a person in the sentence was mentioned, and stays mentioned',
+    );
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase it 👤 @dana 📅 2026-09-25', 3, '@ren-kade'),
+      '- [ ] Chase it 📅 2026-09-25 👤 @ren-kade',
+      'the field it had is replaced, not repeated',
+    );
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase it 🧑 @dana', 3, undefined),
+      '- [ ] Chase it',
+      'either marker is read, and nobody clears it',
+    );
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase it [due:: 2026-09-25]', 3, '@dana'),
+      '- [ ] Chase it [due:: 2026-09-25] [assignee:: @dana]',
+      'the line keeps the format it is written in',
+    );
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase it [assignee:: @dana]', 3, undefined),
+      '- [ ] Chase it',
+    );
+    assert.strictEqual(
+      setTaskAssignee('- [ ] Chase it 📅 2026-09-25 ^chase', 3, '@dana'),
+      '- [ ] Chase it 📅 2026-09-25 👤 @dana ^chase',
+      'the block id still ends the line',
     );
   });
 

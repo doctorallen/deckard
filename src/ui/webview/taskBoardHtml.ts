@@ -7,8 +7,9 @@ import {
   getContentSecurityPolicy,
   getQueryEditorCss,
   getQueryEditorScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Builds the Task Board page: the search box every search page shares, the
@@ -55,10 +56,10 @@ header { align-items: flex-start; }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading tasks...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
@@ -95,7 +96,10 @@ ${getQueryEditorScript()}
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     // Saving sits with the search it saves; the saved search reopens here.
     actions: function (hasText) {
-      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      // The Tasks view lists a search of its own; this is where it is edited.
+      const listed = !!(state && state.agendaListsThisSearch);
+      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
+        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>';
     },
   });
 
@@ -208,14 +212,17 @@ ${getQueryEditorScript()}
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
     const isList = state.layout === 'list';
+    const isTable = state.layout === 'table';
     const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks">'
       + [['rank', 'Rank'], ['created', 'Created'], ['updated', 'Updated']].map(function (option) {
         return '<option value="' + option[0] + '"' + (state.taskSortMode === option[0] ? ' selected' : '') + '>' + option[1] + '</option>';
       }).join('') + '</select>' + sortIcon + '</span></label>';
     const viewOptions = renderViewOptions([
-      { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board']], state.layout, 'Task layout') },
+      { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board'], ['table', 'Table']], state.layout, 'Task layout') },
+      ...(isTable ? [{ label: 'Columns', html: renderColumnPicker(), stacked: true }] : []),
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
+      renderZenOption(),
     ]);
     const shown = state.taskCount;
     const total = shown + (shown === 1 ? ' task' : ' tasks');
@@ -228,16 +235,77 @@ ${getQueryEditorScript()}
         : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. A #' + escapeHtml(state.settings.statusNamespace) + '/… tag on a task puts it in a column.') + '</div>';
     const content = isList
       ? '<div class="task-list">' + list + '</div>'
-      : renderTaskBoard(state, isCardVisible);
+      : isTable
+        ? renderResultTable()
+        : renderTaskBoard(state, isCardVisible);
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>'
       + '<div class="board-header-actions"><span class="board-total">' + total + '</span>' + renderHelpButton('board') + viewOptions + '</div></header>'
-      + editor.renderBar(isList ? sortControl : renderTaskBoardGroupSwitch(state.groupBy))
+      + editor.renderBar(isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy))
       + editor.renderFacets()
       + '<section class="board-area" aria-label="Tasks">' + content + '</section>';
     filterTaskEntries();
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
+  }
+
+  /**
+   * The searched tasks as a table. The host made the rows and cells; the
+   * page draws them, with a header that sorts and a checkbox that completes.
+   */
+  function renderResultTable() {
+    const table = state.table;
+    if (!table || table.rows.length === 0) {
+      return '<div class="empty">' + (state.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture.') + '</div>';
+    }
+    const sort = table.sort;
+    const head = table.columns.map(function (column) {
+      const sorted = sort && sort.column === column.id;
+      const arrow = sorted ? (sort.direction === 'desc' ? ' ▼' : ' ▲') : '';
+      return '<th scope="col"' + (sorted ? ' class="is-sorted" aria-sort="' + (sort.direction === 'desc' ? 'descending' : 'ascending') + '"' : '') + '>'
+        + '<button type="button" data-action="set-table-sort" data-value="' + escapeHtml(column.id) + '" title="Sort by ' + escapeHtml(column.label.toLowerCase()) + '">' + escapeHtml(column.label) + arrow + '</button></th>';
+    }).join('');
+    const rows = table.rows.map(function (row) {
+      const cells = row.cells.map(function (cell, at) {
+        const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === 0 ? 'result-title' : ''].filter(Boolean).join(' ');
+        return '<td' + (classes ? ' class="' + classes + '"' : '') + '>' + escapeHtml(cell.text) + '</td>';
+      }).join('');
+      return '<tr class="result-row' + (row.completed ? ' completed' : '') + '" tabindex="0" data-task-id="' + escapeHtml(row.taskId) + '" data-file-path="' + escapeHtml(row.filePath) + '" data-line="' + row.line + '">'
+        + '<td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(row.taskId) + '"' + (row.completed ? ' checked' : '') + ' aria-label="Toggle ' + escapeHtml(row.cells[0] ? row.cells[0].text : '') + '"></td>'
+        + cells + '</tr>';
+    }).join('');
+    return '<table class="result-table" aria-label="Tasks"><thead><tr><th class="result-check"></th>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  /** Under the search box while the table is shown: what it is sorted by, and the way back. */
+  function renderTableSortNote() {
+    const sort = state.table && state.table.sort;
+    if (!sort) return '<span class="control-label">Rank order · choose a column to sort by it</span>';
+    const column = (state.table.columns.find(function (c) { return c.id === sort.column; }) || {}).label || sort.column;
+    return '<span class="control-label">Sorted by ' + escapeHtml(column.toLowerCase()) + (sort.direction === 'desc' ? ', last first' : '') + '</span>'
+      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Rank order</button>';
+  }
+
+  /** The gear's list of columns, the title fixed. */
+  function renderColumnPicker() {
+    const table = state.table;
+    if (!table) return '';
+    const shown = table.columns.map(function (column) { return column.id; });
+    return '<ul class="table-columns">' + table.available.map(function (column) {
+      const fixed = column.id === 'title';
+      return '<li><label><input type="checkbox" data-action="toggle-table-column" data-value="' + escapeHtml(column.id) + '"' + (shown.indexOf(column.id) >= 0 ? ' checked' : '') + (fixed ? ' disabled' : '') + '>' + escapeHtml(column.label) + '</label></li>';
+    }).join('') + '</ul>';
+  }
+
+  /** Adds or removes one column, keeping the order the picker lists them in. */
+  function toggleColumn(id, on) {
+    const table = state.table;
+    if (!table) return;
+    const shown = table.columns.map(function (column) { return column.id; });
+    const next = table.available.map(function (column) { return column.id; }).filter(function (candidate) {
+      return candidate === id ? on : shown.indexOf(candidate) >= 0;
+    });
+    post({ type: 'setTableColumns', columns: next });
   }
 
   /** Sends a new list of status columns, or says why it cannot be used. */
@@ -291,6 +359,8 @@ ${getQueryEditorScript()}
       const action = target.dataset.action;
       if (action === 'open-tag') post({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
+      if (action === 'set-table-sort') post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value } : { type: 'setTableSort' });
+      if (action === 'use-for-agenda') post({ type: 'useSearchForAgenda' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
         const statuses = state.settings.statuses.slice();
@@ -299,7 +369,7 @@ ${getQueryEditorScript()}
       }
       return;
     }
-    const row = event.target.closest('.task-list .task-row');
+    const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
       post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
     }
@@ -316,7 +386,7 @@ ${getQueryEditorScript()}
   document.addEventListener('keydown', function (event) {
     if (editor.handleKeydown(event)) return;
     if (event.key !== 'Enter' && event.key !== ' ') return;
-    const row = event.target.closest('.task-list .task-row');
+    const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
       event.preventDefault();
       post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
@@ -328,6 +398,7 @@ ${getQueryEditorScript()}
     const target = event.target;
     if (target.dataset.action === 'set-task-sort') post({ type: 'setTaskSort', mode: target.value });
     if (target.dataset.action === 'toggle-task') post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-table-column') toggleColumn(target.dataset.value, target.checked);
   });
 
   document.addEventListener('input', function (event) {

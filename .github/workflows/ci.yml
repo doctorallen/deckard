@@ -45,6 +45,9 @@ jobs:
       - name: Run end-to-end webview tests
         run: npm run test:e2e
 
+      - name: Lay the webviews out in Chrome
+        run: npm run test:layout
+
       - name: Build VSIX
         run: npm run package:vsix
 

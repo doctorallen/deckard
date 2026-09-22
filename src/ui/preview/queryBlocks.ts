@@ -60,6 +60,11 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       onDidRender: () => {
         this.previewReadsIndex = true;
       },
+      getStatusNamespace: () =>
+        vscode.workspace
+          .getConfiguration('deckard')
+          .get<string>('board.statusNamespace', 'status')
+          .trim() || 'status',
     };
     return addNoteEmbedRenderer(addQueryBlockRenderer(md, source), source);
   }

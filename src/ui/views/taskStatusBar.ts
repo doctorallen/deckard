@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { WorkspaceIndex } from '../../core/types';
-import { createAgenda } from '../state/agendaState';
+import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
 /**
  * What is due, in the status bar, and a reminder at an hour you choose.
@@ -20,8 +20,13 @@ export interface DueTaskCounts {
 export function countDueTasks(
   index: WorkspaceIndex,
   now: number,
+  /** `deckard.agenda.query`, so the count is of what the Tasks view lists. */
+  query = '',
 ): DueTaskCounts {
-  const groups = createAgenda(index, now, 1);
+  const groups = createAgenda(index, now, {
+    tasks: selectAgendaTasks(index, query).tasks,
+    upcomingDays: 1,
+  });
   const count = (id: 'overdue' | 'today'): number =>
     groups.find((group) => group.id === id)?.entries.length ?? 0;
   return { overdue: count('overdue'), today: count('today') };
@@ -71,6 +76,10 @@ interface StatusBarIndexSource {
   getSnapshot(): WorkspaceIndex;
 }
 
+function readAgendaQuery(): string {
+  return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
+}
+
 /** The command that opens the Tasks view, contributed by VS Code per view. */
 const SHOW_AGENDA = 'deckard.agenda.focus';
 
@@ -101,7 +110,10 @@ export class TaskStatusBar implements vscode.Disposable {
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.statusBar')) {
+        if (
+          event.affectsConfiguration('deckard.statusBar') ||
+          event.affectsConfiguration('deckard.agenda.query')
+        ) {
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.taskReminderTime')) {
@@ -133,6 +145,7 @@ export class TaskStatusBar implements vscode.Disposable {
     const counts = countDueTasks(
       this.indexer.getSnapshot(),
       this.now().getTime(),
+      readAgendaQuery(),
     );
     const text = describeDueTasks(counts);
     if (!text) {
@@ -179,6 +192,7 @@ export class TaskStatusBar implements vscode.Disposable {
     const counts = countDueTasks(
       this.indexer.getSnapshot(),
       this.now().getTime(),
+      readAgendaQuery(),
     );
     this.refresh();
     if (counts.overdue + counts.today === 0) {

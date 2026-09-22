@@ -166,6 +166,32 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   assert.deepStrictEqual(opened, ['board #project/atlas is:open']);
 });
 
+test('hands its search to the Tasks view, and says when the view has it', async () => {
+  const { view } = await openBoard();
+  const button = () => view.find('[data-action="use-for-agenda"]');
+  assert.ok(button(), 'Tasks view sits beside Save');
+  assert.ok(button().classList.contains('active'), 'the view lists every open task, and so does a board with no search');
+
+  // The board opens on is:open, so the search is cleared before it is typed.
+  view.click(view.find('[data-action="clear-query"]'));
+  await delay(10);
+  const bar = view.find('[data-action="query-input"]');
+  view.type(bar, 'is:mine');
+  view.keydown(bar, 'Enter');
+  await delay(10);
+  assert.ok(!button().classList.contains('active'), 'the view does not list this search yet');
+
+  view.click(button());
+  await delay(10);
+  assert.deepStrictEqual(
+    vscode._test.configurationUpdates.map((update) => [update.name, update.value]),
+    [['deckard.agenda.query', 'is:mine']],
+    "the search is written as the view's own",
+  );
+  assert.strictEqual(vscode._test.configurationUpdates[0].target, vscode.ConfigurationTarget.Global);
+  assert.ok(button().classList.contains('active'), "lit once the view lists the board's search");
+});
+
 test('shows a line for Refine while the sidebar holds it', async () => {
   const { view, activeSearch, board } = await openBoard();
   const bar = view.find('[data-action="query-input"]');
@@ -265,6 +291,48 @@ test('the gear switches between columns and a list, and stays open', async () =>
   await delay(10);
   assert.ok(view.find('.task-board'), 'the board is back');
   assert.ok(view.find('[data-action="set-board-group"]'), 'with its grouping');
+});
+
+test('the gear turns the board into a table, whose headers sort and whose columns are chosen', async () => {
+  const { view, preferences } = await openBoard();
+  view.find('.view-options').setAttribute('open', '');
+  view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
+  await delay(10);
+  assert.strictEqual(preferences.value.taskBoardLayout, 'table');
+  assert.ok(view.find('.result-table'), 'the tasks are a table now');
+  assert.deepStrictEqual(
+    view.findAll('.result-table .result-row').map((row) => row.dataset.taskId).sort(),
+    ['audit', 'call', 'room'],
+    'the same open tasks the search found',
+  );
+  assert.deepStrictEqual(
+    view.findAll('.result-table th button').map((button) => button.textContent),
+    ['Task', 'Due', 'Priority', 'For', 'Note'],
+  );
+
+  view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
+  await delay(10);
+  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'asc' });
+  view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
+  await delay(10);
+  assert.deepStrictEqual(preferences.value.taskTableSort, { column: 'due', direction: 'desc' }, 'the same header again turns it round');
+  assert.ok(view.find('th.is-sorted'), 'the sorted column is marked');
+  view.click(view.findAll('[data-action="set-table-sort"]').find((button) => !button.dataset.value));
+  await delay(10);
+  assert.strictEqual(preferences.value.taskTableSort, undefined, 'Rank order clears it');
+
+  view.find('.view-options').setAttribute('open', '');
+  const title = view.find('[data-action="toggle-table-column"][data-value="title"]');
+  assert.notStrictEqual(title.getAttribute('disabled'), null, 'the title cannot be taken away');
+  const status = view.find('[data-action="toggle-table-column"][data-value="status"]');
+  status.checked = true;
+  view.change(status);
+  await delay(10);
+  assert.deepStrictEqual(
+    preferences.value.taskTableColumns,
+    ['title', 'due', 'priority', 'assignee', 'status', 'note'],
+    'a column joins in the order the picker lists it',
+  );
 });
 
 test('the gear edits the status columns without opening settings', async () => {

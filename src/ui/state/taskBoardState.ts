@@ -3,6 +3,7 @@ import {
   appendToTaskText,
   formatIsoDate,
   parseTaskMetadata,
+  setTaskAssignee,
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
@@ -10,6 +11,7 @@ import {
   TASK_PRIORITY_RANKS,
   TaskMetadataFormat,
 } from '../../core/markdown/taskMetadata';
+import { readPerson } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
@@ -23,15 +25,24 @@ import {
   TaskBoardSnapshot,
   TaskPriority,
   WorkspaceIndex,
+  TaskTable,
 } from '../../core/types';
 import { renderMarkdownInline } from '../webview/rendering';
 import {
   createDashboardTask,
   createQueryViewState,
-  matchesTaskFilter,
   sortTasks,
 } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
+import {
+  compareTasksByColumn,
+  createTaskCells,
+  DEFAULT_TASK_COLUMNS,
+  getTaskColumn,
+  TableTask,
+  TASK_COLUMNS,
+  TaskColumnId,
+} from './resultTable';
 import { buildSearchFacets } from './searchFacets';
 
 /**
@@ -153,6 +164,10 @@ export function createTaskBoard(
         ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
             .map((task) => createDashboardTask(task, index.sections))
         : undefined,
+    table:
+      layout === 'table'
+        ? createTaskTable(tasks, preferences, options)
+        : undefined,
     taskCounts: {
       all: tasks.length,
       active: tasks.filter((task) => !task.completed).length,
@@ -164,6 +179,66 @@ export function createTaskBoard(
       statuses: [...options.statuses],
       statusNamespace: options.statusNamespace,
     },
+  };
+}
+
+/**
+ * The searched tasks as a table: the columns chosen, or the defaults, and the
+ * rows in the sort chosen, or in the rank order the list has. The cells come
+ * from the shared column model, so a query block's table and this one agree.
+ */
+export function createTaskTable(
+  tasks: readonly Task[],
+  preferences: PersistedPreferences,
+  options: TaskBoardOptions,
+): TaskTable {
+  const columns = preferences.taskTableColumns ?? [...DEFAULT_TASK_COLUMNS];
+  const sort = preferences.taskTableSort;
+  const ranked = sortTasks([...tasks], preferences.taskOrder, 'rank');
+  const asRows = ranked.map((task) => ({
+    task,
+    table: toTableTask(task, options.statusNamespace),
+  }));
+  const ordered = sort
+    ? [...asRows].sort((left, right) =>
+        compareTasksByColumn(sort)(left.table, right.table),
+      )
+    : asRows;
+  const label = (id: TaskColumnId) => ({ id, label: getTaskColumn(id).label });
+  return {
+    columns: columns.map(label),
+    available: TASK_COLUMNS.map((column) => label(column.id)),
+    sort,
+    rows: ordered.map(({ task, table }) => ({
+      taskId: task.id,
+      filePath: task.filePath,
+      line: task.lineNumber,
+      completed: task.completed,
+      cells: createTaskCells(table, columns, options.now),
+    })),
+  };
+}
+
+/** A task as the column model reads it. */
+function toTableTask(task: Task, statusNamespace: string): TableTask {
+  return {
+    title: stripTrailingTags(task.title) || task.title,
+    completed: task.completed,
+    dueAt: task.dueAt,
+    dueText: task.dueText,
+    scheduledAt: task.scheduledAt,
+    startAt: task.startAt,
+    doneAt: task.doneAt,
+    priority: task.priority,
+    assignee: task.assignee,
+    status: readTaskStatus(task, statusNamespace),
+    tags: task.tags.map((key) => task.tagLabels[key] ?? key),
+    fileName: task.filePath.split('/').pop() ?? task.filePath,
+    line: task.lineNumber,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    dependsOn: task.dependsOn,
+    dependencyId: task.dependencyId,
   };
 }
 
@@ -316,10 +391,20 @@ export function resolveTaskMove(
         'Drop a task on Today, Tomorrow, or No due date to change its due date.',
       );
     }
-    case 'assignee':
-      return refuse(
-        'Who a task is for is written in its sentence, so Deckard leaves it for you to change.',
-      );
+    case 'assignee': {
+      const person = value ? readPerson(value) : undefined;
+      if (value && !person) {
+        return refuse(`Deckard cannot read "${value}" as a person.`);
+      }
+      if (!task.completed && (task.assignee ?? '') === (person ?? '')) {
+        return { kind: 'unchanged' };
+      }
+      return {
+        kind: 'edit',
+        label: person ? `For ${person}` : 'For nobody',
+        edit: (line) => setTaskAssignee(reopen(line), column, person, options.format),
+      };
+    }
     default:
       return refuse('Deckard does not know that column.');
   }
@@ -452,13 +537,13 @@ function createAssigneeColumns(
       .map(([key, tasks]) => ({
         id: `assignee:${key}`,
         label: label(key),
-        droppable: false,
+        droppable: true,
         tasks,
       })),
     {
       id: 'assignee:',
       label: 'Nobody named',
-      droppable: false,
+      droppable: true,
       tasks: unassigned,
     },
   ];

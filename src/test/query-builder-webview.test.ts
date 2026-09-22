@@ -524,7 +524,6 @@ function createState(
     sections: [],
     tasks: [],
     taskCounts: { all: 0, active: 0, completed: 0 },
-    taskFilter: 'active',
     renderMode: 'markdown',
     sortMode: 'alphabetical',
     layout: 'tabs',

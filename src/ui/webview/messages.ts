@@ -1,3 +1,4 @@
+import { isTaskColumnId } from '../state/resultTable';
 import { MAXIMUM_LOCAL_GRAPH_DEPTH } from '../state/notesGraphState';
 import { normalizeDashboardWidgets } from '../../core/storage/preferences';
 import {
@@ -14,7 +15,6 @@ import {
   RelatedNotesSortMode,
   TagSortMode,
   TaskSortMode,
-  TaskFilter,
   DashboardMode,
   DashboardSearchField,
   TaskBoardGroupBy,
@@ -37,6 +37,10 @@ export function parseDashboardMessage(
   }
 
   switch (value.type) {
+    case 'setZenMode':
+      return typeof value.enabled === 'boolean'
+        ? { type: 'setZenMode', enabled: value.enabled }
+        : undefined;
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as DashboardMessage)
@@ -197,6 +201,10 @@ export function parseSearchPageMessage(
   }
 
   switch (value.type) {
+    case 'setZenMode':
+      return typeof value.enabled === 'boolean'
+        ? { type: 'setZenMode', enabled: value.enabled }
+        : undefined;
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
@@ -234,10 +242,6 @@ export function parseSearchPageMessage(
       return typeof value.taskId === 'string' &&
         typeof value.completed === 'boolean'
         ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
-        : undefined;
-    case 'setTaskFilter':
-      return isTaskFilter(value.filter)
-        ? { type: 'setTaskFilter', filter: value.filter }
         : undefined;
     case 'setRenderMode':
       return isRenderMode(value.mode)
@@ -447,11 +451,19 @@ export function parseTaskBoardMessage(
   }
 
   switch (value.type) {
+    case 'setZenMode':
+      return typeof value.enabled === 'boolean'
+        ? { type: 'setZenMode', enabled: value.enabled }
+        : undefined;
     case 'ready':
       return { type: 'ready' };
     case 'saveBoardSearch':
       return Object.keys(value).length === 1
         ? { type: 'saveBoardSearch' }
+        : undefined;
+    case 'useSearchForAgenda':
+      return Object.keys(value).length === 1
+        ? { type: 'useSearchForAgenda' }
         : undefined;
     case 'openSource':
       return isSourceMessage(value)
@@ -490,8 +502,18 @@ export function parseTaskBoardMessage(
         ? { type: 'setBoardQuery', query: value.query }
         : undefined;
     case 'setTaskLayout':
-      return value.layout === 'list' || value.layout === 'board'
+      return value.layout === 'list' || value.layout === 'board' || value.layout === 'table'
         ? { type: 'setTaskLayout', layout: value.layout }
+        : undefined;
+    case 'setTableSort':
+      return value.column === undefined
+        ? { type: 'setTableSort' }
+        : isTaskColumnId(value.column)
+          ? { type: 'setTableSort', column: value.column }
+          : undefined;
+    case 'setTableColumns':
+      return Array.isArray(value.columns) && value.columns.every(isTaskColumnId)
+        ? { type: 'setTableColumns', columns: [...value.columns] }
         : undefined;
     case 'setTaskSort':
       return isTaskSortMode(value.mode)
@@ -669,9 +691,6 @@ function isTagSortMode(value: unknown): value is TagSortMode {
 /**
  * Keeps task filtering constrained to the three supported dashboard states.
  */
-function isTaskFilter(value: unknown): value is TaskFilter {
-  return value === 'all' || value === 'active' || value === 'completed';
-}
 
 function isDashboardColumnCount(value: unknown): value is 1 | 2 | 3 | 4 {
   return value === 1 || value === 2 || value === 3 || value === 4;

@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.18.0",
+  "version": "1.19.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -76,7 +76,7 @@
       },
       {
         "view": "deckard.agenda",
-        "contents": "Tasks with a due or scheduled date appear here.\n\nWrite one in a note as a checklist item with a date, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)"
+        "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)"
       }
     ],
     "commands": [
@@ -238,6 +238,11 @@
         "title": "Rename Tag…"
       },
       {
+        "command": "deckard.agenda.editQuery",
+        "title": "Deckard: Edit What the Tasks View Lists…",
+        "icon": "$(search)"
+      },
+      {
         "command": "deckard.agenda.setGrouping",
         "title": "Deckard: Group Tasks By…",
         "icon": "$(group-by-ref-type)"
@@ -251,6 +256,16 @@
         "command": "deckard.outline.disableFollowCursor",
         "title": "Deckard: Stop Following Cursor in Outline",
         "icon": "$(eye)"
+      },
+      {
+        "command": "deckard.enableZenMode",
+        "title": "Deckard: Zen Mode",
+        "icon": "$(screen-normal)"
+      },
+      {
+        "command": "deckard.disableZenMode",
+        "title": "Deckard: Leave Zen Mode",
+        "icon": "$(screen-full)"
       }
     ],
     "menus": {
@@ -298,18 +313,31 @@
         {
           "command": "deckard.outline.disableFollowCursor",
           "when": "deckard.outlineFollowCursor"
+        },
+        {
+          "command": "deckard.enableZenMode",
+          "when": "!deckard.zenMode"
+        },
+        {
+          "command": "deckard.disableZenMode",
+          "when": "deckard.zenMode"
         }
       ],
       "view/title": [
         {
-          "command": "deckard.agenda.setGrouping",
+          "command": "deckard.agenda.editQuery",
           "when": "view == deckard.agenda",
           "group": "navigation@0"
         },
         {
-          "command": "deckard.showTaskBoard",
+          "command": "deckard.agenda.setGrouping",
           "when": "view == deckard.agenda",
           "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showTaskBoard",
+          "when": "view == deckard.agenda",
+          "group": "navigation@2"
         },
         {
           "command": "deckard.outline.enableFollowCursor",
@@ -510,35 +538,41 @@
             "description": "Visual theme used by Deckard webviews.",
             "order": 1
           },
+          "deckard.zenMode": {
+            "type": "boolean",
+            "default": false,
+            "description": "Turn Deckard's own chrome down: hide decorative labels and backdrops, thin the borders, and fold each row's file and line out of sight until the row is hovered or focused. Nothing is removed. Every control, count, and tag stays where it is, and works with any theme.",
+            "order": 2
+          },
           "deckard.dashboard.openOnStartup": {
             "type": "boolean",
             "default": false,
             "description": "Open the Deckard Dashboard when VS Code starts in a workspace with indexed notes.",
-            "order": 2
+            "order": 3
           },
           "deckard.dailyNoteTemplate": {
             "type": "string",
             "default": "# {date}\n\n",
             "description": "Template used when creating a daily note.",
-            "order": 3
+            "order": 4
           },
           "deckard.weeklyNoteTemplate": {
             "type": "string",
             "default": "# {week}\n\n",
             "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its Sunday, and {month} that Sunday's month, such as September 2026.",
-            "order": 4
+            "order": 5
           },
           "deckard.monthlyNoteTemplate": {
             "type": "string",
             "default": "# {month}\n\n",
             "description": "Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
-            "order": 5
+            "order": 6
           },
           "deckard.periodicNote.review": {
             "type": "boolean",
             "default": true,
             "description": "Write a review into a newly created weekly or monthly note: what was completed, what is still open, the notes written and changed, and the tags first seen in that period. Deckard: Write a Review writes or updates one whenever you ask.",
-            "order": 6
+            "order": 7
           },
           "deckard.dailyNote.rollover": {
             "type": "string",
@@ -554,21 +588,21 @@
             ],
             "default": "off",
             "description": "What a newly created daily note does with the unfinished tasks of the last one. Deckard: Roll Unfinished Tasks Forward does the same thing whenever you ask for it.",
-            "order": 7
+            "order": 8
           },
           "deckard.dailyNote.rolloverDays": {
             "type": "number",
             "minimum": 0,
             "default": 0,
             "description": "How many days back a rollover looks for unfinished tasks. 0 reaches as far back as your daily notes go, so a task left open before a week away still comes forward.",
-            "order": 8
+            "order": 9
           },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
             "description": "Folder of note templates, relative to the workspace folder. Deckard: New Note from Template lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off.",
-            "order": 9
+            "order": 10
           },
           "deckard.exclude": {
             "type": "object",
@@ -578,7 +612,7 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` hides.",
-            "order": 10
+            "order": 11
           }
         }
       },
@@ -782,6 +816,12 @@
             "description": "Format Deckard writes for a task that has no metadata yet, in / suggestions and completion dates. A task that already uses one format keeps it, and Deckard reads both.",
             "order": 1
           },
+          "deckard.tasks.assigneeFromPersonTag": {
+            "type": "boolean",
+            "default": false,
+            "description": "Treat the first person named in a task's words as the person it is for, the way Deckard read tasks before the 👤 field existed. Off, only 👤 (or [assignee:: …]) says who a task is for, and a name in the sentence is a mention.",
+            "order": 3
+          },
           "deckard.tasks.metadataSuggestions": {
             "type": "boolean",
             "scope": "resource",
@@ -792,7 +832,7 @@
           "deckard.me": {
             "type": "string",
             "default": "",
-            "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you. Empty means is:mine finds nothing.",
+            "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you as well as the ones for nobody in particular. Empty means is:mine finds only the latter.",
             "order": 5
           },
           "deckard.statusBar": {
@@ -833,6 +873,12 @@
             "maximum": 90,
             "default": 7,
             "description": "How many days ahead the Tasks view's Upcoming group looks for due, scheduled, and start dates.",
+            "order": 3
+          },
+          "deckard.agenda.query": {
+            "type": "string",
+            "default": "",
+            "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
             "order": 3
           },
           "deckard.board.statuses": {
@@ -940,6 +986,7 @@
     "test": "vscode-test",
     "test:e2e": "npm run compile-tests && node test/e2e/run.js",
     "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js && node test/ui/checkContrast.js",
+    "test:layout": "npm run compile-tests && node test/ui/checkLayout.js",
     "test:contrast": "npm run compile-tests && node test/ui/checkContrast.js"
   },
   "devDependencies": {

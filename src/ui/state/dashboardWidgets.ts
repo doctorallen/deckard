@@ -15,7 +15,7 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { formatLocalDate, listDailyNotes } from '../commands/dailyNote';
-import { createAgenda } from './agendaState';
+import { createAgenda, selectAgendaTasks } from './agendaState';
 import {
   createDashboardSavedFilters,
   createDashboardTask,
@@ -46,6 +46,8 @@ export interface DashboardWidgetOptions {
   now: number;
   /** How far ahead the agenda widget looks, from `deckard.agenda.upcomingDays`. */
   upcomingDays: number;
+  /** What the agenda widget lists, from `deckard.agenda.query`. */
+  agendaQuery?: string;
   tagTitleDisplayMode: TagTitleDisplayMode;
   /** The note last open in an editor, which Home can rank by and pin. */
   sourceNotePath?: string;
@@ -165,7 +167,10 @@ function createWidget(
       };
     }
     case 'agenda': {
-      const groups = createAgenda(index, options.now, options.upcomingDays);
+      const groups = createAgenda(index, options.now, {
+        tasks: selectAgendaTasks(index, options.agendaQuery ?? '').tasks,
+        upcomingDays: options.upcomingDays,
+      });
       return {
         ...widget,
         total: groups.reduce((sum, group) => sum + group.entries.length, 0),
@@ -277,7 +282,6 @@ function createWidget(
       }
       const query = getSavedFilterQuery(filter);
       const page = createSearchPageSnapshot(index, preferences, query, {
-        taskFilter: 'active',
         tagTitleDisplayMode: options.tagTitleDisplayMode,
         now: options.now,
         // A widget takes its own few entries off the top of the whole

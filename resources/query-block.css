@@ -107,6 +107,52 @@
   color: var(--vscode-errorForeground, #e51400);
 }
 
+/*
+ * view=table: the tasks as columns. It follows the preview's own table look
+ * and only adds the states a cell can be in.
+ */
+.deckard-query-table {
+  width: 100%;
+  margin: 0.3em 0 0;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.deckard-query-table th,
+.deckard-query-table td {
+  padding: 0.35em 0.6em;
+  border-bottom: 1px solid var(--deckard-query-rule);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.deckard-query-table th {
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground, inherit);
+  white-space: nowrap;
+}
+
+.deckard-query-table tbody tr:hover {
+  background: var(--vscode-list-hoverBackground, rgba(127, 127, 127, 0.1));
+}
+
+.deckard-query-table td.is-muted {
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-query-table td.is-overdue {
+  color: var(--vscode-errorForeground, #e51400);
+}
+
+.deckard-query-row.is-done td:first-child {
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
 .deckard-query-message {
   margin: 0.5em 0 0;
   font-size: 0.9em;

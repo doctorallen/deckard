@@ -18,8 +18,9 @@ icons.ts        SVG assets shared between pages
 ## How a page is assembled
 
 ```ts
-import { createNonce, getBaseCss, getComponentScript } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import {
+  createNonce, getBaseCss, getComponentScript, getPageTailCss, zenBodyAttribute,
+} from './components';
 
 const nonce = createNonce();
 const csp = getContentSecurityPolicy(webview.cspSource, nonce);
@@ -28,7 +29,7 @@ const csp = getContentSecurityPolicy(webview.cspSource, nonce);
 ```html
 <style nonce="${nonce}">${getBaseCss()}
   /* only what is specific to this page */
-  ${getDeckardThemeCss(getDeckardTheme())}
+  ${getPageTailCss()}
 </style>
 <script nonce="${nonce}">
 (function () {
@@ -40,8 +41,13 @@ ${getComponentScript()}
 ```
 
 Cascade order matters and is always the same: **base sheet → page rules →
-theme sheet.** A page overrides a component by restating the rule after
-`getBaseCss()`; a theme overrides tokens for everyone.
+theme sheet → zen sheet.** A page overrides a component by restating the rule
+after `getBaseCss()`; a theme overrides tokens for everyone; zen comes last
+because what it takes away is largely what a theme adds. `getPageTailCss()`
+emits the last two together, so no page has to remember the order.
+
+The page's `<body>` carries `${zenBodyAttribute()}`, which is `class="zen"`
+when zen is on and nothing when it is off. See **Zen mode** below.
 
 **A page keeps its own layout.** The base sheet and a page use the same
 selector names — `main`, `header`, `.metrics`, `.cards` — so a base rule can
@@ -188,10 +194,10 @@ Any group of joined buttons uses this, rather than each page restyling
 `button + button`:
 
 ```html
-<div class="segmented task-filter-toggle" role="group" aria-label="Task status">
-  <button class="active">All</button>
-  <button>Open</button>
-  <button>Done</button>
+<div class="segmented" role="group" aria-label="Task layout">
+  <button class="active">List</button>
+  <button>Board</button>
+  <button>Table</button>
 </div>
 ```
 
@@ -229,7 +235,6 @@ the tag-association view switch.
 | `.cards` | Grid of cards, 12px gap. |
 | `.card` | A `.row` with 14px padding, for a note or result. `.card-title` is its heading. |
 | `.task` | A `.row` laid out as a 24px checkbox column plus content. `.task-title`, `.task.completed`, `.task-summary`. |
-| `.task-filter-icon` | The list / open-box / checked-box icons, from `taskFilterIcon()`. |
 | `.metrics`, `.metric` | Auto-fitting grid of stat tiles with `.metric-label` and `.metric-value`. |
 | `.empty` | Dashed empty state. Always says what is missing and why. |
 | `.markdown` | Raw Markdown source, amber left rule. |
@@ -243,7 +248,9 @@ Kanban board.
 | Piece | What it is |
 | --- | --- |
 | `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. |
-| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. |
+| `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
+| `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
+| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
 | `renderTaskBoard(board, isVisible)` | Draws the host's `TaskBoardLayout`. `isVisible` hides cards a page filters locally. |
 | `renderTaskBoardCard(card, columnId, columns)` | One card. |
 | `renderTaskBoardGroupSwitch(groupBy)` | The Status / Priority / Due date `.segmented` switch. |
@@ -262,9 +269,20 @@ search results and the Task Board's list layout.
 | --- | --- |
 | `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
 | `renderTaskListRow(item, options)` | One row from a `DashboardTask`. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
-| `renderTaskFilterSwitch(filter, counts, action)` | The All / Open / Done `.segmented` switch with counts, as a tag overview's Tasks pane and the Task Board's list show it. |
 | `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
+
+### Result table
+
+`.result-table` in `getTaskListCss()` styles the Task Board's table layout:
+`th` holds a `button[data-action="set-table-sort"]` that fills the cell,
+`.is-sorted` marks the sorted column, `.result-row` rows carry the same
+`data-task-id`, `data-file-path`, and `data-line` a `.task-row` does so the
+page's open and toggle handlers serve both, and `td.is-overdue` and
+`td.is-muted` are the two states a cell can be in. The host makes the rows
+and cells with the column model in `src/ui/state/resultTable.ts`, which a
+query block's `view=table` shares, so the page only draws them.
+`.table-columns` is the gear's column picker.
 
 ### `.row`
 
@@ -281,6 +299,69 @@ padding, its chamfered corners. The shared class carries the surface.
 
 Used by: cards, tasks, and the dashboard's tag, entity, note, task and
 saved-view rows. `npm run test:ui` fails if one of those renders without it.
+
+---
+
+## Zen mode
+
+`getZenCss()`. Deckard's own chrome, turned down: decoration hidden, the frame
+thinned, and each row's file and line folded away until the row is hovered or
+focused. It is not a ninth theme — a theme picks the palette, zen picks how
+much frame is drawn, and the two compose.
+
+**Every rule is scoped under `body.zen`, and the sheet ships whether or not
+zen is on.** Only the class is conditional. That is deliberate, and it is what
+two checks depend on:
+
+- `verifyWebviews.js` matches a layout contract by its **exact** selector
+  string, so `body.zen .metric` is not `.metric` and cannot flip one.
+- `checkContrast.js` reads every declared rule whether or not the page renders
+  a match, so the zen rules get contrast cover across all eight themes with no
+  second render pass.
+
+Scoping also keeps the `:root` count at two. Zen's token overrides go on
+`body.zen`, never in a third `:root` block.
+
+**The sheet declares no `color`, `background`, `background-color`, or
+`border-color`** — only what it takes to hide, thin, and fold. Under that rule
+the contrast matrix cannot move, which is why the contrast check stays one
+pass. `background-image: none` is allowed and needed: `--grid-line:
+transparent` clears the base sheet's grid, but Cooper, Synthwave, Oblivion and
+Tomcat paint their own backdrop onto `body` with their own colors, so zen has
+to say it outright. Dropping an image declares no color pair. A new signature there means a color slipped in; fix the rule rather than
+re-record the baseline. `src/test/zen-mode.test.ts` asserts this directly.
+
+**Zen hides two ways, and the difference is not cosmetic.** `display: none`
+for ornament nothing refers to. The off-screen idiom — `position: absolute`
+and `clip-path: inset(50%)`, the same one `.is-dragging` uses — for anything a
+reader may still want, so it stays in the accessibility tree, in find-in-page,
+and comes back on `:focus-within`. A node that carries an accessible name is
+never dropped outright.
+
+Two things look like chrome and are not:
+
+- `.query-error` shares its slot with `.query-hint`. The hint goes; the error
+  never does, or a search that failed to parse reads as one that found
+  nothing.
+- `.board-details` is a `.source`, but it carries the due date and the word
+  "overdue". It does not fold. Only `.card .source`, `.note .source`, and the
+  `.task-source` spans in `renderTaskListRow` do.
+
+Spacing is restated rather than tokenized: there are no spacing tokens, so
+zen's block mirrors the literals in `getShellCss`, `getSurfaceCss`,
+`getTaskBoardCss`, and `getTaskListCss`. A padding change in one needs a
+change in the other, and the layout suite measures both.
+
+Its `:hover` rules must stay at the top level of the sheet. `checkLayout.js`
+forces hovers by rewriting `rule.selectorText`, which a `CSSMediaRule` does
+not have, so a `:hover` nested in an `@media` block is never tested.
+
+| Host-side helper | Purpose |
+| --- | --- |
+| `getZenCss()` | The sheet. Always emitted. |
+| `getPageTailCss()` | The theme sheet then the zen sheet, in that order. What each page interpolates after its own rules. |
+| `zenBodyAttribute()` | `' class="zen"'` or `''`, for the page's `<body>`. |
+| `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn. Each webview host's configuration listener asks this instead of naming `deckard.theme` alone. |
 
 ---
 
@@ -302,6 +383,7 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
+| `renderZenOption()` | The gear's Zen row, ready to drop into a `renderViewOptions()` list. Reads the current state from the body class, so no page carries zen through its state builder, and posts `setZenMode` from `installViewOptions()`, so no page needs a handler. |
 | `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. |
 | `renderWeightRail(level, title)`, `getWeightLevel(weight)` | How much a tag weighs, as a `.tag-weight-rail` of three steps, and the step a weight fills to: three from 0.75, two from 0.375. Related Notes' active tags, Refine, and the sidebar's Refine view draw it. |
 
@@ -368,8 +450,9 @@ and is ranked with `installRankedRows`. The host projects each widget with
 ## Verifying a change
 
 ```
-npm run test:ui     # renders every webview and checks the guarantees below
-npm run test:e2e    # drives the overview host, script and sidebar together
+npm run test:ui       # renders every webview and checks the guarantees below
+npm run test:e2e      # drives the overview host, script and sidebar together
+npm run test:layout   # lays the pages out in headless Chrome and measures them
 ```
 
 ### Layout contracts
@@ -384,10 +467,38 @@ page depends on layout that a base rule could plausibly override.
 stops rendering, emits a script that does not parse, is missing the design
 tokens, carries more than one nonce, declares more than one `:root`,
 redeclares a helper the shared script already owns, renders a content row
-without a shared surface class, or loses one of its layout contracts.
+without a shared surface class, loses one of its layout contracts, or does not
+end its style block with the zen sheet.
+
+The contracts are read against the page as it renders **without** zen. Zen's
+rules cannot reach them, because a contract matches its selector string
+exactly and every zen rule is prefixed — which is the point of the prefix.
+
+### Layout in a browser
+
+The contracts read the stylesheet as text, and the end-to-end suites run
+against a DOM with no geometry, so neither can see a column that clips its
+own cards or a hover that grows a row past its scroller. `test/ui/checkLayout.js`
+renders a page the way the webview does — the host's HTML, the page's own
+script, a snapshot the real state builder made — inside an iframe of the size
+the surface is drawn at, once per theme, and a probe in the page measures
+every scroller and clipping box, resting and with the page's own hover rules
+forced onto one row. A scroller that overflows sideways, a box hiding height
+it cannot scroll to, or a hover it cannot find to test fails with the
+elements named. Add a surface there when a page gains a scroll container.
+It needs Chrome (`CHROME_PATH`, or the usual names) and skips itself without
+one; CI has it.
+
+Every surface runs twice, once with zen and once without
+(`LAYOUT_ONLY=cooper+zen:sidebarNotes` picks one out), because zen is the only
+thing here that makes a row grow under the pointer: it folds the file and line
+away and gives them back on hover. The search page is a zen-only surface,
+since that reveal sits inside a `.card-header` rather than at the end of a
+row.
 
 Because the webviews are strings, the compiler cannot check any of this. Run
-these two after touching `components.ts`.
+these three after touching `components.ts`, and `npm test` too when the change
+adds a setting or a command — `src/test/extension.test.ts` counts both.
 
 ## Adding a component
 
@@ -395,7 +506,7 @@ these two after touching `components.ts`.
    `getComponentScript()` if it needs behaviour.
 2. Delete the local copies from every page that had one.
 3. Document it in the table above.
-4. Run `npm run test:ui` and `npm run test:e2e`.
+4. Run `npm run test:ui`, `npm run test:e2e`, and `npm run test:layout`.
 
 If only one page will ever use it, leave it in that page. A component earns
 its place here when a second page needs it.

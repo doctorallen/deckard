@@ -156,6 +156,7 @@ let inputBoxResponse;
 // Settings a test sets or the extension writes, by their full name.
 const settings = new Map();
 const configurationUpdates = [];
+const executedCommands = [];
 const configurationEmitter = new EventEmitter();
 
 function getConfiguration(section) {
@@ -228,11 +229,19 @@ module.exports = {
     asRelativePath: (value) => String(value),
   },
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
-  commands: { registerCommand: () => ({ dispose: () => undefined }) },
+  commands: {
+    registerCommand: () => ({ dispose: () => undefined }),
+    // Host code sets context keys through this; a test reads what it set.
+    executeCommand: (command, ...args) => {
+      executedCommands.push({ command, args });
+      return Promise.resolve(undefined);
+    },
+  },
   _test: {
     createdPanels,
     settings,
     configurationUpdates,
+    executedCommands,
     createWebviewView,
     shown,
     emitters: {

@@ -394,7 +394,7 @@ suite('Search page behavior', () => {
   });
 
   test('completes a task from its checkbox', () => {
-    const { page } = open(NOTES, '#project/atlas', { taskFilter: 'all' });
+    const { page } = open(NOTES, '#project/atlas');
 
     const box = page.find('[data-action="toggle-task"]') as HTMLInputElement;
     box.checked = true;
@@ -403,17 +403,6 @@ suite('Search page behavior', () => {
     const posted = page.lastPosted('toggleTask');
     assert.strictEqual(posted?.completed, true);
     assert.ok(String(posted?.taskId).length > 0, 'the task is named by its id');
-  });
-
-  test('filters tasks by whether they are done', () => {
-    const { page } = open(NOTES, '#project/atlas', { taskFilter: 'all' });
-
-    page.click('[data-action="set-task-filter"][data-filter="completed"]');
-
-    assert.deepStrictEqual(page.lastPosted('setTaskFilter'), {
-      type: 'setTaskFilter',
-      filter: 'completed',
-    });
   });
 
   test('sorts the notes a search found', () => {

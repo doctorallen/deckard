@@ -12,6 +12,7 @@ import {
   quoteTaskTitle,
   updateTaskLine,
 } from './taskActions';
+import { writeSetting } from './settings';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 
@@ -59,7 +60,7 @@ export async function updateTaskBoardSetting(
     current?.workspaceValue !== undefined
       ? vscode.ConfigurationTarget.Workspace
       : vscode.ConfigurationTarget.Global;
-  await configuration.update(`board.${key}`, value, target);
+  await writeSetting(`board.${key}`, value, target, configuration);
 }
 
 /**
