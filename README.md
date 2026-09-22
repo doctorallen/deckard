@@ -415,6 +415,8 @@ Choose **Customize** in the View options gear to arrange Home. Drag a widget to 
 
 Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
 
+If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
+
 ### Tags that look alike
 
 Stats lists pairs of tags that look like one idea spelled twice, clearest first, each pointing from the rarer spelling to the one your notes already use. **Merge** on a row merges them through the usual [merge](#merging-tags): the same confirmation, the same preview, and the same [Undo](#previewing-and-undoing-a-write). Select either tag to open its search page and read the entries first.
@@ -997,6 +999,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 
 ## Limitations and troubleshooting
 
+- **A note is missing from every search:** open `Deckard: Show Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.

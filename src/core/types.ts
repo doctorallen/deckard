@@ -693,8 +693,25 @@ export interface StatsNoteItem {
   open: OpenSourceMessage;
 }
 
+/** A note Deckard could not read: it is in the workspace, but not in the index. */
+export interface UnreadableNote {
+  filePath: string;
+  reason: string;
+}
+
+/** An unreadable note as Stats lists it: the note, why, and what opens it. */
+export interface StatsUnreadableItem extends UnreadableNote {
+  open: OpenSourceMessage;
+}
+
 export interface DeckardStatsSnapshot {
   updatedAt: number;
+  /**
+   * Notes the last scan or update could not read, so they are not indexed.
+   * A search that misses one of these looks like a bad search; this is
+   * where it is said instead.
+   */
+  unreadable: StatsUnreadableItem[];
   fileCount: number;
   sectionCount: number;
   taskCount: number;

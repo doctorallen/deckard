@@ -22,6 +22,7 @@ import {
   TaskSortMode,
   WorkspaceIndex,
   DeckardStatsSnapshot,
+  UnreadableNote,
 } from '../../core/types';
 import {
   findDailyNoteDate,
@@ -453,9 +454,14 @@ function matchesNoteWords(card: TagOverviewCard, words: readonly string[]): bool
 export function createDeckardStatsSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
+  unreadable: readonly UnreadableNote[] = [],
 ): DeckardStatsSnapshot {
   return {
     updatedAt: index.updatedAt,
+    unreadable: unreadable.map((note) => ({
+      ...note,
+      open: { type: 'openSource', filePath: note.filePath, line: 1 },
+    })),
     fileCount: index.files.size,
     sectionCount: index.sections.size,
     taskCount: index.tasks.size,

@@ -11,7 +11,9 @@ import {
   parseMarkdown,
 } from '../markdown/parser';
 import { reportError } from '../timing';
-import { ParsedFile } from '../types';
+import { ParsedFile,
+  UnreadableNote,
+} from '../types';
 
 export interface WorkspaceFileAccess {
   readonly workspaceFolders?: readonly vscode.WorkspaceFolder[];
@@ -52,9 +54,17 @@ export class WorkspaceScanner {
    * One bad note should not make the rest of the workspace disappear from the
    * index, so read failures are reported and scanning continues.
    */
+  /**
+   * The notes the last scan could not read, with why. A read that fails is
+   * logged, but a log is not where a reader looks when a search comes back
+   * short; this is what Stats and the setup check show instead.
+   */
+  public failures: UnreadableNote[] = [];
+
   public async scan(onProgress?: ScanProgress): Promise<ParsedFile[]> {
     const files: ParsedFile[] = [];
     const entries: ScanEntry[] = [];
+    const failures: UnreadableNote[] = [];
 
     for (const workspaceFolder of this.access.workspaceFolders ?? []) {
       const pattern = this.createPattern(workspaceFolder);
@@ -77,12 +87,17 @@ export class WorkspaceScanner {
         files.push(await this.read(entry.uri, entry.workspaceFolder));
       } catch (error) {
         reportError(`Could not read ${entry.uri.toString()}`, error);
+        failures.push({
+          filePath: this.getFilePath(entry.uri, entry.workspaceFolder),
+          reason: describeError(error),
+        });
       } finally {
         completed += 1;
         onProgress?.(completed, entries.length);
       }
     }
 
+    this.failures = failures;
     return files;
   }
 
@@ -467,4 +482,10 @@ function createDefaultAccess(): WorkspaceFileAccess {
     readFile: (uri) => vscode.workspace.fs.readFile(uri),
     stat: (uri) => vscode.workspace.fs.stat(uri),
   };
+}
+
+/** An error as one line a reader can act on, not a stack. */
+export function describeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.split('\n')[0].trim() || 'unknown error';
 }

@@ -1,6 +1,14 @@
 import * as assert from 'assert';
 
+import * as vscode from 'vscode';
+
+import { parseMarkdown } from '../core/markdown/parser';
+import { PreferencesStore } from '../core/storage/preferences';
+import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
+import { getStatsHtml } from '../ui/webview/statsHtml';
+import { openWebviewPage } from './webviewPage';
 
 suite('Stats messages', () => {
   test('accepts the messages its rows post', () => {
@@ -43,6 +51,54 @@ suite('Stats messages', () => {
         undefined,
         JSON.stringify(message),
       );
+    }
+  });
+});
+
+suite('Stats: notes that could not be read', () => {
+  const index = () =>
+    buildWorkspaceIndex(new Map([['notes/good.md', parseMarkdown('notes/good.md', '# Good #project/atlas')]]));
+  const preferences = () =>
+    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+
+  test('the snapshot lists each one with what opens it', () => {
+    const snapshot = createDeckardStatsSnapshot(index(), preferences(), [
+      { filePath: 'notes/bad.md', reason: 'EACCES: permission denied' },
+    ]);
+    assert.deepStrictEqual(snapshot.unreadable, [
+      { filePath: 'notes/bad.md', reason: 'EACCES: permission denied', open: { type: 'openSource', filePath: 'notes/bad.md', line: 1 } },
+    ]);
+    assert.deepStrictEqual(createDeckardStatsSnapshot(index(), preferences()).unreadable, []);
+  });
+
+  test('the page says so where a reader looks, and a row opens the note', () => {
+    const page = openWebviewPage(
+      getStatsHtml(webview),
+      createDeckardStatsSnapshot(index(), preferences(), [{ filePath: 'notes/bad.md', reason: 'EACCES: permission denied' }]),
+    );
+    try {
+      const text = page.document.body.textContent ?? '';
+      assert.match(text, /Notes Deckard could not read/);
+      assert.match(text, /1 note is in the workspace but not in the index/);
+      assert.match(text, /notes\/bad\.md/);
+      assert.match(text, /EACCES: permission denied/);
+      page.click('[data-list="unreadable"][data-index="0"]');
+      assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/bad.md', line: 1 });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('the page says nothing when every note was read', () => {
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    try {
+      // The page's own script mentions the panel by name, so read the DOM,
+      // not the text of everything under body.
+      assert.strictEqual(page.findAll('[data-list="unreadable"]').length, 0);
+      assert.strictEqual(page.findAll('.view-panel.unreadable').length, 0);
+    } finally {
+      page.dispose();
     }
   });
 });

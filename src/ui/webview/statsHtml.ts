@@ -148,7 +148,15 @@ ${getComponentScript()}
     ].join('');
     const unlisted = state.orphanNoteCount - state.orphanNotes.length;
     const unlistedPairs = state.lookalikeTagCount - state.lookalikeTags.length;
-    const orphans = '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article></section>';
+    // A note the index does not have looks, from a search, like a note that
+    // was never written. Say so here, with why, where a reader will look.
+    const unreadable = state.unreadable || [];
+    const unread = unreadable.length
+      ? '<section class="views" aria-label="Notes that could not be read"><article class="view-panel unreadable"><h2>Notes Deckard could not read</h2><p class="detail">' + unreadable.length + (unreadable.length === 1 ? ' note is' : ' notes are') + ' in the workspace but not in the index, so no search finds ' + (unreadable.length === 1 ? 'it' : 'them') + '. Fix the cause, then reindex.</p><ol class="list">' + unreadable.map(function (note, index) {
+          return '<li><div class="row stat-row" role="button" tabindex="0" title="Open this note" data-list="unreadable" data-index="' + index + '"><div><div class="label">' + escapeHtml(note.filePath) + '</div><div class="detail">' + escapeHtml(note.reason) + '</div></div></div></li>';
+        }).join('') + '</ol></article></section>'
+      : '';
+    const orphans = unread + '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article></section>';
     document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + ' <button type="button" class="reindex" data-action="reindex" title="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {

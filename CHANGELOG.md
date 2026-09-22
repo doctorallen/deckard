@@ -4,6 +4,15 @@
 
 ### Added
 
+- **A note Deckard could not read is said, not just logged.** A read that
+  fails went to the log, which nobody opens; the note was simply missing
+  from every search, which looks like a bad search rather than a missing
+  note. Deckard now says so the moment it happens, once per note, with
+  Show Stats and Show Log beside it, and Stats lists every such note with
+  the reason - one line, not a stack - so a search that comes back short
+  has somewhere to be explained. A note that reads again on its next save
+  leaves the list on its own.
+
 - **What a workspace remembers can be taken back.** A moment after each
   change, Deckard writes a copy of its favourites, pins, saved searches,
   widgets and view counts into the workspace's storage and keeps the last

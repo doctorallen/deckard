@@ -329,6 +329,35 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     mcpServer,
     quickFind,
   );
+  // A note that could not be read is missing from every search, which looks
+  // like a bad search rather than a missing note. Say so, once per note, the
+  // moment it happens - and no more than that, since an index updates on
+  // every save.
+  let unreadableSeen = 0;
+  context.subscriptions.push(
+    indexer.onDidUpdate(() => {
+      const unreadable = indexer.getUnreadable();
+      if (unreadable.length > unreadableSeen) {
+        const count = unreadable.length;
+        void vscode.window
+          .showWarningMessage(
+            count === 1
+              ? `Deckard could not read ${unreadable[0].filePath}, so it is not indexed: ${unreadable[0].reason}`
+              : `Deckard could not read ${count} notes, so they are not indexed.`,
+            'Show Stats',
+            'Show Log',
+          )
+          .then((choice) => {
+            if (choice === 'Show Stats') {
+              void vscode.commands.executeCommand('deckard.showStats');
+            } else if (choice === 'Show Log') {
+              void vscode.commands.executeCommand('deckard.showLog');
+            }
+          });
+      }
+      unreadableSeen = unreadable.length;
+    }),
+  );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
       const index = indexer.getSnapshot();
