@@ -70,6 +70,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
       .sort((a, b) => a.filePath.localeCompare(b.filePath));
   }
 
+  /** What the last full scan found, kept out, and read. */
+  public getLastScan(): { found: number; templates: number; excluded: number; read: number } {
+    return { ...this.scanner.lastScan };
+  }
+
   /**
    * Exposes the initial scan as a barrier for commands that need complete data.
    */

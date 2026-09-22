@@ -109,6 +109,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Export Favourites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file you choose. |
 | **Deckard: Import Favourites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers with it. |
 | **Deckard: Restore Favourites, Pins, and Searches from a Copy** | Offers the copies Deckard keeps on its own, newest first, and restores the one you pick after asking. |
+| **Deckard: Check My Setup** | Writes up, as a Markdown document, what your settings resolve to in this workspace, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone — with what to do about each thing that is off. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |
@@ -999,6 +1000,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 
 ## Limitations and troubleshooting
 
+- **Something is not there, and you are not sure why:** run `Deckard: Check My Setup`. It says where notes are read from and whether that folder exists, how many files the exclude patterns kept out, which notes could not be read, and whether `deckard.me` matches anyone — each with what to do.
 - **A note is missing from every search:** open `Deckard: Show Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.

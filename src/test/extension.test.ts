@@ -82,6 +82,7 @@ suite('Extension Test Suite', () => {
         'deckard.exportPreferences',
         'deckard.importPreferences',
         'deckard.restorePreferences',
+        'deckard.checkSetup',
       ],
     );
     assert.strictEqual(

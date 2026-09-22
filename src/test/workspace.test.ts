@@ -117,6 +117,7 @@ suite('Workspace scanner and index', () => {
     const files = await scanner.scan();
 
     assert.deepStrictEqual(files.map((file) => file.filePath), ['case.md']);
+    assert.deepStrictEqual(scanner.lastScan, { found: 2, templates: 1, excluded: 0, read: 1 }, 'the scan says what it kept out');
     assert.strictEqual(scanner.isNotesFile(noteUri), true);
     assert.strictEqual(scanner.isNotesFile(templateUri), false);
     assert.strictEqual(

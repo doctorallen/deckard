@@ -68,6 +68,7 @@ import { ActiveSearch } from './ui/webview/activeSearch';
 import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import { tidyPreferences } from './ui/commands/tidyPreferences';
+import { checkSetup } from './ui/commands/checkSetup';
 import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
 import {
   exportPreferences,
@@ -460,6 +461,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.restorePreferences', () =>
       restorePreferences(preferences, snapshots),
+    ),
+    vscode.commands.registerCommand('deckard.checkSetup', () =>
+      checkSetup(indexer),
     ),
   );
   context.subscriptions.push(

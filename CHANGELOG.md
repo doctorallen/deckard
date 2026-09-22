@@ -4,6 +4,17 @@
 
 ### Added
 
+- **`Deckard: Check My Setup` says what the settings add up to.** Deckard
+  has forty-nine of them, and the effect of most is that something is
+  silently not there: a notes folder that does not exist, an exclude
+  pattern wider than meant, a `deckard.me` that names nobody. Reading the
+  settings does not say which. The check writes up, as a Markdown document,
+  what they resolve to in this workspace - where notes are read from and
+  whether that folder exists, how many files the last scan found and how
+  many the templates folder and the exclude patterns kept out, which notes
+  could not be read, what the index holds, and whether `deckard.me` matches
+  a person any note names - with what to do beside each thing that is off.
+
 - **A note Deckard could not read is said, not just logged.** A read that
   fails went to the log, which nobody opens; the note was simply missing
   from every search, which looks like a bad search rather than a missing

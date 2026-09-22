@@ -282,6 +282,10 @@
       {
         "command": "deckard.restorePreferences",
         "title": "Deckard: Restore Favourites, Pins, and Searches from a Copy"
+      },
+      {
+        "command": "deckard.checkSetup",
+        "title": "Deckard: Check My Setup"
       }
     ],
     "menus": {
