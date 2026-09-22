@@ -4,6 +4,21 @@
 
 ### Added
 
+- **An assistant can add a task, or change one, with Deckard's own
+  safeguards.** The query and tag tools were read-only. `deckard_add_task`
+  adds a task to today's note or to a note the assistant names, and
+  `deckard_change_task` completes, reopens, retitles, dates, prioritizes or
+  hands over one existing task, named by its note and line as
+  `deckard_query` reports them, touching only the fields it names and
+  keeping the line's own format. An assistant asks before either runs,
+  every time rather than once a session, and nothing is written until the
+  user approves the exact line in the refactor preview Deckard's own
+  multi-note writes use - whatever `deckard.previewWorkspaceWrites` says.
+  Over MCP, where there is no dialog, that preview is the guard. A change
+  is refused if the line is no longer the task the index knows there, so an
+  assistant working from a stale answer cannot rewrite whatever is on that
+  line now, and `Deckard: Undo Last Change` takes a write back afterwards.
+
 - **Every page is compared, pixel for pixel, to how it looked.** The layout
   check measures geometry and the contrast check reads color pairs; neither
   can see a backdrop a theme paints, a glow that came back, or a control

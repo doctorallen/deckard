@@ -92,12 +92,34 @@ suite('MCP server', () => {
     assert.ok(answer.result.content[0].text.includes('Call Ren about the budget'));
   });
 
+  test('a write with nothing usable in it writes nothing, and says what to send', async () => {
+    const response = await post({
+      jsonrpc: '2.0',
+      id: 7,
+      method: 'tools/call',
+      params: { name: 'deckard_add_task', arguments: {} },
+    });
+    assert.strictEqual(response.status, 200);
+    const answer = JSON.parse(response.body) as { result: { isError?: boolean; content: Array<{ text: string }> } };
+    assert.strictEqual(answer.result.isError, true);
+    assert.match(answer.result.content[0].text, /Send the task's words as "text"/);
+
+    const change = await post({
+      jsonrpc: '2.0',
+      id: 8,
+      method: 'tools/call',
+      params: { name: 'deckard_change_task', arguments: { note: 'notes/atlas.md', line: 2 } },
+    });
+    const changed = JSON.parse(change.body) as { result: { isError?: boolean; content: Array<{ text: string }> } };
+    assert.strictEqual(changed.result.isError, true, 'no change named is nothing to do');
+  });
+
   test("lists the tools VS Code's assistants have", async () => {
     const response = await post({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const answer = JSON.parse(response.body) as { result: { tools: Array<{ name: string }> } };
     assert.deepStrictEqual(
       answer.result.tools.map((tool) => tool.name),
-      ['deckard_query', 'deckard_list_tags'],
+      ['deckard_query', 'deckard_list_tags', 'deckard_add_task', 'deckard_change_task'],
     );
   });
 

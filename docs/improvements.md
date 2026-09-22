@@ -36,16 +36,6 @@ git hook, or CI — fail the build when a note carries an overdue task — is a
 thin shell over them, and it reaches people who are not in VS Code at the
 moment they need an answer.
 
-### 3. Guarded writes for assistants
-
-The `deckard_query` and `deckard_list_tags` language model tools, and the MCP
-server, are read-only. The task draft, the board's moves, the refactor preview
-that shows a multi-note write before it lands, and the one-command undo
-already exist, so a `deckard_add_task` or `deckard_change_task` that goes
-through that preview would let an assistant do "add a task for Dana due
-Friday" with the safety Deckard's own commands have. The consent-per-session
-flow is already there.
-
 ## Intentionally skipped
 
 | Idea | Reason |
@@ -59,11 +49,9 @@ flow is already there.
 
 ## Sequencing
 
-Guarded writes for assistants first: the query language, the refactor
-preview and the one-command undo already exist, and joining them is what
-makes Deckard a safe target for an agent. Then the CLI, which is small once
-the query evaluator is the only thing it needs. Import, canvas, and Git-aware
-collaboration follow, in that order, if at all.
+The CLI first, which is small once the query evaluator is the only thing it
+needs. Import, canvas, and Git-aware collaboration follow, in that order, if
+at all.
 
 ## Research sources
 

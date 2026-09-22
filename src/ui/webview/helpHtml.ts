@@ -490,8 +490,9 @@ tag = #project/atlas AND task = open
 
     <section id="assistants">
       <h2>AI assistants</h2>
-      <p>Deckard gives assistants inside VS Code two read-only tools — <code>deckard_query</code> and <code>deckard_list_tags</code> — so Copilot in agent mode, or any other assistant using VS Code’s language model tools, can answer questions from the index Deckard already keeps. You allow the first call in each session. <code>deckard.assistantTools</code> turns them off.</p>
+      <p>Deckard gives assistants inside VS Code four tools — <code>deckard_query</code> and <code>deckard_list_tags</code> to read, <code>deckard_add_task</code> and <code>deckard_change_task</code> to write — so Copilot in agent mode, or any other assistant using VS Code’s language model tools, can answer questions from the index Deckard already keeps. You allow the first call in each session. <code>deckard.assistantTools</code> turns them off.</p>
       <p>For Claude Code and other MCP clients, <code>deckard.mcpServer.enabled</code> runs a local server on 127.0.0.1 with the same tools, and <code>Deckard: Copy MCP Server Setup</code> copies the command that adds it, token included. <code>Deckard: Reset MCP Server Token</code> makes a new token, so every copied setup stops working.</p>
+      <p><strong>A write is guarded twice.</strong> An assistant asks before adding or changing a task, every time, and nothing is written until you approve the exact line in the refactor preview Deckard’s own writes use. A change is refused if the line is no longer the task the index knows there, and <code>Deckard: Undo Last Change</code> takes any write back.</p>
       <p class="note">Deckard answers with what it has indexed: paths, lines, titles, and tags. It never sends your notes anywhere itself — an assistant reads the answer, and what that assistant does next is between you and it.</p>
     </section>
 
