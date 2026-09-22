@@ -221,8 +221,12 @@ export function createTaskTable(
 
 /** A task as the column model reads it. */
 function toTableTask(task: Task, statusNamespace: string): TableTask {
+  const title = stripTrailingTags(task.title) || task.title;
   return {
-    title: stripTrailingTags(task.title) || task.title,
+    title,
+    // A task title is prose, and is written as Markdown everywhere else it is
+    // shown. The table drew its source until now.
+    renderedTitle: renderMarkdownInline(title),
     completed: task.completed,
     dueAt: task.dueAt,
     dueText: task.dueText,

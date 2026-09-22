@@ -12,6 +12,7 @@ import {
   QueryBlockSnapshot,
   toTableTask,
 } from '../state/queryBlockState';
+import { renderMarkdownInline } from '../webview/rendering';
 import {
   createTaskCells,
   DEFAULT_TASK_COLUMNS,
@@ -269,7 +270,17 @@ function renderTask(item: QueryBlockItem, now: number): string {
 
 function renderLink(item: QueryBlockItem): string {
   const href = createPreviewSourceHref(item.filePath, item.line);
-  return `<a class="deckard-query-title" href="${escapeHtml(href)}">${escapeHtml(item.title)}</a>`;
+  return `<a class="deckard-query-title" href="${escapeHtml(href)}">${renderTitleHtml(item.title)}</a>`;
+}
+
+/**
+ * A title as rendered inline Markdown, with any link inside it flattened to
+ * its words. The whole title is already one link to the task's source, and an
+ * anchor inside an anchor is not valid HTML: the browser closes the outer one
+ * early and the rest of the row's title stops opening anything.
+ */
+function renderTitleHtml(title: string): string {
+  return renderMarkdownInline(title).replace(/<a\b[^>]*>|<\/a>/g, '');
 }
 
 /**

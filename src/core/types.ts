@@ -1408,6 +1408,12 @@ export interface TableSort {
  */
 export interface TableCell {
   text: string;
+  /**
+   * The cell's Markdown, already rendered and sanitized by the host, for a
+   * column whose source is prose rather than a value. `text` stays the plain
+   * form, which is what a label or a sort reads.
+   */
+  html?: string;
   kind?: 'overdue' | 'muted';
 }
 

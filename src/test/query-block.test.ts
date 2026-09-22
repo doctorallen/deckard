@@ -96,6 +96,33 @@ suite('Deckard query blocks', () => {
     assert.ok(html.indexOf('deckard-query-list') < html.indexOf('deckard-query-table'));
   });
 
+  test('draws a task title\'s Markdown in the table, without nesting its links', () => {
+    const index = createIndex();
+    const task = [...index.tasks.values()][0];
+    index.tasks.set(task.id, {
+      ...task,
+      title: 'Send the **signed** copy to [Ren](https://example.com) #project/atlas',
+    });
+
+    const html = renderQueryBlockHtml(
+      'tag = #project/atlas',
+      parseQueryBlockInfo('deckard view=table columns=due')!,
+      index,
+      undefined,
+      new Date(2026, 8, 13).getTime(),
+    );
+
+    assert.ok(html.includes('Send the <strong>signed</strong> copy to'), 'the Markdown is drawn');
+    assert.ok(!html.includes('**signed**'), 'and its source is not');
+    // The cell is already one link to the task's line. A second anchor inside
+    // it closes the first early, and the rest of the title opens nothing.
+    assert.ok(
+      !/<a[^>]*>[^<]*<a/.test(html),
+      'a link written in the title is flattened rather than nested',
+    );
+    assert.ok(html.includes('href="/notes/Atlas%20plan.md#L'), 'the row still links to its line');
+  });
+
   test('finds blocks with CommonMark fence rules', () => {
     const text = [
       '# Note',

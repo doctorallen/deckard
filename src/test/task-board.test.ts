@@ -227,6 +227,39 @@ suite('Task board', () => {
     assert.deepStrictEqual(chosen.table?.sort, { column: 'title', direction: 'desc' });
   });
 
+  test('renders a title\'s Markdown in the table, and keeps the plain words too', () => {
+    const index = createIndex();
+    const marked = createTask(
+      'marked',
+      '- [ ] Review the **shell-camera** rig with `ivo.sh` before [the dispatch](https://example.com)',
+      {},
+    );
+    index.tasks.set(marked.id, marked);
+
+    const table = createTaskBoard(
+      index,
+      preferencesWith({ taskBoardLayout: 'table', taskTableColumns: ['title'] }),
+      { query: '' },
+      options,
+    ).table;
+    const row = table?.rows.find((entry) => entry.taskId === 'marked');
+
+    // The cell draws the Markdown, as every other surface that shows a task
+    // title already does.
+    assert.strictEqual(
+      row?.cells[0].html,
+      'Review the <strong>shell-camera</strong> rig with <code>ivo.sh</code> '
+        + 'before <a href="https://example.com">the dispatch</a>',
+    );
+    // And keeps the written form, which is what a label and a sort read.
+    assert.match(row?.cells[0].text ?? '', /\*\*shell-camera\*\*/);
+
+    // A title with nothing to render comes back as its own words.
+    const plain = table?.rows.find((entry) => entry.taskId === 'call');
+    assert.strictEqual(plain?.cells[0].html, plain?.cells[0].text);
+    assert.doesNotMatch(plain?.cells[0].html ?? '', /</, 'no markup to insert');
+  });
+
   test('accepts the table messages, and refuses a column it does not have', () => {
     assert.deepStrictEqual(
       parseTaskBoardMessage({ type: 'setTaskLayout', layout: 'table' }),

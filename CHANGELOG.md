@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- **A task's title is Markdown in the table too.** The Task Board's table and
+  a query block's table of tasks printed the title's source, so a task written
+  with `**bold**`, a `` `command` ``, or a link read as its own markup while
+  every other surface that shows a task drew it. Both render it now, through
+  the same sanitizer the board's cards use. The plain words are kept beside
+  the rendered form, since that is what a checkbox's label and a sort by title
+  read. A link written inside a title is flattened to its words in a query
+  block, where the whole cell is already one link to the task's line and an
+  anchor inside an anchor closes the outer one early.
+
 - **A setting that changes how notes are parsed rebuilds the search cache.**
   The cache compares a scan against what it holds by path, modified time and
   size, so a settings change left it holding entries that no longer existed:

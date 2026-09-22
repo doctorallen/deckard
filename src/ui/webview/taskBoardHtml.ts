@@ -268,7 +268,9 @@ ${getQueryEditorScript()}
     const rows = table.rows.map(function (row) {
       const cells = row.cells.map(function (cell, at) {
         const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === 0 ? 'result-title' : ''].filter(Boolean).join(' ');
-        return '<td' + (classes ? ' class="' + classes + '"' : '') + '>' + escapeHtml(cell.text) + '</td>';
+        // cell.html is Markdown the host already rendered and sanitized, the
+        // same way a board card's title arrives; everything else is data.
+        return '<td' + (classes ? ' class="' + classes + '"' : '') + '>' + (cell.html || escapeHtml(cell.text)) + '</td>';
       }).join('');
       return '<tr class="result-row' + (row.completed ? ' completed' : '') + '" tabindex="0" data-task-id="' + escapeHtml(row.taskId) + '" data-file-path="' + escapeHtml(row.filePath) + '" data-line="' + row.line + '">'
         + '<td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(row.taskId) + '"' + (row.completed ? ' checked' : '') + ' aria-label="Toggle ' + escapeHtml(row.cells[0] ? row.cells[0].text : '') + '"></td>'
