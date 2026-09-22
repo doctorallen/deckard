@@ -19,6 +19,8 @@ documented in [components.md](components.md). Reuse a component rather than
 restyling one locally, and add a new one there once a second page needs it.
 Run `npm run test:ui` after changing it: the webviews are built from template
 literals, so the compiler cannot see a broken style sheet or inline script.
+Run `npm run test:layout` too when the change touches layout — a scroll
+container, a column, a hover — since only that suite lays the pages out.
 
 ## Running the development host
 

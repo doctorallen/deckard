@@ -243,7 +243,9 @@ Kanban board.
 | Piece | What it is |
 | --- | --- |
 | `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. |
-| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. |
+| `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
+| `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
+| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
 | `renderTaskBoard(board, isVisible)` | Draws the host's `TaskBoardLayout`. `isVisible` hides cards a page filters locally. |
 | `renderTaskBoardCard(card, columnId, columns)` | One card. |
 | `renderTaskBoardGroupSwitch(groupBy)` | The Status / Priority / Due date `.segmented` switch. |
@@ -368,8 +370,9 @@ and is ranked with `installRankedRows`. The host projects each widget with
 ## Verifying a change
 
 ```
-npm run test:ui     # renders every webview and checks the guarantees below
-npm run test:e2e    # drives the overview host, script and sidebar together
+npm run test:ui       # renders every webview and checks the guarantees below
+npm run test:e2e      # drives the overview host, script and sidebar together
+npm run test:layout   # lays the pages out in headless Chrome and measures them
 ```
 
 ### Layout contracts
@@ -386,8 +389,23 @@ tokens, carries more than one nonce, declares more than one `:root`,
 redeclares a helper the shared script already owns, renders a content row
 without a shared surface class, or loses one of its layout contracts.
 
+### Layout in a browser
+
+The contracts read the stylesheet as text, and the end-to-end suites run
+against a DOM with no geometry, so neither can see a column that clips its
+own cards or a hover that grows a row past its scroller. `test/ui/checkLayout.js`
+renders a page the way the webview does — the host's HTML, the page's own
+script, a snapshot the real state builder made — inside an iframe of the size
+the surface is drawn at, once per theme, and a probe in the page measures
+every scroller and clipping box, resting and with the page's own hover rules
+forced onto one row. A scroller that overflows sideways, a box hiding height
+it cannot scroll to, or a hover it cannot find to test fails with the
+elements named. Add a surface there when a page gains a scroll container.
+It needs Chrome (`CHROME_PATH`, or the usual names) and skips itself without
+one; CI has it.
+
 Because the webviews are strings, the compiler cannot check any of this. Run
-these two after touching `components.ts`.
+these three after touching `components.ts`.
 
 ## Adding a component
 
@@ -395,7 +413,7 @@ these two after touching `components.ts`.
    `getComponentScript()` if it needs behaviour.
 2. Delete the local copies from every page that had one.
 3. Document it in the table above.
-4. Run `npm run test:ui` and `npm run test:e2e`.
+4. Run `npm run test:ui`, `npm run test:e2e`, and `npm run test:layout`.
 
 If only one page will ever use it, leave it in that page. A component earns
 its place here when a second page needs it.
