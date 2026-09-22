@@ -480,8 +480,12 @@ export function getTaskBoardCss(): string {
 .board-card.dragging { opacity: .45; }
 .board-card .task-title { padding-right: 26px; }
 .board-details { margin: 0; }
-/* Each detail stays whole; the line wraps between them. */
-.board-details span { white-space: nowrap; }
+/* Each detail stays whole and the line wraps between them — unless a detail
+   is wider than the column on its own, as "overdue, due Mon 2026-09-01" is
+   under a theme's letter-spacing, in which case it breaks rather than
+   widening every card in the column. An inline-block is that exactly: one
+   unit to the line, that wraps inside only when it has to. */
+.board-details span { display: inline-block; white-space: normal; }
 .board-details .overdue { color: var(--favorite-red); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
