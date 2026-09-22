@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.18.0",
+  "version": "1.19.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -819,7 +819,7 @@
           "deckard.tasks.assigneeFromPersonTag": {
             "type": "boolean",
             "default": false,
-            "description": "Treat the first person named in a task's words as the person it is for, the way Deckard read tasks before the \ud83d\udc64 field existed. Off, only \ud83d\udc64 (or [assignee:: \u2026]) says who a task is for, and a name in the sentence is a mention.",
+            "description": "Treat the first person named in a task's words as the person it is for, the way Deckard read tasks before the 👤 field existed. Off, only 👤 (or [assignee:: …]) says who a task is for, and a name in the sentence is a mention.",
             "order": 3
           },
           "deckard.tasks.metadataSuggestions": {
