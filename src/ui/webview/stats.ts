@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
@@ -30,7 +31,7 @@ export class StatsPanel implements vscode.Disposable {
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           this.renderHtml();
           this.refresh();
         }

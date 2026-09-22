@@ -8,6 +8,9 @@
 //
 //   npm run test:ui
 const { pages } = require('./pages.js');
+// Required after pages.js, which is what redirects 'vscode' to the stub.
+const { getZenCss } = require('../../out/ui/webview/components.js');
+const zenSheet = getZenCss().trim();
 /**
  * Layout each page must still have after the cascade.
  *
@@ -89,7 +92,7 @@ const SHARED_HELPERS = [
   'renderTaskTitle', 'formatEntityTitle',
   'closeTagContextMenu', 'openTagContextMenu', 'installTagContextMenu',
   'renderTaskBoard', 'renderTaskBoardCard', 'renderTaskBoardGroupSwitch',
-  'installTaskBoard',
+  'installTaskBoard', 'renderZenOption',
 ];
 let fail = 0;
 for (const [name, render] of pages) {
@@ -142,6 +145,15 @@ for (const [name, render] of pages) {
         `${selector} { ${property} } should include "${expected}", got "${actual ?? 'nothing'}"`,
       );
     }
+  }
+
+  // Zen is the last layer. Its rules only beat a theme's because they come
+  // after them — LCARS' .metric:nth-child(3n + 2)::before ties with
+  // body.zen .metric::before on specificity, so position is what decides it.
+  if (!styles.includes(zenSheet)) {
+    problems.push('the zen sheet is missing or altered after getZenCss()');
+  } else if (styles.trimEnd() !== styles.slice(0, styles.indexOf(zenSheet)) + zenSheet) {
+    problems.push('the zen sheet is not the last layer in the style block');
   }
 
   // Tokens must be declared once, by the shared sheet.

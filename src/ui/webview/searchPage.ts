@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
+import { setZenMode } from './zenMode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -61,7 +63,7 @@ export class SearchPanels implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           this.panels.forEach((panel) => panel.renderHtml());
           this.refresh();
         } else if (
@@ -548,6 +550,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
    */
   private async handleValidMessage(message: SearchPageMessage): Promise<void> {
     switch (message.type) {
+      case 'setZenMode':
+        await setZenMode(message.enabled);
+        return;
       case 'setOverviewQuery':
         await this.applyQuery(message.query, message.remember !== false);
         return;

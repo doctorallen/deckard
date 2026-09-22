@@ -7,8 +7,9 @@ import {
   getContentSecurityPolicy,
   getQueryEditorCss,
   getQueryEditorScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Builds the Task Board page: the search box every search page shares, the
@@ -55,10 +56,10 @@ header { align-items: flex-start; }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading tasks...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
@@ -221,6 +222,7 @@ ${getQueryEditorScript()}
       { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board'], ['table', 'Table']], state.layout, 'Task layout') },
       ...(isTable ? [{ label: 'Columns', html: renderColumnPicker(), stacked: true }] : []),
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
+      renderZenOption(),
     ]);
     const shown = state.taskCount;
     const total = shown + (shown === 1 ? ' task' : ' tasks');

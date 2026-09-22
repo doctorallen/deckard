@@ -170,7 +170,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches'],
     );
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
-    assert.deepStrictEqual(labels, ['Home', 'Tag columns']);
+    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Zen']);
   }
 });
 
@@ -605,6 +605,41 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
     );
   } finally {
     vscode.window.activeTextEditor = undefined;
+  }
+});
+
+test('the gear turns zen on through the host, and the page carries the marker', async () => {
+  const { view, panel } = await openDashboard();
+  try {
+    // Off to begin with: the sheet ships either way, the marker does not.
+    assert.ok(panel.webview.html.includes('body.zen {'), 'the zen sheet ships');
+    assert.ok(!panel.webview.html.includes('<body class="zen">'), 'zen starts off');
+
+    view.click(view.find('[data-action="set-zen-mode"][data-value="on"]'));
+    await delay(20);
+
+    // The page posts intent; the host is what writes the setting, globally,
+    // so every Deckard surface follows it rather than this page alone.
+    assert.deepStrictEqual(
+      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.zenMode'),
+      [{ name: 'deckard.zenMode', value: true, target: vscode.ConfigurationTarget.Global }],
+    );
+    // And the context key follows it, so the palette offers the other command.
+    assert.deepStrictEqual(
+      vscode._test.executedCommands.filter((entry) => entry.args[0] === 'deckard.zenMode'),
+      [{ command: 'setContext', args: ['deckard.zenMode', true] }],
+    );
+
+    // A page drawn while the setting is on carries the marker the sheet needs.
+    const { panel: second } = await openDashboard();
+    assert.ok(second.webview.html.includes('<body class="zen">'), 'zen marks the body');
+
+    // Nothing was taken off the page to achieve it.
+    assert.ok(second.webview.html.includes('class="eyebrow"'), 'the eyebrow is still drawn');
+  } finally {
+    vscode._test.settings.delete('deckard.zenMode');
+    vscode._test.configurationUpdates.length = 0;
+    vscode._test.executedCommands.length = 0;
   }
 });
 

@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
+import { setZenMode } from './zenMode';
 
 import { parseQuery } from '../../core/query/queryParser';
 import { PreferencesStore } from '../../core/storage/preferences';
@@ -71,7 +73,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     );
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           // The page reloads and asks for state again when it is ready.
           this.renderHtml();
         } else if (
@@ -345,6 +347,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     const index = this.indexer.getSnapshot();
 
     switch (message.type) {
+      case 'setZenMode':
+        await setZenMode(message.enabled);
+        return;
       case 'ready':
         this.refresh();
         return;

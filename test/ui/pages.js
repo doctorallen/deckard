@@ -24,12 +24,18 @@ const vscodeStub = require(path.join(__dirname, '..', 'e2e', 'vscodeStub.js'));
 const getConfiguration = vscodeStub.workspace.getConfiguration;
 /** The theme the pages render with; the contrast check walks every one. */
 let renderTheme = 'replicant';
+/** Whether the pages render with zen mode on; the layout check walks both. */
+let renderZen = false;
 vscodeStub.workspace.getConfiguration = (section) => {
   const configuration = getConfiguration(section);
   return {
     ...configuration,
-    get: (key, fallback) =>
-      section === 'deckard' && key === 'theme' ? renderTheme : configuration.get(key, fallback),
+    get: (key, fallback) => {
+      if (section !== 'deckard') return configuration.get(key, fallback);
+      if (key === 'theme') return renderTheme;
+      if (key === 'zenMode') return renderZen;
+      return configuration.get(key, fallback);
+    },
   };
 };
 const webview = {
@@ -63,14 +69,27 @@ const { deckardThemes } = require('../../out/ui/webview/themes.js');
  * functions read the theme when they run, so the pages are built again for
  * each one rather than restyled after the fact.
  */
-function renderPagesForTheme(theme) {
-  const previous = renderTheme;
+function renderPagesForTheme(theme, options) {
+  const previousTheme = renderTheme;
+  const previousZen = renderZen;
   renderTheme = theme;
+  renderZen = Boolean(options && options.zen);
   try {
     return pages.map(([name, render]) => [name, render()]);
   } finally {
-    renderTheme = previous;
+    renderTheme = previousTheme;
+    renderZen = previousZen;
   }
 }
 
-module.exports = { pages, renderPagesForTheme, themes: deckardThemes };
+/** Renders one page by name, with zen on or off. */
+function renderPage(name, options) {
+  const entry = pages.find(([pageName]) => pageName === name);
+  if (!entry) throw new Error(`No such page: ${name}`);
+  return renderPagesForTheme(
+    (options && options.theme) || renderTheme,
+    options,
+  ).find(([pageName]) => pageName === name)[1];
+}
+
+module.exports = { pages, renderPage, renderPagesForTheme, themes: deckardThemes };

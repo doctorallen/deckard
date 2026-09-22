@@ -11,7 +11,10 @@
  * Changing a component here changes it everywhere.
  */
 
+import * as vscode from 'vscode';
 import { helpIcon, settingsIcon } from './icons';
+import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import { isZenModeEnabled } from './zenMode';
 
 /**
  * The palette every webview starts from.
@@ -574,6 +577,113 @@ export function getBaseCss(): string {
 }
 
 /**
+ * Zen mode: Deckard's own chrome, turned down.
+ *
+ * Every rule is scoped under `body.zen`, and the sheet ships whether or not
+ * zen is on — only the class is conditional. That is deliberate. The layout
+ * contracts in `test/ui/verifyWebviews.js` match a rule by its exact selector
+ * string, so `body.zen .metric` is not `.metric` and cannot flip a contract;
+ * and `test/ui/checkContrast.js` reads every declared rule whether or not the
+ * page renders a match, so these get contrast cover across all eight themes
+ * without a second render pass.
+ *
+ * Position still matters and is not replaced by the specificity: LCARS'
+ * `.metric:nth-child(3n + 2)::before` ties with `body.zen .metric::before`, so
+ * this has to come after the theme sheet. `getPageTailCss()` is what puts it
+ * there.
+ *
+ * **This sheet declares no color, background, or border-color.** Only what it
+ * takes to hide, thin, and fold. Under that rule the contrast matrix cannot
+ * move, which is why the contrast check stays a single pass — a new signature
+ * there means a color slipped in here.
+ */
+export function getZenCss(): string {
+  return `
+body.zen { --edge: 1px; --control-height: 26px; --grid-line: transparent; }
+/* Ornament nothing refers to. The query hint goes; the parse error that
+   shares its slot does not, or a failed search reads as an empty one. */
+body.zen .eyebrow,
+body.zen .metric::before,
+body.zen .query-hint,
+body.zen .refine-hint,
+body.zen .home-hint-bar { display: none; }
+/* Shrunk, never hidden: on a search page the h1 is the subject being
+   searched, not a restatement of the tab, and it is the page's one landmark. */
+body.zen h1 { font-size: 14px; letter-spacing: normal; text-transform: none; }
+body.zen h2, body.zen h3, body.zen .metric-label { letter-spacing: normal; text-transform: none; }
+/* The frame, thinned. */
+body.zen .metric, body.zen .card, body.zen .note, body.zen .task,
+body.zen .tag-row, body.zen .task-row, body.zen .note-row, body.zen .entity-row,
+body.zen .saved-filter-row, body.zen .stat-row, body.zen .empty,
+body.zen .view-panel, body.zen .board-column { clip-path: none; box-shadow: none; }
+/* Several themes slide a row 3px on hover, which fits today only because the
+   sidebar's main has 12px of padding to absorb it. Zen spends that padding. */
+body.zen .row:hover, body.zen .card:hover, body.zen .note:hover,
+body.zen .task:hover, body.zen .task-row:hover, body.zen .note-row:hover,
+body.zen .tag-row:hover, body.zen .entity-row:hover,
+body.zen .saved-filter-row:hover, body.zen .stat-row:hover { transform: none; }
+/* Spacing. These literals mirror getShellCss, getSurfaceCss, getTaskBoardCss
+   and getTaskListCss; there are no spacing tokens to lean on, so a change
+   there needs a change here. The layout suite measures both. */
+body.zen main { padding: 14px; }
+body.zen header { padding-bottom: 10px; }
+body.zen .cards { gap: 8px; margin-top: 12px; }
+body.zen .card { padding: 9px; }
+body.zen .task { gap: 6px; padding: 7px; }
+body.zen .task-row { gap: 6px; padding: 7px; }
+body.zen .task-list { gap: 4px; }
+body.zen .task-summary { gap: 4px; }
+body.zen .metrics { gap: 6px; margin-top: 12px; }
+body.zen .metric { padding: 8px; }
+body.zen .board-column { padding: 7px; }
+body.zen .board-cards { gap: 5px; }
+/* Provenance folds to hover and focus. Off-screen rather than display:none,
+   so it stays in the accessibility tree, in find-in-page, and announced —
+   the same idiom .is-dragging uses. Board details are not provenance: they
+   carry the due date and the word "overdue", so they never fold. */
+body.zen .task-row .task-source,
+body.zen .card .source,
+body.zen .note .source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+body.zen .task-row:hover .task-source, body.zen .task-row:focus-within .task-source,
+body.zen .card:hover .source, body.zen .card:focus-within .source,
+body.zen .note:hover .source, body.zen .note:focus-within .source {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}`;
+}
+
+/**
+ * What every page puts after its own rules: the theme, then zen. Kept in one
+ * place so "zen comes after the theme" is a fact in the code rather than a
+ * convention nine files have to remember.
+ */
+export function getPageTailCss(): string {
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getZenCss()}`;
+}
+
+/** The marker `getZenCss()` hangs on, or nothing. */
+export function zenBodyAttribute(): string {
+  return isZenModeEnabled() ? ' class="zen"' : '';
+}
+
+/** Whether a settings change alters how a page is drawn rather than what it says. */
+export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boolean {
+  return (
+    event.affectsConfiguration('deckard.theme') ||
+    event.affectsConfiguration('deckard.zenMode')
+  );
+}
+
+/**
  * Helpers every page script needs.
  *
  * This is inserted inside each page's own `<script>`, so the functions are
@@ -1014,12 +1124,33 @@ export function getComponentScript(): string {
   }
 
   /**
+   * The gear's zen row, the same on every page that has a gear. The current
+   * state is read from the body class rather than from the page's snapshot,
+   * so no page has to carry zen through its state builder.
+   */
+  function renderZenOption() {
+    const enabled = document.body.classList.contains('zen');
+    return {
+      label: 'Zen',
+      html: renderViewOptionChoices('set-zen-mode', [['off', 'Off'], ['on', 'On']], enabled ? 'on' : 'off', 'Zen mode'),
+    };
+  }
+
+  /**
    * Close the gear's menu on a click outside it, and on Escape, handing focus
    * back to the gear. Call once, before the page's own listeners, so a click
    * that redraws the page is seen while its target is still in the menu.
+   *
+   * The zen row is handled here rather than by each page: it posts through
+   * the shared vscode handle, and the host's own configuration listener
+   * redraws the page, so a page needs no handler of its own.
    */
   function installViewOptions() {
     document.addEventListener('click', function (event) {
+      const zen = event.target && event.target.closest ? event.target.closest('[data-action="set-zen-mode"]') : undefined;
+      if (zen) {
+        vscode.postMessage({ type: 'setZenMode', enabled: zen.dataset.value === 'on' });
+      }
       const inside = event.target && event.target.closest ? event.target.closest('.view-options') : undefined;
       document.querySelectorAll('.view-options[open]').forEach(function (options) {
         if (options !== inside) options.open = false;
@@ -1065,7 +1196,7 @@ export function getComponentScript(): string {
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span>' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span>' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span>line ' + task.lineNumber + '</span></div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span class="task-source">' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span class="task-source">line ' + task.lineNumber + '</span></div></div>'
       + '</div>';
   }
 

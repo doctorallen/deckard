@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
 
 import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
@@ -48,7 +49,7 @@ export class CalendarView
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme')) {
+        if (affectsPageChrome(event)) {
           // The page reloads and asks for its state again when it is ready.
           this.renderHtml();
         }

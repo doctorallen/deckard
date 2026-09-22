@@ -3,8 +3,9 @@ import * as vscode from 'vscode';
 import {
   createNonce,
   getBaseCss,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { getFavoriteHeartAssetUris } from './icons';
 
 /**
@@ -247,10 +248,10 @@ h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.2; }
   h1 { font-size: 24px; }
   .cards { grid-template-columns: 1fr; }
 }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main>
   <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
@@ -274,6 +275,7 @@ ${getDeckardThemeCss(getDeckardTheme())}
     <a class="nav-sub" href="#tidy">Renaming and tidying</a>
     <a class="nav-sub" href="#periodic">Days, weeks, months</a>
     <span class="nav-group">Reference</span>
+    <a class="nav-sub" href="#zen">Zen mode</a>
     <a class="nav-sub" href="#commands">Commands</a>
     <a class="nav-sub" href="#advanced">Settings</a>
     <a class="nav-sub" href="#assistants">AI assistants</a>
@@ -462,6 +464,13 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Reviews</h3><p>A weekly or monthly note opens with a review written into it: what was completed, what slipped, the notes written and changed, and the tags first seen. It is ordinary Markdown, named by the days it covers, and rewritten in place when you run it again.</p></div>
         <div class="card"><h3>Calendar</h3><p>A month in the sidebar, Sunday to Saturday. A dot marks a day with a note and a number counts what is due, in orange once the day has passed. The week beside a row opens that week’s note.</p></div>
       </div>
+    </section>
+
+    <section id="zen">
+      <h2>Zen mode</h2>
+      <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
+      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colours.</p>
+      <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
     </section>
 
     <section id="commands">

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { affectsPageChrome } from './components';
 
 import { getHelpHtml, HelpManifest } from './helpHtml';
 
@@ -61,7 +62,7 @@ export class HelpPanel implements vscode.Disposable {
     panel.webview.html = getHelpHtml(panel.webview, this.extensionUri, this.manifest);
     this.panelDisposables = [
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.theme') && this.panel) {
+        if (affectsPageChrome(event) && this.panel) {
           this.panel.webview.html = getHelpHtml(
             this.panel.webview,
             this.extensionUri,

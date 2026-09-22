@@ -1192,6 +1192,12 @@ export interface OpenHelpMessage {
   type: 'openHelp';
 }
 
+/** The gear's zen row, on every page that has a gear. */
+export interface SetZenModeMessage {
+  type: 'setZenMode';
+  enabled: boolean;
+}
+
 export interface SetRelatedNotesSortMessage {
   type: 'setRelatedNotesSort';
   mode: RelatedNotesSortMode;
@@ -1218,6 +1224,7 @@ export interface ClearEntryRelatedNotesMessage {
 }
 
 export type DashboardMessage =
+  | SetZenModeMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | ToggleFavoriteMessage
@@ -1246,6 +1253,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | SetZenModeMessage
   | PinNoteMessage
   | OpenHelpMessage
   | OpenSourceMessage
@@ -1464,6 +1472,7 @@ export interface ShowColumnRestMessage {
 }
 
 export type TaskBoardMessage =
+  | SetZenModeMessage
   | OpenHelpMessage
   | ShowColumnRestMessage
   | SaveBoardSearchMessage

@@ -66,6 +66,7 @@ import { StatsPanel } from './ui/webview/stats';
 import { TaskBoardPanel } from './ui/webview/taskBoard';
 import { ActiveSearch } from './ui/webview/activeSearch';
 import { SearchPanels } from './ui/webview/searchPage';
+import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import {
   OutlineTreeProvider,
   pickOutlineTag,
@@ -346,6 +347,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
   void syncOutlineFollowCursorContext();
+  void syncZenModeContext();
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'deckard.outline.revealSection',
@@ -391,6 +393,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.outline.disableFollowCursor', () =>
       setOutlineFollowCursor(false),
+    ),
+    vscode.commands.registerCommand('deckard.enableZenMode', () =>
+      setZenMode(true),
+    ),
+    vscode.commands.registerCommand('deckard.disableZenMode', () =>
+      setZenMode(false),
     ),
   );
   context.subscriptions.push(

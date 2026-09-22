@@ -5,8 +5,9 @@ import {
   getBaseCss,
   getComponentScript,
   getContentSecurityPolicy,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 
 /**
  * Draws the sidebar calendar: a month of weeks from Sunday to Saturday.
@@ -46,10 +47,10 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
 .due { color: var(--green); font-size: 9px; line-height: 11px; }
 .due.overdue { color: var(--warning-orange); }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading calendar...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">

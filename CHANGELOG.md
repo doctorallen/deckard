@@ -72,6 +72,23 @@
 
 ### Added
 
+- **Zen mode turns Deckard's own chrome down without taking anything away.**
+  Before a note is read, a page spent its first screen on a decorative
+  eyebrow, invented telemetry codes over the workspace totals, a grid
+  backdrop, a permanent line of query syntax, and a file name, heading and
+  line under every single row. Zen hides the ornament, thins the borders and
+  headings, and folds each row's provenance away until the row is hovered or
+  focused. Every button, filter, count, checkbox and tag stays exactly where
+  it was: what it hides is moved off-screen rather than out of the page, so a
+  screen reader still announces it and find-in-page still finds it. A task's
+  due date, priority and overdue marker never fold, because they are the
+  point of the row rather than chrome, and a search that could not be parsed
+  still says so. Turn it on from the gear on the Dashboard, a search page or
+  the Task board, from `Deckard: Zen Mode`, or with `deckard.zenMode`. It is
+  one switch for every view, and it composes with all eight themes rather
+  than replacing one — a theme picks the colours, zen picks how much frame
+  is drawn around them.
+
 - **Renaming a note carries its links with it.** A `[[link]]` names a note by
   its title, so renaming one in the Explorer broke every link to it and left
   the diagnostics to report the wreckage afterwards. The links are rewritten

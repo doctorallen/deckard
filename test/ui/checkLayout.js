@@ -31,6 +31,7 @@ if (!existsSync(compiled)) {
 const { pages, renderPagesForTheme, themes } = require('./pages.js');
 const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
 const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
+const { createSearchPageSnapshot } = require('../../out/ui/state/dashboardState.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
@@ -82,7 +83,7 @@ const NOW = new Date(2026, 8, 21, 12).getTime();
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report.
  */
-function createSurfaces() {
+function createSurfaces(zen) {
   const { index, files } = createIndex();
   const preferences = new PreferencesStore(createGlobalState());
   return [
@@ -118,6 +119,17 @@ function createSurfaces() {
       clippers: [],
       hovered: ['.note'],
     },
+    // Zen folds each card's file and line away and reveals it on hover, so a
+    // hovered result is the one row that grows. The search page is where that
+    // reveal sits inside a .card-header rather than at the end of the row.
+    ...(zen ? [{
+      page: 'searchPage',
+      viewport: [900, 900],
+      snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.card'],
+    }] : []),
   ];
 }
 
@@ -275,13 +287,16 @@ if (keep && !existsSync(keep)) require('node:fs').mkdirSync(keep, { recursive: t
 let failed = 0;
 try {
   for (const theme of themes.map((entry) => entry.id ?? entry)) {
-    const rendered = new Map(renderPagesForTheme(theme));
-    for (const surface of createSurfaces()) {
+   for (const zen of [false, true]) {
+    const label = zen ? `${theme}+zen` : theme;
+    const rendered = new Map(renderPagesForTheme(theme, { zen }));
+    for (const surface of createSurfaces(zen)) {
       // LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking at it.
+      // LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it.
       const only = process.env.LAYOUT_ONLY;
-      if (only && only !== `${theme}:${surface.page}` && only !== surface.page && only !== theme) continue;
+      if (only && only !== `${label}:${surface.page}` && only !== surface.page && only !== label) continue;
       const html = rendered.get(surface.page);
-      const file = path.join(dir, `${theme}-${surface.page}.html`);
+      const file = path.join(dir, `${label}-${surface.page}.html`);
       writeFileSync(file, buildPage(html, surface));
       const problems = [];
       let runs;
@@ -292,7 +307,7 @@ try {
         runs = [];
       }
       if (process.env.LAYOUT_DEBUG) {
-        console.log(JSON.stringify({ theme, page: surface.page, runs }, null, 1));
+        console.log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
       }
       if (runs[0] && (runs[0].viewport[0] !== surface.viewport[0] || runs[0].viewport[1] !== surface.viewport[1])) {
         problems.push(`viewport is ${runs[0].viewport.join('x')}, not ${surface.viewport.join('x')}`);
@@ -317,13 +332,14 @@ try {
         console.log(`  wrote ${file}`);
       } else if (problems.length === 0) {
         const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
-        console.log(`  ok   ${theme.padEnd(10)} ${surface.page.padEnd(13)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
+        console.log(`  ok   ${label.padEnd(14)} ${surface.page.padEnd(13)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
       } else {
         failed += 1;
-        console.log(`  FAIL ${theme.padEnd(10)} ${surface.page}`);
+        console.log(`  FAIL ${label.padEnd(14)} ${surface.page}`);
         problems.forEach((problem) => console.log(`         ${problem}`));
       }
     }
+   }
   }
 } finally {
   if (!keep) rmSync(dir, { recursive: true, force: true });

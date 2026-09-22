@@ -4,8 +4,9 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { helpIcon, notesGraphIcon, taskBoardIcon } from './icons';
 
 /**
@@ -143,10 +144,10 @@ button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
 .source { margin-top: 4px; font-size: 10px; }
 .empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading related notes...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">

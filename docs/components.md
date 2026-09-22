@@ -18,8 +18,9 @@ icons.ts        SVG assets shared between pages
 ## How a page is assembled
 
 ```ts
-import { createNonce, getBaseCss, getComponentScript } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import {
+  createNonce, getBaseCss, getComponentScript, getPageTailCss, zenBodyAttribute,
+} from './components';
 
 const nonce = createNonce();
 const csp = getContentSecurityPolicy(webview.cspSource, nonce);
@@ -28,7 +29,7 @@ const csp = getContentSecurityPolicy(webview.cspSource, nonce);
 ```html
 <style nonce="${nonce}">${getBaseCss()}
   /* only what is specific to this page */
-  ${getDeckardThemeCss(getDeckardTheme())}
+  ${getPageTailCss()}
 </style>
 <script nonce="${nonce}">
 (function () {
@@ -40,8 +41,13 @@ ${getComponentScript()}
 ```
 
 Cascade order matters and is always the same: **base sheet → page rules →
-theme sheet.** A page overrides a component by restating the rule after
-`getBaseCss()`; a theme overrides tokens for everyone.
+theme sheet → zen sheet.** A page overrides a component by restating the rule
+after `getBaseCss()`; a theme overrides tokens for everyone; zen comes last
+because what it takes away is largely what a theme adds. `getPageTailCss()`
+emits the last two together, so no page has to remember the order.
+
+The page's `<body>` carries `${zenBodyAttribute()}`, which is `class="zen"`
+when zen is on and nothing when it is off. See **Zen mode** below.
 
 **A page keeps its own layout.** The base sheet and a page use the same
 selector names — `main`, `header`, `.metrics`, `.cards` — so a base rule can
@@ -296,6 +302,66 @@ saved-view rows. `npm run test:ui` fails if one of those renders without it.
 
 ---
 
+## Zen mode
+
+`getZenCss()`. Deckard's own chrome, turned down: decoration hidden, the frame
+thinned, and each row's file and line folded away until the row is hovered or
+focused. It is not a ninth theme — a theme picks the palette, zen picks how
+much frame is drawn, and the two compose.
+
+**Every rule is scoped under `body.zen`, and the sheet ships whether or not
+zen is on.** Only the class is conditional. That is deliberate, and it is what
+two checks depend on:
+
+- `verifyWebviews.js` matches a layout contract by its **exact** selector
+  string, so `body.zen .metric` is not `.metric` and cannot flip one.
+- `checkContrast.js` reads every declared rule whether or not the page renders
+  a match, so the zen rules get contrast cover across all eight themes with no
+  second render pass.
+
+Scoping also keeps the `:root` count at two. Zen's token overrides go on
+`body.zen`, never in a third `:root` block.
+
+**The sheet declares no `color`, `background`, `background-color`, or
+`border-color`** — only what it takes to hide, thin, and fold. Under that rule
+the contrast matrix cannot move, which is why the contrast check stays one
+pass. A new signature there means a color slipped in; fix the rule rather than
+re-record the baseline. `src/test/zen-mode.test.ts` asserts this directly.
+
+**Zen hides two ways, and the difference is not cosmetic.** `display: none`
+for ornament nothing refers to. The off-screen idiom — `position: absolute`
+and `clip-path: inset(50%)`, the same one `.is-dragging` uses — for anything a
+reader may still want, so it stays in the accessibility tree, in find-in-page,
+and comes back on `:focus-within`. A node that carries an accessible name is
+never dropped outright.
+
+Two things look like chrome and are not:
+
+- `.query-error` shares its slot with `.query-hint`. The hint goes; the error
+  never does, or a search that failed to parse reads as one that found
+  nothing.
+- `.board-details` is a `.source`, but it carries the due date and the word
+  "overdue". It does not fold. Only `.card .source`, `.note .source`, and the
+  `.task-source` spans in `renderTaskListRow` do.
+
+Spacing is restated rather than tokenized: there are no spacing tokens, so
+zen's block mirrors the literals in `getShellCss`, `getSurfaceCss`,
+`getTaskBoardCss`, and `getTaskListCss`. A padding change in one needs a
+change in the other, and the layout suite measures both.
+
+Its `:hover` rules must stay at the top level of the sheet. `checkLayout.js`
+forces hovers by rewriting `rule.selectorText`, which a `CSSMediaRule` does
+not have, so a `:hover` nested in an `@media` block is never tested.
+
+| Host-side helper | Purpose |
+| --- | --- |
+| `getZenCss()` | The sheet. Always emitted. |
+| `getPageTailCss()` | The theme sheet then the zen sheet, in that order. What each page interpolates after its own rules. |
+| `zenBodyAttribute()` | `' class="zen"'` or `''`, for the page's `<body>`. |
+| `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn. Each webview host's configuration listener asks this instead of naming `deckard.theme` alone. |
+
+---
+
 ## Page script helpers
 
 `getComponentScript()` is inserted into each page's `<script>` immediately
@@ -314,6 +380,7 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
+| `renderZenOption()` | The gear's Zen row, ready to drop into a `renderViewOptions()` list. Reads the current state from the body class, so no page carries zen through its state builder, and posts `setZenMode` from `installViewOptions()`, so no page needs a handler. |
 | `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. |
 | `renderWeightRail(level, title)`, `getWeightLevel(weight)` | How much a tag weighs, as a `.tag-weight-rail` of three steps, and the step a weight fills to: three from 0.75, two from 0.375. Related Notes' active tags, Refine, and the sidebar's Refine view draw it. |
 
@@ -397,7 +464,12 @@ page depends on layout that a base rule could plausibly override.
 stops rendering, emits a script that does not parse, is missing the design
 tokens, carries more than one nonce, declares more than one `:root`,
 redeclares a helper the shared script already owns, renders a content row
-without a shared surface class, or loses one of its layout contracts.
+without a shared surface class, loses one of its layout contracts, or does not
+end its style block with the zen sheet.
+
+The contracts are read against the page as it renders **without** zen. Zen's
+rules cannot reach them, because a contract matches its selector string
+exactly and every zen rule is prefixed — which is the point of the prefix.
 
 ### Layout in a browser
 
@@ -414,8 +486,16 @@ elements named. Add a surface there when a page gains a scroll container.
 It needs Chrome (`CHROME_PATH`, or the usual names) and skips itself without
 one; CI has it.
 
+Every surface runs twice, once with zen and once without
+(`LAYOUT_ONLY=cooper+zen:sidebarNotes` picks one out), because zen is the only
+thing here that makes a row grow under the pointer: it folds the file and line
+away and gives them back on hover. The search page is a zen-only surface,
+since that reveal sits inside a `.card-header` rather than at the end of a
+row.
+
 Because the webviews are strings, the compiler cannot check any of this. Run
-these three after touching `components.ts`.
+these three after touching `components.ts`, and `npm test` too when the change
+adds a setting or a command — `src/test/extension.test.ts` counts both.
 
 ## Adding a component
 

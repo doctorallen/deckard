@@ -6,8 +6,9 @@ import {
   getComponentScript,
   getQueryEditorCss,
   getQueryEditorScript,
+  getPageTailCss,
+  zenBodyAttribute,
 } from './components';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { getFavoriteHeartAssetUris, settingsIcon } from './icons';
 
 /**
@@ -189,10 +190,10 @@ h2 { margin: 0 0 4px; }
 @media (max-width: 700px) {
   .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
 }
-${getDeckardThemeCss(getDeckardTheme())}
+${getPageTailCss()}
 </style>
 </head>
-<body>
+<body${zenBodyAttribute()}>
 <main id="app"><div class="empty">Loading index...</div></main>
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
@@ -924,6 +925,7 @@ ${getQueryEditorScript()}
     const dashboardOptions = renderViewOptions([
       { label: 'Home', html: '<button type="button" class="' + (editingHome ? 'active' : '') + '" data-action="' + (editingHome ? 'finish-customizing' : 'customize-home') + '" aria-pressed="' + editingHome + '">' + (editingHome ? 'Done customizing' : 'Customize') + '</button>' },
       { label: 'Tag columns', html: tagColumnChoices },
+      renderZenOption(),
     ]);
     const home = dashboardMode === 'home' ? renderHome() : '';
 
