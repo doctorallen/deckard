@@ -4,6 +4,27 @@
 
 ### Fixed
 
+- **Favourites, pins and view counts survive opening another folder.** They
+  were kept machine-wide, and every index update deleted any key the current
+  workspace did not contain — so opening any other folder holding a Markdown
+  file, a repository with a README being enough, emptied the favourites,
+  pinned notes, saved searches and tag and note view counts belonging to the
+  notes workspace. A window with no folder open did the same thing, which is
+  the state VS Code is in while a VSIX is installed from the Extensions view,
+  and is where most people will have met this.
+
+  These name what is in a workspace, so they are now kept with it. The first
+  workspace opened after this release adopts what was stored machine-wide, so
+  a reader with one set of notes sees no change; a second workspace starts
+  clean instead of inheriting tags it does not have. What stays machine-wide
+  is presentation — sort modes, column counts, layouts, page sizes — which
+  means the same thing everywhere and is never pruned. A whole copy is still
+  written machine-wide, so an older Deckard reads it, and so a workspace whose
+  own storage VS Code has cleaned up is seeded rather than empty.
+
+  Pruning itself also now refuses to run against an index holding nothing,
+  which is not evidence that every note was deleted.
+
 - **A task's title is Markdown in the table too.** The Task Board's table and
   a query block's table of tasks printed the title's source, so a task written
   with `**bold**`, a `` `command` ``, or a link read as its own markup while

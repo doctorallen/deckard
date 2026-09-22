@@ -131,7 +131,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     undefined,
     new SearchStore(context.storageUri),
   );
-  const preferences = new PreferencesStore(context.globalState);
+  // Favourites, pins and view counts name what is in a workspace, so they are
+  // kept with it. A window with no folder open has no workspace to own them
+  // and nothing to index, so it reads the machine-wide store alone.
+  const preferences = new PreferencesStore(
+    context.globalState,
+    vscode.workspace.workspaceFolders?.length
+      ? context.workspaceState
+      : undefined,
+  );
+  void preferences.initialize();
   // A task's id comes from its own text, so an edit Deckard writes makes it a
   // new task to anything keyed by id. This keeps its place in a ranked list
   // across the edit, and across an Undo of it.

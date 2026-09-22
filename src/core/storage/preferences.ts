@@ -29,6 +29,68 @@ import {
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
+/** Set once the machine-wide store has handed its content to a workspace. */
+const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
+
+/**
+ * The preferences that name what is in a workspace rather than how Deckard
+ * looks, and so belong to that workspace.
+ *
+ * These were kept machine-wide until 1.19, and pruned against whichever
+ * window last built an index. Opening any other folder holding a Markdown
+ * file — a repository with a README was enough — deleted the favourites,
+ * pins and view counts belonging to the notes workspace, because that
+ * folder's index did not contain them.
+ *
+ * What stays machine-wide is presentation: sort modes, column counts,
+ * layouts, page sizes. Those mean the same thing in any workspace, and
+ * nothing prunes them.
+ */
+const workspacePreferenceKeys = [
+  'favoriteTags',
+  'favoriteEntities',
+  'tagAccessOrder',
+  'tagAccessCounts',
+  'tagAccessTimes',
+  'entityAccessOrder',
+  'entityAccessCounts',
+  'taskOrder',
+  'sectionAccessCounts',
+  'sectionAccessTimes',
+  'savedFilters',
+  'recentQueries',
+  'tagFirstSeen',
+  'pinnedNotes',
+  'dashboardWidgets',
+  'dashboardViewState',
+] as const satisfies readonly (keyof PersistedPreferences)[];
+
+/** Everything except the workspace's share: what stays machine-wide. */
+function omitWorkspacePreferences(
+  value: Partial<PersistedPreferences> | undefined,
+): Partial<PersistedPreferences> {
+  const kept: Record<string, unknown> = { ...(value ?? {}) };
+  for (const key of workspacePreferenceKeys) {
+    delete kept[key];
+  }
+  return kept as Partial<PersistedPreferences>;
+}
+
+/** The workspace's share of a whole preference blob. */
+function pickWorkspacePreferences(
+  value: Partial<PersistedPreferences> | undefined,
+): Partial<PersistedPreferences> {
+  const picked: Record<string, unknown> = {};
+  if (!value) {
+    return picked;
+  }
+  for (const key of workspacePreferenceKeys) {
+    if (value[key] !== undefined) {
+      picked[key] = value[key];
+    }
+  }
+  return picked as Partial<PersistedPreferences>;
+}
 const defaultPreferences: PersistedPreferences = {
   version: 1,
   favoriteTags: [],
@@ -146,10 +208,67 @@ export class PreferencesStore implements vscode.Disposable {
   private preferences: PersistedPreferences;
   private updateQueue: Promise<void> = Promise.resolve();
 
-  public constructor(private readonly state: vscode.Memento) {
-    this.preferences = normalizePreferences(
-      state.get<Partial<PersistedPreferences>>(preferencesKey),
-    );
+  /** A seed from the machine-wide store, waiting to be written. */
+  private seeded: Partial<PersistedPreferences> | undefined;
+
+  /**
+   * `workspaceState` carries the preferences that name workspace content. It
+   * is left out when no folder is open, where there is no workspace to own
+   * them and nothing to index; the store then reads and writes the
+   * machine-wide blob alone, as it always did.
+   */
+  public constructor(
+    private readonly state: vscode.Memento,
+    private readonly workspaceState?: vscode.Memento,
+  ) {
+    const global = state.get<Partial<PersistedPreferences>>(preferencesKey);
+    if (!this.workspaceState) {
+      this.preferences = normalizePreferences(global);
+      return;
+    }
+    const workspace =
+      this.workspaceState.get<Partial<PersistedPreferences>>(preferencesKey);
+    // The first workspace opened after the upgrade adopts what was kept
+    // machine-wide, so a reader with one set of notes sees no change at all.
+    // Later workspaces start clean rather than inheriting another's tags,
+    // which they would prune away anyway.
+    if (
+      workspace === undefined &&
+      !state.get<boolean>(workspaceScopedKey, false)
+    ) {
+      this.seeded = pickWorkspacePreferences(global);
+    }
+    // The machine-wide blob keeps a whole copy, so its workspace keys have to
+    // be dropped before the workspace's own are laid over it. Without that, a
+    // workspace with nothing stored would read the last one's favourites.
+    this.preferences = normalizePreferences({
+      ...omitWorkspacePreferences(global),
+      ...(workspace ?? this.seeded ?? {}),
+    });
+  }
+
+  /**
+   * Writes a seed taken from the machine-wide store into the workspace, and
+   * records that it has been handed over. Call once, after construction.
+   *
+   * The machine-wide blob keeps a whole copy. That is what an older Deckard
+   * reads, and what seeds a workspace whose own storage VS Code has since
+   * cleaned up; it is never read while the workspace has one of its own.
+   */
+  public async initialize(): Promise<void> {
+    if (!this.workspaceState || this.seeded === undefined) {
+      return;
+    }
+    this.seeded = undefined;
+    // Through the same queue as every other write, so a preference changed
+    // before the handover lands is not overwritten by it.
+    const write = async (): Promise<void> => {
+      await this.persist(clonePreferences(this.preferences));
+      await this.state.update(workspaceScopedKey, true);
+    };
+    const queued = this.updateQueue.then(write, write);
+    this.updateQueue = queued;
+    await queued;
   }
 
   public readonly onDidChange = this.changeEmitter.event;
@@ -687,6 +806,27 @@ export class PreferencesStore implements vscode.Disposable {
     const validEntities = validEntityKeys
       ? new Set(validEntityKeys)
       : undefined;
+    const validFilePathSet = validFilePaths
+      ? new Set(validFilePaths)
+      : undefined;
+    // Pruning is a garbage collection, and it may only run against an index
+    // that is authoritative about what exists. An index holding nothing is
+    // not evidence that every tag, note and task was deleted: it is what a
+    // window with no folder open reports, which is the state VS Code is in
+    // while a VSIX is installed from the Extensions view.
+    //
+    // A workspace whose notes really were all deleted keeps its preferences
+    // instead. They are small, and they come back into use the moment a note
+    // does.
+    if (
+      validTags.size === 0 &&
+      validTasks.size === 0 &&
+      (validSections?.size ?? 0) === 0 &&
+      (validEntities?.size ?? 0) === 0 &&
+      (validFilePathSet?.size ?? 0) === 0
+    ) {
+      return;
+    }
     const sectionAccessCounts = validSectionIds
       ? Object.fromEntries(
           Object.entries(this.preferences.sectionAccessCounts).filter(
@@ -732,7 +872,7 @@ export class PreferencesStore implements vscode.Disposable {
         previousFirstSeen ? (previousFirstSeen[tagKey] ?? now) : 0,
       ]),
     );
-    const validFiles = validFilePaths ? new Set(validFilePaths) : undefined;
+    const validFiles = validFilePathSet;
     const changes: Partial<PersistedPreferences> = {
       dashboardWidgets: this.preferences.dashboardWidgets.filter(
         (widget) =>
@@ -804,12 +944,24 @@ export class PreferencesStore implements vscode.Disposable {
     });
     const nextPreferences = clonePreferences(this.preferences);
     const persist = async (): Promise<void> => {
-      await this.state.update(preferencesKey, nextPreferences);
+      await this.persist(nextPreferences);
       this.changeEmitter.fire(clonePreferences(nextPreferences));
     };
     const queuedUpdate = this.updateQueue.then(persist, persist);
     this.updateQueue = queuedUpdate;
     await queuedUpdate;
+  }
+
+  /**
+   * Writes one blob to the two stores it is split across. The workspace's
+   * share is authoritative; the machine-wide copy is a backup and a seed.
+   */
+  private async persist(next: PersistedPreferences): Promise<void> {
+    await this.state.update(preferencesKey, next);
+    await this.workspaceState?.update(
+      preferencesKey,
+      pickWorkspacePreferences(next),
+    );
   }
 }
 

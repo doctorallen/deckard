@@ -497,6 +497,7 @@ tag = #project/atlas AND task = open
       <p>Your Markdown is the source of truth. The index and the search cache are stored locally, under this workspace’s storage, and no note content is sent to any service by Deckard.</p>
       <p>Deckard changes a note only when you use a task checkbox, edit a task, extract a tagged heading, rename a note, tag, or heading, carry tasks forward, write a review, edit a search’s results, or approve an entity tag. Every one of those compares what it is about to change with what was indexed, and refuses when the line has moved on. Writes that reach several notes are shown first and can be taken back with <code>Deckard: Undo Last Change</code>.</p>
       <p>Favorites, sorting, pins, widget layout, and view counts live in VS Code’s own storage, never in your notes.</p>
+      <p><strong>What names your notes is kept with the workspace.</strong> Favorite tags and people, pinned notes, saved searches, Home’s widgets, view counts, and your task order belong to the folder they describe, so opening another project cannot disturb them. How Deckard looks — sort modes, column counts, layouts, page sizes — is kept for the machine and is the same everywhere. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.</p>
     </article>
 </main>
 </body>
