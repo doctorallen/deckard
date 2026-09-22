@@ -290,6 +290,7 @@ ${getPageTailCss()}
 
     <section id="quick-start">
       <h2>Quick start</h2>
+      <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> copies seven small notes, written the way Deckard reads them, into a folder you choose and offers to open it. Its README says what each shows and what to try first.</p>
       <div class="steps">
         <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar for Related Notes, the Outline, Tasks, and the Calendar.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>

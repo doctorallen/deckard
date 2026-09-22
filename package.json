@@ -37,7 +37,7 @@
           {
             "id": "deckard.walkthrough.openNote",
             "title": "Open or create a note",
-            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two.\n[Create today's note](command:deckard.createDailyNote)",
+            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two \u2014 or start from seven notes already written the way Deckard reads them.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
             "media": {
               "markdown": "resources/walkthrough/notes.md"
             }
@@ -286,6 +286,10 @@
       {
         "command": "deckard.checkSetup",
         "title": "Deckard: Check My Setup"
+      },
+      {
+        "command": "deckard.createSampleWorkspace",
+        "title": "Deckard: Create a Sample Workspace"
       }
     ],
     "menus": {

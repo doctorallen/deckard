@@ -4,6 +4,16 @@
 
 ### Added
 
+- **`Deckard: Create a Sample Workspace` gives a new reader something to
+  look at.** The walkthrough says what a tag and a hub note are; it cannot
+  show one being found. Seven small notes can - three daily notes with
+  tagged headings and dated, prioritized tasks that name people; two
+  project hubs with `describes:` front matter; a person; a team - and they
+  are copied into a `deckard-sample` folder inside a folder of the reader's
+  choosing, never on top of anything already there, and offered to be
+  opened. A README beside them says what each shows and what to try first.
+  The walkthrough's first step offers it beside creating today's note.
+
 - **`Deckard: Check My Setup` says what the settings add up to.** Deckard
   has forty-nine of them, and the effect of most is that something is
   silently not there: a notes folder that does not exist, an exclude

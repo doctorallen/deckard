@@ -83,6 +83,7 @@ suite('Extension Test Suite', () => {
         'deckard.importPreferences',
         'deckard.restorePreferences',
         'deckard.checkSetup',
+        'deckard.createSampleWorkspace',
       ],
     );
     assert.strictEqual(

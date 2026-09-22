@@ -80,6 +80,9 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colours;
 
 ## Get started
 
+The fastest way to see what Deckard does is to let it show you: `Deckard: Create a Sample Workspace` copies seven small notes — three daily notes, two project hubs, a person, a team — into a folder you choose and offers to open it. They are written the way Deckard reads them, and the README beside them says what each one shows and what to try first. Delete the folder when you are done; nothing else refers to it.
+
+
 1. Open a folder or workspace in VS Code.
 2. Open any Markdown note in the workspace, or [restrict indexing to a folder](#settings).
 3. Open the Command Palette and run `Deckard: Open Dashboard`.
@@ -110,6 +113,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Import Favourites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers with it. |
 | **Deckard: Restore Favourites, Pins, and Searches from a Copy** | Offers the copies Deckard keeps on its own, newest first, and restores the one you pick after asking. |
 | **Deckard: Check My Setup** | Writes up, as a Markdown document, what your settings resolve to in this workspace, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone — with what to do about each thing that is off. |
+| **Deckard: Create a Sample Workspace** | Copies seven small notes, written the way Deckard reads them, into a `deckard-sample` folder inside a folder you choose, and offers to open it. Its README says what each note shows and what to try first. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |

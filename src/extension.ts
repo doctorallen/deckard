@@ -69,6 +69,7 @@ import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import { tidyPreferences } from './ui/commands/tidyPreferences';
 import { checkSetup } from './ui/commands/checkSetup';
+import { createSampleWorkspace } from './ui/commands/sampleWorkspace';
 import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
 import {
   exportPreferences,
@@ -464,6 +465,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.checkSetup', () =>
       checkSetup(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
+      createSampleWorkspace(context.extensionUri),
     ),
   );
   context.subscriptions.push(
