@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- **What a workspace remembers can be taken back.** A moment after each
+  change, Deckard writes a copy of its favourites, pins, saved searches,
+  widgets and view counts into the workspace's storage and keeps the last
+  twenty. `Deckard: Restore Favourites, Pins, and Searches from a Copy`
+  offers them newest first; `Deckard: Export` writes the same thing to a
+  JSON file of your choosing, and `Deckard: Import` reads one back. Each
+  says what it holds, and what is here now, before replacing anything, and
+  the current state is copied first so a restore can itself be undone. A
+  store that was never copied was a store one bad write could end, and
+  Deckard has now had that bug once.
+
 ### Fixed
 
 - **Deckard no longer deletes a favourite, a pin, or a saved search on its

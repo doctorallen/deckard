@@ -270,6 +270,18 @@
       {
         "command": "deckard.tidyPreferences",
         "title": "Deckard: Tidy Favourites, Pins, and Saved Searches"
+      },
+      {
+        "command": "deckard.exportPreferences",
+        "title": "Deckard: Export Favourites, Pins, and Searches"
+      },
+      {
+        "command": "deckard.importPreferences",
+        "title": "Deckard: Import Favourites, Pins, and Searches"
+      },
+      {
+        "command": "deckard.restorePreferences",
+        "title": "Deckard: Restore Favourites, Pins, and Searches from a Copy"
       }
     ],
     "menus": {

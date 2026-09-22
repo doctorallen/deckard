@@ -1001,6 +1001,16 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Replaces everything this store holds with a blob read back from an
+   * export or a copy Deckard kept. It is normalized on the way in, so a file
+   * from an older Deckard, or one that was edited by hand, cannot leave the
+   * store holding a shape the views do not expect.
+   */
+  public async importPreferences(value: PersistedPreferences): Promise<void> {
+    await this.update(normalizePreferences(value));
+  }
+
+  /**
    * Writes one blob to the two stores it is split across. The workspace's
    * share is authoritative; the machine-wide copy is a backup and a seed.
    */

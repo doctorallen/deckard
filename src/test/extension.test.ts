@@ -79,6 +79,9 @@ suite('Extension Test Suite', () => {
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.tidyPreferences',
+        'deckard.exportPreferences',
+        'deckard.importPreferences',
+        'deckard.restorePreferences',
       ],
     );
     assert.strictEqual(

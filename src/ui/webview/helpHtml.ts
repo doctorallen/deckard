@@ -499,6 +499,7 @@ tag = #project/atlas AND task = open
       <p>Favorites, sorting, pins, widget layout, and view counts live in VS Code’s own storage, never in your notes.</p>
       <p><strong>What names your notes is kept with the workspace.</strong> Favorite tags and people, pinned notes, saved searches, Home’s widgets, view counts, and your task order belong to the folder they describe, so opening another project cannot disturb them. How Deckard looks — sort modes, column counts, layouts, page sizes — is kept for the machine and is the same everywhere. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.</p>
       <p><strong>Deckard never deletes a favourite, a pin, or a saved search on its own.</strong> If what one pointed at is gone, it stays until you run <code>Deckard: Tidy Favourites, Pins, and Saved Searches</code>, which lists what points nowhere and asks first. Only what Deckard derived for itself — view counts and access order — is cleaned up automatically.</p>
+      <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favourites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import</code> reads one back; each says what it holds and asks before replacing anything.</p>
     </article>
 </main>
 </body>

@@ -68,6 +68,12 @@ import { ActiveSearch } from './ui/webview/activeSearch';
 import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import { tidyPreferences } from './ui/commands/tidyPreferences';
+import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
+import {
+  exportPreferences,
+  importPreferences,
+  restorePreferences,
+} from './ui/commands/preferenceBackups';
 import {
   OutlineTreeProvider,
   pickOutlineTag,
@@ -142,6 +148,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       : undefined,
   );
   void preferences.initialize();
+  // A copy of what this workspace remembers, a moment after each change,
+  // so one bad write is something a reader can take back.
+  const snapshots = new PreferenceSnapshots(context.storageUri, preferences);
+  context.subscriptions.push(snapshots);
   // A task's id comes from its own text, so an edit Deckard writes makes it a
   // new task to anything keyed by id. This keeps its place in a ranked list
   // across the edit, and across an Undo of it.
@@ -412,6 +422,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.tidyPreferences', () =>
       tidyPreferences(indexer, preferences),
+    ),
+    vscode.commands.registerCommand('deckard.exportPreferences', () =>
+      exportPreferences(preferences),
+    ),
+    vscode.commands.registerCommand('deckard.importPreferences', () =>
+      importPreferences(preferences),
+    ),
+    vscode.commands.registerCommand('deckard.restorePreferences', () =>
+      restorePreferences(preferences, snapshots),
     ),
   );
   context.subscriptions.push(

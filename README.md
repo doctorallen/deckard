@@ -106,6 +106,9 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Tidy Favourites, Pins, and Saved Searches** | Lists the favourites, pins, and tag-set searches that point at nothing in this workspace any more, and removes them only if you say so. Deckard never removes one of these on its own. |
+| **Deckard: Export Favourites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file you choose. |
+| **Deckard: Import Favourites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers with it. |
+| **Deckard: Restore Favourites, Pins, and Searches from a Copy** | Offers the copies Deckard keeps on its own, newest first, and restores the one you pick after asking. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |
@@ -987,6 +990,8 @@ Markdown files remain the source of truth. Deckard changes note content only whe
 Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-note search. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 
 Deckard never deletes a favourite, a pin, or a saved search on its own. If a tag or note it pointed at is gone, the item stays until you run **Deckard: Tidy Favourites, Pins, and Saved Searches**, which lists what points nowhere and asks before removing it. Only what Deckard derived for itself — view counts, access order, when a tag was first seen — is cleaned up automatically, and only against this workspace's own index.
+
+What Deckard remembers is also copied. A moment after each change it writes a copy into this workspace's storage and keeps the last twenty, so a bad write, a mistaken import, or an over-eager tidy is something you can take back with **Deckard: Restore Favourites, Pins, and Searches from a Copy**. To carry it to another machine, or to keep your own copy, **Deckard: Export Favourites, Pins, and Searches** writes it as one JSON file and **Deckard: Import** reads it back; both say what they hold before replacing anything.
 
 What Deckard remembers is split in two. Anything that **names what is in a workspace** — favorite tags and entities, pinned notes, saved searches, Home's widgets, tag and note view counts, and the custom task order — is kept with that workspace, so opening another folder cannot disturb it. Anything that is **how Deckard looks** — sort modes, column counts, layouts, and page sizes — is kept for the machine and is the same in every workspace. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open, so a single set of notes carries over untouched; a second workspace starts empty rather than inheriting tags it does not have.
 
