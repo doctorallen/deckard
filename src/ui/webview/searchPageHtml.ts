@@ -295,6 +295,13 @@ ${getQueryEditorScript()}
     ]);
   }
 
+  /** Beside Bulk Edit: everything the search found, out as Markdown or CSV. */
+  function exportResultsButton(kind, count) {
+    if (!count) return '';
+    const label = kind === 'tasks' ? 'Export these tasks' : 'Export these notes';
+    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">Export</button>';
+  }
+
   function editResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
@@ -351,8 +358,8 @@ ${getQueryEditorScript()}
     }
     // Bulk Edit belongs beside the heading it acts on, not out with the
     // controls that change how the pane is shown.
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + editResultsButton('notes', notesCount) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + editResultsButton('tasks', tasksCount) + '</div>' + tasksPaged + '</section>';
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + editResultsButton('notes', notesCount) + exportResultsButton('notes', notesCount) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + editResultsButton('tasks', tasksCount) + exportResultsButton('tasks', tasksCount) + '</div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
@@ -438,6 +445,7 @@ ${getQueryEditorScript()}
       if (action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
       if (action === 'set-layout') vscode.postMessage({ type: 'setTagOverviewLayout', layout: target.dataset.layout });
       if (action === 'edit-results') vscode.postMessage({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
+      if (action === 'export-results') vscode.postMessage({ type: 'exportResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'set-columns') {
         const columns = Number(target.dataset.value);
         const section = target.dataset.section;

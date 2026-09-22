@@ -1209,6 +1209,12 @@ export interface OpenHelpMessage {
   type: 'openHelp';
 }
 
+/** Take everything a search found out, as Markdown or CSV. */
+export interface ExportResultsMessage {
+  type: 'exportResults';
+  kind: 'notes' | 'tasks';
+}
+
 /** The gear's zen row, on every page that has a gear. */
 export interface SetZenModeMessage {
   type: 'setZenMode';
@@ -1270,6 +1276,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | ExportResultsMessage
   | SetZenModeMessage
   | PinNoteMessage
   | OpenHelpMessage
@@ -1495,6 +1502,7 @@ export interface ShowColumnRestMessage {
 }
 
 export type TaskBoardMessage =
+  | ExportResultsMessage
   | SetZenModeMessage
   | OpenHelpMessage
   | ShowColumnRestMessage

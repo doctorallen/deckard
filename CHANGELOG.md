@@ -4,6 +4,17 @@
 
 ### Added
 
+- **A search's results can be taken out.** Deckard reads the workspace and
+  writes back into it; nothing leaves. A result copied out as Markdown or
+  CSV makes it usable in a pull request, an issue, or a message, while the
+  index itself still never leaves the machine. **Export**, beside Bulk Edit
+  over a search page's notes or tasks and beside Save on the Task Board,
+  takes everything the search found - not only the page on screen - as a
+  Markdown table, a list with a link to each result, or CSV, and copies it
+  or saves it to a file. A comma, a quote or a line break in a title is
+  quoted the way a spreadsheet expects, and a pipe is escaped the way a
+  Markdown table expects.
+
 - **`Deckard: Create a Sample Workspace` gives a new reader something to
   look at.** The walkthrough says what a tag and a hub note are; it cannot
   show one being found. Seven small notes can - three daily notes with

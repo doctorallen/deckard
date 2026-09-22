@@ -21,22 +21,14 @@ against the current source so that nothing here duplicates a shipped feature.
 
 ## Open suggestions
 
-### 1. Export a search
-
-Deckard reads the workspace and writes back into it; nothing leaves. A
-search page, tag overview, or query block result copied out as Markdown, as
-CSV, or as a table on the clipboard makes a result set usable in a pull
-request, an issue, or a message, while the index itself still never leaves
-the machine.
-
-### 2. Import an existing vault
+### 1. Import an existing vault
 
 The method behind this document is Obsidian adjacency, but migration is the
 step before any of it: Logseq `::` properties and `#[[nested tags]]`, a
 Notion CSV-and-folder export, Roam JSON. One import command that rewrites
 them into Deckard's tags and `[[links]]` is what lets a vault arrive at all.
 
-### 3. A headless CLI over the same index
+### 2. A headless CLI over the same index
 
 The parser, the query evaluator, the SQLite cache, and an MCP server all
 exist. `deckard query "tag = #project/atlas AND is:open"` in a terminal, a
@@ -44,7 +36,7 @@ git hook, or CI — fail the build when a note carries an overdue task — is a
 thin shell over them, and it reaches people who are not in VS Code at the
 moment they need an answer.
 
-### 4. Guarded writes for assistants
+### 3. Guarded writes for assistants
 
 The `deckard_query` and `deckard_list_tags` language model tools, and the MCP
 server, are read-only. The task draft, the board's moves, the refactor preview
@@ -69,9 +61,9 @@ flow is already there.
 
 Guarded writes for assistants first: the query language, the refactor
 preview and the one-command undo already exist, and joining them is what
-makes Deckard a safe target for an agent. Export next, since it is small once
-the query evaluator is the only thing it needs, then the CLI. Import, canvas,
-and Git-aware collaboration follow, in that order, if at all.
+makes Deckard a safe target for an agent. Then the CLI, which is small once
+the query evaluator is the only thing it needs. Import, canvas, and Git-aware
+collaboration follow, in that order, if at all.
 
 ## Research sources
 

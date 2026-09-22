@@ -99,7 +99,8 @@ ${getQueryEditorScript()}
       // The Tasks view lists a search of its own; this is where it is edited.
       const listed = !!(state && state.agendaListsThisSearch);
       return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
-        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>';
+        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
+        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export</button>';
     },
   });
 
@@ -363,6 +364,7 @@ ${getQueryEditorScript()}
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-table-sort') post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value } : { type: 'setTableSort' });
       if (action === 'use-for-agenda') post({ type: 'useSearchForAgenda' });
+      if (action === 'export-tasks') post({ type: 'exportResults', kind: 'tasks' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
         const statuses = state.settings.statuses.slice();
