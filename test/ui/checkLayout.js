@@ -250,15 +250,40 @@ setTimeout(function () {
 </script></body></html>`;
 }
 
-function measure(file, viewport) {
-  const result = spawnSync(chrome, [
+// A --virtual-time-budget of 3s should dump the DOM and exit in about that.
+// Headless Chrome occasionally wedges instead, at 0% CPU, and never returns:
+// without a timeout that hangs the whole suite silently, which it did for
+// twenty minutes before anyone asked. One wedge is a flake and is retried;
+// twice on the same surface is a fault and is reported as one.
+const MEASURE_TIMEOUT_MS = 60000;
+
+function runChrome(file, viewport) {
+  return spawnSync(chrome, [
     '--headless=new', '--disable-gpu', '--no-sandbox',
     `--window-size=${Math.max(viewport[0], 800)},${Math.max(viewport[1], 800)}`,
     '--virtual-time-budget=3000', '--dump-dom', `file://${file}`,
-  ], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  const match = /<pre id="layout-probe">([\s\S]*?)<\/pre>/.exec(result.stdout);
+  ], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: MEASURE_TIMEOUT_MS,
+    killSignal: 'SIGKILL',
+  });
+}
+
+function measure(file, viewport) {
+  let result = runChrome(file, viewport);
+  if (result.signal === 'SIGKILL') {
+    console.log(`       chrome wedged after ${MEASURE_TIMEOUT_MS / 1000}s, retrying once`);
+    result = runChrome(file, viewport);
+  }
+  if (result.signal === 'SIGKILL') {
+    throw new Error(
+      `chrome wedged twice, ${MEASURE_TIMEOUT_MS / 1000}s each, on ${path.basename(file)}`,
+    );
+  }
+  const match = /<pre id="layout-probe">([\s\S]*?)<\/pre>/.exec(result.stdout ?? '');
   if (!match) {
-    throw new Error(`no probe output (chrome exit ${result.status}): ${result.stderr.slice(0, 400)}`);
+    throw new Error(`no probe output (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 400)}`);
   }
   return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
 }

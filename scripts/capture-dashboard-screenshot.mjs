@@ -19,6 +19,8 @@ const theme = process.env.DECKARD_SCREENSHOT_THEME ?? 'replicant';
 // A VS Code color theme, such as "Default Light Modern", for themes that follow it.
 const colorTheme = process.env.DECKARD_SCREENSHOT_COLOR_THEME;
 const view = process.env.DECKARD_SCREENSHOT_VIEW ?? 'dashboard';
+// Whether the view is captured with Deckard's chrome turned down.
+const zen = process.env.DECKARD_SCREENSHOT_ZEN === '1';
 // A selector inside the view's webview to put the pointer over before the
 // capture, for a shot of a hover rather than of the view at rest.
 const hover = process.env.DECKARD_SCREENSHOT_HOVER;
@@ -292,6 +294,7 @@ function writeFixture() {
     join(workspace, '.vscode', 'settings.json'),
     JSON.stringify({
       'deckard.theme': theme,
+      ...(zen ? { 'deckard.zenMode': true } : {}),
       ...(colorTheme ? { 'workbench.colorTheme': colorTheme } : {}),
       'workbench.secondarySideBar.defaultVisibility': false,
       'workbench.startupEditor': 'none',

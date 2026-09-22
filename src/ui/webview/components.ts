@@ -600,6 +600,10 @@ export function getBaseCss(): string {
 export function getZenCss(): string {
   return `
 body.zen { --edge: 1px; --control-height: 26px; --grid-line: transparent; }
+/* The token clears the base sheet's grid. It is not enough on its own:
+   Cooper, Synthwave, Oblivion and Tomcat paint their own backdrop straight
+   onto body with their own colors, so zen has to say this outright. */
+body.zen { background-image: none; }
 /* Ornament nothing refers to. The query hint goes; the parse error that
    shares its slot does not, or a failed search reads as an empty one. */
 body.zen .eyebrow,

@@ -120,7 +120,9 @@ tiebreak. LCARS' `.metric:nth-child(3n + 2)::before` ties with
 after the theme sheet.
 
 **One hard constraint: `getZenCss()` declares no `color`, `background`,
-`background-color`, or `border-color`.** Only `display`, the visually-hidden
+`background-color`, or `border-color`.** (`background-image: none` is allowed,
+and is needed: the `--grid-line` token clears only the base sheet's grid, and
+four themes paint their own backdrop onto `body` in their own colors.) Only `display`, the visually-hidden
 properties, `padding`, `margin`, `gap`, `font-size`, `text-transform`,
 `transform`, the three sizing tokens, and `--grid-line: transparent`. Under
 that constraint the contrast matrix provably cannot move, which is what lets

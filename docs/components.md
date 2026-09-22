@@ -325,7 +325,10 @@ Scoping also keeps the `:root` count at two. Zen's token overrides go on
 **The sheet declares no `color`, `background`, `background-color`, or
 `border-color`** — only what it takes to hide, thin, and fold. Under that rule
 the contrast matrix cannot move, which is why the contrast check stays one
-pass. A new signature there means a color slipped in; fix the rule rather than
+pass. `background-image: none` is allowed and needed: `--grid-line:
+transparent` clears the base sheet's grid, but Cooper, Synthwave, Oblivion and
+Tomcat paint their own backdrop onto `body` with their own colors, so zen has
+to say it outright. Dropping an image declares no color pair. A new signature there means a color slipped in; fix the rule rather than
 re-record the baseline. `src/test/zen-mode.test.ts` asserts this directly.
 
 **Zen hides two ways, and the difference is not cosmetic.** `display: none`
