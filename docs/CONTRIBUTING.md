@@ -20,7 +20,11 @@ restyling one locally, and add a new one there once a second page needs it.
 Run `npm run test:ui` after changing it: the webviews are built from template
 literals, so the compiler cannot see a broken style sheet or inline script.
 Run `npm run test:layout` too when the change touches layout — a scroll
-container, a column, a hover — since only that suite lays the pages out.
+container, a column, a hover — since only that suite lays the pages out, and
+`npm run test:visual` when it touches how anything looks, since only that one
+sees a backdrop, a glow, or a control that moved. When the change in looks is
+meant, record it with `npm run test:visual -- --update` and commit the
+baselines it rewrites.
 
 ## Running the development host
 

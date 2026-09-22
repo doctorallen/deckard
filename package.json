@@ -37,7 +37,7 @@
           {
             "id": "deckard.walkthrough.openNote",
             "title": "Open or create a note",
-            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two \u2014 or start from seven notes already written the way Deckard reads them.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
+            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two — or start from seven notes already written the way Deckard reads them.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
             "media": {
               "markdown": "resources/walkthrough/notes.md"
             }
@@ -1011,7 +1011,8 @@
     "test:e2e": "npm run compile-tests && node test/e2e/run.js",
     "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js && node test/ui/checkContrast.js",
     "test:layout": "npm run compile-tests && node test/ui/checkLayout.js",
-    "test:contrast": "npm run compile-tests && node test/ui/checkContrast.js"
+    "test:contrast": "npm run compile-tests && node test/ui/checkContrast.js",
+    "test:visual": "npm run compile-tests && node test/ui/checkVisual.js"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
@@ -1028,6 +1029,8 @@
     "eslint": "^10.5.0",
     "jsdom": "^30.1.0",
     "npm-run-all": "^4.1.5",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
   },

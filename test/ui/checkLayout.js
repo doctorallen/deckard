@@ -305,6 +305,11 @@ function findChrome() {
   return undefined;
 }
 
+// The surfaces, the page builder and the browser are shared with the visual
+// check, which draws the same pages and compares the pixels instead.
+module.exports = { chrome, createSurfaces, buildPage, findChrome };
+
+if (require.main === module) {
 // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
 const keep = process.env.LAYOUT_KEEP;
 const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-layout-'));
@@ -374,3 +379,4 @@ if (failed) {
   process.exit(1);
 }
 console.log('\nevery surface lays out as drawn');
+}

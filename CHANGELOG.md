@@ -4,6 +4,17 @@
 
 ### Added
 
+- **Every page is compared, pixel for pixel, to how it looked.** The layout
+  check measures geometry and the contrast check reads color pairs; neither
+  can see a backdrop a theme paints, a glow that came back, or a control
+  that moved - zen mode shipped with Cooper's dotted grid still showing, and
+  it took a screenshot to notice. `npm run test:visual` takes that
+  screenshot for every surface, theme and zen state and fails when it
+  differs from the recorded one by more than a sliver, with the diff beside
+  it. Baselines are kept per platform, since fonts are rasterized by the
+  operating system, and a change that is meant is recorded with
+  `--update`. It runs in CI after the layout check.
+
 - **A search's results can be taken out.** Deckard reads the workspace and
   writes back into it; nothing leaves. A result copied out as Markdown or
   CSV makes it usable in a pull request, an issue, or a message, while the

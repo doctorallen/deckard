@@ -453,6 +453,7 @@ and is ranked with `installRankedRows`. The host projects each widget with
 npm run test:ui       # renders every webview and checks the guarantees below
 npm run test:e2e      # drives the overview host, script and sidebar together
 npm run test:layout   # lays the pages out in headless Chrome and measures them
+npm run test:visual   # draws them in Chrome and compares the pixels to last time
 ```
 
 ### Layout contracts
@@ -496,8 +497,30 @@ away and gives them back on hover. The search page is a zen-only surface,
 since that reveal sits inside a `.card-header` rather than at the end of a
 row.
 
+### Pixels
+
+The contracts measure geometry and the contrast check reads color pairs.
+Neither can see a backdrop a theme paints, a glow that came back, or a
+control that moved: zen mode shipped with Cooper's dotted grid still showing,
+and it took a screenshot to notice. `test/ui/checkVisual.js` takes that
+screenshot — the same pages and surfaces the layout check draws, once per
+theme and zen state — and compares each to the one recorded under
+`test/ui/visual-baseline/<platform>/`. A page that differs by more than half
+a percent of its pixels fails, with the diff image's path in the message.
+
+Baselines are per platform, because fonts are rasterized by the operating
+system and a page drawn on macOS differs from the same page on Linux in every
+glyph's edge. The first run on a platform records its own set and says so;
+CI keeps Linux's. When a change is meant, `npm run test:visual -- --update`
+records what is drawn now, and a baseline nothing draws any more is dropped.
+`VISUAL_ONLY=cooper+zen:taskBoard` picks one surface; `VISUAL_KEEP=<dir>`
+leaves the screenshots and diffs where they can be opened.
+
+A new surface is added once, in `createSurfaces()` in `checkLayout.js`, and
+both checks draw it from then on.
+
 Because the webviews are strings, the compiler cannot check any of this. Run
-these three after touching `components.ts`, and `npm test` too when the change
+these four after touching `components.ts`, and `npm test` too when the change
 adds a setting or a command — `src/test/extension.test.ts` counts both.
 
 ## Adding a component
