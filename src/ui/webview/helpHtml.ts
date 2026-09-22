@@ -174,7 +174,10 @@ nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--li
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
-article { min-width: 0; }
+/* Prose here is full of inline code chips, each a border and a pixel of padding
+   taller than its text; a line box the chips fit inside keeps two on
+   neighbouring lines from touching. */
+article { min-width: 0; line-height: 1.55; }
 h1, h2, h3 { line-height: 1.2; }
 p { margin: 0 0 12px; }
 .steps, .cards { display: grid; gap: 10px; }
