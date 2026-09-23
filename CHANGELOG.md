@@ -84,6 +84,19 @@
 
 ### Fixed
 
+- **The builder can build anything the search box can say.** It edited one
+  shape - OR groups of AND rows - so what Refine makes with three clicks and
+  an Alt, `(a OR b OR c) AND NOT d`, had its OR half flattened to a line of
+  text it could only keep as written, and there was no way to build that
+  shape from the builder itself. It now edits the query as it is: rows and
+  groups nested as deep as the search goes, every group saying whether it
+  matches all of its rows or any of them, and **not** turning a group
+  around. Nothing is shown as text any more. A nested group is written back
+  with its parentheses whatever its join, which also mends a hand-written
+  `(a OR b) AND c` that came back from the builder meaning `a OR (b AND c)`.
+  A group emptied of its rows goes with them, rather than staying behind
+  as a box with only a head.
+
 - **Deckard no longer deletes a favorite, a pin, or a saved search on its
   own.** Pruning used to remove any of them whose tag or note the index had
   stopped mentioning, which treated a guess as a decision. Now it collects

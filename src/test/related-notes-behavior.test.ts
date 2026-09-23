@@ -273,9 +273,8 @@ suite('Related Notes behavior', () => {
           terms: [],
           canAppend: true,
           isAdvanced: false,
-          isBuildable: true,
           diagnostics: [],
-          groups: [],
+          builder: { join: 'and', items: [] },
           tags: [],
           suggestions: {
             fields: [],

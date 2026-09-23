@@ -1578,8 +1578,20 @@ export function getQueryEditorCss(): string {
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
-.query-builder-group { border: var(--edge) solid var(--line); background: var(--panel); padding: 10px; }
-.query-builder-group + .query-builder-or { display: block; margin: 8px 0; color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-align: center; text-transform: uppercase; }
+.query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
+.query-builder-group.is-negated { border-style: dashed; }
+/* The root group is the builder itself, so it draws no box of its own: a
+   frame around everything would only look like one more level of nesting. */
+.query-builder-group.is-root { border: 0; background: none; padding: 0; }
+.query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.query-builder-group-head select { min-height: 28px; font-size: 12px; }
+.query-builder-head-text { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
+.query-builder-item > .query-builder-and { margin-top: 9px; }
+.query-builder-item.has-group { margin-top: 10px; margin-bottom: 10px; }
+.query-builder-item > .query-builder-group { flex: 1 1 auto; min-width: 0; }
 .query-builder-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .query-builder-row + .query-builder-row { margin-top: 6px; }
 .query-builder-row select, .query-builder-row input { min-height: 28px; font-size: 12px; }
@@ -2019,35 +2031,45 @@ export function getQueryEditorScript(): string {
       }).join(' &middot; ') + '</span>';
     }
 
-    /** OR groups of AND rows over the host's parse of the search. */
     function renderBuilder() {
       if (!builderOpen) return '';
-      const draftGroups = builderGroups();
-      const groups = draftGroups.length ? draftGroups : [{ rows: [] }];
-      const groupsHtml = groups.map(function (group, groupIndex) {
-        const rows = group.rows.length
-          ? group.rows.map(function (row, rowIndex) { return renderBuilderRow(row, groupIndex, rowIndex); }).join('')
-          : '<p class="query-builder-note">This group is empty. Add a condition to start it.</p>';
-        return (groupIndex > 0 ? '<span class="query-builder-or">or</span>' : '')
-          + '<div class="query-builder-group" data-group-index="' + groupIndex + '">' + rows
-          + '<div class="query-builder-actions"><button data-action="builder-add-row" data-group-index="' + groupIndex + '">Add condition</button>'
-          + (groups.length > 1 ? '<button data-action="builder-remove-group" data-group-index="' + groupIndex + '">Remove group</button>' : '')
-          + '</div></div>';
-      }).join('');
-      const note = query().isBuildable === false
-        ? '<p class="query-builder-note">Some conditions were written by hand and are shown as text. Editing them in the search box keeps them exactly as written.</p>'
-        : '';
-      return '<div class="query-builder">' + groupsHtml
-        + '<div class="query-builder-actions"><button data-action="builder-add-group">Add OR group</button></div>'
-        + note
-        + '<p class="query-builder-note">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter starts an OR group.</p>'
+      return '<div class="query-builder">' + renderGroup(builderTree(), [], 0)
+        + '<p class="query-builder-note">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter adds a group beside the row. A group matches all of its rows or any of them, and not turns it around.</p>'
         + '</div>';
     }
 
-    function renderBuilderRow(row, groupIndex, rowIndex) {
-      const position = ' data-group-index="' + groupIndex + '" data-row-index="' + rowIndex + '"';
-      const suggestKey = 'g' + groupIndex + 'r' + rowIndex;
-      const joiner = '<span class="query-builder-and">' + (rowIndex === 0 ? 'where' : 'and') + '</span>';
+    /** A group, nested to any depth: its head, its rows and groups, and what adds to it. */
+    function renderGroup(group, path, depth) {
+      const at = pathText(path);
+      const items = group.items.length
+        ? group.items.map(function (item, index) {
+          const itemPath = path.concat(index);
+          const joiner = '<span class="query-builder-and">' + (index === 0 ? 'where' : (group.join === 'or' ? 'or' : 'and')) + '</span>';
+          return item.items
+            ? '<div class="query-builder-item has-group">' + joiner + renderGroup(item, itemPath, depth + 1) + '</div>'
+            : renderBuilderRow(item, itemPath, joiner);
+        }).join('')
+        : '<p class="query-builder-note">This group is empty. Add a condition to start it.</p>';
+      const head = '<div class="query-builder-group-head">'
+        + '<button type="button" class="query-builder-not' + (group.negated ? ' active' : '') + '" data-action="builder-toggle-not" data-path="' + at + '" aria-pressed="' + (group.negated ? 'true' : 'false') + '" title="Turn this group around: match what it does not">not</button>'
+        + '<span class="query-builder-head-text">match</span>'
+        + '<select data-action="builder-set-join" data-path="' + at + '" aria-label="How this group combines its rows">'
+        + '<option value="and"' + (group.join !== 'or' ? ' selected' : '') + '>all of</option>'
+        + '<option value="or"' + (group.join === 'or' ? ' selected' : '') + '>any of</option>'
+        + '</select>'
+        + (depth > 0 ? '<button class="query-builder-remove" data-action="builder-remove-group" data-path="' + at + '">Remove group</button>' : '')
+        + '</div>';
+      const actions = '<div class="query-builder-actions">'
+        + '<button data-action="builder-add-row" data-path="' + at + '">Add condition</button>'
+        + '<button data-action="builder-add-group" data-path="' + at + '">Add group</button>'
+        + '</div>';
+      return '<div class="query-builder-group' + (depth === 0 ? ' is-root' : '') + (group.negated ? ' is-negated' : '') + '" data-group-path="' + at + '">' + head + items + actions + '</div>';
+    }
+
+    function renderBuilderRow(row, path, joiner) {
+      const at = pathText(path);
+      const position = ' data-path="' + at + '"';
+      const suggestKey = 'p' + (at ? at.replace(/\\./g, '_') : '');
       const remove = '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button>';
       if (row.pending) {
         return '<div class="query-builder-row">' + joiner
@@ -2082,30 +2104,57 @@ export function getQueryEditorScript(): string {
       return { pending: true, field: 'text', operator: 'contains', value: '', supported: true, text: '' };
     }
 
-    /**
-     * Read the builder's rows, seeding them from the host's parse on first
-     * use. Returns a copy a caller can change and hand to applyBuilderGroups.
-     */
-    function builderGroups() {
-      if (!builderDraft) {
-        builderDraft = (query().groups || []).map(function (group) {
-          return { rows: group.rows.map(function (row) { return Object.assign({}, row); }) };
-        });
-        builderSourceText = appliedText();
+    /** The path attribute of a row or group, as a list of indices into items. */
+    function pathOf(element) {
+      const text = String((element && element.dataset && element.dataset.path) || '');
+      return text ? text.split('.').map(Number) : [];
+    }
+
+    function pathText(path) {
+      return path.join('.');
+    }
+
+    /** The group at a path, walking down from the root; undefined if a row is met. */
+    function groupAt(tree, path) {
+      let group = tree;
+      for (let i = 0; i < path.length; i += 1) {
+        const item = group.items[path[i]];
+        if (!item || !item.items) return undefined;
+        group = item;
       }
-      return builderDraft.map(function (group) {
-        return { rows: group.rows.map(function (row) { return Object.assign({}, row); }) };
-      });
+      return group;
+    }
+
+    function itemAt(tree, path) {
+      if (!path.length) return undefined;
+      const parent = groupAt(tree, path.slice(0, -1));
+      return parent ? parent.items[path[path.length - 1]] : undefined;
+    }
+
+    function cloneTree(tree) {
+      return JSON.parse(JSON.stringify(tree));
     }
 
     /**
-     * Adopt edited rows, then run the search they describe. A row still
-     * empty changes the rows without changing the search, so that case
+     * Read the builder's tree, seeding it from the host's parse on first
+     * use. Returns a copy a caller can change and hand to applyBuilderTree.
+     */
+    function builderTree() {
+      if (!builderDraft) {
+        builderDraft = cloneTree(query().builder || { join: 'and', items: [] });
+        builderSourceText = appliedText();
+      }
+      return cloneTree(builderDraft);
+    }
+
+    /**
+     * Adopt the edited tree, then run the search it describes. A row still
+     * empty changes the tree without changing the search, so that case
      * redraws locally instead of making a round trip that would drop it.
      */
-    function applyBuilderGroups(groups) {
-      builderDraft = groups;
-      const text = buildQueryFromGroups(groups);
+    function applyBuilderTree(tree) {
+      builderDraft = tree;
+      const text = buildQueryFromTree(tree, 0);
       if (text === appliedText()) {
         options.render();
         return;
@@ -2115,21 +2164,23 @@ export function getQueryEditorScript(): string {
       run(text, true, false, false);
     }
 
-    /** Write rows as search text, skipping rows with no value yet. */
-    function buildQueryFromGroups(groups) {
-      const branches = groups.map(function (group) {
-        return group.rows.map(function (row) {
-          if (row.pending) return '';
-          if (!row.supported) return row.text.trim();
-          if (!String(row.value).trim()) return '';
-          return formatBuilderCondition(row);
-        }).filter(Boolean).join(' AND ');
+    /**
+     * Write the tree as search text, skipping rows with no value yet. This
+     * mirrors fromBuilderTree on the host: a nested group with more than one
+     * term is parenthesized, and a negated one is NOT (...).
+     */
+    function buildQueryFromTree(group, depth) {
+      const terms = group.items.map(function (item) {
+        if (item.items) return buildQueryFromTree(item, depth + 1);
+        if (item.pending) return '';
+        if (!item.supported) return item.text.trim();
+        if (!String(item.value).trim()) return '';
+        return formatBuilderCondition(item);
       }).filter(Boolean);
-      return branches.length <= 1
-        ? (branches[0] || '')
-        : branches.map(function (branch) {
-          return branch.indexOf(' AND ') >= 0 ? '(' + branch + ')' : branch;
-        }).join(' OR ');
+      if (!terms.length) return '';
+      const body = terms.join(group.join === 'or' ? ' OR ' : ' AND ');
+      if (group.negated) return 'NOT ' + (terms.length > 1 ? '(' + body + ')' : body);
+      return depth > 0 && terms.length > 1 ? '(' + body + ')' : body;
     }
 
     /** One row as text, with shorthands written the way they are typed. */
@@ -2394,9 +2445,9 @@ export function getQueryEditorScript(): string {
       suggestionHostKey = undefined;
     }
 
-    function rowAt(groups, input) {
-      const group = groups[Number(input.dataset.groupIndex)];
-      return group ? group.rows[Number(input.dataset.rowIndex)] : undefined;
+    function rowAt(tree, input) {
+      const item = itemAt(tree, pathOf(input));
+      return item && !item.items ? item : undefined;
     }
 
     /**
@@ -2406,15 +2457,15 @@ export function getQueryEditorScript(): string {
     function commitPendingRow(input, conditionText) {
       const text = String(conditionText).trim();
       if (!text) return;
-      const groups = builderGroups();
-      const groupIndex = Number(input.dataset.groupIndex);
-      const rowIndex = Number(input.dataset.rowIndex);
-      const group = groups[groupIndex];
-      if (!group || !group.rows[rowIndex]) return;
-      group.rows[rowIndex] = parseConditionText(text);
-      group.rows.push(pendingRow());
-      pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: group.rows.length - 1 };
-      applyBuilderGroups(groups);
+      const tree = builderTree();
+      const path = pathOf(input);
+      const parent = groupAt(tree, path.slice(0, -1));
+      const index = path[path.length - 1];
+      if (!parent || !parent.items[index]) return;
+      parent.items[index] = parseConditionText(text);
+      parent.items.push(pendingRow());
+      pendingBuilderFocus = { path: pathText(path.slice(0, -1).concat(parent.items.length - 1)) };
+      applyBuilderTree(tree);
     }
 
     /** Replace the word being completed with the chosen suggestion. */
@@ -2454,12 +2505,13 @@ export function getQueryEditorScript(): string {
       if (input.dataset.pending) {
         if (item.field) {
           // A field chosen without a value becomes an ordinary row to fill in.
-          const groups = builderGroups();
-          const groupIndex = Number(input.dataset.groupIndex);
-          const rowIndex = Number(input.dataset.rowIndex);
-          groups[groupIndex].rows[rowIndex] = { field: item.field, operator: operatorsFor(item.field)[0], value: '', supported: true, text: '' };
-          pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: rowIndex };
-          builderDraft = groups;
+          const tree = builderTree();
+          const path = pathOf(input);
+          const parent = groupAt(tree, path.slice(0, -1));
+          if (!parent) return;
+          parent.items[path[path.length - 1]] = { field: item.field, operator: operatorsFor(item.field)[0], value: '', supported: true, text: '' };
+          pendingBuilderFocus = { path: pathText(path) };
+          builderDraft = tree;
           options.render();
           return;
         }
@@ -2473,30 +2525,47 @@ export function getQueryEditorScript(): string {
     }
 
     function commitBuilderValue(input) {
-      const groups = builderGroups();
-      const row = rowAt(groups, input);
+      const tree = builderTree();
+      const row = rowAt(tree, input);
       if (!row) return;
       row.value = input.value;
-      pendingBuilderFocus = { groupIndex: Number(input.dataset.groupIndex), rowIndex: Number(input.dataset.rowIndex) };
-      applyBuilderGroups(groups);
+      pendingBuilderFocus = { path: String(input.dataset.path || '') };
+      applyBuilderTree(tree);
     }
 
     function removeRow(input) {
-      const groups = builderGroups();
-      const groupIndex = Number(input.dataset.groupIndex);
-      const rowIndex = Number(input.dataset.rowIndex);
-      const group = groups[groupIndex];
-      if (!group) return;
-      group.rows.splice(rowIndex, 1);
-      if (rowIndex > 0) pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: rowIndex - 1 };
-      applyBuilderGroups(groups);
+      const tree = builderTree();
+      const removed = removeItem(tree, pathOf(input));
+      if (!removed) return;
+      const index = removed.path[removed.path.length - 1];
+      if (index > 0) pendingBuilderFocus = { path: pathText(removed.path.slice(0, -1).concat(index - 1)) };
+      applyBuilderTree(tree);
     }
 
-    function addGroup() {
-      const groups = builderGroups();
-      groups.push({ rows: [pendingRow()] });
-      pendingBuilderFocus = { groupIndex: groups.length - 1, rowIndex: 0 };
-      applyBuilderGroups(groups);
+    /** Takes the row or group at path out of the tree. A group left with
+        nothing in it goes too, and so on upward, so an emptied group never
+        lingers as a box with only a head; the root is the one group that
+        stays. Returns the path that was finally removed, or null. */
+    function removeItem(tree, path) {
+      if (!path.length) return null;
+      let at = path.slice();
+      for (;;) {
+        const parent = groupAt(tree, at.slice(0, -1));
+        if (!parent) return null;
+        parent.items.splice(at[at.length - 1], 1);
+        if (parent.items.length || at.length === 1) return { path: at };
+        at = at.slice(0, -1);
+      }
+    }
+
+    /** A group inside the group at path, joined the other way, with a row to type in. */
+    function addGroup(path) {
+      const tree = builderTree();
+      const parent = groupAt(tree, path);
+      if (!parent) return;
+      parent.items.push({ join: parent.join === 'or' ? 'and' : 'or', items: [pendingRow()] });
+      pendingBuilderFocus = { path: pathText(path.concat(parent.items.length - 1, 0)) };
+      applyBuilderTree(tree);
     }
 
     function isEditable(target) {
@@ -2604,7 +2673,7 @@ export function getQueryEditorScript(): string {
           }
         }
         if (pendingBuilderFocus) {
-          const target = document.querySelector('[data-action="builder-set-value"][data-group-index="' + pendingBuilderFocus.groupIndex + '"][data-row-index="' + pendingBuilderFocus.rowIndex + '"]');
+          const target = document.querySelector('[data-action="builder-set-value"][data-path="' + pendingBuilderFocus.path + '"]');
           pendingBuilderFocus = undefined;
           if (target && target.focus) target.focus();
         }
@@ -2659,17 +2728,15 @@ export function getQueryEditorScript(): string {
         const action = target.dataset.action;
         if (action === 'toggle-builder') {
           builderOpen = !builderOpen;
-          const groups = builderGroups();
           if (builderOpen) {
             // The builder always opens with an empty row to type in, even when
             // the search already has conditions, such as a page's own tags.
-            const next = groups.length ? groups : [{ rows: [] }];
-            const last = next[next.length - 1];
-            if (!last.rows.some(function (row) { return row.pending; })) {
-              last.rows.push(pendingRow());
+            const tree = builderTree();
+            if (!tree.items.some(function (item) { return !item.items && item.pending; })) {
+              tree.items.push(pendingRow());
             }
-            builderDraft = next;
-            pendingBuilderFocus = { groupIndex: next.length - 1, rowIndex: last.rows.length - 1 };
+            builderDraft = tree;
+            pendingBuilderFocus = { path: pathText([tree.items.length - 1]) };
           }
           options.render();
           return true;
@@ -2707,32 +2774,31 @@ export function getQueryEditorScript(): string {
           return true;
         }
         if (action === 'builder-add-group') {
-          addGroup();
+          addGroup(pathOf(target));
           return true;
         }
         if (action === 'builder-add-row') {
-          const groups = builderGroups();
-          const groupIndex = Number(target.dataset.groupIndex);
-          const group = groups[groupIndex];
+          const tree = builderTree();
+          const path = pathOf(target);
+          const group = groupAt(tree, path);
           if (group) {
-            group.rows.push(pendingRow());
-            pendingBuilderFocus = { groupIndex: groupIndex, rowIndex: group.rows.length - 1 };
-            applyBuilderGroups(groups);
+            group.items.push(pendingRow());
+            pendingBuilderFocus = { path: pathText(path.concat(group.items.length - 1)) };
+            applyBuilderTree(tree);
           }
           return true;
         }
-        if (action === 'builder-remove-group') {
-          const groups = builderGroups();
-          groups.splice(Number(target.dataset.groupIndex), 1);
-          applyBuilderGroups(groups);
+        if (action === 'builder-remove-group' || action === 'builder-remove-row') {
+          const tree = builderTree();
+          if (removeItem(tree, pathOf(target))) applyBuilderTree(tree);
           return true;
         }
-        if (action === 'builder-remove-row') {
-          const groups = builderGroups();
-          const group = groups[Number(target.dataset.groupIndex)];
+        if (action === 'builder-toggle-not') {
+          const tree = builderTree();
+          const group = groupAt(tree, pathOf(target));
           if (group) {
-            group.rows.splice(Number(target.dataset.rowIndex), 1);
-            applyBuilderGroups(groups);
+            group.negated = !group.negated;
+            applyBuilderTree(tree);
           }
           return true;
         }
@@ -2775,7 +2841,7 @@ export function getQueryEditorScript(): string {
           event.preventDefault();
           if (!isBar && (event.metaKey || event.ctrlKey)) {
             closeSuggestions();
-            addGroup();
+            addGroup(pathOf(input).slice(0, -1));
             return true;
           }
           if (suggestionItems.length && suggestionIndex >= 0) {
@@ -2828,11 +2894,11 @@ export function getQueryEditorScript(): string {
         }
         if (target.dataset.action === 'builder-set-value') {
           if (target.dataset.pending) {
-            const groups = builderGroups();
-            const row = rowAt(groups, target);
+            const tree = builderTree();
+            const row = rowAt(tree, target);
             if (row) {
               row.value = target.value;
-              builderDraft = groups;
+              builderDraft = tree;
             }
           }
           openSuggestions(target);
@@ -2844,11 +2910,20 @@ export function getQueryEditorScript(): string {
       handleChange: function (event) {
         const target = event.target;
         const action = target.dataset.action;
+        if (action === 'builder-set-join') {
+          const tree = builderTree();
+          const group = groupAt(tree, pathOf(target));
+          if (group) {
+            group.join = target.value === 'or' ? 'or' : 'and';
+            applyBuilderTree(tree);
+          }
+          return true;
+        }
         if (action !== 'builder-set-field' && action !== 'builder-set-operator' && action !== 'builder-set-value') return false;
         // A new row waits for Enter or a completion; leaving it is not a choice.
         if (target.dataset.pending) return true;
-        const groups = builderGroups();
-        const row = rowAt(groups, target);
+        const tree = builderTree();
+        const row = rowAt(tree, target);
         if (!row) return true;
         if (action === 'builder-set-field') {
           row.field = target.value;
@@ -2858,7 +2933,7 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'builder-set-operator') row.operator = target.value;
         if (action === 'builder-set-value') row.value = target.value;
-        applyBuilderGroups(groups);
+        applyBuilderTree(tree);
         return true;
       },
     };

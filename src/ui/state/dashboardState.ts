@@ -45,7 +45,7 @@ import {
   collectQueryTagKeys,
   getQueryTagIntersection,
   quoteValue,
-  toBuilderGroups,
+  toBuilderTree,
 } from '../../core/query/queryFormat';
 import { FIELD_ALIASES, parseQuery } from '../../core/query/queryParser';
 import {
@@ -1331,7 +1331,6 @@ export function createQueryViewState(
   recentQueries: readonly string[] = [],
   extras: { facets?: QueryFacet[]; pending?: string } = {},
 ): QueryViewState {
-  const groups = toBuilderGroups(parsed.node);
   const pending = extras.pending?.trim();
   return {
     text: parsed.text,
@@ -1340,11 +1339,8 @@ export function createQueryViewState(
     canAppend: canAppendTerm(parsed),
     facets: extras.facets ?? [],
     isAdvanced,
-    isBuildable: groups.every((group) =>
-      group.rows.every((row) => row.supported),
-    ),
     diagnostics: pending ? parseQuery(pending).diagnostics : parsed.diagnostics,
-    groups,
+    builder: toBuilderTree(parsed.node),
     tags: resolveQueryTags(index, parsed),
     suggestions: createQuerySuggestions(index, recentQueries),
     matchCounts,

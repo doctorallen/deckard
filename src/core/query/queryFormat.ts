@@ -1,12 +1,13 @@
 import { describeOperator } from './queryParser';
 import {
+  QUERY_OPERATOR_INVERSES,
+  QUERY_SHORTHAND_FIELDS,
   QueryBuilderGroup,
+  QueryBuilderItem,
   QueryBuilderRow,
   QueryConditionNode,
   QueryField,
   QueryNode,
-  QUERY_OPERATOR_INVERSES,
-  QUERY_SHORTHAND_FIELDS,
 } from './queryTypes';
 
 /**
@@ -130,79 +131,68 @@ export function isWildcard(value: string): boolean {
 }
 
 /**
- * Projects an AST into the OR-of-AND rows the visual builder edits.
+ * Projects an AST into the tree the visual builder edits.
  *
- * A query that does not fit that shape — nested groups deeper than two levels,
- * for example — still round-trips, but its rows are marked unsupported so the
- * builder shows them read-only rather than rewriting the author's query.
+ * The tree is the AST with two conveniences: a negated condition folds into
+ * its opposite operator, so a row needs no negate control that could disagree
+ * with it; and a negated group carries `negated` rather than a NOT node above
+ * it. Nothing is left as text: every query the language can write is rows and
+ * groups here, and a group's join and negation are the reader's to change.
  */
-export function toBuilderGroups(
-  node: QueryNode | undefined,
-): QueryBuilderGroup[] {
+export function toBuilderTree(node: QueryNode | undefined): QueryBuilderGroup {
   if (!node) {
-    return [{ rows: [] }];
+    return { join: 'and', items: [] };
   }
-  const orBranches = node.type === 'or' ? node.children : [node];
-  return orBranches.map((branch) => ({ rows: toBuilderRows(branch) }));
+  const item = toBuilderItem(node);
+  return 'items' in item ? item : { join: 'and', items: [item] };
 }
 
-function toBuilderRows(node: QueryNode): QueryBuilderRow[] {
-  const andTerms = node.type === 'and' ? node.children : [node];
-  return andTerms.map((term) => toBuilderRow(term));
+function toBuilderItem(node: QueryNode): QueryBuilderItem {
+  if (node.type === 'condition') {
+    return conditionRow(node, false);
+  }
+  if (node.type === 'not') {
+    const inner = node.child;
+    if (inner.type === 'condition') {
+      return conditionRow(inner, true);
+    }
+    if (inner.type === 'not') {
+      return toBuilderItem(inner.child);
+    }
+    return { join: inner.type, negated: true, items: inner.children.map(toBuilderItem) };
+  }
+  return { join: node.type, items: node.children.map(toBuilderItem) };
 }
 
-/**
- * Projects one AND term into an editable row.
- *
- * A negated condition folds into its opposite operator — `NOT tag = #a` becomes
- * "tag is not #a" — so the builder needs no negate control of its own, and a
- * row can never disagree with a separate toggle about what it means.
- */
-function toBuilderRow(node: QueryNode): QueryBuilderRow {
-  const negated = node.type === 'not';
-  const inner = node.type === 'not' ? node.child : node;
-  if (inner.type !== 'condition') {
-    return {
-      field: 'text',
-      operator: 'contains',
-      value: '',
-      supported: false,
-      text: formatNode(node, 'top'),
-    };
-  }
+function conditionRow(node: QueryConditionNode, negated: boolean): QueryBuilderRow {
   return {
-    field: inner.field,
-    operator: negated
-      ? QUERY_OPERATOR_INVERSES[inner.operator]
-      : inner.operator,
-    value: inner.value,
+    field: node.field,
+    operator: negated ? QUERY_OPERATOR_INVERSES[node.operator] : node.operator,
+    value: node.value,
     supported: true,
-    text: formatNode(node, 'top'),
+    text: formatNode(negated ? { type: 'not', child: node } : node, 'top'),
   };
 }
 
 /**
- * Renders builder rows back into query text.
+ * Renders the builder's tree back into query text.
  *
- * Unsupported rows are re-emitted from their captured source text so editing a
- * neighbouring row never destroys a hand-written condition.
+ * A nested group with more than one term is parenthesized, whatever its join,
+ * so it reads as the group it is; a negated one is `NOT (…)`. A row with no
+ * value yet is left out, so a half-typed row does not change the search.
  */
-export function fromBuilderGroups(groups: QueryBuilderGroup[]): string {
-  const branches = groups
-    .map((group) => {
-      const terms = group.rows
-        .map((row) => formatBuilderRow(row))
-        .filter((term) => term.length > 0);
-      return terms.join(' AND ');
-    })
-    .filter((branch) => branch.length > 0);
-
-  if (branches.length <= 1) {
-    return branches[0] ?? '';
+export function fromBuilderTree(group: QueryBuilderGroup, depth = 0): string {
+  const terms = group.items
+    .map((item) => ('items' in item ? fromBuilderTree(item, depth + 1) : formatBuilderRow(item)))
+    .filter((term) => term.length > 0);
+  if (terms.length === 0) {
+    return '';
   }
-  return branches
-    .map((branch) => (branch.includes(' AND ') ? `(${branch})` : branch))
-    .join(' OR ');
+  const body = terms.join(group.join === 'or' ? ' OR ' : ' AND ');
+  if (group.negated) {
+    return `NOT ${terms.length > 1 ? `(${body})` : body}`;
+  }
+  return depth > 0 && terms.length > 1 ? `(${body})` : body;
 }
 
 function formatBuilderRow(row: QueryBuilderRow): string {

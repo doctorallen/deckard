@@ -233,9 +233,22 @@ export interface QueryBuilderRow {
 }
 
 /** One OR group in the visual builder. */
+export type QueryBuilderJoin = 'and' | 'or';
+
+/**
+ * A group in the builder: rows and groups, joined by AND or by OR, and
+ * negated as a whole or not. A query is one of these at the root, so every
+ * query the language can write, the builder can edit.
+ */
 export interface QueryBuilderGroup {
-  rows: QueryBuilderRow[];
+  join: QueryBuilderJoin;
+  /** `NOT (…)` around the whole group. */
+  negated?: boolean;
+  items: QueryBuilderItem[];
 }
+
+/** A row, or a nested group: told apart by `items`. */
+export type QueryBuilderItem = QueryBuilderRow | QueryBuilderGroup;
 
 /** One term of a query, and the query it leaves behind when removed. */
 export interface QueryTermChip {
@@ -287,14 +300,14 @@ export interface QueryViewState {
    */
   isAdvanced: boolean;
   /** True when the builder can represent every condition in the query. */
-  isBuildable: boolean;
   diagnostics: QueryDiagnostic[];
   /**
    * A search that was typed and does not parse. `text` and the rest describe
    * the last search that did, and `diagnostics` say what is wrong with this.
    */
   pending?: string;
-  groups: QueryBuilderGroup[];
+  /** The query as the builder edits it: a tree of rows and groups. */
+  builder: QueryBuilderGroup;
   /** Tags named by the query, resolved against the index for display. */
   tags: TagReferenceLike[];
   /** Completions offered in the query bar and in builder value fields. */
