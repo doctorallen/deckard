@@ -1,6 +1,10 @@
 import MarkdownIt = require('markdown-it');
 
-import { BLOCK_ID_PATTERN, parseMarkdown } from '../../core/markdown/parser';
+import {
+  BLOCK_ID_PATTERN,
+  findFencedLines,
+  parseMarkdown,
+} from '../../core/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
@@ -28,6 +32,24 @@ const MAX_DEPTH = 3;
 const ATTACHMENT = /\.(?:png|jpe?g|gif|svg|webp|bmp|pdf|mp4|mp3|wav|mov|webm)$/i;
 
 const EMBED_LINE = /^ {0,3}!\[\[([^\]]+)\]\][ \t]*$/;
+
+/**
+ * The embeds in a note's source, the lines the preview would draw as one:
+ * alone on their line, outside code fences, and naming a note rather than an
+ * attachment.
+ */
+export function findEmbedLines(
+  content: string,
+): { line: number; target: string }[] {
+  const lines = content.split(/\r?\n/);
+  const fenced = findFencedLines(lines);
+  return lines.flatMap((text, line) => {
+    const match = fenced.has(line) ? null : EMBED_LINE.exec(text);
+    return match && !ATTACHMENT.test(parseWikiTarget(match[1]).note)
+      ? [{ line, target: match[1] }]
+      : [];
+  });
+}
 
 export interface NoteEmbedSource {
   /** Undefined until the first workspace scan finishes. */

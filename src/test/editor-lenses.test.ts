@@ -9,6 +9,7 @@ import {
 } from '../ui/commands/linkHealth';
 import {
   findDailyNoteActions,
+  findEmbedProblems,
   findTaskDependencies,
 } from '../ui/state/editorLensState';
 
@@ -176,6 +177,51 @@ suite('Editor lenses', () => {
         findLinkProblems('[[Atlas]] and [[#Heading]]', index, 'notes/Here.md'),
         [],
       );
+    });
+  });
+
+  suite('embeds', () => {
+    const index = createIndex({
+      'notes/Atlas.md': '# Atlas\n## Decision\nWe chose it. ^choice',
+    });
+    const here = parseMarkdown(
+      'notes/Here.md',
+      [
+        '# Here',
+        '![[Atlas#Decision]]',
+        '![[Atlas#Gone]]',
+        '![[Atlas#^nope]]',
+        '![[Missing#Anything]]',
+        '![[#Here]]',
+        '![[#Nowhere]]',
+        '![[photo.png]]',
+        'Inline ![[Atlas#Gone]] is only text.',
+        '```',
+        '![[Atlas#Gone]]',
+        '```',
+        '![[Atlas#^choice]]',
+      ].join('\n'),
+    );
+
+    test('names each embed the preview cannot draw, and the note it names', () => {
+      assert.deepStrictEqual(findEmbedProblems(here, index), [
+        {
+          line: 2,
+          reason: 'Atlas has no heading "Gone"',
+          filePath: 'notes/Atlas.md',
+        },
+        {
+          line: 3,
+          reason: 'Nothing in Atlas is marked ^nope',
+          filePath: 'notes/Atlas.md',
+        },
+        { line: 6, reason: 'This note has no heading "Nowhere"' },
+      ]);
+    });
+
+    test('shows nothing for a note whose embeds all draw', () => {
+      const fine = parseMarkdown('notes/Fine.md', '# Fine\n![[Atlas#Decision]]');
+      assert.deepStrictEqual(findEmbedProblems(fine, index), []);
     });
   });
 });

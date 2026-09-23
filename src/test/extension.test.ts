@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 52);
+    assert.strictEqual(Object.keys(settings).length, 53);
     // Where one note ends and the next begins.
     assert.deepStrictEqual(settings['deckard.noteBoundaries'].enum, [
       'line',
@@ -306,6 +306,40 @@ suite('Extension Test Suite', () => {
       }
       // The plain task gets nothing of its own.
       assert.ok(!titles.some((title) => title.startsWith('4:')), JSON.stringify(titles));
+    } finally {
+      await vscode.workspace.fs.delete(fileUri);
+    }
+  });
+
+  test('says above an embed what the preview cannot draw', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    await extension.activate();
+
+    const fileUri = vscode.Uri.file(
+      path.join(os.tmpdir(), `deckard-embeds-${Date.now()}.md`),
+    );
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from('# Plan\n![[#Plan]]\n![[#Nowhere]]\n', 'utf8'),
+    );
+    try {
+      await vscode.workspace.openTextDocument(fileUri);
+      const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+        'vscode.executeCodeLensProvider',
+        fileUri,
+        20,
+      );
+      const titles = lenses.map(
+        (lens) => `${lens.range.start.line}: ${lens.command?.title}`,
+      );
+      assert.ok(
+        titles.includes('2: Embed: This note has no heading "Nowhere"'),
+        JSON.stringify(titles),
+      );
+      assert.ok(!titles.some((title) => title.startsWith('1:')), JSON.stringify(titles));
     } finally {
       await vscode.workspace.fs.delete(fileUri);
     }

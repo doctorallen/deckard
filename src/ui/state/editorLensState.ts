@@ -1,7 +1,13 @@
 import { findDailyNoteDate } from '../../core/markdown/parser';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
+import {
+  createNoteTitleMap,
+  parseWikiTarget,
+  resolveWikiTarget,
+} from '../../core/workspace/backlinks';
 import { findAdjacentDailyNote, listDailyNotes } from '../commands/dailyNote';
 import { planRollover } from '../commands/rollover';
+import { findEmbedLines, resolveEmbed } from '../preview/noteEmbeds';
 
 /**
  * What the editor's action lenses decide, apart from VS Code. Each function
@@ -140,6 +146,53 @@ export function findDailyNoteActions(
     ...(next ? { next } : {}),
     carryIn,
   };
+}
+
+export interface EmbedProblem {
+  /** Zero-based line of the embed. */
+  line: number;
+  /** What the preview draws in its place, such as a heading gone missing. */
+  reason: string;
+  /** The note the embed names, when it is another note that exists. */
+  filePath?: string;
+}
+
+/**
+ * The embeds in a note that the preview would draw as a message rather than
+ * a note: a heading or a `^marker` the named note does not have. An embed
+ * whose note name opens no note is left out, since the link inside it is
+ * already a link problem, counted on the note's first line and marked where
+ * it is written.
+ */
+export function findEmbedProblems(
+  file: ParsedFile,
+  index: WorkspaceIndex,
+): EmbedProblem[] {
+  const embeds = findEmbedLines(file.content);
+  if (embeds.length === 0) {
+    return [];
+  }
+  const titles = createNoteTitleMap(index);
+  return embeds.flatMap(({ line, target }) => {
+    const { note } = parseWikiTarget(target);
+    const filePath = note
+      ? resolveWikiTarget(titles, note, file.filePath)
+      : undefined;
+    if (note && !filePath) {
+      return [];
+    }
+    const embed = resolveEmbed(target, file.content, index);
+    if (embed.kind !== 'missing') {
+      return [];
+    }
+    return [
+      {
+        line,
+        reason: embed.reason.replace(/\.$/, ''),
+        ...(filePath && filePath !== file.filePath ? { filePath } : {}),
+      },
+    ];
+  });
 }
 
 function append<T>(map: Map<string, T[]>, key: string, value: T): void {

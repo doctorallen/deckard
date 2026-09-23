@@ -5,6 +5,7 @@ import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
   findDailyNoteActions,
+  findEmbedProblems,
   findTaskDependencies,
 } from '../state/editorLensState';
 import { formatLocalDate, getPeriodicNoteUri } from './dailyNote';
@@ -50,7 +51,11 @@ interface LensContext {
 
 /** One group of lenses, and the `deckard.editor.*` setting that shows it. */
 interface LensGroup {
-  setting: 'taskDependencies' | 'dailyNoteActions' | 'linkProblems';
+  setting:
+    | 'taskDependencies'
+    | 'dailyNoteActions'
+    | 'linkProblems'
+    | 'embedProblems';
   provide(context: LensContext): ActionLens[];
 }
 
@@ -68,6 +73,7 @@ export class EditorLenses
     { setting: 'taskDependencies', provide: provideTaskDependencyLenses },
     { setting: 'dailyNoteActions', provide: provideDailyNoteLenses },
     { setting: 'linkProblems', provide: provideLinkProblemLenses },
+    { setting: 'embedProblems', provide: provideEmbedProblemLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -295,6 +301,34 @@ function provideLinkProblemLenses({
     );
   }
   return lenses;
+}
+
+/**
+ * Above an embed the preview cannot draw: what went missing, as the preview
+ * says it. Selecting it opens the note the embed names, where the heading or
+ * `^marker` was renamed or removed. An embed that draws carries nothing; the
+ * link inside it already opens its note.
+ */
+function provideEmbedProblemLenses({
+  file,
+  index,
+}: LensContext): ActionLens[] {
+  return findEmbedProblems(file, index).map((problem) => {
+    const range = new vscode.Range(problem.line, 0, problem.line, 0);
+    const title = `Embed: ${problem.reason}`;
+    const filePath = problem.filePath;
+    return new ActionLens(range, async () => {
+      const uri = filePath ? await resolveSourceUri(filePath) : undefined;
+      return uri
+        ? {
+            title,
+            tooltip: 'Open the note this embed names',
+            command: 'vscode.open',
+            arguments: [uri],
+          }
+        : { title, command: '' };
+    });
+  });
 }
 
 /** A count that lists tasks in VS Code's references peek. */

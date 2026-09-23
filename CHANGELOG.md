@@ -4,6 +4,14 @@
 
 ### Added
 
+- **An embed that cannot draw says so in the editor.** An `![[Note#Heading]]`
+  whose heading was renamed drew a message in the preview and nothing at
+  all in the editor, where the fix is made. It now carries the same
+  message above its line, **Embed: Atlas has no heading "Decision"**, which
+  opens the note it names. An embed that draws carries nothing, and one
+  whose note name opens no note is left to the link problems, which count
+  it already. `deckard.editor.embedProblems` turns it off.
+
 - **A note says how many of its links open no note, and creates the
   missing ones in one go.** The diagnostics marked each broken `[[link]]`
   where it was written, which in a long note is below the fold. Its first
