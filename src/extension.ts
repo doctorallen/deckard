@@ -30,7 +30,9 @@ import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import {
   CREATE_LINKED_NOTE_COMMAND,
+  CREATE_MISSING_NOTES_COMMAND,
   createLinkedNote,
+  createMissingNotes,
   LinkHealth,
 } from './ui/commands/linkHealth';
 import { CalendarView } from './ui/webview/calendar';
@@ -615,6 +617,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       (documentUri: unknown, name: unknown) =>
         typeof documentUri === 'string' && typeof name === 'string'
           ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name)
+          : undefined,
+    ),
+    vscode.commands.registerCommand(
+      CREATE_MISSING_NOTES_COMMAND,
+      (documentUri: unknown, names: unknown) =>
+        typeof documentUri === 'string' &&
+        Array.isArray(names) &&
+        names.every((name) => typeof name === 'string')
+          ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names)
           : undefined,
     ),
   );

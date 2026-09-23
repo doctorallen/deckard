@@ -4,6 +4,14 @@
 
 ### Added
 
+- **A note says how many of its links open no note, and creates the
+  missing ones in one go.** The diagnostics marked each broken `[[link]]`
+  where it was written, which in a long note is below the fold. Its first
+  line now says **N links open no note**, listed in the references peek,
+  and **Create N missing notes** makes a note for every name no note has,
+  never touching one already there. A name several notes share is counted
+  but not created. `deckard.editor.linkProblems` turns it off.
+
 - **A daily note steps to its neighbors, and today's offers what is still
   open.** Above a daily note sit the dates of the daily notes before and
   after it, skipping empty days, and today's note says **Carry in N

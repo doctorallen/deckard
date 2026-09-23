@@ -8,6 +8,11 @@ import {
   findTaskDependencies,
 } from '../state/editorLensState';
 import { formatLocalDate, getPeriodicNoteUri } from './dailyNote';
+import {
+  CREATE_MISSING_NOTES_COMMAND,
+  findLinkProblems,
+  findMissingNoteNames,
+} from './linkHealth';
 import { resolveSourceUri } from './navigation';
 import { getRolloverLookbackDays, getRolloverMode } from './rollover';
 
@@ -16,6 +21,7 @@ interface LensIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
+  isNotesFile(uri: vscode.Uri): boolean;
   parse(uri: vscode.Uri, content: string): ParsedFile;
 }
 
@@ -38,11 +44,13 @@ interface LensContext {
   document: vscode.TextDocument;
   file: ParsedFile;
   index: WorkspaceIndex;
+  /** Whether the note is in the notes folder Deckard indexes. */
+  isNotesFile: boolean;
 }
 
 /** One group of lenses, and the `deckard.editor.*` setting that shows it. */
 interface LensGroup {
-  setting: 'taskDependencies' | 'dailyNoteActions';
+  setting: 'taskDependencies' | 'dailyNoteActions' | 'linkProblems';
   provide(context: LensContext): ActionLens[];
 }
 
@@ -59,6 +67,7 @@ export class EditorLenses
   private readonly groups: readonly LensGroup[] = [
     { setting: 'taskDependencies', provide: provideTaskDependencyLenses },
     { setting: 'dailyNoteActions', provide: provideDailyNoteLenses },
+    { setting: 'linkProblems', provide: provideLinkProblemLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -107,6 +116,7 @@ export class EditorLenses
           document,
           file: this.indexer.parse(document.uri, document.getText()),
           index: this.indexer.getSnapshot(),
+          isNotesFile: this.indexer.isNotesFile(document.uri),
         };
         return groups.flatMap((group) => group.provide(context));
       },
@@ -221,6 +231,66 @@ function provideDailyNoteLenses({
         title: `${next} ›`,
         tooltip: `Open the daily note for ${next}`,
         command: 'deckard.nextDailyNote',
+      })),
+    );
+  }
+  return lenses;
+}
+
+/**
+ * On a note's first line: how many of its `[[links]]` open no note, listed in
+ * the references peek, and an action that creates the notes the missing ones
+ * name. The links are read from the editor, so they follow unsaved edits the
+ * way the diagnostics on them do.
+ */
+function provideLinkProblemLenses({
+  document,
+  file,
+  index,
+  isNotesFile,
+}: LensContext): ActionLens[] {
+  // Only notes are checked, as the diagnostics check only notes: a Markdown
+  // file outside the notes folder links into notes it is not part of.
+  if (!isNotesFile) {
+    return [];
+  }
+  const problems = findLinkProblems(document.getText(), index, file.filePath);
+  if (problems.length === 0) {
+    return [];
+  }
+  const range = new vscode.Range(0, 0, 0, 0);
+  const lenses = [
+    new ActionLens(range, () => ({
+      title: `${pluralize(problems.length, 'link')} open${problems.length === 1 ? 's' : ''} no note`,
+      tooltip:
+        'Links that name no note, or a name several notes share. Show them in the references view',
+      command: 'editor.action.showReferences',
+      arguments: [
+        document.uri,
+        range.start,
+        problems.map(
+          (problem) =>
+            new vscode.Location(
+              document.uri,
+              new vscode.Range(
+                problem.line,
+                problem.startColumn,
+                problem.line,
+                problem.endColumn,
+              ),
+            ),
+        ),
+      ],
+    })),
+  ];
+  const names = findMissingNoteNames(problems);
+  if (names.length > 0) {
+    lenses.push(
+      new ActionLens(range, () => ({
+        title: `Create ${pluralize(names.length, 'missing note')}`,
+        tooltip: `Create ${names.map((name) => `"${name}"`).join(', ')} in your notes folder`,
+        command: CREATE_MISSING_NOTES_COMMAND,
+        arguments: [document.uri.toString(), names],
       })),
     );
   }

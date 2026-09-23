@@ -830,6 +830,13 @@
             "default": true,
             "description": "Show, above a daily note, links to the daily notes before and after it, and on today's note an action that carries in the unfinished tasks earlier daily notes still hold.",
             "order": 7
+          },
+          "deckard.editor.linkProblems": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, on a note's first line, how many of its [[Wiki links]] open no note, and an action that creates the notes the missing ones name. A note whose links all open a note shows nothing.",
+            "order": 8
           }
         }
       },

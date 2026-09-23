@@ -4,6 +4,10 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import {
+  findLinkProblems,
+  findMissingNoteNames,
+} from '../ui/commands/linkHealth';
+import {
   findDailyNoteActions,
   findTaskDependencies,
 } from '../ui/state/editorLensState';
@@ -141,6 +145,36 @@ suite('Editor lenses', () => {
           '2026-09-22',
         ),
         undefined,
+      );
+    });
+  });
+
+  suite('link problems', () => {
+    const index = createIndex({
+      'notes/Atlas.md': '# Atlas',
+      'notes/a/Log.md': '# Log',
+      'notes/b/Log.md': '# Log',
+    });
+    const names = (content: string) =>
+      findMissingNoteNames(findLinkProblems(content, index, 'notes/Here.md'));
+
+    test('names each missing note once, whatever its case', () => {
+      assert.deepStrictEqual(
+        names('[[Vendor]] and [[vendor#Terms]], then [[Budget|the budget]]'),
+        ['Vendor', 'Budget'],
+      );
+    });
+
+    test('does not offer to create a note for a name several notes share', () => {
+      const problems = findLinkProblems('[[Log]]', index, 'notes/Here.md');
+      assert.strictEqual(problems.length, 1, 'the link is still a problem');
+      assert.deepStrictEqual(findMissingNoteNames(problems), []);
+    });
+
+    test('finds nothing to create when every link opens a note', () => {
+      assert.deepStrictEqual(
+        findLinkProblems('[[Atlas]] and [[#Heading]]', index, 'notes/Here.md'),
+        [],
       );
     });
   });

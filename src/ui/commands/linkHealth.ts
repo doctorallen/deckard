@@ -36,6 +36,8 @@ interface LinkHealthSource {
 
 /** The command the Create note quick fix runs. */
 export const CREATE_LINKED_NOTE_COMMAND = 'deckard.createLinkedNote';
+/** The command the Create missing notes lens runs. */
+export const CREATE_MISSING_NOTES_COMMAND = 'deckard.createMissingNotes';
 
 const WIKI_LINK = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 /** How long typing must pause before a changed note is checked again. */
@@ -138,6 +140,75 @@ export async function createLinkedNote(
   }
   await vscode.window.showTextDocument(noteUri, { preview: false });
   return noteUri;
+}
+
+/**
+ * The note names a note's missing links use, once each whatever their letter
+ * case, that could be file names. A name several notes share is not missing:
+ * another note would only make it more ambiguous.
+ */
+export function findMissingNoteNames(
+  problems: readonly LinkProblem[],
+): string[] {
+  const names = new Map<string, string>();
+  for (const problem of problems) {
+    const key = problem.name.trim().toLocaleLowerCase();
+    if (
+      problem.kind === 'missing' &&
+      !names.has(key) &&
+      getExtractedNoteFileName(problem.name)
+    ) {
+      names.set(key, problem.name.trim());
+    }
+  }
+  return [...names.values()];
+}
+
+/**
+ * Creates a note for each name in the notes folder of the linking note's
+ * workspace, leaving any note already there as it is, and says how many it
+ * made. The notes are not opened: there may be several, and the note being
+ * read is where the reader already is.
+ */
+export async function createMissingNotes(
+  indexer: Pick<LinkHealthSource, 'getNotesFolderUri'>,
+  documentUri: vscode.Uri,
+  names: readonly string[],
+): Promise<number> {
+  const folder =
+    vscode.workspace.getWorkspaceFolder(documentUri) ??
+    vscode.workspace.workspaceFolders?.[0];
+  if (!folder) {
+    void vscode.window.showWarningMessage(
+      'Open a workspace folder to create notes.',
+    );
+    return 0;
+  }
+  const notesFolderUri = indexer.getNotesFolderUri(folder);
+  let created = 0;
+  for (const name of names) {
+    const fileName = getExtractedNoteFileName(name);
+    if (
+      fileName &&
+      !(await exists(vscode.Uri.joinPath(notesFolderUri, fileName))) &&
+      (await createNoteNamed(notesFolderUri, name))
+    ) {
+      created += 1;
+    }
+  }
+  void vscode.window.showInformationMessage(
+    `Created ${created} ${created === 1 ? 'note' : 'notes'} for links that named no note.`,
+  );
+  return created;
+}
+
+async function exists(uri: vscode.Uri): Promise<boolean> {
+  try {
+    await vscode.workspace.fs.stat(uri);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
