@@ -96,6 +96,14 @@
   `(a OR b) AND c` that came back from the builder meaning `a OR (b AND c)`.
   A group emptied of its rows goes with them, rather than staying behind
   as a box with only a head.
+- **The search box shows a search the way the builder does.** A search
+  whose top level was an OR, or that held a parenthesized group, was one
+  chip that could only be removed whole. Now the branches of an OR are
+  chips of their own, a group is a frame of its own chips with its own
+  **×**, nested as deep as the search goes, and a condition inside a group
+  can be removed alone, cutting it out of the search as written. Anything
+  turned around with `NOT` or `-`, a condition or a whole group, is drawn
+  in red.
 
 - **Deckard no longer deletes a favorite, a pin, or a saved search on its
   own.** Pruning used to remove any of them whose tag or note the index had

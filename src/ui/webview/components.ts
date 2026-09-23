@@ -1555,6 +1555,21 @@ export function getQueryEditorCss(): string {
 .query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: 11px var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
 .query-chip-label { min-width: 0; overflow-wrap: anywhere; }
 .query-bar-shell .query-chip.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); background: color-mix(in srgb, var(--favorite-red) 12%, transparent); color: var(--favorite-red); }
+/* A group of the search: its own chips inside a frame, with the group's
+   remove at the end, so what the builder nests the box shows nested. The
+   frame removes the group, as a chip's whole face removes its term. */
+.query-chip-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%; border: 1px dashed color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; padding: 2px 3px 2px 5px; color: var(--cyan); cursor: pointer; }
+.query-chip-group.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); color: var(--favorite-red); }
+/* The group's own remove is the circle alone, ringed with the group's dash
+   so it reads as the group's rather than one more chip. */
+.query-bar-shell .query-chip-group-remove { border: 0; background: none; padding: 0 2px; min-height: 0; color: inherit; }
+.query-bar-shell .query-chip-group-remove .query-chip-remove { border: 1px dashed currentColor; }
+/* Pointing at the frame, or at its remove, lights the whole group, since
+   that is what a press there removes; pointing at a chip inside, or at a
+   group nested inside, lights that alone. */
+.query-chip-group:hover:not(:has(.query-chip:hover, .query-chip-group:hover)), .query-chip-group:has(> .query-chip-group-remove:hover), .query-chip-group:has(> .query-chip-group-remove:focus-visible) { border-color: var(--amber); border-style: solid; color: var(--amber); }
+.query-bar-shell .query-chip-group-remove:hover, .query-bar-shell .query-chip-group-remove:focus-visible { background: none; color: inherit; }
+.query-bar-shell .query-chip-group-remove:hover .query-chip-remove, .query-bar-shell .query-chip-group-remove:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); border-color: var(--amber); }
 .query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: 12px; line-height: 1; }
 .query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
 .query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
@@ -1844,21 +1859,40 @@ export function getQueryEditorScript(): string {
 
     /**
      * The applied search as chips, each removing its own term, joined by
-     * AND. A search whose top level is an OR is one chip, which removes it.
+     * the word between them. A group is a bordered run of its own chips
+     * with a remove of its own at the end, nested as the builder has it,
+     * so a condition inside a group goes alone and the group goes whole.
      */
     function renderChips() {
       const text = appliedText().trim();
       if (!text) return '';
       const terms = (query().terms || []).length ? query().terms : [{ text: text, without: '' }];
+      return renderTermChips(terms, query().termsJoin || 'and');
+    }
+
+    function renderTermChips(terms, join) {
+      const word = join === 'or' ? 'OR' : 'AND';
       return terms.map(function (term, index) {
-        const pieces = scanQuery(term.text);
-        // Words show as the text condition they run.
-        const label = term.label || term.text;
-        const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
-        const className = 'query-chip' + (tag ? ' is-tag' : '') + (tag && tag.negated ? ' is-negated' : '');
-        return (index > 0 ? '<span class="query-chip-join" aria-hidden="true">AND</span>' : '')
-          + '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" title="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
+        return (index > 0 ? '<span class="query-chip-join" aria-hidden="true">' + word + '</span>' : '') + renderTermChip(term);
       }).join('');
+    }
+
+    function renderTermChip(term) {
+      // Words show as the text condition they run.
+      const label = term.label || term.text;
+      if (term.items && term.items.length) {
+        // The frame removes the group, as a chip's whole face removes its
+        // term; a chip inside is found first by the click, so it goes alone.
+        return '<span class="query-chip-group' + (term.negated ? ' is-negated' : '') + '" role="group" aria-label="' + escapeHtml(label) + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '">'
+          + (term.negated ? '<span class="query-chip-join" aria-hidden="true">NOT</span>' : '')
+          + renderTermChips(term.items, term.join)
+          + '<button type="button" class="query-chip query-chip-group-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove the group ' + escapeHtml(label) + '" title="Remove the group ' + escapeHtml(label) + '"><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>'
+          + '</span>';
+      }
+      const pieces = scanQuery(term.text);
+      const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
+      const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) ? ' is-negated' : '');
+      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" title="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
     }
 
     /**

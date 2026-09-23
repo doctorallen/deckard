@@ -402,8 +402,13 @@ then draws a single line in their place.
 
 The bar is a `.query-bar-shell` field of chips, as a multi-select is: each of
 the applied search's top-level terms is a `.query-chip` button with a
-`.query-chip-remove` icon, joined by `.query-chip-join` AND, and the text field
-after them holds the next term. `data-query-text` on the shell is the whole
+`.query-chip-remove` icon, joined by `.query-chip-join` AND or OR, and the text
+field after them holds the next term. A group among the terms is a
+`.query-chip-group` frame holding its own chips, joined by its own word, with
+a `.query-chip-group-remove` at the end; groups nest as the query does. Each
+chip carries `data-without`, the whole search cut as written without that
+term, which `getTopLevelTerms()` in `queryEdit.ts` works out on the host.
+A chip or group turned around with NOT is `.is-negated`, in red. `data-query-text` on the shell is the whole
 search, chips and typed term together. A chosen completion that is a whole
 term becomes a chip at once; Enter adds the typed term by AND; Backspace in an
 empty field removes the last chip; and a term not added is let go when focus

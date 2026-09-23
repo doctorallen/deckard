@@ -333,6 +333,38 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.countRows(), 2);
   });
 
+  test('shows a group of the search as chips of its own, each removable', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '#a OR NOT (#b AND -#c)';
+    state.query.termsJoin = 'or';
+    state.query.terms = [
+      { text: '#a', without: 'NOT (#b AND -#c)' },
+      {
+        text: 'NOT (#b AND -#c)', without: '#a', join: 'and', negated: true,
+        items: [
+          { text: '#b', without: '#a OR NOT (-#c)' },
+          { text: '-#c', without: '#a OR NOT (#b)', negated: true },
+        ],
+      },
+    ];
+    view.send(state);
+    const html = view.html();
+    assert.strictEqual((html.match(/class="query-chip-group is-negated"/g) ?? []).length, 1);
+    assert.match(html, /<span class="query-chip-join" aria-hidden="true">OR<\/span>/);
+    assert.match(html, /<span class="query-chip-join" aria-hidden="true">NOT<\/span>/);
+    assert.match(html, /<span class="query-chip-join" aria-hidden="true">AND<\/span>/);
+    assert.match(html, /query-chip-group-remove" data-action="remove-term" data-without="#a"/);
+    assert.match(html, /class="query-chip is-tag is-negated" data-action="remove-term" data-without="#a OR NOT \(#b\)"/);
+    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 4, 'a, the group, b, and c');
+    // The frame itself removes the group, as a chip's face removes its term.
+    assert.match(html, /class="query-chip-group is-negated" role="group" aria-label="NOT \(#b AND -#c\)" data-action="remove-term" data-without="#a"/);
+
+    view.click({ action: 'remove-term', without: '#a OR NOT (-#c)' });
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual((last as { query?: string } | undefined)?.query, '#a OR NOT (-#c)');
+  });
+
   test('narrows by a facet, or leaves it out with Alt', () => {
     const facets = [
       {

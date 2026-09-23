@@ -9,6 +9,7 @@ import {
   correctQueryText,
   extractTagTerms,
   getTextWords,
+  getTopLevelJoin,
   getTopLevelTerms,
   refineQueryText,
 } from '../core/query/queryEdit';
@@ -69,11 +70,66 @@ suite('Refining a search', () => {
     );
   });
 
-  test('offers no terms for a query whose top level is an OR', () => {
+  test('lists the branches of a top-level OR, each removable alone', () => {
     const parsed = parseQuery('#a OR #b');
-    assert.deepStrictEqual(getTopLevelTerms(parsed), []);
+    assert.deepStrictEqual(
+      getTopLevelTerms(parsed).map((term) => [term.text, term.without]),
+      [
+        ['#a', '#b'],
+        ['#b', '#a'],
+      ],
+    );
+    assert.strictEqual(getTopLevelJoin(parsed), 'or');
+    assert.strictEqual(getTopLevelJoin(parseQuery('#a #b')), 'and');
+    // Adding by AND to an OR still has to wrap it.
     assert.strictEqual(canAppendTerm(parsed), false);
     assert.strictEqual(canAppendTerm(parseQuery('#a (#b OR #c)')), true);
+  });
+
+  test('lists a group as a term of its own, with its own terms inside', () => {
+    const text = 'tag = #project/argent-protocol OR tag = #person/mara-vale OR (tag = #team/harbor AND tag = #person/ivo-chen)';
+    const terms = getTopLevelTerms(parseQuery(text));
+    assert.deepStrictEqual(
+      terms.map((term) => term.text),
+      ['tag = #project/argent-protocol', 'tag = #person/mara-vale', '(tag = #team/harbor AND tag = #person/ivo-chen)'],
+    );
+    assert.strictEqual(terms[0].without, 'tag = #person/mara-vale OR (tag = #team/harbor AND tag = #person/ivo-chen)');
+    assert.strictEqual(terms[2].without, 'tag = #project/argent-protocol OR tag = #person/mara-vale');
+    const group = terms[2];
+    assert.strictEqual(group.join, 'and');
+    assert.strictEqual(group.negated, undefined);
+    assert.deepStrictEqual(
+      group.items?.map((term) => [term.text, term.without]),
+      [
+        ['tag = #team/harbor', 'tag = #project/argent-protocol OR tag = #person/mara-vale OR (tag = #person/ivo-chen)'],
+        ['tag = #person/ivo-chen', 'tag = #project/argent-protocol OR tag = #person/mara-vale OR (tag = #team/harbor)'],
+      ],
+    );
+  });
+
+  test('keeps a group turned around, and marks each NOT', () => {
+    const terms = getTopLevelTerms(parseQuery('NOT (#a OR #b) AND -#c'));
+    assert.strictEqual(terms.length, 2);
+    assert.strictEqual(terms[0].text, 'NOT (#a OR #b)');
+    assert.strictEqual(terms[0].negated, true);
+    assert.strictEqual(terms[0].join, 'or');
+    assert.strictEqual(terms[0].without, '-#c');
+    assert.deepStrictEqual(
+      terms[0].items?.map((term) => [term.text, term.without, term.negated]),
+      [
+        ['#a', 'NOT (#b) AND -#c', undefined],
+        ['#b', 'NOT (#a) AND -#c', undefined],
+      ],
+    );
+    assert.strictEqual(terms[1].negated, true);
+    assert.strictEqual(terms[1].without, 'NOT (#a OR #b)');
+
+    // Groups nest as deep as the search goes, and each level cuts as written.
+    const deep = getTopLevelTerms(parseQuery('#a AND (#b OR (#c AND #d))'));
+    const inner = deep[1].items?.[1];
+    assert.strictEqual(inner?.text, '(#c AND #d)');
+    assert.strictEqual(inner?.without, '#a AND (#b)');
+    assert.strictEqual(inner?.items?.[0].without, '#a AND (#b OR (#d))');
   });
 
   test('lifts whole tags out of a refinement and keeps the rest as typed', () => {

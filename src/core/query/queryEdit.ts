@@ -1,6 +1,12 @@
 import { formatQuery } from './queryFormat';
 import { parseQuery } from './queryParser';
-import { ParsedQuery, QueryConditionNode, QueryNode } from './queryTypes';
+import {
+  ParsedQuery,
+  QueryBuilderJoin,
+  QueryConditionNode,
+  QueryNode,
+  QueryTermChip,
+} from './queryTypes';
 
 /**
  * Edits query text by the terms a person wrote, rather than by rewriting it.
@@ -10,17 +16,7 @@ import { ParsedQuery, QueryConditionNode, QueryNode } from './queryTypes';
  * and keeps the rest exactly as it was typed, instead of coming back in the
  * canonical `text ~ vendor AND tag = #atlas` spelling.
  */
-export interface QueryTerm {
-  /** The term as it was written. */
-  text: string;
-  /**
-   * The term as the condition it runs, when that differs from how it was
-   * written: plain words are a `text ~` condition.
-   */
-  label?: string;
-  /** The whole query without this term. */
-  without: string;
-}
+export type QueryTerm = QueryTermChip;
 
 interface TermSpan {
   node: QueryNode;
@@ -29,32 +25,154 @@ interface TermSpan {
 }
 
 /**
- * Lists the terms joined by AND at the top of a query. A query whose top
- * level is an OR has no such terms, since removing one branch is not what
- * removing a filter means.
+ * Lists a query's terms as the search box shows them: the children of its
+ * top-level AND or OR, each removable alone, and a group among them with
+ * its own children listed the same way, so a condition inside a group can
+ * be removed on its own and the group can be removed whole, as the builder
+ * has it. `getTopLevelJoin` says which word joins the top level.
+ *
+ * Removing cuts the term out of the text as written, with the AND or OR
+ * that went with it; a term whose place in the text cannot be found is
+ * removed from the parsed query and the rest written back.
  */
 export function getTopLevelTerms(parsed: ParsedQuery): QueryTerm[] {
-  const spans = getTermSpans(parsed);
-  if (!spans) {
+  const root = parsed.node;
+  if (!root) {
     return [];
   }
-  return spans.map((span, index) => {
-    const others = spans.filter((_, otherIndex) => otherIndex !== index);
-    if (span.start === undefined || span.end === undefined) {
-      return {
-        text: formatQuery(span.node),
-        without: joinTerms(others.map((other) => other.node)),
-      };
-    }
-    const text = parsed.text.slice(span.start, span.end);
+  const join = getTopLevelJoin(parsed);
+  const children = root.type === 'and' || root.type === 'or' ? root.children : [root];
+  return children.map((child) => termOf(parsed, root, child, join));
+}
+
+/** The word between a query's top-level terms. */
+export function getTopLevelJoin(parsed: ParsedQuery): QueryBuilderJoin {
+  return parsed.node?.type === 'or' ? 'or' : 'and';
+}
+
+function termOf(
+  parsed: ParsedQuery,
+  root: QueryNode,
+  node: QueryNode,
+  join: QueryBuilderJoin,
+): QueryTerm {
+  const span = spanOf(parsed.text, node);
+  const text = span ? parsed.text.slice(span.start, span.end) : formatQuery(node);
+  const without = span
+    ? cutTerm(parsed.text, span, join)
+    : formatQuery(removeNode(root, node));
+  const group = node.type === 'not' ? node.child : node;
+  if (group.type === 'and' || group.type === 'or') {
     return {
       text,
-      ...(isBareWords(span.node, text) ? { label: formatQuery(span.node) } : {}),
-      without: tidy(
-        parsed.text.slice(0, span.start) + ' ' + parsed.text.slice(span.end),
-      ),
+      without,
+      join: group.type,
+      ...(node.type === 'not' ? { negated: true } : {}),
+      items: group.children.map((child) => termOf(parsed, root, child, group.type)),
     };
-  });
+  }
+  return {
+    text,
+    ...(isBareWords(node, text) ? { label: formatQuery(node) } : {}),
+    without,
+    ...(node.type === 'not' ? { negated: true } : {}),
+  };
+}
+
+interface Span {
+  start: number;
+  end: number;
+}
+
+/**
+ * Where a node was written, taking in the parentheses around it and the
+ * NOT before it. A group's place runs from its first child's to its last
+ * child's; undefined when a child's place is unknown, or the place found
+ * would cut a parenthesis in half.
+ */
+function spanOf(text: string, node: QueryNode): Span | undefined {
+  let span: Span | undefined;
+  if (node.type === 'condition') {
+    span = { start: node.start, end: node.end };
+  } else if (node.type === 'not') {
+    const inner = spanOf(text, node.child);
+    const start = inner && findNegationStart(text, inner.start);
+    span = inner && start !== undefined ? { start, end: inner.end } : undefined;
+  } else {
+    const spans = node.children.map((child) => spanOf(text, child));
+    if (spans.every((child): child is Span => child !== undefined)) {
+      span = {
+        start: Math.min(...spans.map((child) => child.start)),
+        end: Math.max(...spans.map((child) => child.end)),
+      };
+    }
+  }
+  if (!span) {
+    return undefined;
+  }
+  span = widenOverParentheses(text, span);
+  return isBalanced(text.slice(span.start, span.end)) ? span : undefined;
+}
+
+/** Takes in each pair of parentheses written directly around a place. */
+function widenOverParentheses(text: string, span: Span): Span {
+  let { start, end } = span;
+  for (;;) {
+    const before = /\(\s*$/.exec(text.slice(0, start));
+    const after = /^\s*\)/.exec(text.slice(end));
+    if (!before || !after) {
+      return { start, end };
+    }
+    start = before.index;
+    end += after[0].length;
+  }
+}
+
+function isBalanced(text: string): boolean {
+  let depth = 0;
+  for (const char of text) {
+    if (char === '(') depth += 1;
+    if (char === ')') depth -= 1;
+    if (depth < 0) return false;
+  }
+  return depth === 0;
+}
+
+/**
+ * The text without the term at a place, and without the join that stood
+ * beside it: the one before it when there is one, else the one after, so
+ * `a OR b` loses ` OR b` or `a OR ` and never keeps a dangling OR.
+ */
+function cutTerm(text: string, span: Span, join: QueryBuilderJoin): string {
+  const words = join === 'or' ? '(?:or|\\|\\|)' : '(?:and|&&)';
+  const before = new RegExp('\\s+' + words + '\\s*$', 'i').exec(text.slice(0, span.start));
+  const after = new RegExp('^\\s*' + words + '\\s+', 'i').exec(text.slice(span.end));
+  const start = before ? before.index : span.start;
+  const end = !before && after ? span.end + after[0].length : span.end;
+  return tidy(text.slice(0, start) + ' ' + text.slice(end));
+}
+
+/**
+ * The query without one of its nodes: a group left with one child becomes
+ * that child, and one left with none goes, as does a NOT of nothing.
+ */
+function removeNode(root: QueryNode, target: QueryNode): QueryNode | undefined {
+  if (root === target) {
+    return undefined;
+  }
+  if (root.type === 'not') {
+    const child = removeNode(root.child, target);
+    return child ? { type: 'not', child } : undefined;
+  }
+  if (root.type === 'and' || root.type === 'or') {
+    const children = root.children
+      .map((child) => removeNode(child, target))
+      .filter((child): child is QueryNode => child !== undefined);
+    if (children.length === 0) return undefined;
+    if (children.length === 1) return children[0];
+    return { type: root.type, children };
+  }
+  return root;
 }
 
 /**
@@ -348,12 +466,19 @@ function tidy(text: string): string {
   do {
     previous = result;
     result = result
-      .replace(/^(?:and|&&)\s+/i, '')
-      .replace(/\s+(?:and|&&)$/i, '')
-      .replace(/^(?:and|&&)$/i, '')
+      .replace(/\(\s*\)/g, '')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .replace(/^(?:and|&&|or|\|\|)\s+/i, '')
+      .replace(/\s+(?:and|&&|or|\|\|)$/i, '')
+      .replace(/^(?:and|&&|or|\|\|)$/i, '')
       .replace(/\s+(?:and|&&)\s+(?:and|&&)\s+/gi, ' AND ')
-      .replace(/\(\s*(?:and|&&)\s+/gi, '(')
-      .replace(/\s+(?:and|&&)\s*\)/gi, ')')
+      .replace(/\s+(?:or|\|\|)\s+(?:or|\|\|)\s+/gi, ' OR ')
+      .replace(/\(\s*(?:and|&&|or|\|\|)\s+/gi, '(')
+      .replace(/\s+(?:and|&&|or|\|\|)\s*\)/gi, ')')
+      .replace(/^(?:not|-|!)\s*$/i, '')
       .trim();
   } while (result !== previous);
   return result;

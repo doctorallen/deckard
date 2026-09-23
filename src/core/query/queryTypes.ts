@@ -250,12 +250,22 @@ export interface QueryBuilderGroup {
 /** A row, or a nested group: told apart by `items`. */
 export type QueryBuilderItem = QueryBuilderRow | QueryBuilderGroup;
 
-/** One term of a query, and the query it leaves behind when removed. */
+/**
+ * One term of a query, and the query it leaves behind when removed. A group
+ * lists its own terms the same way, so each can be removed alone or the
+ * group whole, as the builder shows them.
+ */
 export interface QueryTermChip {
   text: string;
   /** The term as the condition it runs, such as `text ~ vendor` for a word. */
   label?: string;
   without: string;
+  /** For a group: the word between its terms. */
+  join?: QueryBuilderJoin;
+  /** For a group: whether it matches what it does not say. */
+  negated?: boolean;
+  /** For a group: its terms, each removable alone. */
+  items?: QueryTermChip[];
 }
 
 export interface QueryFacetValue {
@@ -288,8 +298,10 @@ export interface QueryFacet {
 export interface QueryViewState {
   /** Canonical query text; the source of truth for both editing surfaces. */
   text: string;
-  /** The terms joined by AND at the top of `text`, each removable alone. */
+  /** The terms at the top of `text`, each removable alone. */
   terms: QueryTermChip[];
+  /** The word between the top-level terms; AND when not said. */
+  termsJoin?: QueryBuilderJoin;
   /** Whether a term can be added to `text` as another AND. */
   canAppend: boolean;
   /** What the current results could still be narrowed by. */

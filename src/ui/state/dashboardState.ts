@@ -35,6 +35,7 @@ import {
   correctQueryText,
   getPlainTextTerms,
   getTextWords,
+  getTopLevelJoin,
   getTopLevelTerms,
 } from '../../core/query/queryEdit';
 import {
@@ -1336,6 +1337,7 @@ export function createQueryViewState(
     text: parsed.text,
     ...(pending ? { pending } : {}),
     terms: getTopLevelTerms(parsed),
+    termsJoin: getTopLevelJoin(parsed),
     canAppend: canAppendTerm(parsed),
     facets: extras.facets ?? [],
     isAdvanced,
