@@ -505,8 +505,11 @@ control that moved: zen mode shipped with Cooper's dotted grid still showing,
 and it took a screenshot to notice. `test/ui/checkVisual.js` takes that
 screenshot — the same pages and surfaces the layout check draws, once per
 theme and zen state — and compares each to the one recorded under
-`test/ui/visual-baseline/<platform>/`. A page that differs by more than half
-a percent of its pixels fails, with the diff image's path in the message.
+`test/ui/visual-baseline/<platform>/`. A page that differs by more than a
+hundredth of a percent of its pixels fails, with the diff image's path in the
+message. That is tight on purpose: on one platform an unchanged page draws
+identically, and the smallest real change yet seen — two buttons moving along
+a row — was three times that.
 
 Baselines are per platform, because fonts are rasterized by the operating
 system and a page drawn on macOS differs from the same page on Linux in every

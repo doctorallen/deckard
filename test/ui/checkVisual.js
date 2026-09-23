@@ -30,8 +30,17 @@ const { chrome, createSurfaces, buildPage } = require('./checkLayout.js');
 
 /** How different one pixel may be before it counts, 0 to 1. */
 const PIXEL_THRESHOLD = 0.1;
-/** How many pixels may differ, as a share of the page, before it fails. */
-const FAIL_ABOVE = 0.005;
+/**
+ * How many pixels may differ, as a share of the page, before it fails.
+ *
+ * On one platform an unchanged page draws identically, pixel for pixel: the
+ * first forty comparisons found thirty-one identical and the rest were real
+ * changes. The smallest real change seen - two small buttons moving along a
+ * row - was 0.03% of the page. Half a percent let that through; a hundredth
+ * of a percent, some eighty pixels on the largest surface, does not, and
+ * still forgives a stray edge.
+ */
+const FAIL_ABOVE = 0.0001;
 
 const BASELINES = path.join(__dirname, 'visual-baseline', process.platform);
 const updating = process.argv.includes('--update');
@@ -40,14 +49,22 @@ const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-visual-'));
 if (keep) mkdirSync(keep, { recursive: true });
 mkdirSync(BASELINES, { recursive: true });
 
-function screenshot(file, viewport, out) {
+function screenshot(file, viewport, out, attempt = 1) {
   const result = spawnSync(chrome, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
     '--force-device-scale-factor=1',
     `--window-size=${viewport[0]},${viewport[1]}`,
     '--virtual-time-budget=3000', `--screenshot=${out}`, `file://${file}`,
   ], { encoding: 'utf8', timeout: 60000, killSignal: 'SIGKILL' });
-  if (result.signal === 'SIGKILL') throw new Error('chrome wedged after 60s');
+  // Headless Chrome occasionally wedges at 0% CPU and never returns. Once is
+  // a flake and is retried, as the layout check does; twice is a fault.
+  if (result.signal === 'SIGKILL') {
+    if (attempt === 1) {
+      console.log('       chrome wedged after 60s, retrying once');
+      return screenshot(file, viewport, out, 2);
+    }
+    throw new Error('chrome wedged twice, 60s each');
+  }
   if (!existsSync(out)) throw new Error(`no screenshot (chrome exit ${result.status}): ${(result.stderr ?? '').slice(0, 300)}`);
   return PNG.sync.read(readFileSync(out));
 }

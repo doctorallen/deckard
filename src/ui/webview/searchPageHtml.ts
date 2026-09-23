@@ -68,9 +68,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
 .overview-pane { min-width: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.overview-pane-controls { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+/* Bulk Edit and Export sit together at the right, after the heading. */
+.overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; text-transform: uppercase; }
-.edit-results { flex: 0 0 auto; min-height: 24px; margin-left: 10px; padding: 2px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -295,6 +296,11 @@ ${getQueryEditorScript()}
     ]);
   }
 
+  /** The pane's actions, together at the right; nothing when there are none. */
+  function paneActions(buttons) {
+    return buttons ? '<div class="overview-pane-actions">' + buttons + '</div>' : '';
+  }
+
   /** Beside Bulk Edit: everything the search found, out as Markdown or CSV. */
   function exportResultsButton(kind, count) {
     if (!count) return '';
@@ -358,8 +364,8 @@ ${getQueryEditorScript()}
     }
     // Bulk Edit belongs beside the heading it acts on, not out with the
     // controls that change how the pane is shown.
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + editResultsButton('notes', notesCount) + exportResultsButton('notes', notesCount) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + editResultsButton('tasks', tasksCount) + exportResultsButton('tasks', tasksCount) + '</div>' + tasksPaged + '</section>';
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + paneActions(editResultsButton('notes', notesCount) + exportResultsButton('notes', notesCount)) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + paneActions(editResultsButton('tasks', tasksCount) + exportResultsButton('tasks', tasksCount)) + '</div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
