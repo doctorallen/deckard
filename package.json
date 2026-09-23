@@ -816,6 +816,13 @@
             "default": "severalNotes",
             "description": "When renaming or merging a tag, and renaming a heading, show the changes in VS Code's refactor preview before they are written, where each one can be left out. Deckard: Undo Last Change takes back whatever was written.",
             "order": 5
+          },
+          "deckard.editor.taskDependencies": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, above a task with ⛔ or 🆔, how many open tasks it waits on and how many it holds up, and name a ⛔ id no task carries. A task with nothing open on either side shows nothing.",
+            "order": 6
           }
         }
       },

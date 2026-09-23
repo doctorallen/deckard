@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 49);
+    assert.strictEqual(Object.keys(settings).length, 50);
     // Where one note ends and the next begins.
     assert.deepStrictEqual(settings['deckard.noteBoundaries'].enum, [
       'line',
@@ -253,6 +253,54 @@ suite('Extension Test Suite', () => {
         !titles.some((title) => title?.includes('share a tag')),
         JSON.stringify(titles),
       );
+    } finally {
+      await vscode.workspace.fs.delete(fileUri);
+    }
+  });
+
+  test('says above a task what it waits on and what it holds up', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    await extension.activate();
+
+    const fileUri = vscode.Uri.file(
+      path.join(os.tmpdir(), `deckard-dependencies-${Date.now()}.md`),
+    );
+    await vscode.workspace.fs.writeFile(
+      fileUri,
+      Buffer.from(
+        [
+          '# Plan',
+          '- [ ] Draft 🆔 draft',
+          '- [ ] Send ⛔ draft',
+          '- [ ] Book ⛔ nowhere',
+          '- [ ] Plain',
+          '',
+        ].join('\n'),
+        'utf8',
+      ),
+    );
+    try {
+      await vscode.workspace.openTextDocument(fileUri);
+      const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+        'vscode.executeCodeLensProvider',
+        fileUri,
+        20,
+      );
+      const titles = lenses.map(
+        (lens) => `${lens.range.start.line}: ${lens.command?.title}`,
+      );
+      for (const expected of [
+        '1: Blocks 1 open task',
+        '2: Waiting on 1 open task',
+        '3: No task has 🆔 nowhere',
+      ]) {
+        assert.ok(titles.includes(expected), JSON.stringify(titles));
+      }
+      // The plain task gets nothing of its own.
+      assert.ok(!titles.some((title) => title.startsWith('4:')), JSON.stringify(titles));
     } finally {
       await vscode.workspace.fs.delete(fileUri);
     }

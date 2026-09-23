@@ -4,6 +4,14 @@
 
 ### Added
 
+- **A task says what it waits on, and what it holds up.** `⛔` and `🆔`
+  were read by `is:blocked` and `is:blocking`, but nothing in the editor
+  showed them. A task with dependencies now carries **Waiting on N open
+  tasks** or **Blocks N open tasks** above it, across notes, which lists
+  them in the references peek, and a `⛔` name no task carries is named
+  outright. Only open tasks count, so a task whose dependencies are done
+  shows nothing. `deckard.editor.taskDependencies` turns it off.
+
 - **An assistant can add a task, or change one, with Deckard's own
   safeguards.** The query and tag tools were read-only. `deckard_add_task`
   adds a task to today's note or to a note the assistant names, and

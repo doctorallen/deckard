@@ -54,6 +54,7 @@ import {
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
+import { EditorLenses } from './ui/commands/editorLenses';
 import { EditorReferences } from './ui/commands/editorReferences';
 import { AssistantTools } from './ui/commands/assistantTools';
 import { QuickFind } from './ui/commands/quickFind';
@@ -188,6 +189,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   const editorReferences = new EditorReferences(indexer);
+  const editorLenses = new EditorLenses(indexer);
   const assistantTools = new AssistantTools(indexer);
   const mcpServer = new DeckardMcpServer(
     indexer,
@@ -294,6 +296,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskLineContext,
     taskBoard,
     editorReferences,
+    editorLenses,
     linkHealth,
     linkMaintenance,
     calendar,
@@ -324,6 +327,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskLineContext,
     taskBoard,
     editorReferences,
+    editorLenses,
     linkHealth,
     linkMaintenance,
     calendar,
@@ -763,6 +767,7 @@ export function deactivate(): void {
   activeServices?.taskLineContext.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
+  activeServices?.editorLenses.dispose();
   activeServices?.linkHealth.dispose();
   activeServices?.linkMaintenance.dispose();
   activeServices?.calendar.dispose();
@@ -797,6 +802,7 @@ interface ExtensionServices {
   taskLineContext: TaskLineContext;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
+  editorLenses: EditorLenses;
   linkHealth: LinkHealth;
   linkMaintenance: LinkMaintenance;
   calendar: CalendarView;
