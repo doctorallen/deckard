@@ -823,6 +823,13 @@
             "default": true,
             "description": "Show, above a task with ⛔ or 🆔, how many open tasks it waits on and how many it holds up, and name a ⛔ id no task carries. A task with nothing open on either side shows nothing.",
             "order": 6
+          },
+          "deckard.editor.dailyNoteActions": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, above a daily note, links to the daily notes before and after it, and on today's note an action that carries in the unfinished tasks earlier daily notes still hold.",
+            "order": 7
           }
         }
       },

@@ -3,7 +3,10 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { findTaskDependencies } from '../ui/state/editorLensState';
+import {
+  findDailyNoteActions,
+  findTaskDependencies,
+} from '../ui/state/editorLensState';
 
 suite('Editor lenses', () => {
   suite('task dependencies', () => {
@@ -71,6 +74,74 @@ suite('Editor lenses', () => {
         (task) => task.line === 2,
       );
       assert.deepStrictEqual(send?.waitingOn ?? [], []);
+    });
+  });
+
+  suite('daily notes', () => {
+    const index = createIndex({
+      'notes/2026-09-18.md': '# 2026-09-18\n- [ ] Call the vendor\n- [x] Done already',
+      'notes/2026-09-21.md': '# 2026-09-21\n- [ ] Write the brief\n- [ ] Book travel',
+      'notes/2026-09-22.md': '# 2026-09-22\n- [ ] Book travel\n',
+      'notes/Plan.md': '# Plan\n- [ ] Not a daily task',
+    });
+    const note = (filePath: string) => index.files.get(filePath) as ParsedFile;
+
+    test("offers today's note the unfinished tasks it does not already hold", () => {
+      const actions = findDailyNoteActions(
+        note('notes/2026-09-22.md'),
+        index,
+        '2026-09-22',
+      );
+      assert.deepStrictEqual(
+        actions?.carryIn.map((task) => task.title.trim()),
+        // "Book travel" was carried already; the done task stays behind.
+        ['Call the vendor', 'Write the brief'],
+      );
+      assert.strictEqual(actions?.previous, '2026-09-21');
+      assert.strictEqual(actions?.next, undefined);
+    });
+
+    test('offers an earlier daily note only its neighbors', () => {
+      const actions = findDailyNoteActions(
+        note('notes/2026-09-21.md'),
+        index,
+        '2026-09-22',
+      );
+      assert.deepStrictEqual(actions?.carryIn, []);
+      assert.strictEqual(actions?.previous, '2026-09-18');
+      assert.strictEqual(actions?.next, '2026-09-22');
+    });
+
+    test('reaches only as far back as the lookback allows', () => {
+      const actions = findDailyNoteActions(
+        note('notes/2026-09-22.md'),
+        index,
+        '2026-09-22',
+        2,
+      );
+      assert.deepStrictEqual(
+        actions?.carryIn.map((task) => task.title.trim()),
+        ['Write the brief'],
+      );
+    });
+
+    test('shows nothing for a note that is not a daily note', () => {
+      assert.strictEqual(
+        findDailyNoteActions(note('notes/Plan.md'), index, '2026-09-22'),
+        undefined,
+      );
+    });
+
+    test('shows nothing for a lone daily note with nothing to carry', () => {
+      const alone = createIndex({ 'notes/2026-09-22.md': '# 2026-09-22\n' });
+      assert.strictEqual(
+        findDailyNoteActions(
+          alone.files.get('notes/2026-09-22.md') as ParsedFile,
+          alone,
+          '2026-09-22',
+        ),
+        undefined,
+      );
     });
   });
 });

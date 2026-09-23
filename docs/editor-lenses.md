@@ -12,8 +12,8 @@ Five lenses bring what the index already knows to the line it is about:
 
 | Lens | Where | Says | Selecting it |
 | --- | --- | --- | --- |
-| Task dependencies | A task with `⛔` or `🆔` | **Waiting on 2 open tasks**, **Blocks 3 open tasks**, **Waits on a task no note has: `abc`** | Lists the tasks in the references peek |
-| Daily notes | First line of a daily note | **Carry in 4 unfinished tasks** (today's note only), **‹ 2026-09-21**, **2026-09-23 ›** | Runs `Deckard: Roll Unfinished Tasks Forward`, or opens the neighbouring daily note |
+| Task dependencies | A task with `⛔` or `🆔` | **Waiting on 2 open tasks**, **Blocks 3 open tasks**, **No task has 🆔 abc** | Lists the tasks in the references peek |
+| Daily notes | First line of a daily note | **Carry in 4 unfinished tasks** (today's note only), **‹ 2026-09-21**, **2026-09-23 ›** | Runs `Deckard: Roll Unfinished Tasks Forward`, or opens the neighboring daily note |
 | Link problems | First line of a note | **2 links open no note** | Lists them in the references peek |
 | | | **Create 2 missing notes** | Creates the notes the missing links name |
 | Embeds | An `![[Note#Heading]]` line | **Embed: Atlas has no heading "Decision"** | Opens the note it names |
@@ -27,7 +27,7 @@ Five lenses bring what the index already knows to the line it is about:
 done is not waiting on anything, so it gets no lens. An embed that draws gets
 no lens; the `[[link]]` inside it already opens its note. A daily note with
 nothing left in earlier notes offers nothing to carry in, and a daily note
-with no neighbour on one side has no arrow on that side. This is the same rule
+with no neighbor on one side has no arrow on that side. This is the same rule
 `editorReferences.ts` already follows for the Related Notes lens.
 
 **Each group has its own setting**, all `true` by default, in the Editor

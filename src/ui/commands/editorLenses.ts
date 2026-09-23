@@ -3,8 +3,13 @@ import * as vscode from 'vscode';
 import { measure } from '../../core/timing';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { findTaskDependencies } from '../state/editorLensState';
+import {
+  findDailyNoteActions,
+  findTaskDependencies,
+} from '../state/editorLensState';
+import { formatLocalDate, getPeriodicNoteUri } from './dailyNote';
 import { resolveSourceUri } from './navigation';
+import { getRolloverLookbackDays, getRolloverMode } from './rollover';
 
 interface LensIndexSource {
   readonly ready: Promise<void>;
@@ -37,7 +42,7 @@ interface LensContext {
 
 /** One group of lenses, and the `deckard.editor.*` setting that shows it. */
 interface LensGroup {
-  setting: 'taskDependencies';
+  setting: 'taskDependencies' | 'dailyNoteActions';
   provide(context: LensContext): ActionLens[];
 }
 
@@ -53,6 +58,7 @@ export class EditorLenses
   private readonly disposables: vscode.Disposable[];
   private readonly groups: readonly LensGroup[] = [
     { setting: 'taskDependencies', provide: provideTaskDependencyLenses },
+    { setting: 'dailyNoteActions', provide: provideDailyNoteLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -158,6 +164,67 @@ function provideTaskDependencyLenses({
     }
     return lenses;
   });
+}
+
+/**
+ * Above a daily note: the notes before and after it, and on today's note the
+ * unfinished tasks earlier ones still hold. A side with no note has no arrow.
+ */
+function provideDailyNoteLenses({
+  document,
+  file,
+  index,
+}: LensContext): ActionLens[] {
+  const now = new Date();
+  const actions = findDailyNoteActions(
+    file,
+    index,
+    formatLocalDate(now),
+    getRolloverLookbackDays(document.uri),
+  );
+  if (!actions) {
+    return [];
+  }
+  const range = new vscode.Range(0, 0, 0, 0);
+  const lenses: ActionLens[] = [];
+  // A rollover writes into the note Deckard keeps for today, so it is offered
+  // only there, not on another note that happens to carry today's date.
+  const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+  const isTodaysNote =
+    folder !== undefined &&
+    getPeriodicNoteUri(folder, 'day', now).toString() ===
+      document.uri.toString();
+  if (isTodaysNote && actions.carryIn.length > 0) {
+    const verb = getRolloverMode(document.uri) === 'copy' ? 'Copy' : 'Move';
+    lenses.push(
+      new ActionLens(range, () => ({
+        title: `Carry in ${pluralize(actions.carryIn.length, 'unfinished task')}`,
+        tooltip: `${verb} the unfinished tasks from earlier daily notes into this one`,
+        command: 'deckard.rollTasksForward',
+      })),
+    );
+  }
+  if (actions.previous) {
+    const previous = actions.previous;
+    lenses.push(
+      new ActionLens(range, () => ({
+        title: `‹ ${previous}`,
+        tooltip: `Open the daily note for ${previous}`,
+        command: 'deckard.previousDailyNote',
+      })),
+    );
+  }
+  if (actions.next) {
+    const next = actions.next;
+    lenses.push(
+      new ActionLens(range, () => ({
+        title: `${next} ›`,
+        tooltip: `Open the daily note for ${next}`,
+        command: 'deckard.nextDailyNote',
+      })),
+    );
+  }
+  return lenses;
 }
 
 /** A count that lists tasks in VS Code's references peek. */

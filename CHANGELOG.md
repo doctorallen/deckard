@@ -4,6 +4,15 @@
 
 ### Added
 
+- **A daily note steps to its neighbors, and today's offers what is still
+  open.** Above a daily note sit the dates of the daily notes before and
+  after it, skipping empty days, and today's note says **Carry in N
+  unfinished tasks** while earlier daily notes hold open tasks it does not,
+  which runs the rollover. Tasks already in today's note are not counted,
+  so a copy-mode rollover does not keep offering them, and a note with no
+  neighbor on a side has no arrow there. `deckard.editor.dailyNoteActions`
+  turns it off.
+
 - **A task says what it waits on, and what it holds up.** `⛔` and `🆔`
   were read by `is:blocked` and `is:blocking`, but nothing in the editor
   showed them. A task with dependencies now carries **Waiting on N open

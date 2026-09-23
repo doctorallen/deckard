@@ -1,9 +1,11 @@
+import { findDailyNoteDate } from '../../core/markdown/parser';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
+import { findAdjacentDailyNote, listDailyNotes } from '../commands/dailyNote';
+import { planRollover } from '../commands/rollover';
 
 /**
- * What the editor's action lenses decide, apart from VS Code: which tasks a
- * task waits on or holds up. Each function returns only what is worth a lens,
- * so an empty result means no lens at all.
+ * What the editor's action lenses decide, apart from VS Code. Each function
+ * returns only what is worth a lens, so an empty result means no lens at all.
  */
 
 export interface TaskDependencies {
@@ -77,6 +79,67 @@ export function findTaskDependencies(
       ? [{ line: task.lineNumber - 1, waitingOn, missingIds, blocking }]
       : [];
   });
+}
+
+export interface DailyNoteActions {
+  /** The nearest daily notes before and after this one, by date. */
+  previous?: string;
+  next?: string;
+  /**
+   * Unfinished tasks in earlier daily notes that a rollover would carry into
+   * this one: only on today's note, and without the lines already in it.
+   */
+  carryIn: Task[];
+}
+
+/**
+ * What a daily note offers: its neighbors, and on today's note, the tasks
+ * still open in earlier ones. Undefined for a note that is not a daily note,
+ * or a daily note with nothing to offer.
+ *
+ * A rollover leaves behind a task whose line is already in today's note, so
+ * those are not counted; in copy mode they stay in the note they came from,
+ * and would otherwise keep offering to carry in what is already there.
+ */
+export function findDailyNoteActions(
+  file: ParsedFile,
+  index: WorkspaceIndex,
+  today: string,
+  lookbackDays = 0,
+): DailyNoteActions | undefined {
+  const date = findDailyNoteDate(
+    file.filePath,
+    file.sections
+      .filter((section) => section.headingLevel === 1)
+      .map((section) => section.heading),
+  );
+  if (!date) {
+    return undefined;
+  }
+  const notes = listDailyNotes(index).filter(
+    (note) => note.filePath !== file.filePath,
+  );
+  const previous = findAdjacentDailyNote(notes, date, 'previous')?.date;
+  const next = findAdjacentDailyNote(notes, date, 'next')?.date;
+  const written = new Set(
+    file.content.split(/\r?\n/).map((line) => line.trim()),
+  );
+  const carryIn =
+    date === today
+      ? (planRollover(index, today, lookbackDays)?.tasks ?? []).filter(
+          (task) =>
+            task.filePath !== file.filePath &&
+            !written.has(task.sourceLineText.trim()),
+        )
+      : [];
+  if (!previous && !next && carryIn.length === 0) {
+    return undefined;
+  }
+  return {
+    ...(previous ? { previous } : {}),
+    ...(next ? { next } : {}),
+    carryIn,
+  };
 }
 
 function append<T>(map: Map<string, T[]>, key: string, value: T): void {
