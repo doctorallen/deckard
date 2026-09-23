@@ -347,6 +347,7 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - **Task dependencies** sit above a task that uses `⛔` or `🆔`: **Waiting on N open tasks** for the tasks its `⛔` names that are still open, and **Blocks N open tasks** for the open tasks whose `⛔` names its `🆔`. Select either to list those tasks in the references peek. A `⛔` name no task carries, a typo or a task since deleted, reads **No task has 🆔 name**. A task with nothing still open on either side, and a done task, shows nothing. `deckard.editor.taskDependencies` turns these off.
 - **Daily notes** carry **‹ 2026-09-21** and **2026-09-23 ›** on their first line, which open the daily notes before and after, skipping days without one; a side with no note has no arrow. Today's note also offers **Carry in N unfinished tasks** while earlier daily notes still hold open tasks it does not, which runs **Deckard: Roll Unfinished Tasks Forward**. See [Daily notes](#daily-notes). `deckard.editor.dailyNoteActions` turns these off.
 - **An [embed](#embeds) the preview cannot draw** says why above its line, as the preview does in its place: **Embed: Atlas has no heading "Decision"**, or **Embed: Nothing in Atlas is marked ^choice**. Select it to open the note the embed names, where the heading or marker was renamed or removed. An embed whose note name opens no note is left to the link problems above. `deckard.editor.embedProblems` turns these off.
+- **Unlinked mentions** are counted on a note's first line: **Mentioned in N notes without a link** when other notes write its title, or one of its `aliases:`, as plain text. Select it to list them in the references peek, or select **Link N mentions** to turn each into a `[[link]]`, keeping the name as written — `atlas` becomes `[[atlas]]`, which opens `Atlas.md` because links ignore letter case. The write is [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes. Only whole words in prose count: not links, code, tags, Markdown links, headings, or front matter. Names shorter than three characters, and names another note also goes by, are not looked for. `deckard.editor.unlinkedMentions` turns these off.
 - **Hovering a tag** shows how many notes and tasks use it, its [hub note](#hub-notes) when it has one, and its five most recently updated entries, each a link to its line, with **Open overview**. Set `deckard.editor.hoverPreviews` to `false` to turn previews off. The tag's **Rename** action stays in the same hover.
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](docs/images/editor-assistance.png)
@@ -934,6 +935,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.dailyNoteActions": true,
 	"deckard.editor.linkProblems": true,
 	"deckard.editor.embedProblems": true,
+	"deckard.editor.unlinkedMentions": true,
 	"deckard.updateLinksOnRename": true,
 	"deckard.previewWorkspaceWrites": "severalNotes",
 	"deckard.assistantTools": true,
@@ -992,6 +994,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.dailyNoteActions` | `true` | Shows the neighboring daily notes above a daily note, and on today's note, how many unfinished tasks it could carry in. |
 | `deckard.editor.linkProblems` | `true` | Shows how many of a note's `[[Wiki links]]` open no note on its first line, with an action that creates the missing notes. |
 | `deckard.editor.embedProblems` | `true` | Says above an `![[embed]]` the preview cannot draw which heading or `^marker` it is missing. |
+| `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, the other notes that name it without a link, with an action that links them. |
 | `deckard.updateLinksOnRename` | `true` | Rewrites every `[[Wiki link]]` that named a note by its old title when the note is renamed, in the same step as the rename. See [Renaming notes and headings](#renaming-notes-and-headings). |
 | `deckard.previewWorkspaceWrites` | `severalNotes` | When a write reaches more than one note, shows it in VS Code's refactor preview first. `always` shows every write, `never` applies them straight away. See [Previewing and undoing a write](#previewing-and-undoing-a-write). |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks with Deckard queries and list tags, after you allow the first call in each session. See [AI assistants](#ai-assistants). |

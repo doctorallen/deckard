@@ -57,6 +57,10 @@ import {
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
 import { EditorLenses } from './ui/commands/editorLenses';
+import {
+  LINK_MENTIONS_COMMAND,
+  linkMentions,
+} from './ui/commands/unlinkedMentions';
 import { EditorReferences } from './ui/commands/editorReferences';
 import { AssistantTools } from './ui/commands/assistantTools';
 import { QuickFind } from './ui/commands/quickFind';
@@ -626,6 +630,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         Array.isArray(names) &&
         names.every((name) => typeof name === 'string')
           ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names)
+          : undefined,
+    ),
+    vscode.commands.registerCommand(
+      LINK_MENTIONS_COMMAND,
+      (documentUri: unknown) =>
+        typeof documentUri === 'string'
+          ? linkMentions(indexer, vscode.Uri.parse(documentUri))
           : undefined,
     ),
   );

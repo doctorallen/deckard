@@ -4,6 +4,19 @@
 
 ### Added
 
+- **A note finds where it is mentioned without a link, and links it.**
+  Backlinks counted only the notes that had already written `[[Atlas]]`;
+  the ones that wrote "Atlas" were invisible to it. A note now says
+  **Mentioned in N notes without a link** on its first line when other
+  notes write its title or an alias as plain prose, lists them in the
+  references peek, and **Link N mentions** turns each into a `[[link]]`
+  that keeps the name as written. Links, code, tags, Markdown links,
+  headings, and front matter are left alone, as are names under three
+  characters and names another note shares. The write is previewed and
+  undone like Deckard's other multi-note writes, and each mention is
+  checked against its line before it is touched.
+  `deckard.editor.unlinkedMentions` turns it off.
+
 - **An embed that cannot draw says so in the editor.** An `![[Note#Heading]]`
   whose heading was renamed drew a message in the preview and nothing at
   all in the editor, where the fix is made. It now carries the same

@@ -1,7 +1,11 @@
-import { findDailyNoteDate } from '../../core/markdown/parser';
+import {
+  findDailyNoteDate,
+  findFencedLines,
+} from '../../core/markdown/parser';
 import { ParsedFile, Task, WorkspaceIndex } from '../../core/types';
 import {
   createNoteTitleMap,
+  noteTitle,
   parseWikiTarget,
   resolveWikiTarget,
 } from '../../core/workspace/backlinks';
@@ -193,6 +197,127 @@ export function findEmbedProblems(
       },
     ];
   });
+}
+
+export interface UnlinkedMention {
+  filePath: string;
+  /** Zero-based line, and the columns of the name as written. */
+  line: number;
+  startColumn: number;
+  endColumn: number;
+  /** The name as written, which the link keeps. */
+  text: string;
+}
+
+/** A name shorter than this is too likely to be an ordinary word. */
+const MIN_MENTION_LENGTH = 3;
+/**
+ * What a mention is never found inside: a `[[link]]`, inline code, a Markdown
+ * link or its target, a bare URL, and a `#tag` or `@person`.
+ */
+const NOT_PROSE =
+  /\[\[[^\]]*\]\]|`[^`]*`|!?\[[^\]]*\]\([^)]*\)|<?https?:\/\/[^\s>]+>?|[#@][\p{L}\p{N}_/-]+/gu;
+
+const mentionCache = new WeakMap<WorkspaceIndex, Map<string, UnlinkedMention[]>>();
+
+/**
+ * The places other notes write a note's title or one of its aliases as plain
+ * prose, not linked: the names a `[[link]]` could be made of.
+ *
+ * A mention is whole words, matched without regard to case, outside front
+ * matter, headings, code fences, and anything `NOT_PROSE` names. Headings are
+ * left alone because a heading's text is what links into it name. A name
+ * shorter than three characters is not looked for, nor a name another note
+ * also goes by, since a link made of it would not open this note. Where two
+ * names overlap, such as a title and a longer alias that contains it, the
+ * longer is the mention.
+ *
+ * The workspace is read once per index for each note, so asking again after
+ * every keystroke costs a lookup.
+ */
+export function findUnlinkedMentions(
+  file: ParsedFile,
+  index: WorkspaceIndex,
+): UnlinkedMention[] {
+  const titles = createNoteTitleMap(index);
+  const names = [noteTitle(file.filePath), ...(file.aliases ?? [])]
+    .map((name) => name.trim())
+    .filter((name, position, all) => {
+      const key = name.toLocaleLowerCase();
+      const owners = titles.get(key) ?? [];
+      return (
+        name.length >= MIN_MENTION_LENGTH &&
+        owners.every((owner) => owner === file.filePath) &&
+        all.findIndex((other) => other.toLocaleLowerCase() === key) === position
+      );
+    })
+    .sort((left, right) => right.length - left.length);
+  if (names.length === 0) {
+    return [];
+  }
+
+  const key = [file.filePath, ...names].join('\u0000');
+  let cached = mentionCache.get(index);
+  if (!cached) {
+    cached = new Map();
+    mentionCache.set(index, cached);
+  }
+  const known = cached.get(key);
+  if (known) {
+    return known;
+  }
+
+  const pattern = new RegExp(
+    `(?<![\\p{L}\\p{N}_])(?:${names.map(escapeRegExp).join('|')})(?![\\p{L}\\p{N}_])`,
+    'giu',
+  );
+  const mentions: UnlinkedMention[] = [];
+  index.files.forEach((other, filePath) => {
+    if (filePath === file.filePath) {
+      return;
+    }
+    const lines = other.content.split(/\r?\n/);
+    const fenced = findFencedLines(lines);
+    const frontmatterEnd = findFrontmatterEnd(lines);
+    lines.forEach((text, line) => {
+      if (line <= frontmatterEnd || fenced.has(line) || /^ {0,3}#{1,6}\s/.test(text)) {
+        return;
+      }
+      // Blank out what is not prose, keeping every column where it was.
+      const prose = text.replace(NOT_PROSE, (match) => ' '.repeat(match.length));
+      for (const match of prose.matchAll(pattern)) {
+        const startColumn = match.index ?? 0;
+        mentions.push({
+          filePath,
+          line,
+          startColumn,
+          endColumn: startColumn + match[0].length,
+          text: text.slice(startColumn, startColumn + match[0].length),
+        });
+      }
+    });
+  });
+  mentions.sort(
+    (left, right) =>
+      left.filePath.localeCompare(right.filePath) ||
+      left.line - right.line ||
+      left.startColumn - right.startColumn,
+  );
+  cached.set(key, mentions);
+  return mentions;
+}
+
+/** The last line of a note's front matter, or -1 when it has none. */
+function findFrontmatterEnd(lines: readonly string[]): number {
+  if (lines[0]?.trim() !== '---') {
+    return -1;
+  }
+  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+  return end < 0 ? -1 : end;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function append<T>(map: Map<string, T[]>, key: string, value: T): void {

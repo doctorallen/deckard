@@ -844,6 +844,13 @@
             "default": true,
             "description": "Show, above an ![[embed]] the Markdown preview cannot draw, which heading or ^marker went missing, and open the note it names. An embed that draws shows nothing.",
             "order": 9
+          },
+          "deckard.editor.unlinkedMentions": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
+            "order": 10
           }
         }
       },

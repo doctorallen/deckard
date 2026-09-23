@@ -1,4 +1,8 @@
 import * as assert from 'assert';
+import * as os from 'os';
+import * as path from 'path';
+
+import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../core/types';
@@ -7,10 +11,12 @@ import {
   findLinkProblems,
   findMissingNoteNames,
 } from '../ui/commands/linkHealth';
+import { linkMentions } from '../ui/commands/unlinkedMentions';
 import {
   findDailyNoteActions,
   findEmbedProblems,
   findTaskDependencies,
+  findUnlinkedMentions,
 } from '../ui/state/editorLensState';
 
 suite('Editor lenses', () => {
@@ -222,6 +228,90 @@ suite('Editor lenses', () => {
     test('shows nothing for a note whose embeds all draw', () => {
       const fine = parseMarkdown('notes/Fine.md', '# Fine\n![[Atlas#Decision]]');
       assert.deepStrictEqual(findEmbedProblems(fine, index), []);
+    });
+  });
+
+  suite('unlinked mentions', () => {
+    const index = createIndex({
+      'notes/Atlas.md':
+        '---\naliases: [Atlas Program]\n---\n# Atlas\nAtlas mentions itself.',
+      'notes/Log.md': [
+        '# Log about Atlas',
+        'The atlas plan and the Atlas Program launch.',
+        'Already [[Atlas]] linked, `Atlas` code, #atlas tag, [Atlas](https://x.test/Atlas).',
+        'Atlases and MyAtlas do not count.',
+        '```',
+        'Atlas',
+        '```',
+      ].join('\n'),
+      'notes/Other.md': '---\nproject: Atlas\n---\nSee Atlas.',
+      'notes/a/Plan.md': '# Plan',
+      'notes/b/Plan.md': '# Plan\nThe Plan is shared.',
+      'notes/AI.md': '# AI',
+      'notes/Talk.md': 'Some AI talk and a Plan.',
+    });
+    const mentionsOf = (filePath: string) =>
+      findUnlinkedMentions(index.files.get(filePath) as ParsedFile, index).map(
+        (mention) => [
+          mention.filePath,
+          mention.line,
+          mention.startColumn,
+          mention.endColumn,
+          mention.text,
+        ],
+      );
+
+    // Every other Atlas in the fixture is in a link, code, a tag, a Markdown
+    // link, a heading, front matter, part of a word, or the note itself.
+    test('finds the title and aliases in other notes, as written, and only in prose', () => {
+      assert.deepStrictEqual(mentionsOf('notes/Atlas.md'), [
+        ['notes/Log.md', 1, 4, 9, 'atlas'],
+        ['notes/Log.md', 1, 23, 36, 'Atlas Program'],
+        ['notes/Other.md', 3, 4, 9, 'Atlas'],
+      ]);
+    });
+
+    test('does not look for a name another note shares, or a short one', () => {
+      assert.deepStrictEqual(mentionsOf('notes/a/Plan.md'), []);
+      assert.deepStrictEqual(mentionsOf('notes/AI.md'), []);
+    });
+
+    test('shows nothing for a note no other note names', () => {
+      assert.deepStrictEqual(mentionsOf('notes/Talk.md'), []);
+    });
+
+    test('links each mention as written, and leaves one changed since alone', async () => {
+      const root = vscode.Uri.file(
+        path.join(os.tmpdir(), `deckard-mentions-${Date.now()}`),
+      );
+      const atlas = vscode.Uri.joinPath(root, 'Atlas.md');
+      const log = vscode.Uri.joinPath(root, 'Log.md');
+      const indexed = 'The atlas plan.\nAtlas again.\n';
+      await vscode.workspace.fs.writeFile(atlas, Buffer.from('# Atlas\n', 'utf8'));
+      // The second line changed after the index read it.
+      await vscode.workspace.fs.writeFile(
+        log,
+        Buffer.from('The atlas plan.\nThe atlas moved.\n', 'utf8'),
+      );
+      const snapshot = createIndex({
+        [atlas.fsPath]: '# Atlas\n',
+        [log.fsPath]: indexed,
+      });
+      try {
+        await linkMentions(
+          {
+            ready: Promise.resolve(),
+            getSnapshot: () => snapshot,
+            parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+            refresh: async () => undefined,
+          },
+          atlas,
+        );
+        const written = (await vscode.workspace.openTextDocument(log)).getText();
+        assert.strictEqual(written, 'The [[atlas]] plan.\nThe atlas moved.\n');
+      } finally {
+        await vscode.workspace.fs.delete(root, { recursive: true });
+      }
     });
   });
 });

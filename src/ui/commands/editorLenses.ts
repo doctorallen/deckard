@@ -7,6 +7,8 @@ import {
   findDailyNoteActions,
   findEmbedProblems,
   findTaskDependencies,
+  findUnlinkedMentions,
+  UnlinkedMention,
 } from '../state/editorLensState';
 import { formatLocalDate, getPeriodicNoteUri } from './dailyNote';
 import {
@@ -16,6 +18,7 @@ import {
 } from './linkHealth';
 import { resolveSourceUri } from './navigation';
 import { getRolloverLookbackDays, getRolloverMode } from './rollover';
+import { LINK_MENTIONS_COMMAND } from './unlinkedMentions';
 
 interface LensIndexSource {
   readonly ready: Promise<void>;
@@ -55,7 +58,8 @@ interface LensGroup {
     | 'taskDependencies'
     | 'dailyNoteActions'
     | 'linkProblems'
-    | 'embedProblems';
+    | 'embedProblems'
+    | 'unlinkedMentions';
   provide(context: LensContext): ActionLens[];
 }
 
@@ -74,6 +78,7 @@ export class EditorLenses
     { setting: 'dailyNoteActions', provide: provideDailyNoteLenses },
     { setting: 'linkProblems', provide: provideLinkProblemLenses },
     { setting: 'embedProblems', provide: provideEmbedProblemLenses },
+    { setting: 'unlinkedMentions', provide: provideUnlinkedMentionLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -328,6 +333,70 @@ function provideEmbedProblemLenses({
           }
         : { title, command: '' };
     });
+  });
+}
+
+/**
+ * On a note's first line: how many other notes name it in prose without
+ * linking to it, listed in the references peek, and an action that links
+ * them. Only notes in the notes folder are looked for, since only they are
+ * what a `[[link]]` opens.
+ */
+function provideUnlinkedMentionLenses({
+  document,
+  file,
+  index,
+  isNotesFile,
+}: LensContext): ActionLens[] {
+  if (!isNotesFile) {
+    return [];
+  }
+  const mentions = findUnlinkedMentions(file, index);
+  if (mentions.length === 0) {
+    return [];
+  }
+  const range = new vscode.Range(0, 0, 0, 0);
+  const notes = new Set(mentions.map((mention) => mention.filePath)).size;
+  return [
+    new ActionLens(range, async () => ({
+      title: `Mentioned in ${pluralize(notes, 'note')} without a link`,
+      tooltip: 'Show the mentions in the references view',
+      command: 'editor.action.showReferences',
+      arguments: [document.uri, range.start, await locateMentions(mentions)],
+    })),
+    new ActionLens(range, () => ({
+      title: `Link ${pluralize(mentions.length, 'mention')}`,
+      tooltip: 'Turn each mention into a [[link]] to this note',
+      command: LINK_MENTIONS_COMMAND,
+      arguments: [document.uri.toString()],
+    })),
+  ];
+}
+
+async function locateMentions(
+  mentions: readonly UnlinkedMention[],
+): Promise<vscode.Location[]> {
+  const uris = new Map<string, vscode.Uri | undefined>();
+  for (const mention of mentions) {
+    if (!uris.has(mention.filePath)) {
+      uris.set(mention.filePath, await resolveSourceUri(mention.filePath));
+    }
+  }
+  return mentions.flatMap((mention) => {
+    const uri = uris.get(mention.filePath);
+    return uri
+      ? [
+          new vscode.Location(
+            uri,
+            new vscode.Range(
+              mention.line,
+              mention.startColumn,
+              mention.line,
+              mention.endColumn,
+            ),
+          ),
+        ]
+      : [];
   });
 }
 
