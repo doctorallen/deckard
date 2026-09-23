@@ -80,6 +80,9 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colours;
 
 ## Get started
 
+The fastest way to see what Deckard does is to let it show you: `Deckard: Create a Sample Workspace` copies seven small notes — three daily notes, two project hubs, a person, a team — into a folder you choose and offers to open it. They are written the way Deckard reads them, and the README beside them says what each one shows and what to try first. Delete the folder when you are done; nothing else refers to it.
+
+
 1. Open a folder or workspace in VS Code.
 2. Open any Markdown note in the workspace, or [restrict indexing to a folder](#settings).
 3. Open the Command Palette and run `Deckard: Open Dashboard`.
@@ -105,6 +108,12 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
+| **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists the favorites, pins, and tag-set searches that point at nothing in this workspace any more, and removes them only if you say so. Deckard never removes one of these on its own. |
+| **Deckard: Export Favorites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file you choose. |
+| **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers with it. |
+| **Deckard: Restore Favorites, Pins, and Searches from a Copy** | Offers the copies Deckard keeps on its own, newest first, and restores the one you pick after asking. |
+| **Deckard: Check My Setup** | Writes up, as a Markdown document, what your settings resolve to in this workspace, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone — with what to do about each thing that is off. |
+| **Deckard: Create a Sample Workspace** | Copies seven small notes, written the way Deckard reads them, into a `deckard-sample` folder inside a folder you choose, and offers to open it. Its README says what each note shows and what to try first. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |
@@ -334,6 +343,11 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - **Reference counts** sit above a note's lines. The first line says **Linked from N notes** when other notes link to it, and each heading shows **N references** for links that name it, such as `[[Launch plan#Decision]]` or `[[#Decision]]`, and **N open tasks** for the open tasks beneath it. Select a count to list those links or tasks in VS Code's references peek. A tagged heading also shows **N entries share a tag**: the note sections, tasks, and front-matter-only notes elsewhere that carry one of the tags written on that heading. Tags inherited from a parent heading or the note's front matter do not count, and neither do entries in the same note. Select it to open [Related Notes](#related-notes) focused on the heading, which lists those entries along with weaker matches such as associated tags and shared keywords. Set `deckard.editor.referenceCounts` to `false` to hide them.
 - **Hovering a `[[Wiki link]]`** previews the note, or the section its `#Heading` names, and says how many other notes link to it. A link to a note that does not exist yet, or to a name several notes share, says so instead.
 - **Link problems** are marked in open notes. A `[[link]]` to a note that does not exist yet gets a **Create note** quick fix, which creates the note in your notes folder, and a name several notes share is a warning. `deckard.editor.linkDiagnostics` turns this off.
+- A note with such links also says so on its first line: **N links open no note** lists them in the references peek, and **Create N missing notes** creates, in your notes folder, a note for each name no note has yet, leaving any note already there alone. A name several notes share is counted but not created, since another note would not settle which one it means. `deckard.editor.linkProblems` turns these off.
+- **Task dependencies** sit above a task that uses `⛔` or `🆔`: **Waiting on N open tasks** for the tasks its `⛔` names that are still open, and **Blocks N open tasks** for the open tasks whose `⛔` names its `🆔`. Select either to list those tasks in the references peek. A `⛔` name no task carries, a typo or a task since deleted, reads **No task has 🆔 name**. A task with nothing still open on either side, and a done task, shows nothing. `deckard.editor.taskDependencies` turns these off.
+- **Daily notes** carry **‹ 2026-09-21** and **2026-09-23 ›** on their first line, which open the daily notes before and after, skipping days without one; a side with no note has no arrow. Today's note also offers **Carry in N unfinished tasks** while earlier daily notes still hold open tasks it does not, which runs **Deckard: Roll Unfinished Tasks Forward**. See [Daily notes](#daily-notes). `deckard.editor.dailyNoteActions` turns these off.
+- **An [embed](#embeds) the preview cannot draw** says why above its line, as the preview does in its place: **Embed: Atlas has no heading "Decision"**, or **Embed: Nothing in Atlas is marked ^choice**. Select it to open the note the embed names, where the heading or marker was renamed or removed. An embed whose note name opens no note is left to the link problems above. `deckard.editor.embedProblems` turns these off.
+- **Unlinked mentions** are counted on a note's first line: **Mentioned in N notes without a link** when other notes write its title, or one of its `aliases:`, as plain text. Select it to list them in the references peek, or select **Link N mentions** to turn each into a `[[link]]`, keeping the name as written — `atlas` becomes `[[atlas]]`, which opens `Atlas.md` because links ignore letter case. The write is [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes. Only whole words in prose count: not links, code, tags, Markdown links, headings, or front matter. Names shorter than three characters, and names another note also goes by, are not looked for. `deckard.editor.unlinkedMentions` turns these off.
 - **Hovering a tag** shows how many notes and tasks use it, its [hub note](#hub-notes) when it has one, and its five most recently updated entries, each a link to its line, with **Open overview**. Set `deckard.editor.hoverPreviews` to `false` to turn previews off. The tag's **Rename** action stays in the same hover.
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](docs/images/editor-assistance.png)
@@ -410,6 +424,8 @@ Choose **Customize** in the View options gear to arrange Home. Drag a widget to 
 ## Stats
 
 Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
+
+If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
 
 ### Tags that look alike
 
@@ -574,6 +590,10 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 
 Opening a tag's page records tag access. Opening a section records section access, which powers the access sort. A page that a search was saved from before search pages existed, or a tag overview left open, reopens as a search page with the same tag, tags, and words.
 
+### Taking a search's results out
+
+**Export**, beside **Bulk Edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
+
 ### Editing a search's results
 
 **Bulk Edit**, beside a results pane's heading, makes one edit to everything the search found. A search page is where a set of notes and tasks is already gathered — refine it until the results are the ones you mean, then edit them together:
@@ -657,7 +677,7 @@ Search pages, Home's search widget, and the Task board have the same search box.
 
 ![A search page searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](docs/images/notes-search.png)
 
-- The box is a field of chips, as a multi-select is. Each term of the search, whether a tag, a condition such as `is:open`, or words, which show as the `text ~` condition they run, is a chip with a **×**, joined to the next by **AND**; a search whose top level is an OR is one chip. Tags are drawn in blue, and a tag left out with `-` in red. Type the next term in the field after the chips.
+- The box is a field of chips, as a multi-select is. Each term of the search, whether a tag, a condition such as `is:open`, or words, which show as the `text ~` condition they run, is a chip with a **×**, joined to the next by **AND** or **OR**. A parenthesized group is a frame of its own chips with a **×** of its own at the end, nested as deep as the search goes, so a condition inside a group can be removed alone and the group removed whole, just as the builder shows it. Tags are drawn in blue, and anything turned around with `NOT` or `-` in red. Type the next term in the field after the chips.
 - Plain words narrow the search as you type, across everything it found rather than the page of it on screen, so a match on the last page is found from the first. The counts, the pages, and Refine all follow. <kbd>Enter</kbd> adds the words to the search itself, which makes them chips, remembers the search, and lets you save it; until then they are a draft, and leaving the box lets them go.
 - Completions appear as you type: field names, the values a field accepts once the caret is in one, tags, whole conditions such as `is:open`, and, in an empty box, your recent searches. Nothing is preselected, so <kbd>Enter</kbd> always runs what you typed; <kbd>Tab</kbd> completes, arrow keys move through the list, and <kbd>Escape</kbd> abandons the edit.
 - Choosing a tag, a condition, or a field's value from the completions makes it a chip at once. Pressing a chip removes its term and keeps the rest as you wrote it, and <kbd>Backspace</kbd> in an empty field removes the last chip.
@@ -668,7 +688,7 @@ Search pages, Home's search widget, and the Task board have the same search box.
 - A search page that finds nothing offers a closer spelling, as Find does: **Nothing matched. Search for … instead?** replaces each misspelled word with the closest word your notes contain and leaves the rest of the search as you wrote it, so a tag or a folder is never corrected into something else. It is offered only when the corrected search finds something.
 - **Save**, beside the box, stores the search under a name. Saved searches appear on Home and the Tags tab, reopen where they were saved, and survive tags being renamed or removed from the index.
 
-**Builder**, under the search box, edits the same search as OR groups of AND rows. **Add condition** starts a row from its value: type a tag, a word, or a value such as `open`, and choose a completion or press <kbd>Enter</kbd>, and the row fills in its field and operator. <kbd>Enter</kbd> then opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) starts a new OR group. A finished row keeps its field, operator, and value dropdowns for editing. The operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so there is no separate negate control to disagree with a row, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The search box remains the source of truth, so a condition the builder cannot represent, such as a negated group, is shown as read-only text rather than rewritten.
+**Builder**, under the search box, edits the same search as rows and groups, nested as deep as the search goes. Every group says whether it matches **all of** its rows or **any of** them, and **not** turns a group around, so anything the search box can say, the builder can build: three tags allowed and one left out — what Refine makes with three clicks and an Alt — is one group matching any of three rows, beside a row for the tag left out. **Add condition** starts a row from its value: type a tag, a word, or a value such as `open`, and choose a completion or press <kbd>Enter</kbd>, and the row fills in its field and operator. <kbd>Enter</kbd> then opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) adds a group beside the row, joined the other way. A finished row keeps its field, operator, and value dropdowns for editing. The operator list shows the operators themselves — `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=` — with their meaning on hover, so there is no separate negate control to disagree with a row, and a hand-written `NOT tag = #a` opens in the builder as `tag != #a`. The search box remains the source of truth: a nested group is written back with its parentheses, and a negated one as `NOT (…)`.
 
 ### Refine
 
@@ -763,7 +783,7 @@ The fence is ordinary Markdown, so other editors and Git show the query text its
 
 ## AI assistants
 
-Deckard gives AI assistants in VS Code two read-only tools through VS Code's language model tool API, so an assistant can answer questions about your notes from the index Deckard already keeps:
+Deckard gives AI assistants in VS Code four tools through VS Code's language model tool API — two that read, so an assistant can answer questions about your notes from the index Deckard already keeps, and two that write, guarded the way Deckard's own writes are:
 
 - **Search Deckard notes and tasks** (`deckard_query`, or `#deckardQuery` in a chat prompt) runs a [Deckard query](#query-language) and returns the matching note sections and tasks, each with its workspace-relative path, line, and headings. Tasks also show whether they are done, their due and scheduled dates, priority, and repeat rule. Asking "what are my open tasks for Atlas?" leads the assistant to run `tag = #project/atlas AND task = open`.
 - **List Deckard tags** (`deckard_list_tags`, or `#deckardTags`) lists tags with how many entries use each, most used first, optionally narrowed by a search, so the assistant queries the exact tag rather than a guess.
@@ -774,9 +794,11 @@ Any assistant that uses VS Code's language model tools can call them; in GitHub 
 
 Deckard itself sends nothing anywhere: the tools read the local index, and what they return goes to the assistant that asked, which may send it to its own model service. So the first time an assistant calls one of the tools in a session, VS Code asks you to allow it, saying that your notes will go to the assistant; later calls in that session go ahead. Set `deckard.assistantTools` to `false` to hide both tools. Each call is timed in [Deckard's log](#limitations-and-troubleshooting).
 
+**Writing, guarded.** `deckard_add_task` adds a task to today's note, or to a note the assistant names; `deckard_change_task` completes, reopens, retitles, dates, prioritizes, or hands over one existing task, named by its note and line as `deckard_query` reports them. An assistant asks before either runs, every time, and nothing is written until you approve the exact line in the same refactor preview Deckard's own multi-note writes use — whatever `deckard.previewWorkspaceWrites` says. A change is refused if the line is no longer the task the index knows there, so an assistant working from a stale answer cannot rewrite whatever is on that line now. `Deckard: Undo Last Change` takes a write back afterwards, as it does any write. So "add a task for Dana due Friday" is an assistant asking, you looking at one line, and saying yes.
+
 ### Claude Code and other MCP clients
 
-Deckard can offer the same two tools to Claude Code and other Model Context Protocol clients. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
+Deckard can offer the same four tools to Claude Code and other Model Context Protocol clients. Over MCP there is no dialog before a write; the refactor preview is where you see the line and can decline it. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
 
 ```bash
 claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Authorization: Bearer <token>"
@@ -909,6 +931,11 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.referenceCounts": true,
 	"deckard.editor.hoverPreviews": true,
 	"deckard.editor.linkDiagnostics": true,
+	"deckard.editor.taskDependencies": true,
+	"deckard.editor.dailyNoteActions": true,
+	"deckard.editor.linkProblems": true,
+	"deckard.editor.embedProblems": true,
+	"deckard.editor.unlinkedMentions": true,
 	"deckard.updateLinksOnRename": true,
 	"deckard.previewWorkspaceWrites": "severalNotes",
 	"deckard.assistantTools": true,
@@ -963,6 +990,11 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
 | `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
+| `deckard.editor.taskDependencies` | `true` | Shows, above a task with `⛔` or `🆔`, the open tasks it waits on and holds up. See [Editor assistance](#editor-assistance). |
+| `deckard.editor.dailyNoteActions` | `true` | Shows the neighboring daily notes above a daily note, and on today's note, how many unfinished tasks it could carry in. |
+| `deckard.editor.linkProblems` | `true` | Shows how many of a note's `[[Wiki links]]` open no note on its first line, with an action that creates the missing notes. |
+| `deckard.editor.embedProblems` | `true` | Says above an `![[embed]]` the preview cannot draw which heading or `^marker` it is missing. |
+| `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, the other notes that name it without a link, with an action that links them. |
 | `deckard.updateLinksOnRename` | `true` | Rewrites every `[[Wiki link]]` that named a note by its old title when the note is renamed, in the same step as the rename. See [Renaming notes and headings](#renaming-notes-and-headings). |
 | `deckard.previewWorkspaceWrites` | `severalNotes` | When a write reaches more than one note, shows it in VS Code's refactor preview first. `always` shows every write, `never` applies them straight away. See [Previewing and undoing a write](#previewing-and-undoing-a-write). |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks with Deckard queries and list tags, after you allow the first call in each session. See [AI assistants](#ai-assistants). |
@@ -985,8 +1017,16 @@ Markdown files remain the source of truth. Deckard changes note content only whe
 
 Deckard stores a workspace-scoped SQLite full-text cache locally for fast saved-note search. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 
+Deckard never deletes a favorite, a pin, or a saved search on its own. If a tag or note it pointed at is gone, the item stays until you run **Deckard: Tidy Favorites, Pins, and Saved Searches**, which lists what points nowhere and asks before removing it. Only what Deckard derived for itself — view counts, access order, when a tag was first seen — is cleaned up automatically, and only against this workspace's own index.
+
+What Deckard remembers is also copied. A moment after each change it writes a copy into this workspace's storage and keeps the last twenty, so a bad write, a mistaken import, or an over-eager tidy is something you can take back with **Deckard: Restore Favorites, Pins, and Searches from a Copy**. To carry it to another machine, or to keep your own copy, **Deckard: Export Favorites, Pins, and Searches** writes it as one JSON file and **Deckard: Import** reads it back; both say what they hold before replacing anything.
+
+What Deckard remembers is split in two. Anything that **names what is in a workspace** — favorite tags and entities, pinned notes, saved searches, Home's widgets, tag and note view counts, and the custom task order — is kept with that workspace, so opening another folder cannot disturb it. Anything that is **how Deckard looks** — sort modes, column counts, layouts, and page sizes — is kept for the machine and is the same in every workspace. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open, so a single set of notes carries over untouched; a second workspace starts empty rather than inheriting tags it does not have.
+
 ## Limitations and troubleshooting
 
+- **Something is not there, and you are not sure why:** run `Deckard: Check My Setup`. It says where notes are read from and whether that folder exists, how many files the exclude patterns kept out, which notes could not be read, and whether `deckard.me` matches anyone — each with what to do.
+- **A note is missing from every search:** open `Deckard: Show Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.

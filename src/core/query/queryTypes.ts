@@ -233,16 +233,39 @@ export interface QueryBuilderRow {
 }
 
 /** One OR group in the visual builder. */
+export type QueryBuilderJoin = 'and' | 'or';
+
+/**
+ * A group in the builder: rows and groups, joined by AND or by OR, and
+ * negated as a whole or not. A query is one of these at the root, so every
+ * query the language can write, the builder can edit.
+ */
 export interface QueryBuilderGroup {
-  rows: QueryBuilderRow[];
+  join: QueryBuilderJoin;
+  /** `NOT (…)` around the whole group. */
+  negated?: boolean;
+  items: QueryBuilderItem[];
 }
 
-/** One term of a query, and the query it leaves behind when removed. */
+/** A row, or a nested group: told apart by `items`. */
+export type QueryBuilderItem = QueryBuilderRow | QueryBuilderGroup;
+
+/**
+ * One term of a query, and the query it leaves behind when removed. A group
+ * lists its own terms the same way, so each can be removed alone or the
+ * group whole, as the builder shows them.
+ */
 export interface QueryTermChip {
   text: string;
   /** The term as the condition it runs, such as `text ~ vendor` for a word. */
   label?: string;
   without: string;
+  /** For a group: the word between its terms. */
+  join?: QueryBuilderJoin;
+  /** For a group: whether it matches what it does not say. */
+  negated?: boolean;
+  /** For a group: its terms, each removable alone. */
+  items?: QueryTermChip[];
 }
 
 export interface QueryFacetValue {
@@ -275,8 +298,10 @@ export interface QueryFacet {
 export interface QueryViewState {
   /** Canonical query text; the source of truth for both editing surfaces. */
   text: string;
-  /** The terms joined by AND at the top of `text`, each removable alone. */
+  /** The terms at the top of `text`, each removable alone. */
   terms: QueryTermChip[];
+  /** The word between the top-level terms; AND when not said. */
+  termsJoin?: QueryBuilderJoin;
   /** Whether a term can be added to `text` as another AND. */
   canAppend: boolean;
   /** What the current results could still be narrowed by. */
@@ -287,14 +312,14 @@ export interface QueryViewState {
    */
   isAdvanced: boolean;
   /** True when the builder can represent every condition in the query. */
-  isBuildable: boolean;
   diagnostics: QueryDiagnostic[];
   /**
    * A search that was typed and does not parse. `text` and the rest describe
    * the last search that did, and `diagnostics` say what is wrong with this.
    */
   pending?: string;
-  groups: QueryBuilderGroup[];
+  /** The query as the builder edits it: a tree of rows and groups. */
+  builder: QueryBuilderGroup;
   /** Tags named by the query, resolved against the index for display. */
   tags: TagReferenceLike[];
   /** Completions offered in the query bar and in builder value fields. */

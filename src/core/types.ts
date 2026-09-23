@@ -693,8 +693,25 @@ export interface StatsNoteItem {
   open: OpenSourceMessage;
 }
 
+/** A note Deckard could not read: it is in the workspace, but not in the index. */
+export interface UnreadableNote {
+  filePath: string;
+  reason: string;
+}
+
+/** An unreadable note as Stats lists it: the note, why, and what opens it. */
+export interface StatsUnreadableItem extends UnreadableNote {
+  open: OpenSourceMessage;
+}
+
 export interface DeckardStatsSnapshot {
   updatedAt: number;
+  /**
+   * Notes the last scan or update could not read, so they are not indexed.
+   * A search that misses one of these looks like a bad search; this is
+   * where it is said instead.
+   */
+  unreadable: StatsUnreadableItem[];
   fileCount: number;
   sectionCount: number;
   taskCount: number;
@@ -1192,6 +1209,12 @@ export interface OpenHelpMessage {
   type: 'openHelp';
 }
 
+/** Take everything a search found out, as Markdown or CSV. */
+export interface ExportResultsMessage {
+  type: 'exportResults';
+  kind: 'notes' | 'tasks';
+}
+
 /** The gear's zen row, on every page that has a gear. */
 export interface SetZenModeMessage {
   type: 'setZenMode';
@@ -1253,6 +1276,7 @@ export type DashboardMessage =
   | OpenNoteMessage;
 
 export type SearchPageMessage =
+  | ExportResultsMessage
   | SetZenModeMessage
   | PinNoteMessage
   | OpenHelpMessage
@@ -1408,6 +1432,12 @@ export interface TableSort {
  */
 export interface TableCell {
   text: string;
+  /**
+   * The cell's Markdown, already rendered and sanitized by the host, for a
+   * column whose source is prose rather than a value. `text` stays the plain
+   * form, which is what a label or a sort reads.
+   */
+  html?: string;
   kind?: 'overdue' | 'muted';
 }
 
@@ -1472,6 +1502,7 @@ export interface ShowColumnRestMessage {
 }
 
 export type TaskBoardMessage =
+  | ExportResultsMessage
   | SetZenModeMessage
   | OpenHelpMessage
   | ShowColumnRestMessage

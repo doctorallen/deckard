@@ -290,6 +290,7 @@ ${getPageTailCss()}
 
     <section id="quick-start">
       <h2>Quick start</h2>
+      <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> copies seven small notes, written the way Deckard reads them, into a folder you choose and offers to open it. Its README says what each shows and what to try first.</p>
       <div class="steps">
         <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar for Related Notes, the Outline, Tasks, and the Calendar.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
@@ -384,10 +385,11 @@ updated: 2026-09-20
       <h2>Search</h2>
       <div class="cards">
         <div class="card"><h3>Find</h3><p><code>Deckard: Search Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page.</p></div>
-        <div class="card"><h3>Search pages</h3><p>Opening a tag collects every entry that carries it, with the tags it is most often written with. Any other search opens the same kind of page. Each page has the same search box, with completions and a visual builder.</p></div>
+        <div class="card"><h3>Search pages</h3><p>Opening a tag collects every entry that carries it, with the tags it is most often written with. Any other search opens the same kind of page. Each page has the same search box, with completions and a visual builder that can build anything the box can say: rows and groups, nested, each group matching all or any of its rows, and turned around with <strong>not</strong>.</p></div>
         <div class="card"><h3>Refine</h3><p>Under the box, <strong>Refine</strong> counts what the results could be narrowed by. Selecting a value adds it with <strong>AND</strong>; Alt-click adds <strong>AND NOT</strong>, and Shift-click adds <strong>OR</strong>, widening the value chosen before it. Every value writes ordinary query text, so a refined search can be saved or copied into a note.</p></div>
         <div class="card"><h3>Saving a search</h3><p><strong>Save</strong> beside the box keeps a search, which reopens on the page it was saved from and can sit on Home as a widget. Recent searches are kept too.</p></div>
       </div>
+          <p><strong>Taking a result out.</strong> <strong>Export</strong>, beside Bulk Edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. The index itself never leaves the machine.</p>
     </section>
 
     <section id="query">
@@ -434,7 +436,8 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing.</p></div>
         <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
         <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighbourhood instead, one to three hops out, following the editor as you move between notes.</p></div>
-        <div class="card"><h3>Stats</h3><p>Index totals, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and entries you open most.</p></div>
+        <div class="card"><h3>Stats</h3><p>Index totals, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and entries you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
+        <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>
       </div>
     </section>
 
@@ -487,8 +490,9 @@ tag = #project/atlas AND task = open
 
     <section id="assistants">
       <h2>AI assistants</h2>
-      <p>Deckard gives assistants inside VS Code two read-only tools — <code>deckard_query</code> and <code>deckard_list_tags</code> — so Copilot in agent mode, or any other assistant using VS Code’s language model tools, can answer questions from the index Deckard already keeps. You allow the first call in each session. <code>deckard.assistantTools</code> turns them off.</p>
+      <p>Deckard gives assistants inside VS Code four tools — <code>deckard_query</code> and <code>deckard_list_tags</code> to read, <code>deckard_add_task</code> and <code>deckard_change_task</code> to write — so Copilot in agent mode, or any other assistant using VS Code’s language model tools, can answer questions from the index Deckard already keeps. You allow the first call in each session. <code>deckard.assistantTools</code> turns them off.</p>
       <p>For Claude Code and other MCP clients, <code>deckard.mcpServer.enabled</code> runs a local server on 127.0.0.1 with the same tools, and <code>Deckard: Copy MCP Server Setup</code> copies the command that adds it, token included. <code>Deckard: Reset MCP Server Token</code> makes a new token, so every copied setup stops working.</p>
+      <p><strong>A write is guarded twice.</strong> An assistant asks before adding or changing a task, every time, and nothing is written until you approve the exact line in the refactor preview Deckard’s own writes use. A change is refused if the line is no longer the task the index knows there, and <code>Deckard: Undo Last Change</code> takes any write back.</p>
       <p class="note">Deckard answers with what it has indexed: paths, lines, titles, and tags. It never sends your notes anywhere itself — an assistant reads the answer, and what that assistant does next is between you and it.</p>
     </section>
 
@@ -497,6 +501,9 @@ tag = #project/atlas AND task = open
       <p>Your Markdown is the source of truth. The index and the search cache are stored locally, under this workspace’s storage, and no note content is sent to any service by Deckard.</p>
       <p>Deckard changes a note only when you use a task checkbox, edit a task, extract a tagged heading, rename a note, tag, or heading, carry tasks forward, write a review, edit a search’s results, or approve an entity tag. Every one of those compares what it is about to change with what was indexed, and refuses when the line has moved on. Writes that reach several notes are shown first and can be taken back with <code>Deckard: Undo Last Change</code>.</p>
       <p>Favorites, sorting, pins, widget layout, and view counts live in VS Code’s own storage, never in your notes.</p>
+      <p><strong>What names your notes is kept with the workspace.</strong> Favorite tags and people, pinned notes, saved searches, Home’s widgets, view counts, and your task order belong to the folder they describe, so opening another project cannot disturb them. How Deckard looks — sort modes, column counts, layouts, page sizes — is kept for the machine and is the same everywhere. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.</p>
+      <p><strong>Deckard never deletes a favorite, a pin, or a saved search on its own.</strong> If what one pointed at is gone, it stays until you run <code>Deckard: Tidy Favorites, Pins, and Saved Searches</code>, which lists what points nowhere and asks first. Only what Deckard derived for itself — view counts and access order — is cleaned up automatically.</p>
+      <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import</code> reads one back; each says what it holds and asks before replacing anything.</p>
     </article>
 </main>
 </body>

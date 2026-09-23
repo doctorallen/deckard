@@ -15,7 +15,7 @@ import {
   McpTool,
   PARSE_ERROR,
 } from '../../core/mcp/mcpProtocol';
-import { measure } from '../../core/timing';
+import { measure, measureAsync } from '../../core/timing';
 import { writeSetting } from './settings';
 import { WorkspaceIndex } from '../../core/types';
 import {
@@ -24,7 +24,16 @@ import {
   QUERY_TOOL_NAME,
   readQueryToolInput,
   readTagsToolInput,
+  TAGS_TOOL_NAME,
 } from '../state/assistantTools';
+import {
+  ADD_TASK_TOOL_NAME,
+  addTask,
+  CHANGE_TASK_TOOL_NAME,
+  changeTask,
+  readAddTaskInput,
+  readChangeTaskInput,
+} from './assistantWrites';
 
 /** Where the server answers, on 127.0.0.1. */
 export const MCP_PATH = '/mcp';
@@ -270,11 +279,28 @@ export class DeckardMcpServer implements vscode.Disposable {
                 isError: true,
               };
         }
-        return {
-          text: measure('MCP tag list', () =>
-            answerTags(index, readTagsToolInput(args)),
-          ),
-        };
+        if (name === TAGS_TOOL_NAME) {
+          return {
+            text: measure('MCP tag list', () =>
+              answerTags(index, readTagsToolInput(args)),
+            ),
+          };
+        }
+        // A write over MCP has no dialog of its own; the refactor preview is
+        // where the reader sees the line and can decline it.
+        if (name === ADD_TASK_TOOL_NAME) {
+          const input = readAddTaskInput(args);
+          return input
+            ? measureAsync('MCP add task', () => addTask(this.indexer, input))
+            : { text: 'Send the task\'s words as "text", and optionally a workspace-relative "note".', isError: true };
+        }
+        if (name === CHANGE_TASK_TOOL_NAME) {
+          const input = readChangeTaskInput(args);
+          return input
+            ? measureAsync('MCP change task', () => changeTask(this.indexer, input))
+            : { text: 'Send "note" and "line" as deckard_query reports them, and at least one change.', isError: true };
+        }
+        return { text: `Unknown tool: ${name}`, isError: true };
       },
     };
   }

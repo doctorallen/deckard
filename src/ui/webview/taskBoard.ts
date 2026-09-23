@@ -8,6 +8,7 @@ import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
 import { openSourceAt } from '../commands/navigation';
+import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
 import { toggleTask } from '../commands/taskActions';
 import {
   moveTaskToColumn,
@@ -356,6 +357,21 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'openHelp':
         await vscode.commands.executeCommand('deckard.showHelp');
         return;
+      case 'exportResults': {
+        // Every task the search found, whatever the layout shows: the list
+        // layout with no Done limit is the board as a plain list.
+        const index = this.indexer.getSnapshot();
+        const board = createTaskBoard(
+          index,
+          { ...this.preferences.value, taskBoardLayout: 'list' },
+          { query: this.query, invalidQuery: this.invalidQuery },
+          { ...readTaskBoardOptions(), doneLimit: Number.MAX_SAFE_INTEGER },
+          'inline',
+        );
+        const rows = taskRows((board.tasks ?? []).map((item) => item.task), index);
+        await exportResults('tasks', rows.length, (format) => formatTasks(rows, format));
+        return;
+      }
       case 'setBoardGroup':
         // A different grouping is a different board, so the Done column goes
         // back to its short form.

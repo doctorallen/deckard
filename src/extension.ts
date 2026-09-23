@@ -30,7 +30,9 @@ import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import {
   CREATE_LINKED_NOTE_COMMAND,
+  CREATE_MISSING_NOTES_COMMAND,
   createLinkedNote,
+  createMissingNotes,
   LinkHealth,
 } from './ui/commands/linkHealth';
 import { CalendarView } from './ui/webview/calendar';
@@ -54,6 +56,11 @@ import {
 } from './ui/commands/tagDecorations';
 import { TagCompletionProvider } from './ui/commands/tagSuggestions';
 import { TaskMetadataCompletionProvider } from './ui/commands/taskMetadataSuggestions';
+import { EditorLenses } from './ui/commands/editorLenses';
+import {
+  LINK_MENTIONS_COMMAND,
+  linkMentions,
+} from './ui/commands/unlinkedMentions';
 import { EditorReferences } from './ui/commands/editorReferences';
 import { AssistantTools } from './ui/commands/assistantTools';
 import { QuickFind } from './ui/commands/quickFind';
@@ -67,6 +74,15 @@ import { TaskBoardPanel } from './ui/webview/taskBoard';
 import { ActiveSearch } from './ui/webview/activeSearch';
 import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
+import { tidyPreferences } from './ui/commands/tidyPreferences';
+import { checkSetup } from './ui/commands/checkSetup';
+import { createSampleWorkspace } from './ui/commands/sampleWorkspace';
+import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
+import {
+  exportPreferences,
+  importPreferences,
+  restorePreferences,
+} from './ui/commands/preferenceBackups';
 import {
   OutlineTreeProvider,
   pickOutlineTag,
@@ -131,7 +147,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     undefined,
     new SearchStore(context.storageUri),
   );
-  const preferences = new PreferencesStore(context.globalState);
+  // Favorites, pins and view counts name what is in a workspace, so they are
+  // kept with it. A window with no folder open has no workspace to own them
+  // and nothing to index, so it reads the machine-wide store alone.
+  const preferences = new PreferencesStore(
+    context.globalState,
+    vscode.workspace.workspaceFolders?.length
+      ? context.workspaceState
+      : undefined,
+  );
+  void preferences.initialize();
+  // A copy of what this workspace remembers, a moment after each change,
+  // so one bad write is something a reader can take back.
+  const snapshots = new PreferenceSnapshots(context.storageUri, preferences);
+  context.subscriptions.push(snapshots);
   // A task's id comes from its own text, so an edit Deckard writes makes it a
   // new task to anything keyed by id. This keeps its place in a ranked list
   // across the edit, and across an Undo of it.
@@ -166,6 +195,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   const editorReferences = new EditorReferences(indexer);
+  const editorLenses = new EditorLenses(indexer);
   const assistantTools = new AssistantTools(indexer);
   const mcpServer = new DeckardMcpServer(
     indexer,
@@ -272,6 +302,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskLineContext,
     taskBoard,
     editorReferences,
+    editorLenses,
     linkHealth,
     linkMaintenance,
     calendar,
@@ -302,12 +333,42 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     taskLineContext,
     taskBoard,
     editorReferences,
+    editorLenses,
     linkHealth,
     linkMaintenance,
     calendar,
     assistantTools,
     mcpServer,
     quickFind,
+  );
+  // A note that could not be read is missing from every search, which looks
+  // like a bad search rather than a missing note. Say so, once per note, the
+  // moment it happens - and no more than that, since an index updates on
+  // every save.
+  let unreadableSeen = 0;
+  context.subscriptions.push(
+    indexer.onDidUpdate(() => {
+      const unreadable = indexer.getUnreadable();
+      if (unreadable.length > unreadableSeen) {
+        const count = unreadable.length;
+        void vscode.window
+          .showWarningMessage(
+            count === 1
+              ? `Deckard could not read ${unreadable[0].filePath}, so it is not indexed: ${unreadable[0].reason}`
+              : `Deckard could not read ${count} notes, so they are not indexed.`,
+            'Show Stats',
+            'Show Log',
+          )
+          .then((choice) => {
+            if (choice === 'Show Stats') {
+              void vscode.commands.executeCommand('deckard.showStats');
+            } else if (choice === 'Show Log') {
+              void vscode.commands.executeCommand('deckard.showLog');
+            }
+          });
+      }
+      unreadableSeen = unreadable.length;
+    }),
   );
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
@@ -399,6 +460,24 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.disableZenMode', () =>
       setZenMode(false),
+    ),
+    vscode.commands.registerCommand('deckard.tidyPreferences', () =>
+      tidyPreferences(indexer, preferences),
+    ),
+    vscode.commands.registerCommand('deckard.exportPreferences', () =>
+      exportPreferences(preferences),
+    ),
+    vscode.commands.registerCommand('deckard.importPreferences', () =>
+      importPreferences(preferences),
+    ),
+    vscode.commands.registerCommand('deckard.restorePreferences', () =>
+      restorePreferences(preferences, snapshots),
+    ),
+    vscode.commands.registerCommand('deckard.checkSetup', () =>
+      checkSetup(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
+      createSampleWorkspace(context.extensionUri),
     ),
   );
   context.subscriptions.push(
@@ -542,6 +621,22 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       (documentUri: unknown, name: unknown) =>
         typeof documentUri === 'string' && typeof name === 'string'
           ? createLinkedNote(indexer, vscode.Uri.parse(documentUri), name)
+          : undefined,
+    ),
+    vscode.commands.registerCommand(
+      CREATE_MISSING_NOTES_COMMAND,
+      (documentUri: unknown, names: unknown) =>
+        typeof documentUri === 'string' &&
+        Array.isArray(names) &&
+        names.every((name) => typeof name === 'string')
+          ? createMissingNotes(indexer, vscode.Uri.parse(documentUri), names)
+          : undefined,
+    ),
+    vscode.commands.registerCommand(
+      LINK_MENTIONS_COMMAND,
+      (documentUri: unknown) =>
+        typeof documentUri === 'string'
+          ? linkMentions(indexer, vscode.Uri.parse(documentUri))
           : undefined,
     ),
   );
@@ -694,6 +789,7 @@ export function deactivate(): void {
   activeServices?.taskLineContext.dispose();
   activeServices?.taskBoard.dispose();
   activeServices?.editorReferences.dispose();
+  activeServices?.editorLenses.dispose();
   activeServices?.linkHealth.dispose();
   activeServices?.linkMaintenance.dispose();
   activeServices?.calendar.dispose();
@@ -728,6 +824,7 @@ interface ExtensionServices {
   taskLineContext: TaskLineContext;
   taskBoard: TaskBoardPanel;
   editorReferences: EditorReferences;
+  editorLenses: EditorLenses;
   linkHealth: LinkHealth;
   linkMaintenance: LinkMaintenance;
   calendar: CalendarView;

@@ -99,7 +99,8 @@ ${getQueryEditorScript()}
       // The Tasks view lists a search of its own; this is where it is edited.
       const listed = !!(state && state.agendaListsThisSearch);
       return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
-        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>';
+        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
+        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export</button>';
     },
   });
 
@@ -268,7 +269,9 @@ ${getQueryEditorScript()}
     const rows = table.rows.map(function (row) {
       const cells = row.cells.map(function (cell, at) {
         const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === 0 ? 'result-title' : ''].filter(Boolean).join(' ');
-        return '<td' + (classes ? ' class="' + classes + '"' : '') + '>' + escapeHtml(cell.text) + '</td>';
+        // cell.html is Markdown the host already rendered and sanitized, the
+        // same way a board card's title arrives; everything else is data.
+        return '<td' + (classes ? ' class="' + classes + '"' : '') + '>' + (cell.html || escapeHtml(cell.text)) + '</td>';
       }).join('');
       return '<tr class="result-row' + (row.completed ? ' completed' : '') + '" tabindex="0" data-task-id="' + escapeHtml(row.taskId) + '" data-file-path="' + escapeHtml(row.filePath) + '" data-line="' + row.line + '">'
         + '<td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(row.taskId) + '"' + (row.completed ? ' checked' : '') + ' aria-label="Toggle ' + escapeHtml(row.cells[0] ? row.cells[0].text : '') + '"></td>'
@@ -361,6 +364,7 @@ ${getQueryEditorScript()}
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-table-sort') post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value } : { type: 'setTableSort' });
       if (action === 'use-for-agenda') post({ type: 'useSearchForAgenda' });
+      if (action === 'export-tasks') post({ type: 'exportResults', kind: 'tasks' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
         const statuses = state.settings.statuses.slice();

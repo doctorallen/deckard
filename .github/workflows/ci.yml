@@ -48,6 +48,9 @@ jobs:
       - name: Lay the webviews out in Chrome
         run: npm run test:layout
 
+      - name: Compare the webviews to how they looked
+        run: npm run test:visual
+
       - name: Build VSIX
         run: npm run package:vsix
 

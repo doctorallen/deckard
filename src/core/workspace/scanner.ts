@@ -11,7 +11,9 @@ import {
   parseMarkdown,
 } from '../markdown/parser';
 import { reportError } from '../timing';
-import { ParsedFile } from '../types';
+import { ParsedFile,
+  UnreadableNote,
+} from '../types';
 
 export interface WorkspaceFileAccess {
   readonly workspaceFolders?: readonly vscode.WorkspaceFolder[];
@@ -52,9 +54,28 @@ export class WorkspaceScanner {
    * One bad note should not make the rest of the workspace disappear from the
    * index, so read failures are reported and scanning continues.
    */
+  /**
+   * The notes the last scan could not read, with why. A read that fails is
+   * logged, but a log is not where a reader looks when a search comes back
+   * short; this is what Stats and the setup check show instead.
+   */
+  public failures: UnreadableNote[] = [];
+
+  /**
+   * What the last scan saw: how many Markdown files the folders held, how
+   * many the templates folder and the exclude patterns kept out, and how
+   * many were read. A Dashboard that is emptier than expected is usually one
+   * of these, and the setup check says which.
+   */
+  public lastScan = { found: 0, templates: 0, excluded: 0, read: 0 };
+
   public async scan(onProgress?: ScanProgress): Promise<ParsedFile[]> {
     const files: ParsedFile[] = [];
     const entries: ScanEntry[] = [];
+    const failures: UnreadableNote[] = [];
+    let found = 0;
+    let templates = 0;
+    let excluded = 0;
 
     for (const workspaceFolder of this.access.workspaceFolders ?? []) {
       const pattern = this.createPattern(workspaceFolder);
@@ -62,11 +83,17 @@ export class WorkspaceScanner {
       const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
       const isExcluded = this.getExcludeMatcher(workspaceFolder);
 
-      uris
-        .filter((uri) => isMarkdownFile(uri))
-        .filter((uri) => !templatesUri || !isWithinWorkspace(uri, templatesUri))
-        .filter((uri) => !isExcluded(getRelativePath(uri, workspaceFolder)))
-        .forEach((uri) => entries.push({ uri, workspaceFolder }));
+      const markdown = uris.filter((uri) => isMarkdownFile(uri));
+      const outsideTemplates = markdown.filter(
+        (uri) => !templatesUri || !isWithinWorkspace(uri, templatesUri),
+      );
+      const kept = outsideTemplates.filter(
+        (uri) => !isExcluded(getRelativePath(uri, workspaceFolder)),
+      );
+      found += markdown.length;
+      templates += markdown.length - outsideTemplates.length;
+      excluded += outsideTemplates.length - kept.length;
+      kept.forEach((uri) => entries.push({ uri, workspaceFolder }));
     }
 
     onProgress?.(0, entries.length);
@@ -77,12 +104,18 @@ export class WorkspaceScanner {
         files.push(await this.read(entry.uri, entry.workspaceFolder));
       } catch (error) {
         reportError(`Could not read ${entry.uri.toString()}`, error);
+        failures.push({
+          filePath: this.getFilePath(entry.uri, entry.workspaceFolder),
+          reason: describeError(error),
+        });
       } finally {
         completed += 1;
         onProgress?.(completed, entries.length);
       }
     }
 
+    this.failures = failures;
+    this.lastScan = { found, templates, excluded, read: files.length };
     return files;
   }
 
@@ -467,4 +500,10 @@ function createDefaultAccess(): WorkspaceFileAccess {
     readFile: (uri) => vscode.workspace.fs.readFile(uri),
     stat: (uri) => vscode.workspace.fs.stat(uri),
   };
+}
+
+/** An error as one line a reader can act on, not a stack. */
+export function describeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.split('\n')[0].trim() || 'unknown error';
 }

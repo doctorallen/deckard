@@ -4,9 +4,9 @@ import {
   buildTagIntersectionQuery,
   collectQueryTagKeys,
   formatQuery,
-  fromBuilderGroups,
+  fromBuilderTree,
   getQueryTagIntersection,
-  toBuilderGroups,
+  toBuilderTree,
 } from '../core/query/queryFormat';
 import { parseQuery } from '../core/query/queryParser';
 import {
@@ -185,32 +185,32 @@ suite('Deckard query language', () => {
 
   test('round-trips a query through the visual builder', () => {
     const source = '(tag:#a AND task:open) OR text ~ "vendor"';
-    const groups = toBuilderGroups(parseQuery(source).node);
-    assert.strictEqual(groups.length, 2);
-    assert.strictEqual(groups[0].rows.length, 2);
-    // The builder keeps its OR groups parenthesized for legibility, so the
-    // round trip is checked by meaning rather than by spelling.
-    const rebuilt = fromBuilderGroups(groups);
+    const tree = toBuilderTree(parseQuery(source).node);
+    assert.strictEqual(tree.join, 'or');
+    assert.strictEqual(tree.items.length, 2);
+    assert.ok('items' in tree.items[0] && tree.items[0].items.length === 2);
+    // A nested group keeps its parentheses for legibility, so the round trip
+    // is checked by meaning rather than by spelling.
     assert.strictEqual(
-      formatQuery(parseQuery(rebuilt).node),
+      formatQuery(parseQuery(fromBuilderTree(tree)).node),
       formatQuery(parseQuery(source).node),
     );
   });
 
   test('folds a negated condition into its opposite operator', () => {
-    const groups = toBuilderGroups(parseQuery('NOT tag:#a').node);
-    const row = groups[0].rows[0];
-    assert.strictEqual(row.supported, true);
+    const tree = toBuilderTree(parseQuery('NOT tag:#a').node);
+    const row = tree.items[0];
+    assert.ok(!('items' in row));
     assert.strictEqual(row.operator, 'neq');
-    // The builder has no negate control, so the row must carry the whole
-    // meaning of the condition on its own.
-    assert.strictEqual(fromBuilderGroups(groups), 'tag != #a');
+    assert.strictEqual(fromBuilderTree(tree), 'tag != #a');
   });
 
   test('keeps a negated comparison meaningful as one operator', () => {
-    const groups = toBuilderGroups(parseQuery('NOT updated > 7d').node);
-    assert.strictEqual(groups[0].rows[0].operator, 'lte');
-    assert.strictEqual(fromBuilderGroups(groups), 'updated <= 7d');
+    const tree = toBuilderTree(parseQuery('NOT updated > 7d').node);
+    const row = tree.items[0];
+    assert.ok(!('items' in row));
+    assert.strictEqual(row.operator, 'lte');
+    assert.strictEqual(fromBuilderTree(tree), 'updated <= 7d');
   });
 
   test('offers an opposite for every operator a field accepts', () => {
@@ -224,18 +224,38 @@ suite('Deckard query language', () => {
     }
   });
 
-  test('marks a builder row unsupported instead of dropping it', () => {
-    const groups = toBuilderGroups(parseQuery('NOT (tag:#a OR tag:#b)').node);
-    const row = groups[0].rows[0];
-    assert.strictEqual(row.supported, false);
+  test('shows a negated group as a group turned around, not as text', () => {
+    // The whole query is the negated group, so it is the root: turned around,
+    // matching any of its two rows.
+    const tree = toBuilderTree(parseQuery('NOT (tag:#a OR tag:#b)').node);
+    assert.strictEqual(tree.join, 'or');
+    assert.strictEqual(tree.negated, true);
+    assert.deepStrictEqual(tree.items.map((item) => ('items' in item ? '' : item.value)), ['#a', '#b']);
+    assert.strictEqual(fromBuilderTree(tree), 'NOT (tag = #a OR tag = #b)');
+  });
+
+  test('shows an OR of tags with a NOT beside it as a group and a row', () => {
+    // What Refine makes: three tags allowed, then one left out with Alt.
+    const tree = toBuilderTree(parseQuery('(tag:#a OR tag:#b OR tag:#c) AND NOT tag:#d').node);
+    assert.strictEqual(tree.join, 'and');
+    assert.strictEqual(tree.items.length, 2);
+    const group = tree.items[0];
+    assert.ok('items' in group && group.join === 'or' && group.items.length === 3);
+    const row = tree.items[1];
+    assert.ok(!('items' in row) && row.operator === 'neq' && row.value === '#d');
+    assert.strictEqual(fromBuilderTree(tree), '(tag = #a OR tag = #b OR tag = #c) AND tag != #d');
+  });
+
+  test('keeps a group nested three deep, with its parentheses, on the way back', () => {
+    const source = '((tag:#a OR tag:#b) AND task:open) OR tag:#c';
+    const tree = toBuilderTree(parseQuery(source).node);
+    assert.strictEqual(fromBuilderTree(tree), '((tag = #a OR tag = #b) AND task = open) OR tag = #c');
     assert.strictEqual(
-      fromBuilderGroups(groups),
-      'NOT (tag = #a OR tag = #b)',
+      formatQuery(parseQuery(fromBuilderTree(tree)).node),
+      formatQuery(parseQuery(source).node),
     );
   });
-});
 
-suite('Deckard query evaluation', () => {
   test('matches an OR of two tag intersections', () => {
     const index = createIndex();
     const results = evaluateQuery(
@@ -441,11 +461,11 @@ suite('Deckard search page state', () => {
     );
     // The builder folds NOT into the operator, and still writes a shorthand.
     assert.strictEqual(
-      fromBuilderGroups(toBuilderGroups(parseQuery('-is:open').node)),
+      fromBuilderTree(toBuilderTree(parseQuery('-is:open').node)),
       '-is:open',
     );
     assert.strictEqual(
-      fromBuilderGroups(toBuilderGroups(parseQuery('NOT has:due').node)),
+      fromBuilderTree(toBuilderTree(parseQuery('NOT has:due').node)),
       'no:due',
     );
   });

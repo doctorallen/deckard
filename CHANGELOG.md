@@ -2,7 +2,194 @@
 
 ## Unreleased
 
+### Added
+
+- **A note finds where it is mentioned without a link, and links it.**
+  Backlinks counted only the notes that had already written `[[Atlas]]`;
+  the ones that wrote "Atlas" were invisible to it. A note now says
+  **Mentioned in N notes without a link** on its first line when other
+  notes write its title or an alias as plain prose, lists them in the
+  references peek, and **Link N mentions** turns each into a `[[link]]`
+  that keeps the name as written. Links, code, tags, Markdown links,
+  headings, and front matter are left alone, as are names under three
+  characters and names another note shares. The write is previewed and
+  undone like Deckard's other multi-note writes, and each mention is
+  checked against its line before it is touched.
+  `deckard.editor.unlinkedMentions` turns it off.
+
+- **An embed that cannot draw says so in the editor.** An `![[Note#Heading]]`
+  whose heading was renamed drew a message in the preview and nothing at
+  all in the editor, where the fix is made. It now carries the same
+  message above its line, **Embed: Atlas has no heading "Decision"**, which
+  opens the note it names. An embed that draws carries nothing, and one
+  whose note name opens no note is left to the link problems, which count
+  it already. `deckard.editor.embedProblems` turns it off.
+
+- **A note says how many of its links open no note, and creates the
+  missing ones in one go.** The diagnostics marked each broken `[[link]]`
+  where it was written, which in a long note is below the fold. Its first
+  line now says **N links open no note**, listed in the references peek,
+  and **Create N missing notes** makes a note for every name no note has,
+  never touching one already there. A name several notes share is counted
+  but not created. `deckard.editor.linkProblems` turns it off.
+
+- **A daily note steps to its neighbors, and today's offers what is still
+  open.** Above a daily note sit the dates of the daily notes before and
+  after it, skipping empty days, and today's note says **Carry in N
+  unfinished tasks** while earlier daily notes hold open tasks it does not,
+  which runs the rollover. Tasks already in today's note are not counted,
+  so a copy-mode rollover does not keep offering them, and a note with no
+  neighbor on a side has no arrow there. `deckard.editor.dailyNoteActions`
+  turns it off.
+
+- **A task says what it waits on, and what it holds up.** `⛔` and `🆔`
+  were read by `is:blocked` and `is:blocking`, but nothing in the editor
+  showed them. A task with dependencies now carries **Waiting on N open
+  tasks** or **Blocks N open tasks** above it, across notes, which lists
+  them in the references peek, and a `⛔` name no task carries is named
+  outright. Only open tasks count, so a task whose dependencies are done
+  shows nothing. `deckard.editor.taskDependencies` turns it off.
+
+- **An assistant can add a task, or change one, with Deckard's own
+  safeguards.** The query and tag tools were read-only. `deckard_add_task`
+  adds a task to today's note or to a note the assistant names, and
+  `deckard_change_task` completes, reopens, retitles, dates, prioritizes or
+  hands over one existing task, named by its note and line as
+  `deckard_query` reports them, touching only the fields it names and
+  keeping the line's own format. An assistant asks before either runs,
+  every time rather than once a session, and nothing is written until the
+  user approves the exact line in the refactor preview Deckard's own
+  multi-note writes use - whatever `deckard.previewWorkspaceWrites` says.
+  Over MCP, where there is no dialog, that preview is the guard. A change
+  is refused if the line is no longer the task the index knows there, so an
+  assistant working from a stale answer cannot rewrite whatever is on that
+  line now, and `Deckard: Undo Last Change` takes a write back afterwards.
+
+- **Every page is compared, pixel for pixel, to how it looked.** The layout
+  check measures geometry and the contrast check reads color pairs; neither
+  can see a backdrop a theme paints, a glow that came back, or a control
+  that moved - zen mode shipped with Cooper's dotted grid still showing, and
+  it took a screenshot to notice. `npm run test:visual` takes that
+  screenshot for every surface, theme and zen state and fails when it
+  differs from the recorded one by more than a sliver, with the diff beside
+  it. Baselines are kept per platform, since fonts are rasterized by the
+  operating system, and a change that is meant is recorded with
+  `--update`. It runs in CI after the layout check.
+
+- **A search's results can be taken out.** Deckard reads the workspace and
+  writes back into it; nothing leaves. A result copied out as Markdown or
+  CSV makes it usable in a pull request, an issue, or a message, while the
+  index itself still never leaves the machine. **Export**, beside Bulk Edit
+  over a search page's notes or tasks and beside Save on the Task Board,
+  takes everything the search found - not only the page on screen - as a
+  Markdown table, a list with a link to each result, or CSV, and copies it
+  or saves it to a file. A comma, a quote or a line break in a title is
+  quoted the way a spreadsheet expects, and a pipe is escaped the way a
+  Markdown table expects.
+
+- **`Deckard: Create a Sample Workspace` gives a new reader something to
+  look at.** The walkthrough says what a tag and a hub note are; it cannot
+  show one being found. Seven small notes can - three daily notes with
+  tagged headings and dated, prioritized tasks that name people; two
+  project hubs with `describes:` front matter; a person; a team - and they
+  are copied into a `deckard-sample` folder inside a folder of the reader's
+  choosing, never on top of anything already there, and offered to be
+  opened. A README beside them says what each shows and what to try first.
+  The walkthrough's first step offers it beside creating today's note.
+
+- **`Deckard: Check My Setup` says what the settings add up to.** Deckard
+  has forty-nine of them, and the effect of most is that something is
+  silently not there: a notes folder that does not exist, an exclude
+  pattern wider than meant, a `deckard.me` that names nobody. Reading the
+  settings does not say which. The check writes up, as a Markdown document,
+  what they resolve to in this workspace - where notes are read from and
+  whether that folder exists, how many files the last scan found and how
+  many the templates folder and the exclude patterns kept out, which notes
+  could not be read, what the index holds, and whether `deckard.me` matches
+  a person any note names - with what to do beside each thing that is off.
+
+- **A note Deckard could not read is said, not just logged.** A read that
+  fails went to the log, which nobody opens; the note was simply missing
+  from every search, which looks like a bad search rather than a missing
+  note. Deckard now says so the moment it happens, once per note, with
+  Show Stats and Show Log beside it, and Stats lists every such note with
+  the reason - one line, not a stack - so a search that comes back short
+  has somewhere to be explained. A note that reads again on its next save
+  leaves the list on its own.
+
+- **What a workspace remembers can be taken back.** A moment after each
+  change, Deckard writes a copy of its favorites, pins, saved searches,
+  widgets and view counts into the workspace's storage and keeps the last
+  twenty. `Deckard: Restore Favorites, Pins, and Searches from a Copy`
+  offers them newest first; `Deckard: Export` writes the same thing to a
+  JSON file of your choosing, and `Deckard: Import` reads one back. Each
+  says what it holds, and what is here now, before replacing anything, and
+  the current state is copied first so a restore can itself be undone. A
+  store that was never copied was a store one bad write could end, and
+  Deckard has now had that bug once.
+
 ### Fixed
+
+- **The builder can build anything the search box can say.** It edited one
+  shape - OR groups of AND rows - so what Refine makes with three clicks and
+  an Alt, `(a OR b OR c) AND NOT d`, had its OR half flattened to a line of
+  text it could only keep as written, and there was no way to build that
+  shape from the builder itself. It now edits the query as it is: rows and
+  groups nested as deep as the search goes, every group saying whether it
+  matches all of its rows or any of them, and **not** turning a group
+  around. Nothing is shown as text any more. A nested group is written back
+  with its parentheses whatever its join, which also mends a hand-written
+  `(a OR b) AND c` that came back from the builder meaning `a OR (b AND c)`.
+  A group emptied of its rows goes with them, rather than staying behind
+  as a box with only a head.
+- **The search box shows a search the way the builder does.** A search
+  whose top level was an OR, or that held a parenthesized group, was one
+  chip that could only be removed whole. Now the branches of an OR are
+  chips of their own, a group is a frame of its own chips with its own
+  **×**, nested as deep as the search goes, and a condition inside a group
+  can be removed alone, cutting it out of the search as written. Anything
+  turned around with `NOT` or `-`, a condition or a whole group, is drawn
+  in red.
+
+- **Deckard no longer deletes a favorite, a pin, or a saved search on its
+  own.** Pruning used to remove any of them whose tag or note the index had
+  stopped mentioning, which treated a guess as a decision. Now it collects
+  only what Deckard derived for itself — view counts, access order, when a
+  tag was first seen — and leaves what a reader chose alone. `Deckard: Tidy
+  Favorites, Pins, and Saved Searches` lists what points at nothing in this
+  workspace any more and removes it only when asked; a saved query is never
+  on that list, since it can name a tag that does not exist yet.
+
+- **Favorites, pins and view counts survive opening another folder.** They
+  were kept machine-wide, and every index update deleted any key the current
+  workspace did not contain — so opening any other folder holding a Markdown
+  file, a repository with a README being enough, emptied the favorites,
+  pinned notes, saved searches and tag and note view counts belonging to the
+  notes workspace. A window with no folder open did the same thing, which is
+  the state VS Code is in while a VSIX is installed from the Extensions view,
+  and is where most people will have met this.
+
+  These name what is in a workspace, so they are now kept with it. The first
+  workspace opened after this release adopts what was stored machine-wide, so
+  a reader with one set of notes sees no change; a second workspace starts
+  clean instead of inheriting tags it does not have. What stays machine-wide
+  is presentation — sort modes, column counts, layouts, page sizes — which
+  means the same thing everywhere and is never pruned. A whole copy is still
+  written machine-wide, so an older Deckard reads it, and so a workspace whose
+  own storage VS Code has cleaned up is seeded rather than empty.
+
+  Pruning itself also now refuses to run against an index holding nothing,
+  which is not evidence that every note was deleted.
+
+- **A task's title is Markdown in the table too.** The Task Board's table and
+  a query block's table of tasks printed the title's source, so a task written
+  with `**bold**`, a `` `command` ``, or a link read as its own markup while
+  every other surface that shows a task drew it. Both render it now, through
+  the same sanitizer the board's cards use. The plain words are kept beside
+  the rendered form, since that is what a checkbox's label and a sort by title
+  read. A link written inside a title is flattened to its words in a query
+  block, where the whole cell is already one link to the task's line and an
+  anchor inside an anchor closes the outer one early.
 
 - **A setting that changes how notes are parsed rebuilds the search cache.**
   The cache compares a scan against what it holds by path, modified time and

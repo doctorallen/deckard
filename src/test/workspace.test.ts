@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
-import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { buildWorkspaceIndex, WorkspaceIndexer } from '../core/workspace/indexer';
 import {
   createExcludeMatcher,
   WorkspaceFileAccess,
@@ -69,6 +69,36 @@ suite('Workspace scanner and index', () => {
     );
   });
 
+  test('says which notes it could not read, and why, rather than only logging it', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-unreadable');
+    const good = vscode.Uri.joinPath(workspaceUri, 'good.md');
+    const bad = vscode.Uri.joinPath(workspaceUri, 'notes', 'bad.md');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => [good, bad],
+      readFile: async (uri) => {
+        if (uri.path === bad.path) {
+          throw new Error('EACCES: permission denied, open \'/tmp/deckard-unreadable/notes/bad.md\'\n    at Object.openSync');
+        }
+        return Buffer.from('# Good #project/atlas', 'utf8');
+      },
+    });
+
+    const files = await scanner.scan();
+
+    assert.deepStrictEqual(files.map((file) => file.filePath), ['good.md'], 'the readable note is indexed');
+    assert.deepStrictEqual(scanner.failures, [
+      { filePath: 'notes/bad.md', reason: "EACCES: permission denied, open '/tmp/deckard-unreadable/notes/bad.md'" },
+    ], 'one line of reason, not a stack');
+
+    // The indexer carries it to where a reader can see it.
+    const indexer = new WorkspaceIndexer(scanner);
+    await indexer.refresh();
+    assert.deepStrictEqual(indexer.getUnreadable().map((note) => note.filePath), ['notes/bad.md']);
+    indexer.dispose();
+  });
+
   test('leaves the templates folder out of the notes', async () => {
     const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
     const noteUri = vscode.Uri.joinPath(workspaceUri, 'case.md');
@@ -87,6 +117,7 @@ suite('Workspace scanner and index', () => {
     const files = await scanner.scan();
 
     assert.deepStrictEqual(files.map((file) => file.filePath), ['case.md']);
+    assert.deepStrictEqual(scanner.lastScan, { found: 2, templates: 1, excluded: 0, read: 1 }, 'the scan says what it kept out');
     assert.strictEqual(scanner.isNotesFile(noteUri), true);
     assert.strictEqual(scanner.isNotesFile(templateUri), false);
     assert.strictEqual(

@@ -68,6 +68,7 @@ async function openStats() {
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
+    getUnreadable: () => [],
     onDidUpdate: updates.event,
   };
   const preferences = new PreferencesStore(createGlobalState());

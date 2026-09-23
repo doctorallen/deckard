@@ -19,7 +19,7 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.countRows(), 2);
 
     view.posted.length = 0;
-    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    view.click({ action: 'builder-add-row', path: '' });
 
     assert.strictEqual(
       view.countRows(),
@@ -31,21 +31,114 @@ suite('Tag overview query builder', () => {
     assert.deepStrictEqual(view.posted, []);
   });
 
-  test('adds an OR group without waiting for the host', () => {
+  test('adds a group without waiting for the host', () => {
     const view = mountTagOverview();
     view.send(createState());
     view.click({ action: 'toggle-builder' });
 
-    view.click({ action: 'builder-add-group' });
+    view.click({ action: 'builder-add-group', path: '' });
 
     assert.strictEqual(view.countGroups(), 2);
+  });
+
+  test('builds an OR of tags with a NOT beside it from nothing, without typing the query', () => {
+    // What Refine makes with three clicks and an Alt: built here by hand,
+    // which the builder could not do while it had only one shape.
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '';
+    state.query.builder = { join: 'and', items: [] };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    assert.strictEqual(view.countRows(), 1, 'a row to type in');
+
+    // A group beside the row, joined the other way, and told to match any.
+    view.click({ action: 'builder-add-group', path: '' });
+    assert.strictEqual(view.countGroups(), 2, 'the root, and one inside it');
+    assert.match(view.html(), /<span class="query-builder-and">and<\/span>/, 'the group joins the root with AND');
+    view.change({ dataset: { action: 'builder-set-join', path: '1' } }, 'or');
+
+    const row = (path: string) => ({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p' + path.replace(/\./g, '_'), path } });
+    view.key(view.type(row('1.0'), '#a'), 'Enter');
+    view.key(view.type(row('1.1'), '#b'), 'Enter');
+    view.key(view.type(row('1.2'), '#c'), 'Enter');
+    view.key(view.type(row('0'), '#d'), 'Enter');
+    view.change({ dataset: { action: 'builder-set-operator', path: '0' } }, 'neq');
+
+    // A search is a round trip through the host, which the stub does not
+    // answer, so the query posted is what is checked, not a redraw.
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'tag != #d AND (tag = #a OR tag = #b OR tag = #c)');
+  });
+
+  test('shows a query written by hand as rows, whatever its shape', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = 'NOT (tag = #a OR tag = #b) AND task = open';
+    state.query.builder = {
+      join: 'and',
+      items: [
+        { join: 'or', negated: true, items: [
+          { field: 'tag', operator: 'eq', value: '#a', supported: true, text: 'tag = #a' },
+          { field: 'tag', operator: 'eq', value: '#b', supported: true, text: 'tag = #b' },
+        ] },
+        { field: 'task', operator: 'eq', value: 'open', supported: true, text: 'task = open' },
+      ],
+    };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    assert.strictEqual(view.countGroups(), 2);
+    assert.strictEqual(view.countRows(), 4, 'three rows and the one to type in');
+    // Every row's completion list is found by its key, so two rows sharing
+    // one would send a completion to the wrong row: that is how a nested
+    // group's first row once became "tag = undefined". A key is its path.
+    const keys = [...view.html().matchAll(/data-suggest-key="([^"]+)"[^>]*data-path="([^"]+)"/g)]
+      .map((match) => [match[1], match[2]]);
+    assert.strictEqual(keys.length, 4);
+    assert.strictEqual(new Set(keys.map(([key]) => key)).size, 4, 'every row has its own key');
+    for (const [key, path] of keys) {
+      assert.strictEqual(key, 'p' + path.replace(/\./g, '_'), `the key for ${path}`);
+    }
+    assert.doesNotMatch(view.html(), /query-builder-readonly/, 'nothing is text');
+    assert.match(view.html(), /data-action="builder-toggle-not" data-path="0" aria-pressed="true"/, 'the group is shown as negated');
+  });
+
+  test('accepting a completion in a nested group\'s second row leaves its first row alone', () => {
+    // Reported: with #person/mara-vale as the first row of a nested OR group,
+    // typing "harb" in the group's next row and choosing #team/harbor turned
+    // the first row into "tag = undefined".
+    const view = mountTagOverview();
+    const state = createState('tag = #person/sable-ortiz') as {
+      query: { suggestions: { values: { tag: Array<{ value: string; label: string }> } }; builder: unknown; text: string };
+    };
+    state.query.suggestions.values.tag.push(
+      { value: '#person/mara-vale', label: '#person/mara-vale' },
+      { value: '#team/harbor', label: '#team/harbor' },
+    );
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    view.click({ action: 'builder-add-group', path: '' });
+    view.change({ dataset: { action: 'builder-set-join', path: '2' } }, 'or');
+
+    const pending = (path: string) => ({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p' + path.replace(/\./g, '_'), path } });
+    view.key(view.type(pending('2.0'), '#person/mara-vale'), 'Enter');
+    const second = view.type(pending('2.1'), 'harb');
+    assert.match(view.suggestionsFor('p2_1'), /#team\/harbor/, 'the completion is offered');
+    // Chosen from the keyboard: the stub's click cannot reach a completion,
+    // since it closes the list for any click outside the input's shell.
+    view.key(second, 'ArrowDown');
+    view.key(second, 'Enter');
+
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'tag = #person/sable-ortiz AND (tag = #person/mara-vale OR tag = #team/harbor)');
+    assert.doesNotMatch(view.html(), /undefined/);
   });
 
   test('keeps in-progress rows across an unrelated refresh', () => {
     const view = mountTagOverview();
     view.send(createState());
     view.click({ action: 'toggle-builder' });
-    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    view.click({ action: 'builder-add-row', path: '' });
 
     // An index update re-sends the same query; a half-written row must
     // survive it.
@@ -58,7 +151,7 @@ suite('Tag overview query builder', () => {
     const view = mountTagOverview();
     view.send(createState());
     view.click({ action: 'toggle-builder' });
-    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    view.click({ action: 'builder-add-row', path: '' });
 
     view.send(createState('tag = #other'));
 
@@ -74,16 +167,15 @@ suite('Tag overview query builder', () => {
       {
         dataset: {
           action: 'builder-set-value',
-          suggestKey: 'g0r0',
+          suggestKey: 'p0',
           field: 'tag',
-          groupIndex: '0',
-          rowIndex: '0',
+          path: '0',
         },
       },
       '#proj',
     );
 
-    const rendered = view.suggestionsFor('g0r0');
+    const rendered = view.suggestionsFor('p0');
     assert.match(rendered, /#project\/atlas/);
     assert.match(rendered, /query-suggestion/);
   });
@@ -97,16 +189,15 @@ suite('Tag overview query builder', () => {
       {
         dataset: {
           action: 'builder-set-value',
-          suggestKey: 'g0r0',
+          suggestKey: 'p0',
           field: 'task',
-          groupIndex: '0',
-          rowIndex: '0',
+          path: '0',
         },
       },
       'op',
     );
 
-    const rendered = view.suggestionsFor('g0r0');
+    const rendered = view.suggestionsFor('p0');
     assert.match(rendered, /open/);
     assert.doesNotMatch(rendered, /#project\/atlas/);
   });
@@ -149,22 +240,21 @@ suite('Tag overview query builder', () => {
     const view = mountTagOverview();
     view.send(createState());
     view.click({ action: 'toggle-builder' });
-    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    view.click({ action: 'builder-add-row', path: '' });
     view.posted.length = 0;
 
     const input = view.type(
       {
         dataset: {
           action: 'builder-set-value',
-          suggestKey: 'g0r1',
+          suggestKey: 'p1',
           pending: 'true',
-          groupIndex: '0',
-          rowIndex: '1',
+          path: '1',
         },
       },
       'open',
     );
-    assert.match(view.suggestionsFor('g0r1'), /is:open/);
+    assert.match(view.suggestionsFor('p1'), /is:open/);
     view.key(input, 'Tab');
 
     assert.deepStrictEqual(view.posted, [
@@ -176,17 +266,16 @@ suite('Tag overview query builder', () => {
     const view = mountTagOverview();
     view.send(createState());
     view.click({ action: 'toggle-builder' });
-    view.click({ action: 'builder-add-row', groupIndex: '0' });
+    view.click({ action: 'builder-add-row', path: '' });
     assert.strictEqual(view.countRows(), 3);
 
     const input = view.type(
       {
         dataset: {
           action: 'builder-set-value',
-          suggestKey: 'g0r1',
+          suggestKey: 'p1',
           pending: 'true',
-          groupIndex: '0',
-          rowIndex: '1',
+          path: '1',
         },
       },
       '',
@@ -194,6 +283,86 @@ suite('Tag overview query builder', () => {
     view.key(input, 'Backspace');
 
     assert.strictEqual(view.countRows(), 2);
+  });
+
+  test('a group emptied of its conditions goes too, and so on upward', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = 'tag = #a AND (tag = #b OR (tag = #c AND tag = #d))';
+    state.query.builder = {
+      join: 'and',
+      items: [
+        { field: 'tag', operator: 'eq', value: '#a', supported: true, text: 'tag = #a' },
+        { join: 'or', items: [
+          { field: 'tag', operator: 'eq', value: '#b', supported: true, text: 'tag = #b' },
+          { join: 'and', items: [
+            { field: 'tag', operator: 'eq', value: '#c', supported: true, text: 'tag = #c' },
+            { field: 'tag', operator: 'eq', value: '#d', supported: true, text: 'tag = #d' },
+          ] },
+        ] },
+      ],
+    };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    assert.strictEqual(view.countGroups(), 3);
+    // The root draws no box of its own; every group inside it does.
+    assert.strictEqual((view.html().match(/class="query-builder-group is-root"/g) ?? []).length, 1);
+    assert.strictEqual((view.html().match(/query-builder-item has-group/g) ?? []).length, 2);
+
+    // The page keeps its own tree until the host answers with a different
+    // search, so the host's echo of each search is sent back before the
+    // groups are counted, the way the host would.
+    const echo = () => {
+      const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+      view.send(createState((last as { query?: string } | undefined)?.query ?? ''));
+      return (last as { query?: string } | undefined)?.query;
+    };
+    view.click({ action: 'builder-remove-row', path: '1.1.1' });
+    assert.strictEqual(echo(), 'tag = #a AND (tag = #b OR tag = #c)');
+    assert.strictEqual(view.countGroups(), 3, 'a group with a row left keeps its place');
+    view.click({ action: 'builder-remove-row', path: '1.1.0' });
+    assert.strictEqual(echo(), 'tag = #a AND tag = #b');
+    assert.strictEqual(view.countGroups(), 2, 'the emptied inner group is gone');
+    assert.strictEqual(view.countRows(), 3, 'a, b, and the one to type in');
+
+    // Emptying the group above empties nothing else, so only it goes, and
+    // the root stays whatever is taken out of it.
+    view.click({ action: 'builder-remove-row', path: '1.0' });
+    assert.strictEqual(echo(), 'tag = #a');
+    assert.strictEqual(view.countGroups(), 1, 'only the root, which stays');
+    assert.strictEqual(view.countRows(), 2);
+  });
+
+  test('shows a group of the search as chips of its own, each removable', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '#a OR NOT (#b AND -#c)';
+    state.query.termsJoin = 'or';
+    state.query.terms = [
+      { text: '#a', without: 'NOT (#b AND -#c)' },
+      {
+        text: 'NOT (#b AND -#c)', without: '#a', join: 'and', negated: true,
+        items: [
+          { text: '#b', without: '#a OR NOT (-#c)' },
+          { text: '-#c', without: '#a OR NOT (#b)', negated: true },
+        ],
+      },
+    ];
+    view.send(state);
+    const html = view.html();
+    assert.strictEqual((html.match(/class="query-chip-group is-negated"/g) ?? []).length, 1);
+    assert.match(html, /<span class="query-chip-join" aria-hidden="true">OR<\/span>/);
+    assert.match(html, /<span class="query-chip-join" aria-hidden="true">NOT<\/span>/);
+    assert.match(html, /<span class="query-chip-join" aria-hidden="true">AND<\/span>/);
+    assert.match(html, /query-chip-group-remove" data-action="remove-term" data-without="#a"/);
+    assert.match(html, /class="query-chip is-tag is-negated" data-action="remove-term" data-without="#a OR NOT \(#b\)"/);
+    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 4, 'a, the group, b, and c');
+    // The frame itself removes the group, as a chip's face removes its term.
+    assert.match(html, /class="query-chip-group is-negated" role="group" aria-label="NOT \(#b AND -#c\)" data-action="remove-term" data-without="#a"/);
+
+    view.click({ action: 'remove-term', without: '#a OR NOT (-#c)' });
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual((last as { query?: string } | undefined)?.query, '#a OR NOT (-#c)');
   });
 
   test('narrows by a facet, or leaves it out with Alt', () => {
@@ -314,7 +483,7 @@ suite('Tag overview query builder', () => {
     view.click({ action: 'toggle-builder' });
 
     view.posted.length = 0;
-    view.click({ action: 'builder-remove-row', groupIndex: '0', rowIndex: '0' });
+    view.click({ action: 'builder-remove-row', path: '0' });
 
     assert.deepStrictEqual(
       view.posted.map((message) => message.type),
@@ -329,6 +498,7 @@ interface MountedView {
   click: (dataset: Record<string, string>, modifiers?: Record<string, boolean>) => void;
   key: (input: Record<string, unknown>, key: string) => void;
   focus: (input: Record<string, unknown>, value: string) => void;
+  change: (input: Record<string, unknown>, value: string) => void;
   html: () => string;
   countRows: () => number;
   countGroups: () => number;
@@ -457,10 +627,14 @@ function mountTagOverview(): MountedView {
       );
       dispatch('focusin', { target });
     },
+    change: (input, value) => {
+      const target = Object.assign(createStubElement('select'), input, { value });
+      dispatch('change', { target });
+    },
     html: () => app.innerHTML,
     countRows: () => (app.innerHTML.match(/builder-set-value/g) ?? []).length,
     countGroups: () =>
-      (app.innerHTML.match(/class="query-builder-group"/g) ?? []).length,
+      (app.innerHTML.match(/class="query-builder-group[ "]/g) ?? []).length,
     type: (input: Record<string, unknown>, value: string) => {
       const target = Object.assign(createStubElement('input'), input, { value });
       registry.set(
@@ -534,21 +708,19 @@ function createState(
       canAppend: extras.canAppend ?? true,
       facets: extras.facets ?? [],
       isAdvanced: false,
-      isBuildable: true,
       diagnostics: [],
-      groups: [
-        {
-          rows: [
-            {
-              field: 'tag',
-              operator: 'eq',
-              value,
-              supported: true,
-              text: queryText,
-            },
-          ],
-        },
-      ],
+      builder: {
+        join: 'and',
+        items: [
+          {
+            field: 'tag',
+            operator: 'eq',
+            value,
+            supported: true,
+            text: queryText,
+          },
+        ],
+      },
       tags: [],
       suggestions: {
         fields: [

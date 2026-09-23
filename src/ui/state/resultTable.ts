@@ -98,6 +98,8 @@ export function getTaskColumn(id: TaskColumnId): TaskColumn {
 /** What a table needs to know about a task, whichever shape it arrived in. */
 export interface TableTask {
   title: string;
+  /** `title` as rendered inline Markdown, sanitized. */
+  renderedTitle?: string;
   completed: boolean;
   dueAt?: number;
   dueText?: string;
@@ -132,7 +134,10 @@ export function createTaskCells(
   return columns.map((column): TableCell => {
     switch (column) {
       case 'title':
-        return { text: task.title };
+        return {
+          text: task.title,
+          ...(task.renderedTitle ? { html: task.renderedTitle } : {}),
+        };
       case 'due':
         return task.dueAt === undefined
           ? { text: task.dueText ?? '' }

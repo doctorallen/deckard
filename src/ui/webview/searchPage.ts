@@ -27,6 +27,7 @@ import {
 } from '../state/dashboardState';
 import { isWritten } from '../state/searchFacets';
 import { editResults } from '../commands/bulkEditPrompts';
+import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
 import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
 import { openSourceAt } from '../commands/navigation';
@@ -663,6 +664,18 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'editResults':
         await editResults(message.kind, this.currentResults());
         return;
+      case 'exportResults': {
+        const results = this.currentResults();
+        const index = this.indexer.getSnapshot();
+        if (message.kind === 'tasks') {
+          const rows = taskRows(results.tasks, index);
+          await exportResults('tasks', rows.length, (format) => formatTasks(rows, format));
+        } else {
+          const rows = noteRows(results.sections);
+          await exportResults('notes', rows.length, (format) => formatNotes(rows, format));
+        }
+        return;
+      }
       case 'openSource':
         await this.openSource(message.filePath, message.line);
         return;

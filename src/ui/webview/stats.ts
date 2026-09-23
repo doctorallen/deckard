@@ -198,6 +198,7 @@ export class StatsPanel implements vscode.Disposable {
         createDeckardStatsSnapshot(
           this.indexer.getSnapshot(),
           this.preferences.value,
+          this.indexer.getUnreadable(),
         ),
       ),
     });

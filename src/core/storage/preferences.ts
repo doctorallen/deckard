@@ -29,6 +29,76 @@ import {
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
+/** What `findStale` reports: deliberate choices the index no longer backs. */
+export interface StalePreferences {
+  favoriteTags: string[];
+  favoriteEntities: string[];
+  pinnedNotes: PinnedNote[];
+  savedFilters: SavedFilter[];
+}
+
+/** Set once the machine-wide store has handed its content to a workspace. */
+const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
+
+/**
+ * The preferences that name what is in a workspace rather than how Deckard
+ * looks, and so belong to that workspace.
+ *
+ * These were kept machine-wide until 1.19, and pruned against whichever
+ * window last built an index. Opening any other folder holding a Markdown
+ * file — a repository with a README was enough — deleted the favorites,
+ * pins and view counts belonging to the notes workspace, because that
+ * folder's index did not contain them.
+ *
+ * What stays machine-wide is presentation: sort modes, column counts,
+ * layouts, page sizes. Those mean the same thing in any workspace, and
+ * nothing prunes them.
+ */
+const workspacePreferenceKeys = [
+  'favoriteTags',
+  'favoriteEntities',
+  'tagAccessOrder',
+  'tagAccessCounts',
+  'tagAccessTimes',
+  'entityAccessOrder',
+  'entityAccessCounts',
+  'taskOrder',
+  'sectionAccessCounts',
+  'sectionAccessTimes',
+  'savedFilters',
+  'recentQueries',
+  'tagFirstSeen',
+  'pinnedNotes',
+  'dashboardWidgets',
+  'dashboardViewState',
+] as const satisfies readonly (keyof PersistedPreferences)[];
+
+/** Everything except the workspace's share: what stays machine-wide. */
+function omitWorkspacePreferences(
+  value: Partial<PersistedPreferences> | undefined,
+): Partial<PersistedPreferences> {
+  const kept: Record<string, unknown> = { ...(value ?? {}) };
+  for (const key of workspacePreferenceKeys) {
+    delete kept[key];
+  }
+  return kept as Partial<PersistedPreferences>;
+}
+
+/** The workspace's share of a whole preference blob. */
+function pickWorkspacePreferences(
+  value: Partial<PersistedPreferences> | undefined,
+): Partial<PersistedPreferences> {
+  const picked: Record<string, unknown> = {};
+  if (!value) {
+    return picked;
+  }
+  for (const key of workspacePreferenceKeys) {
+    if (value[key] !== undefined) {
+      picked[key] = value[key];
+    }
+  }
+  return picked as Partial<PersistedPreferences>;
+}
 const defaultPreferences: PersistedPreferences = {
   version: 1,
   favoriteTags: [],
@@ -146,10 +216,67 @@ export class PreferencesStore implements vscode.Disposable {
   private preferences: PersistedPreferences;
   private updateQueue: Promise<void> = Promise.resolve();
 
-  public constructor(private readonly state: vscode.Memento) {
-    this.preferences = normalizePreferences(
-      state.get<Partial<PersistedPreferences>>(preferencesKey),
-    );
+  /** A seed from the machine-wide store, waiting to be written. */
+  private seeded: Partial<PersistedPreferences> | undefined;
+
+  /**
+   * `workspaceState` carries the preferences that name workspace content. It
+   * is left out when no folder is open, where there is no workspace to own
+   * them and nothing to index; the store then reads and writes the
+   * machine-wide blob alone, as it always did.
+   */
+  public constructor(
+    private readonly state: vscode.Memento,
+    private readonly workspaceState?: vscode.Memento,
+  ) {
+    const global = state.get<Partial<PersistedPreferences>>(preferencesKey);
+    if (!this.workspaceState) {
+      this.preferences = normalizePreferences(global);
+      return;
+    }
+    const workspace =
+      this.workspaceState.get<Partial<PersistedPreferences>>(preferencesKey);
+    // The first workspace opened after the upgrade adopts what was kept
+    // machine-wide, so a reader with one set of notes sees no change at all.
+    // Later workspaces start clean rather than inheriting another's tags,
+    // which they would prune away anyway.
+    if (
+      workspace === undefined &&
+      !state.get<boolean>(workspaceScopedKey, false)
+    ) {
+      this.seeded = pickWorkspacePreferences(global);
+    }
+    // The machine-wide blob keeps a whole copy, so its workspace keys have to
+    // be dropped before the workspace's own are laid over it. Without that, a
+    // workspace with nothing stored would read the last one's favorites.
+    this.preferences = normalizePreferences({
+      ...omitWorkspacePreferences(global),
+      ...(workspace ?? this.seeded ?? {}),
+    });
+  }
+
+  /**
+   * Writes a seed taken from the machine-wide store into the workspace, and
+   * records that it has been handed over. Call once, after construction.
+   *
+   * The machine-wide blob keeps a whole copy. That is what an older Deckard
+   * reads, and what seeds a workspace whose own storage VS Code has since
+   * cleaned up; it is never read while the workspace has one of its own.
+   */
+  public async initialize(): Promise<void> {
+    if (!this.workspaceState || this.seeded === undefined) {
+      return;
+    }
+    this.seeded = undefined;
+    // Through the same queue as every other write, so a preference changed
+    // before the handover lands is not overwritten by it.
+    const write = async (): Promise<void> => {
+      await this.persist(clonePreferences(this.preferences));
+      await this.state.update(workspaceScopedKey, true);
+    };
+    const queued = this.updateQueue.then(write, write);
+    this.updateQueue = queued;
+    await queued;
   }
 
   public readonly onDidChange = this.changeEmitter.event;
@@ -687,6 +814,27 @@ export class PreferencesStore implements vscode.Disposable {
     const validEntities = validEntityKeys
       ? new Set(validEntityKeys)
       : undefined;
+    const validFilePathSet = validFilePaths
+      ? new Set(validFilePaths)
+      : undefined;
+    // Pruning is a garbage collection, and it may only run against an index
+    // that is authoritative about what exists. An index holding nothing is
+    // not evidence that every tag, note and task was deleted: it is what a
+    // window with no folder open reports, which is the state VS Code is in
+    // while a VSIX is installed from the Extensions view.
+    //
+    // A workspace whose notes really were all deleted keeps its preferences
+    // instead. They are small, and they come back into use the moment a note
+    // does.
+    if (
+      validTags.size === 0 &&
+      validTasks.size === 0 &&
+      (validSections?.size ?? 0) === 0 &&
+      (validEntities?.size ?? 0) === 0 &&
+      (validFilePathSet?.size ?? 0) === 0
+    ) {
+      return;
+    }
     const sectionAccessCounts = validSectionIds
       ? Object.fromEntries(
           Object.entries(this.preferences.sectionAccessCounts).filter(
@@ -711,18 +859,6 @@ export class PreferencesStore implements vscode.Disposable {
           ),
         )
       : this.preferences.sectionAccessTimes;
-    const savedFilters = this.preferences.savedFilters.flatMap((filter) => {
-      // A saved query can name tags that do not exist yet, or none at all, so
-      // only tag-set filters are pruned against the index.
-      if (filter.query) {
-        return [filter];
-      }
-      const tagKeys = filter.tagKeys.filter((tagKey) => validTags.has(tagKey));
-      return tagKeys.length >= 2
-        ? [{ ...filter, tagKeys: normalizeSavedFilterTagKeys(tagKeys) }]
-        : [];
-    });
-    const savedFilterIds = new Set(savedFilters.map((filter) => filter.id));
     // Every tag in the first index is known; a tag seen after that is new
     // from the moment it is seen, until it is gone again.
     const previousFirstSeen = this.preferences.tagFirstSeen;
@@ -732,19 +868,13 @@ export class PreferencesStore implements vscode.Disposable {
         previousFirstSeen ? (previousFirstSeen[tagKey] ?? now) : 0,
       ]),
     );
-    const validFiles = validFilePaths ? new Set(validFilePaths) : undefined;
+    // Only what Deckard derived is collected here: counts, orders, times,
+    // and when a tag was first seen. A favorite, a pin, a saved search and a
+    // Home widget were each chosen on purpose, and an index that no longer
+    // mentions one is not a reason to throw it away — it is a reason to say
+    // so and let the reader decide. `findStale` finds them; the Tidy command
+    // asks.
     const changes: Partial<PersistedPreferences> = {
-      dashboardWidgets: this.preferences.dashboardWidgets.filter(
-        (widget) =>
-          widget.kind !== 'savedQuery' ||
-          (widget.filterId !== undefined && savedFilterIds.has(widget.filterId)),
-      ),
-      favoriteTags: this.preferences.favoriteTags.filter((tagKey) =>
-        validTags.has(tagKey),
-      ),
-      favoriteEntities: this.preferences.favoriteEntities.filter(
-        (entityKey) => validEntities?.has(entityKey) ?? true,
-      ),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -763,19 +893,77 @@ export class PreferencesStore implements vscode.Disposable {
           ([entityKey]) => validEntities?.has(entityKey) ?? true,
         ),
       ),
-      savedFilters,
       tagFirstSeen,
-      // A pin is kept while its note is there, whatever became of the
-      // heading it named: the heading is resolved when Home draws.
-      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
-        (pin) => validFiles?.has(pin.filePath) ?? true,
-      ),
     };
     // Every index update prunes, and it rarely removes anything. Writing
     // anyway would make every view that follows preferences refresh twice.
     if (this.hasChanges(changes)) {
       await this.update(changes);
     }
+  }
+
+  /**
+   * The deliberate choices that point at nothing the index has any more: a
+   * favorite whose tag is gone, a pin whose note is gone, a tag-set search
+   * left with fewer than two of its tags. Nothing here is removed by Deckard
+   * on its own; the Tidy command shows the list and asks.
+   *
+   * A saved query is never stale: it can name tags that do not exist yet.
+   */
+  public findStale(
+    validTagKeys: Iterable<string>,
+    validEntityKeys: Iterable<string>,
+    validFilePaths: Iterable<string>,
+  ): StalePreferences {
+    const validTags = new Set(validTagKeys);
+    const validEntities = new Set(validEntityKeys);
+    const validFiles = new Set(validFilePaths);
+    return {
+      favoriteTags: this.preferences.favoriteTags.filter(
+        (tagKey) => !validTags.has(tagKey),
+      ),
+      favoriteEntities: this.preferences.favoriteEntities.filter(
+        (entityKey) => !validEntities.has(entityKey),
+      ),
+      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
+        (pin) => !validFiles.has(pin.filePath),
+      ),
+      savedFilters: this.preferences.savedFilters.filter(
+        (filter) =>
+          !filter.query &&
+          filter.tagKeys.filter((tagKey) => validTags.has(tagKey)).length < 2,
+      ),
+    };
+  }
+
+  /** Removes what `findStale` found, once a reader has agreed to it. */
+  public async removeStale(stale: StalePreferences): Promise<void> {
+    const tags = new Set(stale.favoriteTags);
+    const entities = new Set(stale.favoriteEntities);
+    const pins = new Set(stale.pinnedNotes.map(pinKey));
+    const filters = new Set(stale.savedFilters.map((filter) => filter.id));
+    if (!tags.size && !entities.size && !pins.size && !filters.size) {
+      return;
+    }
+    await this.update({
+      favoriteTags: this.preferences.favoriteTags.filter((key) => !tags.has(key)),
+      favoriteEntities: this.preferences.favoriteEntities.filter(
+        (key) => !entities.has(key),
+      ),
+      pinnedNotes: (this.preferences.pinnedNotes ?? []).filter(
+        (pin) => !pins.has(pinKey(pin)),
+      ),
+      savedFilters: this.preferences.savedFilters.filter(
+        (filter) => !filters.has(filter.id),
+      ),
+      // A widget that showed a removed search leaves Home with it.
+      dashboardWidgets: this.preferences.dashboardWidgets.filter(
+        (widget) =>
+          widget.kind !== 'savedQuery' ||
+          widget.filterId === undefined ||
+          !filters.has(widget.filterId),
+      ),
+    });
   }
 
   private hasChanges(changes: Partial<PersistedPreferences>): boolean {
@@ -804,12 +992,34 @@ export class PreferencesStore implements vscode.Disposable {
     });
     const nextPreferences = clonePreferences(this.preferences);
     const persist = async (): Promise<void> => {
-      await this.state.update(preferencesKey, nextPreferences);
+      await this.persist(nextPreferences);
       this.changeEmitter.fire(clonePreferences(nextPreferences));
     };
     const queuedUpdate = this.updateQueue.then(persist, persist);
     this.updateQueue = queuedUpdate;
     await queuedUpdate;
+  }
+
+  /**
+   * Replaces everything this store holds with a blob read back from an
+   * export or a copy Deckard kept. It is normalized on the way in, so a file
+   * from an older Deckard, or one that was edited by hand, cannot leave the
+   * store holding a shape the views do not expect.
+   */
+  public async importPreferences(value: PersistedPreferences): Promise<void> {
+    await this.update(normalizePreferences(value));
+  }
+
+  /**
+   * Writes one blob to the two stores it is split across. The workspace's
+   * share is authoritative; the machine-wide copy is a backup and a seed.
+   */
+  private async persist(next: PersistedPreferences): Promise<void> {
+    await this.state.update(preferencesKey, next);
+    await this.workspaceState?.update(
+      preferencesKey,
+      pickWorkspacePreferences(next),
+    );
   }
 }
 

@@ -9,6 +9,7 @@ import {
   TagReference,
   Task,
   WorkspaceIndex,
+  UnreadableNote,
 } from '../types';
 import { getEntityKind } from '../markdown/parser';
 import {
@@ -17,7 +18,7 @@ import {
   SearchStore,
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../timing';
-import { ScanProgress, WorkspaceScanner } from './scanner';
+import { ScanProgress, WorkspaceScanner, describeError } from './scanner';
 
 /**
  * Owns the live note cache and turns scanner output into lookup maps for the UI.
@@ -36,6 +37,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private disposed = false;
   /** The derived index, kept until the notes next change. */
   private snapshot: WorkspaceIndex | undefined;
+  /** Notes in the workspace that are not in the index, and why. */
+  private readonly unreadable = new Map<string, string>();
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
@@ -54,6 +57,22 @@ export class WorkspaceIndexer implements vscode.Disposable {
     this.registerWatchers();
     this.readyPromise = this.refresh();
     return this.readyPromise;
+  }
+
+  /**
+   * The notes the workspace has that the index does not, because they could
+   * not be read, with why. Sorted by path so two reports of the same state
+   * read the same.
+   */
+  public getUnreadable(): UnreadableNote[] {
+    return [...this.unreadable]
+      .map(([filePath, reason]) => ({ filePath, reason }))
+      .sort((a, b) => a.filePath.localeCompare(b.filePath));
+  }
+
+  /** What the last full scan found, kept out, and read. */
+  public getLastScan(): { found: number; templates: number; excluded: number; read: number } {
+    return { ...this.scanner.lastScan };
   }
 
   /**
@@ -192,6 +211,10 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
         this.files.clear();
         parsedFiles.forEach((file) => this.files.set(file.filePath, file));
+        this.unreadable.clear();
+        this.scanner.failures.forEach((failure) =>
+          this.unreadable.set(failure.filePath, failure.reason),
+        );
         this.snapshot = undefined;
         measure(
           'Rebuild search index',
@@ -370,6 +393,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
       const filePath = this.scanner.getFilePath(update.uri);
       if (update.deleted) {
         this.files.delete(filePath);
+        this.unreadable.delete(filePath);
         this.searchStore?.remove(filePath);
         continue;
       }
@@ -381,9 +405,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
             ? await this.scanner.read(update.uri)
             : this.scanner.parse(update.uri, update.content, previous?.fileTimes);
         this.files.set(filePath, parsedFile);
+        this.unreadable.delete(filePath);
         this.searchStore?.upsert(parsedFile);
       } catch (error) {
         reportError(`Could not update ${filePath}`, error);
+        this.unreadable.set(filePath, describeError(error));
       }
     }
   }

@@ -387,13 +387,21 @@ test('an OR search finds notes from either branch', async () => {
   await settle();
 
   assert.deepStrictEqual(visibleTitles(view), ['Beta kickoff', 'Vendor risk']);
-  assert.deepStrictEqual(chips(view), ['tag = #risk/vendor OR tag = #project/beta'], 'an OR search is one chip');
-  assert.strictEqual(view.find('.query-chip .query-op').textContent, 'OR');
+  assert.deepStrictEqual(chips(view), ['tag = #risk/vendor', 'tag = #project/beta'], 'each branch is a chip');
+  assert.strictEqual(view.find('.query-bar-shell .query-chip-join').textContent, 'OR');
 
   // A term added to an OR search is added to all of it.
   search(view, 'kickoff');
   await settle();
   assert.strictEqual(box(view), '(tag = #risk/vendor OR tag = #project/beta) AND kickoff');
+  assert.deepStrictEqual(visibleTitles(view), ['Beta kickoff']);
+
+  // The OR is now a group: a frame of its own chips with its own remove,
+  // whose branches still go one at a time, as written.
+  assert.deepStrictEqual(chips(view), ['tag = #risk/vendor', 'tag = #project/beta', 'the group (tag = #risk/vendor OR tag = #project/beta)', 'text ~ kickoff']);
+  view.click(view.find('.query-bar-shell .query-chip-group .query-chip'));
+  await settle();
+  assert.strictEqual(box(view), '(tag = #project/beta) AND kickoff');
   assert.deepStrictEqual(visibleTitles(view), ['Beta kickoff']);
 });
 

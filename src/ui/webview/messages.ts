@@ -201,6 +201,10 @@ export function parseSearchPageMessage(
   }
 
   switch (value.type) {
+    case 'exportResults':
+      return value.kind === 'notes' || value.kind === 'tasks'
+        ? { type: 'exportResults', kind: value.kind }
+        : undefined;
     case 'setZenMode':
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
@@ -451,6 +455,10 @@ export function parseTaskBoardMessage(
   }
 
   switch (value.type) {
+    case 'exportResults':
+      return value.kind === 'notes' || value.kind === 'tasks'
+        ? { type: 'exportResults', kind: value.kind }
+        : undefined;
     case 'setZenMode':
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
