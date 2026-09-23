@@ -109,7 +109,7 @@ suite('Preference backups', () => {
     for (const junk of [null, 'text', 42, [], {}, { deckard: { kind: 'other' } }, { version: 2 }]) {
       assert.throws(() => readExport(junk), /not a Deckard preferences file|does not hold preferences/);
     }
-    assert.strictEqual(describePreferences(store.value), '1 favourite tag, 1 saved search');
+    assert.strictEqual(describePreferences(store.value), '1 favorite tag, 1 saved search');
     store.dispose();
   });
 

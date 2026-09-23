@@ -4,7 +4,7 @@ import { pinKey, PreferencesStore } from '../core/storage/preferences';
 
 /**
  * A property, not an example: over any sequence of the store's operations,
- * a favourite, a pin, or a saved search is removed only by the call that
+ * a favorite, a pin, or a saved search is removed only by the call that
  * names it. Every other mutator, and every prune against any index — full,
  * partial, empty, or one that mentions none of them — leaves them alone.
  *
@@ -93,7 +93,7 @@ async function step(
       if (!model.tags.has(tag)) {
         await store.toggleFavorite(tag);
         model.tags.add(tag);
-        return `favourite ${tag}`;
+        return `favorite ${tag}`;
       }
       return 'skip';
     }
@@ -102,7 +102,7 @@ async function step(
       if (!model.entities.has(entity)) {
         await store.toggleFavoriteEntity(entity);
         model.entities.add(entity);
-        return `favourite ${entity}`;
+        return `favorite ${entity}`;
       }
       return 'skip';
     }
@@ -214,13 +214,13 @@ suite('Preference invariants', () => {
       await store.removeStale(stale);
 
       const after = chosenIn(store);
-      for (const tag of after.tags) {assert.ok(keepTags.includes(tag), `seed ${seed}: kept a favourite the index lacks: ${tag}`);}
+      for (const tag of after.tags) {assert.ok(keepTags.includes(tag), `seed ${seed}: kept a favorite the index lacks: ${tag}`);}
       for (const entity of after.entities) {assert.ok(keepEntities.includes(entity), `seed ${seed}: kept an entity the index lacks`);}
       for (const pin of store.value.pinnedNotes ?? []) {assert.ok(keepFiles.includes(pin.filePath), `seed ${seed}: kept a pin whose note is gone`);}
       for (const tag of stale.favoriteTags) {assert.ok(!after.tags.has(tag), `seed ${seed}: said it would remove ${tag} and did not`);}
       // What was not stale is exactly what is left.
       const expectedTags = [...model.tags].filter((tag) => keepTags.includes(tag)).sort();
-      assert.deepStrictEqual([...after.tags].sort(), expectedTags, `seed ${seed}: tidy touched a favourite it should not have`);
+      assert.deepStrictEqual([...after.tags].sort(), expectedTags, `seed ${seed}: tidy touched a favorite it should not have`);
       store.dispose();
     }
   });

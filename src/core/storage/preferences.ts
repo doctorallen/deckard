@@ -46,7 +46,7 @@ const workspaceScopedKey = 'deckard.preferences.workspaceScoped';
  *
  * These were kept machine-wide until 1.19, and pruned against whichever
  * window last built an index. Opening any other folder holding a Markdown
- * file — a repository with a README was enough — deleted the favourites,
+ * file — a repository with a README was enough — deleted the favorites,
  * pins and view counts belonging to the notes workspace, because that
  * folder's index did not contain them.
  *
@@ -248,7 +248,7 @@ export class PreferencesStore implements vscode.Disposable {
     }
     // The machine-wide blob keeps a whole copy, so its workspace keys have to
     // be dropped before the workspace's own are laid over it. Without that, a
-    // workspace with nothing stored would read the last one's favourites.
+    // workspace with nothing stored would read the last one's favorites.
     this.preferences = normalizePreferences({
       ...omitWorkspacePreferences(global),
       ...(workspace ?? this.seeded ?? {}),
@@ -869,7 +869,7 @@ export class PreferencesStore implements vscode.Disposable {
       ]),
     );
     // Only what Deckard derived is collected here: counts, orders, times,
-    // and when a tag was first seen. A favourite, a pin, a saved search and a
+    // and when a tag was first seen. A favorite, a pin, a saved search and a
     // Home widget were each chosen on purpose, and an index that no longer
     // mentions one is not a reason to throw it away — it is a reason to say
     // so and let the reader decide. `findStale` finds them; the Tidy command
@@ -904,7 +904,7 @@ export class PreferencesStore implements vscode.Disposable {
 
   /**
    * The deliberate choices that point at nothing the index has any more: a
-   * favourite whose tag is gone, a pin whose note is gone, a tag-set search
+   * favorite whose tag is gone, a pin whose note is gone, a tag-set search
    * left with fewer than two of its tags. Nothing here is removed by Deckard
    * on its own; the Tidy command shows the list and asks.
    *

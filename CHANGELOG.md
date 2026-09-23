@@ -72,9 +72,9 @@
   leaves the list on its own.
 
 - **What a workspace remembers can be taken back.** A moment after each
-  change, Deckard writes a copy of its favourites, pins, saved searches,
+  change, Deckard writes a copy of its favorites, pins, saved searches,
   widgets and view counts into the workspace's storage and keeps the last
-  twenty. `Deckard: Restore Favourites, Pins, and Searches from a Copy`
+  twenty. `Deckard: Restore Favorites, Pins, and Searches from a Copy`
   offers them newest first; `Deckard: Export` writes the same thing to a
   JSON file of your choosing, and `Deckard: Import` reads one back. Each
   says what it holds, and what is here now, before replacing anything, and
@@ -84,19 +84,19 @@
 
 ### Fixed
 
-- **Deckard no longer deletes a favourite, a pin, or a saved search on its
+- **Deckard no longer deletes a favorite, a pin, or a saved search on its
   own.** Pruning used to remove any of them whose tag or note the index had
   stopped mentioning, which treated a guess as a decision. Now it collects
   only what Deckard derived for itself — view counts, access order, when a
   tag was first seen — and leaves what a reader chose alone. `Deckard: Tidy
-  Favourites, Pins, and Saved Searches` lists what points at nothing in this
+  Favorites, Pins, and Saved Searches` lists what points at nothing in this
   workspace any more and removes it only when asked; a saved query is never
   on that list, since it can name a tag that does not exist yet.
 
-- **Favourites, pins and view counts survive opening another folder.** They
+- **Favorites, pins and view counts survive opening another folder.** They
   were kept machine-wide, and every index update deleted any key the current
   workspace did not contain — so opening any other folder holding a Markdown
-  file, a repository with a README being enough, emptied the favourites,
+  file, a repository with a README being enough, emptied the favorites,
   pinned notes, saved searches and tag and note view counts belonging to the
   notes workspace. A window with no folder open did the same thing, which is
   the state VS Code is in while a VSIX is installed from the Extensions view,

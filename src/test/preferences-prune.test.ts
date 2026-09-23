@@ -55,7 +55,7 @@ suite('Preference pruning', () => {
     // What a window with no folder open reports, which is the state VS Code
     // is in while a VSIX is installed from the Extensions view. The store is
     // global, so pruning against it used to empty every workspace's
-    // favourites, view counts and pins at once.
+    // favorites, view counts and pins at once.
     await store.prune([], [], [], [], []);
 
     assert.deepStrictEqual(store.value.favoriteTags, ['#project/relay']);
@@ -73,7 +73,7 @@ suite('Preference pruning', () => {
     assert.strictEqual(store.value.pinnedNotes?.length, 1);
   });
 
-  test('never removes a favourite, a pin, or a saved search on its own', async () => {
+  test('never removes a favorite, a pin, or a saved search on its own', async () => {
     const store = new PreferencesStore(new MemoryMemento());
     await store.toggleFavorite('#project/relay');
     await store.toggleFavoriteEntity('#person/ren');
@@ -136,7 +136,7 @@ suite('Preference pruning', () => {
 });
 
 /**
- * Favourites, pins and view counts name what is in a workspace, so they are
+ * Favorites, pins and view counts name what is in a workspace, so they are
  * kept with it. They were machine-wide until 1.19, which is how opening an
  * unrelated repository could delete them.
  */
@@ -179,7 +179,7 @@ suite('Workspace-scoped preferences', () => {
     await first.initialize();
 
     // Any repository with a Markdown file in it. This used to delete the
-    // notes workspace's favourites, because its index did not hold them.
+    // notes workspace's favorites, because its index did not hold them.
     const other = new PreferencesStore(global, new MemoryMemento());
     await other.initialize();
     await other.prune(['#something/else'], [], ['other-section'], [], ['README.md']);

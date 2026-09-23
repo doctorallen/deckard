@@ -6,7 +6,7 @@ import { WorkspaceIndex } from '../../core/types';
 /**
  * Removing what points nowhere, on request.
  *
- * Deckard never throws away a favourite, a pin, or a saved search on its
+ * Deckard never throws away a favorite, a pin, or a saved search on its
  * own: an index that has stopped mentioning a tag is not proof the reader is
  * done with it, and a store that guessed wrong once emptied everything. What
  * it does instead is say how many of each point at nothing any more, and
@@ -27,13 +27,13 @@ interface TidyStore {
   removeStale(stale: StalePreferences): Promise<void>;
 }
 
-/** One line per kind, as "3 favourite tags", for whatever is stale. */
+/** One line per kind, as "3 favorite tags", for whatever is stale. */
 export function describeStale(stale: StalePreferences): string[] {
   const line = (count: number, one: string, many: string): string[] =>
     count === 0 ? [] : [`${count} ${count === 1 ? one : many}`];
   return [
-    ...line(stale.favoriteTags.length, 'favourite tag', 'favourite tags'),
-    ...line(stale.favoriteEntities.length, 'favourite entity', 'favourite entities'),
+    ...line(stale.favoriteTags.length, 'favorite tag', 'favorite tags'),
+    ...line(stale.favoriteEntities.length, 'favorite entity', 'favorite entities'),
     ...line(stale.pinnedNotes.length, 'pinned note', 'pinned notes'),
     ...line(stale.savedFilters.length, 'saved search', 'saved searches'),
   ];
@@ -65,7 +65,7 @@ export async function tidyPreferences(
   const lines = describeStale(stale);
   if (lines.length === 0) {
     void vscode.window.showInformationMessage(
-      'Every favourite, pin, and saved search still points at something in this workspace.',
+      'Every favorite, pin, and saved search still points at something in this workspace.',
     );
     return;
   }

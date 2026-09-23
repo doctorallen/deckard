@@ -269,19 +269,19 @@
       },
       {
         "command": "deckard.tidyPreferences",
-        "title": "Deckard: Tidy Favourites, Pins, and Saved Searches"
+        "title": "Deckard: Tidy Favorites, Pins, and Saved Searches"
       },
       {
         "command": "deckard.exportPreferences",
-        "title": "Deckard: Export Favourites, Pins, and Searches"
+        "title": "Deckard: Export Favorites, Pins, and Searches"
       },
       {
         "command": "deckard.importPreferences",
-        "title": "Deckard: Import Favourites, Pins, and Searches"
+        "title": "Deckard: Import Favorites, Pins, and Searches"
       },
       {
         "command": "deckard.restorePreferences",
-        "title": "Deckard: Restore Favourites, Pins, and Searches from a Copy"
+        "title": "Deckard: Restore Favorites, Pins, and Searches from a Copy"
       },
       {
         "command": "deckard.checkSetup",

@@ -140,7 +140,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     undefined,
     new SearchStore(context.storageUri),
   );
-  // Favourites, pins and view counts name what is in a workspace, so they are
+  // Favorites, pins and view counts name what is in a workspace, so they are
   // kept with it. A window with no folder open has no workspace to own them
   // and nothing to index, so it reads the machine-wide store alone.
   const preferences = new PreferencesStore(

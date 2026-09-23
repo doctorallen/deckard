@@ -121,7 +121,7 @@ re-declare the same names.
 | `--green` / `--toxic-green` | `#33FF33` | Positive values, metrics |
 | `--amber` / `--amber-bright` | `#FFB000` | Accents, hover, eyebrows |
 | `--amber-dim` | `#7A5400` | Muted accent |
-| `--favorite-red` | `#D23C28` | Favourite marker |
+| `--favorite-red` | `#D23C28` | Favorite marker |
 | `--warning-orange` | `#FF5500` | Warnings |
 | `--slate-olive` | `#3E4A42` | Secondary chrome |
 | `--grid-line` | `rgba(0,229,255,.04)` | Backdrop grid |

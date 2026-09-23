@@ -73,8 +73,8 @@ export function readExport(value: unknown): {
 /** One line saying what a blob holds, for a reader to weigh before replacing. */
 export function describePreferences(preferences: PersistedPreferences): string {
   const parts = [
-    count(preferences.favoriteTags.length, 'favourite tag'),
-    count(preferences.favoriteEntities.length, 'favourite entity', 'favourite entities'),
+    count(preferences.favoriteTags.length, 'favorite tag'),
+    count(preferences.favoriteEntities.length, 'favorite entity', 'favorite entities'),
     count((preferences.pinnedNotes ?? []).length, 'pinned note'),
     count(preferences.savedFilters.length, 'saved search', 'saved searches'),
   ].filter(Boolean);
