@@ -46,7 +46,7 @@ export function getSidebarNotesHtml(
 .active-file { margin-top: 8px; padding: 7px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
 .graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
-.active-label, .section-label { color: var(--muted); font-size: var(--text-xs); text-transform: uppercase; }
+.active-label, .section-label { color: var(--muted); font-size: var(--text-xs); }
 .active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
 .active-summary::-webkit-details-marker { display: none; }
 .active-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
@@ -108,7 +108,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
-.graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
+.graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
 .graph-kind.task { color: var(--amber); }
 .graph-kind.tag { color: var(--green); }
 .graph-tag-pill { margin-left: 0; color: var(--text); }
@@ -132,7 +132,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
 .refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; }
 .refine-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 

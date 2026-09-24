@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **Working labels read as written in every theme.** Column titles on the
+  board, group headings in lists, table headers, the Refine label, and the
+  labels beside controls were set in tracked capitals in the film themes, a
+  style that reads measurably slower at eleven pixels and that a reader
+  scans dozens of times. They now read as written everywhere; the eyebrow
+  above a page title and the title itself keep the capitals, which is where
+  the display voice belongs. Palettes, glows, and backdrops are unchanged.
+
 - **Related Notes says strong, moderate, or weak instead of a percentage.**
   Each result carried a score such as **33%**, which reads as a precision
   the ranking does not have, and two notes at 33% and 41% invited a reader

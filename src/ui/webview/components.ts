@@ -195,12 +195,11 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
-  text-transform: uppercase;
 }
 .control-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* A labelled control, such as a sort, drawn the same way on every page. */
-.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
@@ -264,7 +263,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
-.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); }
 /* A group whose control is taller than a row, such as a list, sits under its label. */
 .view-options-group.is-stacked { display: grid; justify-content: stretch; }
 /* A row of small numbered or named choices inside the menu. */
@@ -386,7 +385,7 @@ export function getSurfaceCss(): string {
    ground, and on LCARS that is near-black, which the tile never becomes. */
 .metric-open { display: grid; gap: 4px; justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
-.metric-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.metric-label { display: block; color: var(--muted); font-size: 11px; }
 .metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
 
 .empty {
@@ -448,8 +447,6 @@ export function getTaskBoardCss(): string {
   margin: 0;
   color: var(--cyan);
   font: 12px var(--font-mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
 }
 .board-column.is-overdue .board-column-title { color: var(--favorite-red); }
 .board-count { color: var(--muted); }
@@ -545,7 +542,7 @@ export function getTaskListCss(): string {
 .rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .result-table th, .result-table td { padding: 7px 9px; border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
 .result-table th button { display: flex; width: 100%; gap: 5px; align-items: center; min-height: 0; border: 0; padding: 7px 9px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
 .result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
@@ -1797,8 +1794,8 @@ export function getQueryEditorCss(): string {
 .query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .query-builder-group-head select { min-height: 28px; font-size: 12px; }
-.query-builder-head-text { color: var(--muted); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
-.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.query-builder-head-text { color: var(--muted); font-size: var(--text-xs); }
+.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; }
 .query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
 .query-builder-item > .query-builder-and { margin-top: 9px; }
 .query-builder-item.has-group { margin-top: 10px; margin-bottom: 10px; }
@@ -1811,7 +1808,7 @@ export function getQueryEditorCss(): string {
 .query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); }
 .query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
-.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
+.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
 .query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .query-builder-actions button { font-size: 11px; }
@@ -1830,9 +1827,9 @@ export function getQueryEditorCss(): string {
    its controls rather than against the page. */
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
-.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-.query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: var(--text-xs); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;

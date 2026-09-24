@@ -63,15 +63,15 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 }
 .overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .saved-view-name { margin: 0 0 8px; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
-.saved-view-name-label { color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+.saved-view-name-label { color: var(--muted); }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
 .overview-pane { min-width: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* Bulk Edit and Export sit together at the right, after the heading. */
 .overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
-.overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; text-transform: uppercase; }
-.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; }
+.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -86,7 +86,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-empty { color: var(--muted); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
-.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; }
+.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }

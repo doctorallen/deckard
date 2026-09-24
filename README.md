@@ -54,7 +54,7 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 ## Themes
 
-Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase readouts of the others. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo.
+Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase eyebrows and titles of the others. In every theme the labels a reader scans while working, column titles, group headings, table headers, and control labels, read as written; only the eyebrow above a page title and the title itself take the film styles' capitals. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo.
 
 | **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |

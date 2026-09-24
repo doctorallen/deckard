@@ -75,7 +75,8 @@ body { background: var(--vscode-editor-background); }
 body:has(.sidebar-header) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
 main { border: 0; box-shadow: none; }
 header { border-bottom: 1px solid var(--line); }
-/* Labels read as written, not as uppercase spaced-out readouts. */
+/* Corpo's eyebrows and titles read as written too; the working labels
+   already do in every theme. */
 body * { text-transform: none !important; letter-spacing: normal !important; }
 h1 { font-size: 20px; font-weight: 600; }
 .eyebrow { color: var(--muted); }
