@@ -82,7 +82,6 @@ h1 { font-size: 20px; font-weight: 600; }
 code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monospace); }
 .metric::before { display: none; }
 .metric-value { color: var(--text); font-weight: 600; }
-.task-meta { color: var(--muted); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
 .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
 .tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
@@ -182,7 +181,6 @@ input[type='checkbox'] { accent-color: var(--cyan); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--amber-bright); }
 .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--cyan); background: var(--panel-raised); box-shadow: inset 4px 0 0 var(--cyan), 0 0 14px rgba(0, 229, 255, .2); }
 .tag-name, .task-title a { color: var(--cyan-bright); }
-.task-meta { color: var(--muted); }
 .tag-filter summary, .tag-filter-search { border-color: var(--line); background: var(--panel-deep); }
 .tag-filter summary:hover, .tag-filter-search:focus { border-color: var(--favorite-red); color: var(--favorite-red); }
 .tag-filter-menu, .rank-context-menu { border-color: var(--cyan); background: var(--panel-deep); box-shadow: 0 0 20px rgba(0, 229, 255, .16); }

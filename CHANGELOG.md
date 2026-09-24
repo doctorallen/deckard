@@ -21,6 +21,12 @@
 
 ### Fixed
 
+- **The file and line under a task can be read in every theme.** The base
+  sheet coloured them with a literal grey that sat at 1.85:1 on a dark
+  panel, well under the 4.5:1 that WCAG asks of text this size, and only
+  Corpo and Synthwave restated it. They now take the muted token every
+  theme declares, which is 5.2:1 in the default palette.
+
 - **The status bar counts overdue and today separately.** It read
   **22 due today, 17 overdue** when five tasks were due today, because the
   first number was both groups added together, and the Tasks view it opens

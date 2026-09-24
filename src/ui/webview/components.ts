@@ -519,7 +519,7 @@ export function getTaskListCss(): string {
 .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #3d4145; font: 11px var(--font-mono); margin-top: 5px; }
+.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: 5px; }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--favorite-red); }
 .task-detail { letter-spacing: .03em; }

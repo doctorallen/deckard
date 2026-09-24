@@ -613,6 +613,14 @@ suite('Webview contracts', () => {
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    // The file and line under a task were once a literal grey at 1.85:1 on
+    // the panel, which six of the eight themes inherited. The muted token is
+    // what every theme declares for secondary text.
+    assert.strictEqual(
+      html.includes('.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted);'),
+      true,
+      'task provenance takes the muted token, never a literal colour',
+    );
                                               });
 
   test('draws a tag the same way in every theme', () => {
