@@ -394,6 +394,16 @@
         "mac": "cmd+shift+alt+f"
       },
       {
+        "command": "deckard.capture",
+        "key": "ctrl+shift+alt+c",
+        "mac": "cmd+shift+alt+c"
+      },
+      {
+        "command": "deckard.createDailyNote",
+        "key": "ctrl+shift+alt+d",
+        "mac": "cmd+shift+alt+d"
+      },
+      {
         "command": "deckard.editTask",
         "key": "ctrl+shift+alt+t",
         "mac": "cmd+shift+alt+t",

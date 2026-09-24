@@ -12,6 +12,13 @@
   has been moved, sized, or swapped, or the reader chooses **Dismiss**.
   Customize stays in the gear throughout.
 
+- **Capture and Create Daily Note have shortcuts.** The two commands run
+  most often each day went through the Command Palette every time.
+  Cmd/Ctrl+Shift+Alt+C captures a task and Cmd/Ctrl+Shift+Alt+D opens
+  today's note, in the same family as the search and task shortcuts. Both
+  are rebindable, and the Help page's command table lists every shortcut
+  beside its command.
+
 ### Fixed
 
 - **The status bar counts overdue and today separately.** It read
