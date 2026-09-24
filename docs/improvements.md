@@ -36,6 +36,26 @@ git hook, or CI — fail the build when a note carries an overdue task — is a
 thin shell over them, and it reaches people who are not in VS Code at the
 moment they need an answer.
 
+### 3. Read a task's status the way Obsidian writes it
+
+A task's status is a `#status/…` tag on its line. That fits the index: the
+tag is searchable, counted by Refine, completed after `#`, renamed with
+the other tags, and its namespace is a setting. Obsidian Tasks has no
+status field at all; its status is the character inside the checkbox,
+`[/]` in progress or `[-]` cancelled, configured per vault, and Dataview
+vaults write `[status:: doing]` as an inline field. Deckard's task pattern
+accepts only a space, `x`, or `X` in the checkbox, so a `[/]` line from an
+Obsidian vault is not indexed as a task at all, which is a larger gap than
+the status form. The tag also puts every status into search results and
+the graph as a node, and a status named `done` gets a column beside the
+board's built-in Done.
+
+Read the checkbox character as a status first, since that is Tasks' native
+form and costs nothing to write; read `[status:: …]` beside the tag for
+Dataview vaults; keep the tag as the form Deckard writes by default, or let
+the written form follow `deckard.tasks.metadataFormat` as dates and
+priority do; and fold `done` into the built-in column.
+
 ## Intentionally skipped
 
 | Idea | Reason |
@@ -50,8 +70,9 @@ moment they need an answer.
 ## Sequencing
 
 The CLI first, which is small once the query evaluator is the only thing it
-needs. Import, canvas, and Git-aware collaboration follow, in that order, if
-at all.
+needs. Reading Obsidian's status forms next, since the checkbox gap keeps
+whole tasks out of the index. Import, canvas, and Git-aware collaboration
+follow, in that order, if at all.
 
 ## Research sources
 
