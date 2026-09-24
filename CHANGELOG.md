@@ -12,6 +12,15 @@
   has been moved, sized, or swapped, or the reader chooses **Dismiss**.
   Customize stays in the gear throughout.
 
+- **One vocabulary for what the index holds.** The Dashboard counted
+  "entities" and "sections", Stats counted "Markdown files", "Note entries",
+  "All tags", and "Canonical tags", the Notes Graph counted "notes", and a
+  reindex said it had indexed 51 notes when it meant files. Every page now
+  uses the same four words: a **file** holds **notes**, the headed entries,
+  which hold **tasks** and carry **tags**. The Dashboard's tiles count notes,
+  tasks, and tags; Stats says files, notes, tags, and namespaced tags; and a
+  reindex says how many files it read and what it found in them.
+
 - **A due date says how far from today it is, in words.** A task row read
   **DUE 2026-09-08**, in red when the date had passed, so a reader subtracted
   the date from today and an overdue task was told apart by colour alone.

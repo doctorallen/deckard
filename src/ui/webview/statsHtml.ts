@@ -137,12 +137,12 @@ ${getComponentScript()}
     if (!state) return;
     const updated = state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'Not indexed yet';
     const metrics = [
-      metric('Markdown files', state.fileCount),
-      metric('Note entries', state.sectionCount, '', ''),
+      metric('Files', state.fileCount),
+      metric('Notes', state.sectionCount, '', ''),
       metric('Tasks', state.taskCount, 'has:task', 'Open a search for every task'),
       metric('Open tasks', state.activeTaskCount, 'is:open', 'Open a search for every open task'),
-      metric('All tags', state.tagCount),
-      metric('Canonical tags', state.entityCount),
+      metric('Tags', state.tagCount),
+      metric('Namespaced tags', state.entityCount),
       metric('Wiki links', state.wikiLinkCount),
       metric('Unlinked notes', state.orphanNoteCount)
     ].join('');

@@ -97,6 +97,22 @@ suite('Dashboard behavior', () => {
       ...changes,
     });
 
+  test('counts notes, tasks, and tags, in those words', () => {
+    const { page, snapshot } = open();
+    const labels = page
+      .findAll('.metrics .metric-label')
+      .map((label) => label.textContent);
+    assert.deepStrictEqual(labels, ['notes', 'tasks', 'tags']);
+    const values = page
+      .findAll('.metrics .metric-value')
+      .map((value) => Number(value.textContent));
+    assert.deepStrictEqual(values, [
+      snapshot.totalNoteCount,
+      snapshot.totalTaskCount,
+      snapshot.tags.length,
+    ]);
+  });
+
   test('moves between Home and Tags, and marks where the reader is', () => {
     const { page } = open();
 

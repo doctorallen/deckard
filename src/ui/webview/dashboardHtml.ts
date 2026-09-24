@@ -930,10 +930,12 @@ ${getQueryEditorScript()}
         }).join('') + '</select>' + filterIcon + '</span></label>'
       : '';
     const tagColumnChoices = renderViewOptionChoices('set-columns', [1, 2, 3, 4].map(function (columns) { return [columns, String(columns), columns + ' columns']; }), state.tagColumns, 'Tag columns', 'data-section="tags"');
+    // One vocabulary everywhere: notes are the headed entries, tasks, and
+    // tags. Stats and the graph count the same things under the same names.
     const metrics = '<div class="metrics" aria-label="Workspace totals">' +
-      '<div class="metric" data-code="SYS.ENT // 1982-AZ"><span class="metric-value">' + state.entities.length + '</span><span class="metric-label">entities</span></div>' +
-      '<div class="metric" data-code="IDX.SEC // 01"><span class="metric-value">' + state.totalSectionCount + '</span><span class="metric-label">sections</span></div>' +
+      '<div class="metric" data-code="IDX.NTE // 01"><span class="metric-value">' + state.totalNoteCount + '</span><span class="metric-label">notes</span></div>' +
       '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
+      '<div class="metric" data-code="SYS.TAG // 1982-AZ"><span class="metric-value">' + state.tags.length + '</span><span class="metric-label">tags</span></div>' +
       '</div>';
     const dashboardOptions = renderViewOptions([
       { label: 'Home', html: '<button type="button" class="' + (editingHome ? 'active' : '') + '" data-action="' + (editingHome ? 'finish-customizing' : 'customize-home') + '" aria-pressed="' + editingHome + '">' + (editingHome ? 'Done customizing' : 'Customize') + '</button>' },

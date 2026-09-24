@@ -5,7 +5,7 @@
 Deckard's webviews carry a lot of furniture. On the Home dashboard, before a
 single note is read, the first screen spends itself on an eyebrow
 (`DECKARD / WORKSPACE INDEX`), three metric tiles wearing invented telemetry
-codes (`SYS.ENT // 1982-AZ`), a dotted grid backdrop, a bordered row reading
+codes (`SYS.TAG // 1982-AZ`), a dotted grid backdrop, a bordered row reading
 "Home is yours to arrange.", a section label saying `SEARCH` above an obvious
 search box, and a permanent line of query syntax under it. Every task row then
 repeats its file name, heading, and line number in full. The Search page
