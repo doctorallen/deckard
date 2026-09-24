@@ -5,7 +5,7 @@ import { describeDueDate } from '../core/markdown/taskMetadata';
 /**
  * A due date is read for its distance from today, and cited by its date, so
  * a row writes both: the distance in words, then the date. The word
- * "overdue" is in the text, never left to a colour.
+ * "overdue" is in the text, never left to a color.
  */
 suite('Due date wording', () => {
   const day = (date: number, hour = 9): number =>

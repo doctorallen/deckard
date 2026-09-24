@@ -169,7 +169,7 @@ export class TaskStatusBar implements vscode.Disposable {
     this.item.tooltip = `Deckard: ${describeDueTasksAtLength(
       counts,
     )} Select to open Tasks.`;
-    // Overdue work is the one state worth colouring, and only then.
+    // Overdue work is the one state worth coloring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
         ? new vscode.ThemeColor('statusBarItem.warningBackground')

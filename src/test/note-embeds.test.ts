@@ -29,7 +29,7 @@ const index = indexOf({
     '---',
     '# Atlas',
     '',
-    'The programme.',
+    'The program.',
     '',
     '## Decision',
     '',
@@ -63,7 +63,7 @@ suite('Note embeds', () => {
   test('draws a whole note without its front matter', () => {
     const html = render('![[Atlas]]');
     assert.ok(html.includes('<h1>Atlas</h1>'), html);
-    assert.ok(html.includes('The programme.'));
+    assert.ok(html.includes('The program.'));
     assert.ok(!html.includes('project: atlas'), 'front matter is not content');
     assert.strictEqual(
       withoutFrontmatter('---\na: 1\n---\n\n# Title\n'),

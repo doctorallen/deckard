@@ -308,7 +308,7 @@ suite('Task board', () => {
       { type: 'setTableSort', column: 'due' },
     );
     assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setTableSort' }), { type: 'setTableSort' });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'colour' }), undefined);
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'color' }), undefined);
     assert.deepStrictEqual(
       parseTaskBoardMessage({ type: 'setTableColumns', columns: ['title', 'due'] }),
       { type: 'setTableColumns', columns: ['title', 'due'] },

@@ -15,7 +15,7 @@ the MCP and assistant tools, and the notes graph's force settings.
 
 These are worth naming so nothing below reads as a list of what is wrong.
 
-- **Every page declares `lang`, honours `prefers-reduced-motion`, draws a
+- **Every page declares `lang`, honors `prefers-reduced-motion`, draws a
   visible focus ring on every control and row, and puts a live region under
   its result count.** That is more than most VS Code extensions do.
 - **Multi-note writes are previewed in the refactor preview and reversible
@@ -43,7 +43,7 @@ These are worth naming so nothing below reads as a list of what is wrong.
 **Observed.** With five tasks due today and seventeen overdue, the status bar
 reads `22 due today, 17 overdue`. The Agenda widget on the same screen reads
 `Overdue 17` and `Today 5`. The bar's total is overdue plus today, and it is
-labelled "due today".
+labeled "due today".
 
 **Source.** `src/ui/views/taskStatusBar.ts:36-43`, `describeDueTasks`.
 
@@ -64,7 +64,7 @@ due today. Keep the hover sentence in `describeDueTasksAtLength` in step.
 
 ---
 
-### 2. The base sheet's task provenance colour is 1.85:1, and six of eight themes inherit it
+### 2. The base sheet's task provenance color is 1.85:1, and six of eight themes inherit it
 
 **Observed.** The file, heading, and line under every task row is drawn in a
 hard-coded `#3d4145` on a `#0D1017` panel. That is a contrast ratio of
@@ -97,7 +97,7 @@ done in slices.
 
 ---
 
-### 3. Overdue is conveyed by colour alone in task lists, and dates are absolute only
+### 3. Overdue is conveyed by color alone in task lists, and dates are absolute only
 
 **Observed.** In a task list row, an overdue task reads `DUE 2026-09-08` in
 red and an on-time task reads `DUE 2026-09-14` in green. The word "overdue"
@@ -110,11 +110,11 @@ Dates are always written as ISO dates. The board's screenshot shows nine
 overdue cards and asks the reader to subtract each date from today.
 
 **Source.** `src/ui/webview/components.ts:1189` (the row) and `:523-524`
-(the colours); `src/ui/webview/components.ts:960` (the board's wording).
+(the colors); `src/ui/webview/components.ts:960` (the board's wording).
 
 **Why it matters.** WCAG 1.4.1, Use of Color, is a level A criterion:
-colour must not be the only visual means of conveying information. About
-8% of men have a red-green colour deficiency, and red on a dark panel is
+color must not be the only visual means of conveying information. About
+8% of men have a red-green color deficiency, and red on a dark panel is
 one of the pairs they lose. On dates, NN/g's guidance on timestamps
 (Whitenton, *Timestamps and Dates*) is to write relative dates when the
 distance from now is what the reader is deciding on, and absolute dates
@@ -146,7 +146,7 @@ places, and the visual baselines will need re-recording.
 | Reindex toast | `51 notes` | — | `185 tags` |
 
 So "notes" means files in one place and sections in another, and the
-Dashboard's most prominent number, 181, is labelled with a word,
+Dashboard's most prominent number, 181, is labeled with a word,
 "entities", that the README explains but the page does not.
 
 **Source.** `src/ui/webview/dashboardHtml.ts:921-923`,
@@ -212,7 +212,7 @@ be the gate to the board's value on day one.
 
 - The tag context menu opens on `contextmenu` and closes on Escape. There
   is no keyboard route to it: not Shift+F10, not the Menu key, not a visible
-  button. Every action in it, open, favourite, rename, merge, is therefore
+  button. Every action in it, open, favorite, rename, merge, is therefore
   unreachable without a pointer from that spot.
 - The Notes / Tasks switch carries `role="tablist"` and `role="tab"` with
   `aria-selected`, which tells a screen reader user to expect arrow-key
@@ -224,8 +224,8 @@ be the gate to the board's value on day one.
 
 **Why it matters.** WCAG 2.1.1, Keyboard, is level A: everything a pointer
 can do, a keyboard must be able to do. For the tabs, WCAG 4.1.2, Name,
-Role, Value, is the criterion: a role is a promise about behaviour, and the
-WAI-ARIA Authoring Practices Tabs pattern spells out the behaviour that role
+Role, Value, is the criterion: a role is a promise about behavior, and the
+WAI-ARIA Authoring Practices Tabs pattern spells out the behavior that role
 promises. A role without its keyboard model is worse than no role, because
 a screen reader announces "tab 1 of 2" and the user then presses an arrow
 key that does nothing.
@@ -292,7 +292,7 @@ instructional text within a few visits, at which point it is pure cost:
 vertical space on the page a reader opens most, and one more edge in the
 frame zen mode was built to reduce. NN/g's guidance on instructional
 overlays and hints is that they should be dismissible, and should stop
-appearing once the behaviour they teach has been performed.
+appearing once the behavior they teach has been performed.
 
 **Change.** Show the bar until Home is customized once, or until it has been
 dismissed, and then not again. Keep Customize in the gear, where it already
@@ -303,7 +303,7 @@ right of the Home / Tags row costs one line's width and no height.
 
 ---
 
-### 9. The Notes Graph opens as an unlabelled hairball
+### 9. The Notes Graph opens as an unlabeled hairball
 
 **Observed.** The first paint is 485 nodes with no labels, "Around this
 note" unchecked, and the hint "Open a note to draw the graph around it".
@@ -317,7 +317,7 @@ overview first, zoom and filter, details on demand, is the standard for
 this kind of view, and the overview step means an overview a reader can
 read, not an overview of everything. Graph visualisation research on
 hairballs (for example, Nocaj, Ortmann and Brandes on untangling hairballs,
-2014) is consistent: beyond a few hundred nodes, unlabelled force layouts
+2014) is consistent: beyond a few hundred nodes, unlabeled force layouts
 communicate density and nothing else. The Related Notes sidebar already
 knows which note the reader is in.
 
@@ -378,7 +378,7 @@ hint is right, but the hint is needed at the moment of typing, not at rest.
 
 **Change.** Show the hint on focus and while the box is non-empty, and
 collapse it to the Builder button and a `?` at rest. The `.query-error`
-slot it shares keeps its behaviour, since an error is never chrome.
+slot it shares keeps its behavior, since an error is never chrome.
 
 **Effort.** Small.
 

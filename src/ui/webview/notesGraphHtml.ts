@@ -98,7 +98,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .legend-task { background: var(--amber-bright); }
 .legend-tag { background: var(--toxic-green); }
 /* The panels follow the theme rather than a fixed near-black, which was
-   unreadable when corpo took its text colour from a light VS Code theme. */
+   unreadable when corpo took its text color from a light VS Code theme. */
 .control-group { background: var(--panel); }
 .tooltip { background: var(--panel-raised); }
 .tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
@@ -1824,7 +1824,7 @@ ${getPageTailCss()}
   }
   /**
    * Drawing around the note in the editor is the host's business: it sends
-   * the neighbourhood rather than the workspace, so the page asks and draws
+   * the neighborhood rather than the workspace, so the page asks and draws
    * whatever comes back.
    */
   var localGraph = document.getElementById('local-graph');

@@ -7,7 +7,7 @@ script, both produced by `src/ui/webview/components.ts` and interpolated into
 each page.
 
 That file is the single place to change a component. A page keeps only the
-rules and behaviour that are genuinely its own.
+rules and behavior that are genuinely its own.
 
 ```
 components.ts   tokens, base stylesheet, shared page script, nonce, CSP
@@ -160,7 +160,7 @@ density can be changed in one place.
 ### `body`, `main`, `header`
 
 Provided by `getShellCss()`. `body` carries the grid backdrop and base font;
-`main` is a centred 1000px column with 24px padding; `header` is a flex row
+`main` is a centered 1000px column with 24px padding; `header` is a flex row
 with a `--line-strong` rule beneath it. Below 700px, `main` tightens to 16px
 and `header` stacks.
 
@@ -586,7 +586,7 @@ adds a setting or a command — `src/test/extension.test.ts` counts both.
 ## Adding a component
 
 1. Add the rule to the matching section of `components.ts` and the helper to
-   `getComponentScript()` if it needs behaviour.
+   `getComponentScript()` if it needs behavior.
 2. Delete the local copies from every page that had one.
 3. Document it in the table above.
 4. Run `npm run test:ui`, `npm run test:e2e`, and `npm run test:layout`.

@@ -31,7 +31,7 @@ export interface HelpManifest {
 const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.showDashboard': 'Workspace totals, Home, and every tag.',
   'deckard.showNotesGraph':
-    'The whole workspace as a map, or one note’s neighbourhood.',
+    'The whole workspace as a map, or one note’s neighborhood.',
   'deckard.showTaskBoard': 'Tasks as columns, or as a ranked list.',
   'deckard.showStats':
     'Index totals, notes nothing links to, and tags that look alike.',
@@ -181,7 +181,7 @@ nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; co
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
 /* Prose here is full of inline code chips, each a border and a pixel of padding
    taller than its text; a line box the chips fit inside keeps two on
-   neighbouring lines from touching. */
+   neighboring lines from touching. */
 article { min-width: 0; line-height: 1.55; }
 h1, h2, h3 { line-height: 1.2; }
 p { margin: 0 0 12px; }
@@ -304,7 +304,7 @@ ${getPageTailCss()}
       <div class="cards">
         <div class="card"><h3>Lightweight tags</h3><p>A plain <code>#tag</code> on a heading, a task, or a line of prose is indexed with no setup. Tag names take letters, numbers, <code>_</code>, <code>-</code>, and <code>/</code> namespace segments; a number alone is not a tag, so a date such as <code>#2026</code> stays text.</p></div>
         <div class="card"><h3>People and entities</h3><p><code>@mara-vale</code> names a person. <code>#project/…</code>, <code>#topic/…</code>, <code>#organization/…</code>, and <code>#meeting/…</code> name entities; any other namespace becomes one on first use. <code>deckard.personMarker</code> changes the marker, and <code>deckard.entityNamespaceAliases</code> folds one namespace into another.</p></div>
-        <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbours.</p></div>
+        <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbors.</p></div>
         <div class="card"><h3>Associated tags</h3><p>Tags written together on one heading, task, or line are remembered as related, and tags that meet under a shared heading count more lightly. Related Notes and Refine both rank with that evidence, normalized so a common tag is not promoted for being common.</p></div>
         <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu. Every context menu opens from the keyboard too, with Shift+F10, the menu key, or Alt+Enter on the focused row or tag.</p></div>
         <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
@@ -435,7 +435,7 @@ tag = #project/atlas AND task = open
       <div class="cards">
         <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing.</p></div>
         <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
-        <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighbourhood instead, one to three hops out, following the editor as you move between notes.</p></div>
+        <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighborhood instead, one to three hops out, following the editor as you move between notes.</p></div>
         <div class="card"><h3>Stats</h3><p>Index totals of files, notes, tasks, and tags, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and notes you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
         <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>
       </div>
@@ -472,7 +472,7 @@ tag = #project/atlas AND task = open
     <section id="zen">
       <h2>Zen mode</h2>
       <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
-      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colours.</p>
+      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors.</p>
       <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
     </section>
 

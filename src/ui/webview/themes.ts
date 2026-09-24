@@ -35,7 +35,7 @@ const corpoCss = `
   --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --panel-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --panel-raised: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
-  /* VS Code's own hover pair: its focus blue on its hover grey is about 3:1,
+  /* VS Code's own hover pair: its focus blue on its hover gray is about 3:1,
      which is a border color, not a text one. */
   --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
   --hover-fg: var(--vscode-foreground);

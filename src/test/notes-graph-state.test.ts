@@ -59,7 +59,7 @@ suite('Notes graph state', () => {
     assert.deepStrictEqual(
       local.tags.map(([key]) => key),
       ['#project/atlas', '#risk/vendor'],
-      'the tags this neighbourhood holds, a tag association being a hop like any other',
+      'the tags this neighborhood holds, a tag association being a hop like any other',
     );
     assert.strictEqual(
       local.totalNoteCount,

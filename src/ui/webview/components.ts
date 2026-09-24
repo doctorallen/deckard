@@ -7,7 +7,7 @@
  * sheet for the elements every page uses, and one script of the helpers the
  * page scripts all need.
  *
- * A page keeps only the styles and behaviour that are genuinely its own.
+ * A page keeps only the styles and behavior that are genuinely its own.
  * Changing a component here changes it everywhere.
  */
 
@@ -228,7 +228,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 }
 .control-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-/* A labelled control, such as a sort, drawn the same way on every page. */
+/* A labeled control, such as a sort, drawn the same way on every page. */
 .control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
@@ -581,7 +581,7 @@ export function getTaskListCss(): string {
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
 .result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
 .result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
-/* The sorted column is told by weight and its arrow, not a colour: amber on a panel is too faint for a small label in some themes.
+/* The sorted column is told by weight and its arrow, not a color: amber on a panel is too faint for a small label in some themes.
    Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
 .result-table th.is-sorted button { color: var(--text); font-weight: 700; }
 .result-table th.is-sorted button:hover, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
@@ -657,7 +657,7 @@ export function getProvenanceCss(): string {
 .card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within { z-index: 2; }
 /* The extension is the entry's own frame carried down: its background,
    border and inner shading, taken from the entry as it is drawn now, hover
-   colours included. It starts a little inside the entry so it covers the
+   colors included. It starts a little inside the entry so it covers the
    bottom border and any rounded corners, and draws a new bottom edge. */
 .card:hover::after, .card:focus-within::after,
 .note:hover::after, .note:focus-within::after,
@@ -1148,7 +1148,7 @@ export function getComponentScript(): string {
   function renderTaskBoardCard(card, columnId, columns, settings) {
     const details = card.details.map(function (detail) {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
-      // state is in the text; the page only colours it.
+      // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
       return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
     }).join(' · ');
@@ -1380,7 +1380,7 @@ export function getComponentScript(): string {
     const task = item.task;
     const settings = options || {};
     // The host words an open task's due date beside today, "Overdue 15 days
-    // · 2026-09-08", so the state is in the text and not in the colour alone.
+    // · 2026-09-08", so the state is in the text and not in the color alone.
     // A done task keeps its date as written.
     const dueDate = item.dueLabel
       ? '<span class="due-date ' + (item.overdue ? 'overdue' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
@@ -1527,7 +1527,7 @@ export function getComponentScript(): string {
       const insertionPoint = before ? row : row.nextSibling;
       if (placeholder && row.parentElement && insertionPoint !== placeholder) row.parentElement.insertBefore(placeholder, insertionPoint);
     }
-    function finish(event, cancelled) {
+    function finish(event, canceled) {
       if (!drag || drag.pointerId !== event.pointerId) return;
       const current = drag;
       if (current.row.hasPointerCapture && current.row.hasPointerCapture(event.pointerId)) current.row.releasePointerCapture(event.pointerId);
@@ -1536,7 +1536,7 @@ export function getComponentScript(): string {
         return;
       }
       let dropped = false;
-      if (!cancelled) {
+      if (!canceled) {
         follow(event.clientX, event.clientY);
         const targetKey = dropTarget ? keyOf(dropTarget, current.kind) : undefined;
         dropped = Boolean(targetKey) && targetKey !== current.key && options.canRank(current.kind)
@@ -1870,7 +1870,7 @@ export function getQueryEditorCss(): string {
 }
 
 /**
- * The search box's behaviour, inserted in a page script after
+ * The search box's behavior, inserted in a page script after
  * getComponentScript(), whose helpers it uses.
  *
  * Like getComponentScript(), this string is interpolated into a template

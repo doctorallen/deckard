@@ -84,7 +84,7 @@
   its floor, and every smaller size has risen to it.
 
 - **The Notes Graph opens around the note being written, and names its
-  hubs.** It opened on the whole workspace, hundreds of unlabelled dots with
+  hubs.** It opened on the whole workspace, hundreds of unlabeled dots with
   focus off and a line saying to open a note, which the reader usually had.
   It now opens around the note in the editor, one hop out, when there is
   one, and keeps whatever scope the reader then chooses. At rest the whole
@@ -125,7 +125,7 @@
 
 - **A due date says how far from today it is, in words.** A task row read
   **DUE 2026-09-08**, in red when the date had passed, so a reader subtracted
-  the date from today and an overdue task was told apart by colour alone.
+  the date from today and an overdue task was told apart by color alone.
   Everywhere a task is listed, Home, search pages, the board's cards, list,
   and table, and query blocks, the date now reads **Overdue 15 days ·
   2026-09-08**, **Due today**, **Due tomorrow**, or **Due in 3 days**, with
@@ -154,7 +154,7 @@
   names the panel it shows.
 
 - **The file and line under a task can be read in every theme.** The base
-  sheet coloured them with a literal grey that sat at 1.85:1 on a dark
+  sheet colored them with a literal gray that sat at 1.85:1 on a dark
   panel, well under the 4.5:1 that WCAG asks of text this size, and only
   Corpo and Synthwave restated it. They now take the muted token every
   theme declares, which is 5.2:1 in the default palette.
@@ -436,7 +436,7 @@
   still says so. Turn it on from the gear on the Dashboard, a search page or
   the Task board, from `Deckard: Zen Mode`, or with `deckard.zenMode`. It is
   one switch for every view, and it composes with all eight themes rather
-  than replacing one — a theme picks the colours, zen picks how much frame
+  than replacing one — a theme picks the colors, zen picks how much frame
   is drawn around them.
 
 - **Renaming a note carries its links with it.** A `[[link]]` names a note by
@@ -514,7 +514,7 @@
 
 - **The calendar keeps its dates still, and starts its weeks on Sunday.** A
   day with a note or a due count drew taller content than a day without one,
-  and a button centres what it holds, so dates wandered up and down the grid
+  and a button centers what it holds, so dates wandered up and down the grid
   depending on what each day had. Every day is now the same three rows — the
   date, a dot, a count — drawn whether or not there is anything to mark. The
   week-number column is gone, and weeks run Sunday to Saturday; a weekly
@@ -602,9 +602,9 @@
   attached to. **Hops out** reaches one, two, or three connections from the
   note in the editor — a tag association counting as a hop like any other —
   and the graph follows the editor as you move between notes. Only the
-  neighbourhood is sent to the page, so a local graph costs a screenful
+  neighborhood is sent to the page, so a local graph costs a screenful
   whatever the workspace holds, and the tag checklist narrows to the tags
-  that neighbourhood holds.
+  that neighborhood holds.
 
 - **One edit can be made to everything a search found.** A search page is
   where a set of notes and tasks is already gathered, so **Bulk Edit** in a
@@ -645,7 +645,7 @@
   Deckard keeps waited for a view to be opened; this one is visible while you
   are writing code. It reads **3 due today**, counting the same tasks the
   Agenda's Overdue and Today groups hold, says **1 overdue** and takes the
-  warning colour when something has slipped, and opens the Agenda when
+  warning color when something has slipped, and opens the Agenda when
   selected. A clear day hides it entirely. `deckard.statusBar` turns it off,
   and `deckard.taskReminderTime`, set to something like `09:00`, has Deckard
   say once a day what is due, with **Open Agenda** beside it.

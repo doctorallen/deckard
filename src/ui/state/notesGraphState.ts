@@ -489,7 +489,7 @@ export function findNoteNodeIds(
 }
 
 /**
- * The neighbourhood of a note: the nodes it holds, everything within `depth`
+ * The neighborhood of a note: the nodes it holds, everything within `depth`
  * hops of them, and the edges between what is kept.
  *
  * The whole-workspace graph answers what the workspace looks like. This
@@ -509,14 +509,14 @@ export function createLocalGraphSnapshot(
     return { ...snapshot, nodes: [], edges: [], tags: [], totalNoteCount: 0, totalTaskCount: 0 };
   }
 
-  const neighbours = new Map<string, string[]>();
+  const neighbors = new Map<string, string[]>();
   snapshot.edges.forEach((edge) => {
-    neighbours.set(edge.source, [
-      ...(neighbours.get(edge.source) ?? []),
+    neighbors.set(edge.source, [
+      ...(neighbors.get(edge.source) ?? []),
       edge.target,
     ]);
-    neighbours.set(edge.target, [
-      ...(neighbours.get(edge.target) ?? []),
+    neighbors.set(edge.target, [
+      ...(neighbors.get(edge.target) ?? []),
       edge.source,
     ]);
   });
@@ -525,10 +525,10 @@ export function createLocalGraphSnapshot(
   for (let hop = 0; hop < reach; hop += 1) {
     const next: string[] = [];
     frontier.forEach((id) => {
-      (neighbours.get(id) ?? []).forEach((neighbour) => {
-        if (!kept.has(neighbour)) {
-          kept.add(neighbour);
-          next.push(neighbour);
+      (neighbors.get(id) ?? []).forEach((neighbor) => {
+        if (!kept.has(neighbor)) {
+          kept.add(neighbor);
+          next.push(neighbor);
         }
       });
     });
@@ -551,7 +551,7 @@ export function createLocalGraphSnapshot(
     ...snapshot,
     nodes,
     edges,
-    // The checklist offers the tags this neighbourhood actually holds, so
+    // The checklist offers the tags this neighborhood actually holds, so
     // filtering it cannot empty the graph by naming a tag that is not here.
     tags: snapshot.tags.filter(([key]) => tagKeys.has(key)),
     totalNoteCount: nodes.filter((node) => node.kind === 'note').length,

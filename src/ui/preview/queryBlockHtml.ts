@@ -203,7 +203,7 @@ function renderTaskTable(
 }
 
 /**
- * One labelled list. The label keeps notes and tasks apart, and the footer
+ * One labeled list. The label keeps notes and tasks apart, and the footer
  * says when `limit` has hidden some of them.
  */
 function renderGroup(
@@ -246,7 +246,7 @@ function renderTask(item: QueryBlockItem, now: number): string {
   const overdue =
     !done && item.dueAt !== undefined && item.dueAt < startOfDay(now);
   // An open task's due date reads beside today, "overdue 12 days ·
-  // 2026-09-01", so the state is in the words and not the colour alone.
+  // 2026-09-01", so the state is in the words and not the color alone.
   const dueLabel =
     item.dueAt !== undefined && !done
       ? describeDueDate(item.dueAt, now, item.dueText).label

@@ -136,7 +136,7 @@ suite('Linking to a related note', () => {
       Object.entries({
         'notes/Atlas.md': [
           '# Atlas',
-          'The programme.',
+          'The program.',
           '## Check-in #project/atlas',
           'Notes from the call.',
           'The lift is still stuck #risk/vendor.',

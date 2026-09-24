@@ -36,7 +36,7 @@ export class NotesGraphPanel implements vscode.Disposable {
   /**
    * Whether the graph is drawn around one note, and how far out it reaches.
    *
-   * The whole workspace says what the workspace looks like; a neighbourhood
+   * The whole workspace says what the workspace looks like; a neighborhood
    * says what one note is attached to, which is the question asked with a
    * note open.
    */
@@ -198,7 +198,7 @@ export class NotesGraphPanel implements vscode.Disposable {
 
   /**
    * The graph opens around the note being written, one hop out, when there
-   * is one: a whole workspace at once is hundreds of unlabelled dots, an
+   * is one: a whole workspace at once is hundreds of unlabeled dots, an
    * overview of density and nothing else, and the reader came from a note.
    * The full graph is the checkbox away, and a scope the reader has chosen
    * is kept.
@@ -351,7 +351,7 @@ export class NotesGraphPanel implements vscode.Disposable {
 
   /**
    * The graph as the page should draw it: the whole workspace, or the
-   * neighbourhood of the note in the editor.
+   * neighborhood of the note in the editor.
    *
    * The narrowing happens here rather than in the page, so a local graph
    * sends only the nodes it holds — a screenful, whatever the workspace

@@ -99,7 +99,7 @@ suite('Deckard query language', () => {
   });
 
   test('reports an unknown field instead of guessing', () => {
-    const parsed = parseQuery('colour:red');
+    const parsed = parseQuery('color:red');
     assert.strictEqual(parsed.node, undefined);
     assert.match(parsed.diagnostics[0].message, /not a Deckard query field/);
   });
@@ -451,7 +451,7 @@ suite('Deckard search page state', () => {
 
   test('rejects a shorthand value it does not know', () => {
     assert.match(parseQuery('is:maybe').diagnostics[0].message, /is: accepts/);
-    assert.match(parseQuery('no:colour').diagnostics[0].message, /has: and no: accept/);
+    assert.match(parseQuery('no:color').diagnostics[0].message, /has: and no: accept/);
   });
 
   test('writes shorthands back the way they are typed', () => {
@@ -546,7 +546,7 @@ function createPreferences(): PersistedPreferences {
 }
 
 /**
- * Builds a small, explicit index so query behaviour is checked against known
+ * Builds a small, explicit index so query behavior is checked against known
  * membership rather than against whatever a parser run happens to produce.
  */
 function createIndex(): WorkspaceIndex {

@@ -643,13 +643,13 @@ suite('Webview contracts', () => {
       true,
       'the hint rests only while the box is idle and empty',
     );
-    // The file and line under a task were once a literal grey at 1.85:1 on
+    // The file and line under a task were once a literal gray at 1.85:1 on
     // the panel, which six of the eight themes inherited. The muted token is
     // what every theme declares for secondary text.
     assert.strictEqual(
       html.includes('.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted);'),
       true,
-      'task provenance takes the muted token, never a literal colour',
+      'task provenance takes the muted token, never a literal color',
     );
                                               });
 
@@ -1031,7 +1031,7 @@ suite('Webview contracts', () => {
       "a page's top rule is recolored, not replaced",
     );
     assert.strictEqual(/main \{[^}]*border-top:/.test(cooper), false);
-    // Strength steps are gold against faint empty ones, not two pale greys.
+    // Strength steps are gold against faint empty ones, not two pale grays.
     assert.strictEqual(cooper.includes('.tag-weight-rail-segment.filled { background: var(--amber); }'), true);
   });
 
@@ -1044,7 +1044,7 @@ suite('Webview contracts', () => {
       vscode.Uri.file('/deckard'),
     );
 
-    // The shared shell centres main without a frame; the Dashboard widens it.
+    // The shared shell centers main without a frame; the Dashboard widens it.
     assert.strictEqual(
       html.includes(
         'main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }',
@@ -1183,7 +1183,7 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-                                // Inline tags keep the sidebar's compact size; colour, margin and
+                                // Inline tags keep the sidebar's compact size; color, margin and
     // alignment come from the shared .tag-open and .inline-tag rules.
     assert.strictEqual(
       html.includes(

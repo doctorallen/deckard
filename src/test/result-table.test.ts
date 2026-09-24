@@ -23,8 +23,8 @@ suite('Result table', () => {
       unknown: [],
     });
     assert.deepStrictEqual(
-      parseTaskColumns('priority,title,priority,colour'),
-      { columns: ['title', 'priority'], unknown: ['colour'] },
+      parseTaskColumns('priority,title,priority,color'),
+      { columns: ['title', 'priority'], unknown: ['color'] },
       'a column named twice is one column, and an unknown one is reported',
     );
     assert.deepStrictEqual(parseTaskColumns('').columns, ['title']);

@@ -858,8 +858,8 @@ export interface NotesGraphSnapshot {
 }
 
 /**
- * What a local graph is centred on: the note last open in an editor, how far
- * out it reaches, and whether the graph on screen is that neighbourhood or
+ * What a local graph is centered on: the note last open in an editor, how far
+ * out it reaches, and whether the graph on screen is that neighborhood or
  * the whole workspace.
  */
 export interface NotesGraphFocus {
@@ -905,7 +905,7 @@ export interface NotesGraphClearSelectionMessage {
   type: 'clearSelection';
 }
 
-/** Draw the whole workspace, or the neighbourhood of the note in the editor. */
+/** Draw the whole workspace, or the neighborhood of the note in the editor. */
 export interface NotesGraphSetScopeMessage {
   type: 'setGraphScope';
   local: boolean;
@@ -1456,7 +1456,7 @@ export interface TableSort {
 }
 
 /**
- * One cell: its text, and what it is, so a surface can colour an overdue
+ * One cell: its text, and what it is, so a surface can color an overdue
  * date or quieten a file name without knowing which column it drew.
  */
 export interface TableCell {
