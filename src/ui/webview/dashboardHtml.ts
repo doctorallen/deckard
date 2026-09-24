@@ -9,7 +9,14 @@ import {
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
-import { getFavoriteHeartAssetUris, settingsIcon } from './icons';
+import {
+  chevronLeftIcon,
+  chevronRightIcon,
+  filterIcon,
+  getFavoriteHeartAssetUris,
+  settingsIcon,
+  sortIcon,
+} from './icons';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -72,7 +79,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-count { color: var(--muted); font-family: var(--font-mono); }
 .tag-actions { display: flex; align-items: center; gap: 5px; }
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
-.favorite-toggle { display: grid; place-items: center; color: var(--favorite-red); }
+.favorite-toggle { display: grid; min-width: 24px; min-height: 24px; place-items: center; color: var(--favorite-red); }
 /* The toggle carries a filled ground in some themes, and a hovered control's
    ground in every one, so hovering it takes the shared hover pair rather than
    keeping a red that was chosen for the ground it has at rest. */
@@ -138,7 +145,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-paging select { min-width: 46px; }
 .home-widget-steps { display: flex; align-items: center; gap: 6px; }
 .home-widget-steps .page-range { margin-right: 2px; }
-.home-widget-steps button { display: grid; width: 22px; min-height: 22px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
+.home-widget-steps button { display: grid; width: 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
 .home-widget-steps button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .home-widget-steps button[disabled] { color: var(--muted); cursor: default; opacity: 0.45; }
 .home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -550,7 +557,7 @@ ${getQueryEditorScript()}
     const text = String(query || '').trim();
     const parts = (text ? ['Searching “' + text + '”'] : []).concat(filter ? [filter] : []);
     return parts.length
-      ? '<span class="tab-search-mark" title="' + escapeHtml(parts.join(', ')) + '"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span><span class="visually-hidden">, searching</span>'
+      ? '<span class="tab-search-mark" title="' + escapeHtml(parts.join(', ')) + '">${filterIcon}</span><span class="visually-hidden">, searching</span>'
       : '';
   }
 
@@ -805,11 +812,11 @@ ${getQueryEditorScript()}
     const paging = widget.paging;
     if (!paging || editingHome) return '';
     const attribute = 'data-widget-id="' + escapeHtml(widget.id) + '"';
-    const step = function (page, label, path, enabled) {
+    const step = function (page, label, side, enabled) {
       return '<button type="button" data-action="set-widget-page" data-page="' + page + '" ' + attribute
         + (enabled ? '' : ' disabled')
         + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" title="' + label + ' page">'
-        + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="' + path + '"/></svg></button>';
+        + (side === 'left' ? '${chevronLeftIcon}' : '${chevronRightIcon}') + '</button>';
     };
     // The sizes on offer, and whatever this widget is already set to, so a
     // count chosen before it was paged is not silently changed by its own
@@ -826,8 +833,8 @@ ${getQueryEditorScript()}
     return '<nav class="home-widget-paging" aria-label="' + escapeHtml(widget.title) + ' pages">'
       + perPage
       + '<span class="home-widget-steps"><span class="page-range">' + describePageRange(paging) + '</span>'
-      + step(paging.page - 1, 'Previous', 'M10 3 5 8l5 5', paging.page > 1)
-      + step(paging.page + 1, 'Next', 'M6 3l5 5-5 5', paging.page < paging.pageCount)
+      + step(paging.page - 1, 'Previous', 'left', paging.page > 1)
+      + step(paging.page + 1, 'Next', 'right', paging.page < paging.pageCount)
       + '</span></nav>';
   }
 
@@ -899,8 +906,8 @@ ${getQueryEditorScript()}
         'clear-tag-search',
       )
       : '';
-    const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
-    const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
+    const filterIcon = '${filterIcon}';
+    const sortIcon = '${sortIcon}';
     const renderTag = function (tag) {
       const draggable = state.tagSortMode === 'custom';
       const display = formatTagDisplay(tag);

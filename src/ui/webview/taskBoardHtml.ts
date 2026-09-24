@@ -1,3 +1,4 @@
+import { sortIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -214,7 +215,7 @@ ${getQueryEditorScript()}
     const scrollY = window.scrollY;
     const isList = state.layout === 'list';
     const isTable = state.layout === 'table';
-    const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
+    const sortIcon = '${sortIcon}';
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks">'
       + [['rank', 'Rank'], ['created', 'Created'], ['updated', 'Updated']].map(function (option) {
         return '<option value="' + option[0] + '"' + (state.taskSortMode === option[0] ? ' selected' : '') + '>' + option[1] + '</option>';

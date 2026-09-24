@@ -148,10 +148,21 @@ button, select, input[type="text"], input[type="search"] {
   font: inherit;
 }
 button { cursor: pointer; }
-button:hover, button.active, select:hover, .tag-open:hover {
+/* Two states, each its own drawing, so a reader hovering to learn what a
+   click will do is not shown the chosen state, and a chosen control under
+   the pointer still reads as chosen by the bar along its foot, which the
+   hover ground does not cover. Hover raises the ground; chosen keeps the
+   control's own ground and marks it with the accent border and the bar. */
+button:hover, select:hover, .tag-open:hover {
   border-color: var(--amber);
   background: var(--hover-bg);
   color: var(--hover-fg);
+}
+button.active {
+  border-color: var(--chosen-bg);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg);
 }
 /* A field being typed in keeps its own ground and its text: inverting it the
    way a pressed control inverts would recolor the text under the caret. */
@@ -237,16 +248,18 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
 .pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
-.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--panel-raised); color: var(--text); box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg); }
 .page-gap { color: var(--muted); padding: 0 2px; }
 
 /* A chosen segment, in any group of them: the Dashboard's tabs mark their
    own, and this marks every other group the same way, rather than leaving
    them with the inverted treatment a pressed button takes. */
-.segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"] {
+.segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"],
+.segmented button.active:hover, .segmented button[aria-pressed="true"]:hover, .segmented button[aria-selected="true"]:hover {
   border-color: var(--chosen-bg);
-  background: var(--chosen-bg);
-  color: var(--chosen-fg);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg);
 }
 .segmented button.active *, .segmented button[aria-pressed="true"] *, .segmented button[aria-selected="true"] * {
   color: inherit;
@@ -1132,7 +1145,7 @@ export function getComponentScript(): string {
       + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
-      + '<select class="board-move" data-action="board-move" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '"><option value="" selected hidden>⋯</option>' + renderTaskCardMoves(card, columnId, columns, settings) + '</select>'
+      + '<select class="board-move" data-action="board-move" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '"><option value="" selected hidden>···</option>' + renderTaskCardMoves(card, columnId, columns, settings) + '</select>'
       + '</div></article>';
   }
 

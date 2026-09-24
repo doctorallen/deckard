@@ -185,7 +185,7 @@ treatment, so a toolbar reads as one row of controls.
 | `.control-row` | Left-aligned wrapping row of controls. |
 | `.segmented` | **A row of buttons that reads as one control.** Collapses the borders between children and rounds the outer corners. |
 | `.icon-button` | A square icon-only control at `--control-height`. |
-| `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. |
+| `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. Every glyph comes from `icons.ts`: `strokeIcon(ICON_PATHS.name, className)` wraps a path in the one frame, and the named exports (`sortIcon`, `chevronLeftIcon`, `calendarIcon`, …) are the common ones ready to interpolate. No page draws its own `<svg>`; `src/test/icons.test.ts` fails one that does. |
 | `.view-options` | **The gear every page's view options sit behind**, drawn by `renderViewOptions()`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. |
 | `.filter-count` | Small muted count inside a filter button. |
 
@@ -203,7 +203,22 @@ Any group of joined buttons uses this, rather than each page restyling
 ```
 
 Mark the current button `.active`; the primitive raises it above its
-neighbours so its border is not clipped. The second class carries only what is
+neighbors so its border is not clipped.
+
+**Two states, two drawings.** Hover raises the ground (`--hover-bg`,
+`--hover-fg`). Chosen, `.active` or `aria-pressed="true"` or
+`aria-selected="true"`, keeps the control's own ground and takes the accent
+as its border and a bar along its foot (`--chosen-bg`), so a chosen control
+under the pointer still reads as chosen and a hovered one does not read as
+chosen. Themes re-declare the pairs; none of them redraws the states. There
+is no `:active` rule: the contrast suite cannot tell a pressed state from a
+resting one, and would read a pressed fill as every button's ground.
+
+**Targets are 24px.** WCAG 2.2's 2.5.8 sets 24 by 24 CSS pixels as the
+minimum for a pointer target. A chip is 24px tall, the steppers and the
+favorite heart's control are 24px square, and an icon-only control is
+`--control-height`. A new control under 24px needs a reason written beside
+it. The second class carries only what is
 specific to that group.
 
 Used by: the task filter, the layout and format toggles, the overview tabs, and

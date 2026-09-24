@@ -89,7 +89,8 @@ code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monosp
 button, select, input[type="text"], input[type="search"], .tag-filter summary { border-radius: 2px; }
 button, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 button:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
-button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .segmented button[aria-pressed="true"], .pagination .page-number.is-current { border-color: var(--vscode-focusBorder); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); box-shadow: inset 0 -2px 0 var(--vscode-focusBorder); }
+.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 /* A count inside a chosen button follows its text, not the muted color. */
 .active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
 .query-bar-row .query-apply:hover { background: var(--vscode-button-hoverBackground); color: var(--vscode-button-foreground); }

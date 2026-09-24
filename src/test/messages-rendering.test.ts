@@ -613,6 +613,12 @@ suite('Webview contracts', () => {
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    // Hover and chosen are two drawings, not one amber.
+    assert.strictEqual(
+      html.includes('button.active {\n  border-color: var(--chosen-bg);\n  background: var(--panel-raised);'),
+      true,
+      'a chosen control keeps its own ground and takes the accent as a border and a bar',
+    );
     // Nothing a reader acts on is set below the smallest step of the scale.
     assert.ok(
       html.includes('--text-xs: 11px;'),

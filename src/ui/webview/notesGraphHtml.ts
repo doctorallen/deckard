@@ -1,3 +1,4 @@
+import { zoomInIcon, zoomOutIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -82,7 +83,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .zoom-controls { display: inline-flex; }
-.zoom-controls button { min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
+.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
 .zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: var(--text-xs) var(--font-mono); }
@@ -167,9 +168,9 @@ ${getPageTailCss()}
 </div>
 <div class="graph-zoom-controls">
   <div class="zoom-controls" role="group" aria-label="Zoom controls">
-    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">−</button>
+    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">${zoomOutIcon}</button>
     <span class="zoom-readout" id="zoom-readout">100%</span>
-    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">+</button>
+    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">${zoomInIcon}</button>
     <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit graph</button>
   </div>
   <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph</button>

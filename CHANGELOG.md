@@ -4,6 +4,19 @@
 
 ### Changed
 
+- **Controls: chosen apart from hovered, one icon set, and no target under
+  24px.** A chosen segment and a hovered button were both drawn amber, so
+  hovering to learn what a click would do showed the chosen state and a
+  chosen control under the pointer lost it. Chosen now keeps the control's
+  own ground with the accent as a border and a bar along its foot, and hover
+  raises the ground; Corpo follows with VS Code's own colors, and its Search
+  button stays the one filled control.
+  The glyphs pages drew for themselves, the same sort arrow four times over,
+  come from one 16px set in `icons.ts`, and the graph's zoom buttons take
+  glyphs in place of typed signs. Home's paging steppers, the favorite
+  heart's control, and the relevance rail's button grew to the 24px WCAG
+  2.2 asks of a pointer target.
+
 - **Buttons and commands follow one naming table.** Bulk Edit is Bulk edit;
   Clear, Clear search, and Clear the search are Clear; a widget's Apply is
   Save; Export says what it exports; Reset and Fit say what they reset

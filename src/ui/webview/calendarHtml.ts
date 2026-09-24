@@ -1,3 +1,4 @@
+import { calendarIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -95,7 +96,7 @@ ${getComponentScript()}
     const days = week.days[0].date + ' to ' + week.days[6].date;
     const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
     return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
-      + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6.5h11M6 3.5v3M10 3.5v3"/></svg>'
+      + '${calendarIcon}'
       + '</button>' + week.days.map(renderDay).join('');
   }
 
