@@ -555,6 +555,54 @@ export function startOfDay(timestamp: number): number {
   return date.getTime();
 }
 
+/** How a due date reads beside today, and whether it has passed. */
+export interface DueDescription {
+  /**
+   * `overdue 15 days`, `due today`, `due tomorrow`, or `due in 3 days`;
+   * `overdue` or `due` alone once the date is more than a month away.
+   */
+  relative: string;
+  /** The relative phrase with the date beside it, as a row or card writes it. */
+  label: string;
+  overdue: boolean;
+  /** Days from today to the due date; negative once it has passed. */
+  days: number;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Beyond this many days either way, the distance is left to the date. */
+const RELATIVE_DUE_LIMIT_DAYS = 30;
+
+/**
+ * Words a due date the way a reader decides on it: how far from today it is,
+ * then the date itself for anyone who cites or compares dates. The word
+ * "overdue" is in the text, so the state never rests on colour alone.
+ */
+export function describeDueDate(
+  dueAt: number,
+  now: number,
+  dueText?: string,
+): DueDescription {
+  const days = Math.round((startOfDay(dueAt) - startOfDay(now)) / DAY_MS);
+  const date = dueText ?? formatIsoDate(dueAt);
+  const overdue = days < 0;
+  const distance = Math.abs(days);
+  let relative: string;
+  if (days === 0) {
+    relative = 'due today';
+  } else if (days === 1) {
+    relative = 'due tomorrow';
+  } else if (days === -1) {
+    relative = 'overdue 1 day';
+  } else if (distance > RELATIVE_DUE_LIMIT_DAYS) {
+    relative = overdue ? 'overdue' : 'due';
+  } else {
+    relative = overdue ? `overdue ${distance} days` : `due in ${days} days`;
+  }
+  const label = relative === 'due' ? `due ${date}` : `${relative} · ${date}`;
+  return { relative, label, overdue, days };
+}
+
 /** Moves by calendar days, so a daylight-saving change never shifts the date. */
 export function addDays(timestamp: number, days: number): number {
   const date = new Date(timestamp);

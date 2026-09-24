@@ -12,6 +12,15 @@
   has been moved, sized, or swapped, or the reader chooses **Dismiss**.
   Customize stays in the gear throughout.
 
+- **A due date says how far from today it is, in words.** A task row read
+  **DUE 2026-09-08**, in red when the date had passed, so a reader subtracted
+  the date from today and an overdue task was told apart by colour alone.
+  Everywhere a task is listed, Home, search pages, the board's cards, list,
+  and table, and query blocks, the date now reads **Overdue 15 days ·
+  2026-09-08**, **Due today**, **Due tomorrow**, or **Due in 3 days**, with
+  the date beside it for anyone who cites dates. Beyond a month either way
+  only the date is written, and a done task keeps its date as written.
+
 - **Capture and Create Daily Note have shortcuts.** The two commands run
   most often each day went through the Command Palette every time.
   Cmd/Ctrl+Shift+Alt+C captures a task and Cmd/Ctrl+Shift+Alt+D opens

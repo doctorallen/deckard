@@ -10,6 +10,7 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
   TaskMetadataFormat,
+  describeDueDate,
 } from '../../core/markdown/taskMetadata';
 import { readPerson } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -619,7 +620,11 @@ function createCard(
       !open && task.doneAt !== undefined
         ? `done ${formatIsoDate(task.doneAt)}`
         : '',
-      open && task.dueText ? `due ${task.dueText}` : '',
+      open && task.dueAt !== undefined
+        ? describeDueDate(task.dueAt, today, task.dueText).label
+        : open && task.dueText
+          ? `due ${task.dueText}`
+          : '',
       open && task.scheduledAt !== undefined
         ? `scheduled ${formatIsoDate(task.scheduledAt)}`
         : '',

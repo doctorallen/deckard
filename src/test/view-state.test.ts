@@ -505,6 +505,25 @@ suite('Dashboard state', () => {
     assert.strictEqual(item.renderedTitle.includes(title), false);
   });
 
+  test('words an open task\'s due date beside today, and leaves a done one its date', () => {
+    const now = new Date(2026, 8, 23, 10).getTime();
+    const open = {
+      ...createTask('Send the brief', false, 1),
+      dueAt: new Date(2026, 8, 8).getTime(),
+      dueText: '2026-09-08',
+    };
+    const done = { ...open, id: 'done', completed: true };
+    const index = createIndex([open, done]);
+
+    const openItem = createDashboardTask(index.tasks.get(open.id)!, index.sections, now);
+    assert.strictEqual(openItem.dueLabel, 'Overdue 15 days · 2026-09-08');
+    assert.strictEqual(openItem.overdue, true);
+
+    const doneItem = createDashboardTask(index.tasks.get('done')!, index.sections, now);
+    assert.strictEqual(doneItem.dueLabel, undefined, 'a done task is not overdue');
+    assert.strictEqual(doneItem.overdue, undefined);
+  });
+
   test('projects task title tags alongside rendered Markdown', () => {
     const title = '[Review the plan](https://example.com/plan) #project/atlas **now**';
     const index = createIndex([createTask(title, false, 1, ['project/atlas'])]);

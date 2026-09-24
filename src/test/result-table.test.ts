@@ -49,15 +49,14 @@ suite('Result table', () => {
     );
     assert.deepStrictEqual(
       cells.map((cell) => cell.text),
-      ['Chase it', '2026-09-10', 'high', '@dana', 'doing', '#project/atlas @dana', 'tasks.md:12', 'a1', ''],
+      ['Chase it', 'overdue 3 days · 2026-09-10', 'high', '@dana', 'doing', '#project/atlas @dana', 'tasks.md:12', 'a1', ''],
+      'an open task\'s due date reads beside today, then the date',
     );
     assert.strictEqual(cells[1].kind, 'overdue', 'a past due date on an open task');
     assert.strictEqual(cells[6].kind, 'muted', 'where it lives is quieter than what it is');
-    assert.strictEqual(
-      createTaskCells(task({ title: 'Done', completed: true, dueAt: at(9, 10) }), ['due'], now)[0].kind,
-      undefined,
-      'a finished task is not overdue',
-    );
+    const done = createTaskCells(task({ title: 'Done', completed: true, dueAt: at(9, 10) }), ['due'], now)[0];
+    assert.strictEqual(done.kind, undefined, 'a finished task is not overdue');
+    assert.strictEqual(done.text, '2026-09-10', 'and keeps its date as written');
   });
 
   test('sorts by a column, with the empty cells last either way', () => {

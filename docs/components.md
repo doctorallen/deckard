@@ -268,7 +268,7 @@ search results and the Task Board's list layout.
 | Piece | What it is |
 | --- | --- |
 | `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
-| `renderTaskListRow(item, options)` | One row from a `DashboardTask`. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
+| `renderTaskListRow(item, options)` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `taskMetadata.ts` so every list, the board, the table, and query blocks say it the same way. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
 | `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 

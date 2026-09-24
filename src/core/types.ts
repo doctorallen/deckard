@@ -395,6 +395,13 @@ export interface DashboardTask {
   titleTags: TagReference[];
   sectionHeading?: string;
   fileName: string;
+  /**
+   * The due date as a row writes it, `Overdue 15 days · 2026-09-08`, worded
+   * by the host so every list says it the same way. Open, dated tasks only.
+   */
+  dueLabel?: string;
+  /** Whether the due date has passed; set with `dueLabel`. */
+  overdue?: boolean;
 }
 
 export interface DashboardNote extends TagOverviewCard {

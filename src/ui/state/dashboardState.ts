@@ -59,6 +59,7 @@ import {
   QUERY_FIELDS,
   QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
+import { describeDueDate } from '../../core/markdown/taskMetadata';
 import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
@@ -1003,7 +1004,12 @@ export function getHeadingPath(
 export function createDashboardTask(
   task: Task,
   sections: Map<string, Section>,
+  now: number = Date.now(),
 ): DashboardTask {
+  const due =
+    !task.completed && task.dueAt !== undefined
+      ? describeDueDate(task.dueAt, now, task.dueText)
+      : undefined;
   return {
     task,
     renderedTitle: renderTaskTitle(task),
@@ -1012,6 +1018,12 @@ export function createDashboardTask(
       ? sections.get(task.sectionId)?.heading
       : undefined,
     fileName: task.filePath.split('/').pop() ?? task.filePath,
+    ...(due
+      ? {
+          dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
+          overdue: due.overdue,
+        }
+      : {}),
   };
 }
 

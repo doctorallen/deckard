@@ -1029,10 +1029,10 @@ export function getComponentScript(): string {
   /** One task card, with its checkbox and the menu that edits it. */
   function renderTaskBoardCard(card, columnId, columns, settings) {
     const details = card.details.map(function (detail) {
-      const overdue = card.overdue && detail.indexOf('due ') === 0;
-      // Colour alone carried this before, which says nothing to a reader who
-      // cannot see it, or on a board grouped by anything but due date.
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(overdue ? 'overdue, ' + detail : detail) + '</span>';
+      // The host words the due date, "overdue 15 days · 2026-09-08", so the
+      // state is in the text; the page only colours it.
+      const overdue = card.overdue && detail.indexOf('overdue') === 0;
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
     }).join(' · ');
     const plainTitle = String(card.title || '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
@@ -1255,11 +1255,14 @@ export function getComponentScript(): string {
   function renderTaskListRow(item, options) {
     const task = item.task;
     const settings = options || {};
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const dueDate = task.dueText
-      ? '<span class="due-date ' + (task.dueAt !== undefined && task.dueAt < startOfToday.getTime() ? 'overdue' : '') + '">DUE ' + escapeHtml(task.dueText) + '</span>'
-      : '';
+    // The host words an open task's due date beside today, "Overdue 15 days
+    // · 2026-09-08", so the state is in the text and not in the colour alone.
+    // A done task keeps its date as written.
+    const dueDate = item.dueLabel
+      ? '<span class="due-date ' + (item.overdue ? 'overdue' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
+      : (task.dueText
+        ? '<span class="due-date">Due ' + escapeHtml(task.dueText) + '</span>'
+        : '');
     const scheduled = task.scheduledAt !== undefined
       ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
       : '';
