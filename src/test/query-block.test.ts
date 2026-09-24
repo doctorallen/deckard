@@ -89,7 +89,10 @@ suite('Deckard query blocks', () => {
       html.includes('<thead><tr><th scope="col">Task</th><th scope="col">Due</th><th scope="col">Note</th></tr></thead>'),
       'the title leads, then the columns named',
     );
-    assert.ok(html.includes('<td class="is-overdue">2026-09-01</td>'), 'an overdue date is marked');
+    assert.ok(
+      /<td class="is-overdue">overdue \d+ days · 2026-09-01<\/td>/.test(html),
+      'an overdue date is marked, and says so in words',
+    );
     assert.ok(html.includes('href="/notes/Atlas%20plan.md#L'), 'the title still links to its line');
     assert.ok(html.includes('class="deckard-query-row is-done"'), 'a done task is struck');
     assert.strictEqual(html.split('deckard-query-list').length, 2, 'one list: the notes, above the table');
@@ -244,8 +247,14 @@ suite('Deckard query blocks', () => {
       new Date(2026, 8, 13).getTime(),
     );
 
-    assert.ok(html.includes('<span class="deckard-query-due is-overdue">due 2026-09-01</span>'));
-    assert.ok(html.includes('<span class="deckard-query-due">due 2026-09-20</span>'));
+    assert.ok(
+      html.includes('<span class="deckard-query-due is-overdue">overdue 12 days · 2026-09-01</span>'),
+      'an overdue date says how far it has slipped, then the date',
+    );
+    assert.ok(
+      html.includes('<span class="deckard-query-due">due in 7 days · 2026-09-20</span>'),
+      'a coming date says how far off it is',
+    );
     assert.ok(html.includes('deckard-query-task is-done'));
   });
 

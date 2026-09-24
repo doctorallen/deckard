@@ -10,6 +10,7 @@ import {
   startOfDay,
   TASK_PRIORITY_RANKS,
   TaskMetadataFormat,
+  describeDueDate,
 } from '../../core/markdown/taskMetadata';
 import { readPerson } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -294,7 +295,41 @@ export function layoutTaskBoard(
     },
   ];
 
-  return { groupBy, columns, taskCount: tasks.length };
+  return {
+    groupBy,
+    columns,
+    taskCount: tasks.length,
+    ...describeStatusCoverage(groupBy, columns, open.length),
+  };
+}
+
+/** Below this share of open tasks with a status, the board says so. */
+const STATUS_COVERAGE_HINT_BELOW = 0.25;
+/** A board this small is read at a glance, and needs no telling. */
+const STATUS_COVERAGE_HINT_MINIMUM_TASKS = 4;
+
+/**
+ * A board grouped by status is a list drawn expensively when the tasks carry
+ * no status: one tall "No status" column and four near-empty ones. That is
+ * the first thing a new reader sees, since status is the default grouping and
+ * a status is a tag most notes never write. When fewer than a quarter of the
+ * open tasks have one, the layout says so, and the page offers the due-date
+ * grouping, which works for any task.
+ */
+function describeStatusCoverage(
+  groupBy: TaskBoardGroupBy,
+  columns: readonly TaskBoardColumn[],
+  open: number,
+): Pick<TaskBoardLayout, 'statusHint'> {
+  if (groupBy !== 'status' || open < STATUS_COVERAGE_HINT_MINIMUM_TASKS) {
+    return {};
+  }
+  const withoutStatus =
+    columns.find((column) => column.id === 'status:')?.cards.length ?? 0;
+  const withStatus = open - withoutStatus;
+  return withStatus / open < STATUS_COVERAGE_HINT_BELOW
+    ? { statusHint: { withoutStatus, open } }
+    : {};
 }
 
 /**
@@ -619,7 +654,11 @@ function createCard(
       !open && task.doneAt !== undefined
         ? `done ${formatIsoDate(task.doneAt)}`
         : '',
-      open && task.dueText ? `due ${task.dueText}` : '',
+      open && task.dueAt !== undefined
+        ? describeDueDate(task.dueAt, today, task.dueText).label
+        : open && task.dueText
+          ? `due ${task.dueText}`
+          : '',
       open && task.scheduledAt !== undefined
         ? `scheduled ${formatIsoDate(task.scheduledAt)}`
         : '',

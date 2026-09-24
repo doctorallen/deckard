@@ -75,14 +75,14 @@ body { background: var(--vscode-editor-background); }
 body:has(.sidebar-header) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
 main { border: 0; box-shadow: none; }
 header { border-bottom: 1px solid var(--line); }
-/* Labels read as written, not as uppercase spaced-out readouts. */
+/* Corpo's eyebrows and titles read as written too; the working labels
+   already do in every theme. */
 body * { text-transform: none !important; letter-spacing: normal !important; }
 h1 { font-size: 20px; font-weight: 600; }
 .eyebrow { color: var(--muted); }
 code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monospace); }
 .metric::before { display: none; }
 .metric-value { color: var(--text); font-weight: 600; }
-.task-meta { color: var(--muted); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
 .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
 .tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
@@ -176,13 +176,13 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
 :root { --hover-bg: var(--cyan); --hover-fg: var(--bg-dark); }
 input[type='checkbox'] { accent-color: var(--cyan); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(21, 16, 47, .92); box-shadow: inset 3px 0 0 var(--favorite-red), 0 0 0 1px rgba(0, 229, 255, .1); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
+.card:hover, .card:focus-within, .note:hover, .note:focus-within { clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach))); }
 .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .task:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .task-row:nth-child(3n + 2), .note-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2), .saved-filter-row:nth-child(3n + 2), .view-panel:nth-child(3n + 2) { box-shadow: inset 3px 0 0 var(--cyan), 0 0 0 1px rgba(255, 45, 149, .1); }
 .metric::before { border-bottom-color: var(--cyan); color: var(--amber-dim); }
 .metric:nth-child(3n + 2)::before { border-bottom-color: var(--favorite-red); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--amber-bright); }
 .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover { border-color: var(--cyan); background: var(--panel-raised); box-shadow: inset 4px 0 0 var(--cyan), 0 0 14px rgba(0, 229, 255, .2); }
 .tag-name, .task-title a { color: var(--cyan-bright); }
-.task-meta { color: var(--muted); }
 .tag-filter summary, .tag-filter-search { border-color: var(--line); background: var(--panel-deep); }
 .tag-filter summary:hover, .tag-filter-search:focus { border-color: var(--favorite-red); color: var(--favorite-red); }
 .tag-filter-menu, .rank-context-menu { border-color: var(--cyan); background: var(--panel-deep); box-shadow: 0 0 20px rgba(0, 229, 255, .16); }

@@ -42,18 +42,18 @@ export function getSidebarNotesHtml(
 /* The selected entry is context for the list, not the subject of the pane:
    two lines of it, so the related notes start above the fold. */
 .active-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.version { flex: 0 0 auto; color: var(--green); font-size: 10px; }
+.version { flex: 0 0 auto; color: var(--green); font-size: var(--text-xs); }
 .active-file { margin-top: 8px; padding: 7px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); overflow-wrap: anywhere; }
 .graph-selected-node { display: block; width: 100%; color: var(--text); text-align: left; text-transform: none; }
 .graph-selected-node:hover, .graph-selected-node:focus-visible { border-color: var(--cyan); border-left-color: var(--amber); background: var(--panel-raised); color: var(--text); }
-.active-label, .section-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.active-label, .section-label { color: var(--muted); font-size: var(--text-xs); }
 .active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
 .active-summary::-webkit-details-marker { display: none; }
 .active-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .active-file[open] .active-name { -webkit-line-clamp: 3; }
 .sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
-.clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: 10px; text-transform: none; }
+.clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 /* The toolbar drops under the name when the panel is narrower than both, as
    VS Code lets a sidebar be, rather than reaching past its edge. */
@@ -87,7 +87,8 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
 .note-title .inline-tag { color: var(--text); }
-.relevance-score { flex: 0 0 auto; color: var(--green); font-size: 10px; }
+.relevance-score { display: inline-grid; flex: 0 0 auto; place-items: center; min-width: 24px; color: var(--green); }
+.relevance-score .tag-weight-rail-segment.filled { background: currentColor; }
 .note-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .insert-link { flex: 0 0 auto; min-height: 0; border: 0; background: transparent; padding: 0; color: var(--muted); cursor: pointer; opacity: 0; }
 .insert-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; }
@@ -102,12 +103,12 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
 .relevance-tooltip li + li { margin-top: 3px; }
-.relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: 10px; }
+.relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: var(--text-xs); }
 .relevance-weights strong { color: var(--green); font-weight: 600; }
 .note .tag-list { margin-top: 7px; }
 .note .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
-.graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: 9px var(--vscode-editor-font-family, ui-monospace, monospace); text-transform: uppercase; }
+.graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
 .graph-kind.task { color: var(--amber); }
 .graph-kind.tag { color: var(--green); }
 .graph-tag-pill { margin-left: 0; color: var(--text); }
@@ -127,22 +128,22 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .refine-open-tag { display: inline-grid; flex: 0 0 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 2px; }
 .refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .refine-open-tag:hover, .refine-open-tag:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-.refine-count { color: var(--muted); font: 10px var(--font-mono); }
+.refine-count { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
 .refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-.refine-hint { margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; }
+.refine-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 /* The sidebar is narrow, so it runs tighter than a full-width page. */
 body { min-width: 220px; font-size: 12px; }
 main { width: 100%; max-width: none; padding: 12px; border-top: 2px solid var(--amber); }
-.eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
 .tag-list { display: flex; gap: 5px; margin: 8px 0 0; }
 button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
-.source { margin-top: 4px; font-size: 10px; }
+.source { margin-top: 4px; font-size: var(--text-xs); }
 .empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
 ${getPageTailCss()}
 </style>
@@ -268,7 +269,7 @@ ${getComponentScript()}
         : escapeHtml(node.title);
       const kind = '<span class="graph-kind ' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
       const source = node.filePath
-        ? escapeHtml(node.filePath.split('/').pop() || node.filePath) + ' / line ' + node.line
+        ? escapeHtml(formatSourceLocation(node.filePath.split('/').pop() || node.filePath, node.line))
         : 'Tag node';
       const relationships = connection.types.map(function (type) {
         return type.replaceAll('-', ' ');
@@ -376,7 +377,13 @@ ${getComponentScript()}
         const specificityAdjustment = evidence.specificityPenalty > 0
           ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
           : '';
-        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance score ' + note.relevanceScore + ' percent. Show how this was scored." title="How this note was scored">' + note.relevanceScore + '%</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        // A precise-looking percentage from a heuristic ranker invites a
+        // reader to build a model of it that two close scores then break.
+        // The rail says strong, moderate, or weak; the number is in the
+        // breakdown for anyone who wants it.
+        const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
+        const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
+        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';
@@ -389,7 +396,7 @@ ${getComponentScript()}
           'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
           titleHtml,
           '<div class="note-actions">' + insertLink + relevance + '</div>',
-          '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
+          '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
           (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;

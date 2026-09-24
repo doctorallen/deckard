@@ -395,6 +395,13 @@ export interface DashboardTask {
   titleTags: TagReference[];
   sectionHeading?: string;
   fileName: string;
+  /**
+   * The due date as a row writes it, `Overdue 15 days · 2026-09-08`, worded
+   * by the host so every list says it the same way. Open, dated tasks only.
+   */
+  dueLabel?: string;
+  /** Whether the due date has passed; set with `dueLabel`. */
+  overdue?: boolean;
 }
 
 export interface DashboardNote extends TagOverviewCard {
@@ -418,6 +425,11 @@ export interface DashboardSnapshot {
   widgetConfig: DashboardWidgetConfig[];
   /** What each widget shows, sent while Home is the tab shown. */
   widgets?: DashboardWidget[];
+  /**
+   * Whether Home's widgets differ from the ones it started with. While they
+   * do not, Home says it can be arranged; once they do, the reader knows.
+   */
+  homeArranged?: boolean;
 }
 
 /** A tag a Home widget lists, with what searching for it finds. */
@@ -1124,6 +1136,15 @@ export interface ClearOverviewQueryMessage {
 }
 
 /**
+ * Steps a search page back or forward through the searches it has shown,
+ * sent by the mouse's back and forward buttons.
+ */
+export interface NavigateSearchHistoryMessage {
+  type: 'navigateSearchHistory';
+  direction: 'back' | 'forward';
+}
+
+/**
  * Narrow a search page by the words being typed, before they are committed
  * to its search box.
  */
@@ -1291,6 +1312,7 @@ export type SearchPageMessage =
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
+  | NavigateSearchHistoryMessage
   | SetResultPageMessage
   | SetResultsPerPageMessage
   | PreviewSearchMessage
@@ -1348,6 +1370,13 @@ export interface TaskBoardLayout {
   groupBy: TaskBoardGroupBy;
   columns: TaskBoardColumn[];
   taskCount: number;
+  /**
+   * Present when the board is grouped by status and almost no open task
+   * carries one, so the first column holds nearly everything: how many of
+   * the open tasks have no status. The page says so above the columns and
+   * offers the due-date grouping, which works for any task.
+   */
+  statusHint?: { withoutStatus: number; open: number };
 }
 
 /** The Task Board page, which chooses its tasks with a search. */

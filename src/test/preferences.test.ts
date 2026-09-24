@@ -1,6 +1,11 @@
 import * as assert from 'assert';
 
-import { pinKey, PreferencesStore } from '../core/storage/preferences';
+import {
+  DEFAULT_DASHBOARD_WIDGETS,
+  isDefaultHomeLayout,
+  pinKey,
+  PreferencesStore,
+} from '../core/storage/preferences';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -459,6 +464,40 @@ suite('Preferences store', () => {
     assert.strictEqual(store.value.dashboardTagColumns, 4);
     assert.deepStrictEqual(memento.get('deckard.preferences'), store.value);
     store.dispose();
+  });
+
+  test('knows whether Home still holds the widgets it started with', () => {
+    assert.strictEqual(isDefaultHomeLayout(DEFAULT_DASHBOARD_WIDGETS), true);
+    assert.strictEqual(
+      isDefaultHomeLayout(DEFAULT_DASHBOARD_WIDGETS.map((widget) => ({ ...widget }))),
+      true,
+      'a copy with the same settings is the same layout',
+    );
+    const [search, ...rest] = DEFAULT_DASHBOARD_WIDGETS;
+    assert.strictEqual(isDefaultHomeLayout(rest), false, 'a widget removed');
+    assert.strictEqual(
+      isDefaultHomeLayout([...rest, search]),
+      false,
+      'a widget moved',
+    );
+    assert.strictEqual(
+      isDefaultHomeLayout([
+        search,
+        { ...rest[0], width: 'full' },
+        ...rest.slice(1),
+      ]),
+      false,
+      'a widget sized',
+    );
+    assert.strictEqual(
+      isDefaultHomeLayout([
+        search,
+        { ...rest[0], count: 10 },
+        ...rest.slice(1),
+      ]),
+      false,
+      'a widget set to show more',
+    );
   });
 
   test('moves favorites, ranking, and saved views to a renamed or merged tag', async () => {

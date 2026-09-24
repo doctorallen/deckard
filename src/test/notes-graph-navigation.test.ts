@@ -12,7 +12,7 @@ import {
   SidebarNotesSnapshot,
 } from '../core/types';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
-import { NotesGraphPanel } from '../ui/webview/notesGraph';
+import { NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 
 const defaultPreferences: PersistedPreferences = {
@@ -113,6 +113,29 @@ suite('Notes graph navigation', () => {
     } finally {
       graph.dispose();
     }
+  });
+
+  test('opens around the note in the editor, until the reader chooses a scope', () => {
+    const whole = { local: false, depth: 1 };
+    assert.deepStrictEqual(openingScope('notes/atlas.md', false, whole), {
+      local: true,
+      depth: 1,
+    });
+    assert.deepStrictEqual(
+      openingScope(undefined, false, whole),
+      whole,
+      'with no note open there is nothing to draw around',
+    );
+    assert.deepStrictEqual(
+      openingScope('notes/atlas.md', true, whole),
+      whole,
+      'a scope the reader chose is kept',
+    );
+    assert.deepStrictEqual(
+      openingScope('notes/atlas.md', true, { local: true, depth: 3 }),
+      { local: true, depth: 3 },
+      'including the depth they chose',
+    );
   });
 
   test('uses graph context only while it is set, then restores notes', () => {

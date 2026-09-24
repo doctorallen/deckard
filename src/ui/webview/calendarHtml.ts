@@ -37,7 +37,7 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .week-label svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; }
 .week-label.has-note { color: var(--cyan); }
 .week-label:hover, .week-label:focus-visible { color: var(--amber); background: none; }
-.weekday { padding: 2px 0; color: var(--muted); font: 10px var(--font-mono); text-align: center; }
+.weekday { padding: 2px 0; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
 /* Every day is the same three rows, whether or not it has anything to mark,
    so a note or a due count never moves the date it belongs to. */
 .day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: 12px var(--font-mono); text-align: center; }
@@ -45,7 +45,7 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .day.today { border-color: var(--amber); }
 .day-number { line-height: 15px; }
 .note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
-.due { color: var(--green); font-size: 9px; line-height: 11px; }
+.due { color: var(--green); font-size: var(--text-xs); line-height: 13px; }
 .due.overdue { color: var(--warning-orange); }
 ${getPageTailCss()}
 </style>

@@ -26,6 +26,7 @@ import {
   resolveQueryTagIntersection,
 } from '../state/dashboardState';
 import { isWritten } from '../state/searchFacets';
+import { SearchHistory, SearchHistoryEntry } from '../state/searchHistory';
 import { editResults } from '../commands/bulkEditPrompts';
 import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
 import { setPinned } from '../commands/pinNote';
@@ -278,6 +279,8 @@ class SearchPanel implements SearchSource, vscode.Disposable {
    * the page keeps the results of the last search that did.
    */
   private invalidQueryText: string | undefined;
+  /** The searches the page showed before this one, and after it. */
+  private readonly history = new SearchHistory();
   /** Whether the index changed while the page was hidden. */
   private isStale = false;
   /** Whether the last state sent put Refine in the sidebar. */
@@ -524,18 +527,49 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       this.refresh();
       return;
     }
-    this.invalidQueryText = undefined;
-    this.queryText = text;
-    // The draft has become the search, or been replaced by another, so it is
-    // no longer narrowing anything on its own.
-    this.previewWords = [];
+    if (text !== this.queryText) {
+      this.history.leave(this.historyEntry());
+    }
     // A different search is a different list, read from its first page.
-    this.notePage = 1;
-    this.taskPage = 1;
-    this.refresh();
+    this.showSearch({ query: text, notePage: 1, taskPage: 1 });
     if (remember && text) {
       await this.preferences.recordRecentQuery(text);
     }
+  }
+
+  /**
+   * Returns to the search before this one, or the one after it, at the
+   * pages of results the reader left it on. With nowhere to go, the page
+   * stays as it is.
+   */
+  private navigateHistory(direction: 'back' | 'forward'): void {
+    const current = this.historyEntry();
+    const entry =
+      direction === 'back'
+        ? this.history.back(current)
+        : this.history.forward(current);
+    if (entry) {
+      this.showSearch(entry);
+    }
+  }
+
+  private historyEntry(): SearchHistoryEntry {
+    return {
+      query: this.queryText,
+      notePage: this.notePage,
+      taskPage: this.taskPage,
+    };
+  }
+
+  private showSearch(entry: SearchHistoryEntry): void {
+    this.invalidQueryText = undefined;
+    this.queryText = entry.query;
+    // The draft has become the search, or been replaced by another, so it is
+    // no longer narrowing anything on its own.
+    this.previewWords = [];
+    this.notePage = entry.notePage;
+    this.taskPage = entry.taskPage;
+    this.refresh();
   }
 
   private async handleMessage(value: unknown): Promise<void> {
@@ -559,6 +593,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         return;
       case 'clearOverviewQuery':
         await this.applyQuery(this.originQuery, false);
+        return;
+      case 'navigateSearchHistory':
+        this.navigateHistory(message.direction);
         return;
       case 'setResultPage':
         if (message.kind === 'notes') {

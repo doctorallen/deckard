@@ -212,18 +212,18 @@ li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
 /* Reference tables: commands, markers, query fields, settings. */
 table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 13px; }
-caption { margin-bottom: 6px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: left; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-th { color: var(--cyan); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+th { color: var(--cyan); font-size: 11px; }
 td:first-child { white-space: normal; }
 tbody tr:hover { background: var(--panel); }
 /* A group's name inside the settings table: a heading row, ruled under like
    the column header, so a group starts somewhere the eye can find. */
-.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: 12px var(--font-mono); }
 .table-group:hover { background: transparent; }
 .table-scroll { overflow-x: auto; }
 /* The navigation groups its sections, so a long guide stays scannable. */
-.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 nav a.nav-sub { padding-left: 16px; font-size: 12px; }
 section { scroll-margin-top: 20px; }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
@@ -306,7 +306,7 @@ ${getPageTailCss()}
         <div class="card"><h3>People and entities</h3><p><code>@mara-vale</code> names a person. <code>#project/…</code>, <code>#topic/…</code>, <code>#organization/…</code>, and <code>#meeting/…</code> name entities; any other namespace becomes one on first use. <code>deckard.personMarker</code> changes the marker, and <code>deckard.entityNamespaceAliases</code> folds one namespace into another.</p></div>
         <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbours.</p></div>
         <div class="card"><h3>Associated tags</h3><p>Tags written together on one heading, task, or line are remembered as related, and tags that meet under a shared heading count more lightly. Related Notes and Refine both rank with that evidence, normalized so a common tag is not promoted for being common.</p></div>
-        <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu.</p></div>
+        <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu. Every context menu opens from the keyboard too, with Shift+F10, the menu key, or Alt+Enter on the focused row or tag.</p></div>
         <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
       </div>
     </section>
@@ -351,7 +351,7 @@ updated: 2026-09-20
         <div class="card"><h3>The task editor</h3><p><code>Deckard: Edit Task</code> on a task line — and <code>Deckard: Add Task</code> anywhere else — opens every field at once: description, status, dates, priority, repeat rule, assignee, and a tag. Dates are taken in plain words: <code>friday</code>, <code>next monday</code>, <code>in 3 days</code>, <code>+2w</code>. It is on the lightbulb too, as <strong>Edit task…</strong>.</p></div>
         <div class="card"><h3>Typing metadata</h3><p>Type <code>/</code> after a space inside a task to pick a due date, a priority, a repeat rule, or a dependency without remembering the markers. Suggestions use the format the task already uses, or <code>deckard.tasks.metadataFormat</code> for a task with none.</p></div>
         <div class="card"><h3>Who a task is for</h3><p>Write <code>👤 @dana</code> on a task — or <code>[assignee:: @dana]</code> in a Dataview vault — to say who it is for. A name in the words is a mention, not an assignment. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours — a task for nobody in particular is yours too.</p></div>
-        <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code> adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note.</p></div>
+        <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code>, or Cmd/Ctrl+Shift+Alt+C, adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note.</p></div>
         <div class="card"><h3>Dependencies</h3><p><code>🆔 a1</code> names a task, and <code>⛔ a1</code> waits for it. A task is blocked while something it waits for is still open, which <code>is:blocked</code> and <code>is:blocking</code> search and the Tasks view says beneath the task.</p></div>
       </div>
     </section>
@@ -375,9 +375,9 @@ updated: 2026-09-20
       <h2>Tasks view and Task board</h2>
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
-        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list.</p></div>
+        <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list. While few tasks carry a status, the board says so above the columns and offers the due-date grouping, which needs none.</p></div>
         <div class="card"><h3>Editing many at once</h3><p><strong>Bulk Edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
-        <div class="card"><h3>What is due</h3><p>The status bar reads <strong>3 due today</strong> while anything is, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
+        <div class="card"><h3>What is due</h3><p>A task's due date is written by its distance from today with the date beside it, <strong>Overdue 15 days · 2026-09-08</strong>, wherever a task is listed. The status bar reads <strong>3 due today</strong> while anything is, <strong>2 overdue, 3 due today</strong> when something has slipped, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>
     </section>
 
@@ -436,7 +436,7 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing.</p></div>
         <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
         <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighbourhood instead, one to three hops out, following the editor as you move between notes.</p></div>
-        <div class="card"><h3>Stats</h3><p>Index totals, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and entries you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
+        <div class="card"><h3>Stats</h3><p>Index totals of files, notes, tasks, and tags, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and notes you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
         <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>
       </div>
     </section>
@@ -462,7 +462,7 @@ tag = #project/atlas AND task = open
     <section id="periodic">
       <h2>Days, weeks, and months</h2>
       <div class="cards">
-        <div class="card"><h3>Daily notes</h3><p><code>Deckard: Create Daily Note</code> creates or opens today’s note from your template, and the previous and next commands step between the days that have one.</p></div>
+        <div class="card"><h3>Daily notes</h3><p><code>Deckard: Create Daily Note</code>, or Cmd/Ctrl+Shift+Alt+D, creates or opens today’s note from your template, and the previous and next commands step between the days that have one.</p></div>
         <div class="card"><h3>Carrying tasks forward</h3><p>Set <code>deckard.dailyNote.rollover</code> to <code>move</code> or <code>copy</code> and a new daily note takes the unfinished tasks of every earlier daily note with it, oldest first. <code>Deckard: Roll Unfinished Tasks Forward</code> does it on request, with <strong>Undo</strong> beside what it says.</p></div>
         <div class="card"><h3>Reviews</h3><p>A weekly or monthly note opens with a review written into it: what was completed, what slipped, the notes written and changed, and the tags first seen. It is ordinary Markdown, named by the days it covers, and rewritten in place when you run it again.</p></div>
         <div class="card"><h3>Calendar</h3><p>A month in the sidebar, Sunday to Saturday. A dot marks a day with a note and a number counts what is due, in orange once the day has passed. The week beside a row opens that week’s note.</p></div>

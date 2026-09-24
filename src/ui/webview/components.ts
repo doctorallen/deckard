@@ -54,6 +54,14 @@ export function getDesignTokens(): string {
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
+  /* The type scale. Nothing a reader acts on is set below --text-xs: at a
+     laptop's viewing distance eleven pixels is where fluent reading starts
+     to fall away, and muted monospace text loses legibility sooner than
+     that. --text-md is the body size the VS Code UI itself uses. */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 14px;
   /* The corner a control takes. The ends of a group of segments follow it,
      so a theme that squares its buttons squares the group too. */
   --control-radius: 2px;
@@ -88,7 +96,7 @@ body {
   background-size: 24px 24px;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }
 header {
@@ -187,12 +195,11 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
-  text-transform: uppercase;
 }
 .control-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* A labelled control, such as a sort, drawn the same way on every page. */
-.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
@@ -220,7 +227,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 }
 .toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .settings-icon, .help-icon { fill: currentColor; stroke: none; }
-.filter-count { color: var(--muted); font-size: 10px; }
+.filter-count { color: var(--muted); font-size: var(--text-xs); }
 
 /* Walking a list a page at a time: a search page's results, a widget's entries. */
 .pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
@@ -256,7 +263,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
-.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); text-transform: uppercase; }
+.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); }
 /* A group whose control is taller than a row, such as a list, sits under its label. */
 .view-options-group.is-stacked { display: grid; justify-content: stretch; }
 /* A row of small numbered or named choices inside the menu. */
@@ -378,7 +385,7 @@ export function getSurfaceCss(): string {
    ground, and on LCARS that is near-black, which the tile never becomes. */
 .metric-open { display: grid; gap: 4px; justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
-.metric-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.metric-label { display: block; color: var(--muted); font-size: 11px; }
 .metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
 
 .empty {
@@ -440,8 +447,6 @@ export function getTaskBoardCss(): string {
   margin: 0;
   color: var(--cyan);
   font: 12px var(--font-mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
 }
 .board-column.is-overdue .board-column-title { color: var(--favorite-red); }
 .board-count { color: var(--muted); }
@@ -504,6 +509,9 @@ export function getTaskBoardCss(): string {
    shared hover text rather than the amber it carries over the card. */
 .board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
 .board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
+.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.board-hint code { font-family: var(--font-mono); color: var(--text); }
+.board-hint button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
 .board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
 }
 
@@ -519,7 +527,7 @@ export function getTaskListCss(): string {
 .task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #3d4145; font: 11px var(--font-mono); margin-top: 5px; }
+.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: 5px; }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--favorite-red); }
 .task-detail { letter-spacing: .03em; }
@@ -534,7 +542,7 @@ export function getTaskListCss(): string {
 .rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
 .result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .result-table th, .result-table td { padding: 7px 9px; border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
 .result-table th button { display: flex; width: 100%; gap: 5px; align-items: center; min-height: 0; border: 0; padding: 7px 9px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
 .result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
@@ -574,6 +582,96 @@ export function getBaseCss(): string {
     getTaskBoardCss(),
     getTaskListCss(),
   ].join('\n');
+}
+
+/**
+ * Where an entry is written, as `file / line N`, shown only while the entry is
+ * under the pointer or holds focus.
+ *
+ * The entry's frame reaches down to hold it, laid over whatever is below
+ * rather than taking room in the list, so showing it moves nothing: the list
+ * around the entry stays put. What it covers is the top of the next entry,
+ * not the one being read. Folded, it is off-screen rather than display:none, so it stays in the
+ * accessibility tree, in find-in-page, and announced. Board details are not
+ * provenance: they carry the due date and the word "overdue", so they never
+ * fold.
+ *
+ * It comes after the theme, whose `.source` would otherwise restyle it, and
+ * before zen, which only takes the corners off the frame around it.
+ */
+export function getProvenanceCss(): string {
+  return `
+.task-row .task-source,
+.card .source,
+.note .source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* What the extension has to match: how thick the entry's frame is, how far
+   in its text sits, and how far down it reaches, a line for each place. */
+.card { position: relative; --frame: var(--edge); --inset: 14px; }
+.note { --frame: 2px; --inset: 9px; }
+.task-row { --frame: 1px; --inset: 10px; }
+.card, .note, .task-row { --reach: 24px; }
+.note:has(.source ~ .source) { --reach: 42px; }
+/* The entry under the pointer is lifted above the ones after it, which its
+   extension lies over. The sidebar lifts its own notes higher still. */
+.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within { z-index: 2; }
+/* The extension is the entry's own frame carried down: its background,
+   border and inner shading, taken from the entry as it is drawn now, hover
+   colours included. It starts a little inside the entry so it covers the
+   bottom border and any rounded corners, and draws a new bottom edge. */
+.card:hover::after, .card:focus-within::after,
+.note:hover::after, .note:focus-within::after,
+.task-row:hover::after, .task-row:focus-within::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: calc(100% - 6px);
+  left: calc(-1 * var(--frame));
+  right: calc(-1 * var(--frame));
+  box-sizing: border-box;
+  height: calc(var(--reach) + 6px + var(--frame));
+  border: inherit;
+  border-top: 0;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  background: inherit;
+  box-shadow: inherit;
+  pointer-events: none;
+}
+/* A task row's corners are cut, and a cut frame clips what reaches outside
+   it, so under the pointer the cut moves down to the new bottom corner. */
+.task-row:hover, .task-row:focus-within {
+  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach)));
+}
+/* One line each, cut short rather than wrapped, so the extension is always
+   the height it was made for. */
+.task-row:hover .task-source, .task-row:focus-within .task-source,
+.card:hover .source, .card:focus-within .source,
+.note:hover .source, .note:focus-within .source {
+  z-index: 2;
+  top: calc(100% + 2px);
+  left: var(--inset);
+  right: var(--inset);
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font: 11px/16px var(--font-mono);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  clip-path: none;
+  color: var(--muted);
+}
+.note:hover .source ~ .source, .note:focus-within .source ~ .source { top: calc(100% + 20px); }`;
 }
 
 /**
@@ -620,6 +718,14 @@ body.zen .metric, body.zen .card, body.zen .note, body.zen .task,
 body.zen .tag-row, body.zen .task-row, body.zen .note-row, body.zen .entity-row,
 body.zen .saved-filter-row, body.zen .stat-row, body.zen .empty,
 body.zen .view-panel, body.zen .board-column { clip-path: none; box-shadow: none; }
+/* Under the pointer the frame reaches down to take in where the entry is
+   written (getProvenanceCss); zen's frame has no corners to keep. The
+   insets follow zen's tighter padding. */
+body.zen .card:hover, body.zen .card:focus-within, body.zen .note:hover,
+body.zen .note:focus-within, body.zen .task-row:hover,
+body.zen .task-row:focus-within { clip-path: none; }
+body.zen .card { --inset: 9px; }
+body.zen .task-row { --inset: 7px; }
 /* Several themes slide a row 3px on hover, which fits today only because the
    sidebar's main has 12px of padding to absorb it. Zen spends that padding. */
 body.zen .row:hover, body.zen .card:hover, body.zen .note:hover,
@@ -640,29 +746,7 @@ body.zen .task-summary { gap: 4px; }
 body.zen .metrics { gap: 6px; margin-top: 12px; }
 body.zen .metric { padding: 8px; }
 body.zen .board-column { padding: 7px; }
-body.zen .board-cards { gap: 5px; }
-/* Provenance folds to hover and focus. Off-screen rather than display:none,
-   so it stays in the accessibility tree, in find-in-page, and announced —
-   the same idiom .is-dragging uses. Board details are not provenance: they
-   carry the due date and the word "overdue", so they never fold. */
-body.zen .task-row .task-source,
-body.zen .card .source,
-body.zen .note .source {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-body.zen .task-row:hover .task-source, body.zen .task-row:focus-within .task-source,
-body.zen .card:hover .source, body.zen .card:focus-within .source,
-body.zen .note:hover .source, body.zen .note:focus-within .source {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip-path: none;
-}`;
+body.zen .board-cards { gap: 5px; }`;
 }
 
 /**
@@ -671,7 +755,7 @@ body.zen .note:hover .source, body.zen .note:focus-within .source {
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getZenCss()}`;
 }
 
 /** The marker `getZenCss()` hangs on, or nothing. */
@@ -713,6 +797,14 @@ export function getComponentScript(): string {
     // Repeating the same string is not announced again, so clear it first.
     if (status.textContent === text) status.textContent = '';
     status.textContent = text;
+  }
+
+  /**
+   * Where an entry is written, as its file's name and line: 2026-09-22 / line 7.
+   * Every note in Deckard is Markdown, so the extension says nothing.
+   */
+  function formatSourceLocation(fileName, line) {
+    return String(fileName).replace(/\\.md$/i, '') + ' / line ' + line;
   }
 
   /** Escape snapshot data before it is inserted as HTML. */
@@ -843,8 +935,10 @@ export function getComponentScript(): string {
   let tagContextKey;
 
   function closeTagContextMenu() {
+    const wasOpen = Boolean(tagContextMenu && !tagContextMenu.hidden);
     if (tagContextMenu) tagContextMenu.hidden = true;
     tagContextKey = undefined;
+    if (wasOpen) returnFocusFromMenu();
   }
 
   /**
@@ -900,6 +994,76 @@ export function getComponentScript(): string {
       if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) closeTagContextMenu();
     });
   }
+
+  /**
+   * The element a keyboard opened a context menu from, so closing the menu
+   * gives focus back to it. A pointer leaves this unset. Opening a menu
+   * closes whatever was open first, so a close consumes it only when a menu
+   * was showing.
+   */
+  let contextMenuOpener;
+
+  /** Gives focus back to where a keyboard opened the menu that just closed. */
+  function returnFocusFromMenu() {
+    const opener = contextMenuOpener;
+    contextMenuOpener = undefined;
+    if (opener && document.contains(opener) && opener.focus) opener.focus();
+  }
+
+  /**
+   * The keyboard's way to every context menu. Each menu here opens on a
+   * contextmenu event, wired by the page or by a helper above, so the menu
+   * key, Shift+F10, and Alt+Enter on a focused tag, card, or row raise that
+   * event at the element, and whatever menu a pointer would get there opens
+   * for the keyboard too. Installed once, ahead of the pages' own listeners,
+   * so a handler that opens on the same keys can see the key was taken.
+   */
+  document.addEventListener('keydown', function (event) {
+    const isMenuKey = event.key === 'ContextMenu'
+      || (event.key === 'F10' && event.shiftKey)
+      || (event.key === 'Enter' && event.altKey);
+    if (!isMenuKey || event.defaultPrevented) return;
+    if (!event.target || !event.target.closest) return;
+    // A field keeps the browser's own menu.
+    if (event.target.closest('input, textarea, select')) return;
+    const target = event.target.closest('[data-tag-key], .card, .task-row, .task, .row');
+    if (!target) return;
+    const bounds = target.getBoundingClientRect();
+    contextMenuOpener = target;
+    const raised = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: bounds.left + 12,
+      clientY: bounds.top + bounds.height,
+    });
+    target.dispatchEvent(raised);
+    if (raised.defaultPrevented) event.preventDefault();
+    else contextMenuOpener = undefined;
+  });
+
+  /**
+   * Arrow keys between a search's result tabs, as the tab role promises: Left
+   * and Right move and choose, Home and End go to the ends. The dashboard's
+   * own tabs have the same in their page.
+   */
+  document.addEventListener('keydown', function (event) {
+    if (!event.target || !event.target.closest) return;
+    const tab = event.target.closest('[role="tab"][data-action="set-result-tab"]');
+    if (!tab) return;
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(event.key) < 0) return;
+    const list = tab.closest('[role="tablist"]');
+    const tabs = list ? Array.prototype.slice.call(list.querySelectorAll('[role="tab"]')) : [tab];
+    const index = tabs.indexOf(tab);
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? tabs.length - 1
+      : (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    event.preventDefault();
+    const chosen = tabs[next].dataset.tab;
+    tabs[next].click();
+    // The page redraws on the click, so the tab to focus is found again.
+    const drawn = document.querySelector('[role="tab"][data-action="set-result-tab"][data-tab="' + chosen + '"]');
+    if (drawn) drawn.focus();
+  });
 
   /** The Status, Priority, and Due date switch above a task board. */
   function renderTaskBoardGroupSwitch(groupBy) {
@@ -957,10 +1121,10 @@ export function getComponentScript(): string {
   /** One task card, with its checkbox and the menu that edits it. */
   function renderTaskBoardCard(card, columnId, columns, settings) {
     const details = card.details.map(function (detail) {
-      const overdue = card.overdue && detail.indexOf('due ') === 0;
-      // Colour alone carried this before, which says nothing to a reader who
-      // cannot see it, or on a board grouped by anything but due date.
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(overdue ? 'overdue, ' + detail : detail) + '</span>';
+      // The host words the due date, "overdue 15 days · 2026-09-08", so the
+      // state is in the text; the page only colours it.
+      const overdue = card.overdue && detail.indexOf('overdue') === 0;
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
     }).join(' · ');
     const plainTitle = String(card.title || '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
@@ -977,7 +1141,13 @@ export function getComponentScript(): string {
    * cards a page filters locally, such as by a search.
    */
   function renderTaskBoard(board, isVisible) {
-    return '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
+    // Grouped by status with almost no statuses written, the board is one
+    // tall column and four near-empty ones. Say so, and offer the grouping
+    // that works for any task, before the reader takes the board for broken.
+    const hint = board.statusHint
+      ? '<p class="board-hint">' + board.statusHint.withoutStatus + ' of ' + board.statusHint.open + ' open tasks have no status. Write a <code>#' + escapeHtml((board.settings && board.settings.statusNamespace) || 'status') + '/todo</code> tag on a task, or drag a card into a column, to give it one. <button type="button" data-action="set-board-group" data-group="due">Group by due date</button></p>'
+      : '';
+    return hint + '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
       const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
       const count = cards.length + column.hiddenCount;
       const body = cards.length
@@ -1183,11 +1353,14 @@ export function getComponentScript(): string {
   function renderTaskListRow(item, options) {
     const task = item.task;
     const settings = options || {};
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const dueDate = task.dueText
-      ? '<span class="due-date ' + (task.dueAt !== undefined && task.dueAt < startOfToday.getTime() ? 'overdue' : '') + '">DUE ' + escapeHtml(task.dueText) + '</span>'
-      : '';
+    // The host words an open task's due date beside today, "Overdue 15 days
+    // · 2026-09-08", so the state is in the text and not in the colour alone.
+    // A done task keeps its date as written.
+    const dueDate = item.dueLabel
+      ? '<span class="due-date ' + (item.overdue ? 'overdue' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
+      : (task.dueText
+        ? '<span class="due-date">Due ' + escapeHtml(task.dueText) + '</span>'
+        : '');
     const scheduled = task.scheduledAt !== undefined
       ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
       : '';
@@ -1200,7 +1373,7 @@ export function getComponentScript(): string {
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span class="task-source">' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span class="task-source">line ' + task.lineNumber + '</span></div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span></div></div>'
       + '</div>';
   }
 
@@ -1209,10 +1382,21 @@ export function getComponentScript(): string {
    * { id, label, count }; each button carries data-action="set-result-tab".
    */
   function renderResultTabs(tabs, active, label) {
+    // One tab stop for the list, arrow keys between the tabs, and each tab
+    // naming the panel it shows: what the tab role promises a screen reader.
     return '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="' + escapeHtml(label) + '">' + tabs.map(function (tab) {
       const selected = tab.id === active;
-      return '<button class="' + (selected ? 'active' : '') + '" data-action="set-result-tab" data-tab="' + escapeHtml(tab.id) + '" role="tab" aria-selected="' + selected + '">' + escapeHtml(tab.label) + ' (<span data-search-count="' + escapeHtml(tab.id) + '">' + tab.count + '</span>)</button>';
+      return '<button class="' + (selected ? 'active' : '') + '" id="' + resultTabId(tab.id) + '" data-action="set-result-tab" data-tab="' + escapeHtml(tab.id) + '" role="tab" aria-selected="' + selected + '" aria-controls="' + resultPanelId(tab.id) + '" tabindex="' + (selected ? '0' : '-1') + '">' + escapeHtml(tab.label) + ' (<span data-search-count="' + escapeHtml(tab.id) + '">' + tab.count + '</span>)</button>';
     }).join('') + '</div></div>';
+  }
+
+  /** The id of a result tab, and of the panel it shows. */
+  function resultTabId(id) { return 'result-tab-' + escapeHtml(id); }
+  function resultPanelId(id) { return 'result-panel-' + escapeHtml(id); }
+
+  /** The attributes a result tab's panel carries, so the two name each other. */
+  function resultPanelAttributes(id) {
+    return ' id="' + resultPanelId(id) + '" role="tabpanel" aria-labelledby="' + resultTabId(id) + '"';
   }
 
 
@@ -1237,9 +1421,11 @@ export function getComponentScript(): string {
   let rankMenuKey;
 
   function closeRankMenu() {
+    const wasOpen = Boolean(rankMenu && !rankMenu.hidden);
     if (rankMenu) rankMenu.hidden = true;
     rankMenuKind = undefined;
     rankMenuKey = undefined;
+    if (wasOpen) returnFocusFromMenu();
   }
 
   function installRankedRows(options) {
@@ -1405,7 +1591,9 @@ export function getComponentScript(): string {
       const isMenuKey = event.key === 'ContextMenu'
         || (event.key === 'F10' && event.shiftKey)
         || (event.key === 'Enter' && event.altKey);
-      if (!isMenuKey) return;
+      // The shared listener raises a contextmenu event for these keys first,
+      // which this menu's own listener answers; nothing to do twice.
+      if (!isMenuKey || event.defaultPrevented) return;
       const row = event.target.closest ? event.target.closest(rowSelector) : undefined;
       if (!row) return;
       const bounds = row.getBoundingClientRect();
@@ -1573,7 +1761,7 @@ export function getQueryEditorCss(): string {
 .query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: 12px; line-height: 1; }
 .query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
 .query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
-.query-chip-join, .query-op { color: var(--amber); font: 10px var(--font-mono); letter-spacing: .08em; }
+.query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
 .query-op { font-size: inherit; }
 .query-paren { color: var(--muted); }
 .query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); }
@@ -1584,7 +1772,7 @@ export function getQueryEditorCss(): string {
 .query-suggestions .query-suggestion:last-child { border-bottom: 0; }
 .query-suggestions .query-suggestion:hover, .query-suggestions .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
 .query-suggestion-label { min-width: 0; overflow-wrap: anywhere; }
-.query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
@@ -1592,6 +1780,11 @@ export function getQueryEditorCss(): string {
 .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--amber); color: var(--amber); }
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
+/* The line of syntax is wanted at the moment of typing and is chrome the rest
+   of the time, competing with the results under it. It shows while the box
+   has focus or holds a term; the Builder button and the count stay, and a
+   parse error, which shares the slot, never hides. */
+.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
 .query-builder-group.is-negated { border-style: dashed; }
@@ -1601,8 +1794,8 @@ export function getQueryEditorCss(): string {
 .query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .query-builder-group-head select { min-height: 28px; font-size: 12px; }
-.query-builder-head-text { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
-.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.query-builder-head-text { color: var(--muted); font-size: var(--text-xs); }
+.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; }
 .query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
 .query-builder-item > .query-builder-and { margin-top: 9px; }
 .query-builder-item.has-group { margin-top: 10px; margin-bottom: 10px; }
@@ -1615,7 +1808,7 @@ export function getQueryEditorCss(): string {
 .query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); }
 .query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
-.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
 .query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .query-builder-actions button { font-size: 11px; }
@@ -1634,11 +1827,11 @@ export function getQueryEditorCss(): string {
    its controls rather than against the page. */
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
-.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-.query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
-.query-facet-count { color: var(--muted); font-size: 10px; }
+.query-facet-count { color: var(--muted); font-size: var(--text-xs); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
@@ -1789,7 +1982,7 @@ export function getQueryEditorScript(): string {
         ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
         : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
       const label = options.label || 'Search';
-      return '<section class="query-workspace" aria-label="' + escapeHtml(label) + '">'
+      return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
         + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'

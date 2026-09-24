@@ -1230,6 +1230,32 @@ function cloneWidgets(
 }
 
 /**
+ * Whether Home still holds the widgets it started with, in their order and
+ * with their settings. Home says it can be arranged only while this is so:
+ * once a reader has moved, sized, or swapped a widget, they know.
+ */
+export function isDefaultHomeLayout(
+  widgets: readonly DashboardWidgetConfig[],
+): boolean {
+  const same = (
+    left: DashboardWidgetConfig,
+    right: DashboardWidgetConfig,
+  ): boolean =>
+    left.id === right.id &&
+    left.kind === right.kind &&
+    left.width === right.width &&
+    left.count === right.count &&
+    left.query === right.query &&
+    left.paged === right.paged;
+  return (
+    widgets.length === DEFAULT_DASHBOARD_WIDGETS.length &&
+    widgets.every((widget, index) =>
+      same(widget, DEFAULT_DASHBOARD_WIDGETS[index]),
+    )
+  );
+}
+
+/**
  * A search with one tag renamed where it stands as a whole tag, leaving the
  * rest of what was written alone.
  */

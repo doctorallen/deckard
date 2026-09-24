@@ -613,6 +613,31 @@ suite('Webview contracts', () => {
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    // Nothing a reader acts on is set below the smallest step of the scale.
+    assert.ok(
+      html.includes('--text-xs: 11px;'),
+      'the type scale declares its floor',
+    );
+    assert.strictEqual(
+      /font(-size)?: ?(9|10)px/.test(html),
+      false,
+      'no rule on the page sets text under the floor',
+    );
+    // The syntax hint under a search box shows while the box is in use and
+    // not at rest, where it competed with the results under it.
+    assert.strictEqual(
+      html.includes('.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }'),
+      true,
+      'the hint rests only while the box is idle and empty',
+    );
+    // The file and line under a task were once a literal grey at 1.85:1 on
+    // the panel, which six of the eight themes inherited. The muted token is
+    // what every theme declares for secondary text.
+    assert.strictEqual(
+      html.includes('.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted);'),
+      true,
+      'task provenance takes the muted token, never a literal colour',
+    );
                                               });
 
   test('draws a tag the same way in every theme', () => {

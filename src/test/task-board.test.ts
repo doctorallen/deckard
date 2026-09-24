@@ -77,6 +77,29 @@ suite('Task board', () => {
     ]);
   });
 
+  test('says when almost nothing carries a status, and only then', () => {
+    // The fixture writes a status on most of its open tasks.
+    assert.strictEqual(board(createIndex(), 'status', '', options).statusHint, undefined);
+
+    // A status is read from the tags written on the task's own line.
+    const bare = createIndex();
+    for (const task of bare.tasks.values()) {
+      const isStatus = (key: string): boolean => key.toLowerCase().startsWith('#status/');
+      task.tags = task.tags.filter((key) => !isStatus(key));
+      task.associationTagGroups = (task.associationTagGroups ?? []).map((group) =>
+        group.filter((tag) => !isStatus(tag.key)),
+      );
+    }
+    const layout = board(bare, 'status', '', options);
+    const open = [...bare.tasks.values()].filter((task) => !task.completed).length;
+    assert.deepStrictEqual(layout.statusHint, { withoutStatus: open, open });
+    assert.strictEqual(
+      board(bare, 'due', '', options).statusHint,
+      undefined,
+      'another grouping has nothing to say',
+    );
+  });
+
   test('groups by priority and by due date', () => {
     assert.deepStrictEqual(ids(board(createIndex(), 'priority', '', options)), [
       ['priority:highest', []],

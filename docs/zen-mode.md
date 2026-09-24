@@ -5,7 +5,7 @@
 Deckard's webviews carry a lot of furniture. On the Home dashboard, before a
 single note is read, the first screen spends itself on an eyebrow
 (`DECKARD / WORKSPACE INDEX`), three metric tiles wearing invented telemetry
-codes (`SYS.ENT // 1982-AZ`), a dotted grid backdrop, a bordered row reading
+codes (`SYS.TAG // 1982-AZ`), a dotted grid backdrop, a bordered row reading
 "Home is yours to arrange.", a section label saying `SEARCH` above an obvious
 search box, and a permanent line of query syntax under it. Every task row then
 repeats its file name, heading, and line number in full. The Search page
@@ -154,11 +154,13 @@ Three need care rather than a blanket rule:
   `Tasks (N)` collides with `<h2>Tasks (N)</h2>` only when
   `state.layout === 'tabs'`. In Split layout the heading is the only one there.
 
-Home's `.home-hint-bar` (`dashboardHtml.ts:848`) contains the **Customize**
-button, so hiding the bar does remove a control from the page — but Customize
-is also the gear's "Home" row (`dashboardHtml.ts:925`), so nothing becomes
-unreachable. Worth calling out in the commit, since it is the one place zen
-touches a button.
+Home's `.home-hint-bar` contains the **Customize** button, so hiding the bar
+does remove a control from the page — but Customize is also the gear's "Home"
+row, so nothing becomes unreachable. Worth calling out in the commit, since it
+is the one place zen touches a button. Outside zen the bar is no longer
+permanent either: it is drawn only while Home still holds the widgets it
+started with, and goes for good once Home has been arranged or the reader
+chooses **Dismiss**.
 
 **Frame thinned** — `--edge: 2px → 1px`; `--control-height: 30px → 26px`;
 `text-transform: none` and `letter-spacing: normal`; `clip-path: none` and

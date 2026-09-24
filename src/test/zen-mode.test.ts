@@ -10,7 +10,7 @@ import {
   createSearchPageSnapshot,
 } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { getZenCss } from '../ui/webview/components';
+import { getProvenanceCss, getZenCss } from '../ui/webview/components';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { isZenModeEnabled } from '../ui/webview/zenMode';
@@ -212,14 +212,24 @@ suite('Zen mode', () => {
       'zen must not fold the board details, which carry overdue state',
     );
 
-    // Provenance folds off-screen rather than out of the tree, so it is still
+  });
+
+  test('folds where an entry is written, in and out of zen, without leaving the tree', () => {
+    const sheet = getProvenanceCss();
+
+    // Folded off-screen rather than out of the tree, so it is still
     // announced, still found by find-in-page, and comes back on focus.
-    assert.match(sheet, /body\.zen \.task-row \.task-source,/);
+    assert.match(sheet, /\.task-row \.task-source,/);
     assert.match(sheet, /clip-path: inset\(50%\)/);
-    assert.match(sheet, /body\.zen \.task-row:focus-within \.task-source/);
+    assert.match(sheet, /\.task-row:focus-within \.task-source/);
     assert.ok(
       !/\.task-source[^{]*\{[^}]*display: none/.test(sheet),
       'provenance must not leave the accessibility tree',
+    );
+    assert.ok(!/body\.zen/.test(sheet), 'it is the same with zen off');
+    assert.ok(
+      !/\.board-details/.test(sheet),
+      'the board details carry overdue state and never fold',
     );
   });
 

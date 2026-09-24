@@ -361,6 +361,73 @@ suite('Search page behavior', () => {
     );
   });
 
+  test('marks a search box that holds a term, so its hint can stay while it is in use', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    assert.strictEqual(
+      page.find('.query-workspace').hasAttribute('data-has-text'),
+      true,
+      'a search page opens on its tag, which is a term',
+    );
+    assert.ok(page.find('.query-hint'), 'and the hint is in the page for the sheet to show or hide');
+  });
+
+  test('the result tabs behave as tabs from the keyboard', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    const tab = (id: string) =>
+      page.find(`[data-action="set-result-tab"][data-tab="${id}"]`);
+    const key = (id: string, key: string) =>
+      tab(id).dispatchEvent(
+        new page.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+
+    assert.strictEqual(tab('notes').getAttribute('tabindex'), '0', 'the chosen tab is the tab stop');
+    assert.strictEqual(tab('tasks').getAttribute('tabindex'), '-1', 'the others are reached by arrow');
+    assert.strictEqual(
+      tab('notes').getAttribute('aria-controls'),
+      page.find('.overview-tab-panel[role="tabpanel"]').id,
+      'a tab names the panel it shows',
+    );
+    assert.strictEqual(
+      page.find('#result-panel-notes').getAttribute('aria-labelledby'),
+      tab('notes').id,
+      'and the panel names its tab',
+    );
+
+    key('notes', 'ArrowRight');
+    assert.strictEqual(tab('tasks').getAttribute('aria-selected'), 'true', 'Right chooses the next tab');
+    assert.strictEqual(page.document.activeElement, tab('tasks'), 'and focuses it');
+    key('tasks', 'ArrowRight');
+    assert.strictEqual(tab('notes').getAttribute('aria-selected'), 'true', 'and wraps');
+    key('notes', 'End');
+    assert.strictEqual(tab('tasks').getAttribute('aria-selected'), 'true', 'End goes to the last');
+    key('tasks', 'Home');
+    assert.strictEqual(tab('notes').getAttribute('aria-selected'), 'true', 'Home to the first');
+    key('notes', 'ArrowLeft');
+    assert.strictEqual(tab('tasks').getAttribute('aria-selected'), 'true', 'Left wraps the other way');
+  });
+
+  test('a tag\'s context menu opens from the keyboard, and gives focus back', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    const tag = page.find('.card [data-tag-key]') as HTMLElement;
+    tag.focus();
+    tag.dispatchEvent(
+      new page.window.KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, cancelable: true }),
+    );
+    const menu = page.find('#tag-context-menu');
+    assert.strictEqual(menu.hasAttribute('hidden'), false, 'Shift+F10 opens the menu a right-click would');
+    assert.strictEqual(
+      page.document.activeElement,
+      menu.querySelector('button'),
+      'and focus is on its first item',
+    );
+
+    page.document.dispatchEvent(
+      new page.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    assert.strictEqual(menu.hasAttribute('hidden'), true, 'Escape closes it');
+    assert.strictEqual(page.document.activeElement, tag, 'and focus returns to the tag');
+  });
+
   test('sends the reader to the results waiting on the other tab', () => {
     // A task-only search lands on Tasks rather than an empty Notes tab.
     const { page } = open(NOTES, '#project/atlas is:open');

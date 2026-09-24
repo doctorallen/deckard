@@ -54,8 +54,18 @@ suite('Related Notes behavior', () => {
 
     assert.strictEqual(page.findAll('.note').length, 1);
     assert.match(page.text('.note-title') ?? '', /Check-in/);
-    assert.match(page.text('.relevance-score') ?? '', /84%/);
-    assert.match(page.text('.source') ?? '', /atlas\.md \/ line 12/);
+    assert.strictEqual(
+      page.findAll('.relevance-score .tag-weight-rail-segment.filled').length,
+      3,
+      'a score of 84 fills the rail, as a strong relation',
+    );
+    assert.match(
+      page.find('.relevance-score').getAttribute('aria-label') ?? '',
+      /^Relevance strong, 84 of 100\./,
+      'and is named as strong, with the number after it',
+    );
+    assert.match(page.text('.relevance-tooltip') ?? '', /84%/, 'the exact score waits in the breakdown');
+    assert.match(page.text('.source') ?? '', /^atlas \/ line 12$/);
   });
 
   test('opens a result at its line, and beside the note when asked', () => {
@@ -203,6 +213,21 @@ suite('Related Notes behavior', () => {
 
     page.find('.active-tag-list [data-action="open-tag"]').dispatchEvent(
       new page.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
+    );
+    page.find('#tag-context-menu [data-context-action="rename-tag"]').dispatchEvent(
+      new page.window.MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+
+    assert.strictEqual(page.lastPosted('renameTag')?.tagKey, '#project/atlas');
+  });
+
+  test('renames a tag from its context menu, opened with the menu key', () => {
+    const page = open({
+      activeTags: [{ key: '#project/atlas', label: 'project/atlas', weight: 1 }],
+    });
+
+    page.find('.active-tag-list [data-action="open-tag"]').dispatchEvent(
+      new page.window.KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, cancelable: true }),
     );
     page.find('#tag-context-menu [data-context-action="rename-tag"]').dispatchEvent(
       new page.window.MouseEvent('click', { bubbles: true, cancelable: true }),

@@ -2,6 +2,112 @@
 
 ## Unreleased
 
+### Changed
+
+- **Working labels read as written in every theme.** Column titles on the
+  board, group headings in lists, table headers, the Refine label, and the
+  labels beside controls were set in tracked capitals in the film themes, a
+  style that reads measurably slower at eleven pixels and that a reader
+  scans dozens of times. They now read as written everywhere; the eyebrow
+  above a page title and the title itself keep the capitals, which is where
+  the display voice belongs. Palettes, glows, and backdrops are unchanged.
+
+- **Related Notes says strong, moderate, or weak instead of a percentage.**
+  Each result carried a score such as **33%**, which reads as a precision
+  the ranking does not have, and two notes at 33% and 41% invited a reader
+  to work out why. The result now carries the three-step rail Refine already
+  draws, filled for a strong, moderate, or weak relation, and the exact
+  score waits in the breakdown behind it with the signals and weights.
+
+- **No text under eleven pixels.** Counts, captions, the calendar's due
+  marks, the graph's labels and readouts, and a handful of section labels
+  were set at nine or ten pixels, in muted monospace, which is below where
+  fluent reading holds at a laptop's viewing distance. The pages now share
+  a four-step type scale, `--text-xs` to `--text-lg`, with eleven pixels as
+  its floor, and every smaller size has risen to it.
+
+- **The Notes Graph opens around the note being written, and names its
+  hubs.** It opened on the whole workspace, hundreds of unlabelled dots with
+  focus off and a line saying to open a note, which the reader usually had.
+  It now opens around the note in the editor, one hop out, when there is
+  one, and keeps whatever scope the reader then chooses. At rest the whole
+  graph labels its dozen best-connected notes on screen, so the overview
+  reads as places rather than as density; zooming in still names the rest.
+
+- **Home says it can be arranged only until it has been.** The line
+  "Home is yours to arrange." was drawn above the widgets on every visit.
+  A fixed line of instruction is read the first few times and skipped after,
+  and it cost a row on the page opened most. It is now drawn only while Home
+  still holds the widgets it started with, and goes for good once a widget
+  has been moved, sized, or swapped, or the reader chooses **Dismiss**.
+  Customize stays in the gear throughout.
+
+- **The search box's line of syntax shows while the box is in use.** The
+  line under every search box listing words, `#tags`, `is:open`, `AND`,
+  `OR`, `NOT`, and the `/` shortcut was drawn at rest on every page, where
+  it competed with the results beneath it; the placeholder already said
+  most of it. It now shows while the box has focus or holds a term, and
+  rests otherwise. **Builder** stays, and a search that could not be parsed
+  still says so.
+
+- **The Task Board says when almost nothing carries a status.** Status is
+  the board's first grouping and a status is a tag most notes never write,
+  so the first board a reader saw was one tall **No status** column and four
+  near-empty ones. While fewer than a quarter of the open tasks carry a
+  status, a line above the columns now says how many have none, how to give
+  a task one, and offers **Group by due date**, which works for any task.
+
+- **One vocabulary for what the index holds.** The Dashboard counted
+  "entities" and "sections", Stats counted "Markdown files", "Note entries",
+  "All tags", and "Canonical tags", the Notes Graph counted "notes", and a
+  reindex said it had indexed 51 notes when it meant files. Every page now
+  uses the same four words: a **file** holds **notes**, the headed entries,
+  which hold **tasks** and carry **tags**. The Dashboard's tiles count notes,
+  tasks, and tags; Stats says files, notes, tags, and namespaced tags; and a
+  reindex says how many files it read and what it found in them.
+
+- **A due date says how far from today it is, in words.** A task row read
+  **DUE 2026-09-08**, in red when the date had passed, so a reader subtracted
+  the date from today and an overdue task was told apart by colour alone.
+  Everywhere a task is listed, Home, search pages, the board's cards, list,
+  and table, and query blocks, the date now reads **Overdue 15 days ·
+  2026-09-08**, **Due today**, **Due tomorrow**, or **Due in 3 days**, with
+  the date beside it for anyone who cites dates. Beyond a month either way
+  only the date is written, and a done task keeps its date as written.
+
+- **Capture and Create Daily Note have shortcuts.** The two commands run
+  most often each day went through the Command Palette every time.
+  Cmd/Ctrl+Shift+Alt+C captures a task and Cmd/Ctrl+Shift+Alt+D opens
+  today's note, in the same family as the search and task shortcuts. Both
+  are rebindable, and the Help page's command table lists every shortcut
+  beside its command.
+
+### Fixed
+
+- **Every context menu opens from the keyboard.** The menu on a tag, a
+  result, and a ranked row opened on a right-click alone, so rename, pin,
+  and move to top or bottom could not be reached without a pointer. The
+  menu key, Shift+F10, and Alt+Enter on the focused element now open the
+  same menu at it, and Escape gives focus back.
+
+- **A search's Notes and Tasks tabs behave as the tabs they said they were.**
+  They carried the tab role, which tells a screen reader to expect one tab
+  stop and arrow keys between them, and had neither. The chosen tab is now
+  the tab stop, Left, Right, Home, and End move between them, and each tab
+  names the panel it shows.
+
+- **The file and line under a task can be read in every theme.** The base
+  sheet coloured them with a literal grey that sat at 1.85:1 on a dark
+  panel, well under the 4.5:1 that WCAG asks of text this size, and only
+  Corpo and Synthwave restated it. They now take the muted token every
+  theme declares, which is 5.2:1 in the default palette.
+
+- **The status bar counts overdue and today separately.** It read
+  **22 due today, 17 overdue** when five tasks were due today, because the
+  first number was both groups added together, and the Tasks view it opens
+  said 17 and 5. It now reads **17 overdue, 5 due today**, and the reminder
+  and hover say the same in a sentence.
+
 ### Added
 
 - **A note finds where it is mentioned without a link, and links it.**

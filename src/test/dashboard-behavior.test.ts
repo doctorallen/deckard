@@ -97,6 +97,22 @@ suite('Dashboard behavior', () => {
       ...changes,
     });
 
+  test('counts notes, tasks, and tags, in those words', () => {
+    const { page, snapshot } = open();
+    const labels = page
+      .findAll('.metrics .metric-label')
+      .map((label) => label.textContent);
+    assert.deepStrictEqual(labels, ['notes', 'tasks', 'tags']);
+    const values = page
+      .findAll('.metrics .metric-value')
+      .map((value) => Number(value.textContent));
+    assert.deepStrictEqual(values, [
+      snapshot.totalNoteCount,
+      snapshot.totalTaskCount,
+      snapshot.tags.length,
+    ]);
+  });
+
   test('moves between Home and Tags, and marks where the reader is', () => {
     const { page } = open();
 
@@ -329,6 +345,44 @@ suite('Dashboard behavior', () => {
     const changed = widgets.find((widget) => widget.id === 'p');
     assert.strictEqual(changed?.count, 10);
     assert.strictEqual(changed?.page, 1, 'a different page size is a different list');
+  });
+
+  test('says Home can be arranged until it has been, or the line is put away', () => {
+    const { page, snapshot } = open();
+    assert.ok(
+      page.document.querySelector('.home-hint-bar'),
+      'a Home still holding its first widgets says it can be arranged',
+    );
+
+    page.send({ ...snapshot, homeArranged: true });
+    assert.strictEqual(
+      page.document.querySelector('.home-hint-bar'),
+      null,
+      'an arranged Home no longer says so',
+    );
+    assert.ok(
+      page.document.querySelector('[data-action="customize-home"]'),
+      'and Customize is still on the page, in the gear',
+    );
+
+    page.send({ ...snapshot, homeArranged: false });
+    page.click('[data-action="dismiss-home-hint"]');
+    assert.strictEqual(
+      page.document.querySelector('.home-hint-bar'),
+      null,
+      'putting the line away removes it',
+    );
+    assert.strictEqual(
+      (page.savedState() as { homeHintDismissed?: boolean }).homeHintDismissed,
+      true,
+      'and is remembered across a reload',
+    );
+    page.send({ ...snapshot, homeArranged: false });
+    assert.strictEqual(
+      page.document.querySelector('.home-hint-bar'),
+      null,
+      'so a later state does not bring it back',
+    );
   });
 
   test('offers to rearrange Home, and to put it back', () => {

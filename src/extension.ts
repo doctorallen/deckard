@@ -540,12 +540,16 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       // Reindexing looked like it did nothing: a status-bar spinner, then
       // silence. Asked for by hand, it says what it found.
       const index = indexer.getSnapshot();
+      const plural = (count: number, noun: string): string =>
+        `${count} ${noun}${count === 1 ? '' : 's'}`;
       void vscode.window.showInformationMessage(
-        `Deckard indexed ${index.files.size} ${
-          index.files.size === 1 ? 'note' : 'notes'
-        }, ${index.tasks.size} ${
-          index.tasks.size === 1 ? 'task' : 'tasks'
-        }, and ${index.tags.size} ${index.tags.size === 1 ? 'tag' : 'tags'}.`,
+        `Deckard indexed ${plural(index.files.size, 'file')}: ${plural(
+          index.sections.size,
+          'note',
+        )}, ${plural(index.tasks.size, 'task')}, and ${plural(
+          index.tags.size,
+          'tag',
+        )}.`,
       );
     }),
   );

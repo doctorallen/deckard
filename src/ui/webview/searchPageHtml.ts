@@ -63,15 +63,15 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 }
 .overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .saved-view-name { margin: 0 0 8px; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
-.saved-view-name-label { color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+.saved-view-name-label { color: var(--muted); }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
 .overview-pane { min-width: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* Bulk Edit and Export sit together at the right, after the heading. */
 .overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
-.overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; text-transform: uppercase; }
-.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; }
+.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -86,7 +86,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-empty { color: var(--muted); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
-.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; }
+.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
@@ -249,7 +249,7 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(fileName) + ' / line ' + section.startLine + '</div></div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div></div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */
@@ -373,7 +373,7 @@ ${getQueryEditorScript()}
       : renderResultTabs([
         { id: 'notes', label: 'Notes', count: notesCount },
         { id: 'tasks', label: 'Tasks', count: tasksCount },
-      ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
+      ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + resultPanelAttributes('notes') + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + resultPanelAttributes('tasks') + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
     const viewOptions = renderViewOptions([
@@ -422,6 +422,14 @@ ${getQueryEditorScript()}
 
   document.addEventListener('mousedown', function (event) {
     editor.handleMousedown(event);
+  });
+  // The mouse's back and forward buttons step through the searches the page
+  // has shown, as they step through a browser's pages. The webview's frame
+  // would otherwise take them as its own navigation, or drop them.
+  document.addEventListener('mouseup', function (event) {
+    if (event.button !== 3 && event.button !== 4) return;
+    event.preventDefault();
+    vscode.postMessage({ type: 'navigateSearchHistory', direction: event.button === 3 ? 'back' : 'forward' });
   });
   document.addEventListener('focusin', function (event) {
     editor.handleFocusIn(event);

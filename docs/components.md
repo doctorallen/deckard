@@ -129,6 +129,7 @@ re-declare the same names.
 | `--font-mono` | VS Code editor font | Headings, code, data |
 | `--edge` | `2px` | Standard border width |
 | `--control-height` | `30px` | Standard control height |
+| `--text-xs` … `--text-lg` | `11px`, `12px`, `13px`, `14px` | The type scale. `--text-xs` is the floor: counts, captions, and meta lines; nothing a reader acts on goes below it. `--text-md` is body text. |
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and
@@ -268,7 +269,7 @@ search results and the Task Board's list layout.
 | Piece | What it is |
 | --- | --- |
 | `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
-| `renderTaskListRow(item, options)` | One row from a `DashboardTask`. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
+| `renderTaskListRow(item, options)` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `taskMetadata.ts` so every list, the board, the table, and query blocks say it the same way. `options.draggable` marks a row that can be ranked; `options.titleDisplay` is the `tagTitleDisplayMode`. Its checkbox posts through `data-action="toggle-task"`. |
 | `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
@@ -340,7 +341,10 @@ never dropped outright.
 
 Two things look like chrome and are not:
 
-- `.query-error` shares its slot with `.query-hint`. The hint goes; the error
+- `.query-error` shares its slot with `.query-hint`. Outside zen the hint
+  already rests while the box is idle and empty, through
+  `.query-workspace:not(:focus-within):not([data-has-text])`, and comes back
+  on focus or once a term is written. Zen hides it outright. The hint goes; the error
   never does, or a search that failed to parse reads as one that found
   nothing.
 - `.board-details` is a `.source`, but it carries the due date and the word
@@ -379,12 +383,12 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderTaskTitle(html, tags)` | Decorate tags inside already-rendered Markdown without re-escaping it. |
 | `formatEntityTitle(kind, name)` | `project` + `skybridge-signal` → `Project: Skybridge Signal`. |
 | `taskFilterIcon(filter)` | The `all` / `active` / `completed` icons. |
-| `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. |
+| `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. Every context menu, this one and a page's own, opens on a `contextmenu` event, and the shared script raises that event on the focused tag, card, or row for the menu key, Shift+F10, and Alt+Enter, so no menu needs its own keyboard path. |
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
 | `renderZenOption()` | The gear's Zen row, ready to drop into a `renderViewOptions()` list. Reads the current state from the body class, so no page carries zen through its state builder, and posts `setZenMode` from `installViewOptions()`, so no page needs a handler. |
-| `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. |
+| `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. The chosen tab is the one tab stop, Left, Right, Home, and End move between them, and each tab names its panel through `aria-controls`; the page marks the panel with `resultPanelAttributes(id)`. |
 | `renderWeightRail(level, title)`, `getWeightLevel(weight)` | How much a tag weighs, as a `.tag-weight-rail` of three steps, and the step a weight fills to: three from 0.75, two from 0.375. Related Notes' active tags, Refine, and the sidebar's Refine view draw it. |
 
 ### The search box

@@ -12,7 +12,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | --- | --- |
 | [Tags and entities](#markdown-format) | `#tags`, `@people`, and namespaced entities such as `#project/atlas` on headings, tasks, and lines become one workspace-wide index. |
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
-| [Dashboard](#dashboard) | Workspace totals, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
+| [Dashboard](#dashboard) | Workspace totals of notes, tasks, and tags, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
 | [Search pages](#search-pages) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. Any other search opens the same kind of page, and [one bulk edit](#editing-a-searchs-results) can be made to everything it found. |
 | [Search](#search) | `Deckard: Search Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
@@ -54,7 +54,7 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 ## Themes
 
-Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase readouts of the others. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo.
+Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase eyebrows and titles of the others. In every theme the labels a reader scans while working, column titles, group headings, table headers, and control labels, read as written; only the eyebrow above a page title and the title itself take the film styles' capitals. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo.
 
 | **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colours;
 
 **What it does not change.** Every button, filter, tab, count, checkbox, and tag stays exactly where it was — zen hides ornament and folds provenance, and removes no functionality. The folded text is moved off-screen rather than out of the page, so a screen reader still announces it and find-in-page still finds it. A task's due date, priority, and overdue marker never fold: they are the point of a task row. Nor does a search that Deckard could not parse stop saying so.
 
-**What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.
+**What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut, which outside zen shows while the box is in use, is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.
 
 ## Get started
 
@@ -106,7 +106,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
-| **Deckard: Create Daily Note** | Creates or opens today's note. |
+| **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists the favorites, pins, and tag-set searches that point at nothing in this workspace any more, and removes them only if you say so. Deckard never removes one of these on its own. |
 | **Deckard: Export Favorites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file you choose. |
@@ -121,7 +121,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
 | **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Edits the task on the cursor's line, field by field; see [Editing a whole task](#editing-a-whole-task). |
 | **Deckard: Add Task** | The same editor, under the name it goes by when the cursor is not on a task: the same shortcut writes a new one where you are. |
-| **Deckard: Capture** | Adds a task to today's note without leaving the current editor, completing tags as you type. |
+| **Deckard: Capture** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> elsewhere. Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the unfinished tasks of the last daily note into today's, creating today's note if it is not there yet. |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
@@ -410,7 +410,7 @@ Each says what it did with **Undo** beside it. A pin is kept as the heading's te
 
 **Paging**, in a widget's gear, turns it from the first few entries into all of them a page at a time: the widget grows a line of its own with **Per page**, the entries it is showing, such as *6–10 of 601*, and a chevron either way. The Agenda widget and a saved search's results are not paged, because each lists more than one thing and a single page number could not say which. A widget's page is kept with the rest of its settings, so Home opens where you left it.
 
-Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks, New tags, and People gone quiet look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
+Until Home has been arranged, a line above the widgets says it can be, with **Customize** and **Dismiss** beside it; once it has been arranged, or dismissed, the line is gone for good. Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks, New tags, and People gone quiet look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
 
 ### Tags
 
@@ -419,11 +419,11 @@ Choose **Customize** in the View options gear to arrange Home. Drag a widget to 
 - **Saved searches** are listed below the tags. Select one to reopen it where it was saved, or use **Remove** to delete it.
 - Use the View options gear to choose one through four tag columns.
 - Select a tag to open its [page](#search-pages).
-- Right-click any tag or entity row to choose **Rename tag**. When tags use custom rank, drag rows or right-click a row to move it to the top or bottom. Display order changes do not reorder text in your Markdown files.
+- Right-click any tag or entity row, or press <kbd>Shift</kbd>+<kbd>F10</kbd> or the menu key on it, to choose **Rename tag**. Every right-click menu in Deckard opens from the keyboard the same way. When tags use custom rank, drag rows or right-click a row to move it to the top or bottom. Display order changes do not reorder text in your Markdown files.
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current Markdown file, note entry, task, tag, namespaced entity, and Wiki-link totals from the index. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
+Run `Deckard: Show Stats` to see the current file, note, task, tag, namespaced tag, and Wiki-link totals from the index. Deckard counts the same things under the same names everywhere: a **note** is a headed entry, and a **file** holds one or more of them. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
 
 If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
 
@@ -451,7 +451,7 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 
 - Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
 - Hover a dot to highlight its direct graph neighbors and see its source location. Select any note, task, or tag dot to list those connected nodes in the sidebar using the same note-card and tag styling as the rest of Deckard. Select the current node at the top of the sidebar to open its note/task source or tag page. Select a connected sidebar item to move the graph selection; Cmd/Ctrl-click it to open that item instead. Cmd/Ctrl-clicking a graph dot opens the same destination, and selecting empty space clears the selection.
-- **Focus** draws the graph around the note in the editor rather than the whole workspace. **Around this note** turns it on, and **Hops out** chooses how far it reaches: one hop is the note, the tags it carries, and the notes it links to; two adds what those touch. The line beneath says which note it is drawn around and how many of the workspace's nodes are on screen.
+- **Focus** draws the graph around the note in the editor rather than the whole workspace. The graph opens this way, one hop out, whenever a note is open in the editor, since a whole workspace at once is hundreds of unlabelled dots; clear **Around this note** for the whole graph, and the choice is kept while the graph is open. At rest, the whole graph names its best-connected notes, and zooming in names the rest. **Around this note** turns focus on, and **Hops out** chooses how far it reaches: one hop is the note, the tags it carries, and the notes it links to; two adds what those touch. The line beneath says which note it is drawn around and how many of the workspace's nodes are on screen.
   - It follows the editor: open another note and the graph is redrawn around that one. The graph is itself a tab, so the note it is about is the last one you had open.
   - A tag association is a hop like any other, so two hops out reaches the tags your tags are usually written with, and the notes carrying them.
   - Only the neighbourhood is sent to the page, so a local graph costs a screenful whatever the workspace holds. The tag checklist narrows to the tags that neighbourhood actually holds.
@@ -502,7 +502,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 
 Deckard puts one count in VS Code's status bar: **3 due today**, counting the same open tasks the Tasks view's Overdue and Today groups hold. Selecting it opens that view.
 
-- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **4 due today, 1 overdue** — and takes the editor's warning colour.
+- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **1 overdue, 3 due today** — and takes the editor's warning colour. Each number counts its own group; neither is the sum of the two.
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
 - `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
@@ -513,9 +513,10 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 
-- **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
+- **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. While fewer than a quarter of the open tasks carry a status, a line above the columns says how many have none, how to give a task one, and offers **Group by due date**, which works for any task. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
 - **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
 - **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
+- A due date is written by its distance from today with the date beside it — **Overdue 15 days · 2026-09-08**, **Due tomorrow · 2026-09-24** — on a board card, in the list and table, on Home and search pages, and in query blocks, so nothing has to be subtracted, and an overdue task says so in words rather than in colour alone. Beyond a month either way only the date is written, and a done task keeps its date as written.
 - Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
 - Search the tasks with the same [search box](#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks, and a search you run is added to your recent searches. The board opens on `is:open`, since a board is for what is still to do; clear the box for every task, or search `is:done` for the finished ones.
 - **Save**, beside the search box, keeps the search as a saved search that reopens on the Task board. **Tasks view** makes the [Tasks view](#tasks-view) list the search instead; it is lit while the view lists the board's current one.
@@ -555,7 +556,7 @@ Each result shows its compact heading path and a concise primary reason for the 
 
 ### Understand a score
 
-Select a result percentage to open its explanation with the matching signals and weights; it also works from the keyboard. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows whether each selected tag came from the entry, parent ancestry, a child heading, or a child item, along with heading paths, daily-note context, raw and normalized association support/prevalence, entry and file link evidence, lexical terms, optional recency, and specificity adjustments.
+Each result carries a three-step rail, the same one Refine draws, filled for a strong, moderate, or weak relation. Select it to open the explanation, with the exact score, the matching signals, and the weights; it also works from the keyboard. For the complete calculation, hover a tagged entry and choose **Debug related notes for [entry]**. The debug page shows whether each selected tag came from the entry, parent ancestry, a child heading, or a child item, along with heading paths, daily-note context, raw and normalized association support/prevalence, entry and file link evidence, lexical terms, optional recency, and specificity adjustments.
 
 Use the sort control to choose **Relevance**, **Newest**, **Oldest**, or **Most accessed**. Select a related note to open its matching line, or select a tag to open its page.
 
@@ -673,7 +674,7 @@ Ties are broken by how often and how recently you opened something, so a note yo
 
 ### The search box
 
-Search pages, Home's search widget, and the Task board have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it. The Task board's box searches tasks alone.
+Search pages, Home's search widget, and the Task board have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it. The line under the box that lists what a search can say shows while the box has focus or holds a term, and rests the rest of the time; **Builder** stays beside it. The Task board's box searches tasks alone.
 
 ![A search page searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](docs/images/notes-search.png)
 
@@ -817,7 +818,7 @@ The note name is used as a single Markdown filename. Existing notes are never ov
 
 ## Daily notes
 
-Run `Deckard: Create Daily Note` from the Command Palette, or use the shortcut in Related Notes. Deckard creates a note named with the local date, such as `2026-08-30.md`, in your configured notes folder or workspace root and opens it. If today's note already exists, Deckard opens it without replacing its contents.
+Run `Deckard: Create Daily Note` from the Command Palette, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the shortcut in Related Notes. Deckard creates a note named with the local date, such as `2026-08-30.md`, in your configured notes folder or workspace root and opens it. If today's note already exists, Deckard opens it without replacing its contents.
 
 `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the one in the editor, skipping days without a note. From any other note they start from today.
 

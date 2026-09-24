@@ -2,6 +2,7 @@ import {
   formatIsoDate,
   startOfDay,
   TASK_PRIORITY_RANKS,
+  describeDueDate,
 } from '../../core/markdown/taskMetadata';
 import {
   TableCell,
@@ -139,12 +140,15 @@ export function createTaskCells(
           ...(task.renderedTitle ? { html: task.renderedTitle } : {}),
         };
       case 'due':
+        // An open task's due date reads beside today; a done one keeps its date.
         return task.dueAt === undefined
           ? { text: task.dueText ?? '' }
-          : {
-              text: task.dueText ?? formatIsoDate(task.dueAt),
-              ...(!task.completed && task.dueAt < today ? { kind: 'overdue' } : {}),
-            };
+          : task.completed
+            ? { text: task.dueText ?? formatIsoDate(task.dueAt) }
+            : {
+                text: describeDueDate(task.dueAt, now, task.dueText).label,
+                ...(task.dueAt < today ? { kind: 'overdue' } : {}),
+              };
       case 'scheduled':
         return date(task.scheduledAt);
       case 'start':
