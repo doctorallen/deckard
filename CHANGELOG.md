@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **One spacing scale.** The shared sheet spaced cards, rows, columns, and
+  margins with twenty different literals, and zen mode tightened them by
+  restating a dozen rules with a second set. Every padding, gap, and margin
+  in the shared sheet is now a step of a six-step scale, `--space-1` to
+  `--space-6`, zen re-declares the steps and restates no rule, and a test
+  holds the sheet to the scale. Cards and columns sit a pixel or two
+  differently as a result; nothing moved by more than that.
+
 - **Color: one meaning per hue, and one filled button.** Red marked an
   overdue date, a high priority, a negated search term, and the favorite
   heart, so a reader who had learned that red means late read a heart or a

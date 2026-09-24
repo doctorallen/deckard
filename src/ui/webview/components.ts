@@ -62,6 +62,16 @@ export function getDesignTokens(): string {
   --text-sm: 12px;
   --text-md: 13px;
   --text-lg: 14px;
+  /* The spacing scale. Every padding, gap, and margin in the shared sheet
+     is one of these six steps, so a 6px gap never sits beside an 8px one,
+     and density is a matter of re-declaring the steps: zen does exactly
+     that, and restates no rule. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
   /* The corner a control takes. The ends of a group of segments follow it,
      so a theme that squares its buttons squares the group too. */
   --control-radius: 2px;
@@ -107,17 +117,17 @@ body {
   font-family: var(--font-display);
   font-size: var(--text-md);
 }
-main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }
+main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }
 header {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 18px;
-  padding-bottom: 16px;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
   border-bottom: var(--edge) solid var(--line-strong);
 }
 @media (max-width: 700px) {
-  main { padding: 16px; }
+  main { padding: var(--space-4); }
   header { align-items: start; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -374,53 +384,53 @@ export function getSurfaceCss(): string {
 }
 .row[hidden] { display: none; }
 
-.cards { display: grid; gap: 12px; margin-top: 20px; }
-.card { padding: 14px; }
+.cards { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+.card { padding: var(--space-4); }
 .card[hidden], .task[hidden] { display: none; }
 .card-title { margin: 0; color: var(--cyan); font-size: 16px; overflow-wrap: anywhere; }
 
 .task {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
   align-items: start;
-  padding: 10px;
+  padding: var(--space-3);
 }
 .task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-title { color: var(--cyan); overflow-wrap: anywhere; }
 .task-title a { color: var(--cyan); }
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-summary { display: grid; gap: 7px; }
+.task-summary { display: grid; gap: var(--space-2); }
 
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-  gap: 10px;
-  margin-top: 20px;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
 }
-.metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: 12px; }
+.metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: var(--space-3); }
 /* A metric that opens what it counts keeps the tile's look, and gains the
    hover and focus treatment every other control has. The tile rules paint it,
    not the control ones, so it carries the text that belongs on a panel: a
    theme whose controls have a ground of their own writes their text for that
    ground, and on LCARS that is near-black, which the tile never becomes. */
-.metric-open { display: grid; gap: 4px; justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.metric-open { display: grid; gap: var(--space-1); justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .metric-label { display: block; color: var(--muted); font-size: 11px; }
-.metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
+.metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
 
 .empty {
-  margin-top: 20px;
+  margin-top: var(--space-5);
   border: var(--edge) dashed var(--line);
   background: var(--panel-deep);
-  padding: 20px;
+  padding: var(--space-5);
   color: var(--muted);
 }
 
 .markdown {
-  margin: 14px 0 0;
-  padding: 12px;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
   overflow-x: auto;
   border: var(--edge) solid var(--line);
   border-left: 4px solid var(--amber);
@@ -429,11 +439,11 @@ export function getSurfaceCss(): string {
   white-space: pre-wrap;
   font: 12px/1.55 var(--font-mono);
 }
-.rendered { margin-top: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.rendered { margin-top: var(--space-4); line-height: 1.55; overflow-wrap: anywhere; }
 .rendered :first-child { margin-top: 0; }
 .rendered :last-child { margin-bottom: 0; }
 .rendered code, .rendered pre { font-family: var(--font-mono); }
-.rendered pre { overflow-x: auto; padding: 10px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+.rendered pre { overflow-x: auto; padding: var(--space-3); border: var(--edge) solid var(--line); background: var(--panel-deep); }
 .rendered a { color: var(--cyan); }`;
 }
 
@@ -448,24 +458,24 @@ export function getTaskBoardCss(): string {
   grid-auto-flow: column;
   grid-auto-columns: minmax(250px, 1fr);
   align-items: start;
-  gap: 12px;
-  padding-bottom: 12px;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
   overflow-x: auto;
 }
 .board-column {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   border: var(--edge) solid var(--line);
   background: var(--panel-deep);
-  padding: 10px;
+  padding: var(--space-3);
 }
 .board-column.drop-target { border-color: var(--amber); }
 .board-column-title {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   color: var(--cyan);
   font: 12px var(--font-mono);
@@ -481,14 +491,14 @@ export function getTaskBoardCss(): string {
    auto row sizes to its cards however tall they are, so the column clipped
    them at its max-height and the cards below could not be reached at all. */
 .board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
-.board-column-title { padding-bottom: 6px; }
+.board-column-title { padding-bottom: var(--space-2); }
 /* overflow-y alone would compute overflow-x to auto, and then anything that
    reaches past the right edge — a theme's hover nudge, a focus outline — puts
    a horizontal scrollbar under a column that has nothing to scroll sideways. */
 .board-cards {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 48px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -500,7 +510,7 @@ export function getTaskBoardCss(): string {
    outweigh the theme sheet, which is laid down after this one. */
 .board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
-.board-card .task-title { padding-right: 26px; }
+.board-card .task-title { padding-right: var(--space-6); }
 .board-details { margin: 0; }
 /* Each detail stays whole and the line wraps between them — unless a detail
    is wider than the column on its own, as "overdue, due Mon 2026-09-01" is
@@ -530,10 +540,10 @@ export function getTaskBoardCss(): string {
 /* The menu sits on the control ground once it is hovered, so it takes the
    shared hover text rather than the amber it carries over the card. */
 .board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
-.board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
-.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
+.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
-.board-hint button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+.board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: 11px; }
 .board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
 }
 
@@ -544,12 +554,12 @@ export function getTaskBoardCss(): string {
  */
 export function getTaskListCss(): string {
   return `
-.task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: 7px; }
-.task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: 10px; cursor: pointer; }
+.task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: var(--space-2); }
+.task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-2); align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: var(--space-3); cursor: pointer; }
 .task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: 5px; }
+.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
 .task-detail { letter-spacing: .03em; }
@@ -559,14 +569,14 @@ export function getTaskListCss(): string {
 .is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 .drag-ghost { position: fixed; z-index: 10; top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
 .drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
-.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: var(--space-1); border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .rank-context-menu[hidden] { display: none; }
-.rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
+.rank-context-menu button { display: block; width: 100%; border: 0; padding: var(--space-2) var(--space-3); text-align: left; text-transform: none; }
 .result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.result-table th, .result-table td { padding: 7px 9px; border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.result-table th, .result-table td { padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
-.result-table th button { display: flex; width: 100%; gap: 5px; align-items: center; min-height: 0; border: 0; padding: 7px 9px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
+.result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
 .result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
 /* The sorted column is told by weight and its arrow, not a colour: amber on a panel is too faint for a small label in some themes.
    Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
@@ -583,8 +593,8 @@ export function getTaskListCss(): string {
 .result-table td.is-muted { color: var(--muted); }
 .result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--positive); }
 /* The gear's column picker: one line per column, the title fixed. */
-.table-columns { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; text-transform: none; }
-.table-columns label { display: flex; gap: 6px; align-items: center; font: 12px var(--font-mono); }
+.table-columns { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; text-transform: none; }
+.table-columns label { display: flex; gap: var(--space-2); align-items: center; font: 12px var(--font-mono); }
 @media (max-width: 720px) { .task-list { grid-template-columns: 1fr; } }`;
 }
 
@@ -757,18 +767,9 @@ body.zen .saved-filter-row:hover, body.zen .stat-row:hover { transform: none; }
 /* Spacing. These literals mirror getShellCss, getSurfaceCss, getTaskBoardCss
    and getTaskListCss; there are no spacing tokens to lean on, so a change
    there needs a change here. The layout suite measures both. */
-body.zen main { padding: 14px; }
-body.zen header { padding-bottom: 10px; }
-body.zen .cards { gap: 8px; margin-top: 12px; }
-body.zen .card { padding: 9px; }
-body.zen .task { gap: 6px; padding: 7px; }
-body.zen .task-row { gap: 6px; padding: 7px; }
-body.zen .task-list { gap: 4px; }
-body.zen .task-summary { gap: 4px; }
-body.zen .metrics { gap: 6px; margin-top: 12px; }
-body.zen .metric { padding: 8px; }
-body.zen .board-column { padding: 7px; }
-body.zen .board-cards { gap: 5px; }`;
+/* Zen is a denser scale, not a second set of rules: the steps shrink, and
+   every card, row, column, and margin in the shared sheet follows. */
+body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 24px; }`;
 }
 
 /**

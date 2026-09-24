@@ -134,6 +134,7 @@ re-declare the same names.
 | `--favorite` | `var(--amber-bright)` | The favorite heart |
 | `--positive` | `var(--green)` | A checked box, a done state |
 | `--focus` | `var(--cyan)` | Every focus ring |
+| `--space-1` … `--space-6` | `4px`, `8px`, `12px`, `16px`, `24px`, `32px` | The spacing scale. Every padding, gap, and margin in the shared sheet is a step; `src/test/spacing-scale.test.ts` holds it. Zen re-declares the steps on `body.zen` and restates no rule. |
 | `--text-xs` … `--text-lg` | `11px`, `12px`, `13px`, `14px` | The type scale. `--text-xs` is the floor: counts, captions, and meta lines; nothing a reader acts on goes below it. `--text-md` is body text. |
 
 **Color a meaning, not a palette entry.** A rule that colors a state takes
@@ -379,10 +380,10 @@ Two things look like chrome and are not:
   "overdue". It does not fold. Only `.card .source`, `.note .source`, and the
   `.task-source` spans in `renderTaskListRow` do.
 
-Spacing is restated rather than tokenized: there are no spacing tokens, so
-zen's block mirrors the literals in `getShellCss`, `getSurfaceCss`,
-`getTaskBoardCss`, and `getTaskListCss`. A padding change in one needs a
-change in the other, and the layout suite measures both.
+Spacing is tokenized: zen re-declares `--space-1` to `--space-6` on
+`body.zen`, and every card, row, column, and margin in the shared sheet
+follows, so there is no second block of literals to keep in step. The
+layout suite measures both densities.
 
 Its `:hover` rules must stay at the top level of the sheet. `checkLayout.js`
 forces hovers by rewriting `rule.selectorText`, which a `CSSMediaRule` does

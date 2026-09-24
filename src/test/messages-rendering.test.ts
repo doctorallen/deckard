@@ -647,7 +647,7 @@ suite('Webview contracts', () => {
     // the panel, which six of the eight themes inherited. The muted token is
     // what every theme declares for secondary text.
     assert.strictEqual(
-      html.includes('.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted);'),
+      html.includes('.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted);'),
       true,
       'task provenance takes the muted token, never a literal colour',
     );
@@ -1047,7 +1047,7 @@ suite('Webview contracts', () => {
     // The shared shell centres main without a frame; the Dashboard widens it.
     assert.strictEqual(
       html.includes(
-        'main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }',
+        'main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }',
       ),
       true,
     );
