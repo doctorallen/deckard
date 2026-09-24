@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Related Notes says strong, moderate, or weak instead of a percentage.**
+  Each result carried a score such as **33%**, which reads as a precision
+  the ranking does not have, and two notes at 33% and 41% invited a reader
+  to work out why. The result now carries the three-step rail Refine already
+  draws, filled for a strong, moderate, or weak relation, and the exact
+  score waits in the breakdown behind it with the signals and weights.
+
 - **No text under eleven pixels.** Counts, captions, the calendar's due
   marks, the graph's labels and readouts, and a handful of section labels
   were set at nine or ten pixels, in muted monospace, which is below where

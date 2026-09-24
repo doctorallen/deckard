@@ -87,7 +87,8 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
 .note-title .inline-tag { color: var(--text); }
-.relevance-score { flex: 0 0 auto; color: var(--green); font-size: var(--text-xs); }
+.relevance-score { display: inline-grid; flex: 0 0 auto; place-items: center; min-width: 24px; color: var(--green); }
+.relevance-score .tag-weight-rail-segment.filled { background: currentColor; }
 .note-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .insert-link { flex: 0 0 auto; min-height: 0; border: 0; background: transparent; padding: 0; color: var(--muted); cursor: pointer; opacity: 0; }
 .insert-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; }
@@ -376,7 +377,13 @@ ${getComponentScript()}
         const specificityAdjustment = evidence.specificityPenalty > 0
           ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
           : '';
-        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance score ' + note.relevanceScore + ' percent. Show how this was scored." title="How this note was scored">' + note.relevanceScore + '%</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        // A precise-looking percentage from a heuristic ranker invites a
+        // reader to build a model of it that two close scores then break.
+        // The rail says strong, moderate, or weak; the number is in the
+        // breakdown for anyone who wants it.
+        const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
+        const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
+        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = note.headingPath && note.headingPath.length
           ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
           : '';

@@ -54,7 +54,17 @@ suite('Related Notes behavior', () => {
 
     assert.strictEqual(page.findAll('.note').length, 1);
     assert.match(page.text('.note-title') ?? '', /Check-in/);
-    assert.match(page.text('.relevance-score') ?? '', /84%/);
+    assert.strictEqual(
+      page.findAll('.relevance-score .tag-weight-rail-segment.filled').length,
+      3,
+      'a score of 84 fills the rail, as a strong relation',
+    );
+    assert.match(
+      page.find('.relevance-score').getAttribute('aria-label') ?? '',
+      /^Relevance strong, 84 of 100\./,
+      'and is named as strong, with the number after it',
+    );
+    assert.match(page.text('.relevance-tooltip') ?? '', /84%/, 'the exact score waits in the breakdown');
     assert.match(page.text('.source') ?? '', /^atlas \/ line 12$/);
   });
 
