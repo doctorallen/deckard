@@ -277,6 +277,11 @@ export function parseSearchPageMessage(
     case 'clearOverviewQuery':
     case 'openHelp':
       return Object.keys(value).length === 1 ? { type: value.type } : undefined;
+    case 'navigateSearchHistory':
+      return Object.keys(value).length === 2 &&
+        (value.direction === 'back' || value.direction === 'forward')
+        ? { type: 'navigateSearchHistory', direction: value.direction }
+        : undefined;
     case 'setOverviewQuery':
       return isOverviewQueryMessage(value)
         ? {

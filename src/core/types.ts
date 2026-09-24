@@ -1129,6 +1129,15 @@ export interface ClearOverviewQueryMessage {
 }
 
 /**
+ * Steps a search page back or forward through the searches it has shown,
+ * sent by the mouse's back and forward buttons.
+ */
+export interface NavigateSearchHistoryMessage {
+  type: 'navigateSearchHistory';
+  direction: 'back' | 'forward';
+}
+
+/**
  * Narrow a search page by the words being typed, before they are committed
  * to its search box.
  */
@@ -1296,6 +1305,7 @@ export type SearchPageMessage =
   | SaveTagOverviewFilterMessage
   | SetOverviewQueryMessage
   | ClearOverviewQueryMessage
+  | NavigateSearchHistoryMessage
   | SetResultPageMessage
   | SetResultsPerPageMessage
   | PreviewSearchMessage

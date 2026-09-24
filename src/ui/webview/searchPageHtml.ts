@@ -423,6 +423,14 @@ ${getQueryEditorScript()}
   document.addEventListener('mousedown', function (event) {
     editor.handleMousedown(event);
   });
+  // The mouse's back and forward buttons step through the searches the page
+  // has shown, as they step through a browser's pages. The webview's frame
+  // would otherwise take them as its own navigation, or drop them.
+  document.addEventListener('mouseup', function (event) {
+    if (event.button !== 3 && event.button !== 4) return;
+    event.preventDefault();
+    vscode.postMessage({ type: 'navigateSearchHistory', direction: event.button === 3 ? 'back' : 'forward' });
+  });
   document.addEventListener('focusin', function (event) {
     editor.handleFocusIn(event);
   });
