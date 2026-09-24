@@ -12,6 +12,13 @@
   has been moved, sized, or swapped, or the reader chooses **Dismiss**.
   Customize stays in the gear throughout.
 
+- **The Task Board says when almost nothing carries a status.** Status is
+  the board's first grouping and a status is a tag most notes never write,
+  so the first board a reader saw was one tall **No status** column and four
+  near-empty ones. While fewer than a quarter of the open tasks carry a
+  status, a line above the columns now says how many have none, how to give
+  a task one, and offers **Group by due date**, which works for any task.
+
 - **One vocabulary for what the index holds.** The Dashboard counted
   "entities" and "sections", Stats counted "Markdown files", "Note entries",
   "All tags", and "Canonical tags", the Notes Graph counted "notes", and a

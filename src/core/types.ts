@@ -1370,6 +1370,13 @@ export interface TaskBoardLayout {
   groupBy: TaskBoardGroupBy;
   columns: TaskBoardColumn[];
   taskCount: number;
+  /**
+   * Present when the board is grouped by status and almost no open task
+   * carries one, so the first column holds nearly everything: how many of
+   * the open tasks have no status. The page says so above the columns and
+   * offers the due-date grouping, which works for any task.
+   */
+  statusHint?: { withoutStatus: number; open: number };
 }
 
 /** The Task Board page, which chooses its tasks with a search. */

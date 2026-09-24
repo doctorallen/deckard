@@ -504,6 +504,9 @@ export function getTaskBoardCss(): string {
    shared hover text rather than the amber it carries over the card. */
 .board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
 .board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
+.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.board-hint code { font-family: var(--font-mono); color: var(--text); }
+.board-hint button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
 .board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
 }
 
@@ -1049,7 +1052,13 @@ export function getComponentScript(): string {
    * cards a page filters locally, such as by a search.
    */
   function renderTaskBoard(board, isVisible) {
-    return '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
+    // Grouped by status with almost no statuses written, the board is one
+    // tall column and four near-empty ones. Say so, and offer the grouping
+    // that works for any task, before the reader takes the board for broken.
+    const hint = board.statusHint
+      ? '<p class="board-hint">' + board.statusHint.withoutStatus + ' of ' + board.statusHint.open + ' open tasks have no status. Write a <code>#' + escapeHtml((board.settings && board.settings.statusNamespace) || 'status') + '/todo</code> tag on a task, or drag a card into a column, to give it one. <button type="button" data-action="set-board-group" data-group="due">Group by due date</button></p>'
+      : '';
+    return hint + '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
       const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
       const count = cards.length + column.hiddenCount;
       const body = cards.length
