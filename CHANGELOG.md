@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **Layout: columns are regions, a count is said once, and Home widens.**
+  Board columns now stand on a ground half a step above the page in every
+  theme, so five headers over one field of cards read as five columns. A
+  search page said its result count three times, in the tab, the pane
+  heading, and the Refine strip; in the tabs layout the tab says it once,
+  and the heading and strip repeat it only in the split layout, where there
+  is no tab. Refine's groups are labeled regions rather than a run of chips,
+  and Sort sits in the gear with the other view options. The Dashboard
+  takes the panel's width up to 1400px, with three columns of widgets on a
+  wide editor and one on a narrow panel.
+
 - **One spacing scale.** The shared sheet spaced cards, rows, columns, and
   margins with twenty different literals, and zen mode tightened them by
   restating a dozen rules with a second set. Every padding, gap, and margin

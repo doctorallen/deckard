@@ -468,7 +468,10 @@ export function getTaskBoardCss(): string {
   gap: var(--space-2);
   min-width: 0;
   border: var(--edge) solid var(--line);
-  background: var(--panel-deep);
+  /* A column is a region before it is a list: a ground half a step above
+     the page, so five headers over one field of cards read as five columns
+     in every theme, Corpo included. */
+  background: color-mix(in srgb, var(--panel) 60%, var(--bg));
   padding: var(--space-3);
 }
 .board-column.drop-target { border-color: var(--amber); }
@@ -1842,8 +1845,11 @@ export function getQueryEditorCss(): string {
 .query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
 .query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
 /* The facets wrap on the left; the result count holds the top-right corner. */
-.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 18px; margin: 12px 0; padding: 10px 12px; border: 1px dashed var(--line-strong); }
-.query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-2) var(--space-4); margin: var(--space-3) 0; padding: var(--space-3); border: 1px dashed var(--line-strong); }
+/* Each group is a labeled region, its label above its values and the
+   groups a wide step apart, so where one group ends is a shape and not a
+   word in the run. */
+.query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
 .query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: 11px; }
 /* A value and its two other modes read as one control. The modes stay out of
@@ -1855,7 +1861,8 @@ export function getQueryEditorCss(): string {
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); }
-.query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.query-facet { display: grid; gap: var(--space-1); }
+.query-facet-values { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: var(--text-xs); }
@@ -2234,9 +2241,9 @@ export function getQueryEditorScript(): string {
       }
       const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
-        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
+        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span><span class="query-facet-values">' + facet.values.map(function (value) {
           return renderFacetValue(facet, value);
-        }).join('') + '</div>';
+        }).join('') + '</span></div>';
       }).join('') + '</div>' + count + '</section>';
     }
 
@@ -2279,7 +2286,8 @@ export function getQueryEditorScript(): string {
       if (!appliedText().trim()) return '';
       const counts = query().matchCounts || { notes: 0, tasks: 0 };
       const nouns = { notes: ['note', 'notes'], tasks: ['task', 'tasks'] };
-      return '<span class="query-facets-count" role="status">' + (options.resultKinds || ['notes', 'tasks']).map(function (kind) {
+      const elsewhere = options.countElsewhere && options.countElsewhere();
+      return '<span class="query-facets-count' + (elsewhere ? ' visually-hidden' : '') + '" role="status">' + (options.resultKinds || ['notes', 'tasks']).map(function (kind) {
         const count = counts[kind] || 0;
         return count + ' ' + nouns[kind][count === 1 ? 0 : 1];
       }).join(' &middot; ') + '</span>';

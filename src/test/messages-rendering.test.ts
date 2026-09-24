@@ -1052,7 +1052,7 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      html.includes('main { width: 100%; max-width: 1180px; }'),
+      html.includes('main { width: 100%; max-width: 1400px; }'),
       true,
     );
     // A theme may restyle main; the page and the shared sheet give it no frame.

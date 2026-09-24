@@ -200,6 +200,7 @@ treatment, so a toolbar reads as one row of controls.
 | `.segmented` | **A row of buttons that reads as one control.** Collapses the borders between children and rounds the outer corners. |
 | `.icon-button` | A square icon-only control at `--control-height`. |
 | `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. Every glyph comes from `icons.ts`: `strokeIcon(ICON_PATHS.name, className)` wraps a path in the one frame, and the named exports (`sortIcon`, `chevronLeftIcon`, `calendarIcon`, …) are the common ones ready to interpolate. No page draws its own `<svg>`; `src/test/icons.test.ts` fails one that does. |
+| `.query-facet` | One Refine group: its label above a `.query-facet-values` row, groups a wide step apart, so a group's edge is a shape. |
 | `.view-options` | **The gear every page's view options sit behind**, drawn by `renderViewOptions()`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. |
 | `.filter-count` | Small muted count inside a filter button. |
 
@@ -273,7 +274,9 @@ the tag-association view switch.
 ### Task board
 
 `getTaskBoardCss()` and four script helpers draw the Task Board page's
-Kanban board.
+Kanban board. A `.board-column` is a region before it is a list: a ground
+half a step above the page in every theme, so the columns read as columns
+without their cards.
 
 | Piece | What it is |
 | --- | --- |

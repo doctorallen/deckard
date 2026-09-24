@@ -101,7 +101,11 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Home: the reader's widgets, in two columns. */
-.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); align-items: stretch; }
+/* A working surface takes the panel's width: three columns of widgets on a
+   wide editor, one on a narrow panel, two between. */
+@media (min-width: 1200px) { .home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
 .home-widget { position: relative; min-width: 0; border: 2px solid var(--slate-border); background: var(--panel-bg); padding: 12px; }
 .home-widget.is-full { grid-column: 1 / -1; }
 .home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
@@ -185,7 +189,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 
 /* Page layout. The base sheet supplies the look; these keep the Dashboard's
    own proportions and its chamfered HUD shapes. */
-main { width: 100%; max-width: 1180px; }
+main { width: 100%; max-width: 1400px; }
 header { gap: 20px; border-bottom: 1px dashed var(--slate-border); }
 h2 { margin: 0 0 4px; }
 .eyebrow { margin: 0 0 6px; }
