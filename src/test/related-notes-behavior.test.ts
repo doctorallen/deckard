@@ -55,7 +55,7 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(page.findAll('.note').length, 1);
     assert.match(page.text('.note-title') ?? '', /Check-in/);
     assert.match(page.text('.relevance-score') ?? '', /84%/);
-    assert.match(page.text('.source') ?? '', /atlas\.md \/ line 12/);
+    assert.match(page.text('.source') ?? '', /^atlas \/ line 12$/);
   });
 
   test('opens a result at its line, and beside the note when asked', () => {

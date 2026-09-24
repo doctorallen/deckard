@@ -175,6 +175,7 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
 :root { --hover-bg: var(--cyan); --hover-fg: var(--bg-dark); }
 input[type='checkbox'] { accent-color: var(--cyan); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(21, 16, 47, .92); box-shadow: inset 3px 0 0 var(--favorite-red), 0 0 0 1px rgba(0, 229, 255, .1); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
+.card:hover, .card:focus-within, .note:hover, .note:focus-within { clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach))); }
 .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .task:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .task-row:nth-child(3n + 2), .note-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2), .saved-filter-row:nth-child(3n + 2), .view-panel:nth-child(3n + 2) { box-shadow: inset 3px 0 0 var(--cyan), 0 0 0 1px rgba(255, 45, 149, .1); }
 .metric::before { border-bottom-color: var(--cyan); color: var(--amber-dim); }
 .metric:nth-child(3n + 2)::before { border-bottom-color: var(--favorite-red); }

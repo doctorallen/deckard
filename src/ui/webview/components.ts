@@ -580,6 +580,96 @@ export function getBaseCss(): string {
 }
 
 /**
+ * Where an entry is written, as `file / line N`, shown only while the entry is
+ * under the pointer or holds focus.
+ *
+ * The entry's frame reaches down to hold it, laid over whatever is below
+ * rather than taking room in the list, so showing it moves nothing: the list
+ * around the entry stays put. What it covers is the top of the next entry,
+ * not the one being read. Folded, it is off-screen rather than display:none, so it stays in the
+ * accessibility tree, in find-in-page, and announced. Board details are not
+ * provenance: they carry the due date and the word "overdue", so they never
+ * fold.
+ *
+ * It comes after the theme, whose `.source` would otherwise restyle it, and
+ * before zen, which only takes the corners off the frame around it.
+ */
+export function getProvenanceCss(): string {
+  return `
+.task-row .task-source,
+.card .source,
+.note .source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* What the extension has to match: how thick the entry's frame is, how far
+   in its text sits, and how far down it reaches, a line for each place. */
+.card { position: relative; --frame: var(--edge); --inset: 14px; }
+.note { --frame: 2px; --inset: 9px; }
+.task-row { --frame: 1px; --inset: 10px; }
+.card, .note, .task-row { --reach: 24px; }
+.note:has(.source ~ .source) { --reach: 42px; }
+/* The entry under the pointer is lifted above the ones after it, which its
+   extension lies over. The sidebar lifts its own notes higher still. */
+.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within { z-index: 2; }
+/* The extension is the entry's own frame carried down: its background,
+   border and inner shading, taken from the entry as it is drawn now, hover
+   colours included. It starts a little inside the entry so it covers the
+   bottom border and any rounded corners, and draws a new bottom edge. */
+.card:hover::after, .card:focus-within::after,
+.note:hover::after, .note:focus-within::after,
+.task-row:hover::after, .task-row:focus-within::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: calc(100% - 6px);
+  left: calc(-1 * var(--frame));
+  right: calc(-1 * var(--frame));
+  box-sizing: border-box;
+  height: calc(var(--reach) + 6px + var(--frame));
+  border: inherit;
+  border-top: 0;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  background: inherit;
+  box-shadow: inherit;
+  pointer-events: none;
+}
+/* A task row's corners are cut, and a cut frame clips what reaches outside
+   it, so under the pointer the cut moves down to the new bottom corner. */
+.task-row:hover, .task-row:focus-within {
+  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach)));
+}
+/* One line each, cut short rather than wrapped, so the extension is always
+   the height it was made for. */
+.task-row:hover .task-source, .task-row:focus-within .task-source,
+.card:hover .source, .card:focus-within .source,
+.note:hover .source, .note:focus-within .source {
+  z-index: 2;
+  top: calc(100% + 2px);
+  left: var(--inset);
+  right: var(--inset);
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font: 11px/16px var(--font-mono);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  clip-path: none;
+  color: var(--muted);
+}
+.note:hover .source ~ .source, .note:focus-within .source ~ .source { top: calc(100% + 20px); }`;
+}
+
+/**
  * Zen mode: Deckard's own chrome, turned down.
  *
  * Every rule is scoped under `body.zen`, and the sheet ships whether or not
@@ -623,6 +713,14 @@ body.zen .metric, body.zen .card, body.zen .note, body.zen .task,
 body.zen .tag-row, body.zen .task-row, body.zen .note-row, body.zen .entity-row,
 body.zen .saved-filter-row, body.zen .stat-row, body.zen .empty,
 body.zen .view-panel, body.zen .board-column { clip-path: none; box-shadow: none; }
+/* Under the pointer the frame reaches down to take in where the entry is
+   written (getProvenanceCss); zen's frame has no corners to keep. The
+   insets follow zen's tighter padding. */
+body.zen .card:hover, body.zen .card:focus-within, body.zen .note:hover,
+body.zen .note:focus-within, body.zen .task-row:hover,
+body.zen .task-row:focus-within { clip-path: none; }
+body.zen .card { --inset: 9px; }
+body.zen .task-row { --inset: 7px; }
 /* Several themes slide a row 3px on hover, which fits today only because the
    sidebar's main has 12px of padding to absorb it. Zen spends that padding. */
 body.zen .row:hover, body.zen .card:hover, body.zen .note:hover,
@@ -643,29 +741,7 @@ body.zen .task-summary { gap: 4px; }
 body.zen .metrics { gap: 6px; margin-top: 12px; }
 body.zen .metric { padding: 8px; }
 body.zen .board-column { padding: 7px; }
-body.zen .board-cards { gap: 5px; }
-/* Provenance folds to hover and focus. Off-screen rather than display:none,
-   so it stays in the accessibility tree, in find-in-page, and announced —
-   the same idiom .is-dragging uses. Board details are not provenance: they
-   carry the due date and the word "overdue", so they never fold. */
-body.zen .task-row .task-source,
-body.zen .card .source,
-body.zen .note .source {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-body.zen .task-row:hover .task-source, body.zen .task-row:focus-within .task-source,
-body.zen .card:hover .source, body.zen .card:focus-within .source,
-body.zen .note:hover .source, body.zen .note:focus-within .source {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip-path: none;
-}`;
+body.zen .board-cards { gap: 5px; }`;
 }
 
 /**
@@ -674,7 +750,7 @@ body.zen .note:hover .source, body.zen .note:focus-within .source {
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getZenCss()}`;
 }
 
 /** The marker `getZenCss()` hangs on, or nothing. */
@@ -716,6 +792,14 @@ export function getComponentScript(): string {
     // Repeating the same string is not announced again, so clear it first.
     if (status.textContent === text) status.textContent = '';
     status.textContent = text;
+  }
+
+  /**
+   * Where an entry is written, as its file's name and line: 2026-09-22 / line 7.
+   * Every note in Deckard is Markdown, so the extension says nothing.
+   */
+  function formatSourceLocation(fileName, line) {
+    return String(fileName).replace(/\\.md$/i, '') + ' / line ' + line;
   }
 
   /** Escape snapshot data before it is inserted as HTML. */
@@ -1284,7 +1368,7 @@ export function getComponentScript(): string {
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(item.fileName) + '</span>' + (item.sectionHeading ? '<span class="task-source">' + escapeHtml(item.sectionHeading) + '</span>' : '') + '<span class="task-source">line ' + task.lineNumber + '</span></div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span></div></div>'
       + '</div>';
   }
 

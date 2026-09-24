@@ -268,7 +268,7 @@ ${getComponentScript()}
         : escapeHtml(node.title);
       const kind = '<span class="graph-kind ' + node.kind + '">' + escapeHtml(node.kind) + '</span>';
       const source = node.filePath
-        ? escapeHtml(node.filePath.split('/').pop() || node.filePath) + ' / line ' + node.line
+        ? escapeHtml(formatSourceLocation(node.filePath.split('/').pop() || node.filePath, node.line))
         : 'Tag node';
       const relationships = connection.types.map(function (type) {
         return type.replaceAll('-', ' ');
@@ -389,7 +389,7 @@ ${getComponentScript()}
           'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
           titleHtml,
           '<div class="note-actions">' + insertLink + relevance + '</div>',
-          '<div class="source">' + escapeHtml(fileName) + ' / line ' + note.sourceLine + '</div>',
+          '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
           (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;
