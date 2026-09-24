@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **The Notes Graph opens around the note being written, and names its
+  hubs.** It opened on the whole workspace, hundreds of unlabelled dots with
+  focus off and a line saying to open a note, which the reader usually had.
+  It now opens around the note in the editor, one hop out, when there is
+  one, and keeps whatever scope the reader then chooses. At rest the whole
+  graph labels its dozen best-connected notes on screen, so the overview
+  reads as places rather than as density; zooming in still names the rest.
+
 - **Home says it can be arranged only until it has been.** The line
   "Home is yours to arrange." was drawn above the widgets on every visit.
   A fixed line of instruction is read the first few times and skipped after,

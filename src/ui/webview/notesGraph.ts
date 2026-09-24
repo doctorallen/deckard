@@ -41,6 +41,8 @@ export class NotesGraphPanel implements vscode.Disposable {
    * note open.
    */
   private scope: { local: boolean; depth: number } = { local: false, depth: 1 };
+  /** Whether the reader has chosen a scope, which the opening default respects. */
+  private scopeChosen = false;
   /**
    * The note the graph is drawn around: the one last open in an editor. The
    * graph is itself an editor tab, so the note it is about has to be
@@ -80,6 +82,7 @@ export class NotesGraphPanel implements vscode.Disposable {
 
   public async show(): Promise<void> {
     if (!this.panel) {
+      this.applyOpeningScope();
       this.createPanel();
     }
 
@@ -193,6 +196,17 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
   }
 
+  /**
+   * The graph opens around the note being written, one hop out, when there
+   * is one: a whole workspace at once is hundreds of unlabelled dots, an
+   * overview of density and nothing else, and the reader came from a note.
+   * The full graph is the checkbox away, and a scope the reader has chosen
+   * is kept.
+   */
+  private applyOpeningScope(): void {
+    this.scope = openingScope(this.focusPath, this.scopeChosen, this.scope);
+  }
+
   /** Follows the note being written, so a local graph follows it too. */
   private rememberNote(editor: vscode.TextEditor | undefined): void {
     const uri = editor?.document.uri;
@@ -278,6 +292,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
 
     if (message.type === 'setGraphScope') {
+      this.scopeChosen = true;
       this.scope = {
         local: message.local,
         depth: Math.max(
@@ -398,4 +413,20 @@ export class NotesGraphPanel implements vscode.Disposable {
 /** A note's title: its file name without the extension. */
 function getNoteTitle(filePath: string): string {
   return (filePath.split('/').pop() ?? filePath).replace(/\.md$/i, '');
+}
+
+/**
+ * The scope a graph opens with: around the note in the editor when there is
+ * one and the reader has not chosen otherwise, else what was chosen or the
+ * whole workspace.
+ */
+export function openingScope(
+  focusPath: string | undefined,
+  chosen: boolean,
+  current: { local: boolean; depth: number },
+): { local: boolean; depth: number } {
+  if (chosen || !focusPath) {
+    return current;
+  }
+  return { local: true, depth: 1 };
 }

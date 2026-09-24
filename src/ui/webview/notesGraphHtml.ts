@@ -247,6 +247,8 @@ ${getPageTailCss()}
   var adjacency = [];           // index -> array of neighbor indices
   var px, py, vx, vy;           // Float32Array simulation state
   var degrees;                  // per-node visible edge counts
+  /** How many of the best-connected notes on screen are named at rest. */
+  var HUB_LABELS_AT_REST = 12;
   var primaryTag;               // note/task index -> strongest cluster anchor
   var primaryClusterSize;       // tag index -> assigned note/task count
   var communityId;              // node index -> visual community index
@@ -1422,9 +1424,33 @@ ${getPageTailCss()}
       ctx.stroke();
     }
 
-    // Labels in screen space, only when zoomed in enough (LOD).
+    // Labels in screen space. Zoomed in past the threshold every node that
+    // is big enough is named; at rest the few best-connected nodes on screen
+    // are, so an overview reads as places rather than as density alone.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
+    if (k < settings.labelThreshold) {
+      ctx.fillStyle = colors.label;
+      ctx.font = '10px ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.textAlign = 'center';
+      var hubs = [];
+      for (var h = 0; h < nodes.length; h += 1) {
+        if (!isRendered(h) || !inView(h) || isDimmed(h) || nodes[h].kind === 'tag') { continue; }
+        if (degrees[h] < 2) { continue; }
+        hubs.push(h);
+      }
+      hubs.sort(function (a, b) { return degrees[b] - degrees[a]; });
+      ctx.globalAlpha = 0.85;
+      for (var u = 0; u < Math.min(hubs.length, HUB_LABELS_AT_REST); u += 1) {
+        var hub = hubs[u];
+        var hx = px[hub] * k + camera.x;
+        var hy = py[hub] * k + camera.y;
+        var hubTitle = nodes[hub].title;
+        if (hubTitle.length > 28) { hubTitle = hubTitle.slice(0, 27) + '…'; }
+        ctx.fillText(hubTitle, hx, hy + nodeRadius(hub) * k + 11);
+      }
+      ctx.globalAlpha = 1;
+    }
     if (k >= settings.labelThreshold) {
       ctx.fillStyle = colors.label;
       ctx.font = '10px ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
