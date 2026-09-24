@@ -76,7 +76,7 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colours;
 
 **What it does not change.** Every button, filter, tab, count, checkbox, and tag stays exactly where it was — zen hides ornament and folds provenance, and removes no functionality. The folded text is moved off-screen rather than out of the page, so a screen reader still announces it and find-in-page still finds it. A task's due date, priority, and overdue marker never fold: they are the point of a task row. Nor does a search that Deckard could not parse stop saying so.
 
-**What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.
+**What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut, which outside zen shows while the box is in use, is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.
 
 ## Get started
 
@@ -674,7 +674,7 @@ Ties are broken by how often and how recently you opened something, so a note yo
 
 ### The search box
 
-Search pages, Home's search widget, and the Task board have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it. The Task board's box searches tasks alone.
+Search pages, Home's search widget, and the Task board have the same search box. Press <kbd>/</kbd> anywhere on the page to type in it. The line under the box that lists what a search can say shows while the box has focus or holds a term, and rests the rest of the time; **Builder** stays beside it. The Task board's box searches tasks alone.
 
 ![A search page searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](docs/images/notes-search.png)
 

@@ -1775,6 +1775,11 @@ export function getQueryEditorCss(): string {
 .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--amber); color: var(--amber); }
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
+/* The line of syntax is wanted at the moment of typing and is chrome the rest
+   of the time, competing with the results under it. It shows while the box
+   has focus or holds a term; the Builder button and the count stay, and a
+   parse error, which shares the slot, never hides. */
+.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
 .query-builder-group.is-negated { border-style: dashed; }
@@ -1972,7 +1977,7 @@ export function getQueryEditorScript(): string {
         ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
         : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
       const label = options.label || 'Search';
-      return '<section class="query-workspace" aria-label="' + escapeHtml(label) + '">'
+      return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
         + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'

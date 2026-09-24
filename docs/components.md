@@ -340,7 +340,10 @@ never dropped outright.
 
 Two things look like chrome and are not:
 
-- `.query-error` shares its slot with `.query-hint`. The hint goes; the error
+- `.query-error` shares its slot with `.query-hint`. Outside zen the hint
+  already rests while the box is idle and empty, through
+  `.query-workspace:not(:focus-within):not([data-has-text])`, and comes back
+  on focus or once a term is written. Zen hides it outright. The hint goes; the error
   never does, or a search that failed to parse reads as one that found
   nothing.
 - `.board-details` is a `.source`, but it carries the due date and the word

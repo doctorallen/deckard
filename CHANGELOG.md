@@ -12,6 +12,14 @@
   has been moved, sized, or swapped, or the reader chooses **Dismiss**.
   Customize stays in the gear throughout.
 
+- **The search box's line of syntax shows while the box is in use.** The
+  line under every search box listing words, `#tags`, `is:open`, `AND`,
+  `OR`, `NOT`, and the `/` shortcut was drawn at rest on every page, where
+  it competed with the results beneath it; the placeholder already said
+  most of it. It now shows while the box has focus or holds a term, and
+  rests otherwise. **Builder** stays, and a search that could not be parsed
+  still says so.
+
 - **The Task Board says when almost nothing carries a status.** Status is
   the board's first grouping and a status is a tag most notes never write,
   so the first board a reader saw was one tall **No status** column and four

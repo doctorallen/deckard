@@ -613,6 +613,13 @@ suite('Webview contracts', () => {
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    // The syntax hint under a search box shows while the box is in use and
+    // not at rest, where it competed with the results under it.
+    assert.strictEqual(
+      html.includes('.query-workspace:not(:focus-within):not([data-has-text]) .query-hint { display: none; }'),
+      true,
+      'the hint rests only while the box is idle and empty',
+    );
     // The file and line under a task were once a literal grey at 1.85:1 on
     // the panel, which six of the eight themes inherited. The muted token is
     // what every theme declares for secondary text.

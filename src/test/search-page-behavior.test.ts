@@ -361,6 +361,16 @@ suite('Search page behavior', () => {
     );
   });
 
+  test('marks a search box that holds a term, so its hint can stay while it is in use', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    assert.strictEqual(
+      page.find('.query-workspace').hasAttribute('data-has-text'),
+      true,
+      'a search page opens on its tag, which is a term',
+    );
+    assert.ok(page.find('.query-hint'), 'and the hint is in the page for the sheet to show or hide');
+  });
+
   test('the result tabs behave as tabs from the keyboard', () => {
     const { page } = open(NOTES, '#project/atlas');
     const tab = (id: string) =>
