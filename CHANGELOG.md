@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The status bar counts overdue and today separately.** It read
+  **22 due today, 17 overdue** when five tasks were due today, because the
+  first number was both groups added together, and the Tasks view it opens
+  said 17 and 5. It now reads **17 overdue, 5 due today**, and the reminder
+  and hover say the same in a sentence.
+
 ### Added
 
 - **A note finds where it is mentioned without a link, and links it.**

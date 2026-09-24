@@ -50,9 +50,11 @@ suite('Task status bar', () => {
   test('says it in the bar, and at length in the reminder', () => {
     assert.strictEqual(
       describeDueTasks({ overdue: 1, today: 1 }),
-      '2 due today, 1 overdue',
+      '1 overdue, 1 due today',
+      'each number names its own group, never their sum',
     );
     assert.strictEqual(describeDueTasks({ overdue: 0, today: 3 }), '3 due today');
+    assert.strictEqual(describeDueTasks({ overdue: 2, today: 0 }), '2 overdue');
     assert.strictEqual(
       describeDueTasks({ overdue: 0, today: 0 }),
       undefined,
@@ -60,7 +62,11 @@ suite('Task status bar', () => {
     );
     assert.strictEqual(
       describeDueTasksAtLength({ overdue: 2, today: 1 }),
-      '3 tasks are due today, 2 of them overdue.',
+      '2 tasks are overdue and 1 is due today.',
+    );
+    assert.strictEqual(
+      describeDueTasksAtLength({ overdue: 1, today: 0 }),
+      '1 task is overdue.',
     );
     assert.strictEqual(
       describeDueTasksAtLength({ overdue: 0, today: 1 }),

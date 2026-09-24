@@ -502,7 +502,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 
 Deckard puts one count in VS Code's status bar: **3 due today**, counting the same open tasks the Tasks view's Overdue and Today groups hold. Selecting it opens that view.
 
-- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **4 due today, 1 overdue** — and takes the editor's warning colour.
+- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **1 overdue, 3 due today** — and takes the editor's warning colour. Each number counts its own group; neither is the sum of the two.
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
 - `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.

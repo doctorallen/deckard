@@ -32,27 +32,40 @@ export function countDueTasks(
   return { overdue: count('overdue'), today: count('today') };
 }
 
-/** What the status bar reads, or nothing when there is nothing due. */
+/**
+ * What the status bar reads, or nothing when there is nothing due.
+ *
+ * Each number names its own group. The bar once read `22 due today, 17
+ * overdue` when five tasks were due today, because the first number was
+ * the two groups added together; the Tasks view it opens says 17 and 5.
+ */
 export function describeDueTasks(counts: DueTaskCounts): string | undefined {
-  const total = counts.overdue + counts.today;
-  if (total === 0) {
-    return undefined;
+  const parts: string[] = [];
+  if (counts.overdue > 0) {
+    parts.push(`${counts.overdue} overdue`);
   }
-  return counts.overdue === 0
-    ? `${total} due today`
-    : `${total} due today, ${counts.overdue} overdue`;
+  if (counts.today > 0) {
+    parts.push(`${counts.today} due today`);
+  }
+  return parts.length ? parts.join(', ') : undefined;
 }
 
 /** The longer sentence a reminder and the hover read. */
 export function describeDueTasksAtLength(counts: DueTaskCounts): string {
-  const total = counts.overdue + counts.today;
-  if (total === 0) {
-    return 'Nothing is due today.';
+  const tasks = (count: number): string =>
+    `${count} ${count === 1 ? 'task is' : 'tasks are'}`;
+  if (counts.overdue > 0 && counts.today > 0) {
+    return `${tasks(counts.overdue)} overdue and ${counts.today} ${
+      counts.today === 1 ? 'is' : 'are'
+    } due today.`;
   }
-  const tasks = `${total} ${total === 1 ? 'task is' : 'tasks are'} due today`;
-  return counts.overdue === 0
-    ? `${tasks}.`
-    : `${tasks}, ${counts.overdue} of them overdue.`;
+  if (counts.overdue > 0) {
+    return `${tasks(counts.overdue)} overdue.`;
+  }
+  if (counts.today > 0) {
+    return `${tasks(counts.today)} due today.`;
+  }
+  return 'Nothing is due today.';
 }
 
 /** Minutes past midnight for an `HH:MM` setting, or nothing when it is off. */
