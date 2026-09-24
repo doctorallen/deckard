@@ -379,12 +379,12 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderTaskTitle(html, tags)` | Decorate tags inside already-rendered Markdown without re-escaping it. |
 | `formatEntityTitle(kind, name)` | `project` + `skybridge-signal` → `Project: Skybridge Signal`. |
 | `taskFilterIcon(filter)` | The `all` / `active` / `completed` icons. |
-| `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. |
+| `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. Every context menu, this one and a page's own, opens on a `contextmenu` event, and the shared script raises that event on the focused tag, card, or row for the menu key, Shift+F10, and Alt+Enter, so no menu needs its own keyboard path. |
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
 | `renderZenOption()` | The gear's Zen row, ready to drop into a `renderViewOptions()` list. Reads the current state from the body class, so no page carries zen through its state builder, and posts `setZenMode` from `installViewOptions()`, so no page needs a handler. |
-| `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. |
+| `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. The chosen tab is the one tab stop, Left, Right, Home, and End move between them, and each tab names its panel through `aria-controls`; the page marks the panel with `resultPanelAttributes(id)`. |
 | `renderWeightRail(level, title)`, `getWeightLevel(weight)` | How much a tag weighs, as a `.tag-weight-rail` of three steps, and the step a weight fills to: three from 0.75, two from 0.375. Related Notes' active tags, Refine, and the sidebar's Refine view draw it. |
 
 ### The search box

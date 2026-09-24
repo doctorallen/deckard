@@ -419,7 +419,7 @@ Until Home has been arranged, a line above the widgets says it can be, with **Cu
 - **Saved searches** are listed below the tags. Select one to reopen it where it was saved, or use **Remove** to delete it.
 - Use the View options gear to choose one through four tag columns.
 - Select a tag to open its [page](#search-pages).
-- Right-click any tag or entity row to choose **Rename tag**. When tags use custom rank, drag rows or right-click a row to move it to the top or bottom. Display order changes do not reorder text in your Markdown files.
+- Right-click any tag or entity row, or press <kbd>Shift</kbd>+<kbd>F10</kbd> or the menu key on it, to choose **Rename tag**. Every right-click menu in Deckard opens from the keyboard the same way. When tags use custom rank, drag rows or right-click a row to move it to the top or bottom. Display order changes do not reorder text in your Markdown files.
 
 ## Stats
 

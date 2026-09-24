@@ -211,6 +211,21 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(page.lastPosted('renameTag')?.tagKey, '#project/atlas');
   });
 
+  test('renames a tag from its context menu, opened with the menu key', () => {
+    const page = open({
+      activeTags: [{ key: '#project/atlas', label: 'project/atlas', weight: 1 }],
+    });
+
+    page.find('.active-tag-list [data-action="open-tag"]').dispatchEvent(
+      new page.window.KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, cancelable: true }),
+    );
+    page.find('#tag-context-menu [data-context-action="rename-tag"]').dispatchEvent(
+      new page.window.MouseEvent('click', { bubbles: true, cancelable: true }),
+    );
+
+    assert.strictEqual(page.lastPosted('renameTag')?.tagKey, '#project/atlas');
+  });
+
   test('lists a selected graph node\'s connections, and opens one', () => {
     const page = open({
       state: 'graph',

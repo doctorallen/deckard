@@ -21,6 +21,18 @@
 
 ### Fixed
 
+- **Every context menu opens from the keyboard.** The menu on a tag, a
+  result, and a ranked row opened on a right-click alone, so rename, pin,
+  and move to top or bottom could not be reached without a pointer. The
+  menu key, Shift+F10, and Alt+Enter on the focused element now open the
+  same menu at it, and Escape gives focus back.
+
+- **A search's Notes and Tasks tabs behave as the tabs they said they were.**
+  They carried the tab role, which tells a screen reader to expect one tab
+  stop and arrow keys between them, and had neither. The chosen tab is now
+  the tab stop, Left, Right, Home, and End move between them, and each tab
+  names the panel it shows.
+
 - **The file and line under a task can be read in every theme.** The base
   sheet coloured them with a literal grey that sat at 1.85:1 on a dark
   panel, well under the 4.5:1 that WCAG asks of text this size, and only

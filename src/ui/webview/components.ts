@@ -843,8 +843,10 @@ export function getComponentScript(): string {
   let tagContextKey;
 
   function closeTagContextMenu() {
+    const wasOpen = Boolean(tagContextMenu && !tagContextMenu.hidden);
     if (tagContextMenu) tagContextMenu.hidden = true;
     tagContextKey = undefined;
+    if (wasOpen) returnFocusFromMenu();
   }
 
   /**
@@ -900,6 +902,76 @@ export function getComponentScript(): string {
       if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) closeTagContextMenu();
     });
   }
+
+  /**
+   * The element a keyboard opened a context menu from, so closing the menu
+   * gives focus back to it. A pointer leaves this unset. Opening a menu
+   * closes whatever was open first, so a close consumes it only when a menu
+   * was showing.
+   */
+  let contextMenuOpener;
+
+  /** Gives focus back to where a keyboard opened the menu that just closed. */
+  function returnFocusFromMenu() {
+    const opener = contextMenuOpener;
+    contextMenuOpener = undefined;
+    if (opener && document.contains(opener) && opener.focus) opener.focus();
+  }
+
+  /**
+   * The keyboard's way to every context menu. Each menu here opens on a
+   * contextmenu event, wired by the page or by a helper above, so the menu
+   * key, Shift+F10, and Alt+Enter on a focused tag, card, or row raise that
+   * event at the element, and whatever menu a pointer would get there opens
+   * for the keyboard too. Installed once, ahead of the pages' own listeners,
+   * so a handler that opens on the same keys can see the key was taken.
+   */
+  document.addEventListener('keydown', function (event) {
+    const isMenuKey = event.key === 'ContextMenu'
+      || (event.key === 'F10' && event.shiftKey)
+      || (event.key === 'Enter' && event.altKey);
+    if (!isMenuKey || event.defaultPrevented) return;
+    if (!event.target || !event.target.closest) return;
+    // A field keeps the browser's own menu.
+    if (event.target.closest('input, textarea, select')) return;
+    const target = event.target.closest('[data-tag-key], .card, .task-row, .task, .row');
+    if (!target) return;
+    const bounds = target.getBoundingClientRect();
+    contextMenuOpener = target;
+    const raised = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: bounds.left + 12,
+      clientY: bounds.top + bounds.height,
+    });
+    target.dispatchEvent(raised);
+    if (raised.defaultPrevented) event.preventDefault();
+    else contextMenuOpener = undefined;
+  });
+
+  /**
+   * Arrow keys between a search's result tabs, as the tab role promises: Left
+   * and Right move and choose, Home and End go to the ends. The dashboard's
+   * own tabs have the same in their page.
+   */
+  document.addEventListener('keydown', function (event) {
+    if (!event.target || !event.target.closest) return;
+    const tab = event.target.closest('[role="tab"][data-action="set-result-tab"]');
+    if (!tab) return;
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(event.key) < 0) return;
+    const list = tab.closest('[role="tablist"]');
+    const tabs = list ? Array.prototype.slice.call(list.querySelectorAll('[role="tab"]')) : [tab];
+    const index = tabs.indexOf(tab);
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? tabs.length - 1
+      : (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+    event.preventDefault();
+    const chosen = tabs[next].dataset.tab;
+    tabs[next].click();
+    // The page redraws on the click, so the tab to focus is found again.
+    const drawn = document.querySelector('[role="tab"][data-action="set-result-tab"][data-tab="' + chosen + '"]');
+    if (drawn) drawn.focus();
+  });
 
   /** The Status, Priority, and Due date switch above a task board. */
   function renderTaskBoardGroupSwitch(groupBy) {
@@ -1209,10 +1281,21 @@ export function getComponentScript(): string {
    * { id, label, count }; each button carries data-action="set-result-tab".
    */
   function renderResultTabs(tabs, active, label) {
+    // One tab stop for the list, arrow keys between the tabs, and each tab
+    // naming the panel it shows: what the tab role promises a screen reader.
     return '<div class="overview-tabs-row"><div class="segmented overview-tabs" role="tablist" aria-label="' + escapeHtml(label) + '">' + tabs.map(function (tab) {
       const selected = tab.id === active;
-      return '<button class="' + (selected ? 'active' : '') + '" data-action="set-result-tab" data-tab="' + escapeHtml(tab.id) + '" role="tab" aria-selected="' + selected + '">' + escapeHtml(tab.label) + ' (<span data-search-count="' + escapeHtml(tab.id) + '">' + tab.count + '</span>)</button>';
+      return '<button class="' + (selected ? 'active' : '') + '" id="' + resultTabId(tab.id) + '" data-action="set-result-tab" data-tab="' + escapeHtml(tab.id) + '" role="tab" aria-selected="' + selected + '" aria-controls="' + resultPanelId(tab.id) + '" tabindex="' + (selected ? '0' : '-1') + '">' + escapeHtml(tab.label) + ' (<span data-search-count="' + escapeHtml(tab.id) + '">' + tab.count + '</span>)</button>';
     }).join('') + '</div></div>';
+  }
+
+  /** The id of a result tab, and of the panel it shows. */
+  function resultTabId(id) { return 'result-tab-' + escapeHtml(id); }
+  function resultPanelId(id) { return 'result-panel-' + escapeHtml(id); }
+
+  /** The attributes a result tab's panel carries, so the two name each other. */
+  function resultPanelAttributes(id) {
+    return ' id="' + resultPanelId(id) + '" role="tabpanel" aria-labelledby="' + resultTabId(id) + '"';
   }
 
 
@@ -1237,9 +1320,11 @@ export function getComponentScript(): string {
   let rankMenuKey;
 
   function closeRankMenu() {
+    const wasOpen = Boolean(rankMenu && !rankMenu.hidden);
     if (rankMenu) rankMenu.hidden = true;
     rankMenuKind = undefined;
     rankMenuKey = undefined;
+    if (wasOpen) returnFocusFromMenu();
   }
 
   function installRankedRows(options) {
@@ -1405,7 +1490,9 @@ export function getComponentScript(): string {
       const isMenuKey = event.key === 'ContextMenu'
         || (event.key === 'F10' && event.shiftKey)
         || (event.key === 'Enter' && event.altKey);
-      if (!isMenuKey) return;
+      // The shared listener raises a contextmenu event for these keys first,
+      // which this menu's own listener answers; nothing to do twice.
+      if (!isMenuKey || event.defaultPrevented) return;
       const row = event.target.closest ? event.target.closest(rowSelector) : undefined;
       if (!row) return;
       const bounds = row.getBoundingClientRect();
