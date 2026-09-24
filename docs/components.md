@@ -129,7 +129,20 @@ re-declare the same names.
 | `--font-mono` | VS Code editor font | Headings, code, data |
 | `--edge` | `2px` | Standard border width |
 | `--control-height` | `30px` | Standard control height |
+| `--accent` | `var(--amber)` | Eyebrows, chosen marks, the primary button's fill |
+| `--danger` | `var(--favorite-red)` | Overdue, high priority. Red means this and nothing else |
+| `--favorite` | `var(--amber-bright)` | The favorite heart |
+| `--positive` | `var(--green)` | A checked box, a done state |
+| `--focus` | `var(--cyan)` | Every focus ring |
 | `--text-xs` … `--text-lg` | `11px`, `12px`, `13px`, `14px` | The type scale. `--text-xs` is the floor: counts, captions, and meta lines; nothing a reader acts on goes below it. `--text-md` is body text. |
+
+**Color a meaning, not a palette entry.** A rule that colors a state takes
+`--danger`, `--favorite`, `--positive`, `--focus`, or `--accent`, so red is
+overdue and only overdue, and a theme that wants another mapping
+re-declares the meaning tokens rather than every rule. A negated search
+term is a dashed, struck chip in the muted color, not a red one. The one
+filled control on a page is the primary action (`.query-apply`); a chosen
+segment is marked, not filled.
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and

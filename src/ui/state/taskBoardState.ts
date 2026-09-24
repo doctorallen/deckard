@@ -269,9 +269,16 @@ export function layoutTaskBoard(
   const toCard = (task: Task): TaskBoardCard =>
     createCard(task, groupBy, options.now, openDependencyIds);
 
+  // A status named done is the board's own Done: an open task carrying it
+  // sits at the head of that column rather than in a second column of the
+  // same name.
+  const isMarkedDone = (task: Task): boolean =>
+    groupBy === 'status' &&
+    readTaskStatus(task, options.statusNamespace) === 'done';
+  const markedDone = open.filter(isMarkedDone);
   const drafts =
     groupBy === 'status'
-      ? createStatusColumns(open, options)
+      ? createStatusColumns(open.filter((task) => !isMarkedDone(task)), options)
       : groupBy === 'priority'
         ? createPriorityColumns(open)
         : groupBy === 'assignee'
@@ -290,7 +297,7 @@ export function layoutTaskBoard(
       id: 'done',
       label: 'Done',
       droppable: true,
-      cards: done.slice(0, doneLimit).map(toCard),
+      cards: [...markedDone.sort(compareOpen), ...done.slice(0, doneLimit)].map(toCard),
       hiddenCount: Math.max(0, done.length - doneLimit),
     },
   ];

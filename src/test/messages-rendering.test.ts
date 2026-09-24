@@ -613,6 +613,13 @@ suite('Webview contracts', () => {
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    // A hue carries one meaning: the state tokens, and the rules that use them.
+    for (const token of ['--accent', '--danger', '--favorite', '--positive', '--focus']) {
+      assert.ok(html.includes(`${token}: var(--`), `${token} is declared on :root`);
+    }
+    assert.ok(html.includes('.due-date.overdue { color: var(--danger); }'), 'overdue is danger');
+    assert.ok(!/\.favorite-toggle \{[^}]*--favorite-red/.test(html), 'the heart is not drawn in the danger color');
+    assert.ok(!/is-negated \{[^}]*--favorite-red/.test(html), 'a negated term is not an alarm');
     // Hover and chosen are two drawings, not one amber.
     assert.strictEqual(
       html.includes('button.active {\n  border-color: var(--chosen-bg);\n  background: var(--panel-raised);'),

@@ -4,6 +4,21 @@
 
 ### Changed
 
+- **Color: one meaning per hue, and one filled button.** Red marked an
+  overdue date, a high priority, a negated search term, and the favorite
+  heart, so a reader who had learned that red means late read a heart or a
+  NOT chip as urgent. Every state now takes a meaning token, `--danger`,
+  `--favorite`, `--positive`, `--focus`, `--accent`, mapped by theme: the
+  heart is gold, a NOT term is a dashed, struck chip in the muted color, and
+  red is overdue or high priority and nothing else. The Search button is the
+  one filled control on a page, since a chosen segment is now marked rather
+  than filled. Replicant's, Synthwave's, and Tomcat's cyan and green were
+  fully saturated on near-black, which blooms around thin text; they are
+  softened a step, hues unchanged, and every pair still clears the contrast
+  suite. Cooper stays gold on black. On the board, an open task tagged
+  `#status/done` now heads the built-in Done column instead of getting a
+  second column called Done.
+
 - **Controls: chosen apart from hovered, one icon set, and no target under
   24px.** A chosen segment and a hovered button were both drawn amber, so
   hovering to learn what a click would do showed the chosen state and a

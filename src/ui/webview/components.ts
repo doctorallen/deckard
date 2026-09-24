@@ -39,17 +39,17 @@ export function getDesignTokens(): string {
   --line: #212936;
   --slate-border: #212936;
   --line-strong: #34445A;
-  --cyan: #00E5FF;
-  --cyan-bright: #00E5FF;
-  --green: #33FF33;
-  --toxic-green: #33FF33;
+  --cyan: #3ED4E8;
+  --cyan-bright: #5FE1F0;
+  --green: #66E066;
+  --toxic-green: #66E066;
   --amber: #FFB000;
   --amber-bright: #FFB000;
   --amber-dim: #7A5400;
   --favorite-red: #D23C28;
   --warning-orange: #FF5500;
   --slate-olive: #3E4A42;
-  --grid-line: rgba(0, 229, 255, .04);
+  --grid-line: rgba(62, 212, 232, .05);
   --font-display: var(--vscode-font-family, ui-sans-serif, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
@@ -74,6 +74,15 @@ export function getDesignTokens(): string {
      A theme re-declares the pair, never one half. */
   --chosen-bg: #FFB000;
   --chosen-fg: #050608;
+  /* What a color means. Every rule that colors a state uses one of these,
+     never a palette color by name, so a hue carries one meaning: red is
+     danger, and only danger. A theme re-declares the palette; these follow
+     it, and a theme that wants a different mapping re-declares these too. */
+  --accent: var(--amber);
+  --danger: var(--favorite-red);
+  --favorite: var(--amber-bright);
+  --positive: var(--green);
+  --focus: var(--cyan);
 }`;
 }
 
@@ -179,7 +188,7 @@ button:hover *, button.active *, button:focus-visible *,
   color: inherit;
 }
 button:focus-visible, select:focus-visible, input:focus-visible {
-  outline: var(--edge) solid var(--cyan);
+  outline: var(--edge) solid var(--focus);
   outline-offset: 2px;
 }
 button[disabled] { opacity: .5; cursor: default; }
@@ -273,7 +282,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
 .view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
-.view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.view-options summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); }
@@ -360,7 +369,7 @@ export function getSurfaceCss(): string {
 }
 .row:hover, .card:hover, .task:hover { border-color: var(--amber); }
 .row:focus-visible, .card:focus-visible, .task:focus-visible {
-  outline: var(--edge) solid var(--cyan);
+  outline: var(--edge) solid var(--focus);
   outline-offset: 1px;
 }
 .row[hidden] { display: none; }
@@ -377,7 +386,7 @@ export function getSurfaceCss(): string {
   align-items: start;
   padding: 10px;
 }
-.task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--green); }
+.task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-title { color: var(--cyan); overflow-wrap: anywhere; }
 .task-title a { color: var(--cyan); }
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
@@ -461,7 +470,7 @@ export function getTaskBoardCss(): string {
   color: var(--cyan);
   font: 12px var(--font-mono);
 }
-.board-column.is-overdue .board-column-title { color: var(--favorite-red); }
+.board-column.is-overdue .board-column-title { color: var(--danger); }
 .board-count { color: var(--muted); }
 /* A column with hundreds of tasks scrolls in place: without this one long
    column made the whole page hundreds of cards tall, and dragging to a far
@@ -499,7 +508,7 @@ export function getTaskBoardCss(): string {
    widening every card in the column. An inline-block is that exactly: one
    unit to the line, that wraps inside only when it has to. */
 .board-details span { display: inline-block; white-space: normal; }
-.board-details .overdue { color: var(--favorite-red); }
+.board-details .overdue { color: var(--danger); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
   position: absolute;
@@ -537,14 +546,14 @@ export function getTaskListCss(): string {
   return `
 .task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: 7px; }
 .task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: 10px; cursor: pointer; }
-.task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
-.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
+.task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: 5px; }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
-.due-date.overdue { color: var(--favorite-red); }
+.due-date.overdue { color: var(--danger); }
 .task-detail { letter-spacing: .03em; }
-.task-detail.priority-highest, .task-detail.priority-high { color: var(--favorite-red); font-weight: 700; }
+.task-detail.priority-highest, .task-detail.priority-high { color: var(--danger); font-weight: 700; }
 .is-draggable { cursor: grab; touch-action: none; }
 .is-draggable:active { cursor: grabbing; }
 .is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
@@ -567,12 +576,12 @@ export function getTaskListCss(): string {
 .result-table .result-row { cursor: pointer; }
 /* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
 .result-table .result-row:hover td { border-bottom-color: var(--amber); }
-.result-table .result-row:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: -1px; }
+.result-table .result-row:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: -1px; }
 .result-table .result-row.completed .result-title { color: var(--muted); text-decoration: line-through; }
 .result-table .result-title { color: var(--cyan); }
-.result-table td.is-overdue { color: var(--favorite-red); font-weight: 700; }
+.result-table td.is-overdue { color: var(--danger); font-weight: 700; }
 .result-table td.is-muted { color: var(--muted); }
-.result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--toxic-green); }
+.result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--positive); }
 /* The gear's column picker: one line per column, the title fixed. */
 .table-columns { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; text-transform: none; }
 .table-columns label { display: flex; gap: 6px; align-items: center; font: 12px var(--font-mono); }
@@ -1740,7 +1749,7 @@ export function getQueryEditorCss(): string {
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
 .query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 12px var(--font-mono); }
 .query-input:focus { border-color: var(--amber); outline: none; }
-.query-input:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.query-input:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
 .query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
 /*
@@ -1755,12 +1764,12 @@ export function getQueryEditorCss(): string {
 /* Every chip looks the same, whatever its term; only a left-out tag is red. */
 .query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: 11px var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
 .query-chip-label { min-width: 0; overflow-wrap: anywhere; }
-.query-bar-shell .query-chip.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); background: color-mix(in srgb, var(--favorite-red) 12%, transparent); color: var(--favorite-red); }
+.query-bar-shell .query-chip.is-negated { border-style: dashed; border-color: var(--muted); background: transparent; color: var(--text); text-decoration: line-through; text-decoration-color: var(--muted); }
 /* A group of the search: its own chips inside a frame, with the group's
    remove at the end, so what the builder nests the box shows nested. The
    frame removes the group, as a chip's whole face removes its term. */
 .query-chip-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%; border: 1px dashed color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; padding: 2px 3px 2px 5px; color: var(--cyan); cursor: pointer; }
-.query-chip-group.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); color: var(--favorite-red); }
+.query-chip-group.is-negated { border-color: var(--muted); color: var(--text); }
 /* The group's own remove is the circle alone, ringed with the group's dash
    so it reads as the group's rather than one more chip. */
 .query-bar-shell .query-chip-group-remove { border: 0; background: none; padding: 0 2px; min-height: 0; color: inherit; }
@@ -1790,7 +1799,11 @@ export function getQueryEditorCss(): string {
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
    the theme's own look. */
-.query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--amber); color: var(--amber); }
+/* One filled control per page: the one the reader most likely wants. A
+   chosen segment is drawn another way (see button.active), so filled means
+   "do this" and nothing else. */
+.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
 .query-error { color: #FF8080; font: 11px var(--font-mono); }
 .query-hint { color: var(--muted); font: 11px var(--font-mono); }
 /* The line of syntax is wanted at the moment of typing and is chrome the rest

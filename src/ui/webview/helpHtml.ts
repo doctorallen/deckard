@@ -197,7 +197,7 @@ p { margin: 0 0 12px; }
 code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--green); font-size: .9em; }
 .inline-icon, .deckard-logo { display: inline-block; width: 16px; height: 16px; margin: 0 2px; vertical-align: -3px; }
 .dashboard-icon { fill: var(--green); }
-.favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite-red); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
+.favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
 .favorite-heart.filled { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 pre { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--panel); padding: 12px; color: var(--text); }
 pre code { border: 0; padding: 0; color: inherit; background: transparent; }

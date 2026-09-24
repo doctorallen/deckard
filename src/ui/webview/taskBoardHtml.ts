@@ -44,7 +44,7 @@ header { align-items: flex-start; }
 .board-settings-note { margin: 0; color: var(--muted); font-size: 11px; }
 .board-status-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .board-status { display: flex; align-items: center; gap: 6px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 2px 2px 2px 6px; }
-.board-status:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 1px; }
+.board-status:focus-visible { outline: 1px solid var(--focus); outline-offset: 1px; }
 .board-status-grip { color: var(--muted); font-size: 12px; line-height: 1; }
 .board-status.drag-ghost { list-style: none; }
 .board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: 12px var(--font-mono); }

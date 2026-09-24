@@ -77,6 +77,21 @@ suite('Task board', () => {
     ]);
   });
 
+  test('a status named done is the Done column, not a second one', () => {
+    const index = createIndex();
+    const marked = createTask('marked', '- [ ] Marked done by hand #status/done', {});
+    index.tasks.set(marked.id, marked);
+    const layout = board(index, 'status', '', options);
+    assert.deepStrictEqual(
+      layout.columns.filter((column) => column.label === 'Done').length,
+      1,
+      'one column reads Done',
+    );
+    const doneColumn = layout.columns[layout.columns.length - 1];
+    assert.strictEqual(doneColumn.id, 'done');
+    assert.strictEqual(doneColumn.cards[0].taskId, marked.id, 'and the open task marked done heads it');
+  });
+
   test('says when almost nothing carries a status, and only then', () => {
     // The fixture writes a status on most of its open tasks.
     assert.strictEqual(board(createIndex(), 'status', '', options).statusHint, undefined);

@@ -59,7 +59,7 @@ export function getSidebarNotesHtml(
 .active-label, .section-label { color: var(--muted); font-size: var(--text-xs); }
 .active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
 .active-summary::-webkit-details-marker { display: none; }
-.active-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.active-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-file[open] .active-name { -webkit-line-clamp: 3; }
 .sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
@@ -87,7 +87,7 @@ select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2p
 select.related-notes-sort:hover ~ .related-notes-sort-icon { color: var(--hover-fg); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
 .section-label { display: block; margin: 10px 0 6px; padding-left: 6px; border-left: 2px solid var(--amber); }
@@ -103,7 +103,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .insert-link { flex: 0 0 auto; min-height: 0; border: 0; background: transparent; padding: 0; color: var(--muted); cursor: pointer; opacity: 0; }
 .insert-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; }
 .note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
-.insert-link:hover { color: var(--accent); }
+.insert-link:hover { background: transparent; color: var(--text); }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
 .relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
 .relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
