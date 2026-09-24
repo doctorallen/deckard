@@ -14,7 +14,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
 | [Dashboard](#dashboard) | Workspace totals of notes, tasks, and tags, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
 | [Search pages](#search-pages) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. Any other search opens the same kind of page, and [one bulk edit](#editing-a-searchs-results) can be made to everything it found. |
-| [Search](#search) | `Deckard: Search Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
+| [Search](#search) | `Deckard: Find in Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace, or of one note's neighbourhood. |
@@ -68,7 +68,7 @@ Set `deckard.theme` to choose the visual style used by Deckard webviews. The def
 
 ## Zen mode
 
-Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, or run `Deckard: Zen Mode`, to turn Deckard's own chrome down.
+Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, or run `Deckard: Enter Zen Mode`, to turn Deckard's own chrome down.
 
 Zen mode is not a theme, and it does not replace one. A theme picks the colours; zen picks how much frame is drawn around them, so the two compose — any of the eight themes above can be read in zen.
 
@@ -102,9 +102,9 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Dashboard** | Opens workspace totals, Home, and tags. |
 | **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, or the person each task is for. |
-| **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
+| **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
-| **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
+| **Deckard: Open Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
@@ -128,9 +128,9 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](#claude-code-and-other-mcp-clients) to Claude Code, offering to turn the server on first. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
-| **Deckard: Open a Tag's Search Page** | Opens a tag's search page, or shows a tag picker when no tag is supplied. |
+| **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
 | **Deckard: Open Search Page** | Opens a search page listing every note, ready for a search. |
-| **Deckard: Search Notes (find as you type)** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](#find). |
+| **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](#find). |
 | **Deckard: Search Notes and Tasks** | Opens a search page on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
@@ -378,7 +378,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 |---|---|---|
 | **Search** | The [search box](#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
 | **Tasks** | The first tasks a search finds, `is:open` unless you set another, ranked as on the Task board | The Task board, on that search |
-| **Agenda** | Overdue, today's, and upcoming tasks | The Tasks view |
+| **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them | The Tasks view |
 | **Favorite tags** | The tags you favorited, with what searching for each finds | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
 | **Saved searches** | Your saved searches, each removable | Where each was saved |
@@ -423,7 +423,7 @@ Until Home has been arranged, a line above the widgets says it can be, with **Cu
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current file, note, task, tag, namespaced tag, and Wiki-link totals from the index. Deckard counts the same things under the same names everywhere: a **note** is a headed entry, and a **file** holds one or more of them. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
+Run `Deckard: Open Stats` to see the current file, note, task, tag, namespaced tag, and Wiki-link totals from the index. Deckard counts the same things under the same names everywhere: a **note** is a headed entry, and a **file** holds one or more of them. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
 
 If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
 
@@ -575,7 +575,7 @@ The page shows a single Refine line while the sidebar holds its options, and its
 
 ## Search pages
 
-Every search opens a **search page** in its own editor tab, and a tag's overview is the search page for that one tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag on the Dashboard, in Related Notes, or anywhere else Deckard shows one, running a search from Home, [Find](#find), or `Deckard: Search Notes and Tasks (write a query)`, or running `Deckard: Open a Tag's Search Page` or `Deckard: Open Search Page`. Opening a search a page already shows brings that page forward rather than opening another.
+Every search opens a **search page** in its own editor tab, and a tag's overview is the search page for that one tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag on the Dashboard, in Related Notes, or anywhere else Deckard shows one, running a search from Home, [Find](#find), or `Deckard: Search Notes and Tasks`, or running `Deckard: Open a Tag's Search Page` or `Deckard: Open Search Page`. Opening a search a page already shows brings that page forward rather than opening another.
 
 ![Deckard Tag Overview showing matching notes, active tasks, and display controls.](docs/images/tag-overview.png)
 
@@ -593,11 +593,11 @@ Opening a tag's page records tag access. Opening a section records section acces
 
 ### Taking a search's results out
 
-**Export**, beside **Bulk Edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
+**Export**, beside **Bulk edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
 
 ### Editing a search's results
 
-**Bulk Edit**, beside a results pane's heading, makes one edit to everything the search found. A search page is where a set of notes and tasks is already gathered — refine it until the results are the ones you mean, then edit them together:
+**Bulk edit**, beside a results pane's heading, makes one edit to everything the search found. A search page is where a set of notes and tasks is already gathered — refine it until the results are the ones you mean, then edit them together:
 
 | Results | What can be done to them |
 | --- | --- |
@@ -655,11 +655,11 @@ Set `deckard.enableHeadingTagRelationships` to `false` to refine by the tags the
 
 ## Search
 
-Deckard has one search language everywhere: `Deckard: Search Notes` for getting to something quickly, and the search box on [search pages](#search-pages), Home, and the Task board for seeing everything a search finds.
+Deckard has one search language everywhere: `Deckard: Find in Notes` for getting to something quickly, and the search box on [search pages](#search-pages), Home, and the Task board for seeing everything a search finds.
 
 ### Find
 
-Run `Deckard: Search Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on Windows and Linux), and start typing. Results appear as you type.
+Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on Windows and Linux), and start typing. Results appear as you type.
 
 ![Deckard Find listing the notes titled Meridian first, then the tags that match, then notes that mention the word.](docs/images/find.png)
 
@@ -1027,7 +1027,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 ## Limitations and troubleshooting
 
 - **Something is not there, and you are not sure why:** run `Deckard: Check My Setup`. It says where notes are read from and whether that folder exists, how many files the exclude patterns kept out, which notes could not be read, and whether `deckard.me` matches anyone — each with what to do.
-- **A note is missing from every search:** open `Deckard: Show Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
+- **A note is missing from every search:** open `Deckard: Open Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
@@ -1035,7 +1035,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 - **Content in a code block appears ignored:** this is intentional. Fenced code is excluded from indexing, tag links, and completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are intentionally not tags. Use an `@` marker or include a non-numeric character.
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.
-- **Deckard feels slow:** run `Deckard: Show Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown. The search cache is written on a thread of its own, so the first build in a new workspace does not hold VS Code up; while it runs, a search finds a note by its title and tags before it finds it by the words inside it, and the log records the build as `Write search index off the extension host`.
+- **Deckard feels slow:** run `Deckard: Open Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown. The search cache is written on a thread of its own, so the first build in a new workspace does not hold VS Code up; while it runs, a search finds a note by its title and tags before it finds it by the words inside it, and the log records the build as `Write search index off the extension host`.
 
 Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and it scans only Markdown files within the configured workspace scope.
 

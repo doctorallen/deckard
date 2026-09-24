@@ -305,13 +305,13 @@ ${getQueryEditorScript()}
   function exportResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Export these tasks' : 'Export these notes';
-    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">Export</button>';
+    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">' + (kind === 'tasks' ? 'Export tasks' : 'Export notes') + '</button>';
   }
 
   function editResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
-    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk Edit</button>';
+    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
   }
 
   function render() {
@@ -387,9 +387,8 @@ ${getQueryEditorScript()}
     const savedViewName = state.savedViewName
       ? '<div class="saved-view-name" aria-label="Saved search: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved search:</span> ' + escapeHtml(state.savedViewName) + '</div>'
       : '';
-    const eyebrow = state.tag
-      ? 'DECKARD / TAG SEARCH'
-      : 'DECKARD / SEARCH';
+    // One name for the place, whatever it searches: a search page.
+    const eyebrow = 'DECKARD / SEARCH PAGE';
     // A search that does not parse leaves the previous results on the page.
     // Say so, rather than letting them read as answers to what was typed.
     const invalid = (state.query.diagnostics || []).some(function (diagnostic) { return diagnostic.severity === 'error'; });

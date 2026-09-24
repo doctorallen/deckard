@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **Buttons and commands follow one naming table.** Bulk Edit is Bulk edit;
+  Clear, Clear search, and Clear the search are Clear; a widget's Apply is
+  Save; Export says what it exports; Reset and Fit say what they reset
+  and fit; Home's customizing ends with Finish, since Done is a column on the
+  board. Show Stats and Show Log are Open Stats and Open Log; Zen Mode is
+  Enter Zen Mode; the tag page command has one title, with its ellipsis, in
+  the palette and on the Outline's menu; the quick pick is Find in Notes and
+  the query page is Search Notes and Tasks. The Home widget that mirrors the
+  Tasks view is called Tasks view, and every search page's eyebrow says
+  search page. The table is in `docs/components.md`, and a test holds it.
 - **Working labels read as written in every theme.** Column titles on the
   board, group headings in lists, table headers, the Refine label, and the
   labels beside controls were set in tracked capitals in the film themes, a

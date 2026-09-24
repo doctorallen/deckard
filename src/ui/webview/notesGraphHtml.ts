@@ -170,9 +170,9 @@ ${getPageTailCss()}
     <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">−</button>
     <span class="zoom-readout" id="zoom-readout">100%</span>
     <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">+</button>
-    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit</button>
+    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit graph</button>
   </div>
-  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph settings</button>
+  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph</button>
 </div>
 <div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>

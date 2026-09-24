@@ -95,7 +95,7 @@
       },
       {
         "command": "deckard.showStats",
-        "title": "Deckard: Show Stats"
+        "title": "Deckard: Open Stats"
       },
       {
         "command": "deckard.showHelp",
@@ -103,7 +103,7 @@
       },
       {
         "command": "deckard.showLog",
-        "title": "Deckard: Show Log"
+        "title": "Deckard: Open Log"
       },
       {
         "command": "deckard.reindexWorkspace",
@@ -179,7 +179,7 @@
       },
       {
         "command": "deckard.showTagOverview",
-        "title": "Deckard: Open a Tag's Search Page"
+        "title": "Deckard: Open a Tag's Search Page…"
       },
       {
         "command": "deckard.search",
@@ -187,7 +187,7 @@
       },
       {
         "command": "deckard.searchWorkspace",
-        "title": "Deckard: Search Notes (find as you type)"
+        "title": "Deckard: Find in Notes"
       },
       {
         "command": "deckard.quickFind.complete",
@@ -195,7 +195,7 @@
       },
       {
         "command": "deckard.searchNotes",
-        "title": "Deckard: Search Notes and Tasks (write a query)"
+        "title": "Deckard: Search Notes and Tasks"
       },
       {
         "command": "deckard.linkCurrentHeading",
@@ -231,7 +231,7 @@
       },
       {
         "command": "deckard.outline.openTagOverview",
-        "title": "Open the Tag's Search Page…"
+        "title": "Open a Tag's Search Page…"
       },
       {
         "command": "deckard.outline.renameTag",
@@ -259,7 +259,7 @@
       },
       {
         "command": "deckard.enableZenMode",
-        "title": "Deckard: Zen Mode",
+        "title": "Deckard: Enter Zen Mode",
         "icon": "$(screen-normal)"
       },
       {

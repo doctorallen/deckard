@@ -444,6 +444,22 @@ and is ranked with `installRankedRows`. The host projects each widget with
 
 ## Conventions
 
+### Names
+
+Buttons, menu items, and command titles follow one table, and
+`src/test/naming.test.ts` holds it.
+
+| Rule | Yes | No |
+| --- | --- | --- |
+| A button is sentence case. Only a place or a product keeps its capital: Home, Tags, Deckard, Markdown, CSV. | Bulk edit, Customize, Reset widgets | Bulk Edit |
+| One verb per act, everywhere it appears. | Clear (a search), Search (run one) | Clear search, Clear the search, Apply |
+| A verb and its object when the object is not on the button's own row. | Export tasks, Reset widgets, Reset graph, Fit graph | Export, Reset, Fit |
+| No word does two jobs on one page. | Finish (customizing Home), Done (the board's column) | Done for both |
+| A command that opens a page or view says Open. | Open Stats, Open Log | Show Stats |
+| A mode is entered and left with verbs. | Enter Zen Mode, Leave Zen Mode | Zen Mode |
+| A command that will ask a question ends with an ellipsis, in the palette and on a menu alike. | Open a Tag's Search Page… | Open the Tag's Search Page… |
+| One name per place. | Tasks view (the sidebar view and the Home widget that mirrors it); search page (a tag's page too) | Agenda; tag overview; tag search |
+
 - **Escape everything from the host.** Snapshot values are data, not markup.
 - **Post intent, do not mutate.** A control carries `data-action` and posts a
   message; the host decides and sends new state back. Pages re-render from

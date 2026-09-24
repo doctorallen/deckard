@@ -2185,7 +2185,7 @@ export function getQueryEditorScript(): string {
         ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" title="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
         : '';
       const clear = canClear(currentText())
-        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear the search</button>'
+        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear</button>'
         : '';
       if (!drop && !clear) return '';
       return '<span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">' + drop + clear + '</span>';

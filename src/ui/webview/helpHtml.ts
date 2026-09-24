@@ -296,7 +296,7 @@ ${getPageTailCss()}
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what.</p></div></div>
       </div>
-      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Show Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there.</p>
+      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Open Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there.</p>
     </section>
 
     <section id="tags">
@@ -329,7 +329,7 @@ updated: 2026-09-20
         <div class="card"><h3>Wiki links</h3><p><code>[[Note]]</code> names a note by its file name without <code>.md</code>, or by an alias. <code>[[Note#Heading]]</code> opens a heading and <code>[[Note#^marker]]</code> one line. Typing <code>[[</code> completes titles and aliases; typing <code>#^</code> completes the markers a note carries.</p></div>
         <div class="card"><h3>Embeds</h3><p><code>![[Note]]</code> on a line of its own draws that note in the Markdown preview; <code>![[Note#Heading]]</code> draws the section, <code>![[Note#^id]]</code> the marked line, and <code>![[#Heading]]</code> a heading of the note you are in. An embed inside a sentence stays the text you typed.</p></div>
         <div class="card"><h3>Renaming keeps links</h3><p>Renaming or moving a note rewrites every link that named it, in the same step, so one Undo takes back both. <code>Deckard: Rename Heading</code> does the same for a heading. <code>deckard.updateLinksOnRename</code> turns it off.</p></div>
-        <div class="card"><h3>Broken links</h3><p>A link to a note that does not exist is marked in the editor with a <strong>Create note</strong> fix; a name two notes share is a warning, since it opens neither. <code>Deckard: Show Stats</code> lists the notes nothing links to.</p></div>
+        <div class="card"><h3>Broken links</h3><p>A link to a note that does not exist is marked in the editor with a <strong>Create note</strong> fix; a name two notes share is a warning, since it opens neither. <code>Deckard: Open Stats</code> lists the notes nothing links to.</p></div>
       </div>
     </section>
 
@@ -376,7 +376,7 @@ updated: 2026-09-20
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
         <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list. While few tasks carry a status, the board says so above the columns and offers the due-date grouping, which needs none.</p></div>
-        <div class="card"><h3>Editing many at once</h3><p><strong>Bulk Edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
+        <div class="card"><h3>Editing many at once</h3><p><strong>Bulk edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>A task's due date is written by its distance from today with the date beside it, <strong>Overdue 15 days · 2026-09-08</strong>, wherever a task is listed. The status bar reads <strong>3 due today</strong> while anything is, <strong>2 overdue, 3 due today</strong> when something has slipped, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>
     </section>
@@ -384,12 +384,12 @@ updated: 2026-09-20
     <section id="search">
       <h2>Search</h2>
       <div class="cards">
-        <div class="card"><h3>Find</h3><p><code>Deckard: Search Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page.</p></div>
+        <div class="card"><h3>Find</h3><p><code>Deckard: Find in Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page.</p></div>
         <div class="card"><h3>Search pages</h3><p>Opening a tag collects every entry that carries it, with the tags it is most often written with. Any other search opens the same kind of page. Each page has the same search box, with completions and a visual builder that can build anything the box can say: rows and groups, nested, each group matching all or any of its rows, and turned around with <strong>not</strong>.</p></div>
         <div class="card"><h3>Refine</h3><p>Under the box, <strong>Refine</strong> counts what the results could be narrowed by. Selecting a value adds it with <strong>AND</strong>; Alt-click adds <strong>AND NOT</strong>, and Shift-click adds <strong>OR</strong>, widening the value chosen before it. Every value writes ordinary query text, so a refined search can be saved or copied into a note.</p></div>
         <div class="card"><h3>Saving a search</h3><p><strong>Save</strong> beside the box keeps a search, which reopens on the page it was saved from and can sit on Home as a widget. Recent searches are kept too.</p></div>
       </div>
-          <p><strong>Taking a result out.</strong> <strong>Export</strong>, beside Bulk Edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. The index itself never leaves the machine.</p>
+          <p><strong>Taking a result out.</strong> <strong>Export notes</strong> and <strong>Export tasks</strong>, beside Bulk edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. The index itself never leaves the machine.</p>
     </section>
 
     <section id="query">
@@ -443,7 +443,7 @@ tag = #project/atlas AND task = open
 
     <section id="home">
       <h2>Home and pins</h2>
-      <p>The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Agenda, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
+      <p>The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
       <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
     </section>
 
@@ -472,7 +472,7 @@ tag = #project/atlas AND task = open
     <section id="zen">
       <h2>Zen mode</h2>
       <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
-      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colours.</p>
+      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colours.</p>
       <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
     </section>
 

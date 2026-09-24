@@ -100,7 +100,7 @@ ${getQueryEditorScript()}
       const listed = !!(state && state.agendaListsThisSearch);
       return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
         + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
-        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export</button>';
+        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
     },
   });
 
@@ -286,7 +286,7 @@ ${getQueryEditorScript()}
     if (!sort) return '<span class="control-label">Rank order · choose a column to sort by it</span>';
     const column = (state.table.columns.find(function (c) { return c.id === sort.column; }) || {}).label || sort.column;
     return '<span class="control-label">Sorted by ' + escapeHtml(column.toLowerCase()) + (sort.direction === 'desc' ? ', last first' : '') + '</span>'
-      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Rank order</button>';
+      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Sort by rank</button>';
   }
 
   /** The gear's list of columns, the title fixed. */

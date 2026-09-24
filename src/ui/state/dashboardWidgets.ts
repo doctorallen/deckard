@@ -62,7 +62,7 @@ export interface DashboardWidgetOptions {
 export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, string>> = {
   search: 'Search',
   tasks: 'Tasks',
-  agenda: 'Agenda',
+  agenda: 'Tasks view',
   favoriteTags: 'Favorite tags',
   topTags: 'Frequent tags',
   savedSearches: 'Saved searches',

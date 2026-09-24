@@ -241,7 +241,7 @@ ${getQueryEditorScript()}
   const WIDGET_KINDS = {
     search: { label: 'Search', description: 'A search box that opens a search page', repeatable: false, listed: false },
     tasks: { label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board', repeatable: true, listed: true },
-    agenda: { label: 'Agenda', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
+    agenda: { label: 'Tasks view', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
     favoriteTags: { label: 'Favorite tags', description: 'The tags you favorited', repeatable: false, listed: true },
     topTags: { label: 'Frequent tags', description: 'The tags you open most, lately', repeatable: false, listed: true },
     savedSearches: { label: 'Saved searches', description: 'Your saved searches', repeatable: false, listed: false },
@@ -542,7 +542,7 @@ ${getQueryEditorScript()}
    */
   function renderSearchNotice(shown, total, noun, query, action) {
     const text = String(query || '').trim();
-    return '<div class="search-notice" role="status"><span>Showing <strong>' + shown + '</strong> of ' + total + ' ' + escapeHtml(noun) + (text ? ' matching “' + escapeHtml(text) + '”' : '') + '</span><button data-action="' + action + '">Clear search</button></div>';
+    return '<div class="search-notice" role="status"><span>Showing <strong>' + shown + '</strong> of ' + total + ' ' + escapeHtml(noun) + (text ? ' matching “' + escapeHtml(text) + '”' : '') + '</span><button data-action="' + action + '">Clear</button></div>';
   }
 
   /** A dot on a tab whose search has text or a filter, seen from any tab. */
@@ -720,7 +720,7 @@ ${getQueryEditorScript()}
     };
     switch (widget.kind) {
       case 'tasks': return link('open-task-board', 'data-query="' + escapeHtml(widget.query || '') + '"', 'Task Board');
-      case 'agenda': return link('open-view', 'data-view="agenda"', 'Agenda');
+      case 'agenda': return link('open-view', 'data-view="agenda"', 'Tasks view');
       case 'favoriteTags':
       case 'topTags': return link('set-dashboard-mode', 'data-dashboard-mode="browse"', 'All tags');
       case 'stats': return link('open-view', 'data-view="stats"', 'Stats');
@@ -756,7 +756,7 @@ ${getQueryEditorScript()}
     }
     if (widget.kind === 'tasks') {
       const draft = widgetQueryDrafts[widget.id] !== undefined ? widgetQueryDrafts[widget.id] : (widget.query || '');
-      groups.push('<div class="view-options-group is-stacked"><span>Search</span><form class="home-widget-form" data-form="widget-query" ' + attribute + '><input type="text" data-action="widget-query-draft" ' + attribute + ' value="' + escapeHtml(draft) + '" placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" spellcheck="false"><button type="submit">Apply</button></form></div>');
+      groups.push('<div class="view-options-group is-stacked"><span>Search</span><form class="home-widget-form" data-form="widget-query" ' + attribute + '><input type="text" data-action="widget-query-draft" ' + attribute + ' value="' + escapeHtml(draft) + '" placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" spellcheck="false"><button type="submit">Save</button></form></div>');
     }
     if (widget.kind === 'savedQuery') {
       groups.push('<div class="view-options-group is-stacked"><span>Saved search</span><select data-action="set-widget-filter" ' + attribute + ' aria-label="Saved search to show">' + state.savedFilters.map(function (filter) {
@@ -850,8 +850,8 @@ ${getQueryEditorScript()}
     const widgets = state.widgets;
     const bar = editingHome
       ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
-        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
-        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button>') + '<button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
+        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset widgets</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
+        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
       // few times and skipped after. Customize stays in the gear throughout.
@@ -862,7 +862,7 @@ ${getQueryEditorScript()}
         : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" title="Stop saying so">Dismiss</button></span></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
-      : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize Home</button></div>';
+      : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize</button></div>';
     return bar + grid;
   }
 
