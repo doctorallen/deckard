@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "1.19.1",
+  "version": "1.20.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -541,16 +541,27 @@
         "toolReferenceName": "deckardAddTask",
         "canBeReferencedInPrompt": true,
         "icon": "$(add)",
-        "tags": ["deckard", "tasks"],
+        "tags": [
+          "deckard",
+          "tasks"
+        ],
         "userDescription": "Adds a task to today's note, or to a note you name, after showing you the line.",
         "modelDescription": "Adds a checklist task to one of the user's Markdown notes: to today's daily note, or to the note named by a workspace-relative path as deckard_query reports paths. Write the task's words as text; metadata may be written in them the way the user writes tasks, such as a due date 📅 2026-09-30, a priority ⏫, or a person 👤 @dana. Nothing is written until the user approves the exact line in a preview; the answer says whether it was written, and where. Use deckard_change_task to change a task that already exists.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "text": { "type": "string", "description": "The task's words, such as \"Call Ren about the budget 📅 2026-09-30\"." },
-            "note": { "type": "string", "description": "A workspace-relative note to add it to, such as notes/atlas.md. Today's daily note when absent." }
+            "text": {
+              "type": "string",
+              "description": "The task's words, such as \"Call Ren about the budget 📅 2026-09-30\"."
+            },
+            "note": {
+              "type": "string",
+              "description": "A workspace-relative note to add it to, such as notes/atlas.md. Today's daily note when absent."
+            }
           },
-          "required": ["text"]
+          "required": [
+            "text"
+          ]
         }
       },
       {
@@ -559,21 +570,66 @@
         "toolReferenceName": "deckardChangeTask",
         "canBeReferencedInPrompt": true,
         "icon": "$(edit)",
-        "tags": ["deckard", "tasks"],
+        "tags": [
+          "deckard",
+          "tasks"
+        ],
         "userDescription": "Completes, reopens, retitles, dates, prioritizes, or hands over a task, after showing you the line.",
         "modelDescription": "Changes one existing checklist task, named by its note and one-based line as deckard_query reports them. Any of: title (new words), complete (true or false), due (YYYY-MM-DD, or null to clear), priority (highest, high, medium, low, lowest, or null to clear), assignee (a person tag such as @dana, or null to clear). Only the fields given change; the rest of the line is kept as written. The change is refused if the line is no longer the task the index knows, so ask deckard_query first. Nothing is written until the user approves the exact line in a preview; the answer says whether it was written.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "note": { "type": "string", "description": "The task's note, workspace-relative, as deckard_query reports it." },
-            "line": { "type": "integer", "minimum": 1, "description": "The task's one-based line, as deckard_query reports it." },
-            "title": { "type": "string", "description": "New words for the task." },
-            "complete": { "type": "boolean", "description": "true completes it, writing the done date; false reopens it." },
-            "due": { "type": ["string", "null"], "description": "A day as YYYY-MM-DD, or null to clear the due date." },
-            "priority": { "type": ["string", "null"], "enum": ["highest", "high", "medium", "low", "lowest", null], "description": "The priority, or null to clear it." },
-            "assignee": { "type": ["string", "null"], "description": "Who the task is for, as their tag, or null to clear it." }
+            "note": {
+              "type": "string",
+              "description": "The task's note, workspace-relative, as deckard_query reports it."
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The task's one-based line, as deckard_query reports it."
+            },
+            "title": {
+              "type": "string",
+              "description": "New words for the task."
+            },
+            "complete": {
+              "type": "boolean",
+              "description": "true completes it, writing the done date; false reopens it."
+            },
+            "due": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A day as YYYY-MM-DD, or null to clear the due date."
+            },
+            "priority": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "highest",
+                "high",
+                "medium",
+                "low",
+                "lowest",
+                null
+              ],
+              "description": "The priority, or null to clear it."
+            },
+            "assignee": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Who the task is for, as their tag, or null to clear it."
+            }
           },
-          "required": ["note", "line"]
+          "required": [
+            "note",
+            "line"
+          ]
         }
       }
     ],
