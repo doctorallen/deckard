@@ -27,7 +27,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 <style nonce="${nonce}">${getBaseCss()}
 .updated, .count { font-family: var(--font-mono); }
 .updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: 11px; }
-.reindex { min-height: 22px; padding: 2px 8px; font-size: 10px; text-transform: uppercase; }
+.reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); text-transform: uppercase; }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
 .view-panel h2 { padding: 12px; border-bottom: 2px solid var(--line); color: var(--cyan); }
@@ -40,7 +40,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .pair-tag { padding: 2px 6px; font-size: 12px; }
 .pair-arrow { color: var(--muted); }
-.merge { min-height: 22px; padding: 2px 8px; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
+.merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); text-transform: uppercase; white-space: nowrap; }
 @media (max-width: 600px) { main { padding: 16px; } }
 
 /* Stats leads with a green rule and lists plain empty states. */

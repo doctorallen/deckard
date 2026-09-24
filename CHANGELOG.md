@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **No text under eleven pixels.** Counts, captions, the calendar's due
+  marks, the graph's labels and readouts, and a handful of section labels
+  were set at nine or ten pixels, in muted monospace, which is below where
+  fluent reading holds at a laptop's viewing distance. The pages now share
+  a four-step type scale, `--text-xs` to `--text-lg`, with eleven pixels as
+  its floor, and every smaller size has risen to it.
+
 - **The Notes Graph opens around the note being written, and names its
   hubs.** It opened on the whole workspace, hundreds of unlabelled dots with
   focus off and a line saying to open a note, which the reader usually had.

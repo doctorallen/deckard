@@ -129,6 +129,7 @@ re-declare the same names.
 | `--font-mono` | VS Code editor font | Headings, code, data |
 | `--edge` | `2px` | Standard border width |
 | `--control-height` | `30px` | Standard control height |
+| `--text-xs` … `--text-lg` | `11px`, `12px`, `13px`, `14px` | The type scale. `--text-xs` is the floor: counts, captions, and meta lines; nothing a reader acts on goes below it. `--text-md` is body text. |
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and

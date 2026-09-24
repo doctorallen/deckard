@@ -212,7 +212,7 @@ li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
 /* Reference tables: commands, markers, query fields, settings. */
 table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 13px; }
-caption { margin-bottom: 6px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-align: left; text-transform: uppercase; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 th { color: var(--cyan); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 td:first-child { white-space: normal; }
@@ -223,7 +223,7 @@ tbody tr:hover { background: var(--panel); }
 .table-group:hover { background: transparent; }
 .table-scroll { overflow-x: auto; }
 /* The navigation groups its sections, so a long guide stays scannable. */
-.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
 nav a.nav-sub { padding-left: 16px; font-size: 12px; }
 section { scroll-margin-top: 20px; }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }

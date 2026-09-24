@@ -54,6 +54,14 @@ export function getDesignTokens(): string {
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
+  /* The type scale. Nothing a reader acts on is set below --text-xs: at a
+     laptop's viewing distance eleven pixels is where fluent reading starts
+     to fall away, and muted monospace text loses legibility sooner than
+     that. --text-md is the body size the VS Code UI itself uses. */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 14px;
   /* The corner a control takes. The ends of a group of segments follow it,
      so a theme that squares its buttons squares the group too. */
   --control-radius: 2px;
@@ -88,7 +96,7 @@ body {
   background-size: 24px 24px;
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }
 header {
@@ -220,7 +228,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 }
 .toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .settings-icon, .help-icon { fill: currentColor; stroke: none; }
-.filter-count { color: var(--muted); font-size: 10px; }
+.filter-count { color: var(--muted); font-size: var(--text-xs); }
 
 /* Walking a list a page at a time: a search page's results, a widget's entries. */
 .pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
@@ -1756,7 +1764,7 @@ export function getQueryEditorCss(): string {
 .query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: 12px; line-height: 1; }
 .query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
 .query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
-.query-chip-join, .query-op { color: var(--amber); font: 10px var(--font-mono); letter-spacing: .08em; }
+.query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
 .query-op { font-size: inherit; }
 .query-paren { color: var(--muted); }
 .query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); }
@@ -1767,7 +1775,7 @@ export function getQueryEditorCss(): string {
 .query-suggestions .query-suggestion:last-child { border-bottom: 0; }
 .query-suggestions .query-suggestion:hover, .query-suggestions .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
 .query-suggestion-label { min-width: 0; overflow-wrap: anywhere; }
-.query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
@@ -1789,7 +1797,7 @@ export function getQueryEditorCss(): string {
 .query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .query-builder-group-head select { min-height: 28px; font-size: 12px; }
-.query-builder-head-text { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.query-builder-head-text { color: var(--muted); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 .query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 .query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
 .query-builder-item > .query-builder-and { margin-top: 9px; }
@@ -1803,7 +1811,7 @@ export function getQueryEditorCss(): string {
 .query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); }
 .query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
-.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
 .query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .query-builder-actions button { font-size: 11px; }
@@ -1824,9 +1832,9 @@ export function getQueryEditorCss(): string {
 .query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
 .query-facets-heading { color: var(--amber); font: 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-.query-facet-label { margin-right: 2px; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
-.query-facet-count { color: var(--muted); font-size: 10px; }
+.query-facet-count { color: var(--muted); font-size: var(--text-xs); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
