@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Changed
+
+- **Home says it can be arranged only until it has been.** The line
+  "Home is yours to arrange." was drawn above the widgets on every visit.
+  A fixed line of instruction is read the first few times and skipped after,
+  and it cost a row on the page opened most. It is now drawn only while Home
+  still holds the widgets it started with, and goes for good once a widget
+  has been moved, sized, or swapped, or the reader chooses **Dismiss**.
+  Customize stays in the gear throughout.
+
 ### Fixed
 
 - **The status bar counts overdue and today separately.** It read

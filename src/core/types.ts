@@ -418,6 +418,11 @@ export interface DashboardSnapshot {
   widgetConfig: DashboardWidgetConfig[];
   /** What each widget shows, sent while Home is the tab shown. */
   widgets?: DashboardWidget[];
+  /**
+   * Whether Home's widgets differ from the ones it started with. While they
+   * do not, Home says it can be arranged; once they do, the reader knows.
+   */
+  homeArranged?: boolean;
 }
 
 /** A tag a Home widget lists, with what searching for it finds. */

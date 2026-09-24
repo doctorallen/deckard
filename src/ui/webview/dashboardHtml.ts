@@ -149,6 +149,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 /* The resting hint is a quiet line, not the dashed frame of edit mode. */
 .home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: 11px var(--font-mono); }
 .home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+.home-hint-actions { display: inline-flex; gap: 6px; }
 .home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: 11px; line-height: 1.35; white-space: normal; }
 .home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
 .home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
@@ -220,6 +221,12 @@ ${getQueryEditorScript()}
     : '';
   /** Whether Home is being arranged. */
   let editingHome = Boolean(restoredViewState && restoredViewState.editingHome);
+  /**
+   * Whether the reader has put away the line saying Home can be arranged.
+   * The line also goes on its own once Home has been arranged, which the
+   * host says with each state; this remembers a reader who closed it first.
+   */
+  let homeHintDismissed = Boolean(restoredViewState && restoredViewState.homeHintDismissed);
   /** Whether Reset is waiting to be confirmed. It is never restored. */
   let confirmingReset = false;
   /** The widget whose options are open, which stays open across a redraw. */
@@ -311,6 +318,7 @@ ${getQueryEditorScript()}
       browseQuery: browseQuery,
       tagNamespaceFilter: tagNamespaceFilter,
       editingHome: editingHome,
+      homeHintDismissed: homeHintDismissed,
     });
   }
 
@@ -844,9 +852,14 @@ ${getQueryEditorScript()}
       ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
         ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
         : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button>') + '<button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
-      // A resting Home says it can be arranged. It is not the customizing bar,
-      // and does not share its class: that one means "Home is being edited".
-      : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><button type="button" data-action="customize-home">Customize</button></div>';
+      // A resting Home says it can be arranged, until it has been, or the
+      // reader closes the line: a fixed line of instruction is read the first
+      // few times and skipped after. Customize stays in the gear throughout.
+      // It is not the customizing bar, and does not share its class: that
+      // one means "Home is being edited".
+      : (state.homeArranged || homeHintDismissed)
+        ? ''
+        : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" title="Stop saying so">Dismiss</button></span></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
       : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize Home</button></div>';
@@ -984,6 +997,12 @@ ${getQueryEditorScript()}
       }
       if (action === 'finish-customizing') {
         setEditingHome(false);
+        return;
+      }
+      if (action === 'dismiss-home-hint') {
+        homeHintDismissed = true;
+        saveDashboardViewState();
+        render();
         return;
       }
       if (action === 'reset-widgets') {

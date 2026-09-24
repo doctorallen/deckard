@@ -4,7 +4,10 @@ import { setZenMode } from './zenMode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
-import { PreferencesStore } from '../../core/storage/preferences';
+import {
+  isDefaultHomeLayout,
+  PreferencesStore,
+} from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import {
   DashboardMode,
@@ -332,6 +335,7 @@ export class DashboardPanel implements vscode.Disposable {
         undefined,
         tagTitleDisplayMode,
       ),
+      homeArranged: !isDefaultHomeLayout(preferences.dashboardWidgets),
       // Switching tabs asks the host again, so only Home gets its widgets.
       ...(this.dashboardMode === 'home'
         ? {

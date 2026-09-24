@@ -227,13 +227,14 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
 });
 
 test('customizing Home removes, resizes, adds, reorders, and resets widgets', async () => {
-  const { view, preferences } = await openDashboard(createIndex(), async (store) => {
+  const { view, preferences, lastState } = await openDashboard(createIndex(), async (store) => {
     await store.saveSavedQueryFilter('Open work', 'is:open');
   });
   const ids = () => view.findAll('.home-widget').map((widget) => widget.dataset.widgetId);
   const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
   assert.strictEqual(view.find('[data-action="remove-widget"]'), null, 'nothing to edit until asked');
 
+  assert.ok(view.find('.home-hint-bar'), 'a Home never arranged says it can be');
   view.click(view.find('[data-action="customize-home"]'));
   assert.ok(view.find('.home-edit-bar'), 'Home says it is being customized');
   assert.ok(widget('agenda').classList.contains('is-editing'));
@@ -243,6 +244,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   await delay(20);
   assert.deepStrictEqual(ids(), ['search', 'tasks', 'favoriteTags', 'savedSearches']);
   assert.ok(view.find('.home-edit-bar'), 'a change keeps Home in customizing');
+  assert.strictEqual(lastState().data.homeArranged, true, 'and the host knows Home has been arranged');
 
   view.click(widget('tasks').querySelector('[data-action="set-widget-width"][data-value="full"]'));
   await delay(20);
