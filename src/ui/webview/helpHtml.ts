@@ -76,6 +76,17 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',
 };
 
+/**
+ * A setting's description as words: a `[link](command:…)` as its text, a
+ * `#setting#` link as the setting, and code marks dropped.
+ */
+function plainDescription(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/#(deckard\.[\w.]+)#/g, '$1')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
 /** The commands the manifest contributes, as a table of what each is for. */
 function renderCommandTable(manifest: HelpManifest): string {
   const commands = (manifest.commands ?? []).filter(
@@ -122,8 +133,9 @@ function renderSettingsTables(manifest: HelpManifest): string {
             property.default === '' || property.default === undefined
               ? 'Empty'
               : JSON.stringify(property.default);
-          const description =
-            property.description ?? property.markdownDescription ?? '';
+          const description = plainDescription(
+            property.description ?? property.markdownDescription ?? '',
+          );
           return `<tr><td><code>${escapeHtml(key)}</code></td><td><code>${escapeHtml(
             value,
           )}</code></td><td>${escapeHtml(description)}</td></tr>`;

@@ -132,7 +132,10 @@ export function parseDashboardMessage(
           }
         : undefined;
     case 'openView':
-      return value.view === 'agenda' || value.view === 'stats'
+      return value.view === 'agenda' ||
+        value.view === 'stats' ||
+        value.view === 'sampleWorkspace' ||
+        value.view === 'checkSetup'
         ? { type: 'openView', view: value.view }
         : undefined;
     case 'openDailyNote':

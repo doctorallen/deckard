@@ -65,6 +65,16 @@ export class SidebarNotesView
     private readonly extensionVersion: string,
   ) {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    // While the first scan runs, the waiting line says how far it has got.
+    if (indexer.onDidProgress) {
+      this.disposables.push(
+        indexer.onDidProgress(() => {
+          if (!this.indexed) {
+            this.scheduleRefresh();
+          }
+        }),
+      );
+    }
     this.disposables.push(activeSearch.onDidChange(() => this.refresh()));
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => {
@@ -398,6 +408,9 @@ export class SidebarNotesView
         notes: [],
         tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         state: this.indexed ? 'notIndexed' : 'loading',
+        ...(!this.indexed && this.indexer.scanProgress
+          ? { progress: this.indexer.scanProgress }
+          : {}),
       };
     }
 

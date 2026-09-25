@@ -559,7 +559,12 @@ export class DashboardPanel implements vscode.Disposable {
         return;
       case 'openView':
         await vscode.commands.executeCommand(
-          message.view === 'agenda' ? 'deckard.agenda.focus' : 'deckard.showStats',
+          {
+            agenda: 'deckard.agenda.focus',
+            stats: 'deckard.showStats',
+            sampleWorkspace: 'deckard.createSampleWorkspace',
+            checkSetup: 'deckard.checkSetup',
+          }[message.view],
         );
         return;
       case 'openDailyNote':

@@ -128,6 +128,10 @@ export interface DeckardExports {
  * Keeping services alive from one activation boundary lets panels, the sidebar,
  * decorations, and completion all observe the same index and preference store.
  */
+/** A first index this large is offered deckard.exclude, once. */
+const LARGE_WORKSPACE_NOTES = 3000;
+const EXCLUDE_HINT_SHOWN = 'deckard.excludeHintShown';
+
 export function activate(context: vscode.ExtensionContext): DeckardExports {
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
@@ -208,6 +212,34 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
+  // A very large first index is worth one word about leaving folders out,
+  // said once, and only when nothing is left out yet.
+  void indexer.ready.then(async () => {
+    const notes = indexer.getSnapshot().files.size;
+    const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
+    if (
+      notes < LARGE_WORKSPACE_NOTES ||
+      Object.keys(exclude ?? {}).length > 0 ||
+      context.globalState.get<boolean>(EXCLUDE_HINT_SHOWN)
+    ) {
+      return;
+    }
+    await context.globalState.update(EXCLUDE_HINT_SHOWN, true);
+    const choice = await vscode.window.showInformationMessage(
+      `Deckard read ${notes.toLocaleString('en-US')} notes. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, deckard.exclude leaves them out and makes every scan faster.`,
+      'Open Setting',
+    );
+    if (choice === 'Open Setting') {
+      await vscode.commands.executeCommand('workbench.action.openSettings', 'deckard.exclude');
+    }
+  });
+  // The walkthrough checks its first steps off when there is a note, and a
+  // tag, in the index, rather than when a button in it is pressed.
+  const syncWalkthroughContext = (index: { files: Map<string, unknown>; tags: Map<string, unknown> }): void => {
+    void vscode.commands.executeCommand('setContext', 'deckard.hasNotes', index.files.size > 0);
+    void vscode.commands.executeCommand('setContext', 'deckard.hasTags', index.tags.size > 0);
+  };
+  context.subscriptions.push(indexer.onDidUpdate(syncWalkthroughContext));
   // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
   // Change only while there is a change to take back.
   const activePinContext = new ActivePinContext(indexer, preferences);

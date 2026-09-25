@@ -821,6 +821,8 @@ export interface NoteLinks {
 }
 
 export interface SidebarNotesSnapshot {
+  /** How far the first scan has got, while the state is loading. */
+  progress?: { completed: number; total: number };
   /** What links to the note being read, and what names it without a link. */
   links?: NoteLinks;
   activeFileName?: string;
@@ -1130,7 +1132,7 @@ export interface OpenNoteMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'stats';
+  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup';
 }
 
 export interface ReorderTagsMessage {

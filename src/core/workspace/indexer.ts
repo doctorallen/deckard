@@ -39,12 +39,25 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private snapshot: WorkspaceIndex | undefined;
   /** Notes in the workspace that are not in the index, and why. */
   private readonly unreadable = new Map<string, string>();
+  /** How far the scan under way has got, or nothing between scans. */
+  private scanState: { completed: number; total: number } | undefined;
+  private readonly progressEmitter = new vscode.EventEmitter<void>();
+  /**
+   * Fires as a scan moves on, at most every few percent, so a view that says
+   * it is waiting can say how far along it is.
+   */
+  public readonly onDidProgress = this.progressEmitter.event;
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
     private readonly searchStore?: SearchStore,
   ) {
-    this.disposables.push(this.updateEmitter);
+    this.disposables.push(this.updateEmitter, this.progressEmitter);
+  }
+
+  /** How far the scan under way has got: "412 of 3,760 notes", or nothing. */
+  public get scanProgress(): { completed: number; total: number } | undefined {
+    return this.scanState;
   }
 
   public readonly onDidUpdate = this.updateEmitter.event;
@@ -195,6 +208,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
           'Scan workspace',
           () =>
             this.scanner.scan((completed, total): void => {
+              const step = Math.max(1, Math.floor(total / 50));
+              if (completed === total || completed % step === 0) {
+                this.scanState = { completed, total };
+                this.progressEmitter.fire();
+              }
               progress.report({
                 message:
                   total > 0
@@ -205,6 +223,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
             }),
           (files) => `${files.length} notes`,
         );
+        this.scanState = undefined;
         if (this.disposed) {
           return;
         }
