@@ -252,6 +252,9 @@ ${getQueryEditorScript()}
 
   function renderCard(section) {
     const fileName = section.filePath.split('/').pop() || section.filePath;
+    // Where the entry sits in its note, under the file and line, as the
+    // Related Notes sidebar shows it.
+    const pathHtml = renderHeadingPath(section.headingPath, fileName, section.heading);
     const content = section.rawContent ? (state.renderMode === 'html' ? '<div class="rendered">' + section.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(section.rawContent) + '</pre>') : '';
     const titleHtml = state.tagTitleDisplayMode === 'inline'
       ? renderInlineTitle(section.heading, section.titleTags)
@@ -260,7 +263,7 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div></div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '</div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */

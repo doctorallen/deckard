@@ -668,7 +668,7 @@ export function getProvenanceCss(): string {
    under the row under the pointer they leave the whole width to the name. */
 .home-row, .tag-row { position: relative; --frame: 1px; --inset: 10px; }
 .card, .note, .task-row, .home-row, .tag-row { --reach: 24px; }
-.note:has(.source ~ .source) { --reach: 42px; }
+.note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source) { --reach: 42px; }
 /* The entry under the pointer is lifted above the ones after it, which its
    extension lies over. The sidebar lifts its own notes higher still. */
 .card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within,
@@ -732,7 +732,9 @@ export function getProvenanceCss(): string {
      crossed it, and the entry it covered was skipped on the way down. */
   pointer-events: none;
 }
-.note:hover .source ~ .source, .note:focus-within .source ~ .source { top: calc(100% + 20px); }`;
+.note:hover .source ~ .source, .note:focus-within .source ~ .source,
+.card:hover .source ~ .source, .card:focus-within .source ~ .source,
+.task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }`;
 }
 
 /**
@@ -1646,9 +1648,12 @@ export function getComponentScript(): string {
       ? '<span class="task-detail">Repeats ' + escapeHtml(task.recurrence) + '</span>'
       : '';
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
+    // The headings above the task, tags stripped, under the file and line:
+    // the same two lines a note card and the sidebar show.
+    const taskPath = renderHeadingPath(item.headingPath, item.fileName, '');
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span></div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
       + '</div>';
   }
 

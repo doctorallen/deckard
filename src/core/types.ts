@@ -394,6 +394,8 @@ export interface DashboardTask {
   renderedTitle: string;
   titleTags: TagReference[];
   sectionHeading?: string;
+  /** The headings above the task, top down, tags stripped. */
+  headingPath?: string[];
   fileName: string;
   /**
    * The due date as a row writes it, `Overdue 15 days · 2026-09-08`, worded
@@ -610,6 +612,8 @@ export interface TagOverviewCard {
   createdAt?: number;
   updatedAt?: number;
   accessCount: number;
+  /** The headings down to this entry, top down, tags stripped. */
+  headingPath?: string[];
 }
 
 export interface HeadingTagSpan extends TagReference {
