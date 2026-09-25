@@ -150,7 +150,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 body { min-width: 220px; font-size: var(--text-sm); }
 main { width: 100%; max-width: none; padding: 12px; border-top: 2px solid var(--amber); }
 .eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
-.tag-list { display: flex; gap: 5px; margin: 8px 0 0; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; }
 button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
 .source { margin-top: 4px; font-size: var(--text-xs); }
