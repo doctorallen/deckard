@@ -72,7 +72,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
    a query is longer than a file name. */
 .saved-filter-row { position: relative; }
 .saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
-.saved-filter-row:hover, .saved-filter-row:focus-within { z-index: 2; }
+.saved-filter-row:hover, .saved-filter-row:focus-within { z-index: 2; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {
   z-index: 2;
   top: calc(100% - 1px);
@@ -84,9 +84,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
   clip-path: none;
   border: inherit;
   border-top: 0;
-  border-radius: inherit;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
   background: inherit;
   box-shadow: inherit;
   /* The pointer passes through, as it does a note's provenance: a panel

@@ -705,13 +705,18 @@ export function getProvenanceCss(): string {
   height: calc(var(--reach) + 6px + var(--frame));
   border: inherit;
   border-top: 0;
-  border-radius: inherit;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  /* The entry's bottom corners move down to the extension: a theme that
+     rounds them says so with --corner-bl and --corner-br, and the entry
+     under the pointer gives its own up (below), so the frame is one shape
+     from the title to the last line rather than a notch where they met. */
+  border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
   background: inherit;
   box-shadow: inherit;
   pointer-events: none;
 }
+.card:hover, .card:focus-within, .note:hover, .note:focus-within,
+.task-row:hover, .task-row:focus-within, .board-card:hover, .board-card:focus-within,
+.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 /* A task row's corners are cut, and a cut frame clips what reaches outside
    it, so under the pointer the cut moves down to the new bottom corner. */
 .task-row:hover, .task-row:focus-within, .tag-row:hover, .tag-row:focus-within {
