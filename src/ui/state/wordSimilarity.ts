@@ -143,10 +143,12 @@ function getSharedTerms(
   frequencies: Map<string, number>,
 ): string[] {
   if (model.queryTerms.size <= frequencies.size) {
-    return [...model.queryTerms].filter((term) => frequencies.has(term));
+    return [...model.queryTerms].filter(
+      (term) => frequencies.has(term) && !isCommonplace(model, term),
+    );
   }
   return [...frequencies.keys()]
-    .filter((term) => model.queryTerms.has(term))
+    .filter((term) => model.queryTerms.has(term) && !isCommonplace(model, term))
     .sort(
       (left, right) =>
         (model.queryOrder.get(left) ?? 0) - (model.queryOrder.get(right) ?? 0),
@@ -190,22 +192,48 @@ export function getLexicalWeight(
   };
 }
 
+/**
+ * English function words: articles, pronouns, prepositions, conjunctions,
+ * auxiliaries, and the adverbs of degree and time. Two entries sharing "and",
+ * "the", and "that" are not alike, and the tooltip once named those three as
+ * the similar terms. Words under three letters never become terms.
+ */
+const STOP_WORDS = new Set([
+  'about', 'above', 'across', 'after', 'again', 'against', 'all', 'almost',
+  'along', 'already', 'also', 'although', 'always', 'among', 'and', 'another',
+  'any', 'anyone', 'anything', 'are', 'around', 'because', 'been', 'before',
+  'behind', 'being', 'below', 'beside', 'between', 'beyond', 'both', 'but',
+  'can', 'cannot', 'could', 'did', 'does', 'doing', 'done', 'down', 'during',
+  'each', 'either', 'else', 'ever', 'every', 'everyone', 'everything', 'few',
+  'for', 'from', 'get', 'gets', 'got', 'had', 'has', 'have', 'having', 'her',
+  'here', 'hers', 'him', 'his', 'how', 'however', 'into', 'its', 'itself',
+  'just', 'least', 'less', 'like', 'made', 'make', 'makes', 'many', 'may',
+  'might', 'more', 'most', 'much', 'must', 'near', 'neither', 'never', 'nor',
+  'not', 'nothing', 'now', 'off', 'often', 'once', 'one', 'ones', 'only',
+  'onto', 'other', 'others', 'our', 'ours', 'out', 'over', 'own', 'per',
+  'put', 'quite', 'rather', 'same', 'shall', 'she', 'should', 'since', 'some',
+  'someone', 'something', 'still', 'such', 'than', 'that', 'the', 'their',
+  'theirs', 'them', 'then', 'there', 'these', 'they', 'this', 'those',
+  'though', 'through', 'thus', 'too', 'toward', 'towards', 'under', 'until',
+  'upon', 'very', 'via', 'was', 'well', 'were', 'what', 'when', 'where',
+  'whether', 'which', 'while', 'who', 'whom', 'whose', 'why', 'will', 'with',
+  'within', 'without', 'would', 'yes', 'yet', 'you', 'your', 'yours',
+]);
+
+/**
+ * A word most entries of a workspace carry says nothing about which two are
+ * alike, whatever it is: "standup" in a folder of standups. Judged only once
+ * there are enough entries for "most" to mean something.
+ */
+function isCommonplace(model: LexicalModel, term: string): boolean {
+  return (
+    model.documentCount >= 10 &&
+    (model.documentFrequency.get(term) ?? 0) > model.documentCount / 2
+  );
+}
+
 function getLexicalTerms(title: string, content: string): string[] {
-  const ignored = new Set([
-    'about',
-    'after',
-    'before',
-    'because',
-    'could',
-    'should',
-    'their',
-    'there',
-    'these',
-    'those',
-    'which',
-    'would',
-    'with',
-  ]);
+  const ignored = STOP_WORDS;
   const clean = `${title}\n${content}`
     .replace(/^---\s*$[\s\S]*?^---\s*$/m, ' ')
     .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, ' ')
