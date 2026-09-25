@@ -36,8 +36,6 @@ export function getNotesGraphHtml(
      here and kept the fully saturated cyan and green after the base sheet
      had desaturated them, so the graph alone drew the old colors. */
   color-scheme: dark;
-  --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', 'IBM Plex Mono', 'Courier New', monospace);
-  --font-display: var(--vscode-font-family, 'DIN Alternate', 'Arial Narrow', sans-serif);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
