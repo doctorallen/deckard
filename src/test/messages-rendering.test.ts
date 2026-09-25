@@ -14,6 +14,7 @@ import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
+import { getHighContrastCss, getPageTailCss } from '../ui/webview/components';
 import { openWebviewPage } from './webviewPage';
 
 function assertWebviewScriptParses(html: string): void {
@@ -1266,6 +1267,24 @@ suite('Webview contracts', () => {
     }
     for (const section of ['quick-start', 'commands', 'advanced', 'query', 'tasks']) {
       assert.ok(links.includes(section), `the navigation offers #${section}`);
+    }
+  });
+
+  test('every theme defers to a high contrast editor theme', () => {
+    const contrast = getHighContrastCss();
+    const block = /body\.vscode-high-contrast, body\.vscode-high-contrast-light \{([^}]*)\}/.exec(contrast);
+    assert.ok(block, 'a high contrast block');
+    assert.ok(block[1].includes('--text: var(--vscode-foreground);'), 'the text is the editor\'s own');
+    assert.ok(block[1].includes('--grid-line: transparent;'), 'the grid goes');
+    assert.ok(!/#[0-9a-f]{3,6}\b/i.test(block[1]), 'the block names no color of its own');
+    assert.ok(contrast.includes('@media (forced-colors: active)'), 'forced colors are tidied too');
+    // Laid down after the theme, and before zen, which stays the last layer.
+    const tail = getPageTailCss();
+    assert.ok(tail.includes(contrast), 'every page carries the block');
+    assert.ok(tail.indexOf(contrast) > tail.indexOf(getDeckardThemeCss(getDeckardTheme())), 'after the theme');
+    assert.ok(tail.indexOf('body.vscode-high-contrast') < tail.indexOf('body.zen'), 'before zen');
+    for (const theme of deckardThemes) {
+      assert.ok(!getDeckardThemeCss(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
     }
   });
 

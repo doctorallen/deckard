@@ -780,7 +780,70 @@ body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --sp
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getZenCss()}`;
+}
+
+/**
+ * VS Code's high contrast themes, and the operating system's forced colors.
+ *
+ * A reader who chose a high contrast theme chose it over every palette, so
+ * under `body.vscode-high-contrast` each theme hands its tokens to the
+ * editor's own colors, and the glows, grid, and shadows the film themes
+ * paint go, since a glow around thin text is exactly what that reader is
+ * avoiding. Under forced colors the browser paints the colors itself; what
+ * is left to do is the same tidying. Laid down after every theme so it
+ * outweighs them, before zen, which stays the last layer, and marked
+ * important where a theme's hover rule is more specific.
+ */
+export function getHighContrastCss(): string {
+  return `
+body.vscode-high-contrast, body.vscode-high-contrast-light {
+  --bg: var(--vscode-editor-background);
+  --bg-dark: var(--vscode-editor-background);
+  --panel: var(--vscode-editor-background);
+  --panel-bg: var(--vscode-editor-background);
+  --panel-raised: var(--vscode-editor-background);
+  --panel-deep: var(--vscode-input-background, var(--vscode-editor-background));
+  --text: var(--vscode-foreground);
+  --muted: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --line: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --slate-border: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --line-strong: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --cyan: var(--vscode-textLink-foreground);
+  --cyan-bright: var(--vscode-textLink-foreground);
+  --amber: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  --amber-bright: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  --amber-dim: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --green: var(--vscode-charts-green, var(--vscode-foreground));
+  --toxic-green: var(--vscode-charts-green, var(--vscode-foreground));
+  --favorite-red: var(--vscode-charts-red, var(--vscode-errorForeground));
+  --warning-orange: var(--vscode-editorWarning-foreground, var(--vscode-foreground));
+  --slate-olive: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --grid-line: transparent;
+  --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editor-background));
+  --hover-fg: var(--vscode-foreground);
+  --chosen-bg: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  --chosen-fg: var(--vscode-foreground);
+  --font-display: var(--vscode-font-family, system-ui, sans-serif);
+  --edge: 1px;
+  background: var(--vscode-editor-background);
+  background-image: none;
+}
+body.vscode-high-contrast *, body.vscode-high-contrast *::before, body.vscode-high-contrast *::after,
+body.vscode-high-contrast-light *, body.vscode-high-contrast-light *::before, body.vscode-high-contrast-light *::after {
+  text-shadow: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  clip-path: none !important;
+}
+/* A chosen or hovered control must still be told apart with the shape of
+   its edge, since the fill may be the page color under forced colors. */
+body.vscode-high-contrast button.active, body.vscode-high-contrast-light button.active { outline: 2px solid var(--amber); outline-offset: -2px; }
+@media (forced-colors: active) {
+  *, *::before, *::after { text-shadow: none !important; box-shadow: none !important; background-image: none !important; clip-path: none !important; }
+  body { background-image: none; }
+  button.active, [aria-selected="true"], [aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+}`;
 }
 
 /** The marker `getZenCss()` hangs on, or nothing. */
