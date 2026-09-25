@@ -38,6 +38,18 @@ import { getTaskBoardHtml } from './taskBoardHtml';
 /** What the Task Board searches for until it is told otherwise. */
 export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
 
+/**
+ * Whether a redraw would show the index a write started from: the write has
+ * not come back through the index yet, so what it shows is what the reader
+ * just changed away from.
+ */
+export function isAwaitingIndex(
+  writeIndexAt: number | undefined,
+  index: { updatedAt: number },
+): boolean {
+  return writeIndexAt !== undefined && index.updatedAt === writeIndexAt;
+}
+
 export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private panel: vscode.WebviewPanel | undefined;
@@ -63,8 +75,24 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     private readonly openTag: (tagKey: string) => Promise<void>,
     private readonly activeSearch: ActiveSearch,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
-    this.disposables.push(preferences.onDidChange(() => this.refresh()));
+    this.disposables.push(
+      indexer.onDidUpdate(() => {
+        this.writeIndexAt = undefined;
+        this.refresh();
+      }),
+    );
+    // A task write carries the task's rank into the preferences before the
+    // index has read the note back, and a redraw from that index put a
+    // dropped card back in its old column for a moment, then forward again.
+    // The preferences change waits for the index the write is about to bring.
+    this.disposables.push(
+      preferences.onDidChange(() => {
+        if (isAwaitingIndex(this.writeIndexAt, this.indexer.getSnapshot())) {
+          return;
+        }
+        this.refresh();
+      }),
+    );
     this.disposables.push(
       activeSearch.onDidChangeRefineVisibility(() => {
         if (activeSearch.isRefineInSidebar(this) !== this.refineWasInSidebar) {
@@ -209,6 +237,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       this.panel.webview.html = getTaskBoardHtml(this.panel.webview);
     }
   }
+
+  /** The index a task write started from, until the index has moved on. */
+  private writeIndexAt: number | undefined;
 
   private refresh(): void {
     if (!this.panel) {
@@ -453,14 +484,18 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         return;
       case 'toggleTask': {
         const task = index.tasks.get(message.taskId);
+        this.writeIndexAt = index.updatedAt;
         if (!task || !(await toggleTask(task, message.completed))) {
+          this.writeIndexAt = undefined;
           this.refresh();
         }
         return;
       }
       case 'moveTask': {
         const task = index.tasks.get(message.taskId);
+        this.writeIndexAt = index.updatedAt;
         if (!task || !(await moveTaskToColumn(task, message.column))) {
+          this.writeIndexAt = undefined;
           this.refresh();
         }
         return;

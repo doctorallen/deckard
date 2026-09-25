@@ -20,6 +20,7 @@ import {
   parseSidebarMessage,
   parseTaskBoardMessage,
 } from '../ui/webview/messages';
+import { isAwaitingIndex } from '../ui/webview/taskBoard';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -60,6 +61,15 @@ function board(
 }
 
 suite('Task board', () => {
+  test('a redraw waits for the index a write is about to change', () => {
+    // The rank carried into the preferences by a write arrives before the
+    // index has read the note back; drawn then, a dropped card went back
+    // to its old column for a moment.
+    assert.strictEqual(isAwaitingIndex(10, { updatedAt: 10 }), true, 'the index has not moved on');
+    assert.strictEqual(isAwaitingIndex(10, { updatedAt: 11 }), false, 'it has');
+    assert.strictEqual(isAwaitingIndex(undefined, { updatedAt: 10 }), false, 'nothing was written');
+  });
+
   const ids = (board: ReturnType<typeof createTaskBoard>): Array<[string, string[]]> =>
     board.columns.map((column) => [
       column.id,
