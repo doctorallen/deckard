@@ -92,6 +92,17 @@ suite('Task board', () => {
     assert.strictEqual(doneColumn.cards[0].taskId, marked.id, 'and the open task marked done heads it');
   });
 
+  test('a configured status named done adds no column beside Done', () => {
+    const layout = board(createIndex(), 'status', '', {
+      ...options,
+      statuses: ['todo', 'doing', 'done'],
+    });
+    assert.deepStrictEqual(
+      layout.columns.map((column) => column.label),
+      ['No status', 'Todo', 'Doing', 'Review', 'Done'],
+    );
+  });
+
   test('says when almost nothing carries a status, and only then', () => {
     // The fixture writes a status on most of its open tasks.
     assert.strictEqual(board(createIndex(), 'status', '', options).statusHint, undefined);

@@ -523,7 +523,12 @@ function createStatusColumns(
     byStatus.set(status, column);
   }
 
-  const configured = [...new Set(options.statuses)];
+  // A configured status named done is the board's own Done column, which
+  // is drawn last whatever the grouping; a column for it here was a second
+  // empty Done beside that one.
+  const configured = [...new Set(options.statuses)].filter(
+    (status) => status !== 'done',
+  );
   const found = [...byStatus.keys()]
     .filter((status) => !configured.includes(status))
     .sort();
