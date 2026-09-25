@@ -82,152 +82,189 @@
     "commands": [
       {
         "command": "deckard.showDashboard",
-        "title": "Deckard: Open Dashboard"
+        "title": "Open Dashboard",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showNotesGraph",
-        "title": "Deckard: Open Notes Graph"
+        "title": "Open Notes Graph",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showTaskBoard",
-        "title": "Deckard: Open Task Board",
+        "title": "Open Task Board",
+        "category": "Deckard",
         "icon": "$(project)"
       },
       {
         "command": "deckard.showStats",
-        "title": "Deckard: Open Stats"
+        "title": "Open Stats",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showHelp",
-        "title": "Deckard: Open Help"
+        "title": "Open Help",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showLog",
-        "title": "Deckard: Open Log"
+        "title": "Open Log",
+        "category": "Deckard"
       },
       {
         "command": "deckard.reindexWorkspace",
-        "title": "Deckard: Reindex Workspace"
+        "title": "Reindex Workspace",
+        "category": "Deckard"
       },
       {
         "command": "deckard.createDailyNote",
-        "title": "Deckard: Create Daily Note"
+        "title": "Create Daily Note",
+        "category": "Deckard"
       },
       {
         "command": "deckard.pinNote",
-        "title": "Deckard: Pin Note to Home"
+        "title": "Pin Note to Home",
+        "category": "Deckard"
       },
       {
         "command": "deckard.unpinNote",
-        "title": "Deckard: Unpin Note from Home"
+        "title": "Unpin Note from Home",
+        "category": "Deckard"
       },
       {
         "command": "deckard.previousDailyNote",
-        "title": "Deckard: Open Previous Daily Note"
+        "title": "Open Previous Daily Note",
+        "category": "Deckard"
       },
       {
         "command": "deckard.nextDailyNote",
-        "title": "Deckard: Open Next Daily Note"
+        "title": "Open Next Daily Note",
+        "category": "Deckard"
       },
       {
         "command": "deckard.openWeeklyNote",
-        "title": "Deckard: Open Weekly Note"
+        "title": "Open Weekly Note",
+        "category": "Deckard"
       },
       {
         "command": "deckard.openMonthlyNote",
-        "title": "Deckard: Open Monthly Note"
+        "title": "Open Monthly Note",
+        "category": "Deckard"
       },
       {
         "command": "deckard.editTask",
-        "title": "Deckard: Edit Task"
+        "title": "Edit Task",
+        "category": "Deckard"
       },
       {
         "command": "deckard.addTask",
-        "title": "Deckard: Add Task"
+        "title": "Add Task",
+        "category": "Deckard"
       },
       {
         "command": "deckard.capture",
-        "title": "Deckard: Capture"
+        "title": "Capture",
+        "category": "Deckard"
       },
       {
         "command": "deckard.captureUnderHeading",
-        "title": "Deckard: Capture Under a Heading"
+        "title": "Capture Under a Heading",
+        "category": "Deckard"
       },
       {
         "command": "deckard.writeReview",
-        "title": "Deckard: Write a Review"
+        "title": "Write a Review",
+        "category": "Deckard"
       },
       {
         "command": "deckard.rollTasksForward",
-        "title": "Deckard: Roll Unfinished Tasks Forward"
+        "title": "Roll Unfinished Tasks Forward",
+        "category": "Deckard"
       },
       {
         "command": "deckard.newNoteFromTemplate",
-        "title": "Deckard: New Note from Template"
+        "title": "New Note from Template",
+        "category": "Deckard"
       },
       {
         "command": "deckard.copyMcpSetup",
-        "title": "Deckard: Copy MCP Server Setup"
+        "title": "Copy MCP Server Setup",
+        "category": "Deckard"
       },
       {
         "command": "deckard.resetMcpToken",
-        "title": "Deckard: Reset MCP Server Token"
+        "title": "Reset MCP Server Token",
+        "category": "Deckard"
       },
       {
         "command": "deckard.extractHeading",
-        "title": "Deckard: Extract Tagged Heading"
+        "title": "Extract Tagged Heading",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showTagOverview",
-        "title": "Deckard: Open a Tag's Search Page…"
+        "title": "Open a Tag's Search Page…",
+        "category": "Deckard"
       },
       {
         "command": "deckard.search",
-        "title": "Deckard: Open Search Page"
+        "title": "Open Search Page",
+        "category": "Deckard"
       },
       {
         "command": "deckard.searchWorkspace",
-        "title": "Deckard: Find in Notes"
+        "title": "Find in Notes",
+        "category": "Deckard"
       },
       {
         "command": "deckard.quickFind.complete",
-        "title": "Deckard: Complete the Word in Find"
+        "title": "Complete the Word in Find",
+        "category": "Deckard"
       },
       {
         "command": "deckard.searchNotes",
-        "title": "Deckard: Search Notes and Tasks"
+        "title": "Search Notes and Tasks",
+        "category": "Deckard"
       },
       {
         "command": "deckard.linkCurrentHeading",
-        "title": "Deckard: Link Current Heading to Entity"
+        "title": "Link Current Heading to Entity",
+        "category": "Deckard"
       },
       {
         "command": "deckard.moveTagsToFrontmatter",
-        "title": "Deckard: Move Inline Tags to Front Matter"
+        "title": "Move Inline Tags to Front Matter",
+        "category": "Deckard"
       },
       {
         "command": "deckard.renameTag",
-        "title": "Deckard: Rename Tag"
+        "title": "Rename Tag",
+        "category": "Deckard"
       },
       {
         "command": "deckard.mergeTag",
-        "title": "Deckard: Merge Tag…"
+        "title": "Merge Tag…",
+        "category": "Deckard"
       },
       {
         "command": "deckard.renameHeading",
-        "title": "Deckard: Rename Heading"
+        "title": "Rename Heading",
+        "category": "Deckard"
       },
       {
         "command": "deckard.undoLastChange",
-        "title": "Deckard: Undo Last Change"
+        "title": "Undo Last Change",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showEntryRelatedNotesDebug",
-        "title": "Deckard: Debug Related Notes"
+        "title": "Debug Related Notes",
+        "category": "Deckard"
       },
       {
         "command": "deckard.outline.revealSection",
-        "title": "Deckard: Reveal Outline Heading"
+        "title": "Reveal Outline Heading",
+        "category": "Deckard"
       },
       {
         "command": "deckard.outline.openTagOverview",
@@ -239,57 +276,69 @@
       },
       {
         "command": "deckard.agenda.editQuery",
-        "title": "Deckard: Edit What the Tasks View Lists…",
+        "title": "Edit What the Tasks View Lists…",
+        "category": "Deckard",
         "icon": "$(search)"
       },
       {
         "command": "deckard.agenda.setGrouping",
-        "title": "Deckard: Group Tasks By…",
+        "title": "Group Tasks By…",
+        "category": "Deckard",
         "icon": "$(group-by-ref-type)"
       },
       {
         "command": "deckard.outline.enableFollowCursor",
-        "title": "Deckard: Follow Cursor in Outline",
+        "title": "Follow Cursor in Outline",
+        "category": "Deckard",
         "icon": "$(eye-closed)"
       },
       {
         "command": "deckard.outline.disableFollowCursor",
-        "title": "Deckard: Stop Following Cursor in Outline",
+        "title": "Stop Following Cursor in Outline",
+        "category": "Deckard",
         "icon": "$(eye)"
       },
       {
         "command": "deckard.enableZenMode",
-        "title": "Deckard: Enter Zen Mode",
+        "title": "Enter Zen Mode",
+        "category": "Deckard",
         "icon": "$(screen-normal)"
       },
       {
         "command": "deckard.disableZenMode",
-        "title": "Deckard: Leave Zen Mode",
+        "title": "Leave Zen Mode",
+        "category": "Deckard",
         "icon": "$(screen-full)"
       },
       {
         "command": "deckard.tidyPreferences",
-        "title": "Deckard: Tidy Favorites, Pins, and Saved Searches"
+        "title": "Tidy Favorites, Pins, and Saved Searches",
+        "category": "Deckard"
       },
       {
         "command": "deckard.exportPreferences",
-        "title": "Deckard: Export Favorites, Pins, and Searches"
+        "title": "Export Favorites, Pins, and Searches",
+        "category": "Deckard"
       },
       {
         "command": "deckard.importPreferences",
-        "title": "Deckard: Import Favorites, Pins, and Searches"
+        "title": "Import Favorites, Pins, and Searches",
+        "category": "Deckard"
       },
       {
         "command": "deckard.restorePreferences",
-        "title": "Deckard: Restore Favorites, Pins, and Searches from a Copy"
+        "title": "Restore Favorites, Pins, and Searches from a Copy",
+        "category": "Deckard"
       },
       {
         "command": "deckard.checkSetup",
-        "title": "Deckard: Check My Setup"
+        "title": "Check My Setup",
+        "category": "Deckard"
       },
       {
         "command": "deckard.createSampleWorkspace",
-        "title": "Deckard: Create a Sample Workspace"
+        "title": "Create a Sample Workspace",
+        "category": "Deckard"
       }
     ],
     "menus": {
@@ -324,11 +373,11 @@
         },
         {
           "command": "deckard.pinNote",
-          "when": "editorLangId == markdown"
+          "when": "editorLangId == markdown && !deckard.activeNotePinned"
         },
         {
           "command": "deckard.unpinNote",
-          "when": "editorLangId == markdown"
+          "when": "editorLangId == markdown && deckard.activeNotePinned"
         },
         {
           "command": "deckard.outline.enableFollowCursor",
@@ -345,6 +394,34 @@
         {
           "command": "deckard.disableZenMode",
           "when": "deckard.zenMode"
+        },
+        {
+          "command": "deckard.renameHeading",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.extractHeading",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.linkCurrentHeading",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.moveTagsToFrontmatter",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.undoLastChange",
+          "when": "deckard.canUndo"
+        },
+        {
+          "command": "deckard.copyMcpSetup",
+          "when": "config.deckard.mcpServer.enabled"
+        },
+        {
+          "command": "deckard.resetMcpToken",
+          "when": "config.deckard.mcpServer.enabled"
         }
       ],
       "view/title": [

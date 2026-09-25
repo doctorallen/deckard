@@ -41,17 +41,28 @@ export interface UndoResult {
  */
 export class WorkspaceWriteHistory {
   private last: WorkspaceWrite | undefined;
+  private readonly changeEmitter = new vscode.EventEmitter<boolean>();
+  /** Fires with whether there is a write to take back, as that changes. */
+  public readonly onDidChange = this.changeEmitter.event;
 
   public get lastWrite(): WorkspaceWrite | undefined {
     return this.last;
   }
 
   public remember(write: WorkspaceWrite): void {
-    this.last = write.notes.length > 0 ? write : undefined;
+    this.setLast(write.notes.length > 0 ? write : undefined);
   }
 
   public clear(): void {
-    this.last = undefined;
+    this.setLast(undefined);
+  }
+
+  private setLast(write: WorkspaceWrite | undefined): void {
+    const had = this.last !== undefined;
+    this.last = write;
+    if (had !== (write !== undefined)) {
+      this.changeEmitter.fire(write !== undefined);
+    }
   }
 
   /**
@@ -115,7 +126,7 @@ export class WorkspaceWriteHistory {
     if (restored > 0) {
       await write.restore?.();
     }
-    this.last = undefined;
+    this.setLast(undefined);
     return { label: write.label, restored, skipped };
   }
 }

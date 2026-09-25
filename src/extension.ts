@@ -39,7 +39,7 @@ import { CalendarView } from './ui/webview/calendar';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
-import { setNotePinnedCommand } from './ui/commands/pinNote';
+import { ActivePinContext, setNotePinnedCommand } from './ui/commands/pinNote';
 import { createPinForLine } from './ui/state/pinnedNotes';
 import { pinKey } from './core/storage/preferences';
 import {
@@ -47,7 +47,10 @@ import {
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
-import { undoLastWorkspaceWrite } from './ui/commands/workspaceWrites';
+import {
+  undoLastWorkspaceWrite,
+  workspaceWrites,
+} from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
@@ -194,6 +197,20 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
+  // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
+  // Change only while there is a change to take back.
+  const activePinContext = new ActivePinContext(indexer, preferences);
+  void vscode.commands.executeCommand(
+    'setContext',
+    'deckard.canUndo',
+    workspaceWrites.lastWrite !== undefined,
+  );
+  context.subscriptions.push(
+    activePinContext,
+    workspaceWrites.onDidChange((canUndo) =>
+      vscode.commands.executeCommand('setContext', 'deckard.canUndo', canUndo),
+    ),
+  );
   const editorReferences = new EditorReferences(indexer);
   const editorLenses = new EditorLenses(indexer);
   const assistantTools = new AssistantTools(indexer);

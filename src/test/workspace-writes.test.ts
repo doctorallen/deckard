@@ -19,6 +19,22 @@ suite('Workspace writes', () => {
     assert.strictEqual(shouldPreview('never', 9), false);
   });
 
+  test('says when there is a write to take back, for the palette', () => {
+    const history = new WorkspaceWriteHistory();
+    const heard: boolean[] = [];
+    history.onDidChange((canUndo) => heard.push(canUndo));
+    const uri = vscode.Uri.file('/notes/a.md');
+    const write = { label: 'a write', at: 0, notes: [{ uri, before: 'a', after: 'b' }] };
+
+    history.remember({ ...write, notes: [] });
+    assert.deepStrictEqual(heard, [], 'a write that changed nothing is not one to undo');
+    history.remember(write);
+    history.remember(write);
+    assert.deepStrictEqual(heard, [true], 'told once, when it starts being true');
+    history.clear();
+    assert.deepStrictEqual(heard, [true, false]);
+  });
+
   test('saves what it wrote, and puts every note back on an undo', async () => {
     const root = await createTemporaryRoot();
     const first = vscode.Uri.joinPath(root, 'first.md');

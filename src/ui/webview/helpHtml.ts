@@ -16,7 +16,7 @@ import { getFavoriteHeartAssetUris } from './icons';
  * the guide still describing the workspace before it.
  */
 export interface HelpManifest {
-  commands?: { command: string; title: string }[];
+  commands?: { command: string; title: string; category?: string }[];
   configuration?: {
     title?: string;
     properties?: Record<
@@ -78,8 +78,8 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
 
 /** The commands the manifest contributes, as a table of what each is for. */
 function renderCommandTable(manifest: HelpManifest): string {
-  const commands = (manifest.commands ?? []).filter((command) =>
-    command.title.startsWith('Deckard:'),
+  const commands = (manifest.commands ?? []).filter(
+    (command) => command.category === 'Deckard',
   );
   if (commands.length === 0) {
     return '';
@@ -98,7 +98,7 @@ function renderCommandTable(manifest: HelpManifest): string {
           )}</span>`
         : '';
       return `<tr><td><strong>${escapeHtml(
-        command.title.replace(/^Deckard: /, ''),
+        command.title,
       )}</strong>${shortcut}</td><td>${escapeHtml(
         COMMAND_NOTES[command.command] ?? '',
       )}</td></tr>`;

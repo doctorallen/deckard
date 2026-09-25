@@ -62,11 +62,11 @@ suite('Naming', () => {
 
   test('commands open rather than show, and say when they will ask', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as {
-      contributes: { commands: Array<{ command: string; title: string }> };
+      contributes: { commands: Array<{ command: string; title: string; category?: string }> };
     };
     const titles = manifest.contributes.commands.map((command) => command.title);
     assert.deepStrictEqual(
-      titles.filter((title) => /^Deckard: Show /.test(title)),
+      titles.filter((title) => /^Show /.test(title)),
       [],
       'a command that opens a page or view says Open',
     );
@@ -78,8 +78,19 @@ suite('Naming', () => {
     const tagPage = titles.filter((title) => /Tag's Search Page/.test(title));
     assert.ok(tagPage.length >= 2, 'the palette and the context menu both offer it');
     assert.ok(
-      tagPage.every((title) => title.endsWith('…') && title.replace(/^Deckard: /, '') === tagPage[0].replace(/^Deckard: /, '')),
+      tagPage.every((title) => title.endsWith('…') && title === tagPage[0]),
       'under one title, ending with the ellipsis of a command that asks',
+    );
+  });
+
+  test('commands carry their category rather than writing it into the title', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as {
+      contributes: { commands: Array<{ command: string; title: string; category?: string }> };
+    };
+    assert.deepStrictEqual(
+      manifest.contributes.commands.filter((command) => command.title.startsWith('Deckard')).map((command) => command.command),
+      [],
+      'the palette writes "Deckard:" from the category; a title that repeats it reads twice in view toolbars',
     );
   });
 });
