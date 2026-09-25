@@ -520,13 +520,13 @@ export function getTaskBoardCss(): string {
 .board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
 .board-card .task-title { padding-right: var(--space-6); }
-.board-details { margin: 0; }
-/* Each detail stays whole and the line wraps between them — unless a detail
-   is wider than the column on its own, as "overdue, due Mon 2026-09-01" is
-   under a theme's letter-spacing, in which case it breaks rather than
-   widening every card in the column. An inline-block is that exactly: one
-   unit to the line, that wraps inside only when it has to. */
-.board-details span { display: inline-block; white-space: normal; }
+/* The details are a row that wraps between them, with a gap where a
+   separator used to be: a "·" at the end of a wrapped line dangled there
+   with nothing after it. A detail wider than the column on its own, as
+   "overdue 20 days · 2026-09-01" is under a theme's letter-spacing, still
+   wraps inside itself rather than widening every card in the column. */
+.board-details { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); margin: 0; }
+.board-details span { min-width: 0; white-space: normal; }
 .board-details .board-date { display: inline; white-space: nowrap; }
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
    after this sheet and which took the color off "overdue 20 days". */
@@ -1309,7 +1309,7 @@ export function getComponentScript(): string {
         return '<span class="board-date">' + date + '</span>';
       });
       return '<span' + (overdue ? ' class="overdue"' : '') + '>' + text + '</span>';
-    }).join(' · ');
+    }).join('');
     const plainTitle = String(card.title || '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
