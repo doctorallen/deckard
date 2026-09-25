@@ -82,10 +82,17 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
   height: auto;
   overflow: visible;
   clip-path: none;
-  border: 1px solid;
-  border-color: inherit;
+  border: inherit;
   border-top: 0;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
   background: inherit;
+  box-shadow: inherit;
+  /* The pointer passes through, as it does a note's provenance: a panel
+     that took the pointer kept its row hovered while the pointer crossed
+     it, and the rows it covered were skipped on the way down. */
+  pointer-events: none;
   padding: var(--space-1) var(--space-2) var(--space-2);
   color: var(--muted);
   font: var(--text-xs)/16px var(--font-mono);
@@ -603,9 +610,11 @@ ${getQueryEditorScript()}
     const detail = filter.query
       ? (filter.page === 'taskBoard' ? 'Task Board · ' : '') + escapeHtml(filter.query)
       : filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + filter.tags.length + ' tags';
-    return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + detail + '</div></div>'
-      + (removable ? '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button>' : '')
-      + '</div>';
+    // The criteria are the row's own child, not wrapped with the name: the
+    // frame they open in is inherited, and a wrapper has none to give.
+    return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div>'
+      + (removable ? '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button>' : '<span></span>')
+      + '<div class="saved-filter-tags">' + detail + '</div></div>';
   }
 
   /** A row that opens something: a tag, a search, or a note. */

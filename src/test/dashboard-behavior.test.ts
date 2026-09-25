@@ -36,6 +36,21 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(mark.classList.contains('tab-search-mark-icon'), true);
   });
 
+  test('a saved search shows its name, and keeps its criteria in the row', () => {
+    const { page } = open({
+      dashboardViewState: { mode: 'home', tagSearchQuery: '' },
+      savedFilters: [{ id: 'f', name: 'Fun dip', tags: [], query: 'tag = #project/atlas', page: 'dashboard' } as never],
+      dashboardWidgets: [{ id: 's', kind: 'savedSearches', width: 'half' }],
+    });
+    const row = page.find('.saved-filter-row[data-saved-filter-id="f"]');
+    assert.strictEqual(row.querySelector('.saved-filter-name')?.textContent, 'Fun dip');
+    // The criteria are the row's own child, so the frame they open in under
+    // the pointer is inherited from the row, hover colors included.
+    const criteria = row.querySelector(':scope > .saved-filter-tags');
+    assert.ok(criteria, 'the criteria sit directly in the row');
+    assert.match(criteria?.textContent ?? '', /tag = #project\/atlas/);
+  });
+
   const NOTES: Record<string, string> = {
     'notes/one.md': [
       '# One #project/atlas #risk/vendor',
