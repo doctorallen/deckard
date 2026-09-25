@@ -111,6 +111,16 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
    positioned against. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
+/* On a search page a result's file, line, and headings are part of telling
+   it from the others, where people re-find by where a thing was (Bergman et
+   al., 2008), so they sit in the card's header rather than folding under
+   it. Zen keeps the fold. Specific enough to outweigh the fold, which the tail lays down after it. */
+body:not(.zen) main .card .source, body:not(.zen) main .card:hover .source, body:not(.zen) main .card:focus-within .source {
+  position: static; width: auto; height: auto; overflow: hidden; clip-path: none;
+  color: var(--muted); font: var(--text-xs)/16px var(--font-mono); white-space: nowrap; text-overflow: ellipsis;
+}
+body:not(.zen) main .card:hover::after, body:not(.zen) main .card:focus-within::after { display: none; }
+body:not(.zen) main .card:hover, body:not(.zen) main .card:focus-within { border-bottom-left-radius: var(--corner-bl, 0); border-bottom-right-radius: var(--corner-br, 0); }
 ${getPageTailCss()}
 </style>
 </head>
@@ -567,6 +577,7 @@ ${getQueryEditorScript()}
       state = event.data.data;
       editor.receive();
       renderKeepingPlace(render);
+      markWords(document.getElementById('app'), editor.previewWords(state.query && state.query.text || ''));
       saveState();
     }
   });

@@ -370,6 +370,8 @@ export function getTagCss(): string {
   text-align: left;
   text-transform: none;
 }
+/* A searched word where it appears in a result. */
+mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transparent); color: inherit; }
 /* The page's keys, on ?. */
 .key-sheet { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--bg) 70%, transparent); }
 .key-sheet-panel { max-width: 520px; max-height: calc(100vh - 48px); overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); color: var(--text); padding: var(--space-4); }
@@ -683,6 +685,13 @@ export function getBaseCss(): string {
  */
 export function getProvenanceCss(): string {
   return `
+/* Escape puts the carried-down line away until the pointer or focus moves. */
+body.provenance-dismissed .card::after, body.provenance-dismissed .note::after,
+body.provenance-dismissed .task-row::after, body.provenance-dismissed .home-row::after,
+body.provenance-dismissed .tag-row::after, body.provenance-dismissed .board-card::after,
+body.provenance-dismissed .card .source, body.provenance-dismissed .note .source,
+body.provenance-dismissed .task-row .task-source, body.provenance-dismissed .board-card .task-source,
+body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed .tag-row .tag-count { visibility: hidden; }
 .task-row .task-source,
 .board-card .task-source,
 .card .source,
@@ -1154,6 +1163,41 @@ export function getComponentScript(): string {
     return Object.assign({ type: 'openSource', filePath: element.dataset.filePath, line: Number(element.dataset.line) },
       how.beside ? { beside: true } : {}, how.pin ? { pin: true } : {});
   }
+
+  /**
+   * Marks the searched words where they appear in the results, so a reader
+   * can tell at a glance why each one was found (Hearst, Search User
+   * Interfaces, ch. 5). Only text is marked, never a tag or a control.
+   */
+  function markWords(root, words) {
+    const wanted = (words || []).map(function (word) { return String(word).toLowerCase(); }).filter(function (word) { return word.length >= 2; });
+    if (!wanted.length || !root || !document.createTreeWalker) return;
+    const pattern = new RegExp('(' + wanted.map(function (word) { return word.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&'); }).join('|') + ')', 'gi');
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const found = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (node.parentElement && node.parentElement.closest('button, a, mark, [data-tag-key], .inline-tag, .tag-open, code')) continue;
+      pattern.lastIndex = 0;
+      if (pattern.test(node.nodeValue)) found.push(node);
+    }
+    found.forEach(function (node) {
+      const span = document.createElement('span');
+      span.innerHTML = escapeHtml(node.nodeValue).replace(pattern, '<mark>$1</mark>');
+      node.replaceWith.apply(node, Array.prototype.slice.call(span.childNodes));
+    });
+  }
+
+  // Escape puts away the file-and-line line an entry carries down under the
+  // pointer, which could not be dismissed before (WCAG 1.4.13); it comes
+  // back once the pointer or the focus moves on.
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && document.body) document.body.classList.add('provenance-dismissed');
+  });
+  ['pointermove', 'focusin'].forEach(function (type) {
+    document.addEventListener(type, function () {
+      if (document.body && document.body.classList.contains('provenance-dismissed')) document.body.classList.remove('provenance-dismissed');
+    });
+  });
 
   /** A task's title as a sentence names it, from its row or card. */
   function taskTitleOf(element) {
