@@ -34,7 +34,7 @@ interface AgendaPreferences {
   setTaskOrder(taskOrder: string[]): Promise<void>;
 }
 
-type AgendaNode =
+export type AgendaNode =
   | { kind: 'group'; group: AgendaGroup; groupBy: AgendaGroupBy }
   | { kind: 'task'; entry: AgendaEntry; uri: vscode.Uri | undefined };
 
@@ -203,6 +203,30 @@ export class AgendaTreeProvider
     this.disposables.forEach((disposable) => disposable.dispose());
   }
 
+  /**
+   * The tasks a menu command was run on: every selected item when the one
+   * right-clicked is among them, else that item; a group stands for its
+   * tasks. Each is read again from the index, so a date is written on the
+   * line as it is now.
+   */
+  public tasksFor(node?: AgendaNode, selected?: readonly AgendaNode[]): Task[] {
+    const nodes =
+      node && selected?.includes(node) ? selected : node ? [node] : [];
+    const seen = new Set<string>();
+    const tasks: Task[] = [];
+    for (const each of nodes) {
+      const entries = each.kind === 'task' ? [each.entry] : each.group.entries;
+      for (const entry of entries) {
+        if (seen.has(entry.task.id)) {
+          continue;
+        }
+        seen.add(entry.task.id);
+        tasks.push(this.indexer.getTask(entry.task.id) ?? entry.task);
+      }
+    }
+    return tasks;
+  }
+
   /** Carries the tasks being dragged, and only tasks. */
   public handleDrag(
     source: readonly AgendaNode[],
@@ -359,7 +383,9 @@ function createGroupItem(
   item.id = `agenda:${group.id}`;
   item.description = String(group.entries.length);
   item.iconPath = GROUP_ICONS[group.id] ?? GROUPING_ICONS[groupBy];
-  item.contextValue = 'deckardAgendaGroup';
+  // Overdue is told apart, since it is the group offered a date for all.
+  item.contextValue =
+    group.id === 'overdue' ? 'deckardAgendaGroup.overdue' : 'deckardAgendaGroup';
   return item;
 }
 
@@ -481,6 +507,19 @@ function readBoardOptions(): TaskBoardOptions {
       'status',
     format: readTaskMetadataFormat(configuration),
   };
+}
+
+/** The open tasks the Tasks view lists as overdue, as its query selects them. */
+export function listOverdueTasks(index: WorkspaceIndex, now = Date.now()): Task[] {
+  const selected = selectAgendaTasks(index, getAgendaQuery());
+  return (
+    createAgenda(index, now, {
+      tasks: selected.tasks,
+      upcomingDays: getUpcomingDays(),
+    })
+      .find((group) => group.id === 'overdue')
+      ?.entries.map((entry) => entry.task) ?? []
+  );
 }
 
 /** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */

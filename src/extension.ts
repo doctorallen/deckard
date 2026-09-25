@@ -19,7 +19,11 @@ import {
   openPeriodicNoteWithReview,
   writeReviewCommand,
 } from './ui/commands/review';
-import { setTaskRankKeeper } from './ui/commands/taskActions';
+import {
+  openTask,
+  quoteTaskTitle,
+  setTaskRankKeeper,
+} from './ui/commands/taskActions';
 import {
   editTaskCommand,
   TaskEditorActions,
@@ -40,6 +44,13 @@ import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
 import { ActivePinContext, setNotePinnedCommand } from './ui/commands/pinNote';
+import {
+  askForDueDate,
+  dueDateFor,
+  DueChoice,
+  pickReschedule,
+  setTasksDue,
+} from './ui/commands/agendaActions';
 import { createPinForLine } from './ui/state/pinnedNotes';
 import { pinKey } from './core/storage/preferences';
 import {
@@ -94,7 +105,7 @@ import {
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
-import {
+import { listOverdueTasks, AgendaNode,
   AgendaTreeProvider,
   getAgendaQuery,
   pickAgendaGrouping,
@@ -418,12 +429,62 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,
+    // Several tasks can be chosen and dated at once from the item menu.
+    canSelectMany: true,
     // Dragging a task onto another ranks it there; onto a group, it joins
     // that group through the same checked edit the board writes.
     dragAndDropController: agenda,
   });
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
+  // The Tasks view's own menus: a date by name or in plain words, on one
+  // task, on the tasks selected, or on every task in a group.
+  const dueFromView = (
+    date: (subject: string) => Promise<string | undefined | null>,
+  ) =>
+    async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+      const tasks = agenda.tasksFor(node, selected);
+      if (tasks.length === 0) {
+        return;
+      }
+      const subject =
+        tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`;
+      const chosen = await date(subject);
+      if (chosen !== null) {
+        await setTasksDue(tasks, chosen);
+      }
+    };
+  const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice));
+  context.subscriptions.push(
+    vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
+    vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
+    vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
+    vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
+    vscode.commands.registerCommand('deckard.agenda.reschedule', dueFromView(pickReschedule)),
+    vscode.commands.registerCommand('deckard.rescheduleOverdue', async () => {
+      await indexer.ready;
+      const overdue = listOverdueTasks(indexer.getSnapshot());
+      if (overdue.length === 0) {
+        void vscode.window.showInformationMessage('Nothing is overdue.');
+        return;
+      }
+      const date = await pickReschedule(
+        overdue.length === 1 ? quoteTaskTitle(overdue[0]) : `${overdue.length} overdue tasks`,
+      );
+      if (date !== null) {
+        await setTasksDue(overdue, date);
+      }
+    }),
+    vscode.commands.registerCommand(
+      'deckard.agenda.editTask',
+      async (node?: AgendaNode) => {
+        const [task] = agenda.tasksFor(node);
+        if (task && (await openTask(task))) {
+          await vscode.commands.executeCommand('deckard.editTask');
+        }
+      },
+    ),
+  );
   void syncOutlineFollowCursorContext();
   void syncZenModeContext();
   context.subscriptions.push(

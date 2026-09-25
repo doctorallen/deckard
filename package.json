@@ -339,6 +339,43 @@
         "command": "deckard.createSampleWorkspace",
         "title": "Create a Sample Workspace",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.editTask",
+        "title": "Edit Task…",
+        "category": "Deckard",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "deckard.agenda.dueToday",
+        "title": "Due Today",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.dueTomorrow",
+        "title": "Due Tomorrow",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.dueNextWeek",
+        "title": "Due Next Week",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.dueOnDate",
+        "title": "Due on a Date…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.reschedule",
+        "title": "Reschedule All…",
+        "category": "Deckard",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "deckard.rescheduleOverdue",
+        "title": "Reschedule Overdue Tasks…",
+        "category": "Deckard"
       }
     ],
     "menus": {
@@ -422,6 +459,30 @@
         {
           "command": "deckard.resetMcpToken",
           "when": "config.deckard.mcpServer.enabled"
+        },
+        {
+          "command": "deckard.agenda.editTask",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.dueToday",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.dueTomorrow",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.dueNextWeek",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.dueOnDate",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.reschedule",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -461,6 +522,46 @@
           "command": "deckard.outline.renameTag",
           "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
           "group": "deckard@2"
+        },
+        {
+          "command": "deckard.agenda.editTask",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.agenda.dueToday",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "1_due@1"
+        },
+        {
+          "command": "deckard.agenda.dueTomorrow",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "1_due@2"
+        },
+        {
+          "command": "deckard.agenda.dueNextWeek",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "1_due@3"
+        },
+        {
+          "command": "deckard.agenda.dueOnDate",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "1_due@4"
+        },
+        {
+          "command": "deckard.agenda.editTask",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "deckard.agenda.reschedule",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaGroup.overdue",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.agenda.reschedule",
+          "when": "view == deckard.agenda && viewItem =~ /^deckardAgendaGroup/",
+          "group": "1_due@1"
         }
       ]
     },
