@@ -528,7 +528,9 @@ export function getTaskBoardCss(): string {
    unit to the line, that wraps inside only when it has to. */
 .board-details span { display: inline-block; white-space: normal; }
 .board-details .board-date { display: inline; white-space: nowrap; }
-.board-details .overdue { color: var(--danger); }
+/* Written to outweigh a theme's own .task .source, which LCARS lays down
+   after this sheet and which took the color off "overdue 20 days". */
+.task .board-details .overdue { color: var(--danger); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
   position: absolute;
