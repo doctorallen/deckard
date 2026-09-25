@@ -83,12 +83,14 @@
       {
         "command": "deckard.showDashboard",
         "title": "Open Dashboard",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": "$(home)"
       },
       {
         "command": "deckard.showNotesGraph",
         "title": "Open Notes Graph",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": "$(type-hierarchy)"
       },
       {
         "command": "deckard.showTaskBoard",
@@ -104,7 +106,8 @@
       {
         "command": "deckard.showHelp",
         "title": "Open Help",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": "$(question)"
       },
       {
         "command": "deckard.showLog",
@@ -119,7 +122,8 @@
       {
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": "$(calendar)"
       },
       {
         "command": "deckard.pinNote",
@@ -510,6 +514,31 @@
           "command": "deckard.outline.disableFollowCursor",
           "when": "view == deckard.outline && deckard.outlineFollowCursor",
           "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showDashboard",
+          "when": "view == deckard.relatedNotes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showTaskBoard",
+          "when": "view == deckard.relatedNotes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deckard.createDailyNote",
+          "when": "view == deckard.relatedNotes",
+          "group": "navigation@3"
+        },
+        {
+          "command": "deckard.showNotesGraph",
+          "when": "view == deckard.relatedNotes",
+          "group": "1_open@1"
+        },
+        {
+          "command": "deckard.showHelp",
+          "when": "view == deckard.relatedNotes",
+          "group": "1_open@2"
         }
       ],
       "view/item/context": [

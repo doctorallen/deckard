@@ -778,7 +778,51 @@ export type CalendarMessage =
   | { type: 'openDay'; date: string }
   | { type: 'openWeek'; date: string };
 
+/** A line in another note that links to, or names, the note being read. */
+export interface NoteLinkEntry {
+  filePath: string;
+  /** The note the line is in. */
+  title: string;
+  /** One-based. */
+  line: number;
+  /** The line as written, for context. */
+  text: string;
+  /** The headings the line sits under, outermost first. */
+  headingPath: string[];
+}
+
+/** A mention of the note's name without a link, which can be made one. */
+export interface NoteMention extends NoteLinkEntry {
+  startColumn: number;
+  endColumn: number;
+  /** The name as written, which the link keeps. */
+  name: string;
+}
+
+/** Related Notes' Link on one mention: make that mention a link. */
+export interface LinkMentionMessage {
+  type: 'linkMention';
+  filePath: string;
+  line: number;
+  startColumn: number;
+}
+
+/** Related Notes' Link all: every mention of the note, as one write. */
+export interface LinkAllMentionsMessage {
+  type: 'linkAllMentions';
+}
+
+/** What points at the note being read. */
+export interface NoteLinks {
+  linkedFrom: NoteLinkEntry[];
+  linkedFromCount: number;
+  mentions: NoteMention[];
+  mentionCount: number;
+}
+
 export interface SidebarNotesSnapshot {
+  /** What links to the note being read, and what names it without a link. */
+  links?: NoteLinks;
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
@@ -1331,6 +1375,8 @@ export type SearchPageMessage =
   | CreateHubNoteMessage;
 
 export type SidebarMessage =
+  | LinkMentionMessage
+  | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage

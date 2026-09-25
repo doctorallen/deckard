@@ -510,7 +510,7 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Tasks view's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
+Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 
@@ -535,6 +535,10 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work.
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](docs/images/related-notes.png)
+
+Under the related notes, **Linked from** lists every line in another note that links to this one, each under the headings it was written beneath, and **Mentioned without a link** lists the lines that write the note's name as plain text. Select a line to open it, or Cmd/Ctrl-click to open it beside the note. Each mention has its own **Link**, which makes it a `[[link]]` as written, and **Link all** links every one as a single change that **Undo Last Change** takes back.
+
+The view's title bar holds its shortcuts, as every other view's does: Home, the Task board, and today's note, with the Notes Graph and Help in its **…** menu.
 
 ### What makes a note related?
 

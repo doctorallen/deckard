@@ -697,7 +697,7 @@ suite('Webview contracts', () => {
     // Every overlay is opaque: VS Code's hover color is often semi-transparent.
     assert.strictEqual(corpo.includes('.sidebar-association-tooltip, .query-suggestions { clip-path: none;'), true);
     // A page VS Code gives no backdrop paints its own, or it renders blank.
-    assert.strictEqual(corpo.includes('body:has(.sidebar-header)'), true);
+    assert.strictEqual(corpo.includes('body:has(> main[data-sidebar])'), true);
     assert.strictEqual(corpo.includes('.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border'), true);
     // The page's color scheme follows VS Code's, or a light theme gets a dark backdrop.
     assert.strictEqual(corpo.includes(':root:has(> body.vscode-light)'), true);
@@ -933,14 +933,9 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      getDeckardThemeCss('lcars').includes('.sidebar-toolbar { gap: 0; }'),
-      true,
-    );
-    assert.strictEqual(
-      getDeckardThemeCss('lcars').includes(
-        '.sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; }',
-      ),
-      true,
+      getDeckardThemeCss('lcars').includes('.sidebar-toolbar'),
+      false,
+      'the sidebar\'s actions are in its view title bar, not the page',
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(

@@ -405,6 +405,23 @@ export function parseSidebarMessage(
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return { type: 'openTag', tagKey: value.tagKey as string };
   }
+  if (
+    value.type === 'linkMention' &&
+    isSourceMessage(value) &&
+    typeof value.startColumn === 'number' &&
+    Number.isInteger(value.startColumn) &&
+    value.startColumn >= 0
+  ) {
+    return {
+      type: 'linkMention',
+      filePath: value.filePath as string,
+      line: value.line as number,
+      startColumn: value.startColumn,
+    };
+  }
+  if (value.type === 'linkAllMentions') {
+    return { type: 'linkAllMentions' };
+  }
   if (value.type === 'insertLink' && isSourceMessage(value)) {
     return {
       type: 'insertLink',

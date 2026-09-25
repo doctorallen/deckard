@@ -8,6 +8,7 @@ import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { refineQueryText } from '../../core/query/queryEdit';
 import {
+  LinkMentionMessage,
   ParsedFile,
   RefineActiveSearchMessage,
   Section,
@@ -23,11 +24,14 @@ import {
   RelatedNotesRankingOptions,
 } from '../state/relatedNotesRanking';
 import { createWikiLink, insertWikiLink } from '../commands/insertLink';
-import { openSourceAt } from '../commands/navigation';
+import { openSourceAt, resolveSourceUri } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
+import { collectNoteLinks } from '../state/noteLinks';
+import { linkMentions } from '../commands/unlinkedMentions';
+import { applyWorkspaceWrite } from '../commands/workspaceWrites';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -413,7 +417,7 @@ export class SidebarNotesView
       this.entryContext?.filePath === selectedFilePath
         ? createEntryScope(selectedFile, this.entryContext.sourceLine)
         : undefined;
-    return createSidebarSnapshot(
+    const snapshot = createSidebarSnapshot(
       index,
       selectedFilePath,
       activeEntry?.file ?? selectedFile,
@@ -425,6 +429,11 @@ export class SidebarNotesView
       activeEntry?.tagWeights,
       this.getRelatedNotesRankingOptions(),
     );
+    // What links here is about the whole note, whichever entry is selected.
+    const indexedFile = selectedFilePath ? index.files.get(selectedFilePath) : undefined;
+    return indexedFile
+      ? { ...snapshot, links: collectNoteLinks(index, indexedFile) }
+      : snapshot;
   }
 
   private getTagTitleDisplayMode(): TagTitleDisplayMode {
@@ -623,11 +632,37 @@ export class SidebarNotesView
       return;
     }
 
+    if (message.type === 'linkMention') {
+      await this.linkMention(message);
+      return;
+    }
+
+    if (message.type === 'linkAllMentions') {
+      const filePath = this.createSnapshot().links ? this.getSelectedFilePath() : undefined;
+      const uri = filePath ? await resolveSourceUri(filePath) : undefined;
+      if (uri) {
+        await linkMentions(this.indexer, uri);
+      }
+      return;
+    }
+
     if (message.type !== 'openSource') {
       return;
     }
     const active = this.getActiveFile();
     const snapshot = this.createSnapshot();
+    // A line that links here, or names this note, opens where it is.
+    const link = [
+      ...(snapshot.links?.linkedFrom ?? []),
+      ...(snapshot.links?.mentions ?? []),
+    ].find(
+      (candidate) =>
+        candidate.filePath === message.filePath && candidate.line === message.line,
+    );
+    if (link) {
+      await openSourceAt(link.filePath, link.line, undefined, message.beside === true);
+      return;
+    }
     const note = snapshot.notes.find(
       (candidate) =>
         candidate.filePath === message.filePath &&
@@ -646,6 +681,51 @@ export class SidebarNotesView
         message.beside === true,
       );
     }
+  }
+
+  /** The note Related Notes is about: the one chosen by hand, or the active one. */
+  private getSelectedFilePath(): string | undefined {
+    return this.entryContext?.source === 'manual'
+      ? this.entryContext.filePath
+      : this.getActiveFile()?.filePath;
+  }
+
+  /**
+   * Makes one mention a link, as written: `atlas` becomes `[[atlas]]`. The
+   * mention is found again in the snapshot and in its note as it is now, so
+   * a line edited since is left alone. It is one write, taken back by Undo
+   * Last Change.
+   */
+  private async linkMention(message: LinkMentionMessage): Promise<void> {
+    const mention = this.createSnapshot().links?.mentions.find(
+      (candidate) =>
+        candidate.filePath === message.filePath &&
+        candidate.line === message.line &&
+        candidate.startColumn === message.startColumn,
+    );
+    const uri = mention ? await resolveSourceUri(mention.filePath) : undefined;
+    if (!mention || !uri) {
+      return;
+    }
+    const document = await vscode.workspace.openTextDocument(uri);
+    const range = new vscode.Range(
+      mention.line - 1,
+      mention.startColumn,
+      mention.line - 1,
+      mention.endColumn,
+    );
+    if (mention.line > document.lineCount || document.getText(range) !== mention.name) {
+      void vscode.window.showInformationMessage(
+        'That line has changed since it was read, so Deckard left it as it is.',
+      );
+      return;
+    }
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, range, `[[${mention.name}]]`);
+    await applyWorkspaceWrite(edit, {
+      label: `a link to ${mention.name} in ${mention.title}`,
+    });
+    await this.indexer.refresh();
   }
 
   /**
