@@ -130,7 +130,7 @@ re-declare the same names.
 | `--edge` | `2px` | Standard border width |
 | `--control-height` | `30px` | Standard control height |
 | `--accent` | `var(--amber)` | Eyebrows, chosen marks, the primary button's fill |
-| `--danger` | `var(--favorite-red)` | Overdue, high priority. Red means this and nothing else |
+| `--danger` | `var(--favorite-red)` | Overdue. Red means this and nothing else; a priority is an outlined `.priority-badge` with an arrow, never a color |
 | `--favorite` | `var(--amber-bright)` | The favorite heart |
 | `--positive` | `var(--green)` | A checked box, a done state |
 | `--focus` | `var(--cyan)` | Every focus ring |

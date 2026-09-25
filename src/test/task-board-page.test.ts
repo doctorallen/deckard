@@ -63,6 +63,27 @@ suite('Task Board page', () => {
     assert.strictEqual(button.getAttribute('aria-expanded'), 'false');
   });
 
+  test('priority is a badge with an arrow, told from the date beside it', () => {
+    const index = buildWorkspaceIndex(
+      new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-11 🔺 ⏳ 2026-09-22 🔁 every month on the 15th\n')]]),
+    );
+    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    for (const layout of ['board', 'list'] as const) {
+      const board = createTaskBoard(index, { ...store.value, taskBoardLayout: layout }, { query: '' }, options, 'inline');
+      page?.dispose();
+      page = openWebviewPage(getTaskBoardHtml(webview), board);
+      const badge = page.find('.priority-badge.priority-highest');
+      assert.strictEqual(badge.querySelector('.priority-mark')?.textContent, '↑↑', `${layout}: the arrow says how far from the middle`);
+      assert.match(badge.textContent ?? '', /Highest/);
+      const details = page.text(layout === 'board' ? '.board-details' : '.task-meta') ?? '';
+      assert.ok(!/PRIORITY|SCHEDULED|REPEATS/.test(details), `${layout}: the details read as written`);
+      if (layout === 'list') {
+        assert.match(details, /Scheduled 2026-09-22/);
+        assert.match(details, /Repeats every month on the 15th/);
+      }
+    }
+  });
+
   test('the menu closes on Escape and gives focus back to its button', () => {
     const { page } = open();
     page.click('.board-card [data-action="board-menu"]');

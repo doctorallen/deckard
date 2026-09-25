@@ -570,7 +570,13 @@ export function getTaskListCss(): string {
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
 .task-detail { letter-spacing: .03em; }
-.task-detail.priority-highest, .task-detail.priority-high { color: var(--danger); font-weight: 700; }
+/* Priority is a shape, not a color: an outlined badge with an arrow, told
+   from the due date beside it by its edge. It used to be the same bold
+   danger red as an overdue date, on the same line, in the same font, and
+   the two read as one phrase. Red is overdue's alone now. */
+.priority-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--control-radius); color: var(--text); font-weight: 600; letter-spacing: normal; text-transform: none; line-height: 16px; white-space: nowrap; }
+.priority-badge.priority-low, .priority-badge.priority-lowest { color: var(--muted); }
+.priority-mark { font-weight: 700; }
 .is-draggable { cursor: grab; touch-action: none; }
 .is-draggable:active { cursor: grabbing; }
 .is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
@@ -937,6 +943,23 @@ export function getComponentScript(): string {
     return '<button class="tag-open ' + (className || '') + '" data-action="open-tag" data-tag-key="'
       + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
       + renderTagLabel(tag.label) + '</button>';
+  }
+
+  /**
+   * A task's priority as a badge: an arrow for how far from the middle, and
+   * the word. The row, the board card, and the query block all draw it, so
+   * priority looks like one thing everywhere. The word "priority" is for a
+   * screen reader; the edge and the arrow say it on screen.
+   */
+  const PRIORITY_MARKS = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
+  function renderPriorityBadge(priority) {
+    const key = String(priority || '').toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(PRIORITY_MARKS, key)) return '';
+    const word = key.charAt(0).toUpperCase() + key.slice(1);
+    const mark = PRIORITY_MARKS[key];
+    return '<span class="priority-badge priority-' + key + '" title="' + word + ' priority">'
+      + (mark ? '<span class="priority-mark" aria-hidden="true">' + mark + '</span>' : '')
+      + word + '<span class="visually-hidden"> priority</span></span>';
   }
 
   /** The rail step a weight fills to: three for 0.75 and up, two from 0.375. */
@@ -1307,6 +1330,10 @@ export function getComponentScript(): string {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
+      // The host words priority as "high priority"; the card draws the badge
+      // the task rows draw, so it is told from the due date beside it.
+      const priority = /^(highest|high|medium|low|lowest) priority$/.exec(detail);
+      if (priority) return renderPriorityBadge(priority[1]);
       // A date is one word: "2026-09-01" broke at its hyphens in a narrow
       // column, leaving "2026-09-" on one line and "01" on the next.
       const text = escapeHtml(detail).replace(/\\d{4}-\\d{2}-\\d{2}/g, function (date) {
@@ -1570,14 +1597,14 @@ export function getComponentScript(): string {
       : (task.dueText
         ? '<span class="due-date">Due ' + escapeHtml(task.dueText) + '</span>'
         : '');
+    // As written, not in capitals: the working labels read as written
+    // everywhere else since the UX pass, and these were the last three.
     const scheduled = task.scheduledAt !== undefined
-      ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
+      ? '<span class="task-detail">Scheduled ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
       : '';
-    const priority = task.priority
-      ? '<span class="task-detail priority-' + escapeHtml(task.priority) + '">' + escapeHtml(task.priority.toUpperCase()) + ' PRIORITY</span>'
-      : '';
+    const priority = renderPriorityBadge(task.priority);
     const recurrence = task.recurrence
-      ? '<span class="task-detail">REPEATS ' + escapeHtml(task.recurrence.toUpperCase()) + '</span>'
+      ? '<span class="task-detail">Repeats ' + escapeHtml(task.recurrence) + '</span>'
       : '';
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
