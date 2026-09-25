@@ -572,6 +572,11 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    // A row's readout, a file name or a count, folds under the row under the
+    // pointer as an entry's provenance does, and stays in the tree.
+    assert.ok(html.includes('.home-row .home-row-detail,\n.tag-row .tag-count {'));
+    assert.ok(html.includes('.home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,'));
+    assert.ok(!/\.home-row-detail[^{]*\{[^}]*display: none/.test(html), 'a readout never leaves the accessibility tree');
     // A saved search reads by its name; its criteria open under the pointer.
     assert.ok(html.includes('.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }'));
     assert.ok(html.includes('.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {'));

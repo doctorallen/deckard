@@ -649,7 +649,9 @@ export function getProvenanceCss(): string {
   return `
 .task-row .task-source,
 .card .source,
-.note .source {
+.note .source,
+.home-row .home-row-detail,
+.tag-row .tag-count {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -661,18 +663,25 @@ export function getProvenanceCss(): string {
 .card { position: relative; --frame: var(--edge); --inset: 14px; }
 .note { --frame: 2px; --inset: 9px; }
 .task-row { --frame: 1px; --inset: 10px; }
-.card, .note, .task-row { --reach: 24px; }
+/* A Home row's readout, a file name or a count, and a tag row's count fold
+   the same way: a column of thirty beside the names was noise, and folded
+   under the row under the pointer they leave the whole width to the name. */
+.home-row, .tag-row { position: relative; --frame: 1px; --inset: 10px; }
+.card, .note, .task-row, .home-row, .tag-row { --reach: 24px; }
 .note:has(.source ~ .source) { --reach: 42px; }
 /* The entry under the pointer is lifted above the ones after it, which its
    extension lies over. The sidebar lifts its own notes higher still. */
-.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within { z-index: 2; }
+.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within,
+.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within { z-index: 2; }
 /* The extension is the entry's own frame carried down: its background,
    border and inner shading, taken from the entry as it is drawn now, hover
    colors included. It starts a little inside the entry so it covers the
    bottom border and any rounded corners, and draws a new bottom edge. */
 .card:hover::after, .card:focus-within::after,
 .note:hover::after, .note:focus-within::after,
-.task-row:hover::after, .task-row:focus-within::after {
+.task-row:hover::after, .task-row:focus-within::after,
+.home-row:hover::after, .home-row:focus-within::after,
+.tag-row:hover::after, .tag-row:focus-within::after {
   content: '';
   position: absolute;
   z-index: 1;
@@ -692,14 +701,16 @@ export function getProvenanceCss(): string {
 }
 /* A task row's corners are cut, and a cut frame clips what reaches outside
    it, so under the pointer the cut moves down to the new bottom corner. */
-.task-row:hover, .task-row:focus-within {
+.task-row:hover, .task-row:focus-within, .tag-row:hover, .tag-row:focus-within {
   clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach)));
 }
 /* One line each, cut short rather than wrapped, so the extension is always
    the height it was made for. */
 .task-row:hover .task-source, .task-row:focus-within .task-source,
 .card:hover .source, .card:focus-within .source,
-.note:hover .source, .note:focus-within .source {
+.note:hover .source, .note:focus-within .source,
+.home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,
+.tag-row:hover .tag-count, .tag-row:focus-within .tag-count {
   z-index: 2;
   top: calc(100% + 2px);
   left: var(--inset);
