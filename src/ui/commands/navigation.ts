@@ -60,6 +60,8 @@ export async function openSourceAt(
   workspaceFolders?: readonly vscode.WorkspaceFolder[],
   /** Open in the column beside the active one rather than replacing it. */
   beside = false,
+  /** Open as a preview tab, which the next preview replaces. */
+  preview = false,
 ): Promise<vscode.TextEditor | undefined> {
   const uri = await resolveSourceUri(filePath, workspaceFolders);
   if (!uri) {
@@ -72,7 +74,7 @@ export async function openSourceAt(
   try {
     const document = await vscode.workspace.openTextDocument(uri);
     const editor = await vscode.window.showTextDocument(document, {
-      preview: false,
+      preview,
       ...(beside ? { viewColumn: vscode.ViewColumn.Beside } : {}),
     });
     revealLine(editor, line);
@@ -83,6 +85,38 @@ export async function openSourceAt(
     );
     return undefined;
   }
+}
+
+/** How a result was asked to open: beside the page, and kept or previewed. */
+export interface ResultOpening {
+  beside?: boolean;
+  /** A double-click, which keeps the tab rather than previewing in it. */
+  pin?: boolean;
+}
+
+/**
+ * Opens a result from a Deckard page the way VS Code's Explorer opens a
+ * file: a click previews it in a tab the next preview reuses, so reading
+ * down a list of results does not leave a tab behind for each; a double
+ * click keeps it; Cmd/Ctrl opens it beside the page, so the list stays in
+ * view. Previewing follows workbench.editor.enablePreview.
+ */
+export function openResultAt(
+  filePath: string,
+  line: number,
+  how: ResultOpening = {},
+): Promise<vscode.TextEditor | undefined> {
+  const previews =
+    vscode.workspace
+      .getConfiguration('workbench.editor')
+      .get<boolean>('enablePreview', true) !== false;
+  return openSourceAt(
+    filePath,
+    line,
+    undefined,
+    how.beside === true,
+    previews && how.pin !== true,
+  );
 }
 
 /**

@@ -328,6 +328,19 @@ ${getQueryEditorScript()}
     return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
   }
 
+  /**
+   * Back and forward through the searches this page has shown, as a
+   * browser's are. The mouse's own buttons already did this; nothing on the
+   * page said so, and the keyboard could not.
+   */
+  function renderHistoryButtons() {
+    const history = state.history || {};
+    return '<span class="history-buttons" role="group" aria-label="Search history">'
+      + '<button type="button" class="icon-button" data-action="history-back" aria-label="Back to the search before" title="Back (Alt+←)"' + (history.back ? '' : ' disabled') + '>‹</button>'
+      + '<button type="button" class="icon-button" data-action="history-forward" aria-label="Forward to the search after" title="Forward (Alt+→)"' + (history.forward ? '' : ' disabled') + '>›</button>'
+      + '</span>';
+  }
+
   function render() {
     if (!state) return;
     // The redraw is about to take the search box out of the document.
@@ -415,7 +428,7 @@ ${getQueryEditorScript()}
     const suggestion = !invalid && state.suggestion
       ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
@@ -494,15 +507,16 @@ ${getQueryEditorScript()}
       }
       if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
+      if (action === 'history-back' || action === 'history-forward') vscode.postMessage({ type: 'navigateSearchHistory', direction: action === 'history-back' ? 'back' : 'forward' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
-      if (action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
+      if (action === 'open-source') vscode.postMessage(openSourceMessage(target, event));
       if (action === 'open-tag') vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       return;
     }
     const entry = event.target.closest('.card, .task-row');
     if (entry && !event.target.closest('button, input, a')) {
-      vscode.postMessage({ type: 'openSource', filePath: entry.dataset.filePath, line: Number(entry.dataset.line) });
+      vscode.postMessage(openSourceMessage(entry, event));
     }
   });
   document.addEventListener('contextmenu', function (event) {
@@ -517,6 +531,11 @@ ${getQueryEditorScript()}
     if (card) openCardContextMenu(event, card);
   });
   document.addEventListener('keydown', function (event) {
+    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !(event.target.closest && event.target.closest('input, textarea'))) {
+      event.preventDefault();
+      vscode.postMessage({ type: 'navigateSearchHistory', direction: event.key === 'ArrowLeft' ? 'back' : 'forward' });
+      return;
+    }
     if (editor.handleKeydown(event)) return;
     if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
       closeTagContextMenu();
@@ -527,7 +546,7 @@ ${getQueryEditorScript()}
     const entry = event.target.closest('.card, .task-row');
     if (entry) {
       event.preventDefault();
-      vscode.postMessage({ type: 'openSource', filePath: entry.dataset.filePath, line: Number(entry.dataset.line) });
+      vscode.postMessage(openSourceMessage(entry, event));
     }
   });
   document.addEventListener('change', function (event) {

@@ -1100,12 +1100,12 @@ ${getQueryEditorScript()}
       if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
-      if (action === 'open-source') send({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
+      if (action === 'open-source') send(openSourceMessage(target, event));
       return;
     }
     if (event.target.closest('button, input, select, a, summary')) return;
     const taskRow = event.target.closest('.task-row');
-    if (taskRow) send({ type: 'openSource', filePath: taskRow.dataset.filePath, line: Number(taskRow.dataset.line) });
+    if (taskRow) send(openSourceMessage(taskRow, event));
     const entityRow = event.target.closest('.entity-row');
     if (entityRow) send({ type: 'openTag', tagKey: entityRow.dataset.entityKey });
     const tagRow = event.target.closest('.tag-row');
@@ -1161,7 +1161,7 @@ ${getQueryEditorScript()}
     const row = event.target.closest('.task-row, .entity-row, .tag-row, .saved-filter-row[data-saved-filter-id]');
     if (!row) return;
     event.preventDefault();
-    if (row.classList.contains('task-row')) send({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+    if (row.classList.contains('task-row')) send(openSourceMessage(row, event));
     else if (row.classList.contains('entity-row')) send({ type: 'openTag', tagKey: row.dataset.entityKey });
     else if (row.classList.contains('tag-row')) send({ type: 'openTag', tagKey: row.dataset.tagKey });
     else send({ type: 'openSavedFilter', filterId: row.dataset.savedFilterId });

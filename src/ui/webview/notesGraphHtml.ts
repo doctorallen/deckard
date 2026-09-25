@@ -1712,10 +1712,11 @@ ${getPageTailCss()}
     persist();
     if (!clicked) { return; }
     if (wasDrag >= 0) {
-      // Cmd/Ctrl+click opens the source; a plain click selects the node and
-      // surfaces direct graph connections in the sidebar.
-      if (event.metaKey || event.ctrlKey) {
-        openNode(wasDrag);
+      // Cmd/Ctrl+click opens the source, and Alt+click opens it beside the
+      // graph; a plain click selects the node and surfaces direct graph
+      // connections in the sidebar.
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        openNode(wasDrag, event.altKey);
       } else {
         selectNode(wasDrag);
       }
@@ -1745,7 +1746,7 @@ ${getPageTailCss()}
     if (event.key === 'Enter' || event.key === ' ') {
       if (selectedIndex >= 0) {
         event.preventDefault();
-        openNode(selectedIndex);
+        openNode(selectedIndex, event.metaKey || event.ctrlKey);
       }
       return;
     }
@@ -1796,7 +1797,7 @@ ${getPageTailCss()}
     }
   }
 
-  function openNode(index) {
+  function openNode(index, beside) {
     var node = nodes[index];
     if (!node) { return; }
     if (node.kind === 'tag') {
@@ -1804,7 +1805,9 @@ ${getPageTailCss()}
       return;
     }
     if (node.filePath && node.line) {
-      vscode.postMessage({ type: 'openSource', filePath: node.filePath, line: node.line });
+      vscode.postMessage(beside
+        ? { type: 'openSource', filePath: node.filePath, line: node.line, beside: true }
+        : { type: 'openSource', filePath: node.filePath, line: node.line });
     }
   }
 

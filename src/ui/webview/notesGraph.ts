@@ -9,7 +9,7 @@ import {
 } from '../../core/types';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt, openSourceAt } from '../commands/navigation';
 import {
   createLocalGraphSnapshot,
   createNotesGraphConnections,
@@ -305,7 +305,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
 
     if (this.isKnownSourceLocation(message.filePath, message.line)) {
-      await openSourceAt(message.filePath, message.line);
+      await openResultAt(message.filePath, message.line, message);
     }
   }
 

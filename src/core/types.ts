@@ -537,6 +537,8 @@ export interface ResultPaging {
 }
 
 export interface SearchPageSnapshot {
+  /** Whether the page has a search to go back to, and one to go forward to. */
+  history?: { back: boolean; forward: boolean };
   /** The tag the page is about, when the search is that one tag. */
   tag?: TagInfo;
   entity?: Entity;
@@ -893,6 +895,9 @@ export interface NotesGraphOpenSourceMessage {
   type: 'openSource';
   filePath: string;
   line: number;
+  /** Alt-click: open beside the graph. */
+  beside?: boolean;
+  pin?: boolean;
 }
 
 export interface NotesGraphOpenTagMessage {
@@ -929,6 +934,8 @@ export interface OpenSourceMessage {
   line: number;
   /** Open beside the current editor rather than replacing it. */
   beside?: boolean;
+  /** Keep the tab, from a double-click, rather than previewing in it. */
+  pin?: boolean;
 }
 
 /**

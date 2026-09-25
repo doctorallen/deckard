@@ -605,6 +605,8 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
             type: 'openSource',
             filePath: value.filePath as string,
             line: value.line as number,
+            ...(value.beside === true ? { beside: true } : {}),
+            ...(value.pin === true ? { pin: true } : {}),
           }
         : undefined;
     case 'openSearch':
@@ -671,7 +673,8 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
     typeof value.line === 'number' &&
     Number.isInteger(value.line) &&
     value.line > 0 &&
-    (value.beside === undefined || typeof value.beside === 'boolean')
+    (value.beside === undefined || typeof value.beside === 'boolean') &&
+    (value.pin === undefined || typeof value.pin === 'boolean')
   );
 }
 

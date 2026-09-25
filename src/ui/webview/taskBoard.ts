@@ -7,7 +7,7 @@ import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt } from '../commands/navigation';
 import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
 import {
   captureIntoColumn,
@@ -475,7 +475,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
             task.lineNumber === message.line,
         );
         if (known) {
-          await openSourceAt(message.filePath, message.line);
+          await openResultAt(message.filePath, message.line, message);
         }
         return;
       }

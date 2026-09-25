@@ -31,7 +31,7 @@ import { editResults } from '../commands/bulkEditPrompts';
 import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
 import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt, ResultOpening } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
@@ -443,6 +443,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     );
     return {
       ...snapshot,
+      history: {
+        back: this.history.canGoBack,
+        forward: this.history.canGoForward,
+      },
       ...(snapshot.hub
         ? { hub: { ...snapshot.hub, expanded: this.isHubNoteExpanded() } }
         : {}),
@@ -714,7 +718,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         return;
       }
       case 'openSource':
-        await this.openSource(message.filePath, message.line);
+        await this.openSource(message.filePath, message.line, message);
         return;
     }
   }
@@ -757,14 +761,18 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     return this.lastSnapshot ?? this.createSnapshot();
   }
 
-  private async openSource(filePath: string, line: number): Promise<void> {
+  private async openSource(
+    filePath: string,
+    line: number,
+    how: ResultOpening = {},
+  ): Promise<void> {
     const snapshot = this.currentSnapshot();
     const hub = snapshot.hub;
     if (
       hub &&
       (filePath === hub.filePath || hub.otherFilePaths.includes(filePath))
     ) {
-      await openSourceAt(filePath, line);
+      await openResultAt(filePath, line, how);
       return;
     }
     const card = snapshot.sections.find(
@@ -774,7 +782,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       if (!card.id.startsWith('frontmatter:')) {
         await this.preferences.recordSectionAccess(card.id);
       }
-      await openSourceAt(card.filePath, card.startLine);
+      await openResultAt(card.filePath, card.startLine, how);
       return;
     }
     const task = snapshot.tasks.find(
@@ -783,7 +791,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         candidate.task.lineNumber === line,
     );
     if (task) {
-      await openSourceAt(task.task.filePath, task.task.lineNumber);
+      await openResultAt(task.task.filePath, task.task.lineNumber, how);
     }
   }
 

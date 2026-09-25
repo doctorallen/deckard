@@ -227,6 +227,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   white-space: nowrap;
 }
 .toolbar { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.history-buttons { display: inline-flex; gap: var(--space-1); }
 .toolbar label {
   display: inline-flex;
   align-items: center;
@@ -1136,6 +1137,24 @@ export function getComponentScript(): string {
     });
   }
 
+  /**
+   * How a click or key asks for a result: Cmd/Ctrl beside the page, a
+   * double-click (the second click of it) keeping the tab.
+   */
+  function openingOf(event) {
+    return {
+      beside: Boolean(event && (event.metaKey || event.ctrlKey)),
+      pin: Boolean(event && event.detail >= 2),
+    };
+  }
+
+  /** An openSource message for an element's file and line, opened as asked. */
+  function openSourceMessage(element, event) {
+    const how = openingOf(event);
+    return Object.assign({ type: 'openSource', filePath: element.dataset.filePath, line: Number(element.dataset.line) },
+      how.beside ? { beside: true } : {}, how.pin ? { pin: true } : {});
+  }
+
   /** A task's title as a sentence names it, from its row or card. */
   function taskTitleOf(element) {
     const row = element && element.closest ? element.closest('[data-task-id]') : null;
@@ -1712,8 +1731,8 @@ export function getComponentScript(): string {
     function clearDropTargets() {
       document.querySelectorAll('.board-column.drop-target').forEach(function (column) { column.classList.remove('drop-target'); });
     }
-    function openCard(card) {
-      post({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
+    function openCard(card, event) {
+      post(openSourceMessage(card, event));
     }
 
     function completeCard(card, completed) {
@@ -1840,7 +1859,7 @@ export function getComponentScript(): string {
       }
       if (event.target.closest('input, select, button, a')) return;
       const card = boardCard(event.target);
-      if (card) openCard(card);
+      if (card) openCard(card, event);
     });
     document.addEventListener('keydown', function (event) {
       const card = event.target.matches && event.target.matches('.task-board .board-card') ? event.target : undefined;

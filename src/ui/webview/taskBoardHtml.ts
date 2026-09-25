@@ -367,7 +367,7 @@ ${getQueryEditorScript()}
     }
     const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
-      post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+      post(openSourceMessage(row, event));
     }
   });
 
@@ -385,7 +385,7 @@ ${getQueryEditorScript()}
     const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
       event.preventDefault();
-      post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+      post(openSourceMessage(row, event));
     }
   });
 
