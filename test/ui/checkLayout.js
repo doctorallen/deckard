@@ -28,7 +28,7 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const { pages, renderPagesForTheme, themes } = require('./pages.js');
+const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
 const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
 const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
 const { createSearchPageSnapshot } = require('../../out/ui/state/dashboardState.js');
@@ -232,6 +232,8 @@ setTimeout(function () { ${probeScript(surface)} }, 50);
   const inner = html
     // The page's CSP names a nonce these scripts do not have.
     .replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '')
+    // VS Code sets its tokens on the document; here a style block does.
+    .replace('<head>', `<head><style>${vscodePaletteCss('dark')}</style>`)
     .replace(/<script/, `${bridge}<script`)
     .replace(/<\/body>/, `${drive}</body>`);
   const [width, height] = surface.viewport;
