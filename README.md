@@ -674,6 +674,8 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - <kbd>Enter</kbd> opens the note or task at its line, a tag's page, or a saved search. **Show all results**, or the list button in the title bar, opens the search on a search page.
 - When no note has every word, Find says so and shows the notes with some of them. A misspelled word gets a **Search for … instead** row with the closest word your notes contain.
 - With nothing typed, Find offers your recent searches, favorite and recently opened tags, saved searches, and the notes you opened last. A recent search has a button to save it as a view.
+- A note or task found has a button to **open it to the side**, which leaves Find open for the next, and a note has one to **insert a link** to it, at its heading, where the cursor was when Find opened.
+- Words that no note is called, and that read as a name rather than a search, offer **Create note “…”**, which creates it in your notes folder.
 
 Ties are broken by how often and how recently you opened something, so a note you opened yesterday comes before one you opened often last year. This is kept in VS Code's preferences, beside the access counts, and never in your notes.
 

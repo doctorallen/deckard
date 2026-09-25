@@ -8,6 +8,8 @@ import {
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
+import { createWikiLink } from './insertLink';
+import { createLinkedNote } from './linkHealth';
 import { openSourceAt } from './navigation';
 
 /** Set while Quick Find is open, so Tab completes in it and nowhere else. */
@@ -26,6 +28,8 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   showAll?: boolean;
   /** The row that runs the corrected spelling. */
   suggestion?: string;
+  /** The row that creates a note by the name typed, when none has it. */
+  create?: string;
 }
 
 const ADD_TO_SEARCH: vscode.QuickInputButton = {
@@ -35,6 +39,14 @@ const ADD_TO_SEARCH: vscode.QuickInputButton = {
 const SAVE_AS_VIEW: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('save'),
   tooltip: 'Save as a view',
+};
+const OPEN_BESIDE: vscode.QuickInputButton = {
+  iconPath: new vscode.ThemeIcon('split-horizontal'),
+  tooltip: 'Open to the side',
+};
+const INSERT_LINK: vscode.QuickInputButton = {
+  iconPath: new vscode.ThemeIcon('link'),
+  tooltip: 'Insert a link to it at the cursor',
 };
 const SHOW_ALL: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('list-flat'),
@@ -51,6 +63,8 @@ const SHOW_ALL: vscode.QuickInputButton = {
 export class QuickFind implements vscode.Disposable {
   private picker: vscode.QuickPick<QuickFindPickItem> | undefined;
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The editor Find was opened from, where Insert link writes. */
+  private editor: vscode.TextEditor | undefined;
 
   public constructor(
     private readonly indexer: WorkspaceIndexer,
@@ -60,6 +74,7 @@ export class QuickFind implements vscode.Disposable {
 
   public async show(initialQuery = ''): Promise<void> {
     await this.indexer.ready;
+    this.editor = vscode.window.activeTextEditor;
     this.picker?.dispose();
     const picker = vscode.window.createQuickPick<QuickFindPickItem>();
     this.picker = picker;
@@ -156,6 +171,15 @@ export class QuickFind implements vscode.Disposable {
       await this.showAll();
       return;
     }
+    if (chosen.create !== undefined) {
+      picker.hide();
+      const from =
+        this.editor?.document.uri ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (from) {
+        await createLinkedNote(this.indexer, from, chosen.create);
+      }
+      return;
+    }
     const item = chosen.item;
     if (!item || item.kind === 'message') {
       return;
@@ -182,6 +206,25 @@ export class QuickFind implements vscode.Disposable {
     }
   }
 
+  /** Writes a link to the note, at its heading, where the cursor was. */
+  private async insertLink(filePath: string, sectionId: string | undefined): Promise<void> {
+    const editor = this.editor;
+    if (!editor || editor.document.isClosed) {
+      void vscode.window.showInformationMessage(
+        'Open a note to insert a link into it, then use Find from there.',
+      );
+      return;
+    }
+    const link = createWikiLink(this.indexer.getSnapshot(), filePath, sectionId);
+    await vscode.window.showTextDocument(editor.document, editor.viewColumn);
+    await editor.edit((builder) => {
+      editor.selections.forEach((selection) => builder.replace(selection, link.text));
+    });
+    if (link.warning) {
+      void vscode.window.showWarningMessage(link.warning);
+    }
+  }
+
   private async showAll(): Promise<void> {
     const query = this.picker?.value.trim() ?? '';
     this.picker?.hide();
@@ -202,6 +245,19 @@ export class QuickFind implements vscode.Disposable {
     if (event.button === ADD_TO_SEARCH && item.completion) {
       picker.value = item.completion;
       this.refresh();
+      return;
+    }
+    if (event.button === OPEN_BESIDE && item.filePath && item.line) {
+      // The list stays open, so the next result can be opened beside too.
+      await openSourceAt(item.filePath, item.line, undefined, true);
+      if (item.sectionId) {
+        await this.preferences.recordSectionAccess(item.sectionId);
+      }
+      return;
+    }
+    if (event.button === INSERT_LINK && item.filePath) {
+      picker.hide();
+      await this.insertLink(item.filePath, item.sectionId);
       return;
     }
     if (event.button === SAVE_AS_VIEW && item.query) {
@@ -256,7 +312,11 @@ export function toPickItems(
         ? [ADD_TO_SEARCH]
         : item.kind === 'recent'
           ? [SAVE_AS_VIEW]
-          : undefined,
+          : item.kind === 'note'
+            ? [OPEN_BESIDE, INSERT_LINK]
+            : item.kind === 'task'
+              ? [OPEN_BESIDE]
+              : undefined,
   });
 
   if (results.message) {
@@ -280,6 +340,21 @@ export function toPickItems(
   group(value.trim() ? 'Notes' : 'Recently opened', results.notes.map(row));
   group('Tasks', results.tasks.map(row));
 
+  // Plain words that no note is called can be the name of a new one, as a
+  // quick switcher offers: Find finds, and makes what it did not find.
+  const name = value.trim();
+  const named = results.notes.some(
+    (note) => note.label.trim().toLowerCase() === name.toLowerCase(),
+  );
+  if (name && !named && isNoteName(name)) {
+    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+    items.push({
+      label: `$(new-file) Create note “${name}”`,
+      alwaysShow: true,
+      create: name,
+    });
+  }
+
   const total = results.totals.notes + results.totals.tasks;
   if (value.trim() && total > 0) {
     items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
@@ -290,6 +365,18 @@ export function toPickItems(
     });
   }
   return items;
+}
+
+/**
+ * Whether typed text reads as a note's name rather than a search: no tag,
+ * person, field, quote, parenthesis, or AND, OR, NOT.
+ */
+export function isNoteName(text: string): boolean {
+  return (
+    !/[#@:"()\[\]\/\\]/.test(text) &&
+    !/(^|\s)(AND|OR|NOT)(\s|$)/.test(text) &&
+    !/^-/.test(text)
+  );
 }
 
 function iconFor(item: QuickFindItem): string {
