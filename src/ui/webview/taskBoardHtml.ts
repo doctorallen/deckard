@@ -211,6 +211,7 @@ ${getQueryEditorScript()}
     // The redraw is about to take the search box out of the document.
     editor.beforeRender();
     closeRankMenu();
+    closeActionMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
     const isList = state.layout === 'list';

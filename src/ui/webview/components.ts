@@ -12,7 +12,7 @@
  */
 
 import * as vscode from 'vscode';
-import { helpIcon, settingsIcon } from './icons';
+import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { isZenModeEnabled } from './zenMode';
 
@@ -357,7 +357,10 @@ export function getTagCss(): string {
   padding: 8px 9px;
   text-align: left;
   text-transform: none;
-}`;
+}
+/* A group's name inside a menu of several: Status, Priority, Due. */
+.tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.tag-context-menu .menu-heading:first-child { padding-top: var(--space-1); }`;
 }
 
 /**
@@ -529,21 +532,16 @@ export function getTaskBoardCss(): string {
   top: 6px;
   right: 6px;
   width: 24px;
-  height: 24px;
+  min-height: 24px;
   padding: 0;
-  appearance: none;
   border-color: transparent;
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1;
-  text-align: center;
-  text-align-last: center;
-  cursor: pointer;
 }
 /* The menu sits on the control ground once it is hovered, so it takes the
-   shared hover text rather than the amber it carries over the card. */
-.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
+   shared hover text rather than the amber it carries over the card. Open, it
+   keeps that look until the menu closes. */
+.board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
 .board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
 .board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
@@ -1023,6 +1021,87 @@ export function getComponentScript(): string {
   }
 
   /**
+   * A menu of choices under a control, as a board card's ⋯ opens. groups is
+   * a list of { label, items: [{ value, label }] }, and onChoose is called
+   * with the chosen value. One element serves every opener; it closes on a
+   * choice, Escape, or a click elsewhere, the arrow keys walk it, and focus
+   * goes back to the control that opened it.
+   */
+  let actionMenu;
+  let actionMenuChoose;
+  let actionMenuOpener;
+
+  function closeActionMenu() {
+    if (!actionMenu || actionMenu.hidden) return;
+    actionMenu.hidden = true;
+    actionMenuChoose = undefined;
+    const opener = actionMenuOpener;
+    actionMenuOpener = undefined;
+    if (opener && document.contains(opener)) {
+      opener.setAttribute('aria-expanded', 'false');
+      if (opener.focus) opener.focus();
+    }
+  }
+
+  function openActionMenu(opener, groups, onChoose) {
+    closeActionMenu();
+    if (!actionMenu) {
+      actionMenu = document.createElement('div');
+      actionMenu.id = 'action-menu';
+      actionMenu.className = 'tag-context-menu action-menu';
+      actionMenu.setAttribute('role', 'menu');
+      actionMenu.hidden = true;
+      document.body.appendChild(actionMenu);
+      document.addEventListener('click', function (event) {
+        const chosen = event.target.closest('#action-menu [data-menu-value]');
+        if (chosen) {
+          const choose = actionMenuChoose;
+          closeActionMenu();
+          if (choose) choose(chosen.dataset.menuValue);
+          return;
+        }
+        if (actionMenu.hidden || event.target.closest('#action-menu')) return;
+        if (actionMenuOpener && actionMenuOpener.contains(event.target)) return;
+        closeActionMenu();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (actionMenu.hidden) return;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeActionMenu();
+          return;
+        }
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) return;
+        const items = Array.prototype.slice.call(actionMenu.querySelectorAll('[data-menu-value]'));
+        const index = items.indexOf(document.activeElement);
+        const next = event.key === 'Home' ? 0
+          : event.key === 'End' ? items.length - 1
+          : event.key === 'ArrowDown' ? (index + 1) % items.length
+          : (index - 1 + items.length) % items.length;
+        event.preventDefault();
+        items[next].focus();
+      });
+    }
+    actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group) {
+      return (group.label ? '<div class="menu-heading" role="presentation">' + escapeHtml(group.label) + '</div>' : '')
+        + group.items.map(function (item) {
+          return '<button type="button" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
+        }).join('');
+    }).join('');
+    const first = actionMenu.querySelector('[data-menu-value]');
+    if (!first) return;
+    actionMenuChoose = onChoose;
+    actionMenuOpener = opener;
+    opener.setAttribute('aria-expanded', 'true');
+    actionMenu.hidden = false;
+    const at = opener.getBoundingClientRect();
+    const bounds = actionMenu.getBoundingClientRect();
+    actionMenu.style.left = Math.max(8, Math.min(at.right - bounds.width, window.innerWidth - bounds.width - 8)) + 'px';
+    actionMenu.style.top = Math.max(8, Math.min(at.bottom + 4, window.innerHeight - bounds.height - 8)) + 'px';
+    first.focus();
+  }
+
+  /**
    * The element a keyboard opened a context menu from, so closing the menu
    * gives focus back to it. A pointer leaves this unset. Opening a menu
    * closes whatever was open first, so a close consumes it only when a menu
@@ -1108,15 +1187,12 @@ export function getComponentScript(): string {
    * changing a due date meant regrouping the whole board first, and the most
    * common edits ended in the Markdown file instead.
    */
-  function renderTaskCardMoves(card, columnId, columns, settings) {
+  function taskCardMoves(card, columnId, columns, settings) {
     const option = function (value, label) {
-      return value === columnId
-        ? ''
-        : '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</option>';
+      return value === columnId ? undefined : { value: value, label: label };
     };
     const group = function (label, options) {
-      const body = options.join('');
-      return body ? '<optgroup label="' + escapeHtml(label) + '">' + body + '</optgroup>' : '';
+      return { label: label, items: options.filter(Boolean) };
     };
     const statuses = (settings && settings.statuses) || [];
     const statusOptions = [option('status:', 'No status')].concat(statuses.map(function (status) {
@@ -1138,15 +1214,23 @@ export function getComponentScript(): string {
         && column.id.indexOf('due:') !== 0
         && column.id !== 'done';
     }).map(function (column) { return option(column.id, column.label); });
-    return group('Status', statusOptions)
-      + group('Priority', priorityOptions)
-      + group('Due', dueOptions)
-      + group('This board', others)
-      + (done ? group('Done', [done]) : '');
+    return [
+      group('Status', statusOptions),
+      group('Priority', priorityOptions),
+      group('Due', dueOptions),
+      group('This board', others),
+      group('Done', done ? [done] : []),
+    ];
   }
 
+  /** The moves each drawn card offers, by task id, for its menu to open. */
+  let taskBoardMoves = {};
+
   /** One task card, with its checkbox and the menu that edits it. */
+  const ELLIPSIS_ICON = '${strokeIcon(ICON_PATHS.ellipsis)}';
+
   function renderTaskBoardCard(card, columnId, columns, settings) {
+    taskBoardMoves[card.taskId] = taskCardMoves(card, columnId, columns, settings);
     const details = card.details.map(function (detail) {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
@@ -1164,7 +1248,7 @@ export function getComponentScript(): string {
       + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
-      + '<select class="board-move" data-action="board-move" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '"><option value="" selected hidden>···</option>' + renderTaskCardMoves(card, columnId, columns, settings) + '</select>'
+      + '<button type="button" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
       + '</div></article>';
   }
 
@@ -1173,6 +1257,7 @@ export function getComponentScript(): string {
    * cards a page filters locally, such as by a search.
    */
   function renderTaskBoard(board, isVisible) {
+    taskBoardMoves = {};
     // Grouped by status with almost no statuses written, the board is one
     // tall column and four near-empty ones. Say so, and offer the grouping
     // that works for any task, before the reader takes the board for broken.
@@ -1218,10 +1303,25 @@ export function getComponentScript(): string {
       post({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
     }
 
+    function openCardMenu(card, opener) {
+      const groups = taskBoardMoves[card.dataset.taskId];
+      if (!groups) return false;
+      openActionMenu(opener, groups, function (value) {
+        post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
+      });
+      return true;
+    }
+
     document.addEventListener('click', function (event) {
       const group = event.target.closest('[data-action="set-board-group"]');
       if (group) {
         post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      const menuButton = event.target.closest('[data-action="board-menu"]');
+      if (menuButton) {
+        const card = boardCard(menuButton);
+        if (card) openCardMenu(card, menuButton);
         return;
       }
       const rest = event.target.closest('[data-action="show-column-rest"]');
@@ -1242,9 +1342,14 @@ export function getComponentScript(): string {
       if (event.target.dataset.action === 'board-toggle-task') {
         post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: event.target.checked });
       }
-      if (event.target.dataset.action === 'board-move' && event.target.value) {
-        post({ type: 'moveTask', taskId: card.dataset.taskId, column: event.target.value });
-      }
+    });
+    // A right-click on a card, or the menu key on a focused one, opens the
+    // same menu its ⋯ does, anchored to that button.
+    document.addEventListener('contextmenu', function (event) {
+      const card = boardCard(event.target);
+      if (!card || event.target.closest('[data-tag-key], a, input')) return;
+      const button = card.querySelector('[data-action="board-menu"]');
+      if (button && openCardMenu(card, button)) event.preventDefault();
     });
     document.addEventListener('dragstart', function (event) {
       const card = boardCard(event.target);
