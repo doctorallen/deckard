@@ -521,6 +521,7 @@ export function getTaskBoardCss(): string {
    widening every card in the column. An inline-block is that exactly: one
    unit to the line, that wraps inside only when it has to. */
 .board-details span { display: inline-block; white-space: normal; }
+.board-details .board-date { display: inline; white-space: nowrap; }
 .board-details .overdue { color: var(--danger); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
@@ -1150,7 +1151,12 @@ export function getComponentScript(): string {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
+      // A date is one word: "2026-09-01" broke at its hyphens in a narrow
+      // column, leaving "2026-09-" on one line and "01" on the next.
+      const text = escapeHtml(detail).replace(/\\d{4}-\\d{2}-\\d{2}/g, function (date) {
+        return '<span class="board-date">' + date + '</span>';
+      });
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + text + '</span>';
     }).join(' · ');
     const plainTitle = String(card.title || '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
