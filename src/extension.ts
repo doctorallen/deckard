@@ -234,7 +234,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     context.extension.packageJSON.version,
   );
   void mcpServer.restart();
-  const linkSuggestions = new WikiLinkCompletionProvider(indexer);
+  // Notes are offered in the order Find ranks them, opened ones first.
+  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences);
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);

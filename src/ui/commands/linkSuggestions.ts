@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-import { BLOCK_ID_PATTERN } from '../../core/markdown/parser';
+import { BLOCK_ID_PATTERN, stripTags } from '../../core/markdown/parser';
+import { describeTaskDate, parseTaskDateInput } from '../../core/markdown/taskDraft';
 import { measureAsync } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
@@ -12,6 +13,19 @@ import {
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
+import { frecencyScore } from '../state/frecency';
+import { scoreTitle } from '../state/quickFindState';
+
+/** How often and how lately each entry was opened, which ranks the notes. */
+interface AccessSource {
+  readonly value: {
+    sectionAccessCounts: Record<string, number>;
+    sectionAccessTimes?: Record<string, number>;
+  };
+}
+
+/** A date named in words inside `[[`, which links to that day's note. */
+const DATE_WORDS = /^(?:today|tomorrow|yesterday|(?:next[ \t]+)?(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*|in[ \t]+\d+[ \t]*[a-z]+|[+]\d+[dwm])$/i;
 
 interface IndexSource {
   readonly ready: Promise<void>;
@@ -36,7 +50,10 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     Map<string, Promise<vscode.Uri | undefined>>
   >();
 
-  public constructor(private readonly indexer: IndexSource) {
+  public constructor(
+    private readonly indexer: IndexSource,
+    private readonly access?: AccessSource,
+  ) {
     this.registrations = [
       vscode.languages.registerCompletionItemProvider(
         { pattern: '**/*.md' },
@@ -88,8 +105,39 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
         context.startColumn,
       );
     }
-    const query = context.query.toLowerCase();
-    // A note is offered by its title and by each of its aliases.
+    const range = new vscode.Range(
+      position.line,
+      context.startColumn,
+      position.line,
+      position.character,
+    );
+    // Past a `#`, the headings: of the note named, of this note when none
+    // is, or of every note after `##`.
+    const headingContext = getHeadingCompletionContext(context.query);
+    if (headingContext) {
+      return this.completeHeadings(index, headingContext, document, range);
+    }
+    return [
+      ...this.completeDates(context.query, range),
+      ...this.completeNotes(index, context.query, range),
+    ];
+  }
+
+  /**
+   * Every note by its title and aliases, ranked as Find ranks them: the
+   * words typed against the title, then how often and how lately the note
+   * was opened. With nothing typed yet, the notes opened most lately come
+   * first rather than whatever sorts first by name.
+   */
+  private completeNotes(
+    index: WorkspaceIndex,
+    typed: string,
+    range: vscode.Range,
+  ): vscode.CompletionItem[] {
+    const query = typed.toLowerCase();
+    const words = typed.trim().split(/\s+/).filter(Boolean);
+    const now = Date.now();
+    const opened = this.openedScores(index, now);
     return [...index.files.values()]
       .flatMap((file) => [
         {
@@ -103,13 +151,20 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
           isAlias: true,
         })),
       ])
-      .filter((note) => note.title.toLowerCase().includes(query))
+      .map((note) => ({
+        ...note,
+        score: words.length ? scoreTitle(words, note.title) : 0,
+        opened: opened.get(note.filePath) ?? 0,
+      }))
+      .filter((note) => !query || note.score > 0 || note.title.toLowerCase().includes(query))
       .sort(
         (left, right) =>
+          right.score - left.score ||
+          right.opened - left.opened ||
           left.title.localeCompare(right.title) ||
           left.filePath.localeCompare(right.filePath),
       )
-      .map((note) => {
+      .map((note, rank) => {
         const item = new vscode.CompletionItem(
           note.title,
           note.isAlias
@@ -118,12 +173,118 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
         );
         item.detail = note.isAlias ? `Alias of ${note.filePath}` : note.filePath;
         item.insertText = `${note.title}]]`;
-        item.range = new vscode.Range(
-          position.line,
-          context.startColumn,
-          position.line,
-          position.character,
+        // VS Code sorts completions itself; the rank above is kept by giving
+        // each its place, and every title passes its filter.
+        item.sortText = String(rank).padStart(5, '0');
+        item.filterText = typed;
+        item.range = range;
+        return item;
+      });
+  }
+
+  /** How often and how lately each note was opened, summed over its entries. */
+  private openedScores(index: WorkspaceIndex, now: number): Map<string, number> {
+    const scores = new Map<string, number>();
+    const access = this.access?.value;
+    if (!access) {
+      return scores;
+    }
+    for (const [sectionId, count] of Object.entries(access.sectionAccessCounts)) {
+      const section = index.sections.get(sectionId);
+      if (!section) {
+        continue;
+      }
+      scores.set(
+        section.filePath,
+        (scores.get(section.filePath) ?? 0) +
+          frecencyScore(count, access.sectionAccessTimes?.[sectionId], now),
+      );
+    }
+    return scores;
+  }
+
+  /**
+   * A day named in words, as a link to that day's note: `[[tomorrow` offers
+   * `[[2026-09-26]]`, with the day it resolved to beside it.
+   */
+  private completeDates(typed: string, range: vscode.Range): vscode.CompletionItem[] {
+    const words = typed.trim();
+    if (!DATE_WORDS.test(words)) {
+      return [];
+    }
+    const date = parseTaskDateInput(words)?.date;
+    if (!date) {
+      return [];
+    }
+    const item = new vscode.CompletionItem(date, vscode.CompletionItemKind.Value);
+    item.detail = `${describeTaskDate(date)}, that day's note`;
+    item.insertText = `${date}]]`;
+    item.filterText = typed;
+    item.sortText = '!';
+    item.range = range;
+    return [item];
+  }
+
+  /**
+   * The headings of a note, written as a link names them: tags taken out,
+   * as `[[Note#Heading]]` resolves them.
+   */
+  private completeHeadings(
+    index: WorkspaceIndex,
+    context: { note: string | undefined; query: string },
+    document: vscode.TextDocument,
+    range: vscode.Range,
+  ): vscode.CompletionItem[] {
+    const titles = createNoteTitleMap(index);
+    const sourcePath = this.indexer.getFilePath?.(document.uri) ?? '';
+    const files =
+      context.note === undefined
+        ? [...index.files.values()]
+        : [index.files.get(
+            context.note
+              ? resolveWikiTarget(titles, context.note, sourcePath) ?? ''
+              : sourcePath,
+          )].filter((file): file is NonNullable<typeof file> => file !== undefined);
+    const words = context.query.trim().split(/\s+/).filter(Boolean);
+    const seen = new Set<string>();
+    const found: { title: string; heading: string; filePath: string; score: number }[] = [];
+    for (const file of files) {
+      const title = getNoteTitle(file.filePath);
+      for (const section of file.sections) {
+        if (section.isInline) {
+          continue;
+        }
+        const heading = stripTags(section.heading).replace(/\s+/g, ' ').trim();
+        const key = `${file.filePath}#${heading.toLowerCase()}`;
+        if (!heading || seen.has(key)) {
+          continue;
+        }
+        const score = words.length ? scoreTitle(words, heading) : 1;
+        if (score <= 0) {
+          continue;
+        }
+        seen.add(key);
+        found.push({ title, heading, filePath: file.filePath, score });
+      }
+    }
+    return found
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 200)
+      .map((entry, rank) => {
+        const item = new vscode.CompletionItem(
+          context.note === undefined ? `${entry.title}#${entry.heading}` : entry.heading,
+          vscode.CompletionItemKind.Reference,
         );
+        item.detail = entry.filePath;
+        // A heading in this note needs no note name; one found across notes
+        // takes its note's.
+        const target = context.note === undefined
+          ? `${entry.title}#${entry.heading}`
+          : `${context.note}#${entry.heading}`;
+        item.insertText = `${target}]]`;
+        item.filterText = `${context.note === undefined ? '##' : `${context.note}#`}${context.query}`;
+        item.sortText = String(rank).padStart(5, '0');
+        item.range = range;
         return item;
       });
   }
@@ -259,6 +420,27 @@ export function getWikiLinkCompletionContext(
     query: match[1],
     startColumn: character - match[1].length,
   };
+}
+
+/**
+ * The note and partial heading being completed past a `#`, or nothing when
+ * the caret is not past one. `##words` searches every note's headings, which
+ * is a note of `undefined`; `#words` is the note the link is written in.
+ */
+export function getHeadingCompletionContext(
+  query: string,
+): { note: string | undefined; query: string } | undefined {
+  if (query.includes('#^')) {
+    return undefined;
+  }
+  if (query.startsWith('##')) {
+    return { note: undefined, query: query.slice(2) };
+  }
+  const hash = query.indexOf('#');
+  if (hash < 0) {
+    return undefined;
+  }
+  return { note: query.slice(0, hash).trim(), query: query.slice(hash + 1) };
 }
 
 /**

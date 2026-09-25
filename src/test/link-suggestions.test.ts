@@ -59,6 +59,65 @@ suite('Wiki link suggestions', () => {
     provider.dispose();
   });
 
+  test('completes a note\'s headings after #, and every note\'s after ##', async () => {
+    const index = indexOf({
+      'notes/Launch plan.md': '# Launch plan\n## December review #project/atlas\n## Budget\n',
+      'notes/Harbor.md': '# Harbor\n## December offsite\n',
+    });
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => index,
+      getFilePath: () => 'notes/Harbor.md',
+    });
+    const complete = async (text: string) =>
+      provider.provideCompletionItems(
+        createDocument('/tmp/deckard/notes/Harbor.md', text),
+        new vscode.Position(0, text.length),
+      );
+
+    const inNote = await complete('See [[Launch plan#Dec');
+    assert.deepStrictEqual(
+      inNote.map((item) => [item.label, item.insertText]),
+      [['December review', 'Launch plan#December review]]']],
+      'the heading as a link names it, tags taken out',
+    );
+    const here = await complete('See [[#off');
+    assert.deepStrictEqual(here.map((item) => item.insertText), ['#December offsite]]'], 'this note, when no note is named');
+    const everywhere = await complete('See [[##december');
+    assert.deepStrictEqual(
+      everywhere.map((item) => item.insertText).sort(),
+      ['Harbor#December offsite]]', 'Launch plan#December review]]'],
+    );
+    provider.dispose();
+  });
+
+  test('ranks notes as Find does, opened ones first, and offers a day by name', async () => {
+    const index = buildWorkspaceIndex(
+      new Map(
+        ['Atlas', 'Budget', 'Cedar'].map((name) => [
+          `notes/${name}.md`,
+          parseMarkdown(`notes/${name}.md`, `# ${name}\n`),
+        ]),
+      ),
+    );
+    const cedar = [...index.sections.values()].find((section) => section.filePath === 'notes/Cedar.md');
+    const provider = new WikiLinkCompletionProvider(
+      { ready: Promise.resolve(), getSnapshot: () => index },
+      { value: { sectionAccessCounts: { [cedar!.id]: 4 }, sectionAccessTimes: { [cedar!.id]: Date.now() } } },
+    );
+    const complete = async (text: string) =>
+      provider.provideCompletionItems(
+        createDocument('/tmp/deckard/notes/case.md', text),
+        new vscode.Position(0, text.length),
+      );
+    const empty = await complete('See [[');
+    assert.strictEqual(empty[0].label, 'Cedar', 'with nothing typed, the note opened lately comes first');
+    const days = await complete('See [[tomorrow');
+    assert.strictEqual(days.length, 1);
+    assert.match(String(days[0].insertText), /^\d{4}-\d{2}-\d{2}\]\]$/, 'a day links to its daily note');
+    provider.dispose();
+  });
+
   test('finds only an unfinished Wiki link target', () => {
     assert.deepStrictEqual(getWikiLinkCompletionContext('See [[Atlas', 11), {
       query: 'Atlas',
