@@ -14,6 +14,7 @@ import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
+import { openWebviewPage } from './webviewPage';
 
 function assertWebviewScriptParses(html: string): void {
   const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
@@ -1265,6 +1266,25 @@ suite('Webview contracts', () => {
     }
     for (const section of ['quick-start', 'commands', 'advanced', 'query', 'tasks']) {
       assert.ok(links.includes(section), `the navigation offers #${section}`);
+    }
+  });
+
+  test('the Help rail marks the section being read', () => {
+    const page = openWebviewPage(
+      getHelpHtml(
+        { cspSource: 'vscode-webview://deckard', asWebviewUri: (resource) => resource },
+        vscode.Uri.file('/deckard'),
+        extension().packageJSON.contributes,
+      ),
+      undefined,
+    );
+    try {
+      // At the top, the first section is the one being read; scrolling
+      // moves the mark, which needs a browser to lay the page out.
+      assert.strictEqual(page.find('nav a[aria-current="location"]').getAttribute('href'), '#quick-start');
+      assert.strictEqual(page.findAll('nav a[aria-current]').length, 1);
+    } finally {
+      page.dispose();
     }
   });
 

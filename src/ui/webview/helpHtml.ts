@@ -163,7 +163,7 @@ export function getHelpHtml(
     .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
     .toString();
   const favoriteHeartUris = getFavoriteHeartAssetUris(webview, extensionUri);
-  const csp = `default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}';`;
+  const csp = `default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -179,6 +179,8 @@ nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--li
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
+/* The section being read, marked in the rail so twenty links say where the reader is. */
+nav a[aria-current] { border-left-color: var(--amber); color: var(--text); }
 /* Prose here is full of inline code chips, each a border and a pixel of padding
    taller than its text; a line box the chips fit inside keeps two on
    neighboring lines from touching. */
@@ -506,6 +508,36 @@ tag = #project/atlas AND task = open
       <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import</code> reads one back; each says what it holds and asks before replacing anything.</p>
     </article>
 </main>
+<script nonce="${nonce}">
+(function () {
+  // The rail marks the section under the top of the window as the reader
+  // scrolls, so a long page says where it is. A section counts as read once
+  // it crosses the band between a tenth and a third of the way down, and the
+  // last one counts when the page cannot scroll any further.
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
+  var sections = links.map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); }).filter(Boolean);
+  if (!sections.length) return;
+  var current;
+  function mark(id) {
+    if (id === current) return;
+    current = id;
+    links.forEach(function (link) {
+      if (link.getAttribute('href') === '#' + id) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+  mark(sections[0].id);
+  if (typeof IntersectionObserver !== 'function') return;
+  var crossing = {};
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) { crossing[entry.target.id] = entry.isIntersecting; });
+    var atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    var first = atEnd ? sections[sections.length - 1] : sections.filter(function (section) { return crossing[section.id]; })[0];
+    if (first) mark(first.id);
+  }, { rootMargin: '-10% 0px -67% 0px' });
+  sections.forEach(function (section) { observer.observe(section); });
+})();
+</script>
 </body>
 </html>`;
 }
