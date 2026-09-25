@@ -224,13 +224,29 @@ suite('Related Notes behavior', () => {
     });
   });
 
-  test('shows where a result sits in its note', () => {
-    const page = open({ notes: [note({ headingPath: ['Atlas', 'Check-in'] })] });
-
+  test('shows where a result sits in its note, without repeating what the card says', () => {
+    // The path's first step is the note's title, which the provenance line
+    // above already names as the file; its last is the entry, which is the
+    // card's title. Both go when they repeat what is there.
+    const page = open({ notes: [note({ headingPath: ['Atlas', 'Harbor', 'Actions'] })] });
     const path = page.find('.heading-path');
-    assert.match(path.textContent ?? '', /Atlas/);
-    assert.match(path.textContent ?? '', /Check-in/);
+    assert.strictEqual(path.textContent, 'Harbor > Actions');
     assert.strictEqual(path.querySelectorAll('.heading-path-joiner').length, 1);
+    page.dispose();
+
+    // A title that is not the file name is kept; the entry's own is not.
+    const titled = open({ notes: [note({ headingPath: ['Atlas launch', 'Check-in'] })] });
+    assert.strictEqual(titled.find('.heading-path').textContent, 'Atlas launch');
+    titled.dispose();
+
+    // A lone step that is the file name stays: the path is then the note.
+    const lone = open({ notes: [note({ headingPath: ['Atlas'] })] });
+    assert.strictEqual(lone.find('.heading-path').textContent, 'Atlas');
+    lone.dispose();
+
+    // Nothing left to say, nothing drawn.
+    const own = open({ notes: [note({ headingPath: ['Atlas', 'Check-in'] })] });
+    assert.strictEqual(own.findAll('.heading-path').length, 0);
   });
 
   test('draws a tag with its weight beside it', () => {

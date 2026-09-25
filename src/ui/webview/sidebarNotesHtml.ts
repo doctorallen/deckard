@@ -144,7 +144,6 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
 .refine-heading h2 { margin: 0; color: var(--amber); font-size: var(--text-xs); }
 .refine-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
-.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 /* The sidebar is narrow, so it runs tighter than a full-width page. */
 body { min-width: 220px; font-size: var(--text-sm); }
@@ -408,9 +407,7 @@ ${getComponentScript()}
         const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
         const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
         const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
-        const pathHtml = note.headingPath && note.headingPath.length
-          ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
-          : '';
+        const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
         // Writing a link to a result is the reason to have found it, and
         // the sidebar sits beside the note being written in. The button
         // stays out of the way until the card is under the pointer.

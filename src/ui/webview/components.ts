@@ -407,6 +407,7 @@ export function getSurfaceCss(): string {
 .task-title a { color: var(--cyan); }
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .task-summary { display: grid; gap: var(--space-2); }
+.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 
 .metrics {
@@ -908,6 +909,33 @@ export function getComponentScript(): string {
    */
   function formatSourceLocation(fileName, line) {
     return String(fileName).replace(/\\.md$/i, '') + ' / line ' + line;
+  }
+
+  /**
+   * The headings above an entry, as the steps a reader would take to it:
+   * "Harbor check-in > Actions". The first step goes when it says what the
+   * file name says, since the line above names the file; the last goes when
+   * it is the entry's own title, which the card shows already. A daily note
+   * once read "2026-08-02 / line 14" and "2026-08-02 > … > Encrypt…" under
+   * a card titled "Encrypt…".
+   */
+  function trimHeadingPath(path, fileName, ownTitle) {
+    const plain = function (text) {
+      return String(text || '').replace(/[#@][\\w/-]+/g, ' ').replace(/\\s+/g, ' ').trim().toLocaleLowerCase();
+    };
+    const stem = plain(String(fileName || '').replace(/\\.md$/i, ''));
+    const own = plain(ownTitle);
+    let steps = (path || []).map(function (part) { return String(part).trim(); }).filter(Boolean);
+    if (steps.length > 1 && plain(steps[0]) === stem) steps = steps.slice(1);
+    if (steps.length && own && plain(steps[steps.length - 1]) === own) steps = steps.slice(0, -1);
+    return steps;
+  }
+
+  /** The trimmed path as one line, each step escaped, joined by a chevron. */
+  function renderHeadingPath(path, fileName, ownTitle) {
+    return trimHeadingPath(path, fileName, ownTitle)
+      .map(function (part) { return escapeHtml(part); })
+      .join('<span class="heading-path-joiner"> &gt; </span>');
   }
 
   /** Escape snapshot data before it is inserted as HTML. */

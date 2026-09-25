@@ -1229,7 +1229,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        'note.headingPath.map(function (part) { return escapeHtml(part); }).join(\'<span class="heading-path-joiner"> &gt; </span>\')',
+        'renderHeadingPath(note.headingPath, fileName, note.title)',
       ),
       true,
     );
