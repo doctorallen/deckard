@@ -178,7 +178,7 @@ nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--li
 .nav-title, .step-number { font-family: var(--font-mono); }
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
-nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
+nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: 2px solid transparent; }
 /* The section being read, marked in the rail so twenty links say where the reader is. */
 nav a[aria-current] { border-left-color: var(--amber); color: var(--text); }
 /* Prose here is full of inline code chips, each a border and a pixel of padding

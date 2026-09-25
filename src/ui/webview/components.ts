@@ -39,6 +39,9 @@ export function getDesignTokens(): string {
   --line: #212936;
   --slate-border: #212936;
   --line-strong: #34445A;
+  /* The edge of a text field or a list box, which WCAG asks to stand 3:1
+     from the ground around it; the hairline --line is for dividers. */
+  --control-line: #5A6B82;
   --cyan: #3ED4E8;
   --cyan-bright: #5FE1F0;
   --green: #66E066;
@@ -96,6 +99,9 @@ export function getDesignTokens(): string {
   --favorite: var(--amber-bright);
   --positive: var(--green);
   --focus: var(--cyan);
+  /* A focus ring is drawn at least 2px in every theme, zen included, rather
+     than at the edge width, which is a hairline in Corpo and zen. */
+  --focus-width: 2px;
 }`;
 }
 
@@ -201,7 +207,7 @@ button:hover *, button.active *, button:focus-visible *,
   color: inherit;
 }
 button:focus-visible, select:focus-visible, input:focus-visible {
-  outline: var(--edge) solid var(--focus);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
 }
 button[disabled] { opacity: .5; cursor: default; }
@@ -295,7 +301,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
 .view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
-.view-options summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
+.view-options summary:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
@@ -334,7 +340,9 @@ export function getTagCss(): string {
   font-size: .78em;
   vertical-align: 1px;
 }
-.tag-namespace { opacity: .62; }
+/* The namespace is told from the name by color, not by fading it: at 62%
+   it fell under 3:1 on every dark ground. */
+.tag-namespace { color: var(--muted); }
 /* How much a tag weighs, as a rail of three steps: Related Notes' active
    tags, and related tags in Refine. Empty steps are faint so filled ones read. */
 .tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
@@ -385,7 +393,7 @@ export function getSurfaceCss(): string {
 }
 .row:hover, .card:hover, .task:hover { border-color: var(--amber); }
 .row:focus-visible, .card:focus-visible, .task:focus-visible {
-  outline: var(--edge) solid var(--focus);
+  outline: var(--focus-width) solid var(--focus);
   outline-offset: 1px;
 }
 .row[hidden] { display: none; }
@@ -567,7 +575,7 @@ export function getTaskListCss(): string {
   return `
 .task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: var(--space-2); }
 .task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-2); align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: var(--space-3); cursor: pointer; }
-.task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.task-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
 /* The details sit on one center line: the priority badge is taller than
@@ -606,7 +614,7 @@ export function getTaskListCss(): string {
 .result-table .result-row { cursor: pointer; }
 /* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
 .result-table .result-row:hover td { border-bottom-color: var(--amber); }
-.result-table .result-row:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: -1px; }
+.result-table .result-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -1px; }
 .result-table .result-row.completed .result-title { color: var(--muted); text-decoration: line-through; }
 .result-table .result-title { color: var(--cyan); }
 .result-table td.is-overdue { color: var(--danger); font-weight: 700; }
@@ -829,7 +837,22 @@ body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --sp
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getZenCss()}`;
+}
+
+/**
+ * The resting edge of every text field and list box, laid over each theme.
+ *
+ * A field is found by its edge: it holds no words until it is typed in, and
+ * its ground is often a step from the page's. The themes drew that edge in
+ * the divider color, 1.3:1 to 2.9:1 against the ground in six of them,
+ * where WCAG's 1.4.11 asks 3:1. Each theme names a --control-line that meets
+ * it; hover, focus, a search that is set, and an invalid query keep the
+ * edges their own rules give them.
+ */
+export function getControlEdgeCss(): string {
+  return `
+:is(select, input[type="text"], input[type="search"], .query-bar-shell):not(:hover):not(:focus):not(:focus-within):not([data-has-query]):not(.invalid):not(:disabled) { border-color: var(--control-line); }`;
 }
 
 /**
@@ -858,6 +881,7 @@ body.vscode-high-contrast, body.vscode-high-contrast-light {
   --line: var(--vscode-contrastBorder, var(--vscode-panel-border));
   --slate-border: var(--vscode-contrastBorder, var(--vscode-panel-border));
   --line-strong: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --control-line: var(--line-strong);
   --cyan: var(--vscode-textLink-foreground);
   --cyan-bright: var(--vscode-textLink-foreground);
   --amber: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
@@ -892,6 +916,11 @@ body.vscode-high-contrast button.active, body.vscode-high-contrast-light button.
   *, *::before, *::after { text-shadow: none !important; box-shadow: none !important; background-image: none !important; clip-path: none !important; }
   body { background-image: none; }
   button.active, [aria-selected="true"], [aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* A border color is all that marks a drop target and a focused search
+     box; forced colors paint every border alike, so each gets an outline. */
+  .board-column.drop-target { outline: 3px dashed Highlight; outline-offset: -3px; }
+  .query-bar-shell:focus-within { outline: 2px solid Highlight; }
+  .legend-swatch, .note-dot, .tag-weight-rail-segment { forced-color-adjust: none; border: 1px solid CanvasText; }
 }`;
 }
 
@@ -2140,8 +2169,8 @@ export function getQueryEditorCss(): string {
 .query-workspace { margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
 .query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: var(--text-sm) var(--font-mono); }
-.query-input:focus { border-color: var(--amber); outline: none; }
-.query-input:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
+.query-input:focus { border-color: var(--amber); outline: 2px solid transparent; }
+.query-input:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
 .query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
 /*
@@ -2152,7 +2181,7 @@ export function getQueryEditorCss(): string {
 .query-bar-shell { flex-wrap: wrap; align-items: center; gap: 4px 5px; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 3px 6px; cursor: text; }
 .query-bar-shell:focus-within { border-color: var(--amber); }
 .query-bar-shell.invalid { border-color: #FF5555; }
-.query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: none; }
+.query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: 2px solid transparent; }
 /* Every chip looks the same, whatever its term; only a left-out tag is red. */
 .query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: var(--text-xs) var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
 .query-chip-label { min-width: 0; overflow-wrap: anywhere; }
@@ -2224,7 +2253,7 @@ export function getQueryEditorCss(): string {
 .query-builder-row .query-builder-operator { font-family: var(--font-mono); }
 .query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
 .query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); }
-.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
+.query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: 2px solid transparent; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
 .query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }

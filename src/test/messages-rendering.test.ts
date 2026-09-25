@@ -581,7 +581,7 @@ suite('Webview contracts', () => {
     assert.ok(html.includes('.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }'));
     assert.ok(html.includes('.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {'));
                     assert.strictEqual(
-      html.includes('.tag-namespace { opacity: .62; }'),
+      html.includes('.tag-namespace { color: var(--muted); }'),
       true,
     );
             assertWebviewScriptParses(html);
@@ -1197,7 +1197,7 @@ suite('Webview contracts', () => {
       true,
     );
                                 assert.strictEqual(
-      html.includes('.tag-namespace { opacity: .62; }'),
+      html.includes('.tag-namespace { color: var(--muted); }'),
       true,
     );
         assert.strictEqual(

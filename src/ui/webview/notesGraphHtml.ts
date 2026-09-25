@@ -197,7 +197,29 @@ ${getPageTailCss()}
     var value = rootStyles.getPropertyValue(name).trim();
     return value || fallback;
   }
-  var colors = {
+  // A system color as the browser resolves it, for a canvas to paint with.
+  function systemColor(name) {
+    var probe = document.createElement('span');
+    probe.style.color = name;
+    document.body.appendChild(probe);
+    var value = getComputedStyle(probe).color;
+    probe.remove();
+    return value;
+  }
+  // Under forced colors the page's own sheet is repainted in the system's
+  // colors, but a canvas is not: it keeps drawing the theme's cyan on black.
+  // It paints in the same system colors instead, the selection in Highlight.
+  var forcedColors = window.matchMedia && window.matchMedia('(forced-colors: active)').matches;
+  var colors = forcedColors ? {
+    background: systemColor('Canvas'),
+    note: systemColor('CanvasText'),
+    task: systemColor('CanvasText'),
+    tag: systemColor('CanvasText'),
+    edge: systemColor('GrayText'),
+    edgeHighlight: systemColor('Highlight'),
+    label: systemColor('CanvasText'),
+    halo: systemColor('Highlight')
+  } : {
     background: themeColor('--bg-dark', '#050608'),
     note: themeColor('--cyan-bright', '#5FE1F0'),
     task: themeColor('--amber-bright', '#FFB000'),

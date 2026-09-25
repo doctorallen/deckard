@@ -49,6 +49,9 @@ const corpoCss = `
   --line: var(--vscode-widget-border, var(--vscode-panel-border));
   --slate-border: var(--vscode-widget-border, var(--vscode-panel-border));
   --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
+  /* VS Code's own input edge, which its themes leave transparent where the
+     field's ground already stands out. */
+  --control-line: var(--vscode-input-border, transparent);
   --cyan: var(--vscode-textLink-foreground);
   --cyan-bright: var(--vscode-textLink-foreground);
   /* The accent is written as text in eyebrows, chips, and hovered controls,
@@ -103,7 +106,7 @@ input[type="text"], input[type="search"], textarea { border: 1px solid var(--vsc
 input[type="text"]:focus, input[type="search"]:focus { border-color: var(--vscode-focusBorder); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
 input::placeholder, textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
 select, select:hover { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
-button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: var(--focus-width) solid var(--vscode-focusBorder); outline-offset: calc(var(--focus-width) * -1); }
 input[type="checkbox"], .task input { accent-color: var(--vscode-button-background); }
 /* Tags read as links, as VS Code shows references, and a tag written inside
    a title keeps a hairline so it stays distinct from the words around it. */
@@ -148,6 +151,7 @@ export function getDeckardThemeCss(theme: DeckardTheme): string {
   --slate-border: #33295e;
   --line: #4c3d87;
   --line-strong: #8f75ff;
+  --control-line: var(--line-strong);
   --cyan-bright: #7ce6f0;
   --cyan: #3fd8ea;
   --amber-bright: #ff8b55;
@@ -216,6 +220,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: #1e5724;
   --line: #278a31;
   --line-strong: #54db51;
+  --control-line: var(--line-strong);
   --cyan-bright: #8ce87c;
   --cyan: #6fd96c;
   --amber-bright: #f0bf47;
@@ -265,13 +270,16 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
   --slate-border: #7d8750;
   --line: #9c9a5c;
   --line-strong: #55713d;
+  --control-line: var(--line-strong);
   --cyan-bright: #354a1f;
   --cyan: #3f5626;
   --amber-bright: #c28a32;
   --amber: #664317;
   --amber-dim: #6f542a;
-  --green: #587a3d;
-  --toxic-green: #587a3d;
+  /* Due dates, totals, and counts are green text on parchment, so the green
+     is deep enough to read at 4.5:1 on every ground, the page's included. */
+  --green: #4a6a32;
+  --toxic-green: #4a6a32;
   --favorite-red: #9a4530;
   --favorite: #8a5a14;
   --warning-orange: #9a4530;
@@ -309,6 +317,9 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
   --slate-border: #2b3136;
   --line: #3b4248;
   --line-strong: #a7afb4;
+  /* Steel between the rule and the readout, so a field's edge is seen
+     without outshining the gold. */
+  --control-line: #6b747b;
   --cyan-bright: #d6e4ee;
   --cyan: #9fbfd4;
   --amber-bright: #f3c46e;
@@ -375,6 +386,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: #12262e;
   --line: #1b3a45;
   --line-strong: #3f8296;
+  --control-line: var(--line-strong);
   --cyan-bright: #5fd3e4;
   --cyan: #3fb6c9;
   --amber-bright: #ff6a35;
@@ -456,6 +468,7 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: ${themeValue(theme, '#285052', '#050505')};
   --line: ${themeValue(theme, '#285052', '#050505')};
   --line-strong: ${themeValue(theme, '#447274', '#89a9d8')};
+  --control-line: var(--line-strong);
   --cyan-bright: ${themeValue(theme, '#70e1dc', '#89a9d8')};
   --cyan: ${themeValue(theme, '#70e1dc', '#89a9d8')};
   --amber-bright: ${themeValue(theme, '#ff715b', '#f3a63a')};
@@ -477,6 +490,7 @@ ${theme === 'lcars' ? 'main { border-top: 0; }' : ''}
 ${theme === 'lcars' ? '.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0; background: var(--panel); } .relationship-workspace { border-color: var(--line-strong); border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); } .sidebar-relationships-header, .relationship-workspace-header { border-bottom-color: var(--line-strong); } .sidebar-relationship-branch { border-bottom: 2px solid var(--line-strong); } .sidebar-relationship-branch summary { border-left: 5px solid var(--cyan); background: var(--panel); } .sidebar-relationship-namespace { border-top-color: var(--line-strong); } .sidebar-relationship-namespace summary { border-left: 3px solid var(--line-strong); } .sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; } .relationship-tree-root { border-color: var(--cyan); } .relationship-tree-column, .relationship-graph-shell { border-color: var(--line-strong); } .relationship-tree-group { border-top-color: var(--line-strong); } .relationship-tree-group summary { border-left: 4px solid var(--cyan); padding-left: 6px; } .relationship-tree-items { margin-left: 8px; border-left: 3px solid var(--cyan); }' : ''}
 ${theme === 'lcars' ? '.inline-tag, .note-title .inline-tag, .task-title .inline-tag { color: #050505; }' : ''}
 ${theme === 'lcars' ? '.active-name .active-filter-tag { color: #050505; }' : ''}
+${theme === 'lcars' ? '/* On a filled LCARS button the muted namespace and count vanish into the fill; they take the button\'s ink. A tag in a card title has no fill, so it takes the cyan instead of that ink. */ button .tag-namespace, button .query-facet-count { color: inherit; } .card-title .inline-tag:not(:hover):not(:focus-visible) { color: var(--cyan); }' : ''}
 ${theme === 'lcars' ? '.task-row .task-title, .task .task-title, .note-row .card-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source, .note-row .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }' : ''}
 ${theme === 'lcars' ? '.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .note-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .note-row:nth-child(3n) { border-left-color: var(--favorite-red); } .note-row:hover { background: var(--panel-raised); transform: translateX(3px); }' : ''}
 ${theme === 'lcars' ? '.overview-tabs-row { border-bottom-color: var(--line-strong); } .overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }' : ''}

@@ -217,8 +217,11 @@ function probeScript(surface) {
 })();`;
 }
 
-/** The page as the webview shows it, with the VS Code bridge replaced. */
-function buildPage(html, surface) {
+/**
+ * The page as the webview shows it, with the VS Code bridge replaced. probe
+ * is the script that measures it, the layout probe unless another is given.
+ */
+function buildPage(html, surface, probe = probeScript(surface)) {
   const snapshot = surface.snapshot();
   const bridge = `<script>
 window.acquireVsCodeApi = function () {
@@ -227,7 +230,7 @@ window.acquireVsCodeApi = function () {
 </script>`;
   const drive = `<script>
 window.dispatchEvent(new MessageEvent('message', { data: { type: 'state', data: ${JSON.stringify(snapshot)} } }));
-setTimeout(function () { ${probeScript(surface)} }, 50);
+setTimeout(function () { ${probe} }, 50);
 </script>`;
   const inner = html
     // The page's CSP names a nonce these scripts do not have.
@@ -309,7 +312,7 @@ function findChrome() {
 
 // The surfaces, the page builder and the browser are shared with the visual
 // check, which draws the same pages and compares the pixels instead.
-module.exports = { chrome, createSurfaces, buildPage, findChrome };
+module.exports = { chrome, createSurfaces, buildPage, findChrome, measure };
 
 if (require.main === module) {
 // LAYOUT_KEEP=<dir> writes the pages there and leaves them, to open by hand.
