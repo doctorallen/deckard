@@ -448,7 +448,10 @@ ${getQueryEditorScript()}
   /** Keep the page's own view state across a window reload. */
   function saveState() {
     if (!state) return;
+    const previous = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const saved = { query: state.query.text, origin: state.originQuery };
+    // The scroll position belongs to the search it was scrolled in.
+    if (previous.query === saved.query && typeof previous.scrollY === 'number') saved.scrollY = previous.scrollY;
     // The host reads this same record to restore a page, so the tab is added
     // only once it is the reader's own choice.
     if (tabChosen) saved.tab = activeTab;
@@ -456,6 +459,9 @@ ${getQueryEditorScript()}
   }
 
   installViewOptions();
+  if (typeof vscode.getState === 'function') {
+    rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
+  }
 
   document.addEventListener('mousedown', function (event) {
     editor.handleMousedown(event);
@@ -574,9 +580,11 @@ ${getQueryEditorScript()}
   });
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
+      const first = !state;
       state = event.data.data;
       editor.receive();
       renderKeepingPlace(render);
+      if (first) restoreScroll(typeof vscode.getState === 'function' ? vscode.getState() : undefined);
       markWords(document.getElementById('app'), editor.previewWords(state.query && state.query.text || ''));
       saveState();
     }

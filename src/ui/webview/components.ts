@@ -1199,6 +1199,29 @@ export function getComponentScript(): string {
     });
   });
 
+  /**
+   * Where the page was scrolled to, kept in the webview's own state and put
+   * back when the page is drawn again, so coming back to a search, after
+   * VS Code reopens it or the tab is shown again, lands where the reader
+   * left it rather than at the top. Up to 40% of searches are re-finding
+   * (Teevan et al., 2007), and position is how a list is re-found.
+   */
+  function rememberScroll(getSaved, setSaved) {
+    let pending;
+    window.addEventListener('scroll', function () {
+      if (pending) return;
+      pending = setTimeout(function () {
+        pending = undefined;
+        setSaved(Object.assign({}, getSaved() || {}, { scrollY: Math.round(window.scrollY) }));
+      }, 200);
+    }, { passive: true });
+  }
+
+  function restoreScroll(saved) {
+    if (!saved || typeof saved.scrollY !== 'number' || !window.scrollTo) return;
+    window.scrollTo(0, saved.scrollY);
+  }
+
   /** A task's title as a sentence names it, from its row or card. */
   function taskTitleOf(element) {
     const row = element && element.closest ? element.closest('[data-task-id]') : null;

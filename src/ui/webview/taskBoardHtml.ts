@@ -410,11 +410,15 @@ ${getQueryEditorScript()}
   /** The latest state waiting on a completed card to finish leaving. */
   let pendingState;
   function receiveState(next) {
+    const first = !state;
     state = next;
     editor.receive();
-    vscode.setState({ query: state.query.text });
+    const previous = vscode.getState() || {};
+    vscode.setState(Object.assign({ query: state.query.text }, previous.query === state.query.text && typeof previous.scrollY === 'number' ? { scrollY: previous.scrollY } : {}));
     renderKeepingFocus();
+    if (first) restoreScroll(previous);
   }
+  rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
       const wait = taskBoardLingerRemaining();
