@@ -670,7 +670,7 @@ suite('Webview contracts', () => {
     // the panel, which six of the eight themes inherited. The muted token is
     // what every theme declares for secondary text.
     assert.strictEqual(
-      html.includes('.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted);'),
+      html.includes('.task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted);'),
       true,
       'task provenance takes the muted token, never a literal color',
     );

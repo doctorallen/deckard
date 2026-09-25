@@ -526,7 +526,7 @@ export function getTaskBoardCss(): string {
    with nothing after it. A detail wider than the column on its own, as
    "overdue 20 days · 2026-09-01" is under a theme's letter-spacing, still
    wraps inside itself rather than widening every card in the column. */
-.board-details { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); margin: 0; }
+.board-details { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); margin: 0; }
 .board-details span { min-width: 0; white-space: normal; }
 .board-details .board-date { display: inline; white-space: nowrap; }
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
@@ -567,7 +567,10 @@ export function getTaskListCss(): string {
 .task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
+/* The details sit on one center line: the priority badge is taller than
+   the text by its edge, and stretched items put its word a step above the
+   date beside it. */
+.task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
 .task-detail { letter-spacing: .03em; }
@@ -575,7 +578,7 @@ export function getTaskListCss(): string {
    from the due date beside it by its edge. It used to be the same bold
    danger red as an overdue date, on the same line, in the same font, and
    the two read as one phrase. Red is overdue's alone now. */
-.priority-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--control-radius); color: var(--text); font-weight: 600; letter-spacing: normal; text-transform: none; line-height: 16px; white-space: nowrap; }
+.priority-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--control-radius); color: var(--text); font-weight: 600; letter-spacing: normal; text-transform: none; line-height: 1.3; white-space: nowrap; }
 .priority-badge.priority-low, .priority-badge.priority-lowest { color: var(--muted); }
 .priority-mark { font-weight: 700; }
 .is-draggable { cursor: grab; touch-action: none; }
