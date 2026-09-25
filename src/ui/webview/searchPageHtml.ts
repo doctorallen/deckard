@@ -1,6 +1,14 @@
 import * as vscode from 'vscode';
 
 import {
+  layoutSplitIcon,
+  layoutTabsIcon,
+  linesIcon,
+  renderedIcon,
+  sortIcon,
+  sourceIcon,
+} from './icons';
+import {
   createNonce,
   getBaseCss,
   getComponentScript,
@@ -62,7 +70,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
   box-shadow: none;
 }
 .overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.saved-view-name { margin: 0 0 8px; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+.saved-view-name { margin: 0 0 8px; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .saved-view-name-label { color: var(--muted); }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
@@ -70,8 +78,8 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* Bulk Edit and Export sit together at the right, after the heading. */
 .overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
-.overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; }
-.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; }
+.overview-pane-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; }
+.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -79,23 +87,23 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-header, .hub-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .hub > summary { cursor: pointer; list-style: none; }
 .hub > summary::-webkit-details-marker { display: none; }
-.hub > summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.hub > summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .hub-title { display: inline-flex; align-items: center; gap: 8px; }
 .hub-toggle { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--amber); transition: transform 120ms ease; }
 .hub[open] .hub-toggle { transform: rotate(90deg); }
 .hub-empty { color: var(--muted); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
-.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
-.stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
+.stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: var(--text-sm); }
 .empty-action { margin: 12px 0 0; }
-.pagination .page-size { font-size: 12px; }
+.pagination .page-size { font-size: var(--text-sm); }
 .pagination .page-size select { min-width: 64px; }
-.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
-.did-you-mean button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: var(--text-sm); }
+.did-you-mean button { background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
@@ -152,6 +160,9 @@ ${getQueryEditorScript()}
     placeholder: function () { return 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…'; },
     label: 'Search notes and tasks',
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
+    // The Notes and Tasks tabs carry the counts; the strip repeats them only
+    // in the split layout, where there are no tabs.
+    countElsewhere: function () { return Boolean(state && state.layout !== 'split'); },
     actions: function (hasText) {
       return '<button data-action="save-filter" data-query-needs-text title="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
@@ -183,7 +194,7 @@ ${getQueryEditorScript()}
       + sizes.map(function (size) {
         return '<option value="' + size + '"' + (size === paging.size ? ' selected' : '') + '>' + size + '</option>';
       }).join('')
-      + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M3 8h7M3 11h4"/></svg></span></label>';
+      + '</select>${linesIcon}</span></label>';
     return '<nav class="pagination" aria-label="' + (kind === 'notes' ? 'Note' : 'Task') + ' pages">'
       + '<span class="page-summary"><span class="page-range">' + describePageRange(paging) + '</span>' + perPage + '</span>'
       + '<span class="page-controls">' + renderPageSteps(paging, 'set-result-page', 'data-kind="' + kind + '"', noun) + '</span></nav>';
@@ -241,6 +252,9 @@ ${getQueryEditorScript()}
 
   function renderCard(section) {
     const fileName = section.filePath.split('/').pop() || section.filePath;
+    // Where the entry sits in its note, under the file and line, as the
+    // Related Notes sidebar shows it.
+    const pathHtml = renderHeadingPath(section.headingPath, fileName, section.heading);
     const content = section.rawContent ? (state.renderMode === 'html' ? '<div class="rendered">' + section.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(section.rawContent) + '</pre>') : '';
     const titleHtml = state.tagTitleDisplayMode === 'inline'
       ? renderInlineTitle(section.heading, section.titleTags)
@@ -249,7 +263,7 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div></div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '</div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */
@@ -305,13 +319,13 @@ ${getQueryEditorScript()}
   function exportResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Export these tasks' : 'Export these notes';
-    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">Export</button>';
+    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">' + (kind === 'tasks' ? 'Export tasks' : 'Export notes') + '</button>';
   }
 
   function editResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
-    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk Edit</button>';
+    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
   }
 
   function render() {
@@ -364,8 +378,8 @@ ${getQueryEditorScript()}
     }
     // Bulk Edit belongs beside the heading it acts on, not out with the
     // controls that change how the pane is shown.
-    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes (<span data-search-count="notes">' + notesCount + '</span>)</h2>' + paneActions(editResultsButton('notes', notesCount) + exportResultsButton('notes', notesCount)) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
-    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks (<span data-search-count="tasks">' + tasksCount + '</span>)</h2>' + paneActions(editResultsButton('tasks', tasksCount) + exportResultsButton('tasks', tasksCount)) + '</div>' + tasksPaged + '</section>';
+    const notesPane = '<section class="overview-pane" aria-labelledby="notes-heading"><div class="overview-pane-header"><h2 id="notes-heading" class="overview-pane-heading">Notes' + (state.layout === 'split' ? ' (<span data-search-count="notes">' + notesCount + '</span>)' : '') + '</h2>' + paneActions(editResultsButton('notes', notesCount) + exportResultsButton('notes', notesCount)) + '</div><div class="cards">' + cards + '</div>' + notesPagination + '</section>';
+    const tasksPane = '<section class="overview-pane" aria-labelledby="tasks-heading"><div class="overview-pane-header"><h2 id="tasks-heading" class="overview-pane-heading">Tasks' + (state.layout === 'split' ? ' (<span data-search-count="tasks">' + tasksCount + '</span>)' : '') + '</h2>' + paneActions(editResultsButton('tasks', tasksCount) + exportResultsButton('tasks', tasksCount)) + '</div>' + tasksPaged + '</section>';
     const layoutContent = state.layout === 'split'
       ? '<div class="overview-split">' + notesPane + tasksPane + '</div>'
       // Both counts are the ones the panes actually show, so a tab never
@@ -374,22 +388,22 @@ ${getQueryEditorScript()}
         { id: 'notes', label: 'Notes', count: notesCount },
         { id: 'tasks', label: 'Tasks', count: tasksCount },
       ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + resultPanelAttributes('notes') + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + resultPanelAttributes('tasks') + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
-    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/></svg></button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/></svg></button></div>';
-    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/></svg></button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown"><svg class="toolbar-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/></svg></button></div>';
+    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks">${layoutTabsIcon}</button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%">${layoutSplitIcon}</button></div>';
+    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown">${renderedIcon}</button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown">${sourceIcon}</button></div>';
+    const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select>${sortIcon}</span></label>';
     const viewOptions = renderViewOptions([
+      { label: 'Sort', html: sortControl.replace('>Sort:<span', '><span') },
       { label: 'Layout', html: layoutControls },
       { label: 'Format', html: formatControls },
       { label: 'Note columns', html: columnChoices('notes', state.noteColumns) },
       { label: 'Task columns', html: columnChoices('tasks', state.taskColumns) },
       renderZenOption(),
     ]);
-    const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select><svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span></label>';
     const savedViewName = state.savedViewName
       ? '<div class="saved-view-name" aria-label="Saved search: ' + escapeHtml(state.savedViewName) + '"><span class="saved-view-name-label">Saved search:</span> ' + escapeHtml(state.savedViewName) + '</div>'
       : '';
-    const eyebrow = state.tag
-      ? 'DECKARD / TAG SEARCH'
-      : 'DECKARD / SEARCH';
+    // One name for the place, whatever it searches: a search page.
+    const eyebrow = 'DECKARD / SEARCH PAGE';
     // A search that does not parse leaves the previous results on the page.
     // Say so, rather than letting them read as answers to what was typed.
     const invalid = (state.query.diagnostics || []).some(function (diagnostic) { return diagnostic.severity === 'error'; });
@@ -401,7 +415,7 @@ ${getQueryEditorScript()}
     const suggestion = !invalid && state.suggestion
       ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar(sortControl) + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);

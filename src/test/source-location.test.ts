@@ -61,11 +61,13 @@ suite('Where an entry is written', () => {
     );
 
     assert.strictEqual(page.text('.card .source'), '2026-09-22 / line 1');
-    // A task says only where it is: not the heading it sits under, whose
-    // tags would read as the task's own.
+    // The card is the note's top heading, so it has no path to add.
+    assert.strictEqual(page.findAll('.card .heading-path').length, 0);
+    // A task says where it is, then the headings above it with their tags
+    // stripped, so a heading's tags never read as the task's own.
     assert.deepStrictEqual(
       page.findAll('.task-row .task-source').map((span) => span.textContent),
-      ['2026-09-22 / line 3'],
+      ['2026-09-22 / line 3', 'Harbor check-in'],
     );
   });
 });

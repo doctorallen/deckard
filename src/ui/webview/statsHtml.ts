@@ -26,7 +26,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 <title>Deckard Stats</title>
 <style nonce="${nonce}">${getBaseCss()}
 .updated, .count { font-family: var(--font-mono); }
-.updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
 .reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
@@ -34,17 +34,20 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .list { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
 .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
 .label { overflow-wrap: anywhere; }
-.detail { margin-top: 3px; color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+.detail { margin-top: 3px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .count { color: var(--green); font-size: 16px; }
 /* A pair that looks alike: both tags on one line, with what to do about it. */
 .pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
-.pair-tag { padding: 2px 6px; font-size: 12px; }
+.pair-tag { padding: 2px 6px; font-size: var(--text-sm); }
 .pair-arrow { color: var(--muted); }
 .merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); white-space: nowrap; }
 @media (max-width: 600px) { main { padding: 16px; } }
 
 /* Stats leads with a green rule and lists plain empty states. */
 main { max-width: 1100px; border-top: 2px solid var(--green); }
+/* Eight tiles in two rows of four, not seven and one left over. */
+.metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .eyebrow { margin: 0 0 6px; }
 .empty { margin-top: 0; border: 0; background: none; padding: 16px 12px; }
 ${getPageTailCss()}
@@ -133,9 +136,24 @@ ${getComponentScript()}
     event.preventDefault();
     openRow(row);
   });
+  /** A moment ago, in words. */
+  function describeAge(milliseconds) {
+    const seconds = Math.max(0, Math.round(milliseconds / 1000));
+    if (seconds < 60) return 'just now';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return minutes + (minutes === 1 ? ' minute ago' : ' minutes ago');
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return hours + (hours === 1 ? ' hour ago' : ' hours ago');
+    const days = Math.round(hours / 24);
+    return days + (days === 1 ? ' day ago' : ' days ago');
+  }
   function render() {
     if (!state) return;
-    const updated = state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'Not indexed yet';
+    // How long ago, in words, as due dates are; the exact time is on hover.
+    // "9/20/2026, 7:58:24 PM" asked a reader to subtract it from now.
+    const updated = state.updatedAt
+      ? '<span title="' + escapeHtml(new Date(state.updatedAt).toLocaleString()) + '">' + escapeHtml(describeAge(Date.now() - state.updatedAt)) + '</span>'
+      : 'Not indexed yet';
     const metrics = [
       metric('Files', state.fileCount),
       metric('Notes', state.sectionCount, '', ''),
@@ -157,7 +175,7 @@ ${getComponentScript()}
         }).join('') + '</ol></article></section>'
       : '';
     const orphans = unread + '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article></section>';
-    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + escapeHtml(updated) + ' <button type="button" class="reindex" data-action="reindex" title="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
+    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" title="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') { state = event.data.data; render(); }

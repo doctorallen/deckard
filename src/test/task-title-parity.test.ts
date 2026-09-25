@@ -83,6 +83,13 @@ suite('Task title parity', () => {
     }
   });
 
+  test('a date in a board card stays one word', () => {
+    const board = createTaskBoard(index(), preferences({ taskBoardLayout: 'board' }), { query: '' }, options, 'inline');
+    const page = open(getTaskBoardHtml(webview as unknown as vscode.Webview), board);
+    const dates = page.findAll('.board-details .board-date');
+    assert.deepStrictEqual(dates.map((date) => date.textContent), ['2026-09-21']);
+  });
+
   test('Home, in its tasks and agenda widgets', () => {
     const built = index();
     const prefs = preferences();

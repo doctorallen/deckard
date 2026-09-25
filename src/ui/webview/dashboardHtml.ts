@@ -9,7 +9,16 @@ import {
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
-import { getFavoriteHeartAssetUris, settingsIcon } from './icons';
+import {
+  chevronLeftIcon,
+  chevronRightIcon,
+  filterIcon,
+  ICON_PATHS,
+  getFavoriteHeartAssetUris,
+  settingsIcon,
+  sortIcon,
+  strokeIcon,
+} from './icons';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -48,22 +57,51 @@ ${getQueryEditorCss()}
 section { min-width: 0; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .control-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
-button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
-button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .home-widget:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
+button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .home-widget:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .tag-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-list { display: grid; gap: 7px; margin-bottom: 18px; }
 .saved-filter-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; transition: background-color 120ms ease, transform 120ms ease; }
 .saved-filter-row:hover { background: var(--panel-raised); transform: translateX(3px); }
-.saved-filter-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
-.saved-filter-name { color: var(--cyan-bright); font: 12px var(--font-mono); overflow-wrap: anywhere; }
-.saved-filter-tags { margin-top: 3px; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
+.saved-filter-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.saved-filter-name { color: var(--cyan-bright); font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
+/* A saved search reads by its name alone; a query three lines long under
+   every name made the list a wall. The criteria stay in the row for a
+   screen reader and open under the pointer or the keyboard in the row's own
+   frame carried down, as a note's provenance does, with room to wrap since
+   a query is longer than a file name. */
+.saved-filter-row { position: relative; }
+.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
+.saved-filter-row:hover, .saved-filter-row:focus-within { z-index: 2; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {
+  z-index: 2;
+  top: calc(100% - 1px);
+  left: -1px;
+  right: -1px;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  border: inherit;
+  border-top: 0;
+  border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
+  background: inherit;
+  box-shadow: inherit;
+  /* The pointer passes through, as it does a note's provenance: a panel
+     that took the pointer kept its row hovered while the pointer crossed
+     it, and the rows it covered were skipped on the way down. */
+  pointer-events: none;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  color: var(--muted);
+  font: var(--text-xs)/16px var(--font-mono);
+  overflow-wrap: anywhere;
+}
 .saved-filter-remove { min-height: 26px; text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-kind { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }
-.tag-group h3 { margin: 0 0 7px; color: var(--amber-bright); font-size: 11px; font-weight: 500; }
+.tag-group h3 { margin: 0 0 7px; color: var(--amber); font-size: var(--text-xs); font-weight: 500; }
 .section-readout { color: var(--muted); font-size: var(--text-xs); }
 .tag-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); cursor: pointer; }
 .tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
@@ -72,7 +110,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-count { color: var(--muted); font-family: var(--font-mono); }
 .tag-actions { display: flex; align-items: center; gap: 5px; }
 .tag-actions button { min-height: 26px; padding-inline: 7px; }
-.favorite-toggle { display: grid; place-items: center; color: var(--favorite-red); }
+.favorite-toggle { display: grid; min-width: 24px; min-height: 24px; place-items: center; color: var(--favorite); }
 /* The toggle carries a filled ground in some themes, and a hovered control's
    ground in every one, so hovering it takes the shared hover pair rather than
    keeping a red that was chosen for the ground it has at rest. */
@@ -85,22 +123,26 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .browse-toolbar-controls > * { flex: 0 0 auto; }
 .catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
 /* A kept search stands out from an empty box, whatever the theme. */
-input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--amber-bright); }
-.search-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--amber-bright); border-left-width: 4px; background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
-.search-notice strong { color: var(--amber-bright); }
-.search-notice button { min-height: 26px; color: var(--amber-bright); text-transform: none; }
+input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--text); }
+.search-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--amber-bright); border-left-width: 4px; background: var(--panel-raised); color: var(--text); font: var(--text-sm) var(--font-mono); }
+.search-notice strong { color: var(--amber); }
+.search-notice button { min-height: 26px; text-transform: none; }
 .tab-search-mark { display: inline-block; width: 11px; height: 11px; margin-left: 6px; vertical-align: -2px; }
 .tab-search-mark svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Home: the reader's widgets, in two columns. */
-.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+/* Home: the reader's widgets, in two columns. A widget is a half or the
+   full width, and half is half at any width the panel has: a third column
+   on a wide editor once made a half-width widget a third, which is not what
+   its ½ button said. On a narrow panel every widget takes the width. */
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); align-items: stretch; }
+@media (max-width: 720px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
 .home-widget { position: relative; min-width: 0; border: 2px solid var(--slate-border); background: var(--panel-bg); padding: 12px; }
 .home-widget.is-full { grid-column: 1 / -1; }
 .home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
 .home-widget.is-editing:hover { border-color: var(--amber-bright); }
 .home-widget-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.home-widget-title { margin: 0; color: var(--amber-bright); font-size: 11px; }
+.home-widget-title { margin: 0; color: var(--amber); font-size: var(--text-xs); }
 .home-widget-grip { margin-right: 6px; color: var(--muted); }
 .home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
 .home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }
@@ -113,32 +155,32 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--text); text-align: left; text-transform: none; }
 .home-row:hover, .home-row:focus-visible { color: var(--text); }
 .home-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--cyan-bright); }
-.home-row-label code { background: none; padding: 0; color: inherit; font-size: 11px; }
+.home-row-label code { background: none; padding: 0; color: inherit; font-size: var(--text-xs); }
 .home-row-detail { flex: 0 0 auto; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* A row with its own action beside it, such as Create hub or Unpin. */
 .home-row-with-action { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
 .home-row-with-action > .home-row { flex: 1 1 auto; min-width: 0; }
 .home-row-action { flex: 0 0 auto; min-height: 26px; padding: 2px 8px; text-transform: none; white-space: nowrap; }
-.home-widget-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; color: var(--muted); font: 11px var(--font-mono); }
+.home-widget-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-source strong { color: var(--text); font-weight: normal; overflow-wrap: anywhere; }
 .home-tag-pair { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
 .home-tag-pair-join { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-today-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
-.home-today-date { color: var(--text); font: 13px var(--font-mono); }
+.home-today-date { color: var(--text); font: var(--text-md) var(--font-mono); }
 .home-quick-add { display: flex; gap: 6px; }
 .home-quick-add input { flex: 1 1 auto; min-width: 0; min-height: 30px; }
 .home-quick-add button { min-height: 30px; padding: 3px 10px; }
-.home-quick-add-status { margin: 6px 0 0; color: var(--muted); font: 11px var(--font-mono); }
+.home-quick-add-status { margin: 6px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group:first-child { margin-top: 0; }
-.home-widget-empty { margin: 0; color: var(--muted); font-size: 12px; }
-.home-widget-paging { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 0; border-top: 1px solid var(--line); padding-top: 8px; font-size: 11px; }
+.home-widget-empty { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.home-widget-paging { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 0; border-top: 1px solid var(--line); padding-top: 8px; font-size: var(--text-xs); }
 .home-widget-paging .page-range { color: var(--muted); font-family: var(--font-mono); }
-.home-widget-paging .control-label { gap: 4px; font-size: 11px; }
+.home-widget-paging .control-label { gap: 4px; font-size: var(--text-xs); }
 .home-widget-paging select { min-width: 46px; }
 .home-widget-steps { display: flex; align-items: center; gap: 6px; }
 .home-widget-steps .page-range { margin-right: 2px; }
-.home-widget-steps button { display: grid; width: 22px; min-height: 22px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
+.home-widget-steps button { display: grid; width: 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
 .home-widget-steps button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .home-widget-steps button[disabled] { color: var(--muted); cursor: default; opacity: 0.45; }
 .home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -147,18 +189,18 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
 .home-widget .metric::before { display: none; }
 /* The resting hint is a quiet line, not the dashed frame of edit mode. */
-.home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: 11px var(--font-mono); }
-.home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+.home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: var(--text-xs); }
 .home-hint-actions { display: inline-flex; gap: 6px; }
-.home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: 11px; line-height: 1.35; white-space: normal; }
+.home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: var(--text-xs); line-height: 1.35; white-space: normal; }
 .home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
-.home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: 12px var(--font-mono); }
+.home-edit-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--amber-bright); background: var(--panel-raised); color: var(--text); font: var(--text-sm) var(--font-mono); }
 .home-edit-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .home-widget-options { position: relative; }
 .home-widget-options summary { display: grid; width: 28px; min-height: 28px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px; cursor: pointer; list-style: none; }
 .home-widget-options summary::-webkit-details-marker { display: none; }
-.home-widget-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); }
-.home-widget-options summary:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 2px; }
+.home-widget-options summary:hover { border-color: var(--amber-bright); }
+.home-widget-options summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .home-widget-options .settings-icon { width: 14px; height: 14px; }
 .home-widget-options-menu { position: absolute; z-index: 4; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
 .home-widget-form { display: flex; gap: 4px; }
@@ -178,7 +220,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 
 /* Page layout. The base sheet supplies the look; these keep the Dashboard's
    own proportions and its chamfered HUD shapes. */
-main { width: 100%; max-width: 1180px; }
+main { width: 100%; max-width: 1400px; }
 header { gap: 20px; border-bottom: 1px dashed var(--slate-border); }
 h2 { margin: 0 0 4px; }
 .eyebrow { margin: 0 0 6px; }
@@ -241,7 +283,7 @@ ${getQueryEditorScript()}
   const WIDGET_KINDS = {
     search: { label: 'Search', description: 'A search box that opens a search page', repeatable: false, listed: false },
     tasks: { label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board', repeatable: true, listed: true },
-    agenda: { label: 'Agenda', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
+    agenda: { label: 'Tasks view', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
     favoriteTags: { label: 'Favorite tags', description: 'The tags you favorited', repeatable: false, listed: true },
     topTags: { label: 'Frequent tags', description: 'The tags you open most, lately', repeatable: false, listed: true },
     savedSearches: { label: 'Saved searches', description: 'Your saved searches', repeatable: false, listed: false },
@@ -542,15 +584,23 @@ ${getQueryEditorScript()}
    */
   function renderSearchNotice(shown, total, noun, query, action) {
     const text = String(query || '').trim();
-    return '<div class="search-notice" role="status"><span>Showing <strong>' + shown + '</strong> of ' + total + ' ' + escapeHtml(noun) + (text ? ' matching “' + escapeHtml(text) + '”' : '') + '</span><button data-action="' + action + '">Clear search</button></div>';
+    return '<div class="search-notice" role="status"><span>Showing <strong>' + shown + '</strong> of ' + total + ' ' + escapeHtml(noun) + (text ? ' matching “' + escapeHtml(text) + '”' : '') + '</span><button data-action="' + action + '">Clear</button></div>';
   }
+
+  /**
+   * The glyph on a tab whose search has text or a filter, drawn with a class
+   * of its own. The shared filter icon is made for a select's corner, where
+   * it sits absolutely at a fixed size; inside a tab that rule met the mark's
+   * own 100% sizing, and the funnel floated over the whole page.
+   */
+  const TAB_MARK_ICON = '${strokeIcon(ICON_PATHS.filter, 'tab-search-mark-icon')}';
 
   /** A dot on a tab whose search has text or a filter, seen from any tab. */
   function renderTabSearchMark(query, filter) {
     const text = String(query || '').trim();
     const parts = (text ? ['Searching “' + text + '”'] : []).concat(filter ? [filter] : []);
     return parts.length
-      ? '<span class="tab-search-mark" title="' + escapeHtml(parts.join(', ')) + '"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span><span class="visually-hidden">, searching</span>'
+      ? '<span class="tab-search-mark" title="' + escapeHtml(parts.join(', ')) + '">' + TAB_MARK_ICON + '</span><span class="visually-hidden">, searching</span>'
       : '';
   }
 
@@ -558,9 +608,11 @@ ${getQueryEditorScript()}
     const detail = filter.query
       ? (filter.page === 'taskBoard' ? 'Task Board · ' : '') + escapeHtml(filter.query)
       : filter.tags.map(function (tag) { return renderTagLabel(tag.label); }).join(' AND ') + ' · ' + filter.tags.length + ' tags';
-    return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div><div class="saved-filter-tags">' + detail + '</div></div>'
-      + (removable ? '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button>' : '')
-      + '</div>';
+    // The criteria are the row's own child, not wrapped with the name: the
+    // frame they open in is inherited, and a wrapper has none to give.
+    return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div>'
+      + (removable ? '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button>' : '<span></span>')
+      + '<div class="saved-filter-tags">' + detail + '</div></div>';
   }
 
   /** A row that opens something: a tag, a search, or a note. */
@@ -720,7 +772,7 @@ ${getQueryEditorScript()}
     };
     switch (widget.kind) {
       case 'tasks': return link('open-task-board', 'data-query="' + escapeHtml(widget.query || '') + '"', 'Task Board');
-      case 'agenda': return link('open-view', 'data-view="agenda"', 'Agenda');
+      case 'agenda': return link('open-view', 'data-view="agenda"', 'Tasks view');
       case 'favoriteTags':
       case 'topTags': return link('set-dashboard-mode', 'data-dashboard-mode="browse"', 'All tags');
       case 'stats': return link('open-view', 'data-view="stats"', 'Stats');
@@ -756,7 +808,7 @@ ${getQueryEditorScript()}
     }
     if (widget.kind === 'tasks') {
       const draft = widgetQueryDrafts[widget.id] !== undefined ? widgetQueryDrafts[widget.id] : (widget.query || '');
-      groups.push('<div class="view-options-group is-stacked"><span>Search</span><form class="home-widget-form" data-form="widget-query" ' + attribute + '><input type="text" data-action="widget-query-draft" ' + attribute + ' value="' + escapeHtml(draft) + '" placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" spellcheck="false"><button type="submit">Apply</button></form></div>');
+      groups.push('<div class="view-options-group is-stacked"><span>Search</span><form class="home-widget-form" data-form="widget-query" ' + attribute + '><input type="text" data-action="widget-query-draft" ' + attribute + ' value="' + escapeHtml(draft) + '" placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" spellcheck="false"><button type="submit">Save</button></form></div>');
     }
     if (widget.kind === 'savedQuery') {
       groups.push('<div class="view-options-group is-stacked"><span>Saved search</span><select data-action="set-widget-filter" ' + attribute + ' aria-label="Saved search to show">' + state.savedFilters.map(function (filter) {
@@ -805,11 +857,11 @@ ${getQueryEditorScript()}
     const paging = widget.paging;
     if (!paging || editingHome) return '';
     const attribute = 'data-widget-id="' + escapeHtml(widget.id) + '"';
-    const step = function (page, label, path, enabled) {
+    const step = function (page, label, side, enabled) {
       return '<button type="button" data-action="set-widget-page" data-page="' + page + '" ' + attribute
         + (enabled ? '' : ' disabled')
         + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" title="' + label + ' page">'
-        + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="' + path + '"/></svg></button>';
+        + (side === 'left' ? '${chevronLeftIcon}' : '${chevronRightIcon}') + '</button>';
     };
     // The sizes on offer, and whatever this widget is already set to, so a
     // count chosen before it was paged is not silently changed by its own
@@ -826,8 +878,8 @@ ${getQueryEditorScript()}
     return '<nav class="home-widget-paging" aria-label="' + escapeHtml(widget.title) + ' pages">'
       + perPage
       + '<span class="home-widget-steps"><span class="page-range">' + describePageRange(paging) + '</span>'
-      + step(paging.page - 1, 'Previous', 'M10 3 5 8l5 5', paging.page > 1)
-      + step(paging.page + 1, 'Next', 'M6 3l5 5-5 5', paging.page < paging.pageCount)
+      + step(paging.page - 1, 'Previous', 'left', paging.page > 1)
+      + step(paging.page + 1, 'Next', 'right', paging.page < paging.pageCount)
       + '</span></nav>';
   }
 
@@ -850,8 +902,8 @@ ${getQueryEditorScript()}
     const widgets = state.widgets;
     const bar = editingHome
       ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
-        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
-        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset</button>') + '<button type="button" class="active" data-action="finish-customizing">Done</button></div></div>'
+        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset widgets</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
+        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
       // few times and skipped after. Customize stays in the gear throughout.
@@ -862,7 +914,7 @@ ${getQueryEditorScript()}
         : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" title="Stop saying so">Dismiss</button></span></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
-      : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize Home</button></div>';
+      : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize</button></div>';
     return bar + grid;
   }
 
@@ -899,8 +951,8 @@ ${getQueryEditorScript()}
         'clear-tag-search',
       )
       : '';
-    const filterIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>';
-    const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
+    const filterIcon = '${filterIcon}';
+    const sortIcon = '${sortIcon}';
     const renderTag = function (tag) {
       const draggable = state.tagSortMode === 'custom';
       const display = formatTagDisplay(tag);

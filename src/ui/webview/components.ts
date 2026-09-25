@@ -7,12 +7,12 @@
  * sheet for the elements every page uses, and one script of the helpers the
  * page scripts all need.
  *
- * A page keeps only the styles and behaviour that are genuinely its own.
+ * A page keeps only the styles and behavior that are genuinely its own.
  * Changing a component here changes it everywhere.
  */
 
 import * as vscode from 'vscode';
-import { helpIcon, settingsIcon } from './icons';
+import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { isZenModeEnabled } from './zenMode';
 
@@ -39,29 +39,42 @@ export function getDesignTokens(): string {
   --line: #212936;
   --slate-border: #212936;
   --line-strong: #34445A;
-  --cyan: #00E5FF;
-  --cyan-bright: #00E5FF;
-  --green: #33FF33;
-  --toxic-green: #33FF33;
+  --cyan: #3ED4E8;
+  --cyan-bright: #5FE1F0;
+  --green: #66E066;
+  --toxic-green: #66E066;
   --amber: #FFB000;
   --amber-bright: #FFB000;
   --amber-dim: #7A5400;
-  --favorite-red: #D23C28;
+  --favorite-red: #E05232;
   --warning-orange: #FF5500;
   --slate-olive: #3E4A42;
-  --grid-line: rgba(0, 229, 255, .04);
+  --grid-line: rgba(62, 212, 232, .05);
   --font-display: var(--vscode-font-family, ui-sans-serif, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
-  /* The type scale. Nothing a reader acts on is set below --text-xs: at a
-     laptop's viewing distance eleven pixels is where fluent reading starts
-     to fall away, and muted monospace text loses legibility sooner than
-     that. --text-md is the body size the VS Code UI itself uses. */
-  --text-xs: 11px;
-  --text-sm: 12px;
-  --text-md: 13px;
-  --text-lg: 14px;
+  /* The type scale. --text-md is the size the reader gave VS Code's own UI
+     (window.zoomLevel aside), so the pages grow and shrink with the editor
+     around them; the other steps sit one and two pixels either side of it.
+     Nothing a reader acts on is set below --text-xs: at a laptop's viewing
+     distance eleven pixels is where fluent reading starts to fall away, and
+     muted monospace text loses legibility sooner than that, so the small
+     steps never go under their floor whatever the editor is set to. */
+  --text-md: var(--vscode-font-size, 13px);
+  --text-xs: max(11px, calc(var(--text-md) - 2px));
+  --text-sm: max(12px, calc(var(--text-md) - 1px));
+  --text-lg: calc(var(--text-md) + 1px);
+  /* The spacing scale. Every padding, gap, and margin in the shared sheet
+     is one of these six steps, so a 6px gap never sits beside an 8px one,
+     and density is a matter of re-declaring the steps: zen does exactly
+     that, and restates no rule. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
   /* The corner a control takes. The ends of a group of segments follow it,
      so a theme that squares its buttons squares the group too. */
   --control-radius: 2px;
@@ -74,6 +87,15 @@ export function getDesignTokens(): string {
      A theme re-declares the pair, never one half. */
   --chosen-bg: #FFB000;
   --chosen-fg: #050608;
+  /* What a color means. Every rule that colors a state uses one of these,
+     never a palette color by name, so a hue carries one meaning: red is
+     danger, and only danger. A theme re-declares the palette; these follow
+     it, and a theme that wants a different mapping re-declares these too. */
+  --accent: var(--amber);
+  --danger: var(--favorite-red);
+  --favorite: var(--amber-bright);
+  --positive: var(--green);
+  --focus: var(--cyan);
 }`;
 }
 
@@ -98,17 +120,17 @@ body {
   font-family: var(--font-display);
   font-size: var(--text-md);
 }
-main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }
+main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }
 header {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 18px;
-  padding-bottom: 16px;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
   border-bottom: var(--edge) solid var(--line-strong);
 }
 @media (max-width: 700px) {
-  main { padding: 16px; }
+  main { padding: var(--space-4); }
   header { align-items: start; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -123,11 +145,11 @@ export function getTypographyCss(): string {
   return `
 h1, h2, h3, .eyebrow, .source, .metric-value, code, pre { font-family: var(--font-mono); }
 h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; overflow-wrap: anywhere; text-transform: uppercase; }
-h2 { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
-h3 { margin: 0; color: var(--text); font-size: 13px; font-weight: 650; }
-.eyebrow { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
+h2 { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; overflow-wrap: anywhere; }
+h3 { margin: 0; color: var(--text); font-size: var(--text-md); font-weight: 650; }
+.eyebrow { margin: 0; color: var(--amber); font-size: var(--text-xs); letter-spacing: .15em; text-transform: uppercase; }
 .lead { margin: 10px 0 0; max-width: 680px; color: var(--muted); }
-.source { margin-top: 5px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }`;
+.source { margin-top: 5px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }`;
 }
 
 /**
@@ -148,10 +170,21 @@ button, select, input[type="text"], input[type="search"] {
   font: inherit;
 }
 button { cursor: pointer; }
-button:hover, button.active, select:hover, .tag-open:hover {
+/* Two states, each its own drawing, so a reader hovering to learn what a
+   click will do is not shown the chosen state, and a chosen control under
+   the pointer still reads as chosen by the bar along its foot, which the
+   hover ground does not cover. Hover raises the ground; chosen keeps the
+   control's own ground and marks it with the accent border and the bar. */
+button:hover, select:hover, .tag-open:hover {
   border-color: var(--amber);
   background: var(--hover-bg);
   color: var(--hover-fg);
+}
+button.active {
+  border-color: var(--chosen-bg);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg);
 }
 /* A field being typed in keeps its own ground and its text: inverting it the
    way a pressed control inverts would recolor the text under the caret. */
@@ -168,7 +201,7 @@ button:hover *, button.active *, button:focus-visible *,
   color: inherit;
 }
 button:focus-visible, select:focus-visible, input:focus-visible {
-  outline: var(--edge) solid var(--cyan);
+  outline: var(--edge) solid var(--focus);
   outline-offset: 2px;
 }
 button[disabled] { opacity: .5; cursor: default; }
@@ -194,12 +227,12 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   gap: 5px;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .control-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-/* A labelled control, such as a sort, drawn the same way on every page. */
-.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); }
+/* A labeled control, such as a sort, drawn the same way on every page. */
+.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
@@ -230,23 +263,25 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .filter-count { color: var(--muted); font-size: var(--text-xs); }
 
 /* Walking a list a page at a time: a search page's results, a widget's entries. */
-.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: var(--text-sm); }
 .page-summary { display: flex; align-items: center; gap: 12px; }
 .page-range { color: var(--muted); font-family: var(--font-mono); }
 .page-controls { display: flex; align-items: center; gap: 4px; }
 .pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
 .pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
-.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--panel-raised); color: var(--text); box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg); }
 .page-gap { color: var(--muted); padding: 0 2px; }
 
 /* A chosen segment, in any group of them: the Dashboard's tabs mark their
    own, and this marks every other group the same way, rather than leaving
    them with the inverted treatment a pressed button takes. */
-.segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"] {
+.segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"],
+.segmented button.active:hover, .segmented button[aria-pressed="true"]:hover, .segmented button[aria-selected="true"]:hover {
   border-color: var(--chosen-bg);
-  background: var(--chosen-bg);
-  color: var(--chosen-fg);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg);
 }
 .segmented button.active *, .segmented button[aria-pressed="true"] *, .segmented button[aria-selected="true"] * {
   color: inherit;
@@ -260,10 +295,10 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
 .view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
-.view-options summary:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.view-options summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
-.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); }
+.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* A group whose control is taller than a row, such as a list, sits under its label. */
 .view-options-group.is-stacked { display: grid; justify-content: stretch; }
 /* A row of small numbered or named choices inside the menu. */
@@ -287,7 +322,7 @@ export function getTagCss(): string {
 /* A tag reads as written wherever it sits: text-transform inherits, so a
    heading or a control a theme shouts would otherwise shout the tag too. */
 .tag-open, .inline-tag { text-transform: none; }
-.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
+.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }
 /* A tag in a title opens that tag rather than controlling the view, so it is
    drawn as a hairline with no fill and no control height: the boxes a reader
    sees elsewhere mean "this changes what is listed". */
@@ -325,7 +360,10 @@ export function getTagCss(): string {
   padding: 8px 9px;
   text-align: left;
   text-transform: none;
-}`;
+}
+/* A group's name inside a menu of several: Status, Priority, Due. */
+.tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.tag-context-menu .menu-heading:first-child { padding-top: var(--space-1); }`;
 }
 
 /**
@@ -347,71 +385,72 @@ export function getSurfaceCss(): string {
 }
 .row:hover, .card:hover, .task:hover { border-color: var(--amber); }
 .row:focus-visible, .card:focus-visible, .task:focus-visible {
-  outline: var(--edge) solid var(--cyan);
+  outline: var(--edge) solid var(--focus);
   outline-offset: 1px;
 }
 .row[hidden] { display: none; }
 
-.cards { display: grid; gap: 12px; margin-top: 20px; }
-.card { padding: 14px; }
+.cards { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+.card { padding: var(--space-4); }
 .card[hidden], .task[hidden] { display: none; }
 .card-title { margin: 0; color: var(--cyan); font-size: 16px; overflow-wrap: anywhere; }
 
 .task {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
   align-items: start;
-  padding: 10px;
+  padding: var(--space-3);
 }
-.task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--green); }
+.task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-title { color: var(--cyan); overflow-wrap: anywhere; }
 .task-title a { color: var(--cyan); }
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-summary { display: grid; gap: 7px; }
+.task-summary { display: grid; gap: var(--space-2); }
+.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-  gap: 10px;
-  margin-top: 20px;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
 }
-.metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: 12px; }
+.metric { min-width: 0; border: var(--edge) solid var(--line); background: var(--panel); padding: var(--space-3); }
 /* A metric that opens what it counts keeps the tile's look, and gains the
    hover and focus treatment every other control has. The tile rules paint it,
    not the control ones, so it carries the text that belongs on a panel: a
    theme whose controls have a ground of their own writes their text for that
    ground, and on LCARS that is near-black, which the tile never becomes. */
-.metric-open { display: grid; gap: 4px; justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.metric-open { display: grid; gap: var(--space-1); justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
-.metric-label { display: block; color: var(--muted); font-size: 11px; }
-.metric-value { display: block; margin-top: 5px; color: var(--green); font-size: 22px; }
+.metric-label { display: block; color: var(--muted); font-size: var(--text-xs); }
+.metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
 
 .empty {
-  margin-top: 20px;
+  margin-top: var(--space-5);
   border: var(--edge) dashed var(--line);
   background: var(--panel-deep);
-  padding: 20px;
+  padding: var(--space-5);
   color: var(--muted);
 }
 
 .markdown {
-  margin: 14px 0 0;
-  padding: 12px;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
   overflow-x: auto;
   border: var(--edge) solid var(--line);
   border-left: 4px solid var(--amber);
   background: var(--panel-deep);
   color: var(--text);
   white-space: pre-wrap;
-  font: 12px/1.55 var(--font-mono);
+  font: var(--text-sm)/1.55 var(--font-mono);
 }
-.rendered { margin-top: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.rendered { margin-top: var(--space-4); line-height: 1.55; overflow-wrap: anywhere; }
 .rendered :first-child { margin-top: 0; }
 .rendered :last-child { margin-bottom: 0; }
 .rendered code, .rendered pre { font-family: var(--font-mono); }
-.rendered pre { overflow-x: auto; padding: 10px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+.rendered pre { overflow-x: auto; padding: var(--space-3); border: var(--edge) solid var(--line); background: var(--panel-deep); }
 .rendered a { color: var(--cyan); }`;
 }
 
@@ -426,29 +465,32 @@ export function getTaskBoardCss(): string {
   grid-auto-flow: column;
   grid-auto-columns: minmax(250px, 1fr);
   align-items: start;
-  gap: 12px;
-  padding-bottom: 12px;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
   overflow-x: auto;
 }
 .board-column {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   border: var(--edge) solid var(--line);
-  background: var(--panel-deep);
-  padding: 10px;
+  /* A column is a region before it is a list: a ground half a step above
+     the page, so five headers over one field of cards read as five columns
+     in every theme, Corpo included. */
+  background: color-mix(in srgb, var(--panel) 60%, var(--bg));
+  padding: var(--space-3);
 }
 .board-column.drop-target { border-color: var(--amber); }
 .board-column-title {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   color: var(--cyan);
-  font: 12px var(--font-mono);
+  font: var(--text-sm) var(--font-mono);
 }
-.board-column.is-overdue .board-column-title { color: var(--favorite-red); }
+.board-column.is-overdue .board-column-title { color: var(--danger); }
 .board-count { color: var(--muted); }
 /* A column with hundreds of tasks scrolls in place: without this one long
    column made the whole page hundreds of cards tall, and dragging to a far
@@ -459,60 +501,61 @@ export function getTaskBoardCss(): string {
    auto row sizes to its cards however tall they are, so the column clipped
    them at its max-height and the cards below could not be reached at all. */
 .board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
-.board-column-title { padding-bottom: 6px; }
+.board-column-title { padding-bottom: var(--space-2); }
 /* overflow-y alone would compute overflow-x to auto, and then anything that
    reaches past the right edge — a theme's hover nudge, a focus outline — puts
    a horizontal scrollbar under a column that has nothing to scroll sideways. */
 .board-cards {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 48px;
   overflow-x: hidden;
   overflow-y: auto;
 }
 .board-card { position: relative; }
+/* The last card's frame carries down past the column's scroller; this
+   leaves it room, as an extra card's height would. */
+.board-cards::after { content: ''; display: block; height: 44px; }
 /* Themes slide a row right on hover, which reads well across a wide list and
    badly in a column this narrow: the card had nowhere to go but out. It keeps
    the border and ground the same hover gives every other surface. Written to
    outweigh the theme sheet, which is laid down after this one. */
 .board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
-.board-card .task-title { padding-right: 26px; }
-.board-details { margin: 0; }
-/* Each detail stays whole and the line wraps between them — unless a detail
-   is wider than the column on its own, as "overdue, due Mon 2026-09-01" is
-   under a theme's letter-spacing, in which case it breaks rather than
-   widening every card in the column. An inline-block is that exactly: one
-   unit to the line, that wraps inside only when it has to. */
-.board-details span { display: inline-block; white-space: normal; }
-.board-details .overdue { color: var(--favorite-red); }
+.board-card .task-title { padding-right: var(--space-6); }
+/* The details are a row that wraps between them, with a gap where a
+   separator used to be: a "·" at the end of a wrapped line dangled there
+   with nothing after it. A detail wider than the column on its own, as
+   "overdue 20 days · 2026-09-01" is under a theme's letter-spacing, still
+   wraps inside itself rather than widening every card in the column. */
+.board-details { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); margin: 0; }
+.board-details span { min-width: 0; white-space: normal; }
+.board-details .board-date { display: inline; white-space: nowrap; }
+/* Written to outweigh a theme's own .task .source, which LCARS lays down
+   after this sheet and which took the color off "overdue 20 days". */
+.task .board-details .overdue { color: var(--danger); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
   position: absolute;
   top: 6px;
   right: 6px;
   width: 24px;
-  height: 24px;
+  min-height: 24px;
   padding: 0;
-  appearance: none;
   border-color: transparent;
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1;
-  text-align: center;
-  text-align-last: center;
-  cursor: pointer;
 }
 /* The menu sits on the control ground once it is hovered, so it takes the
-   shared hover text rather than the amber it carries over the card. */
-.board-move:hover, .board-move:focus-visible { border-color: var(--amber); color: var(--hover-fg); }
-.board-empty { margin: 0; padding: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
-.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+   shared hover text rather than the amber it carries over the card. Open, it
+   keeps that look until the menu closes. */
+.board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
+.board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
+.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
-.board-hint button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
-.board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
+.board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }`;
 }
 
 /**
@@ -522,31 +565,40 @@ export function getTaskBoardCss(): string {
  */
 export function getTaskListCss(): string {
   return `
-.task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: 7px; }
-.task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: 10px; cursor: pointer; }
-.task-row:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 2px; }
-.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--toxic-green); }
+.task-list { display: grid; grid-template-columns: repeat(var(--task-columns, 1), minmax(0, 1fr)); gap: var(--space-2); }
+.task-row { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-2); align-items: start; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); padding: var(--space-3); cursor: pointer; }
+.task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
+.task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: 5px; }
+/* The details sit on one center line: the priority badge is taller than
+   the text by its edge, and stretched items put its word a step above the
+   date beside it. */
+.task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
-.due-date.overdue { color: var(--favorite-red); }
+.due-date.overdue { color: var(--danger); }
 .task-detail { letter-spacing: .03em; }
-.task-detail.priority-highest, .task-detail.priority-high { color: var(--favorite-red); font-weight: 700; }
+/* Priority is a shape, not a color: an outlined badge with an arrow, told
+   from the due date beside it by its edge. It used to be the same bold
+   danger red as an overdue date, on the same line, in the same font, and
+   the two read as one phrase. Red is overdue's alone now. */
+.priority-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--control-radius); color: var(--text); font-weight: 600; letter-spacing: normal; text-transform: none; line-height: 1.3; white-space: nowrap; }
+.priority-badge.priority-low, .priority-badge.priority-lowest { color: var(--muted); }
+.priority-mark { font-weight: 700; }
 .is-draggable { cursor: grab; touch-action: none; }
 .is-draggable:active { cursor: grabbing; }
 .is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 .drag-ghost { position: fixed; z-index: 10; top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
 .drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
-.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: 4px; border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: var(--space-1); border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .rank-context-menu[hidden] { display: none; }
-.rank-context-menu button { display: block; width: 100%; border: 0; padding: 8px 9px; text-align: left; text-transform: none; }
-.result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.result-table th, .result-table td { padding: 7px 9px; border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
+.rank-context-menu button { display: block; width: 100%; border: 0; padding: var(--space-2) var(--space-3); text-align: left; text-transform: none; }
+.result-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.result-table th, .result-table td { padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.result-table th { padding: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
-.result-table th button { display: flex; width: 100%; gap: 5px; align-items: center; min-height: 0; border: 0; padding: 7px 9px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
+.result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
 .result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
-/* The sorted column is told by weight and its arrow, not a colour: amber on a panel is too faint for a small label in some themes.
+/* The sorted column is told by weight and its arrow, not a color: amber on a panel is too faint for a small label in some themes.
    Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
 .result-table th.is-sorted button { color: var(--text); font-weight: 700; }
 .result-table th.is-sorted button:hover, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
@@ -554,15 +606,15 @@ export function getTaskListCss(): string {
 .result-table .result-row { cursor: pointer; }
 /* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
 .result-table .result-row:hover td { border-bottom-color: var(--amber); }
-.result-table .result-row:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: -1px; }
+.result-table .result-row:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: -1px; }
 .result-table .result-row.completed .result-title { color: var(--muted); text-decoration: line-through; }
 .result-table .result-title { color: var(--cyan); }
-.result-table td.is-overdue { color: var(--favorite-red); font-weight: 700; }
+.result-table td.is-overdue { color: var(--danger); font-weight: 700; }
 .result-table td.is-muted { color: var(--muted); }
-.result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--toxic-green); }
+.result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--positive); }
 /* The gear's column picker: one line per column, the title fixed. */
-.table-columns { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; text-transform: none; }
-.table-columns label { display: flex; gap: 6px; align-items: center; font: 12px var(--font-mono); }
+.table-columns { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; text-transform: none; }
+.table-columns label { display: flex; gap: var(--space-2); align-items: center; font: var(--text-sm) var(--font-mono); }
 @media (max-width: 720px) { .task-list { grid-template-columns: 1fr; } }`;
 }
 
@@ -602,8 +654,11 @@ export function getBaseCss(): string {
 export function getProvenanceCss(): string {
   return `
 .task-row .task-source,
+.board-card .task-source,
 .card .source,
-.note .source {
+.note .source,
+.home-row .home-row-detail,
+.tag-row .tag-count {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -615,45 +670,66 @@ export function getProvenanceCss(): string {
 .card { position: relative; --frame: var(--edge); --inset: 14px; }
 .note { --frame: 2px; --inset: 9px; }
 .task-row { --frame: 1px; --inset: 10px; }
-.card, .note, .task-row { --reach: 24px; }
-.note:has(.source ~ .source) { --reach: 42px; }
+/* A Home row's readout, a file name or a count, and a tag row's count fold
+   the same way: a column of thirty beside the names was noise, and folded
+   under the row under the pointer they leave the whole width to the name. */
+.home-row, .tag-row { position: relative; --frame: 1px; --inset: 10px; }
+.board-card { --frame: var(--edge); --inset: var(--space-3); }
+.card, .note, .task-row, .home-row, .tag-row, .board-card { --reach: 24px; }
+.note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source), .board-card:has(.task-source ~ .task-source) { --reach: 42px; }
 /* The entry under the pointer is lifted above the ones after it, which its
    extension lies over. The sidebar lifts its own notes higher still. */
-.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within { z-index: 2; }
+.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within,
+.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within,
+.board-card:hover, .board-card:focus-within { z-index: 2; }
 /* The extension is the entry's own frame carried down: its background,
    border and inner shading, taken from the entry as it is drawn now, hover
-   colours included. It starts a little inside the entry so it covers the
+   colors included. It starts a little inside the entry so it covers the
    bottom border and any rounded corners, and draws a new bottom edge. */
 .card:hover::after, .card:focus-within::after,
 .note:hover::after, .note:focus-within::after,
-.task-row:hover::after, .task-row:focus-within::after {
+.task-row:hover::after, .task-row:focus-within::after,
+.home-row:hover::after, .home-row:focus-within::after,
+.tag-row:hover::after, .tag-row:focus-within::after,
+.board-card:hover::after, .board-card:focus-within::after {
   content: '';
   position: absolute;
   z-index: 1;
   top: calc(100% - 6px);
-  left: calc(-1 * var(--frame));
-  right: calc(-1 * var(--frame));
+  /* A theme that frames one side only, as LCARS does with its 7px left
+     bar and no right edge, says so per side; the extension then ends at
+     the entry's own edge instead of reaching past it into the scroller. */
+  left: calc(-1 * var(--frame-left, var(--frame)));
+  right: calc(-1 * var(--frame-right, var(--frame)));
   box-sizing: border-box;
   height: calc(var(--reach) + 6px + var(--frame));
   border: inherit;
   border-top: 0;
-  border-radius: inherit;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  /* The entry's bottom corners move down to the extension: a theme that
+     rounds them says so with --corner-bl and --corner-br, and the entry
+     under the pointer gives its own up (below), so the frame is one shape
+     from the title to the last line rather than a notch where they met. */
+  border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
   background: inherit;
   box-shadow: inherit;
   pointer-events: none;
 }
+.card:hover, .card:focus-within, .note:hover, .note:focus-within,
+.task-row:hover, .task-row:focus-within, .board-card:hover, .board-card:focus-within,
+.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 /* A task row's corners are cut, and a cut frame clips what reaches outside
    it, so under the pointer the cut moves down to the new bottom corner. */
-.task-row:hover, .task-row:focus-within {
+.task-row:hover, .task-row:focus-within, .tag-row:hover, .tag-row:focus-within {
   clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach)));
 }
 /* One line each, cut short rather than wrapped, so the extension is always
    the height it was made for. */
 .task-row:hover .task-source, .task-row:focus-within .task-source,
 .card:hover .source, .card:focus-within .source,
-.note:hover .source, .note:focus-within .source {
+.note:hover .source, .note:focus-within .source,
+.home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,
+.tag-row:hover .tag-count, .tag-row:focus-within .tag-count,
+.board-card:hover .task-source, .board-card:focus-within .task-source {
   z-index: 2;
   top: calc(100% + 2px);
   left: var(--inset);
@@ -663,15 +739,22 @@ export function getProvenanceCss(): string {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font: 11px/16px var(--font-mono);
+  font: var(--text-xs)/16px var(--font-mono);
   letter-spacing: normal;
   text-transform: none;
   white-space: nowrap;
   text-overflow: ellipsis;
   clip-path: none;
   color: var(--muted);
+  /* The pointer passes through the text as it does the frame under it: a
+     line that took the pointer kept its entry hovered while the pointer
+     crossed it, and the entry it covered was skipped on the way down. */
+  pointer-events: none;
 }
-.note:hover .source ~ .source, .note:focus-within .source ~ .source { top: calc(100% + 20px); }`;
+.note:hover .source ~ .source, .note:focus-within .source ~ .source,
+.card:hover .source ~ .source, .card:focus-within .source ~ .source,
+.task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
+.board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }`;
 }
 
 /**
@@ -711,7 +794,7 @@ body.zen .refine-hint,
 body.zen .home-hint-bar { display: none; }
 /* Shrunk, never hidden: on a search page the h1 is the subject being
    searched, not a restatement of the tab, and it is the page's one landmark. */
-body.zen h1 { font-size: 14px; letter-spacing: normal; text-transform: none; }
+body.zen h1 { font-size: var(--text-lg); letter-spacing: normal; text-transform: none; }
 body.zen h2, body.zen h3, body.zen .metric-label { letter-spacing: normal; text-transform: none; }
 /* The frame, thinned. */
 body.zen .metric, body.zen .card, body.zen .note, body.zen .task,
@@ -735,18 +818,9 @@ body.zen .saved-filter-row:hover, body.zen .stat-row:hover { transform: none; }
 /* Spacing. These literals mirror getShellCss, getSurfaceCss, getTaskBoardCss
    and getTaskListCss; there are no spacing tokens to lean on, so a change
    there needs a change here. The layout suite measures both. */
-body.zen main { padding: 14px; }
-body.zen header { padding-bottom: 10px; }
-body.zen .cards { gap: 8px; margin-top: 12px; }
-body.zen .card { padding: 9px; }
-body.zen .task { gap: 6px; padding: 7px; }
-body.zen .task-row { gap: 6px; padding: 7px; }
-body.zen .task-list { gap: 4px; }
-body.zen .task-summary { gap: 4px; }
-body.zen .metrics { gap: 6px; margin-top: 12px; }
-body.zen .metric { padding: 8px; }
-body.zen .board-column { padding: 7px; }
-body.zen .board-cards { gap: 5px; }`;
+/* Zen is a denser scale, not a second set of rules: the steps shrink, and
+   every card, row, column, and margin in the shared sheet follows. */
+body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 24px; }`;
 }
 
 /**
@@ -755,7 +829,70 @@ body.zen .board-cards { gap: 5px; }`;
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getZenCss()}`;
+}
+
+/**
+ * VS Code's high contrast themes, and the operating system's forced colors.
+ *
+ * A reader who chose a high contrast theme chose it over every palette, so
+ * under `body.vscode-high-contrast` each theme hands its tokens to the
+ * editor's own colors, and the glows, grid, and shadows the film themes
+ * paint go, since a glow around thin text is exactly what that reader is
+ * avoiding. Under forced colors the browser paints the colors itself; what
+ * is left to do is the same tidying. Laid down after every theme so it
+ * outweighs them, before zen, which stays the last layer, and marked
+ * important where a theme's hover rule is more specific.
+ */
+export function getHighContrastCss(): string {
+  return `
+body.vscode-high-contrast, body.vscode-high-contrast-light {
+  --bg: var(--vscode-editor-background);
+  --bg-dark: var(--vscode-editor-background);
+  --panel: var(--vscode-editor-background);
+  --panel-bg: var(--vscode-editor-background);
+  --panel-raised: var(--vscode-editor-background);
+  --panel-deep: var(--vscode-input-background, var(--vscode-editor-background));
+  --text: var(--vscode-foreground);
+  --muted: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --line: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --slate-border: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --line-strong: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --cyan: var(--vscode-textLink-foreground);
+  --cyan-bright: var(--vscode-textLink-foreground);
+  --amber: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  --amber-bright: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  --amber-dim: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --green: var(--vscode-charts-green, var(--vscode-foreground));
+  --toxic-green: var(--vscode-charts-green, var(--vscode-foreground));
+  --favorite-red: var(--vscode-charts-red, var(--vscode-errorForeground));
+  --warning-orange: var(--vscode-editorWarning-foreground, var(--vscode-foreground));
+  --slate-olive: var(--vscode-contrastBorder, var(--vscode-panel-border));
+  --grid-line: transparent;
+  --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editor-background));
+  --hover-fg: var(--vscode-foreground);
+  --chosen-bg: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  --chosen-fg: var(--vscode-foreground);
+  --font-display: var(--vscode-font-family, system-ui, sans-serif);
+  --edge: 1px;
+  background: var(--vscode-editor-background);
+  background-image: none;
+}
+body.vscode-high-contrast *, body.vscode-high-contrast *::before, body.vscode-high-contrast *::after,
+body.vscode-high-contrast-light *, body.vscode-high-contrast-light *::before, body.vscode-high-contrast-light *::after {
+  text-shadow: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  clip-path: none !important;
+}
+/* A chosen or hovered control must still be told apart with the shape of
+   its edge, since the fill may be the page color under forced colors. */
+body.vscode-high-contrast button.active, body.vscode-high-contrast-light button.active { outline: 2px solid var(--amber); outline-offset: -2px; }
+@media (forced-colors: active) {
+  *, *::before, *::after { text-shadow: none !important; box-shadow: none !important; background-image: none !important; clip-path: none !important; }
+  body { background-image: none; }
+  button.active, [aria-selected="true"], [aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+}`;
 }
 
 /** The marker `getZenCss()` hangs on, or nothing. */
@@ -807,6 +944,33 @@ export function getComponentScript(): string {
     return String(fileName).replace(/\\.md$/i, '') + ' / line ' + line;
   }
 
+  /**
+   * The headings above an entry, as the steps a reader would take to it:
+   * "Harbor check-in > Actions". The first step goes when it says what the
+   * file name says, since the line above names the file; the last goes when
+   * it is the entry's own title, which the card shows already. A daily note
+   * once read "2026-08-02 / line 14" and "2026-08-02 > … > Encrypt…" under
+   * a card titled "Encrypt…".
+   */
+  function trimHeadingPath(path, fileName, ownTitle) {
+    const plain = function (text) {
+      return String(text || '').replace(/[#@][\\w/-]+/g, ' ').replace(/\\s+/g, ' ').trim().toLocaleLowerCase();
+    };
+    const stem = plain(String(fileName || '').replace(/\\.md$/i, ''));
+    const own = plain(ownTitle);
+    let steps = (path || []).map(function (part) { return String(part).trim(); }).filter(Boolean);
+    if (steps.length > 1 && plain(steps[0]) === stem) steps = steps.slice(1);
+    if (steps.length && own && plain(steps[steps.length - 1]) === own) steps = steps.slice(0, -1);
+    return steps;
+  }
+
+  /** The trimmed path as one line, each step escaped, joined by a chevron. */
+  function renderHeadingPath(path, fileName, ownTitle) {
+    return trimHeadingPath(path, fileName, ownTitle)
+      .map(function (part) { return escapeHtml(part); })
+      .join('<span class="heading-path-joiner"> &gt; </span>');
+  }
+
   /** Escape snapshot data before it is inserted as HTML. */
   function escapeHtml(value) {
     return String(value)
@@ -840,6 +1004,23 @@ export function getComponentScript(): string {
     return '<button class="tag-open ' + (className || '') + '" data-action="open-tag" data-tag-key="'
       + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
       + renderTagLabel(tag.label) + '</button>';
+  }
+
+  /**
+   * A task's priority as a badge: an arrow for how far from the middle, and
+   * the word. The row, the board card, and the query block all draw it, so
+   * priority looks like one thing everywhere. The word "priority" is for a
+   * screen reader; the edge and the arrow say it on screen.
+   */
+  const PRIORITY_MARKS = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
+  function renderPriorityBadge(priority) {
+    const key = String(priority || '').toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(PRIORITY_MARKS, key)) return '';
+    const word = key.charAt(0).toUpperCase() + key.slice(1);
+    const mark = PRIORITY_MARKS[key];
+    return '<span class="priority-badge priority-' + key + '" title="' + word + ' priority">'
+      + (mark ? '<span class="priority-mark" aria-hidden="true">' + mark + '</span>' : '')
+      + word + '<span class="visually-hidden"> priority</span></span>';
   }
 
   /** The rail step a weight fills to: three for 0.75 and up, two from 0.375. */
@@ -996,6 +1177,87 @@ export function getComponentScript(): string {
   }
 
   /**
+   * A menu of choices under a control, as a board card's ⋯ opens. groups is
+   * a list of { label, items: [{ value, label }] }, and onChoose is called
+   * with the chosen value. One element serves every opener; it closes on a
+   * choice, Escape, or a click elsewhere, the arrow keys walk it, and focus
+   * goes back to the control that opened it.
+   */
+  let actionMenu;
+  let actionMenuChoose;
+  let actionMenuOpener;
+
+  function closeActionMenu() {
+    if (!actionMenu || actionMenu.hidden) return;
+    actionMenu.hidden = true;
+    actionMenuChoose = undefined;
+    const opener = actionMenuOpener;
+    actionMenuOpener = undefined;
+    if (opener && document.contains(opener)) {
+      opener.setAttribute('aria-expanded', 'false');
+      if (opener.focus) opener.focus();
+    }
+  }
+
+  function openActionMenu(opener, groups, onChoose) {
+    closeActionMenu();
+    if (!actionMenu) {
+      actionMenu = document.createElement('div');
+      actionMenu.id = 'action-menu';
+      actionMenu.className = 'tag-context-menu action-menu';
+      actionMenu.setAttribute('role', 'menu');
+      actionMenu.hidden = true;
+      document.body.appendChild(actionMenu);
+      document.addEventListener('click', function (event) {
+        const chosen = event.target.closest('#action-menu [data-menu-value]');
+        if (chosen) {
+          const choose = actionMenuChoose;
+          closeActionMenu();
+          if (choose) choose(chosen.dataset.menuValue);
+          return;
+        }
+        if (actionMenu.hidden || event.target.closest('#action-menu')) return;
+        if (actionMenuOpener && actionMenuOpener.contains(event.target)) return;
+        closeActionMenu();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (actionMenu.hidden) return;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeActionMenu();
+          return;
+        }
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) return;
+        const items = Array.prototype.slice.call(actionMenu.querySelectorAll('[data-menu-value]'));
+        const index = items.indexOf(document.activeElement);
+        const next = event.key === 'Home' ? 0
+          : event.key === 'End' ? items.length - 1
+          : event.key === 'ArrowDown' ? (index + 1) % items.length
+          : (index - 1 + items.length) % items.length;
+        event.preventDefault();
+        items[next].focus();
+      });
+    }
+    actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group) {
+      return (group.label ? '<div class="menu-heading" role="presentation">' + escapeHtml(group.label) + '</div>' : '')
+        + group.items.map(function (item) {
+          return '<button type="button" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
+        }).join('');
+    }).join('');
+    const first = actionMenu.querySelector('[data-menu-value]');
+    if (!first) return;
+    actionMenuChoose = onChoose;
+    actionMenuOpener = opener;
+    opener.setAttribute('aria-expanded', 'true');
+    actionMenu.hidden = false;
+    const at = opener.getBoundingClientRect();
+    const bounds = actionMenu.getBoundingClientRect();
+    actionMenu.style.left = Math.max(8, Math.min(at.right - bounds.width, window.innerWidth - bounds.width - 8)) + 'px';
+    actionMenu.style.top = Math.max(8, Math.min(at.bottom + 4, window.innerHeight - bounds.height - 8)) + 'px';
+    first.focus();
+  }
+
+  /**
    * The element a keyboard opened a context menu from, so closing the menu
    * gives focus back to it. A pointer leaves this unset. Opening a menu
    * closes whatever was open first, so a close consumes it only when a menu
@@ -1081,15 +1343,12 @@ export function getComponentScript(): string {
    * changing a due date meant regrouping the whole board first, and the most
    * common edits ended in the Markdown file instead.
    */
-  function renderTaskCardMoves(card, columnId, columns, settings) {
+  function taskCardMoves(card, columnId, columns, settings) {
     const option = function (value, label) {
-      return value === columnId
-        ? ''
-        : '<option value="' + escapeHtml(value) + '">' + escapeHtml(label) + '</option>';
+      return value === columnId ? undefined : { value: value, label: label };
     };
     const group = function (label, options) {
-      const body = options.join('');
-      return body ? '<optgroup label="' + escapeHtml(label) + '">' + body + '</optgroup>' : '';
+      return { label: label, items: options.filter(Boolean) };
     };
     const statuses = (settings && settings.statuses) || [];
     const statusOptions = [option('status:', 'No status')].concat(statuses.map(function (status) {
@@ -1111,28 +1370,50 @@ export function getComponentScript(): string {
         && column.id.indexOf('due:') !== 0
         && column.id !== 'done';
     }).map(function (column) { return option(column.id, column.label); });
-    return group('Status', statusOptions)
-      + group('Priority', priorityOptions)
-      + group('Due', dueOptions)
-      + group('This board', others)
-      + (done ? group('Done', [done]) : '');
+    return [
+      group('Status', statusOptions),
+      group('Priority', priorityOptions),
+      group('Due', dueOptions),
+      group('This board', others),
+      group('Done', done ? [done] : []),
+    ];
   }
 
+  /** The moves each drawn card offers, by task id, for its menu to open. */
+  let taskBoardMoves = {};
+
   /** One task card, with its checkbox and the menu that edits it. */
+  const ELLIPSIS_ICON = '${strokeIcon(ICON_PATHS.ellipsis)}';
+
   function renderTaskBoardCard(card, columnId, columns, settings) {
+    taskBoardMoves[card.taskId] = taskCardMoves(card, columnId, columns, settings);
     const details = card.details.map(function (detail) {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
-      // state is in the text; the page only colours it.
+      // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + escapeHtml(detail) + '</span>';
-    }).join(' · ');
+      // The host words priority as "high priority"; the card draws the badge
+      // the task rows draw, so it is told from the due date beside it.
+      const priority = /^(highest|high|medium|low|lowest) priority$/.exec(detail);
+      if (priority) return renderPriorityBadge(priority[1]);
+      // A date is one word: "2026-09-01" broke at its hyphens in a narrow
+      // column, leaving "2026-09-" on one line and "01" on the next.
+      const text = escapeHtml(detail).replace(/\\d{4}-\\d{2}-\\d{2}/g, function (date) {
+        return '<span class="board-date">' + date + '</span>';
+      });
+      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + text + '</span>';
+    }).join('');
     const plainTitle = String(card.title || '');
+    // The file and line, then the headings above, fold under the card as
+    // they do under a row: the file name was the last detail on every card.
+    const cardPath = renderHeadingPath(card.headingPath, String(card.filePath).split('/').pop() || card.filePath, '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
       + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
-      + '<select class="board-move" data-action="board-move" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '"><option value="" selected hidden>⋯</option>' + renderTaskCardMoves(card, columnId, columns, settings) + '</select>'
+      + '<span class="task-source">' + escapeHtml(formatSourceLocation(String(card.filePath).split('/').pop() || card.filePath, card.line)) + '</span>'
+      + (cardPath ? '<span class="task-source heading-path">' + cardPath + '</span>' : '')
+      + '<button type="button" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
       + '</div></article>';
   }
 
@@ -1141,6 +1422,7 @@ export function getComponentScript(): string {
    * cards a page filters locally, such as by a search.
    */
   function renderTaskBoard(board, isVisible) {
+    taskBoardMoves = {};
     // Grouped by status with almost no statuses written, the board is one
     // tall column and four near-empty ones. Say so, and offer the grouping
     // that works for any task, before the reader takes the board for broken.
@@ -1186,10 +1468,25 @@ export function getComponentScript(): string {
       post({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
     }
 
+    function openCardMenu(card, opener) {
+      const groups = taskBoardMoves[card.dataset.taskId];
+      if (!groups) return false;
+      openActionMenu(opener, groups, function (value) {
+        post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
+      });
+      return true;
+    }
+
     document.addEventListener('click', function (event) {
       const group = event.target.closest('[data-action="set-board-group"]');
       if (group) {
         post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      const menuButton = event.target.closest('[data-action="board-menu"]');
+      if (menuButton) {
+        const card = boardCard(menuButton);
+        if (card) openCardMenu(card, menuButton);
         return;
       }
       const rest = event.target.closest('[data-action="show-column-rest"]');
@@ -1210,9 +1507,14 @@ export function getComponentScript(): string {
       if (event.target.dataset.action === 'board-toggle-task') {
         post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: event.target.checked });
       }
-      if (event.target.dataset.action === 'board-move' && event.target.value) {
-        post({ type: 'moveTask', taskId: card.dataset.taskId, column: event.target.value });
-      }
+    });
+    // A right-click on a card, or the menu key on a focused one, opens the
+    // same menu its ⋯ does, anchored to that button.
+    document.addEventListener('contextmenu', function (event) {
+      const card = boardCard(event.target);
+      if (!card || event.target.closest('[data-tag-key], a, input')) return;
+      const button = card.querySelector('[data-action="board-menu"]');
+      if (button && openCardMenu(card, button)) event.preventDefault();
     });
     document.addEventListener('dragstart', function (event) {
       const card = boardCard(event.target);
@@ -1354,26 +1656,29 @@ export function getComponentScript(): string {
     const task = item.task;
     const settings = options || {};
     // The host words an open task's due date beside today, "Overdue 15 days
-    // · 2026-09-08", so the state is in the text and not in the colour alone.
+    // · 2026-09-08", so the state is in the text and not in the color alone.
     // A done task keeps its date as written.
     const dueDate = item.dueLabel
       ? '<span class="due-date ' + (item.overdue ? 'overdue' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
       : (task.dueText
         ? '<span class="due-date">Due ' + escapeHtml(task.dueText) + '</span>'
         : '');
+    // As written, not in capitals: the working labels read as written
+    // everywhere else since the UX pass, and these were the last three.
     const scheduled = task.scheduledAt !== undefined
-      ? '<span class="task-detail">SCHEDULED ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
+      ? '<span class="task-detail">Scheduled ' + escapeHtml(formatTaskDate(task.scheduledAt)) + '</span>'
       : '';
-    const priority = task.priority
-      ? '<span class="task-detail priority-' + escapeHtml(task.priority) + '">' + escapeHtml(task.priority.toUpperCase()) + ' PRIORITY</span>'
-      : '';
+    const priority = renderPriorityBadge(task.priority);
     const recurrence = task.recurrence
-      ? '<span class="task-detail">REPEATS ' + escapeHtml(task.recurrence.toUpperCase()) + '</span>'
+      ? '<span class="task-detail">Repeats ' + escapeHtml(task.recurrence) + '</span>'
       : '';
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
+    // The headings above the task, tags stripped, under the file and line:
+    // the same two lines a note card and the sidebar show.
+    const taskPath = renderHeadingPath(item.headingPath, item.fileName, '');
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span></div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
       + '</div>';
   }
 
@@ -1501,7 +1806,7 @@ export function getComponentScript(): string {
       const insertionPoint = before ? row : row.nextSibling;
       if (placeholder && row.parentElement && insertionPoint !== placeholder) row.parentElement.insertBefore(placeholder, insertionPoint);
     }
-    function finish(event, cancelled) {
+    function finish(event, canceled) {
       if (!drag || drag.pointerId !== event.pointerId) return;
       const current = drag;
       if (current.row.hasPointerCapture && current.row.hasPointerCapture(event.pointerId)) current.row.releasePointerCapture(event.pointerId);
@@ -1510,7 +1815,7 @@ export function getComponentScript(): string {
         return;
       }
       let dropped = false;
-      if (!cancelled) {
+      if (!canceled) {
         follow(event.clientX, event.clientY);
         const targetKey = dropTarget ? keyOf(dropTarget, current.kind) : undefined;
         dropped = Boolean(targetKey) && targetKey !== current.key && options.canRank(current.kind)
@@ -1725,9 +2030,9 @@ export function getQueryEditorCss(): string {
   return `
 .query-workspace { margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
-.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 12px var(--font-mono); }
+.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: var(--text-sm) var(--font-mono); }
 .query-input:focus { border-color: var(--amber); outline: none; }
-.query-input:focus-visible { outline: var(--edge) solid var(--cyan); outline-offset: 2px; }
+.query-input:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
 .query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
 /*
@@ -1740,14 +2045,14 @@ export function getQueryEditorCss(): string {
 .query-bar-shell.invalid { border-color: #FF5555; }
 .query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: none; }
 /* Every chip looks the same, whatever its term; only a left-out tag is red. */
-.query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: 11px var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
+.query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: var(--text-xs) var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
 .query-chip-label { min-width: 0; overflow-wrap: anywhere; }
-.query-bar-shell .query-chip.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); background: color-mix(in srgb, var(--favorite-red) 12%, transparent); color: var(--favorite-red); }
+.query-bar-shell .query-chip.is-negated { border-style: dashed; border-color: var(--muted); background: transparent; color: var(--text); text-decoration: line-through; text-decoration-color: var(--muted); }
 /* A group of the search: its own chips inside a frame, with the group's
    remove at the end, so what the builder nests the box shows nested. The
    frame removes the group, as a chip's whole face removes its term. */
 .query-chip-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; max-width: 100%; border: 1px dashed color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; padding: 2px 3px 2px 5px; color: var(--cyan); cursor: pointer; }
-.query-chip-group.is-negated { border-color: color-mix(in srgb, var(--favorite-red) 60%, transparent); color: var(--favorite-red); }
+.query-chip-group.is-negated { border-color: var(--muted); color: var(--text); }
 /* The group's own remove is the circle alone, ringed with the group's dash
    so it reads as the group's rather than one more chip. */
 .query-bar-shell .query-chip-group-remove { border: 0; background: none; padding: 0 2px; min-height: 0; color: inherit; }
@@ -1758,7 +2063,7 @@ export function getQueryEditorCss(): string {
 .query-chip-group:hover:not(:has(.query-chip:hover, .query-chip-group:hover)), .query-chip-group:has(> .query-chip-group-remove:hover), .query-chip-group:has(> .query-chip-group-remove:focus-visible) { border-color: var(--amber); border-style: solid; color: var(--amber); }
 .query-bar-shell .query-chip-group-remove:hover, .query-bar-shell .query-chip-group-remove:focus-visible { background: none; color: inherit; }
 .query-bar-shell .query-chip-group-remove:hover .query-chip-remove, .query-bar-shell .query-chip-group-remove:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); border-color: var(--amber); }
-.query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: 12px; line-height: 1; }
+.query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: var(--text-sm); line-height: 1; }
 .query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
 .query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
 .query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
@@ -1768,18 +2073,22 @@ export function getQueryEditorCss(): string {
 .query-suggestions[hidden] { display: none; }
 /* A completion reads as written, whatever a theme does to buttons, and each
    sits on its own ruled row; a long one wraps beside its note. */
-.query-suggestions .query-suggestion { display: flex; width: 100%; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); padding: 6px 10px; text-align: left; font: 12px var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
+.query-suggestions .query-suggestion { display: flex; width: 100%; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); padding: 6px 10px; text-align: left; font: var(--text-sm) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
 .query-suggestions .query-suggestion:last-child { border-bottom: 0; }
 .query-suggestions .query-suggestion:hover, .query-suggestions .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
 .query-suggestion-label { min-width: 0; overflow-wrap: anywhere; }
 .query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
-.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
+.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: var(--text-xs); }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
    the theme's own look. */
-.query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--amber); color: var(--amber); }
-.query-error { color: #FF8080; font: 11px var(--font-mono); }
-.query-hint { color: var(--muted); font: 11px var(--font-mono); }
+/* One filled control per page: the one the reader most likely wants. A
+   chosen segment is drawn another way (see button.active), so filled means
+   "do this" and nothing else. */
+.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+.query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
+.query-error { color: #FF8080; font: var(--text-xs) var(--font-mono); }
+.query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* The line of syntax is wanted at the moment of typing and is chrome the rest
    of the time, competing with the results under it. It shows while the box
    has focus or holds a term; the Builder button and the count stay, and a
@@ -1793,32 +2102,35 @@ export function getQueryEditorCss(): string {
 .query-builder-group.is-root { border: 0; background: none; padding: 0; }
 .query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-.query-builder-group-head select { min-height: 28px; font-size: 12px; }
+.query-builder-group-head select { min-height: 28px; font-size: var(--text-sm); }
 .query-builder-head-text { color: var(--muted); font-size: var(--text-xs); }
-.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; }
+.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: var(--text-xs); }
 .query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
 .query-builder-item > .query-builder-and { margin-top: 9px; }
 .query-builder-item.has-group { margin-top: 10px; margin-bottom: 10px; }
 .query-builder-item > .query-builder-group { flex: 1 1 auto; min-width: 0; }
 .query-builder-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .query-builder-row + .query-builder-row { margin-top: 6px; }
-.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: 12px; }
+.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: var(--text-sm); }
 .query-builder-row .query-builder-operator { font-family: var(--font-mono); }
 .query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
-.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); }
+.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); }
 .query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
 .query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
 .query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-.query-builder-actions button { font-size: 11px; }
-.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
-.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.query-builder-actions button { font-size: var(--text-xs); }
+.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
+.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
 /* The facets wrap on the left; the result count holds the top-right corner. */
-.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 18px; margin: 12px 0; padding: 10px 12px; border: 1px dashed var(--line-strong); }
-.query-facets-groups { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
-.query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
-.query-facets-empty { color: var(--muted); font-size: 11px; }
+.query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-2) var(--space-4); margin: var(--space-3) 0; padding: var(--space-3); border: 1px dashed var(--line-strong); }
+/* Each group is a labeled region, its label above its values and the
+   groups a wide step apart, so where one group ends is a shape and not a
+   word in the run. */
+.query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
+.query-facets-count { align-self: center; color: var(--muted); font-size: var(--text-xs); line-height: 26px; white-space: nowrap; }
+.query-facets-empty { color: var(--muted); font-size: var(--text-xs); }
 /* A value and its two other modes read as one control. The modes stay out of
    the way until the value is hovered or something in it has focus. */
 
@@ -1826,17 +2138,18 @@ export function getQueryEditorCss(): string {
    a muted color, which would be muted against whatever ground a theme gives
    its controls rather than against the page. */
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
-.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); }
-.query-facet { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); }
+.query-facets-heading { color: var(--amber); font: var(--text-xs) var(--font-mono); }
+.query-facet { display: grid; gap: var(--space-1); }
+.query-facet-values { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
+.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: var(--text-xs); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
 /**
- * The search box's behaviour, inserted in a page script after
+ * The search box's behavior, inserted in a page script after
  * getComponentScript(), whose helpers it uses.
  *
  * Like getComponentScript(), this string is interpolated into a template
@@ -2185,7 +2498,7 @@ export function getQueryEditorScript(): string {
         ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" title="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
         : '';
       const clear = canClear(currentText())
-        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear the search</button>'
+        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear</button>'
         : '';
       if (!drop && !clear) return '';
       return '<span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">' + drop + clear + '</span>';
@@ -2207,9 +2520,9 @@ export function getQueryEditorScript(): string {
       }
       const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
-        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span>' + facet.values.map(function (value) {
+        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span><span class="query-facet-values">' + facet.values.map(function (value) {
           return renderFacetValue(facet, value);
-        }).join('') + '</div>';
+        }).join('') + '</span></div>';
       }).join('') + '</div>' + count + '</section>';
     }
 
@@ -2252,7 +2565,8 @@ export function getQueryEditorScript(): string {
       if (!appliedText().trim()) return '';
       const counts = query().matchCounts || { notes: 0, tasks: 0 };
       const nouns = { notes: ['note', 'notes'], tasks: ['task', 'tasks'] };
-      return '<span class="query-facets-count" role="status">' + (options.resultKinds || ['notes', 'tasks']).map(function (kind) {
+      const elsewhere = options.countElsewhere && options.countElsewhere();
+      return '<span class="query-facets-count' + (elsewhere ? ' visually-hidden' : '') + '" role="status">' + (options.resultKinds || ['notes', 'tasks']).map(function (kind) {
         const count = counts[kind] || 0;
         return count + ' ' + nouns[kind][count === 1 ? 0 : 1];
       }).join(' &middot; ') + '</span>';

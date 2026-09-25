@@ -394,6 +394,8 @@ export interface DashboardTask {
   renderedTitle: string;
   titleTags: TagReference[];
   sectionHeading?: string;
+  /** The headings above the task, top down, tags stripped. */
+  headingPath?: string[];
   fileName: string;
   /**
    * The due date as a row writes it, `Overdue 15 days · 2026-09-08`, worded
@@ -610,6 +612,8 @@ export interface TagOverviewCard {
   createdAt?: number;
   updatedAt?: number;
   accessCount: number;
+  /** The headings down to this entry, top down, tags stripped. */
+  headingPath?: string[];
 }
 
 export interface HeadingTagSpan extends TagReference {
@@ -858,8 +862,8 @@ export interface NotesGraphSnapshot {
 }
 
 /**
- * What a local graph is centred on: the note last open in an editor, how far
- * out it reaches, and whether the graph on screen is that neighbourhood or
+ * What a local graph is centered on: the note last open in an editor, how far
+ * out it reaches, and whether the graph on screen is that neighborhood or
  * the whole workspace.
  */
 export interface NotesGraphFocus {
@@ -905,7 +909,7 @@ export interface NotesGraphClearSelectionMessage {
   type: 'clearSelection';
 }
 
-/** Draw the whole workspace, or the neighbourhood of the note in the editor. */
+/** Draw the whole workspace, or the neighborhood of the note in the editor. */
 export interface NotesGraphSetScopeMessage {
   type: 'setGraphScope';
   local: boolean;
@@ -1352,6 +1356,8 @@ export interface TaskBoardCard {
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
   overdue: boolean;
+  /** The headings above the task, top down, tags stripped. */
+  headingPath: string[];
 }
 
 export interface TaskBoardColumn {
@@ -1456,7 +1462,7 @@ export interface TableSort {
 }
 
 /**
- * One cell: its text, and what it is, so a surface can colour an overdue
+ * One cell: its text, and what it is, so a surface can color an overdue
  * date or quieten a file name without knowing which column it drew.
  */
 export interface TableCell {

@@ -361,6 +361,20 @@ suite('Search page behavior', () => {
     );
   });
 
+  test('says a count once per region', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    assert.strictEqual(
+      page.findAll('[data-search-count="notes"]').length,
+      1,
+      'in the tabs layout the tab carries the count and the heading does not repeat it',
+    );
+    assert.ok(
+      page.find('.query-facets-count').classList.contains('visually-hidden'),
+      'and the Refine strip keeps its live region without drawing the count again',
+    );
+    assert.ok(page.find('.view-options [data-action="set-sort"]'), 'Sort sits in the gear with the other view options');
+  });
+
   test('marks a search box that holds a term, so its hint can stay while it is in use', () => {
     const { page } = open(NOTES, '#project/atlas');
     assert.strictEqual(

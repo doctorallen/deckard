@@ -35,7 +35,7 @@ const corpoCss = `
   --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --panel-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --panel-raised: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
-  /* VS Code's own hover pair: its focus blue on its hover grey is about 3:1,
+  /* VS Code's own hover pair: its focus blue on its hover gray is about 3:1,
      which is a border color, not a text one. */
   --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
   --hover-fg: var(--vscode-foreground);
@@ -51,12 +51,17 @@ const corpoCss = `
   --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
   --cyan: var(--vscode-textLink-foreground);
   --cyan-bright: var(--vscode-textLink-foreground);
-  --amber: var(--vscode-focusBorder);
+  /* The accent is written as text in eyebrows, chips, and hovered controls,
+     and VS Code's focus blue is an edge color, about 3:1 on its own dark
+     grounds. Its link color is text, kept readable in every VS Code theme;
+     the focus blue stays on --amber-bright for edges and marks. */
+  --amber: var(--vscode-textLink-foreground);
   --amber-bright: var(--vscode-focusBorder);
   --amber-dim: var(--vscode-descriptionForeground);
   --green: var(--vscode-charts-green);
   --toxic-green: var(--vscode-charts-green);
   --favorite-red: var(--vscode-charts-red);
+  --favorite: var(--vscode-textLink-foreground);
   --warning-orange: var(--vscode-editorWarning-foreground);
   --slate-olive: var(--vscode-panel-border);
   --grid-line: transparent;
@@ -89,7 +94,8 @@ code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monosp
 button, select, input[type="text"], input[type="search"], .tag-filter summary { border-radius: 2px; }
 button, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 button:hover, .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
-button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+button.active, button.active:hover, button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .segmented button[aria-pressed="true"], .pagination .page-number.is-current { border-color: var(--vscode-focusBorder); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); box-shadow: inset 0 -2px 0 var(--vscode-focusBorder); }
+.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 /* A count inside a chosen button follows its text, not the muted color. */
 .active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
 .query-bar-row .query-apply:hover { background: var(--vscode-button-hoverBackground); color: var(--vscode-button-foreground); }
@@ -142,14 +148,14 @@ export function getDeckardThemeCss(theme: DeckardTheme): string {
   --slate-border: #33295e;
   --line: #4c3d87;
   --line-strong: #8f75ff;
-  --cyan-bright: #5ff7ff;
-  --cyan: #00e5ff;
+  --cyan-bright: #7ce6f0;
+  --cyan: #3fd8ea;
   --amber-bright: #ff8b55;
-  --amber: #ff3ca6;
+  --amber: #f25aa9;
   --amber-dim: #8c4d92;
-  --green: #62f5ff;
-  --toxic-green: #62f5ff;
-  --favorite-red: #ff2d95;
+  --green: #7ce3ec;
+  --toxic-green: #7ce3ec;
+  --favorite-red: #f2559e;
   --warning-orange: #ff8b55;
   --font-display: var(--vscode-font-family, 'Arial Narrow', 'Avenir Next Condensed', sans-serif);
   --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', monospace);
@@ -210,13 +216,13 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --slate-border: #1e5724;
   --line: #278a31;
   --line-strong: #54db51;
-  --cyan-bright: #76ff63;
-  --cyan: #54db51;
+  --cyan-bright: #8ce87c;
+  --cyan: #6fd96c;
   --amber-bright: #f0bf47;
   --amber: #d89d31;
   --amber-dim: #896b28;
-  --green: #76ff63;
-  --toxic-green: #76ff63;
+  --green: #8ce87c;
+  --toxic-green: #8ce87c;
   --favorite-red: #e24b26;
   --warning-orange: #e24b26;
   --font-display: var(--vscode-editor-font-family, ui-monospace, monospace);
@@ -250,21 +256,25 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
   --panel-bg: #f1e8c8;
   --panel: #f1e8c8;
   --panel-raised: #faf1d4;
-  --panel-deep: #c5b980;
+  /* The control ground was a mid tan that no accent could sit on at 4.5:1;
+     it is the buttons' own cream now, and the inks below are one step
+     deeper than before for the same reason. */
+  --panel-deep: #e9dfb7;
   --text: #29341d;
-  --muted: #616a45;
+  --muted: #545c3c;
   --slate-border: #7d8750;
   --line: #9c9a5c;
   --line-strong: #55713d;
-  --cyan-bright: #55713d;
-  --cyan: #6e8748;
+  --cyan-bright: #354a1f;
+  --cyan: #3f5626;
   --amber-bright: #c28a32;
-  --amber: #9b6b2b;
+  --amber: #664317;
   --amber-dim: #6f542a;
   --green: #587a3d;
   --toxic-green: #587a3d;
-  --favorite-red: #a94d35;
-  --warning-orange: #a94d35;
+  --favorite-red: #9a4530;
+  --favorite: #8a5a14;
+  --warning-orange: #9a4530;
   --font-display: Georgia, 'Times New Roman', serif;
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
@@ -275,7 +285,7 @@ h1, h2, h3 { font-family: var(--font-display); color: #3d4d28; letter-spacing: .
 button, select, .tag-open, .view-options summary { border-color: var(--slate-border); border-radius: 5px; background: #e9dfb7; color: var(--text); }
 button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
 :root { --hover-bg: var(--green); --hover-fg: #fff7db; }
-.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 5px; background: #f1e8c8; box-shadow: inset 3px 0 0 var(--green); }
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 5px; --corner-bl: 5px; --corner-br: 5px; background: #f1e8c8; box-shadow: inset 3px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
 .metric:nth-child(3n + 2)::before { border-bottom-color: var(--amber); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }
@@ -458,8 +468,9 @@ ${contentHoverCss} .card .tag-open:not(:hover):not(:focus-visible), .note-row .t
   --font-display: ${theme === 'lcars' ? "'Arial Narrow', var(--vscode-font-family, sans-serif)" : 'var(--vscode-font-family, sans-serif)'};
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }
-${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, .icon-button, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
+${theme === 'lcars' ? 'body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } .sidebar-toolbar { gap: 0; } .sidebar-toolbar .icon-button { border-radius: 0; } .sidebar-toolbar .icon-button:first-child { border-radius: 0 0 0 15px; } .sidebar-toolbar .icon-button:last-child { border-radius: 0 15px 15px 0; } button svg, button .toolbar-icon, .icon-button, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; } button:hover, button.active, select:hover, .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; --corner-br: 18px; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .rank-context-menu, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }' : ''}
 ${theme === 'lcars' ? '.active-file .tag-list button { color: #050505; }' : ''}
+${theme === 'lcars' ? '.card, .note, .task-row, .board-card, .home-row, .tag-row { --frame-left: 7px; --frame-right: 0px; }' : ''}
 ${theme === 'lcars' ? '.favorite-toggle { background: var(--cyan); color: #7a1f1f; } .favorite-toggle:hover, .favorite-toggle:focus-visible, .favorite-toggle.favorite { background: #f5cc72; color: #7a1f1f; }' : ''}
 ${theme === 'lcars' ? '.dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }' : ''}
 ${theme === 'lcars' ? 'main { border-top: 0; }' : ''}

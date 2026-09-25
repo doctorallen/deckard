@@ -14,10 +14,10 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
 | [Dashboard](#dashboard) | Workspace totals of notes, tasks, and tags, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
 | [Search pages](#search-pages) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. Any other search opens the same kind of page, and [one bulk edit](#editing-a-searchs-results) can be made to everything it found. |
-| [Search](#search) | `Deckard: Search Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
+| [Search](#search) | `Deckard: Find in Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
-| [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace, or of one note's neighbourhood. |
+| [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace, or of one note's neighborhood. |
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
 | [Tasks view](#tasks-view) | Open tasks grouped by due status, priority, status, or person, which you can complete from their checkboxes. |
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
@@ -54,7 +54,7 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 ## Themes
 
-Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase eyebrows and titles of the others. In every theme the labels a reader scans while working, column titles, group headings, table headers, and control labels, read as written; only the eyebrow above a page title and the title itself take the film styles' capitals. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo.
+Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase eyebrows and titles of the others. In every theme the labels a reader scans while working, column titles, group headings, table headers, and control labels, read as written; only the eyebrow above a page title and the title itself take the film styles' capitals. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo. Their accents are bright but not fully saturated, since pure cyan or green on near-black blooms around small text; the hues are the same. In every theme red means overdue or high priority and nothing else: the favorite heart is gold, and a search term turned around with NOT is a dashed, struck chip rather than a red one.
 
 | **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |
@@ -68,9 +68,9 @@ Set `deckard.theme` to choose the visual style used by Deckard webviews. The def
 
 ## Zen mode
 
-Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, or run `Deckard: Zen Mode`, to turn Deckard's own chrome down.
+Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, or run `Deckard: Enter Zen Mode`, to turn Deckard's own chrome down.
 
-Zen mode is not a theme, and it does not replace one. A theme picks the colours; zen picks how much frame is drawn around them, so the two compose — any of the eight themes above can be read in zen.
+Zen mode is not a theme, and it does not replace one. A theme picks the colors; zen picks how much frame is drawn around them, so the two compose — any of the eight themes above can be read in zen.
 
 **What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's totals are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
 
@@ -102,9 +102,9 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Dashboard** | Opens workspace totals, Home, and tags. |
 | **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, or the person each task is for. |
-| **Deckard: Show Stats** | Opens index totals and local view-count statistics. |
+| **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
-| **Deckard: Show Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
+| **Deckard: Open Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
@@ -128,9 +128,9 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](#claude-code-and-other-mcp-clients) to Claude Code, offering to turn the server on first. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
-| **Deckard: Open a Tag's Search Page** | Opens a tag's search page, or shows a tag picker when no tag is supplied. |
+| **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
 | **Deckard: Open Search Page** | Opens a search page listing every note, ready for a search. |
-| **Deckard: Search Notes (find as you type)** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](#find). |
+| **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](#find). |
 | **Deckard: Search Notes and Tasks** | Opens a search page on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
@@ -378,7 +378,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 |---|---|---|
 | **Search** | The [search box](#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
 | **Tasks** | The first tasks a search finds, `is:open` unless you set another, ranked as on the Task board | The Task board, on that search |
-| **Agenda** | Overdue, today's, and upcoming tasks | The Tasks view |
+| **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them | The Tasks view |
 | **Favorite tags** | The tags you favorited, with what searching for each finds | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
 | **Saved searches** | Your saved searches, each removable | Where each was saved |
@@ -410,7 +410,7 @@ Each says what it did with **Undo** beside it. A pin is kept as the heading's te
 
 **Paging**, in a widget's gear, turns it from the first few entries into all of them a page at a time: the widget grows a line of its own with **Per page**, the entries it is showing, such as *6–10 of 601*, and a chevron either way. The Agenda widget and a saved search's results are not paged, because each lists more than one thing and a single page number could not say which. A widget's page is kept with the rest of its settings, so Home opens where you left it.
 
-Until Home has been arranged, a line above the widgets says it can be, with **Customize** and **Dismiss** beside it; once it has been arranged, or dismissed, the line is gone for good. Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks, New tags, and People gone quiet look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
+Until Home has been arranged, a line above the widgets says it can be, with **Customize** and **Dismiss** beside it; once it has been arranged, or dismissed, the line is gone for good. Home's widgets sit in three columns on a wide editor, two on most, and one on a narrow panel. Choose **Customize** in the View options gear to arrange Home. Drag a widget to move it, or right-click it to move it first or last; switch it between half and full width; open its own gear to choose how many entries it lists, whether it pages through the rest, which search a tasks widget runs, which saved search a results widget shows, or how many days Stale tasks, New tags, and People gone quiet look back; remove it with **×**; and add more from **+ Add widget**. **Reset** restores the widgets Home started with, and **Done** finishes. Widgets side by side share their row's height. Home's arrangement is kept in VS Code's preferences, never in your notes.
 
 ### Tags
 
@@ -423,7 +423,7 @@ Until Home has been arranged, a line above the widgets says it can be, with **Cu
 
 ## Stats
 
-Run `Deckard: Show Stats` to see the current file, note, task, tag, namespaced tag, and Wiki-link totals from the index. Deckard counts the same things under the same names everywhere: a **note** is a headed entry, and a **file** holds one or more of them. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
+Run `Deckard: Open Stats` to see the current file, note, task, tag, namespaced tag, and Wiki-link totals from the index. Deckard counts the same things under the same names everywhere: a **note** is a headed entry, and a **file** holds one or more of them. It lists the notes nothing links to, leaving out daily, weekly, and monthly notes, which are found by their date; select one to open it. It also shows the most-viewed tags, namespaced entities, and note entries from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
 
 If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
 
@@ -451,10 +451,10 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 
 - Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
 - Hover a dot to highlight its direct graph neighbors and see its source location. Select any note, task, or tag dot to list those connected nodes in the sidebar using the same note-card and tag styling as the rest of Deckard. Select the current node at the top of the sidebar to open its note/task source or tag page. Select a connected sidebar item to move the graph selection; Cmd/Ctrl-click it to open that item instead. Cmd/Ctrl-clicking a graph dot opens the same destination, and selecting empty space clears the selection.
-- **Focus** draws the graph around the note in the editor rather than the whole workspace. The graph opens this way, one hop out, whenever a note is open in the editor, since a whole workspace at once is hundreds of unlabelled dots; clear **Around this note** for the whole graph, and the choice is kept while the graph is open. At rest, the whole graph names its best-connected notes, and zooming in names the rest. **Around this note** turns focus on, and **Hops out** chooses how far it reaches: one hop is the note, the tags it carries, and the notes it links to; two adds what those touch. The line beneath says which note it is drawn around and how many of the workspace's nodes are on screen.
+- **Focus** draws the graph around the note in the editor rather than the whole workspace. The graph opens this way, one hop out, whenever a note is open in the editor, since a whole workspace at once is hundreds of unlabeled dots; clear **Around this note** for the whole graph, and the choice is kept while the graph is open. At rest, the whole graph names its best-connected notes, and zooming in names the rest. **Around this note** turns focus on, and **Hops out** chooses how far it reaches: one hop is the note, the tags it carries, and the notes it links to; two adds what those touch. The line beneath says which note it is drawn around and how many of the workspace's nodes are on screen.
   - It follows the editor: open another note and the graph is redrawn around that one. The graph is itself a tab, so the note it is about is the last one you had open.
   - A tag association is a hop like any other, so two hops out reaches the tags your tags are usually written with, and the notes carrying them.
-  - Only the neighbourhood is sent to the page, so a local graph costs a screenful whatever the workspace holds. The tag checklist narrows to the tags that neighbourhood actually holds.
+  - Only the neighborhood is sent to the page, so a local graph costs a screenful whatever the workspace holds. The tag checklist narrows to the tags that neighborhood actually holds.
 - **Filters** searches titles and paths, restricts the view to selected tags, and independently toggles notes, tasks, tag nodes (off by default), and orphan nodes.
 - **Display** adjusts node size, link thickness, and the zoom level at which labels appear. **Connection density** sets the local edge budget; **Tag prevalence bias** controls how strongly rare/common tag populations affect salience; **Secondary bridge strength** controls weaker cross-community tag and association links. **Show all links** disables the backbone filter for comparison. **Reset graph settings** restores these controls, clears graph filters, and reframes the view.
 - **Forces** tunes the layout with cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance; changes re-run the simulation live. The graph's default layout uses a prevalence-aware local backbone: direct Wiki links and headings seed visual communities, tag memberships are scored against a target community size, and each node retains only its strongest connections. The underlying Connected Nodes sidebar still uses every indexed relationship.
@@ -502,7 +502,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 
 Deckard puts one count in VS Code's status bar: **3 due today**, counting the same open tasks the Tasks view's Overdue and Today groups hold. Selecting it opens that view.
 
-- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **1 overdue, 3 due today** — and takes the editor's warning colour. Each number counts its own group; neither is the sum of the two.
+- The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **1 overdue, 3 due today** — and takes the editor's warning color. Each number counts its own group; neither is the sum of the two.
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
 - `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
@@ -516,7 +516,7 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 - **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. While fewer than a quarter of the open tasks carry a status, a line above the columns says how many have none, how to give a task one, and offers **Group by due date**, which works for any task. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
 - **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
 - **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
-- A due date is written by its distance from today with the date beside it — **Overdue 15 days · 2026-09-08**, **Due tomorrow · 2026-09-24** — on a board card, in the list and table, on Home and search pages, and in query blocks, so nothing has to be subtracted, and an overdue task says so in words rather than in colour alone. Beyond a month either way only the date is written, and a done task keeps its date as written.
+- A due date is written by its distance from today with the date beside it — **Overdue 15 days · 2026-09-08**, **Due tomorrow · 2026-09-24** — on a board card, in the list and table, on Home and search pages, and in query blocks, so nothing has to be subtracted, and an overdue task says so in words rather than in color alone. Beyond a month either way only the date is written, and a done task keeps its date as written.
 - Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
 - Search the tasks with the same [search box](#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks, and a search you run is added to your recent searches. The board opens on `is:open`, since a board is for what is still to do; clear the box for every task, or search `is:done` for the finished ones.
 - **Save**, beside the search box, keeps the search as a saved search that reopens on the Task board. **Tasks view** makes the [Tasks view](#tasks-view) list the search instead; it is lit while the view lists the board's current one.
@@ -575,7 +575,7 @@ The page shows a single Refine line while the sidebar holds its options, and its
 
 ## Search pages
 
-Every search opens a **search page** in its own editor tab, and a tag's overview is the search page for that one tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag on the Dashboard, in Related Notes, or anywhere else Deckard shows one, running a search from Home, [Find](#find), or `Deckard: Search Notes and Tasks (write a query)`, or running `Deckard: Open a Tag's Search Page` or `Deckard: Open Search Page`. Opening a search a page already shows brings that page forward rather than opening another.
+Every search opens a **search page** in its own editor tab, and a tag's overview is the search page for that one tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag on the Dashboard, in Related Notes, or anywhere else Deckard shows one, running a search from Home, [Find](#find), or `Deckard: Search Notes and Tasks`, or running `Deckard: Open a Tag's Search Page` or `Deckard: Open Search Page`. Opening a search a page already shows brings that page forward rather than opening another.
 
 ![Deckard Tag Overview showing matching notes, active tasks, and display controls.](docs/images/tag-overview.png)
 
@@ -593,11 +593,11 @@ Opening a tag's page records tag access. Opening a section records section acces
 
 ### Taking a search's results out
 
-**Export**, beside **Bulk Edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
+**Export**, beside **Bulk edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
 
 ### Editing a search's results
 
-**Bulk Edit**, beside a results pane's heading, makes one edit to everything the search found. A search page is where a set of notes and tasks is already gathered — refine it until the results are the ones you mean, then edit them together:
+**Bulk edit**, beside a results pane's heading, makes one edit to everything the search found. A search page is where a set of notes and tasks is already gathered — refine it until the results are the ones you mean, then edit them together:
 
 | Results | What can be done to them |
 | --- | --- |
@@ -655,11 +655,11 @@ Set `deckard.enableHeadingTagRelationships` to `false` to refine by the tags the
 
 ## Search
 
-Deckard has one search language everywhere: `Deckard: Search Notes` for getting to something quickly, and the search box on [search pages](#search-pages), Home, and the Task board for seeing everything a search finds.
+Deckard has one search language everywhere: `Deckard: Find in Notes` for getting to something quickly, and the search box on [search pages](#search-pages), Home, and the Task board for seeing everything a search finds.
 
 ### Find
 
-Run `Deckard: Search Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on Windows and Linux), and start typing. Results appear as you type.
+Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on Windows and Linux), and start typing. Results appear as you type.
 
 ![Deckard Find listing the notes titled Meridian first, then the tags that match, then notes that mention the word.](docs/images/find.png)
 
@@ -1027,7 +1027,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 ## Limitations and troubleshooting
 
 - **Something is not there, and you are not sure why:** run `Deckard: Check My Setup`. It says where notes are read from and whether that folder exists, how many files the exclude patterns kept out, which notes could not be read, and whether `deckard.me` matches anyone — each with what to do.
-- **A note is missing from every search:** open `Deckard: Show Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
+- **A note is missing from every search:** open `Deckard: Open Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
@@ -1035,7 +1035,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 - **Content in a code block appears ignored:** this is intentional. Fenced code is excluded from indexing, tag links, and completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are intentionally not tags. Use an `@` marker or include a non-numeric character.
 - **Date sorting looks unexpected:** task and section dates come from source file creation and modification timestamps, not dates written in note content.
-- **Deckard feels slow:** run `Deckard: Show Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown. The search cache is written on a thread of its own, so the first build in a new workspace does not hold VS Code up; while it runs, a search finds a note by its title and tags before it finds it by the words inside it, and the log records the build as `Write search index off the extension host`.
+- **Deckard feels slow:** run `Deckard: Open Log`. Any step that takes 100 ms or longer is listed there as `Slow:` with how long it took and how much it covered, such as the number of notes. To see every timing, open the log's settings in the Output panel and set its level to **Debug**. Editing a note never waits on indexing: the index is rebuilt only after a save, the Related Notes sidebar ranks again only when the cursor moves to a different tagged entry, and hidden panels catch up when they are shown. The search cache is written on a thread of its own, so the first build in a new workspace does not hold VS Code up; while it runs, a search finds a note by its title and tags before it finds it by the words inside it, and the log records the build as `Write search index off the extension host`.
 
 Deckard does not support ordered-list tasks or arbitrary checklist syntaxes, and it scans only Markdown files within the configured workspace scope.
 

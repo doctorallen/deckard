@@ -1,3 +1,4 @@
+import { zoomInIcon, zoomOutIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -31,33 +32,20 @@ export function getNotesGraphHtml(
 <title>Deckard Notes Graph</title>
 <style nonce="${nonce}">${getBaseCss()}
 :root {
+  /* The palette is the base sheet's, as every page's is. A copy of it lived
+     here and kept the fully saturated cyan and green after the base sheet
+     had desaturated them, so the graph alone drew the old colors. */
   color-scheme: dark;
-  --bg-dark: #050608;
-  --panel-bg: #0D1017;
-  --panel-raised: #121620;
-  --panel-deep: #080A0E;
-  --amber-bright: #FFB000;
-  --amber-dim: #7A5400;
-  --favorite-red: #D23C28;
-  --toxic-green: #33FF33;
-  --cyan-bright: #00E5FF;
-  --slate-border: #212936;
-  --slate-olive: #3E4A42;
-  --warning-orange: #FF5500;
-  --text: #D9E0E4;
-  --muted: #7D8792;
-  --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', 'IBM Plex Mono', 'Courier New', monospace);
-  --font-display: var(--vscode-font-family, 'DIN Alternate', 'Arial Narrow', sans-serif);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: 12px; }
+body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
 #graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 #graph.is-panning { cursor: grabbing; }
 #graph.is-pointing { cursor: pointer; }
 .overlay { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px); overflow-y: auto; }
 .control-group { border: 1px solid var(--slate-border); background: rgba(13, 16, 23, .94); }
-.control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 11px var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
+.control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 var(--text-xs) var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
 .control-group summary::before { content: '▸ '; color: var(--muted); }
 .control-group[open] summary::before { content: '▾ '; }
 .control-group summary:hover, .control-group summary:focus-visible { background: var(--panel-raised); }
@@ -68,8 +56,8 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-row .slider-line { display: flex; align-items: center; gap: 8px; }
 input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
 input[type='checkbox'] { accent-color: var(--amber-bright); }
-.toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: 11px var(--font-mono); cursor: pointer; }
-.graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: 11px var(--font-mono); }
+.toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: var(--text-xs) var(--font-mono); cursor: pointer; }
+.graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: var(--text-xs) var(--font-mono); }
 input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); }
 .tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
@@ -82,11 +70,11 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .zoom-controls { display: inline-flex; }
-.zoom-controls button { min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
+.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
 .zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
-.zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
+.zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: var(--text-xs) var(--font-mono); pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
@@ -97,14 +85,13 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .legend-task { background: var(--amber-bright); }
 .legend-tag { background: var(--toxic-green); }
 /* The panels follow the theme rather than a fixed near-black, which was
-   unreadable when corpo took its text colour from a light VS Code theme. */
+   unreadable when corpo took its text color from a light VS Code theme. */
 .control-group { background: var(--panel); }
-.tooltip { background: var(--panel-raised); }
-.tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
-.tooltip .tooltip-title { color: var(--text); font: 700 11px var(--font-mono); }
+.tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
+.tooltip .tooltip-title { color: var(--text); font: 700 var(--text-xs) var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
-.empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: 12px var(--font-mono); pointer-events: none; }
+.empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); pointer-events: none; }
 ${getPageTailCss()}
 </style>
 </head>
@@ -167,12 +154,12 @@ ${getPageTailCss()}
 </div>
 <div class="graph-zoom-controls">
   <div class="zoom-controls" role="group" aria-label="Zoom controls">
-    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">−</button>
+    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">${zoomOutIcon}</button>
     <span class="zoom-readout" id="zoom-readout">100%</span>
-    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">+</button>
-    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit</button>
+    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">${zoomInIcon}</button>
+    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit graph</button>
   </div>
-  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph settings</button>
+  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph</button>
 </div>
 <div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>
@@ -189,19 +176,36 @@ ${getPageTailCss()}
   var zoomReadout = document.getElementById('zoom-readout');
 
   var rootStyles = getComputedStyle(document.documentElement);
+  /**
+   * A type step in pixels, for the canvas. The step is written as a max()
+   * over a calc() so it follows the editor's font size without going under
+   * its floor, which a canvas font cannot read; an element set in the step
+   * resolves it to the pixels the page draws with.
+   */
+  function tokenFontSize(name, fallback) {
+    var probe = document.createElement('span');
+    probe.style.fontSize = 'var(' + name + ')';
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    document.body.appendChild(probe);
+    var size = getComputedStyle(probe).fontSize;
+    probe.remove();
+    return /^\\d/.test(size) ? size : fallback;
+  }
+  var labelFontSize = tokenFontSize('--text-xs', '11px');
   function themeColor(name, fallback) {
     var value = rootStyles.getPropertyValue(name).trim();
     return value || fallback;
   }
   var colors = {
     background: themeColor('--bg-dark', '#050608'),
-    note: themeColor('--cyan-bright', '#00E5FF'),
+    note: themeColor('--cyan-bright', '#5FE1F0'),
     task: themeColor('--amber-bright', '#FFB000'),
-    tag: themeColor('--toxic-green', '#33FF33'),
+    tag: themeColor('--toxic-green', '#66E066'),
     edge: themeColor('--muted', '#7D8792'),
     edgeHighlight: themeColor('--amber-bright', '#FFB000'),
     label: themeColor('--text', '#D9E0E4'),
-    halo: themeColor('--favorite-red', '#D23C28')
+    halo: themeColor('--favorite-red', '#E05232')
   };
 
   // ---- persisted webview-local settings -------------------------------
@@ -1431,7 +1435,7 @@ ${getPageTailCss()}
     ctx.globalAlpha = 1;
     if (k < settings.labelThreshold) {
       ctx.fillStyle = colors.label;
-      ctx.font = (rootStyles.getPropertyValue('--text-xs').trim() || '11px') + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.font = labelFontSize + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
       ctx.textAlign = 'center';
       var hubs = [];
       for (var h = 0; h < nodes.length; h += 1) {
@@ -1453,7 +1457,7 @@ ${getPageTailCss()}
     }
     if (k >= settings.labelThreshold) {
       ctx.fillStyle = colors.label;
-      ctx.font = (rootStyles.getPropertyValue('--text-xs').trim() || '11px') + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.font = labelFontSize + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
       ctx.textAlign = 'center';
       var labeled = [];
       for (var l = 0; l < nodes.length; l += 1) {
@@ -1823,7 +1827,7 @@ ${getPageTailCss()}
   }
   /**
    * Drawing around the note in the editor is the host's business: it sends
-   * the neighbourhood rather than the workspace, so the page asks and draws
+   * the neighborhood rather than the workspace, so the page asks and draws
    * whatever comes back.
    */
   var localGraph = document.getElementById('local-graph');

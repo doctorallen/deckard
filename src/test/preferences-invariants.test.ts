@@ -184,7 +184,7 @@ suite('Preference invariants', () => {
       for (const tag of [...model.tags]) {
         await store.toggleFavorite(tag);
         model.tags.delete(tag);
-        assertChosen(store, model, `seed ${seed}, after unfavouriting ${tag}`);
+        assertChosen(store, model, `seed ${seed}, after unfavoriting ${tag}`);
       }
       for (const pin of [...model.pins]) {
         await store.unpinNote(pin);

@@ -31,7 +31,7 @@ export interface HelpManifest {
 const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.showDashboard': 'Workspace totals, Home, and every tag.',
   'deckard.showNotesGraph':
-    'The whole workspace as a map, or one note’s neighbourhood.',
+    'The whole workspace as a map, or one note’s neighborhood.',
   'deckard.showTaskBoard': 'Tasks as columns, or as a ranked list.',
   'deckard.showStats':
     'Index totals, notes nothing links to, and tags that look alike.',
@@ -163,7 +163,7 @@ export function getHelpHtml(
     .asWebviewUri(vscode.Uri.joinPath(extensionUri, 'resources', 'deckard.svg'))
     .toString();
   const favoriteHeartUris = getFavoriteHeartAssetUris(webview, extensionUri);
-  const csp = `default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}';`;
+  const csp = `default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -176,12 +176,14 @@ export function getHelpHtml(
 html { scroll-behavior: smooth; }
 nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--line); background: var(--panel); padding: 12px; }
 .nav-title, .step-number { font-family: var(--font-mono); }
-.nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
+/* The section being read, marked in the rail so twenty links say where the reader is. */
+nav a[aria-current] { border-left-color: var(--amber); color: var(--text); }
 /* Prose here is full of inline code chips, each a border and a pixel of padding
    taller than its text; a line box the chips fit inside keeps two on
-   neighbouring lines from touching. */
+   neighboring lines from touching. */
 article { min-width: 0; line-height: 1.55; }
 h1, h2, h3 { line-height: 1.2; }
 p { margin: 0 0 12px; }
@@ -189,15 +191,15 @@ p { margin: 0 0 12px; }
 .steps { counter-reset: quick-start; }
 .step, .card { min-width: 0; border: 1px solid var(--line); background: var(--panel); padding: 14px; }
 .step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
-.step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: 11px; }
+.step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: var(--text-xs); }
 .card p:last-child, .step p:last-child { margin-bottom: 0; }
 .card:target { border-color: var(--amber); }
 /* A card jumped to from the map is not hidden under the sticky navigation. */
 .card[id] { scroll-margin-top: 20px; }
-code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--green); font-size: .9em; }
+code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--text); font-size: .9em; }
 .inline-icon, .deckard-logo { display: inline-block; width: 16px; height: 16px; margin: 0 2px; vertical-align: -3px; }
 .dashboard-icon { fill: var(--green); }
-.favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite-red); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
+.favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
 .favorite-heart.filled { -webkit-mask-image: url("${favoriteHeartUris.filled}"); mask-image: url("${favoriteHeartUris.filled}"); }
 pre { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--panel); padding: 12px; color: var(--text); }
 pre code { border: 0; padding: 0; color: inherit; background: transparent; }
@@ -209,22 +211,22 @@ pre code { border: 0; padding: 0; color: inherit; background: transparent; }
 th, td, table code { overflow-wrap: break-word; }
 ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
-.note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
+.note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--text); }
 /* Reference tables: commands, markers, query fields, settings. */
-table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: var(--text-md); }
 caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: left; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-th { color: var(--cyan); font-size: 11px; }
+th { color: var(--cyan); font-size: var(--text-xs); }
 td:first-child { white-space: normal; }
 tbody tr:hover { background: var(--panel); }
 /* A group's name inside the settings table: a heading row, ruled under like
    the column header, so a group starts somewhere the eye can find. */
-.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: 12px var(--font-mono); }
+.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: var(--text-sm) var(--font-mono); }
 .table-group:hover { background: transparent; }
 .table-scroll { overflow-x: auto; }
 /* The navigation groups its sections, so a long guide stays scannable. */
 .nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-nav a.nav-sub { padding-left: 16px; font-size: 12px; }
+nav a.nav-sub { padding-left: 16px; font-size: var(--text-sm); }
 section { scroll-margin-top: 20px; }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
 
@@ -239,7 +241,7 @@ main {
 header { display: block; padding-bottom: 20px; border-bottom: 2px solid var(--line); }
 h1 { font-size: 28px; line-height: 1.2; overflow-wrap: normal; }
 h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; line-height: 1.2; }
-h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.2; }
+h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
 .eyebrow { margin: 0 0 6px; }
 .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card { cursor: default; }
@@ -296,7 +298,7 @@ ${getPageTailCss()}
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what.</p></div></div>
       </div>
-      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Show Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there.</p>
+      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Open Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there.</p>
     </section>
 
     <section id="tags">
@@ -304,7 +306,7 @@ ${getPageTailCss()}
       <div class="cards">
         <div class="card"><h3>Lightweight tags</h3><p>A plain <code>#tag</code> on a heading, a task, or a line of prose is indexed with no setup. Tag names take letters, numbers, <code>_</code>, <code>-</code>, and <code>/</code> namespace segments; a number alone is not a tag, so a date such as <code>#2026</code> stays text.</p></div>
         <div class="card"><h3>People and entities</h3><p><code>@mara-vale</code> names a person. <code>#project/…</code>, <code>#topic/…</code>, <code>#organization/…</code>, and <code>#meeting/…</code> name entities; any other namespace becomes one on first use. <code>deckard.personMarker</code> changes the marker, and <code>deckard.entityNamespaceAliases</code> folds one namespace into another.</p></div>
-        <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbours.</p></div>
+        <div class="card"><h3>Inheriting tags</h3><p>A task takes the tags of the heading above it, and a heading takes the tags of the headings above that, along with the note’s front matter. A tag written in a body does not travel: not up to the heading, not across to its neighbors.</p></div>
         <div class="card"><h3>Associated tags</h3><p>Tags written together on one heading, task, or line are remembered as related, and tags that meet under a shared heading count more lightly. Related Notes and Refine both rank with that evidence, normalized so a common tag is not promoted for being common.</p></div>
         <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu. Every context menu opens from the keyboard too, with Shift+F10, the menu key, or Alt+Enter on the focused row or tag.</p></div>
         <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
@@ -329,7 +331,7 @@ updated: 2026-09-20
         <div class="card"><h3>Wiki links</h3><p><code>[[Note]]</code> names a note by its file name without <code>.md</code>, or by an alias. <code>[[Note#Heading]]</code> opens a heading and <code>[[Note#^marker]]</code> one line. Typing <code>[[</code> completes titles and aliases; typing <code>#^</code> completes the markers a note carries.</p></div>
         <div class="card"><h3>Embeds</h3><p><code>![[Note]]</code> on a line of its own draws that note in the Markdown preview; <code>![[Note#Heading]]</code> draws the section, <code>![[Note#^id]]</code> the marked line, and <code>![[#Heading]]</code> a heading of the note you are in. An embed inside a sentence stays the text you typed.</p></div>
         <div class="card"><h3>Renaming keeps links</h3><p>Renaming or moving a note rewrites every link that named it, in the same step, so one Undo takes back both. <code>Deckard: Rename Heading</code> does the same for a heading. <code>deckard.updateLinksOnRename</code> turns it off.</p></div>
-        <div class="card"><h3>Broken links</h3><p>A link to a note that does not exist is marked in the editor with a <strong>Create note</strong> fix; a name two notes share is a warning, since it opens neither. <code>Deckard: Show Stats</code> lists the notes nothing links to.</p></div>
+        <div class="card"><h3>Broken links</h3><p>A link to a note that does not exist is marked in the editor with a <strong>Create note</strong> fix; a name two notes share is a warning, since it opens neither. <code>Deckard: Open Stats</code> lists the notes nothing links to.</p></div>
       </div>
     </section>
 
@@ -376,7 +378,7 @@ updated: 2026-09-20
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
         <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list. While few tasks carry a status, the board says so above the columns and offers the due-date grouping, which needs none.</p></div>
-        <div class="card"><h3>Editing many at once</h3><p><strong>Bulk Edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
+        <div class="card"><h3>Editing many at once</h3><p><strong>Bulk edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>A task's due date is written by its distance from today with the date beside it, <strong>Overdue 15 days · 2026-09-08</strong>, wherever a task is listed. The status bar reads <strong>3 due today</strong> while anything is, <strong>2 overdue, 3 due today</strong> when something has slipped, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>
     </section>
@@ -384,12 +386,12 @@ updated: 2026-09-20
     <section id="search">
       <h2>Search</h2>
       <div class="cards">
-        <div class="card"><h3>Find</h3><p><code>Deckard: Search Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page.</p></div>
+        <div class="card"><h3>Find</h3><p><code>Deckard: Find in Notes</code> searches notes, tasks, tags, and saved searches as you type, correcting a misspelled word against the words in your notes. Enter opens the result; a tag row opens its page.</p></div>
         <div class="card"><h3>Search pages</h3><p>Opening a tag collects every entry that carries it, with the tags it is most often written with. Any other search opens the same kind of page. Each page has the same search box, with completions and a visual builder that can build anything the box can say: rows and groups, nested, each group matching all or any of its rows, and turned around with <strong>not</strong>.</p></div>
         <div class="card"><h3>Refine</h3><p>Under the box, <strong>Refine</strong> counts what the results could be narrowed by. Selecting a value adds it with <strong>AND</strong>; Alt-click adds <strong>AND NOT</strong>, and Shift-click adds <strong>OR</strong>, widening the value chosen before it. Every value writes ordinary query text, so a refined search can be saved or copied into a note.</p></div>
         <div class="card"><h3>Saving a search</h3><p><strong>Save</strong> beside the box keeps a search, which reopens on the page it was saved from and can sit on Home as a widget. Recent searches are kept too.</p></div>
       </div>
-          <p><strong>Taking a result out.</strong> <strong>Export</strong>, beside Bulk Edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. The index itself never leaves the machine.</p>
+          <p><strong>Taking a result out.</strong> <strong>Export notes</strong> and <strong>Export tasks</strong>, beside Bulk edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. The index itself never leaves the machine.</p>
     </section>
 
     <section id="query">
@@ -435,7 +437,7 @@ tag = #project/atlas AND task = open
       <div class="cards">
         <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing.</p></div>
         <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
-        <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighbourhood instead, one to three hops out, following the editor as you move between notes.</p></div>
+        <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighborhood instead, one to three hops out, following the editor as you move between notes.</p></div>
         <div class="card"><h3>Stats</h3><p>Index totals of files, notes, tasks, and tags, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and notes you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
         <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>
       </div>
@@ -443,7 +445,7 @@ tag = #project/atlas AND task = open
 
     <section id="home">
       <h2>Home and pins</h2>
-      <p>The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Agenda, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
+      <p>The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
       <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
     </section>
 
@@ -472,7 +474,7 @@ tag = #project/atlas AND task = open
     <section id="zen">
       <h2>Zen mode</h2>
       <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
-      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colours.</p>
+      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors.</p>
       <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
     </section>
 
@@ -506,6 +508,36 @@ tag = #project/atlas AND task = open
       <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import</code> reads one back; each says what it holds and asks before replacing anything.</p>
     </article>
 </main>
+<script nonce="${nonce}">
+(function () {
+  // The rail marks the section under the top of the window as the reader
+  // scrolls, so a long page says where it is. A section counts as read once
+  // it crosses the band between a tenth and a third of the way down, and the
+  // last one counts when the page cannot scroll any further.
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
+  var sections = links.map(function (link) { return document.getElementById(link.getAttribute('href').slice(1)); }).filter(Boolean);
+  if (!sections.length) return;
+  var current;
+  function mark(id) {
+    if (id === current) return;
+    current = id;
+    links.forEach(function (link) {
+      if (link.getAttribute('href') === '#' + id) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+  mark(sections[0].id);
+  if (typeof IntersectionObserver !== 'function') return;
+  var crossing = {};
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) { crossing[entry.target.id] = entry.isIntersecting; });
+    var atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    var first = atEnd ? sections[sections.length - 1] : sections.filter(function (section) { return crossing[section.id]; })[0];
+    if (first) mark(first.id);
+  }, { rootMargin: '-10% 0px -67% 0px' });
+  sections.forEach(function (section) { observer.observe(section); });
+})();
+</script>
 </body>
 </html>`;
 }

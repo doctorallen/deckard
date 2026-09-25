@@ -203,7 +203,7 @@ function renderTaskTable(
 }
 
 /**
- * One labelled list. The label keeps notes and tasks apart, and the footer
+ * One labeled list. The label keeps notes and tasks apart, and the footer
  * says when `limit` has hidden some of them.
  */
 function renderGroup(
@@ -241,12 +241,25 @@ function renderNote(item: QueryBlockItem): string {
  * Puts the checkbox in its own column so a wrapped title and its details line
  * up under the title rather than under the box.
  */
+
+/** A task's priority as the badge the pages draw: an arrow and the word. */
+const PRIORITY_MARKS: Record<string, string> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
+function renderPriority(priority: string): string {
+  const key = priority.toLowerCase();
+  if (!(key in PRIORITY_MARKS)) {
+    return escapeHtml(`${priority} priority`);
+  }
+  const word = key.charAt(0).toUpperCase() + key.slice(1);
+  const mark = PRIORITY_MARKS[key];
+  return `<span class="deckard-query-priority priority-${key}" title="${word} priority">${mark ? `<span aria-hidden="true">${mark}</span> ` : ''}${word}</span>`;
+}
+
 function renderTask(item: QueryBlockItem, now: number): string {
   const done = item.completed === true;
   const overdue =
     !done && item.dueAt !== undefined && item.dueAt < startOfDay(now);
   // An open task's due date reads beside today, "overdue 12 days ·
-  // 2026-09-01", so the state is in the words and not the colour alone.
+  // 2026-09-01", so the state is in the words and not the color alone.
   const dueLabel =
     item.dueAt !== undefined && !done
       ? describeDueDate(item.dueAt, now, item.dueText).label
@@ -260,7 +273,7 @@ function renderTask(item: QueryBlockItem, now: number): string {
     item.scheduledAt !== undefined
       ? `scheduled ${formatIsoDate(item.scheduledAt)}`
       : '',
-    item.priority ? `${item.priority} priority` : '',
+    item.priority ? renderPriority(item.priority) : '',
     item.recurrence ? `repeats ${escapeHtml(item.recurrence)}` : '',
   ]
     .filter(Boolean)

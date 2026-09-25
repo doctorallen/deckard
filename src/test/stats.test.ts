@@ -90,6 +90,16 @@ suite('Stats: notes that could not be read', () => {
     }
   });
 
+  test('the page says when the index was refreshed in words, with the time on hover', () => {
+    const page = openWebviewPage(getStatsHtml(webview), { ...createDeckardStatsSnapshot(index(), preferences()), updatedAt: Date.now() - 5 * 60 * 1000 });
+    try {
+      assert.match(page.text('.updated') ?? '', /^Index last refreshed: 5 minutes ago/);
+      assert.ok(page.find('.updated span[title]').getAttribute('title')?.includes('2'), 'the exact time is on hover');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('the page says nothing when every note was read', () => {
     const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
     try {

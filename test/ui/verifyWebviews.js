@@ -20,7 +20,7 @@ const zenSheet = getZenCss().trim();
  */
 const LAYOUT_CONTRACTS = {
   dashboard: [
-    ['main', 'max-width', '1180px'],
+    ['main', 'max-width', '1400px'],
     ['.metrics', 'grid-template-columns', 'repeat(3'],
     ['.metrics', 'min-width', 'min(380px'],
     ['.metric', 'clip-path', 'polygon'],

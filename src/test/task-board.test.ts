@@ -20,6 +20,7 @@ import {
   parseSidebarMessage,
   parseTaskBoardMessage,
 } from '../ui/webview/messages';
+import { isAwaitingIndex } from '../ui/webview/taskBoard';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -60,6 +61,15 @@ function board(
 }
 
 suite('Task board', () => {
+  test('a redraw waits for the index a write is about to change', () => {
+    // The rank carried into the preferences by a write arrives before the
+    // index has read the note back; drawn then, a dropped card went back
+    // to its old column for a moment.
+    assert.strictEqual(isAwaitingIndex(10, { updatedAt: 10 }), true, 'the index has not moved on');
+    assert.strictEqual(isAwaitingIndex(10, { updatedAt: 11 }), false, 'it has');
+    assert.strictEqual(isAwaitingIndex(undefined, { updatedAt: 10 }), false, 'nothing was written');
+  });
+
   const ids = (board: ReturnType<typeof createTaskBoard>): Array<[string, string[]]> =>
     board.columns.map((column) => [
       column.id,
@@ -75,6 +85,32 @@ suite('Task board', () => {
       ['status:review', ['brief']],
       ['done', ['ship', 'file']],
     ]);
+  });
+
+  test('a status named done is the Done column, not a second one', () => {
+    const index = createIndex();
+    const marked = createTask('marked', '- [ ] Marked done by hand #status/done', {});
+    index.tasks.set(marked.id, marked);
+    const layout = board(index, 'status', '', options);
+    assert.deepStrictEqual(
+      layout.columns.filter((column) => column.label === 'Done').length,
+      1,
+      'one column reads Done',
+    );
+    const doneColumn = layout.columns[layout.columns.length - 1];
+    assert.strictEqual(doneColumn.id, 'done');
+    assert.strictEqual(doneColumn.cards[0].taskId, marked.id, 'and the open task marked done heads it');
+  });
+
+  test('a configured status named done adds no column beside Done', () => {
+    const layout = board(createIndex(), 'status', '', {
+      ...options,
+      statuses: ['todo', 'doing', 'done'],
+    });
+    assert.deepStrictEqual(
+      layout.columns.map((column) => column.label),
+      ['No status', 'Todo', 'Doing', 'Review', 'Done'],
+    );
   });
 
   test('says when almost nothing carries a status, and only then', () => {
@@ -293,7 +329,7 @@ suite('Task board', () => {
       { type: 'setTableSort', column: 'due' },
     );
     assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setTableSort' }), { type: 'setTableSort' });
-    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'colour' }), undefined);
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setTableSort', column: 'color' }), undefined);
     assert.deepStrictEqual(
       parseTaskBoardMessage({ type: 'setTableColumns', columns: ['title', 'due'] }),
       { type: 'setTableColumns', columns: ['title', 'due'] },

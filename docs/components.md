@@ -7,7 +7,7 @@ script, both produced by `src/ui/webview/components.ts` and interpolated into
 each page.
 
 That file is the single place to change a component. A page keeps only the
-rules and behaviour that are genuinely its own.
+rules and behavior that are genuinely its own.
 
 ```
 components.ts   tokens, base stylesheet, shared page script, nonce, CSP
@@ -129,7 +129,21 @@ re-declare the same names.
 | `--font-mono` | VS Code editor font | Headings, code, data |
 | `--edge` | `2px` | Standard border width |
 | `--control-height` | `30px` | Standard control height |
+| `--accent` | `var(--amber)` | Eyebrows, chosen marks, the primary button's fill |
+| `--danger` | `var(--favorite-red)` | Overdue. Red means this and nothing else; a priority is an outlined `.priority-badge` with an arrow, never a color |
+| `--favorite` | `var(--amber-bright)` | The favorite heart |
+| `--positive` | `var(--green)` | A checked box, a done state |
+| `--focus` | `var(--cyan)` | Every focus ring |
+| `--space-1` … `--space-6` | `4px`, `8px`, `12px`, `16px`, `24px`, `32px` | The spacing scale. Every padding, gap, and margin in the shared sheet is a step; `src/test/spacing-scale.test.ts` holds it. Zen re-declares the steps on `body.zen` and restates no rule. |
 | `--text-xs` … `--text-lg` | `11px`, `12px`, `13px`, `14px` | The type scale. `--text-xs` is the floor: counts, captions, and meta lines; nothing a reader acts on goes below it. `--text-md` is body text. |
+
+**Color a meaning, not a palette entry.** A rule that colors a state takes
+`--danger`, `--favorite`, `--positive`, `--focus`, or `--accent`, so red is
+overdue and only overdue, and a theme that wants another mapping
+re-declares the meaning tokens rather than every rule. A negated search
+term is a dashed, struck chip in the muted color, not a red one. The one
+filled control on a page is the primary action (`.query-apply`); a chosen
+segment is marked, not filled.
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and
@@ -146,7 +160,7 @@ density can be changed in one place.
 ### `body`, `main`, `header`
 
 Provided by `getShellCss()`. `body` carries the grid backdrop and base font;
-`main` is a centred 1000px column with 24px padding; `header` is a flex row
+`main` is a centered 1000px column with 24px padding; `header` is a flex row
 with a `--line-strong` rule beneath it. Below 700px, `main` tightens to 16px
 and `header` stacks.
 
@@ -185,7 +199,8 @@ treatment, so a toolbar reads as one row of controls.
 | `.control-row` | Left-aligned wrapping row of controls. |
 | `.segmented` | **A row of buttons that reads as one control.** Collapses the borders between children and rounds the outer corners. |
 | `.icon-button` | A square icon-only control at `--control-height`. |
-| `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. |
+| `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. Every glyph comes from `icons.ts`: `strokeIcon(ICON_PATHS.name, className)` wraps a path in the one frame, and the named exports (`sortIcon`, `chevronLeftIcon`, `calendarIcon`, …) are the common ones ready to interpolate. No page draws its own `<svg>`; `src/test/icons.test.ts` fails one that does. |
+| `.query-facet` | One Refine group: its label above a `.query-facet-values` row, groups a wide step apart, so a group's edge is a shape. |
 | `.view-options` | **The gear every page's view options sit behind**, drawn by `renderViewOptions()`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. |
 | `.filter-count` | Small muted count inside a filter button. |
 
@@ -203,7 +218,22 @@ Any group of joined buttons uses this, rather than each page restyling
 ```
 
 Mark the current button `.active`; the primitive raises it above its
-neighbours so its border is not clipped. The second class carries only what is
+neighbors so its border is not clipped.
+
+**Two states, two drawings.** Hover raises the ground (`--hover-bg`,
+`--hover-fg`). Chosen, `.active` or `aria-pressed="true"` or
+`aria-selected="true"`, keeps the control's own ground and takes the accent
+as its border and a bar along its foot (`--chosen-bg`), so a chosen control
+under the pointer still reads as chosen and a hovered one does not read as
+chosen. Themes re-declare the pairs; none of them redraws the states. There
+is no `:active` rule: the contrast suite cannot tell a pressed state from a
+resting one, and would read a pressed fill as every button's ground.
+
+**Targets are 24px.** WCAG 2.2's 2.5.8 sets 24 by 24 CSS pixels as the
+minimum for a pointer target. A chip is 24px tall, the steppers and the
+favorite heart's control are 24px square, and an icon-only control is
+`--control-height`. A new control under 24px needs a reason written beside
+it. The second class carries only what is
 specific to that group.
 
 Used by: the task filter, the layout and format toggles, the overview tabs, and
@@ -244,7 +274,9 @@ the tag-association view switch.
 ### Task board
 
 `getTaskBoardCss()` and four script helpers draw the Task Board page's
-Kanban board.
+Kanban board. A `.board-column` is a region before it is a list: a ground
+half a step above the page in every theme, so the columns read as columns
+without their cards.
 
 | Piece | What it is |
 | --- | --- |
@@ -351,10 +383,10 @@ Two things look like chrome and are not:
   "overdue". It does not fold. Only `.card .source`, `.note .source`, and the
   `.task-source` spans in `renderTaskListRow` do.
 
-Spacing is restated rather than tokenized: there are no spacing tokens, so
-zen's block mirrors the literals in `getShellCss`, `getSurfaceCss`,
-`getTaskBoardCss`, and `getTaskListCss`. A padding change in one needs a
-change in the other, and the layout suite measures both.
+Spacing is tokenized: zen re-declares `--space-1` to `--space-6` on
+`body.zen`, and every card, row, column, and margin in the shared sheet
+follows, so there is no second block of literals to keep in step. The
+layout suite measures both densities.
 
 Its `:hover` rules must stay at the top level of the sheet. `checkLayout.js`
 forces hovers by rewriting `rule.selectorText`, which a `CSSMediaRule` does
@@ -443,6 +475,22 @@ and is ranked with `installRankedRows`. The host projects each widget with
 ---
 
 ## Conventions
+
+### Names
+
+Buttons, menu items, and command titles follow one table, and
+`src/test/naming.test.ts` holds it.
+
+| Rule | Yes | No |
+| --- | --- | --- |
+| A button is sentence case. Only a place or a product keeps its capital: Home, Tags, Deckard, Markdown, CSV. | Bulk edit, Customize, Reset widgets | Bulk Edit |
+| One verb per act, everywhere it appears. | Clear (a search), Search (run one) | Clear search, Clear the search, Apply |
+| A verb and its object when the object is not on the button's own row. | Export tasks, Reset widgets, Reset graph, Fit graph | Export, Reset, Fit |
+| No word does two jobs on one page. | Finish (customizing Home), Done (the board's column) | Done for both |
+| A command that opens a page or view says Open. | Open Stats, Open Log | Show Stats |
+| A mode is entered and left with verbs. | Enter Zen Mode, Leave Zen Mode | Zen Mode |
+| A command that will ask a question ends with an ellipsis, in the palette and on a menu alike. | Open a Tag's Search Page… | Open the Tag's Search Page… |
+| One name per place. | Tasks view (the sidebar view and the Home widget that mirrors it); search page (a tag's page too) | Agenda; tag overview; tag search |
 
 - **Escape everything from the host.** Snapshot values are data, not markup.
 - **Post intent, do not mutate.** A control carries `data-action` and posts a
@@ -538,7 +586,7 @@ adds a setting or a command — `src/test/extension.test.ts` counts both.
 ## Adding a component
 
 1. Add the rule to the matching section of `components.ts` and the helper to
-   `getComponentScript()` if it needs behaviour.
+   `getComponentScript()` if it needs behavior.
 2. Delete the local copies from every page that had one.
 3. Document it in the table above.
 4. Run `npm run test:ui`, `npm run test:e2e`, and `npm run test:layout`.

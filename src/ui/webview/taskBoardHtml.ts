@@ -1,3 +1,4 @@
+import { sortIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -32,7 +33,7 @@ ${getQueryEditorCss()}
 /* The gear holds the header's top-right corner, as it does on the Dashboard. */
 header { align-items: flex-start; }
 .board-header-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-.board-total { color: var(--muted); font: 12px var(--font-mono); }
+.board-total { color: var(--muted); font: var(--text-sm) var(--font-mono); }
 .board-view-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
 .board-area { margin-top: 12px; }
 .board-area [hidden] { display: none; }
@@ -40,19 +41,19 @@ header { align-items: flex-start; }
 
 /* The status column editor inside the gear's menu. */
 .board-settings { display: grid; gap: 6px; width: min(280px, 80vw); text-transform: none; }
-.board-settings-note { margin: 0; color: var(--muted); font-size: 11px; }
+.board-settings-note { margin: 0; color: var(--muted); font-size: var(--text-xs); }
 .board-status-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .board-status { display: flex; align-items: center; gap: 6px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 2px 2px 2px 6px; }
-.board-status:focus-visible { outline: 1px solid var(--cyan-bright); outline-offset: 1px; }
-.board-status-grip { color: var(--muted); font-size: 12px; line-height: 1; }
+.board-status:focus-visible { outline: 1px solid var(--focus); outline-offset: 1px; }
+.board-status-grip { color: var(--muted); font-size: var(--text-sm); line-height: 1; }
 .board-status.drag-ghost { list-style: none; }
-.board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: 12px var(--font-mono); }
+.board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: var(--text-sm) var(--font-mono); }
 .board-status button { min-width: 26px; min-height: 26px; padding: 2px 6px; }
 .board-settings-row { display: flex; align-items: center; gap: 4px; }
 .board-settings-row input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .board-settings-row button { min-height: 26px; padding: 2px 8px; }
-.board-settings-prefix { color: var(--muted); font: 12px var(--font-mono); }
-.board-settings-error { margin: 0; color: var(--warning-orange); font-size: 11px; }
+.board-settings-prefix { color: var(--muted); font: var(--text-sm) var(--font-mono); }
+.board-settings-error { margin: 0; color: var(--warning-orange); font-size: var(--text-xs); }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }
@@ -100,7 +101,7 @@ ${getQueryEditorScript()}
       const listed = !!(state && state.agendaListsThisSearch);
       return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
         + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
-        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export</button>';
+        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
     },
   });
 
@@ -210,11 +211,12 @@ ${getQueryEditorScript()}
     // The redraw is about to take the search box out of the document.
     editor.beforeRender();
     closeRankMenu();
+    closeActionMenu();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
     const isList = state.layout === 'list';
     const isTable = state.layout === 'table';
-    const sortIcon = '<svg class="control-icon-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg>';
+    const sortIcon = '${sortIcon}';
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-task-sort" aria-label="Sort tasks">'
       + [['rank', 'Rank'], ['created', 'Created'], ['updated', 'Updated']].map(function (option) {
         return '<option value="' + option[0] + '"' + (state.taskSortMode === option[0] ? ' selected' : '') + '>' + option[1] + '</option>';
@@ -286,7 +288,7 @@ ${getQueryEditorScript()}
     if (!sort) return '<span class="control-label">Rank order · choose a column to sort by it</span>';
     const column = (state.table.columns.find(function (c) { return c.id === sort.column; }) || {}).label || sort.column;
     return '<span class="control-label">Sorted by ' + escapeHtml(column.toLowerCase()) + (sort.direction === 'desc' ? ', last first' : '') + '</span>'
-      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Rank order</button>';
+      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Sort by rank</button>';
   }
 
   /** The gear's list of columns, the title fixed. */

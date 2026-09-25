@@ -4,6 +4,63 @@
 
 ### Changed
 
+- **Layout: columns are regions, a count is said once, and Home widens.**
+  Board columns now stand on a ground half a step above the page in every
+  theme, so five headers over one field of cards read as five columns. A
+  search page said its result count three times, in the tab, the pane
+  heading, and the Refine strip; in the tabs layout the tab says it once,
+  and the heading and strip repeat it only in the split layout, where there
+  is no tab. Refine's groups are labeled regions rather than a run of chips,
+  and Sort sits in the gear with the other view options. The Dashboard
+  takes the panel's width up to 1400px, with three columns of widgets on a
+  wide editor and one on a narrow panel.
+
+- **One spacing scale.** The shared sheet spaced cards, rows, columns, and
+  margins with twenty different literals, and zen mode tightened them by
+  restating a dozen rules with a second set. Every padding, gap, and margin
+  in the shared sheet is now a step of a six-step scale, `--space-1` to
+  `--space-6`, zen re-declares the steps and restates no rule, and a test
+  holds the sheet to the scale. Cards and columns sit a pixel or two
+  differently as a result; nothing moved by more than that.
+
+- **Color: one meaning per hue, and one filled button.** Red marked an
+  overdue date, a high priority, a negated search term, and the favorite
+  heart, so a reader who had learned that red means late read a heart or a
+  NOT chip as urgent. Every state now takes a meaning token, `--danger`,
+  `--favorite`, `--positive`, `--focus`, `--accent`, mapped by theme: the
+  heart is gold, a NOT term is a dashed, struck chip in the muted color, and
+  red is overdue or high priority and nothing else. The Search button is the
+  one filled control on a page, since a chosen segment is now marked rather
+  than filled. Replicant's, Synthwave's, and Tomcat's cyan and green were
+  fully saturated on near-black, which blooms around thin text; they are
+  softened a step, hues unchanged, and every pair still clears the contrast
+  suite. Cooper stays gold on black. On the board, an open task tagged
+  `#status/done` now heads the built-in Done column instead of getting a
+  second column called Done.
+
+- **Controls: chosen apart from hovered, one icon set, and no target under
+  24px.** A chosen segment and a hovered button were both drawn amber, so
+  hovering to learn what a click would do showed the chosen state and a
+  chosen control under the pointer lost it. Chosen now keeps the control's
+  own ground with the accent as a border and a bar along its foot, and hover
+  raises the ground; Corpo follows with VS Code's own colors, and its Search
+  button stays the one filled control.
+  The glyphs pages drew for themselves, the same sort arrow four times over,
+  come from one 16px set in `icons.ts`, and the graph's zoom buttons take
+  glyphs in place of typed signs. Home's paging steppers, the favorite
+  heart's control, and the relevance rail's button grew to the 24px WCAG
+  2.2 asks of a pointer target.
+
+- **Buttons and commands follow one naming table.** Bulk Edit is Bulk edit;
+  Clear, Clear search, and Clear the search are Clear; a widget's Apply is
+  Save; Export says what it exports; Reset and Fit say what they reset
+  and fit; Home's customizing ends with Finish, since Done is a column on the
+  board. Show Stats and Show Log are Open Stats and Open Log; Zen Mode is
+  Enter Zen Mode; the tag page command has one title, with its ellipsis, in
+  the palette and on the Outline's menu; the quick pick is Find in Notes and
+  the query page is Search Notes and Tasks. The Home widget that mirrors the
+  Tasks view is called Tasks view, and every search page's eyebrow says
+  search page. The table is in `docs/components.md`, and a test holds it.
 - **Working labels read as written in every theme.** Column titles on the
   board, group headings in lists, table headers, the Refine label, and the
   labels beside controls were set in tracked capitals in the film themes, a
@@ -27,7 +84,7 @@
   its floor, and every smaller size has risen to it.
 
 - **The Notes Graph opens around the note being written, and names its
-  hubs.** It opened on the whole workspace, hundreds of unlabelled dots with
+  hubs.** It opened on the whole workspace, hundreds of unlabeled dots with
   focus off and a line saying to open a note, which the reader usually had.
   It now opens around the note in the editor, one hop out, when there is
   one, and keeps whatever scope the reader then chooses. At rest the whole
@@ -68,7 +125,7 @@
 
 - **A due date says how far from today it is, in words.** A task row read
   **DUE 2026-09-08**, in red when the date had passed, so a reader subtracted
-  the date from today and an overdue task was told apart by colour alone.
+  the date from today and an overdue task was told apart by color alone.
   Everywhere a task is listed, Home, search pages, the board's cards, list,
   and table, and query blocks, the date now reads **Overdue 15 days ·
   2026-09-08**, **Due today**, **Due tomorrow**, or **Due in 3 days**, with
@@ -97,7 +154,7 @@
   names the panel it shows.
 
 - **The file and line under a task can be read in every theme.** The base
-  sheet coloured them with a literal grey that sat at 1.85:1 on a dark
+  sheet colored them with a literal gray that sat at 1.85:1 on a dark
   panel, well under the 4.5:1 that WCAG asks of text this size, and only
   Corpo and Synthwave restated it. They now take the muted token every
   theme declares, which is 5.2:1 in the default palette.
@@ -379,7 +436,7 @@
   still says so. Turn it on from the gear on the Dashboard, a search page or
   the Task board, from `Deckard: Zen Mode`, or with `deckard.zenMode`. It is
   one switch for every view, and it composes with all eight themes rather
-  than replacing one — a theme picks the colours, zen picks how much frame
+  than replacing one — a theme picks the colors, zen picks how much frame
   is drawn around them.
 
 - **Renaming a note carries its links with it.** A `[[link]]` names a note by
@@ -457,7 +514,7 @@
 
 - **The calendar keeps its dates still, and starts its weeks on Sunday.** A
   day with a note or a due count drew taller content than a day without one,
-  and a button centres what it holds, so dates wandered up and down the grid
+  and a button centers what it holds, so dates wandered up and down the grid
   depending on what each day had. Every day is now the same three rows — the
   date, a dot, a count — drawn whether or not there is anything to mark. The
   week-number column is gone, and weeks run Sunday to Saturday; a weekly
@@ -545,9 +602,9 @@
   attached to. **Hops out** reaches one, two, or three connections from the
   note in the editor — a tag association counting as a hop like any other —
   and the graph follows the editor as you move between notes. Only the
-  neighbourhood is sent to the page, so a local graph costs a screenful
+  neighborhood is sent to the page, so a local graph costs a screenful
   whatever the workspace holds, and the tag checklist narrows to the tags
-  that neighbourhood holds.
+  that neighborhood holds.
 
 - **One edit can be made to everything a search found.** A search page is
   where a set of notes and tasks is already gathered, so **Bulk Edit** in a
@@ -588,7 +645,7 @@
   Deckard keeps waited for a view to be opened; this one is visible while you
   are writing code. It reads **3 due today**, counting the same tasks the
   Agenda's Overdue and Today groups hold, says **1 overdue** and takes the
-  warning colour when something has slipped, and opens the Agenda when
+  warning color when something has slipped, and opens the Agenda when
   selected. A clear day hides it entirely. `deckard.statusBar` turns it off,
   and `deckard.taskReminderTime`, set to something like `09:00`, has Deckard
   say once a day what is due, with **Open Agenda** beside it.

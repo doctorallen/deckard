@@ -69,10 +69,10 @@ selector that would silently start hiding any detail added later.
 notes it is file and line. On the task board, `<p class="source board-details">`
 (`components.ts:870`) carries **due dates and overdue state** — and
 `renderTaskBoardCard` prefixes the word "overdue" precisely so the information
-does not depend on colour:
+does not depend on color:
 
 ```js
-// Colour alone carried this before, which says nothing to a reader who
+// Color alone carried this before, which says nothing to a reader who
 // cannot see it, or on a board grouped by anything but due date.
 ```
 
@@ -228,7 +228,7 @@ There are **no spacing tokens** — every padding and gap is a literal, in
 `components.ts` and again in each page's override block. Zen restates roughly
 a dozen `body.zen`-prefixed rules rather than introducing a `--space-*` scale
 first. Tokens would mean touching every literal in `components.ts`, all nine
-pages, and all eight themes, in a diff with no behavioural change, while
+pages, and all eight themes, in a diff with no behavioral change, while
 `verifyWebviews`' contracts assert literal values that would have to become
 token-aware.
 
@@ -295,7 +295,7 @@ compares the full set of controls — every button, input, select, link,
 `[data-action]` and focusable element, by tag, action, value and text. The two
 lists must be identical. That is the feature's promise stated as an assertion,
 and it is what stops zen drifting into feature-removal. The same suite asserts
-the sheet declares no colour, that `.query-error` and `.board-details` are
+the sheet declares no color, that `.query-error` and `.board-details` are
 absent from it, and that provenance folds off-screen rather than with
 `display: none`.
 
@@ -315,7 +315,7 @@ clipped beyond reach. The search page is a zen-only surface because its
 **`checkContrast.js` needs no zen pass.** It reads every declared rule whether
 or not the page renders a match, so the always-shipped `body.zen` rules are
 covered by the existing eight-theme run. The expected delta is zero new
-signatures; one appearing means a colour reached `getZenCss()`, and the fix is
+signatures; one appearing means a color reached `getZenCss()`, and the fix is
 the rule, not the baseline.
 
 `src/test/extension.test.ts` counts settings and commands exactly, so it had

@@ -1,3 +1,4 @@
+import { calendarIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -40,7 +41,7 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .weekday { padding: 2px 0; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
 /* Every day is the same three rows, whether or not it has anything to mark,
    so a note or a due count never moves the date it belongs to. */
-.day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: 12px var(--font-mono); text-align: center; }
+.day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: var(--text-sm) var(--font-mono); text-align: center; }
 .day.outside { opacity: 0.45; }
 .day.today { border-color: var(--amber); }
 .day-number { line-height: 15px; }
@@ -95,7 +96,7 @@ ${getComponentScript()}
     const days = week.days[0].date + ' to ' + week.days[6].date;
     const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
     return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
-      + '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6.5h11M6 3.5v3M10 3.5v3"/></svg>'
+      + '${calendarIcon}'
       + '</button>' + week.days.map(renderDay).join('');
   }
 

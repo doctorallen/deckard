@@ -107,6 +107,19 @@
   color: var(--vscode-errorForeground, #e51400);
 }
 
+/* Priority is a shape, not a color: an outlined badge with an arrow. */
+.deckard-query-priority {
+  display: inline-block;
+  padding: 0 0.3em;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.deckard-query-priority.priority-low, .deckard-query-priority.priority-lowest {
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
 /*
  * view=table: the tasks as columns. It follows the preview's own table look
  * and only adds the states a cell can be in.

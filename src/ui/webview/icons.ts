@@ -59,3 +59,59 @@ export const notesGraphIcon =
   '<svg viewBox="0 0 1024 1024" fill="currentColor" aria-hidden="true" focusable="false">' +
   '<path transform="matrix(3.45423 0 0 3.45423 -2320.93 -1253.23)" d="M906.419 384.578C906.261 389.877 908.234 394.557 911.476 398.665L897.325 423.335C890.733 421.107 887.462 421.056 880.631 422.546C876.93 415.12 873.313 407.653 869.78 400.146C873.933 394.941 876.56 390.52 875.881 383.382C875.425 378.095 872.811 373.229 868.655 369.929C864.787 366.894 860.266 365.629 855.394 365.652C843.547 367.414 835.238 375.977 837.042 388.414C837.781 393.691 840.655 398.432 844.991 401.529C849.742 404.866 854.061 405.199 859.576 405.061C863.199 412.394 867.241 420.231 870.495 427.676C858.39 439.042 855.338 451.845 863.539 466.823L843.189 486.621C825.883 474.704 808.883 474.225 790.942 485.191C781.794 475.282 772.337 464.155 763.283 453.982C769.691 444.222 772.555 435.125 770.035 423.337C768.105 414.087 762.525 406.006 754.558 400.925C746.069 395.558 735.771 393.85 726.004 396.191C716.709 398.443 708.507 404.715 703.604 412.888C698.641 421.236 697.262 431.236 699.782 440.616C702.214 449.888 708.256 457.801 716.56 462.591C724.882 467.532 734.844 468.909 744.194 466.409C748.237 465.309 751.122 463.874 754.663 461.692L782.44 492.76C776.301 501.051 774.363 505.062 772.251 515.182L721.058 515.205C717.014 504.235 706.777 497.845 695.366 502.394C690.393 504.372 686.404 508.235 684.267 513.142C674.202 536.782 710.468 554.093 721.258 526.477L772.335 526.482C773.814 536.247 777.105 543.826 783.836 551.148C776.885 560.238 768.846 570.29 762.329 579.592C756.18 576.917 752.117 575.531 745.375 575.07C716.091 573.068 694.402 603.101 705.768 630.341C709.899 640.473 718.007 648.466 728.197 652.453C738.147 656.419 749.274 656.224 759.08 651.913C768.938 647.612 776.672 639.555 780.566 629.528C784.402 619.631 784.164 608.617 779.905 598.894C777.77 594.019 775.069 590.442 771.671 586.413L778.934 576.568C783.441 570.627 788.271 564.451 792.577 558.401C801.525 562.724 804.708 563.803 814.575 565.043C815.225 571.334 815.914 577.62 816.644 583.902C814.032 585.359 811.612 586.752 809.599 589.016C799.965 599.848 804.045 617.486 818.884 621.248C837.194 625.891 850.3 606.547 840.244 590.961C837.37 586.508 832.699 584.112 827.643 582.721C827.126 576.433 826.523 570.152 825.835 563.881C835.053 561.46 838.783 559.307 846.26 553.146C854.368 559.729 862.42 566.946 870.497 573.687C865.787 583.139 863.934 591.627 867.439 601.99C870.352 610.598 876.632 617.656 884.843 621.551C892.948 625.448 902.275 625.941 910.746 622.92C919.345 619.839 925.858 613.729 929.731 605.496C933.532 597.295 933.861 587.907 930.643 579.46C927.42 570.844 921.612 564.422 913.174 560.665C904.752 556.924 895.171 556.772 886.634 560.243C883.353 561.56 880.872 563.228 877.914 565.113C869.865 558.025 861.692 551.079 853.4 544.276C862.954 526.58 862.03 511.483 851.243 494.632C857.958 488.211 864.614 481.729 871.21 475.187C882.644 481.729 893.328 482.663 904.724 475.138C908.503 478.019 915.995 485.629 919.953 489.288L919.947 489.305C918.663 492.976 917.81 495.417 917.878 499.421C918.136 514.564 934.487 523.268 947.442 515.909C952.052 513.315 955.344 508.887 956.499 503.725C957.767 498.436 956.886 492.859 954.05 488.218C951.247 483.664 946.688 480.47 941.451 479.39C936.487 478.41 932.229 479.454 927.754 481.568C922.999 476.861 917.052 471.559 912.624 466.903C920.111 453.212 918.557 439.601 907.018 428.743C911.844 420.735 916.527 412.641 921.065 404.467C927.277 405.333 932.472 405.245 937.77 401.291C946.856 394.51 948.52 381.628 941.327 372.772C937.921 368.607 932.925 366.062 927.553 365.755C922.09 365.392 916.873 367.348 912.82 370.993C908.908 374.448 906.593 379.362 906.419 384.578Z"/>' +
   '</svg>';
+
+/**
+ * One 16px stroked glyph set for every control that carries an icon, so a
+ * chevron on Home, a sort arrow on the Board, and a calendar in the sidebar
+ * are the same drawing at the same weight. `strokeIcon` wraps a path in the
+ * shared frame; `className` is the page's hook, `control-icon-svg` inside a
+ * select's label or `toolbar-icon` inside a button.
+ */
+export function strokeIcon(paths: string, className = 'toolbar-icon'): string {
+  return (
+    `<svg class="${className}" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
+    paths +
+    '</svg>'
+  );
+}
+
+/** The path each stroked glyph is drawn from. */
+export const ICON_PATHS = {
+  sort: '<path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/>',
+  filter: '<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/>',
+  lines: '<path d="M3 5h10M3 8h7M3 11h4"/>',
+  chevronLeft: '<path d="M10 3 5 8l5 5"/>',
+  chevronRight: '<path d="m6 3 5 5-5 5"/>',
+  calendar: '<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6.5h11M6 3.5v3M10 3.5v3"/>',
+  calendarPlus: '<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M2.5 6.5h11M6 3.5v3M10 3.5v3M8 8v3M6.5 9.5h3"/>',
+  dashboard: '<rect x="2.5" y="2.5" width="4.5" height="4.5" rx=".5"/><rect x="9" y="2.5" width="4.5" height="3" rx=".5"/><rect x="9" y="7.5" width="4.5" height="6" rx=".5"/><rect x="2.5" y="9" width="4.5" height="4.5" rx=".5"/>',
+  openInNew: '<path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/>',
+  link: '<path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2-2a2.47 2.47 0 0 0-3.5-3.5l-.8.8"/><path d="M9.5 6.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.47 2.47 0 0 0 3.5 3.5l.8-.8"/>',
+  layoutTabs: '<rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M5 2.5V6"/>',
+  layoutSplit: '<rect x="2" y="2" width="12" height="12" rx="1"/><path d="M9 2v12"/>',
+  rendered: '<path d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"/><circle cx="8" cy="8" r="1.75"/>',
+  source: '<path d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"/>',
+  zoomIn: '<circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3M7 5v4M5 7h4"/>',
+  zoomOut: '<circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3M5 7h4"/>',
+  fit: '<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>',
+  ellipsis: '<circle cx="3.5" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8" r="1.1" fill="currentColor" stroke="none"/>',
+} as const;
+
+export const sortIcon = strokeIcon(ICON_PATHS.sort, 'control-icon-svg');
+export const filterIcon = strokeIcon(ICON_PATHS.filter, 'control-icon-svg');
+export const linesIcon = strokeIcon(ICON_PATHS.lines, 'control-icon-svg');
+export const chevronLeftIcon = strokeIcon(ICON_PATHS.chevronLeft);
+export const chevronRightIcon = strokeIcon(ICON_PATHS.chevronRight);
+export const calendarIcon = strokeIcon(ICON_PATHS.calendar);
+export const calendarPlusIcon = strokeIcon(ICON_PATHS.calendarPlus);
+export const dashboardIcon = strokeIcon(ICON_PATHS.dashboard);
+export const openInNewIcon = strokeIcon(ICON_PATHS.openInNew);
+export const linkIcon = strokeIcon(ICON_PATHS.link);
+export const layoutTabsIcon = strokeIcon(ICON_PATHS.layoutTabs);
+export const layoutSplitIcon = strokeIcon(ICON_PATHS.layoutSplit);
+export const renderedIcon = strokeIcon(ICON_PATHS.rendered);
+export const sourceIcon = strokeIcon(ICON_PATHS.source);
+export const zoomInIcon = strokeIcon(ICON_PATHS.zoomIn);
+export const zoomOutIcon = strokeIcon(ICON_PATHS.zoomOut);
+export const fitIcon = strokeIcon(ICON_PATHS.fit);
+export const ellipsisIcon = strokeIcon(ICON_PATHS.ellipsis);

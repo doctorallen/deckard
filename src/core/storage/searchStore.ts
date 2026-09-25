@@ -311,7 +311,7 @@ export class SearchStore implements vscode.Disposable {
   /**
    * Answers, for each word the notes do not contain, the closest word they
    * do, preferring the most widely used. A word the notes already contain,
-   * or one with no close neighbour, is left out, so an empty result means
+   * or one with no close neighbor, is left out, so an empty result means
    * there is nothing to correct.
    *
    * Every search surface corrects spelling through this one lookup, because

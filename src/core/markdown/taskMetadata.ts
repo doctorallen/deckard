@@ -576,7 +576,7 @@ const RELATIVE_DUE_LIMIT_DAYS = 30;
 /**
  * Words a due date the way a reader decides on it: how far from today it is,
  * then the date itself for anyone who cites or compares dates. The word
- * "overdue" is in the text, so the state never rests on colour alone.
+ * "overdue" is in the text, so the state never rests on color alone.
  */
 export function describeDueDate(
   dueAt: number,

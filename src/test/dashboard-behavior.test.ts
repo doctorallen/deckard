@@ -27,6 +27,30 @@ suite('Dashboard behavior', () => {
     store = undefined;
   });
 
+  test('the mark on a searched Tags tab is sized by the tab, not the select corner', () => {
+    const { page } = open({ dashboardViewState: { mode: 'home', tagSearchQuery: 'atlas' } });
+    const mark = page.find('.dashboard-tabs .tab-search-mark svg');
+    // The shared filter icon's class places it absolutely at a select's
+    // corner; with the mark's own 100% sizing it once filled the page.
+    assert.strictEqual(mark.classList.contains('control-icon-svg'), false);
+    assert.strictEqual(mark.classList.contains('tab-search-mark-icon'), true);
+  });
+
+  test('a saved search shows its name, and keeps its criteria in the row', () => {
+    const { page } = open({
+      dashboardViewState: { mode: 'home', tagSearchQuery: '' },
+      savedFilters: [{ id: 'f', name: 'Fun dip', tags: [], query: 'tag = #project/atlas', page: 'dashboard' } as never],
+      dashboardWidgets: [{ id: 's', kind: 'savedSearches', width: 'half' }],
+    });
+    const row = page.find('.saved-filter-row[data-saved-filter-id="f"]');
+    assert.strictEqual(row.querySelector('.saved-filter-name')?.textContent, 'Fun dip');
+    // The criteria are the row's own child, so the frame they open in under
+    // the pointer is inherited from the row, hover colors included.
+    const criteria = row.querySelector(':scope > .saved-filter-tags');
+    assert.ok(criteria, 'the criteria sit directly in the row');
+    assert.match(criteria?.textContent ?? '', /tag = #project\/atlas/);
+  });
+
   const NOTES: Record<string, string> = {
     'notes/one.md': [
       '# One #project/atlas #risk/vendor',

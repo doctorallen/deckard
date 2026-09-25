@@ -233,15 +233,15 @@ suite('Zen mode', () => {
     );
   });
 
-  test('declares no colour, so the contrast matrix cannot move', () => {
+  test('declares no color, so the contrast matrix cannot move', () => {
     const sheet = getZenCss();
     const declarations = sheet.match(/[a-z-]+\s*:[^;}]+/g) ?? [];
-    const coloured = declarations.filter((declaration) =>
+    const colored = declarations.filter((declaration) =>
       /^\s*(color|background|background-color|border-color)\s*:/.test(
         declaration,
       ),
     );
 
-    assert.deepStrictEqual(coloured, []);
+    assert.deepStrictEqual(colored, []);
   });
 });

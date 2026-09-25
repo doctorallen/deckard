@@ -14,6 +14,8 @@ import { renderMarkdown } from '../ui/webview/rendering';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { deckardThemes, getDeckardTheme, getDeckardThemeCss } from '../ui/webview/themes';
+import { getHighContrastCss, getPageTailCss } from '../ui/webview/components';
+import { openWebviewPage } from './webviewPage';
 
 function assertWebviewScriptParses(html: string): void {
   const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
@@ -570,6 +572,14 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    // A row's readout, a file name or a count, folds under the row under the
+    // pointer as an entry's provenance does, and stays in the tree.
+    assert.ok(html.includes('.home-row .home-row-detail,\n.tag-row .tag-count {'));
+    assert.ok(html.includes('.home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,'));
+    assert.ok(!/\.home-row-detail[^{]*\{[^}]*display: none/.test(html), 'a readout never leaves the accessibility tree');
+    // A saved search reads by its name; its criteria open under the pointer.
+    assert.ok(html.includes('.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }'));
+    assert.ok(html.includes('.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {'));
                     assert.strictEqual(
       html.includes('.tag-namespace { opacity: .62; }'),
       true,
@@ -582,7 +592,10 @@ suite('Webview contracts', () => {
       true,
     );
                                                                 // The mark is a filter icon, and the Search tab keeps it from another tab.
-    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span>'), true);
+    // It is drawn with a class of its own: the shared icon's class places it
+    // absolutely at a select's corner, which in a tab floated it over the page.
+    assert.strictEqual(html.includes('const TAB_MARK_ICON = \'<svg class="tab-search-mark-icon" viewBox="0 0 16 16"'), true);
+    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>\';'), true);
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
     // A tag in a title is a hairline link, not a control chip.
@@ -613,10 +626,33 @@ suite('Webview contracts', () => {
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
                                                                                                                                                                                                                                                     assert.strictEqual(html.includes('.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'), true);
     assert.strictEqual(html.includes('.home-widget.is-full { grid-column: 1 / -1; }'), true);
+    // A hue carries one meaning: the state tokens, and the rules that use them.
+    for (const token of ['--accent', '--danger', '--favorite', '--positive', '--focus']) {
+      assert.ok(html.includes(`${token}: var(--`), `${token} is declared on :root`);
+    }
+    assert.ok(html.includes('.due-date.overdue { color: var(--danger); }'), 'overdue is danger');
+    assert.ok(!/\.favorite-toggle \{[^}]*--favorite-red/.test(html), 'the heart is not drawn in the danger color');
+    assert.ok(!/is-negated \{[^}]*--favorite-red/.test(html), 'a negated term is not an alarm');
+    // Hover and chosen are two drawings, not one amber.
+    assert.strictEqual(
+      html.includes('button.active {\n  border-color: var(--chosen-bg);\n  background: var(--panel-raised);'),
+      true,
+      'a chosen control keeps its own ground and takes the accent as a border and a bar',
+    );
     // Nothing a reader acts on is set below the smallest step of the scale.
     assert.ok(
-      html.includes('--text-xs: 11px;'),
-      'the type scale declares its floor',
+      html.includes('--text-md: var(--vscode-font-size, 13px);'),
+      'the type scale follows the editor',
+    );
+    assert.ok(
+      html.includes('--text-xs: max(11px, calc(var(--text-md) - 2px));'),
+      'and never goes under its floor',
+    );
+    // Every working size is a step of the scale, so it moves with the editor.
+    assert.strictEqual(
+      /font(-size)?: ?(\d{3} )?1[1-4]px/.test(html),
+      false,
+      'no rule on the page sets a working size in pixels',
     );
     assert.strictEqual(
       /font(-size)?: ?(9|10)px/.test(html),
@@ -630,13 +666,13 @@ suite('Webview contracts', () => {
       true,
       'the hint rests only while the box is idle and empty',
     );
-    // The file and line under a task were once a literal grey at 1.85:1 on
+    // The file and line under a task were once a literal gray at 1.85:1 on
     // the panel, which six of the eight themes inherited. The muted token is
     // what every theme declares for secondary text.
     assert.strictEqual(
-      html.includes('.task-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted);'),
+      html.includes('.task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted);'),
       true,
-      'task provenance takes the muted token, never a literal colour',
+      'task provenance takes the muted token, never a literal color',
     );
                                               });
 
@@ -1018,7 +1054,7 @@ suite('Webview contracts', () => {
       "a page's top rule is recolored, not replaced",
     );
     assert.strictEqual(/main \{[^}]*border-top:/.test(cooper), false);
-    // Strength steps are gold against faint empty ones, not two pale greys.
+    // Strength steps are gold against faint empty ones, not two pale grays.
     assert.strictEqual(cooper.includes('.tag-weight-rail-segment.filled { background: var(--amber); }'), true);
   });
 
@@ -1031,15 +1067,15 @@ suite('Webview contracts', () => {
       vscode.Uri.file('/deckard'),
     );
 
-    // The shared shell centres main without a frame; the Dashboard widens it.
+    // The shared shell centers main without a frame; the Dashboard widens it.
     assert.strictEqual(
       html.includes(
-        'main { position: relative; max-width: 1000px; margin: 0 auto; padding: 24px; }',
+        'main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }',
       ),
       true,
     );
     assert.strictEqual(
-      html.includes('main { width: 100%; max-width: 1180px; }'),
+      html.includes('main { width: 100%; max-width: 1400px; }'),
       true,
     );
     // A theme may restyle main; the page and the shared sheet give it no frame.
@@ -1170,7 +1206,7 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-                                // Inline tags keep the sidebar's compact size; colour, margin and
+                                // Inline tags keep the sidebar's compact size; color, margin and
     // alignment come from the shared .tag-open and .inline-tag rules.
     assert.strictEqual(
       html.includes(
@@ -1180,7 +1216,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }',
+        '.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }',
       ),
       true,
     );
@@ -1198,7 +1234,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        'note.headingPath.map(function (part) { return escapeHtml(part); }).join(\'<span class="heading-path-joiner"> &gt; </span>\')',
+        'renderHeadingPath(note.headingPath, fileName, note.title)',
       ),
       true,
     );
@@ -1252,6 +1288,43 @@ suite('Webview contracts', () => {
     }
     for (const section of ['quick-start', 'commands', 'advanced', 'query', 'tasks']) {
       assert.ok(links.includes(section), `the navigation offers #${section}`);
+    }
+  });
+
+  test('every theme defers to a high contrast editor theme', () => {
+    const contrast = getHighContrastCss();
+    const block = /body\.vscode-high-contrast, body\.vscode-high-contrast-light \{([^}]*)\}/.exec(contrast);
+    assert.ok(block, 'a high contrast block');
+    assert.ok(block[1].includes('--text: var(--vscode-foreground);'), 'the text is the editor\'s own');
+    assert.ok(block[1].includes('--grid-line: transparent;'), 'the grid goes');
+    assert.ok(!/#[0-9a-f]{3,6}\b/i.test(block[1]), 'the block names no color of its own');
+    assert.ok(contrast.includes('@media (forced-colors: active)'), 'forced colors are tidied too');
+    // Laid down after the theme, and before zen, which stays the last layer.
+    const tail = getPageTailCss();
+    assert.ok(tail.includes(contrast), 'every page carries the block');
+    assert.ok(tail.indexOf(contrast) > tail.indexOf(getDeckardThemeCss(getDeckardTheme())), 'after the theme');
+    assert.ok(tail.indexOf('body.vscode-high-contrast') < tail.indexOf('body.zen'), 'before zen');
+    for (const theme of deckardThemes) {
+      assert.ok(!getDeckardThemeCss(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
+    }
+  });
+
+  test('the Help rail marks the section being read', () => {
+    const page = openWebviewPage(
+      getHelpHtml(
+        { cspSource: 'vscode-webview://deckard', asWebviewUri: (resource) => resource },
+        vscode.Uri.file('/deckard'),
+        extension().packageJSON.contributes,
+      ),
+      undefined,
+    );
+    try {
+      // At the top, the first section is the one being read; scrolling
+      // moves the mark, which needs a browser to lay the page out.
+      assert.strictEqual(page.find('nav a[aria-current="location"]').getAttribute('href'), '#quick-start');
+      assert.strictEqual(page.findAll('nav a[aria-current]').length, 1);
+    } finally {
+      page.dispose();
     }
   });
 

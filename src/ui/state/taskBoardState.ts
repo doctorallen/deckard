@@ -27,11 +27,13 @@ import {
   TaskPriority,
   WorkspaceIndex,
   TaskTable,
+  Section,
 } from '../../core/types';
 import { renderMarkdownInline } from '../webview/rendering';
 import {
   createDashboardTask,
   createQueryViewState,
+  getHeadingPath,
   sortTasks,
 } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -267,11 +269,18 @@ export function layoutTaskBoard(
       .map((task) => task.dependencyId as string),
   );
   const toCard = (task: Task): TaskBoardCard =>
-    createCard(task, groupBy, options.now, openDependencyIds);
+    createCard(task, groupBy, options.now, openDependencyIds, index.sections);
 
+  // A status named done is the board's own Done: an open task carrying it
+  // sits at the head of that column rather than in a second column of the
+  // same name.
+  const isMarkedDone = (task: Task): boolean =>
+    groupBy === 'status' &&
+    readTaskStatus(task, options.statusNamespace) === 'done';
+  const markedDone = open.filter(isMarkedDone);
   const drafts =
     groupBy === 'status'
-      ? createStatusColumns(open, options)
+      ? createStatusColumns(open.filter((task) => !isMarkedDone(task)), options)
       : groupBy === 'priority'
         ? createPriorityColumns(open)
         : groupBy === 'assignee'
@@ -290,7 +299,7 @@ export function layoutTaskBoard(
       id: 'done',
       label: 'Done',
       droppable: true,
-      cards: done.slice(0, doneLimit).map(toCard),
+      cards: [...markedDone.sort(compareOpen), ...done.slice(0, doneLimit)].map(toCard),
       hiddenCount: Math.max(0, done.length - doneLimit),
     },
   ];
@@ -516,7 +525,12 @@ function createStatusColumns(
     byStatus.set(status, column);
   }
 
-  const configured = [...new Set(options.statuses)];
+  // A configured status named done is the board's own Done column, which
+  // is drawn last whatever the grouping; a column for it here was a second
+  // empty Done beside that one.
+  const configured = [...new Set(options.statuses)].filter(
+    (status) => status !== 'done',
+  );
   const found = [...byStatus.keys()]
     .filter((status) => !configured.includes(status))
     .sort();
@@ -632,7 +646,9 @@ function createCard(
   groupBy: TaskBoardGroupBy,
   now: number,
   openDependencyIds: ReadonlySet<string>,
+  sections: ReadonlyMap<string, Section>,
 ): TaskBoardCard {
+  const section = task.sectionId ? sections.get(task.sectionId) : undefined;
   const title = stripTrailingTags(task.title) || task.title;
   const today = startOfDay(now);
   const open = !task.completed;
@@ -670,8 +686,10 @@ function createCard(
         : '',
       task.recurrence ? `repeats ${task.recurrence}` : '',
       open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
-      task.filePath.split('/').pop() ?? task.filePath,
     ].filter(Boolean),
+    // Where the task is written folds under the card, as it does under a
+    // row; it was the last detail on every card.
+    headingPath: section ? getHeadingPath(section, sections) : [],
   };
 }
 

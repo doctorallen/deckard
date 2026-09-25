@@ -238,6 +238,7 @@ export function createSearchPageSnapshot(
             },
           ),
         ),
+      index.sections,
     );
   const plainTerms = getPlainTextTerms(drafted.node);
   const cards = plainTerms
@@ -1017,6 +1018,10 @@ export function createDashboardTask(
     sectionHeading: task.sectionId
       ? sections.get(task.sectionId)?.heading
       : undefined,
+    headingPath: (() => {
+      const section = task.sectionId ? sections.get(task.sectionId) : undefined;
+      return section ? getHeadingPath(section, sections) : [];
+    })(),
     fileName: task.filePath.split('/').pop() ?? task.filePath,
     ...(due
       ? {
@@ -1035,9 +1040,11 @@ function createTagOverviewCard(
   sectionAccessCounts: Record<string, number>,
   tagTitleDisplayMode: TagTitleDisplayMode,
   pinned = false,
+  sections?: ReadonlyMap<string, Section>,
 ): TagOverviewCard {
   return {
     id: section.id,
+    ...(sections ? { headingPath: getHeadingPath(section, sections) } : {}),
     filePath: section.filePath,
     heading: getNoteTitle(section.heading, tagTitleDisplayMode),
     ...(pinned ? { pinned } : {}),

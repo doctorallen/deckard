@@ -408,8 +408,11 @@ For the active scope and every candidate section or task, Deckard:
    characters; hyphenated words are allowed.
 3. Removes tags, Wiki links, URLs, fenced code, and front-matter content from
    body text.
-4. Ignores a small list of common words such as `about`, `before`, `their`,
-   `which`, and `with`.
+4. Ignores English function words: articles, pronouns, prepositions,
+   conjunctions, auxiliaries, and the adverbs of degree and time, so two
+   entries are never alike for sharing `and`, `the`, and `that`. In a
+   workspace of ten or more entries, a word found in more than half of them
+   is ignored as well, whatever it is.
 5. Adds title terms twice as an explicit boost, giving headings and task titles
    more influence than ordinary body words. The combined title-and-body text
    also contains the title once, so a title term can occur three times in the

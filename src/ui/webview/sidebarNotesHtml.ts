@@ -7,7 +7,17 @@ import {
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
-import { helpIcon, notesGraphIcon, taskBoardIcon } from './icons';
+import {
+  calendarPlusIcon,
+  dashboardIcon,
+  helpIcon,
+  ICON_PATHS,
+  linkIcon,
+  notesGraphIcon,
+  openInNewIcon,
+  strokeIcon,
+  taskBoardIcon,
+} from './icons';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -49,9 +59,9 @@ export function getSidebarNotesHtml(
 .active-label, .section-label { color: var(--muted); font-size: var(--text-xs); }
 .active-summary { display: grid; gap: 2px; cursor: pointer; list-style: none; }
 .active-summary::-webkit-details-marker { display: none; }
-.active-summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.active-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-file[open] .active-name { -webkit-line-clamp: 3; }
-.sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
@@ -77,7 +87,7 @@ select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2p
 select.related-notes-sort:hover ~ .related-notes-sort-icon { color: var(--hover-fg); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
 button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
-button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
 .section-label { display: block; margin: 10px 0 6px; padding-left: 6px; border-left: 2px solid var(--amber); }
@@ -87,19 +97,19 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .note-header { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
 .note-title { min-width: 0; overflow-wrap: anywhere; }
 .note-title .inline-tag { color: var(--text); }
-.relevance-score { display: inline-grid; flex: 0 0 auto; place-items: center; min-width: 24px; color: var(--green); }
+.relevance-score { display: inline-grid; flex: 0 0 auto; place-items: center; min-width: 24px; min-height: 24px; color: var(--green); }
 .relevance-score .tag-weight-rail-segment.filled { background: currentColor; }
 .note-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .insert-link { flex: 0 0 auto; min-height: 0; border: 0; background: transparent; padding: 0; color: var(--muted); cursor: pointer; opacity: 0; }
 .insert-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; }
 .note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
-.insert-link:hover { color: var(--accent); }
+.insert-link:hover { background: transparent; color: var(--text); }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
-.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
+.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: var(--text-xs); line-height: 1.35; }
 .relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
-.relevance-score { min-height: 0; border: 0; background: transparent; padding: 0; cursor: pointer; }
+.relevance-score { border: 0; background: transparent; padding: 0; cursor: pointer; }
 .relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
-.relevance-reason { margin-top: 5px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.relevance-reason { margin-top: 5px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
 .relevance-tooltip li + li { margin-top: 3px; }
@@ -114,7 +124,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .graph-tag-pill { margin-left: 0; color: var(--text); }
 /* The active search's Refine options. */
 .refine-values { display: grid; gap: 3px; }
-.refine-subject { margin: 2px 0 0; color: var(--cyan); font: 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refine-subject { margin: 2px 0 0; color: var(--cyan); font: var(--text-xs) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .refine-value { display: flex; align-items: stretch; gap: 3px; }
 /* A tag as a full-width row, for the note's own tags and the related tags in
    Refine: its rail, its name, and its count. The theme's own .tag-open layout
@@ -132,15 +142,14 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--cyan); outl
 .refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
 .refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; }
+.refine-heading h2 { margin: 0; color: var(--amber); font-size: var(--text-xs); }
 .refine-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
-.heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 /* The sidebar is narrow, so it runs tighter than a full-width page. */
-body { min-width: 220px; font-size: 12px; }
+body { min-width: 220px; font-size: var(--text-sm); }
 main { width: 100%; max-width: none; padding: 12px; border-top: 2px solid var(--amber); }
 .eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
-.tag-list { display: flex; gap: 5px; margin: 8px 0 0; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; }
 button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
 .source { margin-top: 4px; font-size: var(--text-xs); }
@@ -217,7 +226,7 @@ ${getComponentScript()}
       // The row narrows the search by the tag; the icon beside it opens the
       // tag's own page in a new tab.
       return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' title="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
-        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" title="Open ' + escapeHtml(value.label) + ' in a new tab"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/></svg></button></div>';
+        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" title="Open ' + escapeHtml(value.label) + ' in a new tab">${openInNewIcon}</button></div>';
     }
     return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" title="' + escapeHtml(help) + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
   }
@@ -351,9 +360,23 @@ ${getComponentScript()}
         const tags = state.tagTitleDisplayMode === 'separate'
           ? renderTags(note.matchedTags, 'matched-tag')
           : '';
-        const relevanceReasons = note.reasons && note.reasons.length
-          ? note.reasons
-          : ['Related note'];
+        // The tags drawn as chips on the card: the matched tags under the
+        // title when tags are shown apart from it, or the title's own when
+        // they are shown inline. A reason that only lists tags the chips
+        // already name, "Shared: …" or "Associated: …", said them twice;
+        // it goes, and the line moves on to the next reason, or to nothing.
+        const chipLabels = (tags ? note.matchedTags || [] : note.titleTags || []).map(function (tag) { return tag.label; });
+        const namesOnlyChips = function (reason) {
+          const match = /^(Shared|Associated): (.+)$/.exec(reason);
+          if (!match) return false;
+          const listed = match[2].split(', ');
+          return listed.length > 0 && listed.every(function (label) { return chipLabels.indexOf(label) >= 0; });
+        };
+        const dropped = (note.reasons || []).filter(namesOnlyChips);
+        const reasons = (note.reasons || []).filter(function (reason) { return !namesOnlyChips(reason); });
+        const relevanceReasons = reasons.length
+          ? reasons
+          : dropped.length ? [] : ['Related note'];
         const evidence = note.relevanceEvidence || {
           directTagWeight: 0,
           associationWeight: note.associationWeight || 0,
@@ -384,20 +407,18 @@ ${getComponentScript()}
         const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
         const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
         const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
-        const pathHtml = note.headingPath && note.headingPath.length
-          ? note.headingPath.map(function (part) { return escapeHtml(part); }).join('<span class="heading-path-joiner"> &gt; </span>')
-          : '';
+        const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
         // Writing a link to a result is the reason to have found it, and
         // the sidebar sits beside the note being written in. The button
         // stays out of the way until the card is under the pointer.
-        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" title="Write a [[link]] to this entry at the cursor"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2-2a2.47 2.47 0 0 0-3.5-3.5l-.8.8"/><path d="M9.5 6.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.47 2.47 0 0 0 3.5 3.5l.8-.8"/></svg></button>';
+        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" title="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
         return renderNoteCard(
           '',
           'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
           titleHtml,
           '<div class="note-actions">' + insertLink + relevance + '</div>',
           '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;
     }
@@ -430,14 +451,14 @@ ${getComponentScript()}
           + activeTags + '</details>'
         : '');
     const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
-      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select><svg class="related-notes-sort-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"/></svg></span>'
+      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
       : state.state === 'refine'
       ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
-    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow" title="Deckard v${escapedExtensionVersion}">DECKARD</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help">${helpIcon}</button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"/></svg></button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2h1v2h8V2h1v2h1v10H2V4h1zm0 4v7h10V6zm4 1h1v2h2v1H8v2H7v-2H5V9h2z"/></svg></button></div></div>' + context + sectionLabel + content;
+    document.getElementById('app').innerHTML = '<div class="sidebar-header"><p class="eyebrow" title="Deckard v${escapedExtensionVersion}">DECKARD</p><div class="sidebar-toolbar" role="toolbar" aria-label="Deckard actions"><button class="icon-button" data-action="open-help" aria-label="Open Help" title="Open Help">${helpIcon}</button><button class="icon-button" data-action="open-dashboard" aria-label="Open Dashboard" title="Open Dashboard">${dashboardIcon}</button><button class="icon-button" data-action="open-notes-graph" aria-label="Open Notes Graph" title="Open Notes Graph">${notesGraphIcon}</button><button class="icon-button" data-action="open-task-board" aria-label="Open Task Board" title="Open Task Board">${taskBoardIcon}</button><button class="icon-button" data-action="create-daily-note" aria-label="Create Daily Note" title="Create Daily Note">${calendarPlusIcon}</button></div></div>' + context + sectionLabel + content;
   }
 
   document.addEventListener('toggle', function (event) {

@@ -133,6 +133,56 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(page.lastPosted('openSource'), undefined);
   });
 
+  test('says each shared tag once', () => {
+    // Listed apart from the title, the matching tags are chips under it,
+    // and a "Shared: …" line naming the same tags said them twice.
+    const shared = { key: '#project/atlas', label: 'project/atlas' };
+    const separate = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Linked note'] })],
+    });
+    assert.strictEqual(separate.findAll('.tag-list [data-action="open-tag"]').length, 1);
+    assert.strictEqual(separate.text('.relevance-reason'), 'Linked note');
+    separate.dispose();
+
+    const chipsOnly = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas'] })],
+    });
+    assert.strictEqual(chipsOnly.findAll('.relevance-reason').length, 0, 'the chips are the reason');
+    chipsOnly.dispose();
+
+    // Inline, a title that carries the shared tag draws it as a chip too.
+    const inline = open({
+      tagTitleDisplayMode: 'inline',
+      notes: [note({ matchedTags: [shared], titleTags: [shared], reasons: ['Shared: project/atlas'] })],
+    });
+    assert.strictEqual(inline.findAll('.relevance-reason').length, 0, 'the title chip is the reason');
+    inline.dispose();
+
+    // A title without the shared tag leaves the line to say which it is.
+    const elsewhere = open({
+      tagTitleDisplayMode: 'inline',
+      notes: [note({ matchedTags: [shared], titleTags: [], reasons: ['Shared: project/atlas'] })],
+    });
+    assert.strictEqual(elsewhere.text('.relevance-reason'), 'Shared: project/atlas');
+    elsewhere.dispose();
+
+    // The same holds for the associated tags: named by the chips, the line
+    // goes; naming a tag the chips do not, it stays.
+    const associated = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas'] })],
+    });
+    assert.strictEqual(associated.findAll('.relevance-reason').length, 0);
+    associated.dispose();
+    const further = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas, topic/ops'] })],
+    });
+    assert.strictEqual(further.text('.relevance-reason'), 'Associated: project/atlas, topic/ops');
+  });
+
   test('explains a score from its signals, and sorts the list', () => {
     const page = open({
       notes: [
@@ -174,13 +224,29 @@ suite('Related Notes behavior', () => {
     });
   });
 
-  test('shows where a result sits in its note', () => {
-    const page = open({ notes: [note({ headingPath: ['Atlas', 'Check-in'] })] });
-
+  test('shows where a result sits in its note, without repeating what the card says', () => {
+    // The path's first step is the note's title, which the provenance line
+    // above already names as the file; its last is the entry, which is the
+    // card's title. Both go when they repeat what is there.
+    const page = open({ notes: [note({ headingPath: ['Atlas', 'Harbor', 'Actions'] })] });
     const path = page.find('.heading-path');
-    assert.match(path.textContent ?? '', /Atlas/);
-    assert.match(path.textContent ?? '', /Check-in/);
+    assert.strictEqual(path.textContent, 'Harbor > Actions');
     assert.strictEqual(path.querySelectorAll('.heading-path-joiner').length, 1);
+    page.dispose();
+
+    // A title that is not the file name is kept; the entry's own is not.
+    const titled = open({ notes: [note({ headingPath: ['Atlas launch', 'Check-in'] })] });
+    assert.strictEqual(titled.find('.heading-path').textContent, 'Atlas launch');
+    titled.dispose();
+
+    // A lone step that is the file name stays: the path is then the note.
+    const lone = open({ notes: [note({ headingPath: ['Atlas'] })] });
+    assert.strictEqual(lone.find('.heading-path').textContent, 'Atlas');
+    lone.dispose();
+
+    // Nothing left to say, nothing drawn.
+    const own = open({ notes: [note({ headingPath: ['Atlas', 'Check-in'] })] });
+    assert.strictEqual(own.findAll('.heading-path').length, 0);
   });
 
   test('draws a tag with its weight beside it', () => {

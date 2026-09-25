@@ -30,7 +30,7 @@ suite('Deckard query blocks', () => {
 
   test('reports options it cannot use without dropping the valid ones', () => {
     const options = parseQueryBlockInfo(
-      'deckard sort=newest limit=0 colour=red sort=created',
+      'deckard sort=newest limit=0 color=red sort=created',
     );
     assert.strictEqual(options?.sort, 'created');
     assert.strictEqual(options?.limit, undefined);
@@ -48,11 +48,11 @@ suite('Deckard query blocks', () => {
         warnings: [],
       },
     );
-    const options = parseQueryBlockInfo('deckard view=grid columns=due,colour dir=up');
+    const options = parseQueryBlockInfo('deckard view=grid columns=due,color dir=up');
     assert.strictEqual(options?.view, undefined);
     assert.deepStrictEqual(options?.columns, ['title', 'due'], 'the columns it knows are kept');
     assert.strictEqual(options?.warnings.length, 3);
-    assert.match(options?.warnings[1] ?? '', /no "colour"/);
+    assert.match(options?.warnings[1] ?? '', /no "color"/);
   });
 
   test('sorts tasks by a column, and by date newest first as before', () => {
