@@ -627,7 +627,7 @@ ${getComponentScript()}
     if (event.data && event.data.type === 'state') {
       console.log('[Deckard Related Notes] Received state:', event.data.data.state);
       state = event.data.data;
-      render();
+      renderKeepingPlace(render);
     }
   });
   console.log('[Deckard Related Notes] Requesting initial state.');

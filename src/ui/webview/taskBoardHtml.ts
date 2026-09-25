@@ -127,21 +127,11 @@ ${getQueryEditorScript()}
   }
 
   /**
-   * Redraw without taking the caret away from a field being typed in, which
-   * is found again by its action, as the Dashboard does.
+   * Redraw without taking the reader's place: the caret in a field being
+   * typed in, or the card or row that had focus, or the one after it.
    */
   function renderKeepingFocus() {
-    const active = document.activeElement;
-    const isField = Boolean(active && active.matches && active.matches('input[type="text"]'));
-    const action = isField ? active.dataset.action : undefined;
-    const selectionStart = isField ? active.selectionStart : null;
-    const selectionEnd = isField ? active.selectionEnd : null;
-    render();
-    if (!action) return;
-    const field = document.querySelector('input[type="text"][data-action="' + action + '"]');
-    if (!field) return;
-    field.focus();
-    if (selectionStart !== null && selectionEnd !== null) field.setSelectionRange(selectionStart, selectionEnd);
+    renderKeepingPlace(render);
   }
 
   function canRank() {
@@ -403,7 +393,10 @@ ${getQueryEditorScript()}
     if (editor.handleChange(event)) return;
     const target = event.target;
     if (target.dataset.action === 'set-task-sort') post({ type: 'setTaskSort', mode: target.value });
-    if (target.dataset.action === 'toggle-task') post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
     if (target.dataset.action === 'toggle-table-column') toggleColumn(target.dataset.value, target.checked);
   });
 

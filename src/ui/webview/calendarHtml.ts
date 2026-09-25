@@ -32,6 +32,7 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .calendar-header { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
+.calendar-row, .calendar-cell { display: contents; }
 /* The week opens its note and marks whether it has one; it is not a date,
    so it is drawn as a rail beside the days rather than as another cell. */
 .week-label { display: grid; align-self: stretch; width: 18px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); place-items: center; }
@@ -84,7 +85,7 @@ ${getComponentScript()}
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = state.focusDate ? day.date === state.focusDate : day.isToday;
-    return '<button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button>';
+    return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
   }
 
   /**
@@ -95,9 +96,9 @@ ${getComponentScript()}
   function renderWeek(week) {
     const days = week.days[0].date + ' to ' + week.days[6].date;
     const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
-    return '<button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
+    return '<div class="calendar-row" role="row"><span class="calendar-cell" role="rowheader"><button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
       + '${calendarIcon}'
-      + '</button>' + week.days.map(renderDay).join('');
+      + '</button></span>' + week.days.map(renderDay).join('') + '</div>';
   }
 
   function render() {
@@ -109,7 +110,9 @@ ${getComponentScript()}
       '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.nextMonth) + '" aria-label="Next month" title="Next month">&rsaquo;</button>' +
       (state.month === state.currentMonth ? '' : '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.currentMonth) + '">Today</button>') +
       '</div>';
-    const weekdays = '<span class="weekday" aria-hidden="true"></span>' + WEEKDAYS.map(function (name) { return '<span class="weekday">' + name + '</span>'; }).join('');
+    // Rows and cells as a grid is read: a header row of weekday names, then a
+    // row per week. The wrappers draw nothing; the grid lays out the buttons.
+    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + WEEKDAYS.map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
     document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '">' + weekdays + state.weeks.map(renderWeek).join('') + '</div>';
   }
 

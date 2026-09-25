@@ -44,7 +44,7 @@ export function getDashboardHtml(
 <style nonce="${nonce}">${getBaseCss()}
 ${getQueryEditorCss()}
 .tag-name, .telemetry-line, .section-readout { font-family: var(--font-mono); }
-.metric::before { content: attr(data-code); display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
+.metric::before { content: attr(data-code); content: attr(data-code) / ""; display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
 .dashboard-header-actions .view-options { order: 2; }
 .saved-filters { padding-top: 16px; }
@@ -372,20 +372,7 @@ ${getQueryEditorScript()}
    * next keystroke can land on the page instead of the field.
    */
   function renderKeepingFocus() {
-    const active = document.activeElement;
-    const isTextField = Boolean(active && active.matches && active.matches('input[type="search"], input[type="text"]'));
-    const action = isTextField ? active.dataset.action : undefined;
-    const widgetId = isTextField ? active.dataset.widgetId : undefined;
-    const selectionStart = isTextField ? active.selectionStart : null;
-    const selectionEnd = isTextField ? active.selectionEnd : null;
-    render();
-    if (!action) return;
-    const field = Array.from(document.querySelectorAll('input[data-action="' + action + '"]')).find(function (input) {
-      return input.dataset.widgetId === widgetId;
-    });
-    if (!field) return;
-    field.focus();
-    if (selectionStart !== null && selectionEnd !== null) field.setSelectionRange(selectionStart, selectionEnd);
+    renderKeepingPlace(render);
   }
 
   /**
@@ -1196,7 +1183,10 @@ ${getQueryEditorScript()}
     // A different page size is a different set of pages, so the list is read
     // again from its top.
     if (target.dataset.action === 'set-widget-page-size') updateWidget(target.dataset.widgetId, { count: Number(target.value), page: 1 });
-    if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
   });
 
   document.addEventListener('input', function (event) {

@@ -363,7 +363,7 @@ export function getTagCss(): string {
 }
 /* A group's name inside a menu of several: Status, Priority, Due. */
 .tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.tag-context-menu .menu-heading:first-child { padding-top: var(--space-1); }`;
+.tag-context-menu > .menu-group:first-child .menu-heading { padding-top: var(--space-1); }`;
 }
 
 /**
@@ -937,6 +937,99 @@ export function getComponentScript(): string {
   }
 
   /**
+   * Redraw without losing the reader's place.
+   *
+   * Pages rebuild their HTML on every snapshot, which drops keyboard focus
+   * to the page itself: tick a card's checkbox, or move it from its menu,
+   * and the next Tab started again from the top. What had focus is found
+   * again by what it is about (a task, a tag, a widget) and what it does;
+   * failing that, the entry it was in; failing that, the entry that took
+   * its place in the list, so completing a task leaves focus on the next.
+   */
+  const PLACE_KEYS = ['taskId', 'tagKey', 'widgetId', 'columnId', 'status', 'filePath', 'line', 'action', 'value', 'kind', 'section'];
+  const PLACE_ITEMS = [['taskId', '[data-task-id]'], ['tagKey', '[data-tag-key]'], ['filePath', '[data-file-path]']];
+
+  function placeSelector(element) {
+    return PLACE_KEYS.filter(function (key) { return element.dataset[key] !== undefined; }).map(function (key) {
+      return '[data-' + key.replace(/[A-Z]/g, function (letter) { return '-' + letter.toLowerCase(); }) + '="' + String(element.dataset[key]).replace(/["\\\\]/g, '\\\\$&') + '"]';
+    }).join('');
+  }
+
+  function focusTarget(element) {
+    if (!element) return null;
+    if (element.matches('button, input, select, textarea, a[href], [tabindex]')) return element;
+    return element.querySelector('[tabindex="0"], button, input, a[href]');
+  }
+
+  function readPlace() {
+    const active = document.activeElement;
+    if (!active || active === document.body || !active.matches || !active.dataset) return null;
+    // A menu that is open keeps its own focus, and closes on a redraw.
+    if (active.closest('[role="menu"]')) return null;
+    const tag = active.tagName.toLowerCase();
+    const selector = placeSelector(active);
+    const place = { tag: tag, selector: selector, unique: Boolean(selector) && document.querySelectorAll(tag + selector).length === 1 };
+    const itemKind = PLACE_ITEMS.find(function (kind) { return active.closest(kind[1]); });
+    if (itemKind) {
+      const item = active.closest(itemKind[1]);
+      place.itemKind = itemKind[1];
+      place.item = placeSelector(item);
+      place.inItem = item !== active;
+      place.index = Array.prototype.indexOf.call(document.querySelectorAll(itemKind[1]), item);
+    }
+    if (active.matches('input[type="text"], input[type="search"], textarea')) {
+      place.selectionStart = active.selectionStart;
+      place.selectionEnd = active.selectionEnd;
+    }
+    return place;
+  }
+
+  function isOnPage(element) {
+    for (let node = element; node; node = node.parentElement) {
+      if (node === document.body) return true;
+      if (node.parentElement && Array.prototype.indexOf.call(node.parentElement.children, node) < 0) return false;
+    }
+    return false;
+  }
+
+  function restorePlace(place) {
+    if (!place) return;
+    const active = document.activeElement;
+    // A redraw that already put focus somewhere, such as a field the page
+    // restores itself, is left alone; focus on what the redraw removed is
+    // focus lost.
+    if (active && active !== document.body && isOnPage(active)) return;
+    let target = null;
+    const item = place.item ? document.querySelector(place.itemKind + place.item) : null;
+    if (item && place.inItem && place.selector) target = item.querySelector(place.tag + place.selector);
+    if (!target && item && !place.inItem) target = item;
+    if (!target && place.unique) target = document.querySelector(place.tag + place.selector);
+    if (!target && item) target = focusTarget(item);
+    if (!target && place.itemKind && place.index >= 0) {
+      const items = document.querySelectorAll(place.itemKind);
+      if (items.length) target = focusTarget(items[Math.min(place.index, items.length - 1)]);
+    }
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    if (place.selectionStart !== undefined && target.setSelectionRange && place.selectionStart !== null) {
+      target.setSelectionRange(place.selectionStart, place.selectionEnd);
+    }
+  }
+
+  function renderKeepingPlace(render) {
+    const place = readPlace();
+    render();
+    restorePlace(place);
+  }
+
+  /** A task's title as a sentence names it, from its row or card. */
+  function taskTitleOf(element) {
+    const row = element && element.closest ? element.closest('[data-task-id]') : null;
+    const title = row ? row.querySelector('.task-title') : null;
+    return title ? title.textContent.trim().replace(/\s+/g, ' ') : 'the task';
+  }
+
+  /**
    * Where an entry is written, as its file's name and line: 2026-09-22 / line 7.
    * Every note in Deckard is Markdown, so the extension says nothing.
    */
@@ -1238,11 +1331,15 @@ export function getComponentScript(): string {
         items[next].focus();
       });
     }
-    actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group) {
-      return (group.label ? '<div class="menu-heading" role="presentation">' + escapeHtml(group.label) + '</div>' : '')
-        + group.items.map(function (item) {
-          return '<button type="button" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
-        }).join('');
+    // A named group is a group to a screen reader too, so "Due today" is
+    // heard as one of the Due choices rather than as a bare item.
+    actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group, groupIndex) {
+      const items = group.items.map(function (item) {
+        return '<button type="button" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
+      }).join('');
+      if (!group.label) return items;
+      const headingId = 'action-menu-group-' + groupIndex;
+      return '<div class="menu-group" role="group" aria-labelledby="' + headingId + '"><div class="menu-heading" id="' + headingId + '" role="presentation">' + escapeHtml(group.label) + '</div>' + items + '</div>';
     }).join('');
     const first = actionMenu.querySelector('[data-menu-value]');
     if (!first) return;
@@ -1406,7 +1503,12 @@ export function getComponentScript(): string {
     // The file and line, then the headings above, fold under the card as
     // they do under a row: the file name was the last detail on every card.
     const cardPath = renderHeadingPath(card.headingPath, String(card.filePath).split('/').pop() || card.filePath, '');
-    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
+    // A short name for the card as a whole, since a focused article is read
+    // in full otherwise: its title, its column, and when it is due.
+    const columnLabel = (columns.find(function (column) { return column.id === columnId; }) || {}).label;
+    const dueDetail = (card.details || []).find(function (detail) { return /^(due|overdue)/i.test(detail); });
+    const cardName = [plainTitle, columnLabel, dueDetail].filter(Boolean).join(', ');
+    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0" aria-label="' + escapeHtml(cardName) + '"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
       + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
@@ -1472,7 +1574,11 @@ export function getComponentScript(): string {
       const groups = taskBoardMoves[card.dataset.taskId];
       if (!groups) return false;
       openActionMenu(opener, groups, function (value) {
+        // Said as the menu said it: "Draft spec: Priority, High."
+        const group = groups.find(function (candidate) { return candidate.items.some(function (item) { return item.value === value; }); });
+        const chosen = group ? group.items.find(function (item) { return item.value === value; }) : undefined;
         post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
+        announce(taskTitleOf(card) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
       });
       return true;
     }
@@ -1506,6 +1612,7 @@ export function getComponentScript(): string {
       if (!card) return;
       if (event.target.dataset.action === 'board-toggle-task') {
         post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: event.target.checked });
+        announce((event.target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(card) + '.');
       }
     });
     // A right-click on a card, or the menu key on a focused one, opens the
@@ -1555,6 +1662,8 @@ export function getComponentScript(): string {
         if (empty) empty.remove();
         cards.prepend(card);
         post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId });
+        const title = column.querySelector('.board-column-title span');
+        announce('Moved ' + taskTitleOf(card) + ' to ' + (title ? title.textContent : 'the column') + '.');
       }
       clearDropTargets();
     });
@@ -2297,7 +2406,7 @@ export function getQueryEditorScript(): string {
       const label = options.label || 'Search';
       return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
-        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" data-suggestions="query" hidden role="listbox"></div></span>'
+        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
         + '<button data-action="clear-query" data-query-clears title="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
@@ -2614,7 +2723,7 @@ export function getQueryEditorScript(): string {
       const remove = '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button>';
       if (row.pending) {
         return '<div class="query-builder-row">' + joiner
-          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
           + remove + '</div>';
       }
       if (!row.supported) {
@@ -2636,7 +2745,7 @@ export function getQueryEditorScript(): string {
       return '<div class="query-builder-row">' + joiner
         + '<select data-action="builder-set-field"' + position + ' aria-label="Field">' + fields + '</select>'
         + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" title="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
-        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false"><div class="query-suggestions" data-suggestions="' + suggestKey + '" hidden role="listbox"></div></span>'
+        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + remove + '</div>';
     }
 
@@ -2965,14 +3074,27 @@ export function getQueryEditorScript(): string {
       if (!suggestionItems.length) {
         container.hidden = true;
         container.innerHTML = '';
-        if (input) input.setAttribute('aria-expanded', 'false');
+        if (input) {
+          input.setAttribute('aria-expanded', 'false');
+          input.removeAttribute('aria-activedescendant');
+        }
         return;
       }
+      // Focus stays in the field, as the ARIA combobox pattern has it; the
+      // highlighted option is named to a screen reader by its id instead, so
+      // the options are not Tab stops of their own.
+      const idPrefix = container.id || 'suggestions';
       container.innerHTML = suggestionItems.map(function (item, index) {
-        return '<button type="button" role="option" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span class="query-suggestion-label">' + renderTermText(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
+        return '<button type="button" role="option" tabindex="-1" id="' + idPrefix + '-' + index + '" aria-selected="' + (index === suggestionIndex) + '" class="query-suggestion' + (index === suggestionIndex ? ' active' : '') + '" data-action="query-suggestion" data-suggestion-index="' + index + '"><span class="query-suggestion-label">' + renderTermText(item.label) + '</span>' + (item.detail ? '<span class="query-suggestion-detail">' + escapeHtml(item.detail) + '</span>' : '') + '</button>';
       }).join('');
       container.hidden = false;
-      if (input) input.setAttribute('aria-expanded', 'true');
+      if (input) {
+        input.setAttribute('aria-expanded', 'true');
+        if (suggestionIndex >= 0) input.setAttribute('aria-activedescendant', idPrefix + '-' + suggestionIndex);
+        else input.removeAttribute('aria-activedescendant');
+      }
+      const active = container.querySelector('.query-suggestion.active');
+      if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
     }
 
     function closeSuggestions() {
@@ -2982,6 +3104,11 @@ export function getQueryEditorScript(): string {
       if (container) {
         container.hidden = true;
         container.innerHTML = '';
+      }
+      const host = suggestionHostKey ? document.querySelector('[data-suggest-key="' + suggestionHostKey + '"]') : null;
+      if (host) {
+        host.setAttribute('aria-expanded', 'false');
+        host.removeAttribute('aria-activedescendant');
       }
       suggestionHostKey = undefined;
     }

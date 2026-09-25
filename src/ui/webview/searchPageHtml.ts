@@ -535,7 +535,10 @@ ${getQueryEditorScript()}
     const target = event.target;
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
     if (target.dataset.action === 'set-results-per-page') vscode.postMessage({ type: 'setResultsPerPage', size: Number(target.value) });
-    if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
   });
   document.addEventListener('input', function (event) {
     editor.handleInput(event);
@@ -544,7 +547,7 @@ ${getQueryEditorScript()}
     if (event.data && event.data.type === 'state') {
       state = event.data.data;
       editor.receive();
-      render();
+      renderKeepingPlace(render);
       saveState();
     }
   });
