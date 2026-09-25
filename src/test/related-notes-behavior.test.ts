@@ -152,12 +152,20 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(chipsOnly.findAll('.relevance-reason').length, 0, 'the chips are the reason');
     chipsOnly.dispose();
 
-    // Inline, the title carries its own tags and the line still says which are shared.
+    // Inline, a title that carries the shared tag draws it as a chip too.
     const inline = open({
       tagTitleDisplayMode: 'inline',
-      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas'] })],
+      notes: [note({ matchedTags: [shared], titleTags: [shared], reasons: ['Shared: project/atlas'] })],
     });
-    assert.strictEqual(inline.text('.relevance-reason'), 'Shared: project/atlas');
+    assert.strictEqual(inline.findAll('.relevance-reason').length, 0, 'the title chip is the reason');
+    inline.dispose();
+
+    // A title without the shared tag leaves the line to say which it is.
+    const elsewhere = open({
+      tagTitleDisplayMode: 'inline',
+      notes: [note({ matchedTags: [shared], titleTags: [], reasons: ['Shared: project/atlas'] })],
+    });
+    assert.strictEqual(elsewhere.text('.relevance-reason'), 'Shared: project/atlas');
   });
 
   test('explains a score from its signals, and sorts the list', () => {

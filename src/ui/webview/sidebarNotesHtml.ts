@@ -361,16 +361,21 @@ ${getComponentScript()}
         const tags = state.tagTitleDisplayMode === 'separate'
           ? renderTags(note.matchedTags, 'matched-tag')
           : '';
-        // The matched tags are drawn as chips under the title when tags are
-        // shown apart from it, and the "Shared: …" reason lists those same
-        // tags again; the chips say it once, and the line moves on to the
-        // next reason, or to nothing.
+        // The matched tags are drawn as chips: under the title when tags are
+        // shown apart from it, and in the title when they are shown inline
+        // and the title carries them. The "Shared: …" reason listed those
+        // same tags again; the chips say it once, and the line moves on to
+        // the next reason, or to nothing.
+        const titleTagKeys = (note.titleTags || []).map(function (tag) { return tag.key; });
+        const chipsSayShared = tags
+          ? true
+          : (note.matchedTags || []).length > 0 && (note.matchedTags || []).every(function (tag) { return titleTagKeys.indexOf(tag.key) >= 0; });
         const reasons = (note.reasons || []).filter(function (reason) {
-          return !(tags && reason.indexOf('Shared: ') === 0);
+          return !(chipsSayShared && reason.indexOf('Shared: ') === 0);
         });
         const relevanceReasons = reasons.length
           ? reasons
-          : tags ? [] : ['Related note'];
+          : chipsSayShared ? [] : ['Related note'];
         const evidence = note.relevanceEvidence || {
           directTagWeight: 0,
           associationWeight: note.associationWeight || 0,
