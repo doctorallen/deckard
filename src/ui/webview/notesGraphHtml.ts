@@ -178,6 +178,23 @@ ${getPageTailCss()}
   var zoomReadout = document.getElementById('zoom-readout');
 
   var rootStyles = getComputedStyle(document.documentElement);
+  /**
+   * A type step in pixels, for the canvas. The step is written as a max()
+   * over a calc() so it follows the editor's font size without going under
+   * its floor, which a canvas font cannot read; an element set in the step
+   * resolves it to the pixels the page draws with.
+   */
+  function tokenFontSize(name, fallback) {
+    var probe = document.createElement('span');
+    probe.style.fontSize = 'var(' + name + ')';
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    document.body.appendChild(probe);
+    var size = getComputedStyle(probe).fontSize;
+    probe.remove();
+    return /^\\d/.test(size) ? size : fallback;
+  }
+  var labelFontSize = tokenFontSize('--text-xs', '11px');
   function themeColor(name, fallback) {
     var value = rootStyles.getPropertyValue(name).trim();
     return value || fallback;
@@ -1420,7 +1437,7 @@ ${getPageTailCss()}
     ctx.globalAlpha = 1;
     if (k < settings.labelThreshold) {
       ctx.fillStyle = colors.label;
-      ctx.font = (rootStyles.getPropertyValue('--text-xs').trim() || '11px') + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.font = labelFontSize + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
       ctx.textAlign = 'center';
       var hubs = [];
       for (var h = 0; h < nodes.length; h += 1) {
@@ -1442,7 +1459,7 @@ ${getPageTailCss()}
     }
     if (k >= settings.labelThreshold) {
       ctx.fillStyle = colors.label;
-      ctx.font = (rootStyles.getPropertyValue('--text-xs').trim() || '11px') + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.font = labelFontSize + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
       ctx.textAlign = 'center';
       var labeled = [];
       for (var l = 0; l < nodes.length; l += 1) {
