@@ -630,8 +630,18 @@ suite('Webview contracts', () => {
     );
     // Nothing a reader acts on is set below the smallest step of the scale.
     assert.ok(
-      html.includes('--text-xs: 11px;'),
-      'the type scale declares its floor',
+      html.includes('--text-md: var(--vscode-font-size, 13px);'),
+      'the type scale follows the editor',
+    );
+    assert.ok(
+      html.includes('--text-xs: max(11px, calc(var(--text-md) - 2px));'),
+      'and never goes under its floor',
+    );
+    // Every working size is a step of the scale, so it moves with the editor.
+    assert.strictEqual(
+      /font(-size)?: ?(\d{3} )?1[1-4]px/.test(html),
+      false,
+      'no rule on the page sets a working size in pixels',
     );
     assert.strictEqual(
       /font(-size)?: ?(9|10)px/.test(html),
@@ -1195,7 +1205,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }',
+        '.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }',
       ),
       true,
     );

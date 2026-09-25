@@ -176,7 +176,7 @@ export function getHelpHtml(
 html { scroll-behavior: smooth; }
 nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--line); background: var(--panel); padding: 12px; }
 .nav-title, .step-number { font-family: var(--font-mono); }
-.nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
 nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
 /* The section being read, marked in the rail so twenty links say where the reader is. */
@@ -191,7 +191,7 @@ p { margin: 0 0 12px; }
 .steps { counter-reset: quick-start; }
 .step, .card { min-width: 0; border: 1px solid var(--line); background: var(--panel); padding: 14px; }
 .step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; }
-.step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: 11px; }
+.step-number::before { counter-increment: quick-start; content: counter(quick-start); display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--green); color: var(--green); font-size: var(--text-xs); }
 .card p:last-child, .step p:last-child { margin-bottom: 0; }
 .card:target { border-color: var(--amber); }
 /* A card jumped to from the map is not hidden under the sticky navigation. */
@@ -213,20 +213,20 @@ ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
 .note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
 /* Reference tables: commands, markers, query fields, settings. */
-table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: var(--text-md); }
 caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: left; }
 th, td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-th { color: var(--cyan); font-size: 11px; }
+th { color: var(--cyan); font-size: var(--text-xs); }
 td:first-child { white-space: normal; }
 tbody tr:hover { background: var(--panel); }
 /* A group's name inside the settings table: a heading row, ruled under like
    the column header, so a group starts somewhere the eye can find. */
-.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: 12px var(--font-mono); }
+.table-group th { padding: 24px 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--amber); font: var(--text-sm) var(--font-mono); }
 .table-group:hover { background: transparent; }
 .table-scroll { overflow-x: auto; }
 /* The navigation groups its sections, so a long guide stays scannable. */
 .nav-group { display: block; margin: 10px 0 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-nav a.nav-sub { padding-left: 16px; font-size: 12px; }
+nav a.nav-sub { padding-left: 16px; font-size: var(--text-sm); }
 section { scroll-margin-top: 20px; }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
 
@@ -241,7 +241,7 @@ main {
 header { display: block; padding-bottom: 20px; border-bottom: 2px solid var(--line); }
 h1 { font-size: 28px; line-height: 1.2; overflow-wrap: normal; }
 h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; line-height: 1.2; }
-h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.2; }
+h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
 .eyebrow { margin: 0 0 6px; }
 .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card { cursor: default; }

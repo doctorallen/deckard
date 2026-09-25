@@ -61,7 +61,7 @@ export function getSidebarNotesHtml(
 .active-summary::-webkit-details-marker { display: none; }
 .active-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-file[open] .active-name { -webkit-line-clamp: 3; }
-.sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); }
+.sidebar-query { display: block; overflow-wrap: anywhere; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
 .active-name { margin-top: 3px; }
 .clear-entry-context { margin-top: 7px; min-height: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; }
 .clear-entry-context:hover, .clear-entry-context:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
@@ -105,11 +105,11 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
 .insert-link:hover { background: transparent; color: var(--text); }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
-.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: 11px; line-height: 1.35; }
+.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: var(--text-xs); line-height: 1.35; }
 .relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
 .relevance-score { border: 0; background: transparent; padding: 0; cursor: pointer; }
 .relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
-.relevance-reason { margin-top: 5px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.relevance-reason { margin-top: 5px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .relevance-tooltip-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--amber); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .relevance-tooltip ul { margin: 7px 0; padding-left: 16px; }
 .relevance-tooltip li + li { margin-top: 3px; }
@@ -124,7 +124,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .graph-tag-pill { margin-left: 0; color: var(--text); }
 /* The active search's Refine options. */
 .refine-values { display: grid; gap: 3px; }
-.refine-subject { margin: 2px 0 0; color: var(--cyan); font: 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refine-subject { margin: 2px 0 0; color: var(--cyan); font: var(--text-xs) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .refine-value { display: flex; align-items: stretch; gap: 3px; }
 /* A tag as a full-width row, for the note's own tags and the related tags in
    Refine: its rail, its name, and its count. The theme's own .tag-open layout
@@ -142,12 +142,12 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
 .refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.refine-heading h2 { margin: 0; color: var(--amber); font-size: 11px; }
+.refine-heading h2 { margin: 0; color: var(--amber); font-size: var(--text-xs); }
 .refine-hint { margin: 6px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }
 
 /* The sidebar is narrow, so it runs tighter than a full-width page. */
-body { min-width: 220px; font-size: 12px; }
+body { min-width: 220px; font-size: var(--text-sm); }
 main { width: 100%; max-width: none; padding: 12px; border-top: 2px solid var(--amber); }
 .eyebrow { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
 .tag-list { display: flex; gap: 5px; margin: 8px 0 0; }

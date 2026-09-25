@@ -54,14 +54,17 @@ export function getDesignTokens(): string {
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --edge: 2px;
   --control-height: 30px;
-  /* The type scale. Nothing a reader acts on is set below --text-xs: at a
-     laptop's viewing distance eleven pixels is where fluent reading starts
-     to fall away, and muted monospace text loses legibility sooner than
-     that. --text-md is the body size the VS Code UI itself uses. */
-  --text-xs: 11px;
-  --text-sm: 12px;
-  --text-md: 13px;
-  --text-lg: 14px;
+  /* The type scale. --text-md is the size the reader gave VS Code's own UI
+     (window.zoomLevel aside), so the pages grow and shrink with the editor
+     around them; the other steps sit one and two pixels either side of it.
+     Nothing a reader acts on is set below --text-xs: at a laptop's viewing
+     distance eleven pixels is where fluent reading starts to fall away, and
+     muted monospace text loses legibility sooner than that, so the small
+     steps never go under their floor whatever the editor is set to. */
+  --text-md: var(--vscode-font-size, 13px);
+  --text-xs: max(11px, calc(var(--text-md) - 2px));
+  --text-sm: max(12px, calc(var(--text-md) - 1px));
+  --text-lg: calc(var(--text-md) + 1px);
   /* The spacing scale. Every padding, gap, and margin in the shared sheet
      is one of these six steps, so a 6px gap never sits beside an 8px one,
      and density is a matter of re-declaring the steps: zen does exactly
@@ -142,11 +145,11 @@ export function getTypographyCss(): string {
   return `
 h1, h2, h3, .eyebrow, .source, .metric-value, code, pre { font-family: var(--font-mono); }
 h1 { margin: 0; color: var(--text); font-size: 22px; font-weight: 700; overflow-wrap: anywhere; text-transform: uppercase; }
-h2 { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
-h3 { margin: 0; color: var(--text); font-size: 13px; font-weight: 650; }
-.eyebrow { margin: 0; color: var(--amber); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
+h2 { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; overflow-wrap: anywhere; }
+h3 { margin: 0; color: var(--text); font-size: var(--text-md); font-weight: 650; }
+.eyebrow { margin: 0; color: var(--amber); font-size: var(--text-xs); letter-spacing: .15em; text-transform: uppercase; }
 .lead { margin: 10px 0 0; max-width: 680px; color: var(--muted); }
-.source { margin-top: 5px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }`;
+.source { margin-top: 5px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }`;
 }
 
 /**
@@ -224,12 +227,12 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   gap: 5px;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .control-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* A labeled control, such as a sort, drawn the same way on every page. */
-.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); }
+.control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
@@ -260,7 +263,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .filter-count { color: var(--muted); font-size: var(--text-xs); }
 
 /* Walking a list a page at a time: a search page's results, a widget's entries. */
-.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; border-top: 1px solid var(--line); padding-top: 10px; font-size: var(--text-sm); }
 .page-summary { display: flex; align-items: center; gap: 12px; }
 .page-range { color: var(--muted); font-family: var(--font-mono); }
 .page-controls { display: flex; align-items: center; gap: 4px; }
@@ -295,7 +298,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
 .view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
-.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: 11px var(--font-mono); }
+.view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* A group whose control is taller than a row, such as a list, sits under its label. */
 .view-options-group.is-stacked { display: grid; justify-content: stretch; }
 /* A row of small numbered or named choices inside the menu. */
@@ -319,7 +322,7 @@ export function getTagCss(): string {
 /* A tag reads as written wherever it sits: text-transform inherits, so a
    heading or a control a theme shouts would otherwise shout the tag too. */
 .tag-open, .inline-tag { text-transform: none; }
-.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: 11px; text-align: left; }
+.tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }
 /* A tag in a title opens that tag rather than controlling the view, so it is
    drawn as a hairline with no fill and no control height: the boxes a reader
    sees elsewhere mean "this changes what is listed". */
@@ -420,7 +423,7 @@ export function getSurfaceCss(): string {
    ground, and on LCARS that is near-black, which the tile never becomes. */
 .metric-open { display: grid; gap: var(--space-1); justify-items: start; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
-.metric-label { display: block; color: var(--muted); font-size: 11px; }
+.metric-label { display: block; color: var(--muted); font-size: var(--text-xs); }
 .metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
 
 .empty {
@@ -440,7 +443,7 @@ export function getSurfaceCss(): string {
   background: var(--panel-deep);
   color: var(--text);
   white-space: pre-wrap;
-  font: 12px/1.55 var(--font-mono);
+  font: var(--text-sm)/1.55 var(--font-mono);
 }
 .rendered { margin-top: var(--space-4); line-height: 1.55; overflow-wrap: anywhere; }
 .rendered :first-child { margin-top: 0; }
@@ -484,7 +487,7 @@ export function getTaskBoardCss(): string {
   gap: var(--space-2);
   margin: 0;
   color: var(--cyan);
-  font: 12px var(--font-mono);
+  font: var(--text-sm) var(--font-mono);
 }
 .board-column.is-overdue .board-column-title { color: var(--danger); }
 .board-count { color: var(--muted); }
@@ -542,11 +545,11 @@ export function getTaskBoardCss(): string {
    shared hover text rather than the amber it carries over the card. Open, it
    keeps that look until the menu closes. */
 .board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
-.board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: 12px; text-align: center; }
-.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
+.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
-.board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: 11px; }
-.board-more { margin: 0; color: var(--muted); font-size: 11px; }`;
+.board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }`;
 }
 
 /**
@@ -561,7 +564,7 @@ export function getTaskListCss(): string {
 .task-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .task-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-row.completed .task-title { color: var(--muted); text-decoration: line-through; }
-.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: 11px var(--font-mono); margin-top: var(--space-1); }
+.task-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
 .task-detail { letter-spacing: .03em; }
@@ -574,9 +577,9 @@ export function getTaskListCss(): string {
 .rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: var(--space-1); border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 .rank-context-menu[hidden] { display: none; }
 .rank-context-menu button { display: block; width: 100%; border: 0; padding: var(--space-2) var(--space-3); text-align: left; text-transform: none; }
-.result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.result-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .result-table th, .result-table td { padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-.result-table th { padding: 0; color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
+.result-table th { padding: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
 .result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
 .result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
@@ -596,7 +599,7 @@ export function getTaskListCss(): string {
 .result-table input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--positive); }
 /* The gear's column picker: one line per column, the title fixed. */
 .table-columns { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; text-transform: none; }
-.table-columns label { display: flex; gap: var(--space-2); align-items: center; font: 12px var(--font-mono); }
+.table-columns label { display: flex; gap: var(--space-2); align-items: center; font: var(--text-sm) var(--font-mono); }
 @media (max-width: 720px) { .task-list { grid-template-columns: 1fr; } }`;
 }
 
@@ -697,7 +700,7 @@ export function getProvenanceCss(): string {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font: 11px/16px var(--font-mono);
+  font: var(--text-xs)/16px var(--font-mono);
   letter-spacing: normal;
   text-transform: none;
   white-space: nowrap;
@@ -745,7 +748,7 @@ body.zen .refine-hint,
 body.zen .home-hint-bar { display: none; }
 /* Shrunk, never hidden: on a search page the h1 is the subject being
    searched, not a restatement of the tab, and it is the page's one landmark. */
-body.zen h1 { font-size: 14px; letter-spacing: normal; text-transform: none; }
+body.zen h1 { font-size: var(--text-lg); letter-spacing: normal; text-transform: none; }
 body.zen h2, body.zen h3, body.zen .metric-label { letter-spacing: normal; text-transform: none; }
 /* The frame, thinned. */
 body.zen .metric, body.zen .card, body.zen .note, body.zen .task,
@@ -1925,7 +1928,7 @@ export function getQueryEditorCss(): string {
   return `
 .query-workspace { margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
-.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: 12px var(--font-mono); }
+.query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: var(--text-sm) var(--font-mono); }
 .query-input:focus { border-color: var(--amber); outline: none; }
 .query-input:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
@@ -1940,7 +1943,7 @@ export function getQueryEditorCss(): string {
 .query-bar-shell.invalid { border-color: #FF5555; }
 .query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: none; }
 /* Every chip looks the same, whatever its term; only a left-out tag is red. */
-.query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: 11px var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
+.query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: var(--text-xs) var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
 .query-chip-label { min-width: 0; overflow-wrap: anywhere; }
 .query-bar-shell .query-chip.is-negated { border-style: dashed; border-color: var(--muted); background: transparent; color: var(--text); text-decoration: line-through; text-decoration-color: var(--muted); }
 /* A group of the search: its own chips inside a frame, with the group's
@@ -1958,7 +1961,7 @@ export function getQueryEditorCss(): string {
 .query-chip-group:hover:not(:has(.query-chip:hover, .query-chip-group:hover)), .query-chip-group:has(> .query-chip-group-remove:hover), .query-chip-group:has(> .query-chip-group-remove:focus-visible) { border-color: var(--amber); border-style: solid; color: var(--amber); }
 .query-bar-shell .query-chip-group-remove:hover, .query-bar-shell .query-chip-group-remove:focus-visible { background: none; color: inherit; }
 .query-bar-shell .query-chip-group-remove:hover .query-chip-remove, .query-bar-shell .query-chip-group-remove:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); border-color: var(--amber); }
-.query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: 12px; line-height: 1; }
+.query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: var(--text-sm); line-height: 1; }
 .query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
 .query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
 .query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
@@ -1968,12 +1971,12 @@ export function getQueryEditorCss(): string {
 .query-suggestions[hidden] { display: none; }
 /* A completion reads as written, whatever a theme does to buttons, and each
    sits on its own ruled row; a long one wraps beside its note. */
-.query-suggestions .query-suggestion { display: flex; width: 100%; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); padding: 6px 10px; text-align: left; font: 12px var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
+.query-suggestions .query-suggestion { display: flex; width: 100%; min-height: 30px; align-items: center; justify-content: space-between; gap: 12px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); padding: 6px 10px; text-align: left; font: var(--text-sm) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
 .query-suggestions .query-suggestion:last-child { border-bottom: 0; }
 .query-suggestions .query-suggestion:hover, .query-suggestions .query-suggestion.active { background: var(--panel-deep); color: var(--amber); }
 .query-suggestion-label { min-width: 0; overflow-wrap: anywhere; }
 .query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
-.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: 11px; }
+.query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: var(--text-xs); }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
 /* Search is the bar's primary action in every theme; hover and focus keep
    the theme's own look. */
@@ -1982,8 +1985,8 @@ export function getQueryEditorCss(): string {
    "do this" and nothing else. */
 .query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
-.query-error { color: #FF8080; font: 11px var(--font-mono); }
-.query-hint { color: var(--muted); font: 11px var(--font-mono); }
+.query-error { color: #FF8080; font: var(--text-xs) var(--font-mono); }
+.query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* The line of syntax is wanted at the moment of typing and is chrome the rest
    of the time, competing with the results under it. It shows while the box
    has focus or holds a term; the Builder button and the count stay, and a
@@ -1997,35 +2000,35 @@ export function getQueryEditorCss(): string {
 .query-builder-group.is-root { border: 0; background: none; padding: 0; }
 .query-builder-not[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
 .query-builder-group-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-.query-builder-group-head select { min-height: 28px; font-size: 12px; }
+.query-builder-group-head select { min-height: 28px; font-size: var(--text-sm); }
 .query-builder-head-text { color: var(--muted); font-size: var(--text-xs); }
-.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: 11px; }
+.query-builder-not { min-height: 28px; padding: 4px 8px; font-size: var(--text-xs); }
 .query-builder-item { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
 .query-builder-item > .query-builder-and { margin-top: 9px; }
 .query-builder-item.has-group { margin-top: 10px; margin-bottom: 10px; }
 .query-builder-item > .query-builder-group { flex: 1 1 auto; min-width: 0; }
 .query-builder-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .query-builder-row + .query-builder-row { margin-top: 6px; }
-.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: 12px; }
+.query-builder-row select, .query-builder-row input { min-height: 28px; font-size: var(--text-sm); }
 .query-builder-row .query-builder-operator { font-family: var(--font-mono); }
 .query-builder-row .query-builder-value-shell { flex: 1 1 160px; min-width: 0; }
-.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); }
+.query-builder-row .query-builder-value { width: 100%; min-width: 0; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); }
 .query-builder-row .query-builder-value:focus { border-color: var(--amber); outline: none; }
 .query-builder-row .query-builder-pending { border-style: dashed; }
 .query-builder-and { flex: none; width: 5em; color: var(--muted); font-size: var(--text-xs); }
 .query-builder-remove { min-height: 28px; padding: 4px 8px; }
 .query-builder-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-.query-builder-actions button { font-size: 11px; }
-.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: 12px var(--font-mono); overflow-wrap: anywhere; }
-.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.query-builder-actions button { font-size: var(--text-xs); }
+.query-builder-readonly { flex: 1 1 auto; color: var(--muted); font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
+.query-builder-note { margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
 /* The facets wrap on the left; the result count holds the top-right corner. */
 .query-facets { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-2) var(--space-4); margin: var(--space-3) 0; padding: var(--space-3); border: 1px dashed var(--line-strong); }
 /* Each group is a labeled region, its label above its values and the
    groups a wide step apart, so where one group ends is a shape and not a
    word in the run. */
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
-.query-facets-count { align-self: center; color: var(--muted); font-size: 11px; line-height: 26px; white-space: nowrap; }
-.query-facets-empty { color: var(--muted); font-size: 11px; }
+.query-facets-count { align-self: center; color: var(--muted); font-size: var(--text-xs); line-height: 26px; white-space: nowrap; }
+.query-facets-empty { color: var(--muted); font-size: var(--text-xs); }
 /* A value and its two other modes read as one control. The modes stay out of
    the way until the value is hovered or something in it has focus. */
 
@@ -2033,12 +2036,12 @@ export function getQueryEditorCss(): string {
    a muted color, which would be muted against whatever ground a theme gives
    its controls rather than against the page. */
 .query-recovery { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: 11px; }
-.query-facets-heading { color: var(--amber); font: 11px var(--font-mono); }
+.query-recovery button { min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); }
+.query-facets-heading { color: var(--amber); font: var(--text-xs) var(--font-mono); }
 .query-facet { display: grid; gap: var(--space-1); }
 .query-facet-values { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: 11px; text-transform: none; }
+.query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: var(--text-xs); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;
 }

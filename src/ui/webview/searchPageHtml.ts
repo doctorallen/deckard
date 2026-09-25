@@ -70,7 +70,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
   box-shadow: none;
 }
 .overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.saved-view-name { margin: 0 0 8px; color: var(--cyan); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+.saved-view-name { margin: 0 0 8px; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .saved-view-name-label { color: var(--muted); }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
@@ -78,8 +78,8 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* Bulk Edit and Export sit together at the right, after the heading. */
 .overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
-.overview-pane-heading { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; }
-.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: 11px; }
+.overview-pane-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; }
+.edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
@@ -94,15 +94,15 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-empty { color: var(--muted); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
-.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
-.stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: 12px; }
+.stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: var(--text-sm); }
 .empty-action { margin: 12px 0 0; }
-.pagination .page-size { font-size: 12px; }
+.pagination .page-size { font-size: var(--text-sm); }
 .pagination .page-size select { min-width: 64px; }
-.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: 12px; }
+.did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: var(--text-sm); }
 .did-you-mean button { background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
 @media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }

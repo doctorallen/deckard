@@ -52,13 +52,13 @@ export function getNotesGraphHtml(
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: 12px; }
+body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
 #graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 #graph.is-panning { cursor: grabbing; }
 #graph.is-pointing { cursor: pointer; }
 .overlay { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px); overflow-y: auto; }
 .control-group { border: 1px solid var(--slate-border); background: rgba(13, 16, 23, .94); }
-.control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 11px var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
+.control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 var(--text-xs) var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
 .control-group summary::before { content: '▸ '; color: var(--muted); }
 .control-group[open] summary::before { content: '▾ '; }
 .control-group summary:hover, .control-group summary:focus-visible { background: var(--panel-raised); }
@@ -69,8 +69,8 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-row .slider-line { display: flex; align-items: center; gap: 8px; }
 input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
 input[type='checkbox'] { accent-color: var(--amber-bright); }
-.toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: 11px var(--font-mono); cursor: pointer; }
-.graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: 11px var(--font-mono); }
+.toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: var(--text-xs) var(--font-mono); cursor: pointer; }
+.graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: var(--text-xs) var(--font-mono); }
 input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); }
 .tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
@@ -83,7 +83,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .zoom-controls { display: inline-flex; }
-.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: 12px var(--font-mono); cursor: pointer; }
+.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
 .zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: var(--text-xs) var(--font-mono); }
@@ -102,10 +102,10 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .control-group { background: var(--panel); }
 .tooltip { background: var(--panel-raised); }
 .tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
-.tooltip .tooltip-title { color: var(--text); font: 700 11px var(--font-mono); }
+.tooltip .tooltip-title { color: var(--text); font: 700 var(--text-xs) var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
-.empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: 12px var(--font-mono); pointer-events: none; }
+.empty-state { position: absolute; z-index: 1; inset: 0; display: none; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); pointer-events: none; }
 ${getPageTailCss()}
 </style>
 </head>

@@ -33,7 +33,7 @@ ${getQueryEditorCss()}
 /* The gear holds the header's top-right corner, as it does on the Dashboard. */
 header { align-items: flex-start; }
 .board-header-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-.board-total { color: var(--muted); font: 12px var(--font-mono); }
+.board-total { color: var(--muted); font: var(--text-sm) var(--font-mono); }
 .board-view-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
 .board-area { margin-top: 12px; }
 .board-area [hidden] { display: none; }
@@ -41,19 +41,19 @@ header { align-items: flex-start; }
 
 /* The status column editor inside the gear's menu. */
 .board-settings { display: grid; gap: 6px; width: min(280px, 80vw); text-transform: none; }
-.board-settings-note { margin: 0; color: var(--muted); font-size: 11px; }
+.board-settings-note { margin: 0; color: var(--muted); font-size: var(--text-xs); }
 .board-status-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .board-status { display: flex; align-items: center; gap: 6px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 2px 2px 2px 6px; }
 .board-status:focus-visible { outline: 1px solid var(--focus); outline-offset: 1px; }
-.board-status-grip { color: var(--muted); font-size: 12px; line-height: 1; }
+.board-status-grip { color: var(--muted); font-size: var(--text-sm); line-height: 1; }
 .board-status.drag-ghost { list-style: none; }
-.board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: 12px var(--font-mono); }
+.board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: var(--text-sm) var(--font-mono); }
 .board-status button { min-width: 26px; min-height: 26px; padding: 2px 6px; }
 .board-settings-row { display: flex; align-items: center; gap: 4px; }
 .board-settings-row input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .board-settings-row button { min-height: 26px; padding: 2px 8px; }
-.board-settings-prefix { color: var(--muted); font: 12px var(--font-mono); }
-.board-settings-error { margin: 0; color: var(--warning-orange); font-size: 11px; }
+.board-settings-prefix { color: var(--muted); font: var(--text-sm) var(--font-mono); }
+.board-settings-error { margin: 0; color: var(--warning-orange); font-size: var(--text-xs); }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }

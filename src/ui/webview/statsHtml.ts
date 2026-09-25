@@ -26,7 +26,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 <title>Deckard Stats</title>
 <style nonce="${nonce}">${getBaseCss()}
 .updated, .count { font-family: var(--font-mono); }
-.updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
 .reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
@@ -34,11 +34,11 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .list { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
 .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
 .label { overflow-wrap: anywhere; }
-.detail { margin-top: 3px; color: var(--muted); font: 11px var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+.detail { margin-top: 3px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .count { color: var(--green); font-size: 16px; }
 /* A pair that looks alike: both tags on one line, with what to do about it. */
 .pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
-.pair-tag { padding: 2px 6px; font-size: 12px; }
+.pair-tag { padding: 2px 6px; font-size: var(--text-sm); }
 .pair-arrow { color: var(--muted); }
 .merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); white-space: nowrap; }
 @media (max-width: 600px) { main { padding: 16px; } }
