@@ -696,8 +696,11 @@ export function getProvenanceCss(): string {
   position: absolute;
   z-index: 1;
   top: calc(100% - 6px);
-  left: calc(-1 * var(--frame));
-  right: calc(-1 * var(--frame));
+  /* A theme that frames one side only, as LCARS does with its 7px left
+     bar and no right edge, says so per side; the extension then ends at
+     the entry's own edge instead of reaching past it into the scroller. */
+  left: calc(-1 * var(--frame-left, var(--frame)));
+  right: calc(-1 * var(--frame-right, var(--frame)));
   box-sizing: border-box;
   height: calc(var(--reach) + 6px + var(--frame));
   border: inherit;
