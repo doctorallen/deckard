@@ -352,9 +352,17 @@ export function parseNotesGraphMessage(
     typeof value.depth === 'number' &&
     Number.isInteger(value.depth) &&
     value.depth >= 1 &&
-    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH
+    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH &&
+    (value.skipPeriodic === undefined || typeof value.skipPeriodic === 'boolean')
   ) {
-    return { type: 'setGraphScope', local: value.local, depth: value.depth };
+    return {
+      type: 'setGraphScope',
+      local: value.local,
+      depth: value.depth,
+      ...(typeof value.skipPeriodic === 'boolean'
+        ? { skipPeriodic: value.skipPeriodic }
+        : {}),
+    };
   }
   if (
     value.type === 'openTag' &&

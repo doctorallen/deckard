@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+
+import { findDailyNoteDate, isPeriodicNotePath } from '../../core/markdown/parser';
 import { affectsPageChrome } from './components';
 
 import {
@@ -40,7 +42,11 @@ export class NotesGraphPanel implements vscode.Disposable {
    * says what one note is attached to, which is the question asked with a
    * note open.
    */
-  private scope: { local: boolean; depth: number } = { local: false, depth: 1 };
+  private scope: { local: boolean; depth: number; skipPeriodic: boolean } = {
+    local: false,
+    depth: 1,
+    skipPeriodic: true,
+  };
   /** Whether the reader has chosen a scope, which the opening default respects. */
   private scopeChosen = false;
   /**
@@ -204,7 +210,10 @@ export class NotesGraphPanel implements vscode.Disposable {
    * is kept.
    */
   private applyOpeningScope(): void {
-    this.scope = openingScope(this.focusPath, this.scopeChosen, this.scope);
+    this.scope = {
+      ...openingScope(this.focusPath, this.scopeChosen, this.scope),
+      skipPeriodic: this.scope.skipPeriodic,
+    };
   }
 
   /** Follows the note being written, so a local graph follows it too. */
@@ -294,6 +303,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     if (message.type === 'setGraphScope') {
       this.scopeChosen = true;
       this.scope = {
+        skipPeriodic: message.skipPeriodic ?? this.scope.skipPeriodic,
         local: message.local,
         depth: Math.max(
           1,
@@ -362,6 +372,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     const focus = {
       local: this.scope.local,
       depth: this.scope.depth,
+      skipPeriodic: this.scope.skipPeriodic,
       workspaceNodeCount: workspace.nodes.length,
       ...(this.focusPath
         ? { filePath: this.focusPath, title: getNoteTitle(this.focusPath) }
@@ -375,6 +386,7 @@ export class NotesGraphPanel implements vscode.Disposable {
         workspace,
         findNoteNodeIds(workspace, this.focusPath),
         this.scope.depth,
+        this.scope.skipPeriodic ? isPeriodicNode : undefined,
       ),
       focus,
     };
@@ -429,4 +441,18 @@ export function openingScope(
     return current;
   }
   return { local: true, depth: 1 };
+}
+
+/**
+ * A daily, weekly, or monthly note's own entries, which a local graph passes
+ * through rather than draws. The tasks written in them are still drawn.
+ */
+function isPeriodicNode(node: NotesGraphNode): boolean {
+  return (
+    node.kind !== 'task' &&
+    node.kind !== 'tag' &&
+    node.filePath !== undefined &&
+    (isPeriodicNotePath(node.filePath) ||
+      findDailyNoteDate(node.filePath, []) !== undefined)
+  );
 }

@@ -104,6 +104,7 @@ ${getPageTailCss()}
     <div class="control-body">
       <label class="toggle-row" title="Draw only the note open in the editor and what it is connected to."><input type="checkbox" id="local-graph" title="Draw only the note open in the editor and what it is connected to."> Around this note</label>
       <div class="control-row"><label for="local-depth" title="How many connections out from the note the graph reaches.">Hops out</label><div class="slider-line"><input type="range" id="local-depth" min="1" max="3" step="1" value="1" title="How many connections out from the note the graph reaches."><output id="local-depth-out">1</output></div></div>
+      <label class="toggle-row" title="Daily, weekly, and monthly notes link to everything written that day. Passed through, they still count as a hop but are not drawn, and what they lead to is joined to where the path began."><input type="checkbox" id="skip-periodic" checked title="Pass through daily, weekly, and monthly notes"> Pass through daily notes</label>
       <p class="focus-note" id="focus-note">Open a note to draw the graph around it.</p>
     </div>
   </details>
@@ -1859,15 +1860,18 @@ ${getPageTailCss()}
   var localDepth = document.getElementById('local-depth');
   var localDepthOut = document.getElementById('local-depth-out');
   var focusNote = document.getElementById('focus-note');
+  var skipPeriodic = document.getElementById('skip-periodic');
   function requestScope() {
     localDepthOut.textContent = localDepth.value;
     vscode.postMessage({
       type: 'setGraphScope',
       local: localGraph.checked,
       depth: Number(localDepth.value),
+      skipPeriodic: skipPeriodic.checked,
     });
   }
   localGraph.addEventListener('change', requestScope);
+  skipPeriodic.addEventListener('change', requestScope);
   localDepth.addEventListener('input', function () {
     localDepthOut.textContent = localDepth.value;
   });
@@ -1877,6 +1881,8 @@ ${getPageTailCss()}
     var focus = snapshot && snapshot.focus;
     if (!focus) { return; }
     localGraph.checked = Boolean(focus.local);
+    skipPeriodic.checked = focus.skipPeriodic !== false;
+    skipPeriodic.disabled = !focus.local;
     localDepth.value = String(focus.depth || 1);
     localDepthOut.textContent = localDepth.value;
     if (!focus.title) {

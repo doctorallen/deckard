@@ -917,6 +917,8 @@ export interface NotesGraphFocus {
   local: boolean;
   /** How many hops out from the note the local graph reaches. */
   depth: number;
+  /** Whether daily and periodic notes are passed through rather than drawn. */
+  skipPeriodic?: boolean;
   /** The note it is drawn around, when one is open. */
   filePath?: string;
   title?: string;
@@ -963,6 +965,8 @@ export interface NotesGraphSetScopeMessage {
   type: 'setGraphScope';
   local: boolean;
   depth: number;
+  /** Pass through daily and periodic notes rather than drawing them. */
+  skipPeriodic?: boolean;
 }
 
 export type NotesGraphMessage =

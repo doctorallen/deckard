@@ -39,6 +39,23 @@ suite('Notes graph state', () => {
     );
   });
 
+  test('passes through a daily note, joining what lies beyond it to where the path began', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas\n\nSee [[2026-09-25]].'),
+      parseMarkdown('notes/2026-09-25.md', '# 2026-09-25\n\nMet about [[relay]].'),
+      parseMarkdown('notes/relay.md', '# Relay'),
+    ]);
+    const focus = findNoteNodeIds(snapshot, 'notes/atlas.md');
+    const daily = (node: { filePath?: string }) => node.filePath === 'notes/2026-09-25.md';
+    const local = createLocalGraphSnapshot(snapshot, focus, 2, daily);
+    assert.deepStrictEqual(local.nodes.map((node) => node.title).sort(), ['Atlas', 'Relay'], 'the daily note is not drawn');
+    assert.strictEqual(local.edges.length, 1, 'what it led to is joined to the note it came from');
+    assert.deepStrictEqual(
+      [local.edges[0].source, local.edges[0].target].sort(),
+      [...focus, ...findNoteNodeIds(snapshot, 'notes/relay.md')].sort(),
+    );
+  });
+
   test('keeps only the edges between what it kept', () => {
     const snapshot = buildSnapshot([
       parseMarkdown('notes/atlas.md', '# Atlas #project/atlas'),

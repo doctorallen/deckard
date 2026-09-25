@@ -501,6 +501,14 @@ export function createLocalGraphSnapshot(
   snapshot: NotesGraphSnapshot,
   focusIds: readonly string[],
   depth: number,
+  /**
+   * Nodes that carry hops but are not drawn, such as daily notes: a daily
+   * note links to everything written that day, so drawn, it ties the whole
+   * neighborhood into one knot; left out entirely, it cuts off what it leads
+   * to. Passed through, what lies beyond it is drawn joined to what came
+   * before it.
+   */
+  passThrough?: (node: NotesGraphNode) => boolean,
 ): NotesGraphSnapshot {
   const reach = Math.max(1, Math.min(MAXIMUM_LOCAL_GRAPH_DEPTH, Math.floor(depth)));
   const known = new Set(snapshot.nodes.map((node) => node.id));
@@ -521,6 +529,14 @@ export function createLocalGraphSnapshot(
     ]);
   });
 
+  const byId = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const focus = new Set(kept);
+  const hidden = (id: string): boolean => {
+    const node = byId.get(id);
+    return Boolean(passThrough && node && !focus.has(id) && passThrough(node));
+  };
+  /** The drawn node each node was first reached from, past hidden ones. */
+  const cameFrom = new Map<string, string>();
   let frontier = [...kept];
   for (let hop = 0; hop < reach; hop += 1) {
     const next: string[] = [];
@@ -529,6 +545,7 @@ export function createLocalGraphSnapshot(
         if (!kept.has(neighbor)) {
           kept.add(neighbor);
           next.push(neighbor);
+          cameFrom.set(neighbor, hidden(id) ? cameFrom.get(id) ?? id : id);
         }
       });
     });
@@ -538,10 +555,27 @@ export function createLocalGraphSnapshot(
     frontier = next;
   }
 
-  const nodes = snapshot.nodes.filter((node) => kept.has(node.id));
+  const nodes = snapshot.nodes.filter((node) => kept.has(node.id) && !hidden(node.id));
+  const drawn = new Set(nodes.map((node) => node.id));
   const edges = snapshot.edges.filter(
-    (edge) => kept.has(edge.source) && kept.has(edge.target),
+    (edge) => drawn.has(edge.source) && drawn.has(edge.target),
   );
+  // A node reached through a hidden one is joined to where that path began.
+  const joined = new Set(edges.map((edge) => edge.id));
+  cameFrom.forEach((from, id) => {
+    const via = snapshot.edges.some(
+      (edge) => (edge.source === id || edge.target === id) && hidden(edge.source === id ? edge.target : edge.source),
+    );
+    if (!via || !drawn.has(id) || !drawn.has(from) || from === id) {
+      return;
+    }
+    const [source, target] = [from, id].sort();
+    const edgeId = `${source}::${target}`;
+    if (!joined.has(edgeId)) {
+      joined.add(edgeId);
+      edges.push({ id: edgeId, source, target, weight: 0.5, types: [] });
+    }
+  });
   const tagKeys = new Set(
     nodes
       .filter((node) => node.kind === 'tag')
