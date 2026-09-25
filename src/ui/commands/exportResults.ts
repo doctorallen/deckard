@@ -123,7 +123,12 @@ export async function exportResults(
   const body = text(picked.choice.format);
   if (picked.choice.to === 'clipboard') {
     await vscode.env.clipboard.writeText(body);
-    void vscode.window.showInformationMessage(`Copied ${count} ${what} as ${picked.label.replace(/^Copy as /, '')}.`);
+    // A copy has nothing to follow up, so it is said in the status bar, where
+    // it fades, rather than in a notification that waits to be closed.
+    vscode.window.setStatusBarMessage(
+      `$(check) Copied ${count} ${what} as ${picked.label.replace(/^Copy as /, '')}`,
+      5000,
+    );
     return;
   }
   const target = await vscode.window.showSaveDialog({
@@ -135,7 +140,14 @@ export async function exportResults(
     return;
   }
   await vscode.workspace.fs.writeFile(target, Buffer.from(body, 'utf8'));
-  void vscode.window.showInformationMessage(`Saved ${count} ${what} to ${target.fsPath}.`);
+  // A saved file is worth a notification only for the way to open it.
+  void vscode.window
+    .showInformationMessage(`Saved ${count} ${what} to ${target.fsPath}.`, 'Open')
+    .then((choice) => {
+      if (choice === 'Open') {
+        void vscode.window.showTextDocument(target, { preview: false });
+      }
+    });
 }
 
 /** RFC 4180: a field with a comma, a quote, or a line break is quoted, and a quote is doubled. */
