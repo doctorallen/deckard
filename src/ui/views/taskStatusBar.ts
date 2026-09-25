@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { listOverdueTasks } from './agendaTree';
+
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
@@ -167,15 +169,34 @@ export class TaskStatusBar implements vscode.Disposable {
       return;
     }
     this.item.text = `$(checklist) ${text}`;
-    this.item.tooltip = `Deckard: ${describeDueTasksAtLength(
-      counts,
-    )} Select to open Tasks.`;
+    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts));
     // Overdue work is the one state worth coloring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
         ? new vscode.ThemeColor('statusBarItem.warningBackground')
         : undefined;
     this.item.show();
+  }
+
+  /**
+   * The sentence, then the first few overdue tasks by name, so a glance
+   * says which ones rather than how many.
+   */
+  private createTooltip(sentence: string): vscode.MarkdownString {
+    const tooltip = new vscode.MarkdownString(`Deckard: ${sentence}`, true);
+    const overdue = listOverdueTasks(this.indexer.getSnapshot(), this.now().getTime());
+    if (overdue.length > 0) {
+      tooltip.appendMarkdown(
+        '\n\n' +
+          overdue
+            .slice(0, 5)
+            .map((task) => `- $(warning) ${task.title.replace(/[\\`*_[\]<>]/g, '\\$&')}`)
+            .join('\n') +
+          (overdue.length > 5 ? `\n- and ${overdue.length - 5} more` : ''),
+      );
+    }
+    tooltip.appendMarkdown('\n\nSelect to open Tasks.');
+    return tooltip;
   }
 
   /**

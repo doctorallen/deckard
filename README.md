@@ -508,7 +508,8 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 - The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **1 overdue, 3 due today** — and takes the editor's warning color. Each number counts its own group; neither is the sum of the two.
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
-- `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
+- `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it, **Reschedule Overdue…** when something is, and **Turn Off Reminders**, which clears the setting where it was set. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
+- Hovering the count lists the first few overdue tasks by name.
 
 ## Task board
 
@@ -884,7 +885,7 @@ A daily note that starts from its template every morning leaves last night's ope
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
 
 ## Quick capture
 

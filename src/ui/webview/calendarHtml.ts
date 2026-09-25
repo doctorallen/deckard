@@ -78,6 +78,12 @@ ${getComponentScript()}
     if (!day.inMonth) classes.push('outside');
     if (day.isToday) classes.push('today');
     const label = escapeHtml(describeDay(day, overdue));
+    // The tooltip says which tasks and which headings, not only how many,
+    // so the right day is found without opening each.
+    const tooltip = escapeHtml([describeDay(day, overdue)]
+      .concat((day.dueTitles || []).map(function (title) { return '☐ ' + title; }))
+      .concat((day.headings || []).map(function (heading) { return '# ' + heading; }))
+      .join('\\n'));
     // Both rows are always drawn, empty when there is nothing to mark, so
     // the number above them sits in the same place in every cell.
     const dot = day.notePath ? '<span class="note-dot" aria-hidden="true"></span>' : '<span aria-hidden="true"></span>';
@@ -85,7 +91,7 @@ ${getComponentScript()}
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = state.focusDate ? day.date === state.focusDate : day.isToday;
-    return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + label + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
+    return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + tooltip + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
   }
 
   /**

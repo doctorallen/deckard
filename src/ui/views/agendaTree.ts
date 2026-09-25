@@ -25,6 +25,9 @@ import {
 interface AgendaIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getTask(taskId: string): Task | undefined;
+  /** How far the first scan has got, which the waiting message says. */
+  readonly scanProgress?: { completed: number; total: number };
+  readonly onDidProgress?: vscode.Event<void>;
 }
 
 /** What the Agenda reads from preferences: the order tasks were dragged into. */
@@ -106,6 +109,13 @@ export class AgendaTreeProvider
     this.disposables.push(
       this.changeEmitter,
       ...(preferences ? [preferences.onDidChange(() => this.refresh())] : []),
+      ...(indexer.onDidProgress
+        ? [indexer.onDidProgress(() => {
+            if (!this.index) {
+              this.refresh();
+            }
+          })]
+        : []),
       indexer.onDidUpdate((index) => {
         this.index = index;
         this.refresh();
@@ -155,7 +165,7 @@ export class AgendaTreeProvider
     }
 
     if (!this.index) {
-      this.setStatus('Deckard is indexing the workspace…', 0);
+      this.setStatus(describeIndexing(this.indexer.scanProgress), 0);
       return [];
     }
     const days = getUpcomingDays();
@@ -370,6 +380,37 @@ export class AgendaTreeProvider
   }
 }
 
+/** What a view says while the first scan runs, with how far it has got. */
+export function describeIndexing(
+  progress: { completed: number; total: number } | undefined,
+): string {
+  return progress && progress.total > 0
+    ? `Deckard is indexing the workspace: ${progress.completed.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')} notes read…`
+    : 'Deckard is indexing the workspace…';
+}
+
+/**
+ * What a task item says when hovered: its words, what it is due and how
+ * urgent it is, and where it is written, under the headings above it, so
+ * the right one of two similar tasks can be told apart without opening it.
+ */
+export function createTaskTooltip(entry: AgendaEntry): vscode.MarkdownString {
+  const tooltip = new vscode.MarkdownString(undefined, true);
+  tooltip.appendMarkdown(`**${escapeMarkdown(entry.title)}**`);
+  if (entry.details.length > 0) {
+    tooltip.appendMarkdown(`\n\n${entry.details.map(escapeMarkdown).join(' · ')}`);
+  }
+  tooltip.appendMarkdown(
+    `\n\n$(file) ${escapeMarkdown([entry.fileName, ...entry.context].join(' › '))}, line ${entry.task.lineNumber}`,
+  );
+  tooltip.appendMarkdown('\n\nRight-click to date or edit it.');
+  return tooltip;
+}
+
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*_{}[\]()#+\-.!|<>]/g, '\\$&');
+}
+
 function createGroupItem(
   group: AgendaGroup,
   groupBy: AgendaGroupBy,
@@ -399,10 +440,7 @@ function createTaskItem(
   );
   item.id = `agenda:task:${entry.task.id}`;
   item.description = entry.details.join(' · ');
-  item.tooltip = [
-    entry.title,
-    [...entry.context, entry.fileName].join(' › '),
-  ].join('\n');
+  item.tooltip = createTaskTooltip(entry);
   item.checkboxState = {
     state: vscode.TreeItemCheckboxState.Unchecked,
     tooltip: 'Complete this task',
