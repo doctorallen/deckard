@@ -361,21 +361,23 @@ ${getComponentScript()}
         const tags = state.tagTitleDisplayMode === 'separate'
           ? renderTags(note.matchedTags, 'matched-tag')
           : '';
-        // The matched tags are drawn as chips: under the title when tags are
-        // shown apart from it, and in the title when they are shown inline
-        // and the title carries them. The "Shared: …" reason listed those
-        // same tags again; the chips say it once, and the line moves on to
-        // the next reason, or to nothing.
-        const titleTagKeys = (note.titleTags || []).map(function (tag) { return tag.key; });
-        const chipsSayShared = tags
-          ? true
-          : (note.matchedTags || []).length > 0 && (note.matchedTags || []).every(function (tag) { return titleTagKeys.indexOf(tag.key) >= 0; });
-        const reasons = (note.reasons || []).filter(function (reason) {
-          return !(chipsSayShared && reason.indexOf('Shared: ') === 0);
-        });
+        // The tags drawn as chips on the card: the matched tags under the
+        // title when tags are shown apart from it, or the title's own when
+        // they are shown inline. A reason that only lists tags the chips
+        // already name, "Shared: …" or "Associated: …", said them twice;
+        // it goes, and the line moves on to the next reason, or to nothing.
+        const chipLabels = (tags ? note.matchedTags || [] : note.titleTags || []).map(function (tag) { return tag.label; });
+        const namesOnlyChips = function (reason) {
+          const match = /^(Shared|Associated): (.+)$/.exec(reason);
+          if (!match) return false;
+          const listed = match[2].split(', ');
+          return listed.length > 0 && listed.every(function (label) { return chipLabels.indexOf(label) >= 0; });
+        };
+        const dropped = (note.reasons || []).filter(namesOnlyChips);
+        const reasons = (note.reasons || []).filter(function (reason) { return !namesOnlyChips(reason); });
         const relevanceReasons = reasons.length
           ? reasons
-          : chipsSayShared ? [] : ['Related note'];
+          : dropped.length ? [] : ['Related note'];
         const evidence = note.relevanceEvidence || {
           directTagWeight: 0,
           associationWeight: note.associationWeight || 0,

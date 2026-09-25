@@ -166,6 +166,21 @@ suite('Related Notes behavior', () => {
       notes: [note({ matchedTags: [shared], titleTags: [], reasons: ['Shared: project/atlas'] })],
     });
     assert.strictEqual(elsewhere.text('.relevance-reason'), 'Shared: project/atlas');
+    elsewhere.dispose();
+
+    // The same holds for the associated tags: named by the chips, the line
+    // goes; naming a tag the chips do not, it stays.
+    const associated = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas'] })],
+    });
+    assert.strictEqual(associated.findAll('.relevance-reason').length, 0);
+    associated.dispose();
+    const further = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas, topic/ops'] })],
+    });
+    assert.strictEqual(further.text('.relevance-reason'), 'Associated: project/atlas, topic/ops');
   });
 
   test('explains a score from its signals, and sorts the list', () => {
