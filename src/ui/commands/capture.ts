@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 
+import { readCaptureText } from '../../core/markdown/captureWords';
 import { getPersonMarker } from '../../core/markdown/parser';
 import { Section, TagInfo } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
+import { readTaskMetadataFormat } from './taskActions';
 
 /** Where a capture goes: today's daily note, or under a chosen heading. */
 export type CaptureTarget = 'today' | 'heading';
@@ -19,7 +21,17 @@ export interface CaptureInsertion {
 }
 
 interface CaptureItem extends vscode.QuickPickItem {
-  action: 'add' | 'tag';
+  action: 'add' | 'note' | 'tag';
+}
+
+/** What was typed, and how it is to be written. */
+interface CaptureAnswer {
+  text: string;
+  target: CaptureTarget;
+  /** A plain list item rather than a task. */
+  asNote: boolean;
+  /** The words kept as typed, with no date or priority read from them. */
+  literal: boolean;
 }
 
 const TAG_SUGGESTION_LIMIT = 8;
@@ -41,10 +53,10 @@ export async function capture(
   if (!answer) {
     return;
   }
-  const line = formatCaptureLine(answer.text);
+  const line = writeCapture(answer);
 
   if (answer.target === 'today') {
-    await captureToToday(answer.text);
+    await captureToToday(answer.text, line);
     return;
   }
 
@@ -118,6 +130,25 @@ export function getTagSuggestions(
 /** Replaces the word being typed with a chosen tag, ready for the next word. */
 export function completeLastWord(value: string, label: string): string {
   return `${value.replace(TRAILING_WORD, '')}${label} `;
+}
+
+/**
+ * The line a capture is written as: a note line, the task as typed, or the
+ * task with the date, priority, and repeat rule its last words name.
+ */
+function writeCapture(answer: Omit<CaptureAnswer, 'target'>): string {
+  if (answer.asNote) {
+    return formatNoteLine(answer.text);
+  }
+  const line = formatCaptureLine(answer.text);
+  return answer.literal
+    ? line
+    : readCaptureText(line, readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard'))).line;
+}
+
+/** Writes a capture as a plain list item, for an idea that is not a to-do. */
+export function formatNoteLine(text: string): string {
+  return `- ${text.trim().replace(/^[-*+][ \t]+(?:\[[ xX]\][ \t]+)?/, '')}`;
 }
 
 /** Writes a capture as an open task, unless it is already written as a task. */
@@ -212,25 +243,30 @@ export async function appendCapture(
  * Adds a task to today's daily note, creating the note when needed, and says
  * where it went. Returns whether it was added.
  */
-export async function captureToToday(text: string): Promise<boolean> {
+export async function captureToToday(
+  text: string,
+  line: string = formatCaptureLine(text),
+): Promise<boolean> {
   const folder = await chooseTargetFolder();
   if (!folder) {
     return false;
   }
   const uri = await ensureDailyNote(folder);
-  const taskLine = await appendCapture(uri, formatCaptureLine(text));
+  const taskLine = await appendCapture(uri, line);
   announce(uri, taskLine);
   return taskLine !== undefined;
 }
 
 /**
  * Asks for the task. The first item is always the typed text, so Enter adds
- * it; tag suggestions follow, and choosing one completes the word instead.
+ * it as a task, with the line it will be written as under it; the second
+ * adds it as a plain line. Tag suggestions follow, and choosing one
+ * completes the word instead.
  */
 function askForCapture(
   indexer: WorkspaceIndexer,
   initialTarget: CaptureTarget,
-): Promise<{ text: string; target: CaptureTarget } | undefined> {
+): Promise<CaptureAnswer | undefined> {
   const tags = [...indexer.getSnapshot().tags.values()];
   const personMarker = getPersonMarker(
     vscode.workspace.getConfiguration('deckard').get('personMarker'),
@@ -243,15 +279,27 @@ function askForCapture(
     iconPath: new vscode.ThemeIcon('calendar'),
     tooltip: "Add to today's note instead",
   };
+  const literalButton: vscode.QuickInputButton = {
+    iconPath: new vscode.ThemeIcon('whole-word'),
+    tooltip: 'Keep the words as written: read no date or priority from them',
+  };
+  const readingButton: vscode.QuickInputButton = {
+    iconPath: new vscode.ThemeIcon('wand'),
+    tooltip: 'Read a date, priority, or repeat rule from the last words',
+  };
+  let literal = false;
   const picker = vscode.window.createQuickPick<CaptureItem>();
   picker.placeholder =
-    'A task to add, such as Call Ren about the #project/atlas budget';
+    'A task to add, such as Call Ren about the #project/atlas budget friday p2';
   let target = initialTarget;
 
   const update = (): void => {
     picker.title =
       target === 'today' ? 'Deckard: Capture' : 'Deckard: Capture Under a Heading';
-    picker.buttons = [target === 'today' ? headingButton : todayButton];
+    picker.buttons = [
+      literal ? readingButton : literalButton,
+      target === 'today' ? headingButton : todayButton,
+    ];
     const value = picker.value.trim();
     const suggestions = getTagSuggestions(picker.value, tags, personMarker).map(
       (label): CaptureItem => ({
@@ -261,20 +309,34 @@ function askForCapture(
         action: 'tag',
       }),
     );
+    const written = value ? writeCapture({ text: value, asNote: false, literal }) : '';
     const add: CaptureItem = {
       label: value,
       description:
         target === 'today' ? "Add to today's note" : 'Choose a heading next',
+      // The line as it will be written, so a date read from the words is
+      // seen before it is saved, and the button above keeps them instead.
+      detail: written && written !== formatCaptureLine(value) ? written : undefined,
       alwaysShow: true,
       action: 'add',
     };
-    picker.items = value ? [add, ...suggestions] : suggestions;
+    const note: CaptureItem = {
+      label: 'Add as a note line',
+      description: formatNoteLine(value),
+      alwaysShow: true,
+      action: 'note',
+    };
+    picker.items = value ? [add, note, ...suggestions] : suggestions;
   };
 
   return new Promise((resolve) => {
     picker.onDidChangeValue(update);
-    picker.onDidTriggerButton(() => {
-      target = target === 'today' ? 'heading' : 'today';
+    picker.onDidTriggerButton((button) => {
+      if (button === literalButton || button === readingButton) {
+        literal = !literal;
+      } else {
+        target = target === 'today' ? 'heading' : 'today';
+      }
       update();
     });
     picker.onDidAccept(() => {
@@ -286,7 +348,7 @@ function askForCapture(
       }
       const text = picker.value.trim();
       if (text) {
-        resolve({ text, target });
+        resolve({ text, target, literal, asNote: item?.action === 'note' });
         picker.hide();
       }
     });
@@ -334,12 +396,12 @@ async function pickHeading(
 /** Says where the task went, with a way to open it there. */
 function announce(uri: vscode.Uri, taskLine: number | undefined): void {
   if (taskLine === undefined) {
-    void vscode.window.showWarningMessage('Deckard could not add the task.');
+    void vscode.window.showWarningMessage('Deckard could not add the capture.');
     return;
   }
   const name = uri.path.split('/').pop() ?? uri.path;
   void vscode.window
-    .showInformationMessage(`Added the task to ${name}.`, 'Open')
+    .showInformationMessage(`Added it to ${name}.`, 'Open')
     .then((choice) => {
       if (choice === 'Open') {
         const position = new vscode.Position(taskLine, 0);
