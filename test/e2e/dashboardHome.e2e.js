@@ -279,7 +279,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.fire('contextmenu', widget('search'));
   assert.deepStrictEqual(
     view.findAll('#rank-context-menu button').map((button) => button.textContent),
-    ['Move to first', 'Move to last'],
+    ['Move up', 'Move down', 'Move to first', 'Move to last'],
   );
   view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
   await delay(20);
@@ -491,7 +491,7 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   view.fire('contextmenu', row('#beta'));
   assert.deepStrictEqual(
     view.findAll('#rank-context-menu button').map((button) => button.textContent),
-    ['Rename tag', 'Move to top', 'Move to bottom'],
+    ['Rename tag', 'Move up', 'Move down', 'Move to top', 'Move to bottom'],
   );
   view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
   assert.deepStrictEqual(sent('reorderTags')[1].tagKeys.slice(-1), ['#beta']);

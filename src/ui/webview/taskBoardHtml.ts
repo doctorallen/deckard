@@ -407,13 +407,52 @@ ${getQueryEditorScript()}
     if (target.dataset.action === 'namespace-draft') namespaceDraft = target.value;
   });
 
+  /** The latest state waiting on a completed card to finish leaving. */
+  let pendingState;
+  function receiveState(next) {
+    state = next;
+    editor.receive();
+    vscode.setState({ query: state.query.text });
+    renderKeepingFocus();
+  }
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
-      state = event.data.data;
-      editor.receive();
-      vscode.setState({ query: state.query.text });
-      renderKeepingFocus();
+      const wait = taskBoardLingerRemaining();
+      if (!wait) {
+        receiveState(event.data.data);
+        return;
+      }
+      const waiting = pendingState === undefined;
+      pendingState = event.data.data;
+      if (waiting) {
+        setTimeout(function () {
+          const next = pendingState;
+          pendingState = undefined;
+          receiveState(next);
+        }, wait);
+      }
     }
+  });
+
+  installKeySheet(function () {
+    const board = [
+      ['↑ ↓', 'The card above or below'],
+      ['← →', 'The next column over'],
+      ['Home, End', 'The first or last card in the column'],
+      ['Enter', 'Open the task in its note'],
+      ['x', 'Complete it, or reopen it'],
+      ['t, m', 'Due today, due tomorrow'],
+      ['d', 'Due on a date you type'],
+      ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
+      ['[ ]', 'Move it to the column on the left or right'],
+      ['e', 'Edit the whole task'],
+    ];
+    const list = [
+      ['Alt+↑, Alt+↓', 'Move a ranked task up or down'],
+    ];
+    return state && state.layout === 'list'
+      ? [{ title: 'Ranked list', keys: list }]
+      : [{ title: 'A focused card', keys: board }];
   });
 
   post({ type: 'ready' });

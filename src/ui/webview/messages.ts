@@ -497,6 +497,17 @@ export function parseTaskBoardMessage(
         value.column.length > 0
         ? { type: 'moveTask', taskId: value.taskId, column: value.column }
         : undefined;
+    case 'pickTaskDate':
+    case 'editTask':
+      return typeof value.taskId === 'string' && Object.keys(value).length === 2
+        ? { type: value.type, taskId: value.taskId }
+        : undefined;
+    case 'addTaskToColumn':
+      return typeof value.column === 'string' &&
+        value.column.length > 0 &&
+        Object.keys(value).length === 2
+        ? { type: 'addTaskToColumn', column: value.column }
+        : undefined;
     case 'setBoardGroup':
       return isTaskBoardGroupBy(value.groupBy)
         ? { type: 'setBoardGroup', groupBy: value.groupBy }

@@ -369,6 +369,16 @@ export function getTagCss(): string {
   text-align: left;
   text-transform: none;
 }
+/* The page's keys, on ?. */
+.key-sheet { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.key-sheet-panel { max-width: 520px; max-height: calc(100vh - 48px); overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); color: var(--text); padding: var(--space-4); }
+.key-sheet-panel h2 { margin: 0 0 var(--space-2); }
+.key-sheet-panel h3 { margin: var(--space-3) 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.key-sheet-panel dl { display: grid; gap: var(--space-1); margin: 0; }
+.key-sheet-panel dl div { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: var(--space-3); }
+.key-sheet-panel dt, .key-sheet-panel dd { margin: 0; }
+.key-sheet-panel kbd { font-family: var(--font-mono); color: var(--cyan); }
+.key-sheet-panel button { margin-top: var(--space-4); }
 /* A group's name inside a menu of several: Status, Priority, Due. */
 .tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .tag-context-menu > .menu-group:first-child .menu-heading { padding-top: var(--space-1); }`;
@@ -563,7 +573,18 @@ export function getTaskBoardCss(): string {
 .board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
 .board-hint code { font-family: var(--font-mono); color: var(--text); }
 .board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
-.board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }`;
+.board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }
+/* A new task captured straight into a column, at its foot. */
+.board-add { justify-self: start; min-height: 24px; padding: 2px var(--space-2); border-style: dashed; background: transparent; color: var(--muted); font-size: var(--text-xs); }
+/* While a card is held, a column that will not take it fades its cards and
+   says why, rather than letting the drop fail without a word. */
+.board-refuses { display: none; margin: 0; color: var(--muted); font-size: var(--text-xs); }
+.task-board.is-dragging-card .board-column[data-droppable="false"] .board-cards { opacity: .45; }
+.task-board.is-dragging-card .board-column[data-droppable="false"] .board-refuses { display: block; }
+/* A completed card stays a moment, struck through, before the board drops
+   it, so the reader sees which one they ticked. */
+.board-card.is-completing { opacity: .5; transition: opacity 800ms ease; }
+.board-card.is-completing .task-title { text-decoration: line-through; }`;
 }
 
 /**
@@ -1051,6 +1072,70 @@ export function getComponentScript(): string {
     restorePlace(place);
   }
 
+  /**
+   * The keys a page answers, on ?.
+   *
+   * A page's own keys, / to search, the arrows and single letters on the
+   * board, the menu key, were written down nowhere a reader would look.
+   * sections is a list of { title, keys: [[key, what it does]] }, or a
+   * function that makes one; the keys every page shares are added last.
+   */
+  const SHARED_KEYS = { title: 'Everywhere', keys: [
+    ['/', 'Go to the search box'],
+    ['Shift+F10, or the menu key', 'Open the menu of what has focus'],
+    ['Esc', 'Close a menu or this sheet'],
+    ['?', 'Show these keys'],
+  ] };
+  let keySheet;
+  let keySheetOpener;
+
+  function closeKeySheet() {
+    if (!keySheet) return;
+    keySheet.remove();
+    keySheet = undefined;
+    if (keySheetOpener && keySheetOpener.focus) keySheetOpener.focus();
+    keySheetOpener = undefined;
+  }
+
+  function openKeySheet(sections) {
+    closeKeySheet();
+    keySheetOpener = document.activeElement;
+    keySheet = document.createElement('div');
+    keySheet.setAttribute('class', 'key-sheet');
+    keySheet.setAttribute('role', 'dialog');
+    keySheet.setAttribute('aria-modal', 'true');
+    keySheet.setAttribute('aria-labelledby', 'key-sheet-title');
+    keySheet.innerHTML = '<div class="key-sheet-panel"><h2 id="key-sheet-title">Keys on this page</h2>'
+      + sections.concat([SHARED_KEYS]).map(function (section) {
+        return '<h3>' + escapeHtml(section.title) + '</h3><dl>' + section.keys.map(function (entry) {
+          return '<div><dt><kbd>' + escapeHtml(entry[0]) + '</kbd></dt><dd>' + escapeHtml(entry[1]) + '</dd></div>';
+        }).join('') + '</dl>';
+      }).join('')
+      + '<button type="button" data-action="close-key-sheet">Close</button></div>';
+    document.body.appendChild(keySheet);
+    keySheet.querySelector('[data-action="close-key-sheet"]').focus();
+  }
+
+  function installKeySheet(sections) {
+    document.addEventListener('keydown', function (event) {
+      if (keySheet && (event.key === 'Escape' || event.key === 'Tab')) {
+        // The sheet holds one control, so Tab stays on it.
+        event.preventDefault();
+        if (event.key === 'Escape') closeKeySheet();
+        return;
+      }
+      if (event.key !== '?' || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      event.preventDefault();
+      openKeySheet(typeof sections === 'function' ? sections() : sections);
+    });
+    document.addEventListener('click', function (event) {
+      if (!keySheet) return;
+      if (event.target.closest('[data-action="close-key-sheet"]') || !event.target.closest('.key-sheet-panel')) closeKeySheet();
+    });
+  }
+
   /** A task's title as a sentence names it, from its row or card. */
   function taskTitleOf(element) {
     const row = element && element.closest ? element.closest('[data-task-id]') : null;
@@ -1485,7 +1570,7 @@ export function getComponentScript(): string {
     });
     const dueOptions = [['today', 'Due today'], ['tomorrow', 'Due tomorrow'], ['', 'No due date']].map(function (entry) {
       return option('due:' + entry[0], entry[1]);
-    });
+    }).concat([{ value: 'pick-date', label: 'Due on a date…' }]);
     const done = card.completed ? '' : option('done', 'Complete it');
     // Any column of the current grouping that is not one of the above, such
     // as a due band the board made, still moves the card.
@@ -1537,14 +1622,18 @@ export function getComponentScript(): string {
     const columnLabel = (columns.find(function (column) { return column.id === columnId; }) || {}).label;
     const dueDetail = (card.details || []).find(function (detail) { return /^(due|overdue)/i.test(detail); });
     const cardName = [plainTitle, columnLabel, dueDetail].filter(Boolean).join(', ');
-    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0" aria-label="' + escapeHtml(cardName) + '"'
+    // The board is one Tab stop: the card last focused, or the first. Arrow
+    // keys move between cards, and a card's checkbox and menu are keys of
+    // their own, so neither is a Tab stop either.
+    const tabStop = card.taskId === taskBoardTabStop ? '0' : '-1';
+    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="' + tabStop + '" aria-label="' + escapeHtml(cardName) + '" aria-keyshortcuts="x t m d e 1 2 3 4 5 [ ]"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
-      + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
+      + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
       + '<span class="task-source">' + escapeHtml(formatSourceLocation(String(card.filePath).split('/').pop() || card.filePath, card.line)) + '</span>'
       + (cardPath ? '<span class="task-source heading-path">' + cardPath + '</span>' : '')
-      + '<button type="button" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
+      + '<button type="button" tabindex="-1" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
       + '</div></article>';
   }
 
@@ -1554,6 +1643,12 @@ export function getComponentScript(): string {
    */
   function renderTaskBoard(board, isVisible) {
     taskBoardMoves = {};
+    const shown = board.columns.reduce(function (all, column) {
+      return all.concat(isVisible ? column.cards.filter(isVisible) : column.cards);
+    }, []);
+    if (!shown.some(function (card) { return card.taskId === taskBoardTabStop; })) {
+      taskBoardTabStop = shown.length ? shown[0].taskId : undefined;
+    }
     // Grouped by status with almost no statuses written, the board is one
     // tall column and four near-empty ones. Say so, and offer the grouping
     // that works for any task, before the reader takes the board for broken.
@@ -1572,6 +1667,11 @@ export function getComponentScript(): string {
         + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + count + '</span></h2>'
         + '<div class="board-cards">' + body + '</div>'
         + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
+        // A column that takes a drop takes a new task the same way; one that
+        // does not says so while a card is dragged, and where to go instead.
+        + (column.droppable && column.id !== 'done'
+          ? '<button type="button" class="board-add" data-action="board-add-task" data-column-id="' + escapeHtml(column.id) + '" title="Capture a task straight into ' + escapeHtml(column.label) + '">+ Add task</button>'
+          : column.droppable ? '' : '<p class="board-refuses">' + (column.id.indexOf('due:') === 0 ? 'A card cannot be dropped on a range of days. Pick its date from its ⋯ menu.' : 'A card cannot be dropped here.') + '</p>')
         + '</section>';
     }).join('') + '</div>';
   }
@@ -1583,6 +1683,23 @@ export function getComponentScript(): string {
    * once; the host's next state confirms it or puts it back.
    */
   let taskBoardDragId;
+  /** The card that is the board's one Tab stop, kept across redraws. */
+  let taskBoardTabStop;
+  /** Until when a card just completed stays on screen before the redraw. */
+  let taskBoardLingerUntil = 0;
+
+  /**
+   * How long the next redraw should wait for a completed card to finish
+   * leaving. A card that vanished the moment its box was ticked left the
+   * reader unsure they had ticked the right one.
+   */
+  function taskBoardLingerRemaining() {
+    return Math.max(0, taskBoardLingerUntil - Date.now());
+  }
+
+  function reducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
 
   function installTaskBoard(post) {
     function boardCard(target) {
@@ -1599,10 +1716,97 @@ export function getComponentScript(): string {
       post({ type: 'openSource', filePath: card.dataset.filePath, line: Number(card.dataset.line) });
     }
 
+    function completeCard(card, completed) {
+      post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: completed });
+      announce((completed ? 'Completed ' : 'Reopened ') + taskTitleOf(card) + '.');
+      if (completed && !reducedMotion()) {
+        card.classList.add('is-completing');
+        taskBoardLingerUntil = Date.now() + 800;
+      }
+    }
+    function moveCard(card, column, said) {
+      post({ type: 'moveTask', taskId: card.dataset.taskId, column: column });
+      announce(said);
+    }
+    function visibleCards(column) {
+      return Array.prototype.filter.call(column.querySelectorAll('.board-card'), function (card) { return !card.hidden; });
+    }
+    function focusCard(card) {
+      if (!card) return;
+      document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach(function (other) { other.setAttribute('tabindex', '-1'); });
+      card.setAttribute('tabindex', '0');
+      taskBoardTabStop = card.dataset.taskId;
+      card.focus();
+      if (card.scrollIntoView) card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+    function columnTitle(column) {
+      const title = column && column.querySelector('.board-column-title span');
+      return title ? title.textContent : 'the column';
+    }
+    /** The keys a focused card answers, which the ? sheet lists. */
+    function handleCardKey(event, card) {
+      const column = card.closest('.board-column');
+      const columns = Array.prototype.slice.call(document.querySelectorAll('.task-board .board-column'));
+      const cards = visibleCards(column);
+      const at = cards.indexOf(card);
+      const key = event.key;
+      if (key === 'ArrowDown' || key === 'ArrowUp') {
+        focusCard(cards[at + (key === 'ArrowDown' ? 1 : -1)]);
+        return true;
+      }
+      if (key === 'Home' || key === 'End') {
+        focusCard(key === 'Home' ? cards[0] : cards[cards.length - 1]);
+        return true;
+      }
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        const step = key === 'ArrowRight' ? 1 : -1;
+        for (let index = columns.indexOf(column) + step; index >= 0 && index < columns.length; index += step) {
+          const next = visibleCards(columns[index]);
+          if (next.length) {
+            focusCard(next[Math.min(at, next.length - 1)]);
+            break;
+          }
+        }
+        return true;
+      }
+      if (key === 'x') {
+        completeCard(card, !card.classList.contains('completed'));
+        return true;
+      }
+      if (key === 't' || key === 'm') {
+        moveCard(card, key === 't' ? 'due:today' : 'due:tomorrow', taskTitleOf(card) + (key === 't' ? ' is due today.' : ' is due tomorrow.'));
+        return true;
+      }
+      if (/^[0-5]$/.test(key)) {
+        const priority = ['', 'highest', 'high', 'medium', 'low', 'lowest'][Number(key)];
+        moveCard(card, 'priority:' + priority, taskTitleOf(card) + (priority ? ': ' + priority + ' priority.' : ': no priority.'));
+        return true;
+      }
+      if (key === '[' || key === ']') {
+        const droppable = columns.filter(function (candidate) { return candidate.dataset.droppable === 'true'; });
+        const target = droppable[droppable.indexOf(column) + (key === ']' ? 1 : -1)];
+        if (target && droppable.indexOf(column) >= 0) moveCard(card, target.dataset.columnId, 'Moved ' + taskTitleOf(card) + ' to ' + columnTitle(target) + '.');
+        return true;
+      }
+      if (key === 'd') {
+        post({ type: 'pickTaskDate', taskId: card.dataset.taskId });
+        return true;
+      }
+      if (key === 'e') {
+        post({ type: 'editTask', taskId: card.dataset.taskId });
+        return true;
+      }
+      return false;
+    }
+
     function openCardMenu(card, opener) {
       const groups = taskBoardMoves[card.dataset.taskId];
       if (!groups) return false;
       openActionMenu(opener, groups, function (value) {
+        if (value === 'pick-date') {
+          post({ type: 'pickTaskDate', taskId: card.dataset.taskId });
+          return;
+        }
         // Said as the menu said it: "Draft spec: Priority, High."
         const group = groups.find(function (candidate) { return candidate.items.some(function (item) { return item.value === value; }); });
         const chosen = group ? group.items.find(function (item) { return item.value === value; }) : undefined;
@@ -1629,20 +1833,36 @@ export function getComponentScript(): string {
         post({ type: 'showColumnRest', columnId: rest.dataset.columnId });
         return;
       }
+      const add = event.target.closest('[data-action="board-add-task"]');
+      if (add) {
+        post({ type: 'addTaskToColumn', column: add.dataset.columnId });
+        return;
+      }
       if (event.target.closest('input, select, button, a')) return;
       const card = boardCard(event.target);
       if (card) openCard(card);
     });
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && event.target.matches && event.target.matches('.task-board .board-card')) openCard(event.target);
+      const card = event.target.matches && event.target.matches('.task-board .board-card') ? event.target : undefined;
+      if (!card || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === 'Enter') {
+        openCard(card);
+        return;
+      }
+      if (handleCardKey(event, card)) event.preventDefault();
+    });
+    // A card reached by Tab or a click becomes the board's Tab stop.
+    document.addEventListener('focusin', function (event) {
+      const card = event.target.matches && event.target.matches('.task-board .board-card') ? event.target : undefined;
+      if (!card || card.getAttribute('tabindex') === '0') return;
+      document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach(function (other) { other.setAttribute('tabindex', '-1'); });
+      card.setAttribute('tabindex', '0');
+      taskBoardTabStop = card.dataset.taskId;
     });
     document.addEventListener('change', function (event) {
       const card = boardCard(event.target);
       if (!card) return;
-      if (event.target.dataset.action === 'board-toggle-task') {
-        post({ type: 'toggleTask', taskId: card.dataset.taskId, completed: event.target.checked });
-        announce((event.target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(card) + '.');
-      }
+      if (event.target.dataset.action === 'board-toggle-task') completeCard(card, event.target.checked);
     });
     // A right-click on a card, or the menu key on a focused one, opens the
     // same menu its ⋯ does, anchored to that button.
@@ -1657,12 +1877,16 @@ export function getComponentScript(): string {
       if (!card) return;
       taskBoardDragId = card.dataset.taskId;
       card.classList.add('dragging');
+      // The columns that will not take the card say so while it is held.
+      const board = card.closest('.task-board');
+      if (board) board.classList.add('is-dragging-card');
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', taskBoardDragId);
     });
     document.addEventListener('dragend', function (event) {
       const card = boardCard(event.target);
       if (card) card.classList.remove('dragging');
+      document.querySelectorAll('.task-board.is-dragging-card').forEach(function (board) { board.classList.remove('is-dragging-card'); });
       clearDropTargets();
       taskBoardDragId = undefined;
     });
@@ -1968,6 +2192,23 @@ export function getComponentScript(): string {
       clearPreview();
       drag = undefined;
     }
+    /** Moves a row one place, past the row of its kind above or below it. */
+    function step(kind, key, up) {
+      if (!options.canRank(kind)) return;
+      const rows = Array.prototype.filter.call(document.querySelectorAll(options.kinds[kind].selector), function (candidate) {
+        return !candidate.classList.contains('drag-placeholder') && !candidate.classList.contains('drag-ghost');
+      });
+      const row = rows.find(function (candidate) { return keyOf(candidate, kind) === key; });
+      const at = rows.indexOf(row);
+      const target = rows[at + (up ? -1 : 1)];
+      if (!row || !target) return;
+      // The row stands in for the drop placeholder, which says which group a
+      // row lands in; one step never leaves its group.
+      if (options.reorder(kind, key, keyOf(target, kind), up, row) === true) {
+        announce('Moved ' + (up ? 'up' : 'down') + '.');
+      }
+    }
+
     function openMenu(event, row) {
       const kind = kindOf(row);
       const key = kind ? keyOf(row, kind) : undefined;
@@ -1975,6 +2216,10 @@ export function getComponentScript(): string {
       const actions = options.menuActions ? options.menuActions(kind, key) : [];
       if (options.canRank(kind)) {
         const labels = options.kinds[kind].edgeLabels || ['Move to top', 'Move to bottom'];
+        // One step at a time as well as to either end, so any place in the
+        // order is reachable without dragging (WCAG 2.5.7).
+        actions.push('<button type="button" role="menuitem" data-context-action="up">Move up</button>');
+        actions.push('<button type="button" role="menuitem" data-context-action="down">Move down</button>');
         actions.push('<button type="button" role="menuitem" data-context-action="top">' + escapeHtml(labels[0]) + '</button>');
         actions.push('<button type="button" role="menuitem" data-context-action="bottom">' + escapeHtml(labels[1]) + '</button>');
       }
@@ -2008,6 +2253,8 @@ export function getComponentScript(): string {
         if (!kind || !key) return;
         if (action === 'top' || action === 'bottom') {
           if (options.canRank(kind)) options.move(kind, key, action === 'top');
+        } else if (action === 'up' || action === 'down') {
+          step(kind, key, action === 'up');
         } else if (options.onMenuAction) {
           options.onMenuAction(action, kind, key);
         }
@@ -2026,6 +2273,15 @@ export function getComponentScript(): string {
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && rankMenu && !rankMenu.hidden) {
         closeRankMenu();
+        return;
+      }
+      // Alt+Up and Alt+Down move the focused row one place.
+      if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown') && event.target.matches && event.target.matches(rowSelector)) {
+        const kind = kindOf(event.target);
+        if (kind) {
+          event.preventDefault();
+          step(kind, keyOf(event.target, kind), event.key === 'ArrowUp');
+        }
         return;
       }
       // Reordering was a drag or a right-click, so a keyboard could reach

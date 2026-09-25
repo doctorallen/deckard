@@ -125,6 +125,57 @@ test('searches tasks with the search box every search page uses', async () => {
   assert.deepStrictEqual(cards(), ['audit', 'call', 'room', 'ship'], 'clearing it shows finished tasks too');
 });
 
+test('the board is one Tab stop, and a focused card answers single keys', async () => {
+  const { view } = await openBoard();
+  const stops = () => view.findAll('.board-card').filter((card) => card.getAttribute('tabindex') === '0');
+  assert.strictEqual(stops().length, 1, 'one card is the Tab stop');
+  assert.ok(
+    view.findAll('.board-card input, .board-card .board-move').every((control) => control.getAttribute('tabindex') === '-1'),
+    'a card\'s checkbox and menu are keys, not Tab stops',
+  );
+
+  const first = stops()[0];
+  const column = first.closest('.board-column');
+  const inColumn = column.querySelectorAll('.board-card');
+  first.focus();
+  view.keydown(first, 'ArrowDown');
+  assert.strictEqual(view.document.activeElement, inColumn[1], 'down is the next card in the column');
+  assert.strictEqual(stops().length, 1);
+  assert.strictEqual(stops()[0], inColumn[1], 'and becomes the Tab stop');
+
+  const card = inColumn[1];
+  const sent = () => view.posted[view.posted.length - 1];
+  view.keydown(card, 'e');
+  assert.deepStrictEqual(sent(), { type: 'editTask', taskId: card.dataset.taskId });
+  view.keydown(card, 'd');
+  assert.deepStrictEqual(sent(), { type: 'pickTaskDate', taskId: card.dataset.taskId });
+  view.keydown(card, 't');
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'due:today' });
+  view.keydown(card, '2');
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: 'priority:high' });
+  view.keydown(card, ']');
+  const droppable = view.findAll('.board-column').filter((candidate) => candidate.dataset.droppable === 'true');
+  const next = droppable[droppable.indexOf(column) + 1];
+  assert.deepStrictEqual(sent(), { type: 'moveTask', taskId: card.dataset.taskId, column: next.dataset.columnId });
+  view.keydown(card, 'x');
+  assert.deepStrictEqual(sent(), { type: 'toggleTask', taskId: card.dataset.taskId, completed: true });
+
+  view.keydown(card, '?');
+  const sheet = view.find('.key-sheet');
+  assert.ok(sheet, 'the keys are listed on ?');
+  assert.strictEqual(sheet.getAttribute('role'), 'dialog');
+  view.keydown(view.document.activeElement, 'Escape');
+  assert.strictEqual(view.find('.key-sheet'), null, 'Escape closes it');
+});
+
+test('a column that takes a card takes a new task, and a menu offers any date', async () => {
+  const { view } = await openBoard();
+  const add = view.find('[data-action="board-add-task"]');
+  assert.ok(add, 'a column that takes a drop has + Add task');
+  view.click(add);
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'addTaskToColumn', column: add.dataset.columnId });
+});
+
 test('saves its search as a view that reopens on the Task Board', async () => {
   const { view, preferences, index } = await openBoard();
   const save = () => view.find('[data-action="save-board-search"]');
@@ -375,7 +426,7 @@ test('the gear edits the status columns without opening settings', async () => {
   // Right-click moves a column first or last, without a drag.
   view.fire('contextmenu', row('waiting'));
   const menu = view.findAll('#rank-context-menu button').map((button) => button.textContent);
-  assert.deepStrictEqual(menu, ['Move to first column', 'Move to last column']);
+  assert.deepStrictEqual(menu, ['Move up', 'Move down', 'Move to first column', 'Move to last column']);
   view.click(view.find('#rank-context-menu [data-context-action="top"]'));
   await delay(10);
   assert.deepStrictEqual(lastState().data.settings.statuses, ['waiting', 'todo', 'doing', 'review']);

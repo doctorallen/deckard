@@ -1536,7 +1536,28 @@ export interface ShowColumnRestMessage {
   columnId: string;
 }
 
+/** The board's d key and its menu's Due on a date…: ask the host for one. */
+export interface PickTaskDateMessage {
+  type: 'pickTaskDate';
+  taskId: string;
+}
+
+/** The board's e key: the whole task in the task editor. */
+export interface EditTaskMessage {
+  type: 'editTask';
+  taskId: string;
+}
+
+/** A column's + Add task: capture a task already in that column. */
+export interface AddTaskToColumnMessage {
+  type: 'addTaskToColumn';
+  column: string;
+}
+
 export type TaskBoardMessage =
+  | PickTaskDateMessage
+  | EditTaskMessage
+  | AddTaskToColumnMessage
   | ExportResultsMessage
   | SetZenModeMessage
   | OpenHelpMessage

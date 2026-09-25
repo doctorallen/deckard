@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { readCaptureText } from '../../core/markdown/captureWords';
+import { parseMarkdown } from '../../core/markdown/parser';
 import { Task } from '../../core/types';
 import {
   isValidStatusName,
@@ -13,6 +15,7 @@ import {
   updateTaskLine,
 } from './taskActions';
 import { writeSetting } from './settings';
+import { captureToToday, formatCaptureLine } from './capture';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 
@@ -89,4 +92,35 @@ export async function moveTaskToColumn(
       void vscode.window.showInformationMessage(move.reason);
       return false;
   }
+}
+
+/**
+ * Captures a task straight into a board column: the words read as Capture
+ * reads them, then the edit the column stands for made to the line, so the
+ * task lands in today's note already in the column it was added from.
+ */
+export async function captureIntoColumn(columnId: string): Promise<boolean> {
+  const text = await vscode.window.showInputBox({
+    title: 'Add a task to this column',
+    prompt: "It goes in today's note. A date, priority, or repeat rule at the end is read as Capture reads it: Call Ren friday p2",
+    placeHolder: 'Call Ren about the #project/atlas budget',
+  });
+  if (!text?.trim()) {
+    return false;
+  }
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  let line = readCaptureText(
+    formatCaptureLine(text),
+    readTaskMetadataFormat(configuration),
+  ).line;
+  const [task] = parseMarkdown('capture.md', line).tasks;
+  const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions()) : undefined;
+  if (move?.kind === 'refused') {
+    void vscode.window.showInformationMessage(move.reason);
+    return false;
+  }
+  if (move?.kind === 'edit') {
+    line = move.edit(line);
+  }
+  return captureToToday(text, line);
 }
