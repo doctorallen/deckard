@@ -361,9 +361,16 @@ ${getComponentScript()}
         const tags = state.tagTitleDisplayMode === 'separate'
           ? renderTags(note.matchedTags, 'matched-tag')
           : '';
-        const relevanceReasons = note.reasons && note.reasons.length
-          ? note.reasons
-          : ['Related note'];
+        // The matched tags are drawn as chips under the title when tags are
+        // shown apart from it, and the "Shared: …" reason lists those same
+        // tags again; the chips say it once, and the line moves on to the
+        // next reason, or to nothing.
+        const reasons = (note.reasons || []).filter(function (reason) {
+          return !(tags && reason.indexOf('Shared: ') === 0);
+        });
+        const relevanceReasons = reasons.length
+          ? reasons
+          : tags ? [] : ['Related note'];
         const evidence = note.relevanceEvidence || {
           directTagWeight: 0,
           associationWeight: note.associationWeight || 0,
@@ -407,7 +414,7 @@ ${getComponentScript()}
           titleHtml,
           '<div class="note-actions">' + insertLink + relevance + '</div>',
           '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div><div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;
     }

@@ -133,6 +133,33 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(page.lastPosted('openSource'), undefined);
   });
 
+  test('says each shared tag once', () => {
+    // Listed apart from the title, the matching tags are chips under it,
+    // and a "Shared: …" line naming the same tags said them twice.
+    const shared = { key: '#project/atlas', label: 'project/atlas' };
+    const separate = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Linked note'] })],
+    });
+    assert.strictEqual(separate.findAll('.tag-list [data-action="open-tag"]').length, 1);
+    assert.strictEqual(separate.text('.relevance-reason'), 'Linked note');
+    separate.dispose();
+
+    const chipsOnly = open({
+      tagTitleDisplayMode: 'separate',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas'] })],
+    });
+    assert.strictEqual(chipsOnly.findAll('.relevance-reason').length, 0, 'the chips are the reason');
+    chipsOnly.dispose();
+
+    // Inline, the title carries its own tags and the line still says which are shared.
+    const inline = open({
+      tagTitleDisplayMode: 'inline',
+      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas'] })],
+    });
+    assert.strictEqual(inline.text('.relevance-reason'), 'Shared: project/atlas');
+  });
+
   test('explains a score from its signals, and sorts the list', () => {
     const page = open({
       notes: [
