@@ -27,6 +27,15 @@ suite('Dashboard behavior', () => {
     store = undefined;
   });
 
+  test('the mark on a searched Tags tab is sized by the tab, not the select corner', () => {
+    const { page } = open({ dashboardViewState: { mode: 'home', tagSearchQuery: 'atlas' } });
+    const mark = page.find('.dashboard-tabs .tab-search-mark svg');
+    // The shared filter icon's class places it absolutely at a select's
+    // corner; with the mark's own 100% sizing it once filled the page.
+    assert.strictEqual(mark.classList.contains('control-icon-svg'), false);
+    assert.strictEqual(mark.classList.contains('tab-search-mark-icon'), true);
+  });
+
   const NOTES: Record<string, string> = {
     'notes/one.md': [
       '# One #project/atlas #risk/vendor',

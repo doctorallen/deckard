@@ -587,7 +587,10 @@ suite('Webview contracts', () => {
       true,
     );
                                                                 // The mark is a filter icon, and the Search tab keeps it from another tab.
-    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg></span>'), true);
+    // It is drawn with a class of its own: the shared icon's class places it
+    // absolutely at a select's corner, which in a tab floated it over the page.
+    assert.strictEqual(html.includes('const TAB_MARK_ICON = \'<svg class="tab-search-mark-icon" viewBox="0 0 16 16"'), true);
+    assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>\';'), true);
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
     // A tag in a title is a hairline link, not a control chip.

@@ -13,9 +13,11 @@ import {
   chevronLeftIcon,
   chevronRightIcon,
   filterIcon,
+  ICON_PATHS,
   getFavoriteHeartAssetUris,
   settingsIcon,
   sortIcon,
+  strokeIcon,
 } from './icons';
 
 /**
@@ -580,12 +582,20 @@ ${getQueryEditorScript()}
     return '<div class="search-notice" role="status"><span>Showing <strong>' + shown + '</strong> of ' + total + ' ' + escapeHtml(noun) + (text ? ' matching “' + escapeHtml(text) + '”' : '') + '</span><button data-action="' + action + '">Clear</button></div>';
   }
 
+  /**
+   * The glyph on a tab whose search has text or a filter, drawn with a class
+   * of its own. The shared filter icon is made for a select's corner, where
+   * it sits absolutely at a fixed size; inside a tab that rule met the mark's
+   * own 100% sizing, and the funnel floated over the whole page.
+   */
+  const TAB_MARK_ICON = '${strokeIcon(ICON_PATHS.filter, 'tab-search-mark-icon')}';
+
   /** A dot on a tab whose search has text or a filter, seen from any tab. */
   function renderTabSearchMark(query, filter) {
     const text = String(query || '').trim();
     const parts = (text ? ['Searching “' + text + '”'] : []).concat(filter ? [filter] : []);
     return parts.length
-      ? '<span class="tab-search-mark" title="' + escapeHtml(parts.join(', ')) + '">${filterIcon}</span><span class="visually-hidden">, searching</span>'
+      ? '<span class="tab-search-mark" title="' + escapeHtml(parts.join(', ')) + '">' + TAB_MARK_ICON + '</span><span class="visually-hidden">, searching</span>'
       : '';
   }
 
