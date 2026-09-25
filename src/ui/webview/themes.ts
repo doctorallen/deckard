@@ -51,7 +51,11 @@ const corpoCss = `
   --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
   --cyan: var(--vscode-textLink-foreground);
   --cyan-bright: var(--vscode-textLink-foreground);
-  --amber: var(--vscode-focusBorder);
+  /* The accent is written as text in eyebrows, chips, and hovered controls,
+     and VS Code's focus blue is an edge color, about 3:1 on its own dark
+     grounds. Its link color is text, kept readable in every VS Code theme;
+     the focus blue stays on --amber-bright for edges and marks. */
+  --amber: var(--vscode-textLink-foreground);
   --amber-bright: var(--vscode-focusBorder);
   --amber-dim: var(--vscode-descriptionForeground);
   --green: var(--vscode-charts-green);
@@ -252,22 +256,25 @@ button:hover, button.active, select:hover, .tag-open:hover, .view-options summar
   --panel-bg: #f1e8c8;
   --panel: #f1e8c8;
   --panel-raised: #faf1d4;
-  --panel-deep: #c5b980;
+  /* The control ground was a mid tan that no accent could sit on at 4.5:1;
+     it is the buttons' own cream now, and the inks below are one step
+     deeper than before for the same reason. */
+  --panel-deep: #e9dfb7;
   --text: #29341d;
-  --muted: #616a45;
+  --muted: #545c3c;
   --slate-border: #7d8750;
   --line: #9c9a5c;
   --line-strong: #55713d;
-  --cyan-bright: #55713d;
-  --cyan: #6e8748;
+  --cyan-bright: #354a1f;
+  --cyan: #3f5626;
   --amber-bright: #c28a32;
-  --amber: #9b6b2b;
+  --amber: #664317;
   --amber-dim: #6f542a;
   --green: #587a3d;
   --toxic-green: #587a3d;
-  --favorite-red: #a94d35;
+  --favorite-red: #9a4530;
   --favorite: #8a5a14;
-  --warning-orange: #a94d35;
+  --warning-orange: #9a4530;
   --font-display: Georgia, 'Times New Roman', serif;
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }

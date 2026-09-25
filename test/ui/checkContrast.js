@@ -62,7 +62,8 @@ const VSCODE_PALETTES = {
     '--vscode-input-background': '#ffffff',
     '--vscode-list-hoverBackground': '#e8e8e8',
     '--vscode-foreground': '#3b3b3b',
-    '--vscode-descriptionForeground': '#717171',
+    // Light Modern, the default light theme since 1.83; Light+ had #717171.
+    '--vscode-descriptionForeground': '#3b3b3b',
     '--vscode-textLink-foreground': '#005fb8',
     '--vscode-focusBorder': '#005fb8',
     '--vscode-charts-green': '#388a34',

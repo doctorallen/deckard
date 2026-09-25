@@ -55,7 +55,6 @@ ${getQueryEditorCss()}
 section { min-width: 0; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .control-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow-x: auto; padding-bottom: 2px; }
-button:hover, button.active, select:hover { border-color: var(--amber-bright); color: var(--amber-bright); background: var(--panel-raised); }
 button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-draggable:focus-visible, .entity-row:focus-visible, .home-widget:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .tag-list { display: grid; grid-template-columns: repeat(var(--dashboard-columns, 1), 1fr); gap: 7px; }
 .entity-list { display: grid; gap: 7px; margin-bottom: 18px; }
@@ -70,7 +69,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-kind { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }
-.tag-group h3 { margin: 0 0 7px; color: var(--amber-bright); font-size: var(--text-xs); font-weight: 500; }
+.tag-group h3 { margin: 0 0 7px; color: var(--amber); font-size: var(--text-xs); font-weight: 500; }
 .section-readout { color: var(--muted); font-size: var(--text-xs); }
 .tag-row { position: relative; border: 1px solid var(--slate-border); clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); background: var(--panel-bg); cursor: pointer; }
 .tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
@@ -92,10 +91,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .browse-toolbar-controls > * { flex: 0 0 auto; }
 .catalog-search { width: min(220px, 40vw); border-color: var(--cyan-bright); }
 /* A kept search stands out from an empty box, whatever the theme. */
-input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--amber-bright); }
+input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][data-has-query] { border-color: var(--amber-bright); background: var(--panel-raised); color: var(--text); }
 .search-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--amber-bright); border-left-width: 4px; background: var(--panel-raised); color: var(--text); font: var(--text-sm) var(--font-mono); }
-.search-notice strong { color: var(--amber-bright); }
-.search-notice button { min-height: 26px; color: var(--amber-bright); text-transform: none; }
+.search-notice strong { color: var(--amber); }
+.search-notice button { min-height: 26px; text-transform: none; }
 .tab-search-mark { display: inline-block; width: 11px; height: 11px; margin-left: 6px; vertical-align: -2px; }
 .tab-search-mark svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -111,7 +110,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
 .home-widget.is-editing:hover { border-color: var(--amber-bright); }
 .home-widget-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.home-widget-title { margin: 0; color: var(--amber-bright); font-size: var(--text-xs); }
+.home-widget-title { margin: 0; color: var(--amber); font-size: var(--text-xs); }
 .home-widget-grip { margin-right: 6px; color: var(--muted); }
 .home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
 .home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }
@@ -168,7 +167,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-options { position: relative; }
 .home-widget-options summary { display: grid; width: 28px; min-height: 28px; place-items: center; border: 2px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px; cursor: pointer; list-style: none; }
 .home-widget-options summary::-webkit-details-marker { display: none; }
-.home-widget-options summary:hover { border-color: var(--amber-bright); color: var(--amber-bright); }
+.home-widget-options summary:hover { border-color: var(--amber-bright); }
 .home-widget-options summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .home-widget-options .settings-icon { width: 14px; height: 14px; }
 .home-widget-options-menu { position: absolute; z-index: 4; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }

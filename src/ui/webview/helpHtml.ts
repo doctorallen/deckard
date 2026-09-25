@@ -196,7 +196,7 @@ p { margin: 0 0 12px; }
 .card:target { border-color: var(--amber); }
 /* A card jumped to from the map is not hidden under the sticky navigation. */
 .card[id] { scroll-margin-top: 20px; }
-code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--green); font-size: .9em; }
+code { overflow-wrap: anywhere; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); color: var(--text); font-size: .9em; }
 .inline-icon, .deckard-logo { display: inline-block; width: 16px; height: 16px; margin: 0 2px; vertical-align: -3px; }
 .dashboard-icon { fill: var(--green); }
 .favorite-heart { display: inline-block; width: 16px; height: 16px; margin: 0 2px; color: var(--favorite); background-color: currentColor; -webkit-mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; mask: url("${favoriteHeartUris.outline}") center / contain no-repeat; vertical-align: -3px; }
@@ -211,7 +211,7 @@ pre code { border: 0; padding: 0; color: inherit; background: transparent; }
 th, td, table code { overflow-wrap: break-word; }
 ul { margin: 8px 0 0; padding-left: 20px; }
 li + li { margin-top: 5px; }
-.note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--muted); }
+.note { border-left: 3px solid var(--amber); background: var(--panel-raised); padding: 10px 12px; color: var(--text); }
 /* Reference tables: commands, markers, query fields, settings. */
 table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: var(--text-md); }
 caption { margin-bottom: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: left; }

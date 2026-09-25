@@ -32,21 +32,10 @@ export function getNotesGraphHtml(
 <title>Deckard Notes Graph</title>
 <style nonce="${nonce}">${getBaseCss()}
 :root {
+  /* The palette is the base sheet's, as every page's is. A copy of it lived
+     here and kept the fully saturated cyan and green after the base sheet
+     had desaturated them, so the graph alone drew the old colors. */
   color-scheme: dark;
-  --bg-dark: #050608;
-  --panel-bg: #0D1017;
-  --panel-raised: #121620;
-  --panel-deep: #080A0E;
-  --amber-bright: #FFB000;
-  --amber-dim: #7A5400;
-  --favorite-red: #D23C28;
-  --toxic-green: #33FF33;
-  --cyan-bright: #00E5FF;
-  --slate-border: #212936;
-  --slate-olive: #3E4A42;
-  --warning-orange: #FF5500;
-  --text: #D9E0E4;
-  --muted: #7D8792;
   --font-mono: var(--vscode-editor-font-family, 'Share Tech Mono', 'JetBrains Mono', 'Space Mono', 'IBM Plex Mono', 'Courier New', monospace);
   --font-display: var(--vscode-font-family, 'DIN Alternate', 'Arial Narrow', sans-serif);
 }
@@ -83,11 +72,11 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .zoom-controls { display: inline-flex; }
-.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
+.zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
 .zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
-.zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .94); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
+.zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: var(--text-xs) var(--font-mono); pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
@@ -100,8 +89,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 /* The panels follow the theme rather than a fixed near-black, which was
    unreadable when corpo took its text color from a light VS Code theme. */
 .control-group { background: var(--panel); }
-.tooltip { background: var(--panel-raised); }
-.tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: rgba(8, 10, 14, .97); padding: 6px 9px; pointer-events: none; }
+.tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
 .tooltip .tooltip-title { color: var(--text); font: 700 var(--text-xs) var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
@@ -196,13 +184,13 @@ ${getPageTailCss()}
   }
   var colors = {
     background: themeColor('--bg-dark', '#050608'),
-    note: themeColor('--cyan-bright', '#00E5FF'),
+    note: themeColor('--cyan-bright', '#5FE1F0'),
     task: themeColor('--amber-bright', '#FFB000'),
-    tag: themeColor('--toxic-green', '#33FF33'),
+    tag: themeColor('--toxic-green', '#66E066'),
     edge: themeColor('--muted', '#7D8792'),
     edgeHighlight: themeColor('--amber-bright', '#FFB000'),
     label: themeColor('--text', '#D9E0E4'),
-    halo: themeColor('--favorite-red', '#D23C28')
+    halo: themeColor('--favorite-red', '#E04A32')
   };
 
   // ---- persisted webview-local settings -------------------------------
