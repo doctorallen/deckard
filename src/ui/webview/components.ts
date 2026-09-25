@@ -709,6 +709,10 @@ export function getProvenanceCss(): string {
   text-overflow: ellipsis;
   clip-path: none;
   color: var(--muted);
+  /* The pointer passes through the text as it does the frame under it: a
+     line that took the pointer kept its entry hovered while the pointer
+     crossed it, and the entry it covered was skipped on the way down. */
+  pointer-events: none;
 }
 .note:hover .source ~ .source, .note:focus-within .source ~ .source { top: calc(100% + 20px); }`;
 }
