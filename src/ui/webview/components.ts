@@ -46,7 +46,7 @@ export function getDesignTokens(): string {
   --amber: #FFB000;
   --amber-bright: #FFB000;
   --amber-dim: #7A5400;
-  --favorite-red: #E04A32;
+  --favorite-red: #E05232;
   --warning-orange: #FF5500;
   --slate-olive: #3E4A42;
   --grid-line: rgba(62, 212, 232, .05);

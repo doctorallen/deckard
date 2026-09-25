@@ -207,7 +207,7 @@ ${getPageTailCss()}
     edge: themeColor('--muted', '#7D8792'),
     edgeHighlight: themeColor('--amber-bright', '#FFB000'),
     label: themeColor('--text', '#D9E0E4'),
-    halo: themeColor('--favorite-red', '#E04A32')
+    halo: themeColor('--favorite-red', '#E05232')
   };
 
   // ---- persisted webview-local settings -------------------------------
