@@ -99,11 +99,11 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .tab-search-mark svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Home: the reader's widgets, in two columns. */
+/* Home: the reader's widgets, in two columns. A widget is a half or the
+   full width, and half is half at any width the panel has: a third column
+   on a wide editor once made a half-width widget a third, which is not what
+   its ½ button said. On a narrow panel every widget takes the width. */
 .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); align-items: stretch; }
-/* A working surface takes the panel's width: three columns of widgets on a
-   wide editor, one on a narrow panel, two between. */
-@media (min-width: 1200px) { .home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
 .home-widget { position: relative; min-width: 0; border: 2px solid var(--slate-border); background: var(--panel-bg); padding: 12px; }
 .home-widget.is-full { grid-column: 1 / -1; }
