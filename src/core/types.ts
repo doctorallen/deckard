@@ -1356,6 +1356,8 @@ export interface TaskBoardCard {
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
   overdue: boolean;
+  /** The headings above the task, top down, tags stripped. */
+  headingPath: string[];
 }
 
 export interface TaskBoardColumn {

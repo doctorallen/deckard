@@ -27,11 +27,13 @@ import {
   TaskPriority,
   WorkspaceIndex,
   TaskTable,
+  Section,
 } from '../../core/types';
 import { renderMarkdownInline } from '../webview/rendering';
 import {
   createDashboardTask,
   createQueryViewState,
+  getHeadingPath,
   sortTasks,
 } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -267,7 +269,7 @@ export function layoutTaskBoard(
       .map((task) => task.dependencyId as string),
   );
   const toCard = (task: Task): TaskBoardCard =>
-    createCard(task, groupBy, options.now, openDependencyIds);
+    createCard(task, groupBy, options.now, openDependencyIds, index.sections);
 
   // A status named done is the board's own Done: an open task carrying it
   // sits at the head of that column rather than in a second column of the
@@ -644,7 +646,9 @@ function createCard(
   groupBy: TaskBoardGroupBy,
   now: number,
   openDependencyIds: ReadonlySet<string>,
+  sections: ReadonlyMap<string, Section>,
 ): TaskBoardCard {
+  const section = task.sectionId ? sections.get(task.sectionId) : undefined;
   const title = stripTrailingTags(task.title) || task.title;
   const today = startOfDay(now);
   const open = !task.completed;
@@ -682,8 +686,10 @@ function createCard(
         : '',
       task.recurrence ? `repeats ${task.recurrence}` : '',
       open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
-      task.filePath.split('/').pop() ?? task.filePath,
     ].filter(Boolean),
+    // Where the task is written folds under the card, as it does under a
+    // row; it was the last detail on every card.
+    headingPath: section ? getHeadingPath(section, sections) : [],
   };
 }
 

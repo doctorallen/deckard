@@ -514,6 +514,9 @@ export function getTaskBoardCss(): string {
   overflow-y: auto;
 }
 .board-card { position: relative; }
+/* The last card's frame carries down past the column's scroller; this
+   leaves it room, as an extra card's height would. */
+.board-cards::after { content: ''; display: block; height: 44px; }
 /* Themes slide a row right on hover, which reads well across a wide list and
    badly in a column this narrow: the card had nowhere to go but out. It keeps
    the border and ground the same hover gives every other surface. Written to
@@ -651,6 +654,7 @@ export function getBaseCss(): string {
 export function getProvenanceCss(): string {
   return `
 .task-row .task-source,
+.board-card .task-source,
 .card .source,
 .note .source,
 .home-row .home-row-detail,
@@ -670,12 +674,14 @@ export function getProvenanceCss(): string {
    the same way: a column of thirty beside the names was noise, and folded
    under the row under the pointer they leave the whole width to the name. */
 .home-row, .tag-row { position: relative; --frame: 1px; --inset: 10px; }
-.card, .note, .task-row, .home-row, .tag-row { --reach: 24px; }
-.note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source) { --reach: 42px; }
+.board-card { --frame: var(--edge); --inset: var(--space-3); }
+.card, .note, .task-row, .home-row, .tag-row, .board-card { --reach: 24px; }
+.note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source), .board-card:has(.task-source ~ .task-source) { --reach: 42px; }
 /* The entry under the pointer is lifted above the ones after it, which its
    extension lies over. The sidebar lifts its own notes higher still. */
 .card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within,
-.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within { z-index: 2; }
+.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within,
+.board-card:hover, .board-card:focus-within { z-index: 2; }
 /* The extension is the entry's own frame carried down: its background,
    border and inner shading, taken from the entry as it is drawn now, hover
    colors included. It starts a little inside the entry so it covers the
@@ -684,7 +690,8 @@ export function getProvenanceCss(): string {
 .note:hover::after, .note:focus-within::after,
 .task-row:hover::after, .task-row:focus-within::after,
 .home-row:hover::after, .home-row:focus-within::after,
-.tag-row:hover::after, .tag-row:focus-within::after {
+.tag-row:hover::after, .tag-row:focus-within::after,
+.board-card:hover::after, .board-card:focus-within::after {
   content: '';
   position: absolute;
   z-index: 1;
@@ -713,7 +720,8 @@ export function getProvenanceCss(): string {
 .card:hover .source, .card:focus-within .source,
 .note:hover .source, .note:focus-within .source,
 .home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,
-.tag-row:hover .tag-count, .tag-row:focus-within .tag-count {
+.tag-row:hover .tag-count, .tag-row:focus-within .tag-count,
+.board-card:hover .task-source, .board-card:focus-within .task-source {
   z-index: 2;
   top: calc(100% + 2px);
   left: var(--inset);
@@ -737,7 +745,8 @@ export function getProvenanceCss(): string {
 }
 .note:hover .source ~ .source, .note:focus-within .source ~ .source,
 .card:hover .source ~ .source, .card:focus-within .source ~ .source,
-.task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }`;
+.task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
+.board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }`;
 }
 
 /**
@@ -1386,11 +1395,16 @@ export function getComponentScript(): string {
       return '<span' + (overdue ? ' class="overdue"' : '') + '>' + text + '</span>';
     }).join('');
     const plainTitle = String(card.title || '');
+    // The file and line, then the headings above, fold under the card as
+    // they do under a row: the file name was the last detail on every card.
+    const cardPath = renderHeadingPath(card.headingPath, String(card.filePath).split('/').pop() || card.filePath, '');
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="0"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
       + '<input type="checkbox" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
+      + '<span class="task-source">' + escapeHtml(formatSourceLocation(String(card.filePath).split('/').pop() || card.filePath, card.line)) + '</span>'
+      + (cardPath ? '<span class="task-source heading-path">' + cardPath + '</span>' : '')
       + '<button type="button" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
       + '</div></article>';
   }
