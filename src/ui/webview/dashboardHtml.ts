@@ -63,7 +63,32 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .saved-filter-row:hover { background: var(--panel-raised); transform: translateX(3px); }
 .saved-filter-row:focus-visible { outline: 1px solid var(--focus); outline-offset: 2px; }
 .saved-filter-name { color: var(--cyan-bright); font: var(--text-sm) var(--font-mono); overflow-wrap: anywhere; }
-.saved-filter-tags { margin-top: 3px; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
+/* A saved search reads by its name alone; a query three lines long under
+   every name made the list a wall. The criteria stay in the row for a
+   screen reader and open under the pointer or the keyboard in the row's own
+   frame carried down, as a note's provenance does, with room to wrap since
+   a query is longer than a file name. */
+.saved-filter-row { position: relative; }
+.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
+.saved-filter-row:hover, .saved-filter-row:focus-within { z-index: 2; }
+.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {
+  z-index: 2;
+  top: calc(100% - 1px);
+  left: -1px;
+  right: -1px;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  border: 1px solid;
+  border-color: inherit;
+  border-top: 0;
+  background: inherit;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  color: var(--muted);
+  font: var(--text-xs)/16px var(--font-mono);
+  overflow-wrap: anywhere;
+}
 .saved-filter-remove { min-height: 26px; text-transform: none; }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }

@@ -572,6 +572,9 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    // A saved search reads by its name; its criteria open under the pointer.
+    assert.ok(html.includes('.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }'));
+    assert.ok(html.includes('.saved-filter-row:hover .saved-filter-tags, .saved-filter-row:focus-within .saved-filter-tags {'));
                     assert.strictEqual(
       html.includes('.tag-namespace { opacity: .62; }'),
       true,
