@@ -74,6 +74,8 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colors; 
 
 **What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's totals are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
 
+**In the editor**, zen also drops the reference counts above headings, the lens that offers to link a note's unlinked mentions, and the band behind the section being edited. Link problems, task dependencies, daily-note arrows, and hover previews stay.
+
 **What it does not change.** Every button, filter, tab, count, checkbox, and tag stays exactly where it was — zen hides ornament and folds provenance, and removes no functionality. The folded text is moved off-screen rather than out of the page, so a screen reader still announces it and find-in-page still finds it. A task's due date, priority, and overdue marker never fold: they are the point of a task row. Nor does a search that Deckard could not parse stop saying so.
 
 **What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut, which outside zen shows while the box is in use, is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.

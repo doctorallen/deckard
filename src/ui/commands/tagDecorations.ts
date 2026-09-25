@@ -76,6 +76,7 @@ export class EditorTagDecorations implements vscode.Disposable {
         if (
           event.affectsConfiguration('deckard.parseInlineTags') ||
           event.affectsConfiguration('deckard.highlightNoteSections') ||
+          event.affectsConfiguration('deckard.zenMode') ||
           event.affectsConfiguration('deckard.entityNamespaceAliases') ||
           event.affectsConfiguration('deckard.personMarker')
         ) {
@@ -287,9 +288,12 @@ export class EditorTagDecorations implements vscode.Disposable {
   }
 
   private shouldHighlightNoteSections(document: vscode.TextDocument): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard', document.uri)
-      .get<boolean>('highlightNoteSections', true);
+    const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
+    // Zen quiets the editor too: the band behind the section being edited goes.
+    return (
+      configuration.get<boolean>('highlightNoteSections', true) &&
+      !configuration.get<boolean>('zenMode', false)
+    );
   }
 
   private entityNamespaceAliases(document: vscode.TextDocument) {

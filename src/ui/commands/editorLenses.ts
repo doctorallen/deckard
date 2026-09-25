@@ -114,8 +114,15 @@ export class EditorLenses
       'deckard.editor',
       document.uri,
     );
-    const groups = this.groups.filter((group) =>
-      configuration.get<boolean>(group.setting, true),
+    // Zen keeps the lenses that report a problem or act on today's note,
+    // and drops the suggestion to link a note's mentions.
+    const zen = vscode.workspace
+      .getConfiguration('deckard', document.uri)
+      .get<boolean>('zenMode', false);
+    const groups = this.groups.filter(
+      (group) =>
+        configuration.get<boolean>(group.setting, true) &&
+        !(zen && group.setting === 'unlinkedMentions'),
     );
     if (groups.length === 0) {
       return [];
