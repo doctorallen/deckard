@@ -15,7 +15,7 @@ import {
 import { measure, measureAsync, reportError } from '../timing';
 import { ScanProgress, WorkspaceScanner, describeError } from './scanner';
 import { takeOwnWrite } from './ownWrites';
-import { IndexState } from './indexState';
+import { IndexState, NoteChange } from './indexState';
 import { ViewUpdateOptions } from './publishing';
 
 /** What the indexer can be given beyond its scanner and cache. */
@@ -44,7 +44,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private readonly updateEmitter = new vscode.EventEmitter<WorkspaceIndex>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly watcherDisposables: vscode.Disposable[] = [];
-  private readonly files = new Map<string, ParsedFile>();
+  /** The notes and the index derived from them, updated a note at a time. */
+  private state = IndexState.build([]);
   private readonly pending = new Map<string, PendingUpdate>();
   private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private readyPromise: Promise<void> = Promise.resolve();
@@ -155,7 +156,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   public getSnapshot(): WorkspaceIndex {
     this.snapshot ??= measure(
       'Build index',
-      () => buildWorkspaceIndex(new Map(this.files)),
+      () => this.state.snapshot(),
       (index) => `${index.files.size} notes, ${index.sections.size} entries`,
     );
     return this.snapshot;
@@ -277,8 +278,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
           return;
         }
 
-        this.files.clear();
-        parsedFiles.forEach((file) => this.files.set(file.filePath, file));
+        this.state = IndexState.build(parsedFiles);
         this.unreadable.clear();
         this.scanner.failures.forEach((failure) =>
           this.unreadable.set(failure.filePath, failure.reason),
@@ -288,10 +288,10 @@ export class WorkspaceIndexer implements vscode.Disposable {
           'Rebuild search index',
           () =>
             this.searchStore?.replace(
-              this.files.values(),
+              this.state.files.values(),
               this.scanner.getParseFingerprint(),
             ),
-          () => `${this.files.size} notes`,
+          () => `${this.state.files.size} notes`,
         );
         // What the store handed to its worker is still being written. The
         // log says when it lands, because until then a search finds a note
@@ -456,32 +456,47 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private async flushPending(): Promise<void> {
     const updates = [...this.pending.values()];
     this.pending.clear();
-    await measureAsync(
+    const changes = await measureAsync(
       'Read changed notes',
-      () => this.applyUpdates(updates),
+      () => this.readUpdates(updates),
       () => `${updates.length} ${updates.length === 1 ? 'note' : 'notes'}`,
     );
-    this.snapshot = undefined;
+    if (this.disposed) {
+      return;
+    }
+    // Only the changed notes' parts of the index are worked out again; the
+    // rest is reused from the index before.
+    this.snapshot = measure(
+      'Update index',
+      () => {
+        this.state.apply(changes);
+        return this.state.snapshot();
+      },
+      (index) =>
+        `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
+    );
     this.emitUpdate();
   }
 
-  private async applyUpdates(updates: PendingUpdate[]): Promise<void> {
+  /** Reads what changed, in the order it was queued, as changes to apply. */
+  private async readUpdates(updates: PendingUpdate[]): Promise<NoteChange[]> {
+    const changes: NoteChange[] = [];
     for (const update of updates) {
       const filePath = this.scanner.getFilePath(update.uri);
       if (update.deleted) {
-        this.files.delete(filePath);
+        changes.push({ filePath });
         this.unreadable.delete(filePath);
         this.searchStore?.remove(filePath);
         continue;
       }
 
       try {
-        const previous = this.files.get(filePath);
+        const previous = this.state.files.get(filePath);
         const parsedFile =
           update.content === undefined
             ? await this.scanner.read(update.uri)
             : this.scanner.parse(update.uri, update.content, previous?.fileTimes);
-        this.files.set(filePath, parsedFile);
+        changes.push({ filePath, file: parsedFile });
         this.unreadable.delete(filePath);
         this.searchStore?.upsert(parsedFile);
       } catch (error) {
@@ -489,6 +504,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
         this.unreadable.set(filePath, describeError(error));
       }
     }
+    return changes;
   }
 
   /**

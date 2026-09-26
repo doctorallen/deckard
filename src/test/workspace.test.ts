@@ -14,6 +14,8 @@ import {
   WorkspaceScanner,
 } from '../core/workspace/scanner';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { setTimingLog } from '../core/timing';
+import { normalizeIndex } from './indexCorpus';
 
 const defaultPreferences = {
   searchPageSize: 30 as const,
@@ -100,6 +102,71 @@ suite('Workspace scanner and index', () => {
     await indexer.refresh();
     assert.deepStrictEqual(indexer.getUnreadable().map((note) => note.filePath), ['notes/bad.md']);
     indexer.dispose();
+  });
+
+  test('a save updates only that note in the index, and the index is still the full build', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-update');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+    const texts = new Map([
+      ['a.md', '# A #project/atlas\n- [ ] Task #topic/maps'],
+      ['b.md', '# B #project/atlas #topic/maps\n## Child #topic/detail'],
+      ['c.md', '---\ntags: [area/home]\n---\nNo headings.'],
+    ]);
+    const uriOf = (name: string) => vscode.Uri.joinPath(workspaceUri, name);
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => [...texts.keys()].map(uriOf),
+      readFile: async (uri) => Buffer.from(texts.get(uri.path.split('/').pop() ?? '') ?? '', 'utf8'),
+    });
+    const indexer = new WorkspaceIndexer(scanner);
+    const lines: string[] = [];
+    setTimingLog({
+      logLevel: 2,
+      trace: () => undefined,
+      debug: (line) => lines.push(line),
+      info: (line) => lines.push(line),
+    });
+    const controller = indexer as unknown as {
+      queueUpsert(uri: vscode.Uri, content?: string, now?: boolean): void;
+      queueDelete(uri: vscode.Uri): void;
+    };
+    const published = () =>
+      new Promise<void>((resolve) => {
+        const subscription = indexer.onDidUpdate(() => {
+          subscription.dispose();
+          resolve();
+        });
+      });
+    const fullBuild = () =>
+      normalizeIndex(buildWorkspaceIndex(new Map(indexer.getSnapshot().files)));
+    try {
+      await indexer.refresh();
+      assert.ok(lines.some((line) => line.startsWith('Build index')));
+
+      lines.length = 0;
+      texts.set('a.md', '# A #project/atlas #topic/new\n- [ ] Task #topic/maps');
+      let update = published();
+      controller.queueUpsert(uriOf('a.md'), undefined, true);
+      await update;
+      assert.ok(
+        lines.some((line) => /^Update index: .* \(1 note changed, 3 notes\)$/.test(line)),
+        lines.join('\n'),
+      );
+      assert.ok(!lines.some((line) => line.startsWith('Build index')), 'no full build');
+      assert.ok(indexer.getSnapshot().tags.has('#topic/new'));
+      assert.deepStrictEqual(normalizeIndex(indexer.getSnapshot()), fullBuild());
+
+      texts.delete('b.md');
+      update = published();
+      controller.queueDelete(uriOf('b.md'));
+      await update;
+      assert.deepStrictEqual([...indexer.getSnapshot().files.keys()], ['a.md', 'c.md']);
+      assert.strictEqual(indexer.getSnapshot().tags.has('#topic/detail'), false);
+      assert.deepStrictEqual(normalizeIndex(indexer.getSnapshot()), fullBuild());
+    } finally {
+      setTimingLog(undefined);
+      indexer.dispose();
+    }
   });
 
   test('leaves the templates folder out of the notes', async () => {

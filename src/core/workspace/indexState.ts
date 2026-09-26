@@ -572,6 +572,13 @@ function getNormalizedAssociationWeight(
   return rawWeight * prevalence * (0.5 + supportConfidence / 2);
 }
 
+/** A change to the notes: a note saved or added, or a path removed. */
+export interface NoteChange {
+  filePath: string;
+  /** The note as now parsed; absent when it was removed. */
+  file?: ParsedFile;
+}
+
 /**
  * The notes of a workspace and the index derived from them, kept together so
  * the two can never drift, and updated a note at a time.
@@ -590,6 +597,9 @@ export class IndexState {
   /** How many entries use each section and task id. */
   private readonly idUses = new Map<string, number>();
   private repeatedIds = 0;
+  /** Tags changed since the last index was built, or all of them. */
+  private dirty: Set<string> | 'all' = 'all';
+  private previous: WorkspaceIndex | undefined;
 
   private constructor() {
     this.generation = {
@@ -612,7 +622,7 @@ export class IndexState {
       const replaced = state.contributions.get(file.filePath);
       if (replaced) {
         // Two notes under one path: the later wins, in the earlier's place.
-        state.forget(replaced, associationFiles, tagUnits, copied);
+        state.forget(file.filePath, replaced, associationFiles, tagUnits, copied);
         totalUnits -= replaced.unitCount;
       } else {
         state.ordinals.set(file.filePath, state.nextOrdinal);
@@ -621,7 +631,7 @@ export class IndexState {
       const contribution = computeContribution(file);
       state.notes.set(file.filePath, file);
       state.contributions.set(file.filePath, contribution);
-      state.remember(contribution, associationFiles, tagUnits, copied);
+      state.remember(file.filePath, contribution, associationFiles, tagUnits, copied);
       totalUnits += contribution.unitCount;
     }
     state.generation = {
@@ -649,6 +659,8 @@ export class IndexState {
       // A repeated id makes one entry replace another across notes, which a
       // note's own part cannot see. Built the direct way, the index is what
       // it always was.
+      this.dirty = 'all';
+      this.previous = undefined;
       return buildIndexDirectly(files);
     }
 
@@ -659,7 +671,10 @@ export class IndexState {
       file.tasks.forEach((task) => tasks.set(task.id, task));
     });
 
-    const { tags, entities } = this.foldAllTags(tasks);
+    const { tags, entities } =
+      this.dirty === 'all' || !this.previous
+        ? this.foldAllTags(tasks)
+        : this.foldChangedTags(this.dirty, this.previous, tasks);
 
     const index: WorkspaceIndex = {
       files,
@@ -670,17 +685,76 @@ export class IndexState {
       tagAssociations: new LazyTagAssociations(this.generation),
       updatedAt: Date.now(),
     };
+    this.previous = index;
+    this.dirty = new Set();
     return index;
+  }
+
+  /**
+   * Applies changes in order, as the same sets and deletes on a notes map
+   * would: a saved note keeps its place, a new one goes last, and a note
+   * removed and added again goes last too.
+   */
+  public apply(changes: readonly NoteChange[]): void {
+    if (changes.length === 0) {
+      return;
+    }
+    const associationFiles = new Map(this.generation.filesByTag);
+    const tagUnits = new Map(this.generation.tagUnits);
+    let totalUnits = this.generation.totalUnits;
+    const copied = new Set<string>();
+    for (const change of changes) {
+      const old = this.contributions.get(change.filePath);
+      if (old) {
+        this.forget(change.filePath, old, associationFiles, tagUnits, copied);
+        totalUnits -= old.unitCount;
+        this.markDirty(old);
+      }
+      if (!change.file) {
+        if (old) {
+          this.notes.delete(change.filePath);
+          this.contributions.delete(change.filePath);
+          this.ordinals.delete(change.filePath);
+        }
+        continue;
+      }
+      if (!old) {
+        this.ordinals.set(change.filePath, this.nextOrdinal);
+        this.nextOrdinal += 1;
+      }
+      const contribution = computeContribution(change.file);
+      this.notes.set(change.filePath, change.file);
+      this.contributions.set(change.filePath, contribution);
+      this.remember(change.filePath, contribution, associationFiles, tagUnits, copied);
+      totalUnits += contribution.unitCount;
+      this.markDirty(contribution);
+    }
+    this.generation = {
+      contributions: new Map(this.contributions),
+      ordinals: new Map(this.ordinals),
+      filesByTag: associationFiles,
+      tagUnits,
+      totalUnits,
+    };
+  }
+
+  private markDirty(contribution: FileContribution): void {
+    if (this.dirty === 'all') {
+      return;
+    }
+    const dirty = this.dirty;
+    contribution.tagKeys.forEach((key) => dirty.add(key));
+    contribution.hubKeys.forEach((key) => dirty.add(key));
   }
 
   /** Adds a note's part to the per-tag records and the id counts. */
   private remember(
+    filePath: string,
     contribution: FileContribution,
     associationFiles: Map<string, ReadonlySet<string>>,
     tagUnits: Map<string, number>,
     copied: Set<string>,
   ): void {
-    const filePath = contribution.file.filePath;
     contribution.tagKeys.forEach((key) => addTo(this.filesByTag, key, filePath));
     contribution.hubKeys.forEach((key) => addTo(this.hubFilesByTag, key, filePath));
     contribution.pairs.forEach((_, key) =>
@@ -694,12 +768,12 @@ export class IndexState {
 
   /** Takes a note's part back out of the per-tag records and id counts. */
   private forget(
+    filePath: string,
     contribution: FileContribution,
     associationFiles: Map<string, ReadonlySet<string>>,
     tagUnits: Map<string, number>,
     copied: Set<string>,
   ): void {
-    const filePath = contribution.file.filePath;
     contribution.tagKeys.forEach((key) => removeFrom(this.filesByTag, key, filePath));
     contribution.hubKeys.forEach((key) => removeFrom(this.hubFilesByTag, key, filePath));
     contribution.pairs.forEach((_, key) => {
@@ -749,6 +823,57 @@ export class IndexState {
     );
     tags.forEach((tag) => this.finishTag(tag, tasks));
     entities.forEach((entity) => finishEntity(entity, tasks));
+    return { tags, entities };
+  }
+
+  /**
+   * The tags and entities of the last index, with those a change touched
+   * folded again from their notes, and the maps in first-mention order.
+   */
+  private foldChangedTags(
+    dirty: ReadonlySet<string>,
+    previous: WorkspaceIndex,
+    tasks: ReadonlyMap<string, Task>,
+  ): { tags: Map<string, TagInfo>; entities: Map<string, Entity> } {
+    const rebuiltTags = new Map<string, TagInfo>();
+    const rebuiltEntities = new Map<string, Entity>();
+    dirty.forEach((key) => {
+      const filePaths = this.filesByTag.get(key);
+      if (!filePaths) {
+        return;
+      }
+      [...filePaths]
+        .sort((left, right) => (this.ordinals.get(left) ?? 0) - (this.ordinals.get(right) ?? 0))
+        .forEach((filePath) =>
+          this.contributions
+            .get(filePath)
+            ?.opsByKey.get(key)
+            ?.forEach((op) => applyTagOp(rebuiltTags, rebuiltEntities, op)),
+        );
+    });
+    rebuiltTags.forEach((tag) => this.finishTag(tag, tasks));
+    rebuiltEntities.forEach((entity) => finishEntity(entity, tasks));
+
+    const tags = new Map<string, TagInfo>();
+    const entities = new Map<string, Entity>();
+    this.contributions.forEach((contribution) => {
+      contribution.tagKeys.forEach((key) => {
+        if (!tags.has(key)) {
+          const tag = dirty.has(key) ? rebuiltTags.get(key) : previous.tags.get(key);
+          if (tag) {
+            tags.set(key, tag);
+          }
+        }
+      });
+      contribution.entityKeys.forEach((key) => {
+        if (!entities.has(key)) {
+          const entity = dirty.has(key) ? rebuiltEntities.get(key) : previous.entities.get(key);
+          if (entity) {
+            entities.set(key, entity);
+          }
+        }
+      });
+    });
     return { tags, entities };
   }
 

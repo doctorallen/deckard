@@ -53,10 +53,14 @@ const codec = load('core/storage/parsedFileCodec.js');
 
 const sizes = process.argv.slice(2).map(Number).filter((n) => n > 0);
 
+// The cache's worker thread does not hold the process open, and while it
+// writes nothing else may, so the run keeps itself alive until it is done.
+const keepAlive = setInterval(() => undefined, 1000);
 (async () => {
   for (const size of sizes.length > 0 ? sizes : [1000, 5000]) {
     await bench(size);
   }
+  clearInterval(keepAlive);
 })().catch((error) => {
   console.error(error);
   process.exit(1);

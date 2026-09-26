@@ -179,3 +179,84 @@ export function normalizeIndex(index: WorkspaceIndex): unknown {
 export function toFileMap(files: readonly ParsedFile[]): Map<string, ParsedFile> {
   return new Map(files.map((file) => [file.filePath, file]));
 }
+
+/** One random edit to a note's text: a tag, heading, task, link, or alias. */
+export function editNote(random: () => number, text: string, noteCount: number): string {
+  const lines = text === '' ? [] : text.split('\n');
+  const bodyStart = lines[0] === '---' ? lines.indexOf('---', 1) + 1 : 0;
+  const at = () => bodyStart + Math.floor(random() * (lines.length - bodyStart + 1));
+  const existing = () =>
+    lines.length > bodyStart ? bodyStart + Math.floor(random() * (lines.length - bodyStart)) : -1;
+  const edit = Math.floor(random() * 11);
+  switch (edit) {
+    case 0: {
+      // Add a tag to a line.
+      const line = existing();
+      if (line >= 0) {
+        lines[line] = `${lines[line]} ${pick(random, TAGS)}`;
+      } else {
+        lines.push(`Line ${pick(random, TAGS)}`);
+      }
+      break;
+    }
+    case 1: {
+      // Remove a tag from a line.
+      const line = existing();
+      if (line >= 0) {
+        lines[line] = lines[line].replace(/\s[#@][\w/]+/, '');
+      }
+      break;
+    }
+    case 2: {
+      // Spell a tag another way.
+      const line = existing();
+      if (line >= 0) {
+        lines[line] = lines[line].replace(/([#@])(\w)/, (_, mark: string, letter: string) =>
+          mark + (letter === letter.toUpperCase() ? letter.toLowerCase() : letter.toUpperCase()),
+        );
+      }
+      break;
+    }
+    case 3:
+      lines.splice(at(), 0, `${'#'.repeat(1 + Math.floor(random() * 4))} Added heading ${pick(random, TAGS)}`);
+      break;
+    case 4:
+      lines.splice(at(), 0, `- [ ] Added task ${pick(random, TAGS)} ${pick(random, TAGS)}`);
+      break;
+    case 5:
+      lines.splice(at(), 0, `See [[n${Math.floor(random() * noteCount)}]] and ${pick(random, TAGS)}`);
+      break;
+    case 6: {
+      // Remove a line: a heading, task, or anything else.
+      const line = existing();
+      if (line >= 0) {
+        lines.splice(line, 1);
+      }
+      break;
+    }
+    case 7:
+      // Change words only.
+      lines.splice(at(), 0, 'Some new words.');
+      break;
+    case 8:
+      // Tick or untick a task.
+      return lines
+        .join('\n')
+        .replace(/- \[( |x)\]/, (_, mark: string) => (mark === ' ' ? '- [x]' : '- [ ]'));
+    case 9: {
+      // Front matter: aliases, hub `describes`, tags.
+      const front = [
+        '---',
+        `tags: [${pick(random, TAGS).replace(/^#/, '')}]`,
+        ...(random() < 0.5 ? [`aliases: [Alias ${Math.floor(random() * 9)}]`] : []),
+        ...(random() < 0.5 ? [`describes: [${pick(random, TAGS).replace(/^#/, '')}]`] : []),
+        '---',
+      ];
+      return [...front, ...lines.slice(bodyStart)].join('\n');
+    }
+    default:
+      // Empty the note down to its front matter, or to nothing.
+      return lines.slice(0, bodyStart).join('\n');
+  }
+  return lines.join('\n');
+}
