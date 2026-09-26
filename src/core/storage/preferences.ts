@@ -119,7 +119,7 @@ const defaultPreferences: PersistedPreferences = {
     mode: 'home',
     tagSearchQuery: '',
   },
-  renderMode: 'markdown',
+  renderMode: 'html',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: DEFAULT_SEARCH_PAGE_SIZE,
@@ -546,7 +546,7 @@ export class PreferencesStore implements vscode.Disposable {
    * Persists whether tag overview bodies should show source or rendered output.
    */
   public async setRenderMode(renderMode: RenderMode): Promise<void> {
-    await this.update({ renderMode });
+    await this.update({ renderMode, renderModeChosen: true });
   }
 
   /**
@@ -1082,7 +1082,12 @@ function normalizePreferences(
       ? dashboardTagColumns
       : 2,
     dashboardViewState: normalizeDashboardViewState(dashboardViewState),
-    renderMode: renderMode === 'html' ? 'html' : 'markdown',
+    // Every saved blob stored Source whether or not it was chosen, so
+    // Source is kept only once it has been chosen since Rendered became the
+    // default; everyone else is switched to Rendered once.
+    renderMode:
+      renderMode === 'markdown' && value?.renderModeChosen === true ? 'markdown' : 'html',
+    ...(value?.renderModeChosen === true ? { renderModeChosen: true as const } : {}),
     tagOverviewSortMode:
       tagOverviewSortMode === 'created' ||
       tagOverviewSortMode === 'updated' ||

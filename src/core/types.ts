@@ -351,6 +351,8 @@ export interface PersistedPreferences {
   dashboardTagColumns: DashboardColumnCount;
   dashboardViewState: DashboardViewState;
   renderMode: RenderMode;
+  /** Set once Format is chosen; a stored Source without it reads as Rendered. */
+  renderModeChosen?: true;
   tagOverviewSortMode: TagOverviewSortMode;
   tagOverviewLayout: TagOverviewLayout;
   /** How many notes, and how many tasks, a search page shows at a time. */

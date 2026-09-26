@@ -49,6 +49,25 @@ class DelayedFirstWriteMemento extends MemoryMemento {
 }
 
 suite('Preferences store', () => {
+  test('search pages start rendered, and Source sticks once it is chosen', async () => {
+    assert.strictEqual(new PreferencesStore(new MemoryMemento()).value.renderMode, 'html', 'a new install is rendered');
+
+    // Every saved blob held Source, chosen or not, so one not chosen since
+    // is switched once.
+    const given = new MemoryMemento();
+    await given.update('deckard.preferences', { renderMode: 'markdown' });
+    assert.strictEqual(new PreferencesStore(given).value.renderMode, 'html');
+
+    const chosen = new MemoryMemento();
+    await chosen.update('deckard.preferences', { renderMode: 'markdown', renderModeChosen: true });
+    assert.strictEqual(new PreferencesStore(chosen).value.renderMode, 'markdown');
+
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.setRenderMode('markdown');
+    assert.strictEqual(store.value.renderMode, 'markdown');
+    assert.strictEqual(store.value.renderModeChosen, true);
+  });
+
   test('a task keeps its place when Deckard rewrites its line', async () => {
     const store = new PreferencesStore(new MemoryMemento());
     await store.setTaskOrder(['task-a', 'task-b', 'task-c']);

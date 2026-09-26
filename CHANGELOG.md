@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **Search pages start rendered.** A result shows its Markdown drawn, not
+  its source. **Everyone is switched to Rendered once**, since a saved
+  preference held Source whether or not it was chosen; choosing Source in
+  the gear's Format row after this update sticks.
+
 - **The Dashboard sends a tag's name and count, not its entries.** At
   5,000 entries and 471 tags its snapshot drops from 1,674 KB to 75 KB, and
   Home no longer builds the hidden Tags tab on every redraw.
