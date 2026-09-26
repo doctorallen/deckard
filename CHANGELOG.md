@@ -186,6 +186,12 @@
 
 ### Changed
 
+- **Rename Tag says what will happen.** The box starts from the old tag
+  with its name selected, and says as you type whether the new name merges
+  into a tag that exists (and how many entries it has), is a new tag, or
+  changes nothing. A bare name with a `/` that would keep the old namespace,
+  such as `project/atlas` for `#proj/atlas`, is a warning.
+
 - **`[[…]]` in a search is a link.** A saved search, query block, or board
   search that held `[[Atlas]]` searched for the word *atlas*; it now finds
   the entries that link to Atlas. `text ~ "[[x]]"` still searches for the

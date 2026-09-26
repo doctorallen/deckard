@@ -21,7 +21,7 @@ import { resolveSourceUri } from './navigation';
 import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
-interface RenameTagOptions {
+export interface RenameTagOptions {
   entityNamespaceAliases?: EntityNamespaceAliases;
   personMarker?: string;
 }
@@ -78,7 +78,7 @@ export async function renameIndexedTag(
       vscode.window.activeTextEditor?.document.uri ??
         vscode.workspace.workspaceFolders?.[0]?.uri,
     );
-    const replacement = await chooseReplacementTag(sourceTag, parseOptions);
+    const replacement = await chooseReplacementTag(index, sourceTag, parseOptions);
     if (!replacement) {
       return undefined;
     }
@@ -522,23 +522,94 @@ async function chooseMergeTarget(
   return picked?.tag;
 }
 
+/** What the Rename box says of what is typed, and how firmly. */
+export interface RenameTargetDescription {
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
+const RENAME_TAG_ERROR =
+  'Write one tag, such as #project/new-name, or a new name in the same namespace.';
+
+/**
+ * Says, as a new name is typed, what renaming to it will do: nothing, a
+ * merge into a tag that exists, or a new tag. A bare name with a `/` in it
+ * keeps the old tag's namespace, which is rarely meant, so that one warns.
+ */
+export function describeRenameTarget(
+  index: Pick<WorkspaceIndex, 'tags'>,
+  sourceTag: TagReference,
+  value: string,
+  options: RenameTagOptions = {},
+): RenameTargetDescription {
+  const replacement = parseRenameTag(
+    value,
+    sourceTag,
+    options.entityNamespaceAliases,
+    options.personMarker,
+  );
+  if (!replacement) {
+    return { message: RENAME_TAG_ERROR, severity: 'error' };
+  }
+  const existingKey = resolveIndexedTagKey(index.tags, replacement.key);
+  if (existingKey === sourceTag.key || replacement.key === sourceTag.key) {
+    return {
+      message: `This is ${sourceTag.label} already; nothing will change.`,
+      severity: 'info',
+    };
+  }
+  const existing = existingKey ? index.tags.get(existingKey) : undefined;
+  if (existing) {
+    return {
+      message: `Merges into ${existing.label} (${formatEntries(existing.count)}).`,
+      severity: 'info',
+    };
+  }
+  const trimmed = value.trim();
+  const sourceName = sourceTag.label.slice(1);
+  const namespace =
+    sourceTag.key.startsWith('#') && sourceName.includes('/')
+      ? sourceName.slice(0, sourceName.indexOf('/'))
+      : '';
+  if (!hasTagMarker(trimmed, options.personMarker) && trimmed.includes('/') && namespace) {
+    return {
+      message: `Becomes a new tag ${replacement.label}. Start with # to leave out ${namespace}/.`,
+      severity: 'warning',
+    };
+  }
+  return { message: `Becomes a new tag ${replacement.label}.`, severity: 'info' };
+}
+
+/**
+ * The part of a tag's label a rename most likely changes, selected in the
+ * box: the name after its namespace, or after its marker.
+ */
+export function nameSelection(label: string): [number, number] {
+  const slash = label.indexOf('/');
+  return [slash >= 0 ? slash + 1 : 1, label.length];
+}
+
 async function chooseReplacementTag(
+  index: WorkspaceIndex,
   sourceTag: TagInfo,
   options: Required<RenameTagOptions>,
 ): Promise<TagReference | undefined> {
+  const severities = {
+    info: vscode.InputBoxValidationSeverity.Info,
+    warning: vscode.InputBoxValidationSeverity.Warning,
+  };
   return vscode.window.showInputBox({
-    prompt: `Rename ${sourceTag.label} to`,
-    placeHolder:
-      'Enter a complete tag or a new name in the same namespace. An existing tag merges into it.',
-    validateInput: (value) =>
-      parseRenameTag(
-        value,
-        sourceTag,
-        options.entityNamespaceAliases,
-        options.personMarker,
-      )
-        ? undefined
-        : 'Write one tag, such as #project/new-name, or a new name in the same namespace.',
+    title: `Rename ${sourceTag.label}`,
+    value: sourceTag.label,
+    valueSelection: nameSelection(sourceTag.label),
+    prompt: 'Type a new name to keep the namespace, or a whole tag starting with # or @.',
+    validateInput: (value) => {
+      const described = describeRenameTarget(index, sourceTag, value, options);
+      // An error stays a plain string, so the box refuses Enter.
+      return described.severity === 'error'
+        ? described.message
+        : { message: described.message, severity: severities[described.severity] };
+    },
   }).then((value) =>
     value === undefined
       ? undefined
