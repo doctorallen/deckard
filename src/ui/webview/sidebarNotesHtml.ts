@@ -203,7 +203,7 @@ ${getComponentScript()}
     const total = matches.notes + matches.tasks;
     const found = matches.notes + ' note' + (matches.notes === 1 ? '' : 's') + ' · ' + matches.tasks + ' task' + (matches.tasks === 1 ? '' : 's');
     const weightText = hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + '. ' : '';
-    return '<button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" title="' + escapeHtml(weightText + found + '. Open its page.') + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview (' + escapeHtml((hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + ', ' : '') + found) + ')">'
+    return '<button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" data-tip="' + escapeHtml(weightText + found + '. Open its page.') + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview (' + escapeHtml((hasWeight ? 'Related Notes weight ' + weight.toFixed(2) + ', ' : '') + found) + ')">'
       + (hasWeight ? renderWeightRail(getWeightLevel(weight), 'Segmented rail, Related Notes weight ' + weight.toFixed(2)) : '')
       + renderTagLabel(tag.label)
       + '<span class="refine-count">' + total + '</span></button>';
@@ -238,10 +238,10 @@ ${getComponentScript()}
       const strengthText = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
       // The row narrows the search by the tag; the icon beside it opens the
       // tag's own page in a new tab.
-      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' title="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
-        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" title="Open ' + escapeHtml(value.label) + ' in a new tab">${openInNewIcon}</button></div>';
+      return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' data-tip="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'
+        + '<button type="button" class="refine-open-tag" data-action="open-tag" data-tag-key="' + escapeHtml(value.clause) + '" aria-label="Open ' + escapeHtml(value.label) + ' in a new tab" data-tip="Open ' + escapeHtml(value.label) + ' in a new tab">${openInNewIcon}</button></div>';
     }
-    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" title="' + escapeHtml(help) + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
+    return '<button type="button" class="refine-choice" data-action="refine"' + narrow + ' aria-label="' + escapeHtml(facet.label + ': ' + value.label + ', ' + value.count) + '" data-tip="' + escapeHtml(help) + '"><span>' + escapeHtml(value.label) + '</span><span class="refine-count">' + value.count + '</span></button>';
   }
 
   /**
@@ -274,7 +274,7 @@ ${getComponentScript()}
 
   /** Shared shell for Related Notes and graph-connected node cards. */
   function renderNoteCard(className, attributes, titleHtml, trailingHtml, sourceHtml, bodyHtml) {
-    return '<article class="note ' + className + '" tabindex="0" title="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
+    return '<article class="note ' + className + '" tabindex="0" data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." ' + attributes + '><div class="note-header"><h2 class="note-title">' + titleHtml + '</h2>' + trailingHtml + '</div>' + sourceHtml + bodyHtml + '</article>';
   }
 
   function renderGraphConnections(graph) {
@@ -347,7 +347,7 @@ ${getComponentScript()}
     if (!links || (!links.linkedFromCount && !links.mentionCount)) return '';
     const row = function (entry, extra) {
       const path = entry.headingPath && entry.headingPath.length ? '<span class="link-path">' + escapeHtml(entry.headingPath.join(' › ')) + '</span>' : '';
-      return '<li class="link-row"><button type="button" class="link-open" data-action="open-link" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" title="Open this line. Cmd/Ctrl-click to open it beside the note."><span class="link-note">' + escapeHtml(entry.title) + '</span>' + path + '<span class="link-context">' + escapeHtml(entry.text) + '</span></button>' + (extra || '') + '</li>';
+      return '<li class="link-row"><button type="button" class="link-open" data-action="open-link" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-tip="Open this line. Cmd/Ctrl-click to open it beside the note."><span class="link-note">' + escapeHtml(entry.title) + '</span>' + path + '<span class="link-context">' + escapeHtml(entry.text) + '</span></button>' + (extra || '') + '</li>';
     };
     const more = function (shown, count) {
       return count > shown ? '<p class="links-more">' + (count - shown) + ' more not listed</p>' : '';
@@ -358,9 +358,9 @@ ${getComponentScript()}
       : '';
     const mentions = links.mentionCount
       ? '<details class="links-group" data-links-group="mentions"' + (linksOpen.mentions ? ' open' : '') + '><summary>Mentioned without a link <span class="links-count">' + links.mentionCount + '</span></summary>'
-        + '<button type="button" class="link-all" data-action="link-all-mentions" title="Make every mention a [[link]], as one change Undo Last Change takes back">Link all</button><ul class="link-list">'
+        + '<button type="button" class="link-all" data-action="link-all-mentions" data-tip="Make every mention a [[link]], as one change Undo Last Change takes back">Link all</button><ul class="link-list">'
         + links.mentions.map(function (entry) {
-          return row(entry, '<button type="button" class="link-one" data-action="link-mention" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-start-column="' + entry.startColumn + '" aria-label="Link this mention of ' + escapeHtml(entry.name) + ' in ' + escapeHtml(entry.title) + '" title="Make this mention a [[link]]">Link</button>');
+          return row(entry, '<button type="button" class="link-one" data-action="link-mention" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-start-column="' + entry.startColumn + '" aria-label="Link this mention of ' + escapeHtml(entry.name) + ' in ' + escapeHtml(entry.title) + '" data-tip="Make this mention a [[link]]">Link</button>');
         }).join('') + '</ul>' + more(links.mentions.length, links.mentionCount) + '</details>'
       : '';
     return '<section class="note-links" aria-label="Links to this note">' + linked + mentions + '</section>';
@@ -452,12 +452,12 @@ ${getComponentScript()}
         // breakdown for anyone who wants it.
         const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
         const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
-        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip popover is-tip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored.">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip popover is-tip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
         // Writing a link to a result is the reason to have found it, and
         // the sidebar sits beside the note being written in. The button
         // stays out of the way until the card is under the pointer.
-        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" title="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
+        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" data-tip="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
         return renderNoteCard(
           '',
           'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',

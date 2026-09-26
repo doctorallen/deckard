@@ -1039,6 +1039,181 @@ export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boole
 }
 
 /**
+ * The shared tip, on its own so a page that does not take the whole
+ * component script, the Notes Graph, can take this. Included by
+ * getComponentScript().
+ */
+export function getTipScript(): string {
+  return `
+  /**
+   * Tips: the longer explanation a control carries, shown on keyboard focus
+   * as well as under the pointer. A native title never shows on focus, so a
+   * keyboard reader never saw one; and it could not be dismissed or hovered.
+   *
+   *   data-tip           what the control does
+   *   data-tip-key       the key that does the same, drawn as <kbd>
+   *   data-tip-disabled  why it cannot act, used while aria-disabled="true"
+   *   data-tip-overflow  the whole of a tag or chip, shown only when cut short
+   *
+   * A keyboard focus shows the tip at once; the pointer after 400 ms, or at
+   * once within 300 ms of another tip closing, so a run along a toolbar does
+   * not wait at every button. Touch never shows one. Escape hides it, and is
+   * taken only while a tip shows, so it does not also close a menu behind it.
+   */
+  const TIP_SELECTOR = '[data-tip], [data-tip-overflow], [data-tip-disabled]';
+  let tipElement;
+  let tipTarget;
+  let tipShowTimer;
+  let tipHideTimer;
+  let tipLastHidden = 0;
+  let keyboardModality = false;
+
+  /** Whether a tag's or a chip's text is cut short where it is drawn. */
+  function isTruncated(element) {
+    return Array.prototype.some.call(element.querySelectorAll('.tag-namespace-text, .tag-value, .query-chip-label'), function (part) {
+      return part.scrollWidth > part.clientWidth;
+    });
+  }
+
+  /** What a tip says for an element now, or nothing. */
+  function tipTextFor(element) {
+    if (!element || !element.getAttribute) return '';
+    const disabled = element.getAttribute('aria-disabled') === 'true' ? element.getAttribute('data-tip-disabled') : null;
+    if (disabled) return disabled;
+    const tip = element.getAttribute('data-tip') || '';
+    const overflow = element.getAttribute('data-tip-overflow');
+    // A chip's own tip already names its whole term; a tag's tip is the tag.
+    if (overflow && isTruncated(element)) return tip || overflow;
+    return tip;
+  }
+
+  function accessibleNameOf(element) {
+    return String(element.getAttribute('aria-label') || element.textContent || '').trim();
+  }
+
+  function hideTip() {
+    clearTimeout(tipShowTimer);
+    clearTimeout(tipHideTimer);
+    tipShowTimer = undefined;
+    tipHideTimer = undefined;
+    if (!tipTarget) return;
+    const described = String(tipTarget.getAttribute('aria-describedby') || '').split(/\\s+/).filter(function (id) { return id && id !== 'deckard-tip'; });
+    if (described.length) tipTarget.setAttribute('aria-describedby', described.join(' '));
+    else tipTarget.removeAttribute('aria-describedby');
+    tipTarget = undefined;
+    if (tipElement) tipElement.hidden = true;
+    tipLastHidden = Date.now();
+  }
+
+  function showTip(element) {
+    clearTimeout(tipShowTimer);
+    clearTimeout(tipHideTimer);
+    tipShowTimer = undefined;
+    const text = tipTextFor(element);
+    if (!text || !document.contains(element)) {
+      if (tipTarget === element) hideTip();
+      return;
+    }
+    if (tipTarget && tipTarget !== element) hideTip();
+    if (!tipElement) {
+      tipElement = document.createElement('div');
+      tipElement.id = 'deckard-tip';
+      tipElement.className = 'popover is-tip';
+      tipElement.setAttribute('role', 'tooltip');
+      tipElement.hidden = true;
+      document.body.appendChild(tipElement);
+    }
+    const key = element.getAttribute('aria-disabled') === 'true' ? '' : element.getAttribute('data-tip-key');
+    tipElement.textContent = text;
+    if (key) {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = key;
+      tipElement.appendChild(document.createTextNode(' '));
+      tipElement.appendChild(kbd);
+    }
+    tipElement.hidden = false;
+    tipTarget = element;
+    // The tip is the name already on an icon button; said twice, it is noise.
+    if (text !== accessibleNameOf(element)) {
+      const described = String(element.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+      if (described.indexOf('deckard-tip') < 0) described.push('deckard-tip');
+      element.setAttribute('aria-describedby', described.join(' '));
+    }
+    const at = element.getBoundingClientRect();
+    const size = tipElement.getBoundingClientRect();
+    const width = window.innerWidth || document.documentElement.clientWidth || 0;
+    const height = window.innerHeight || document.documentElement.clientHeight || 0;
+    let top = at.bottom + 6;
+    if (height && top + size.height > height - 8) top = at.top - 6 - size.height;
+    const left = at.left + at.width / 2 - size.width / 2;
+    tipElement.style.left = Math.max(8, width ? Math.min(left, width - size.width - 8) : left) + 'px';
+    tipElement.style.top = Math.max(8, top) + 'px';
+  }
+
+  function tipOwner(target) {
+    const element = target && target.closest ? target.closest(TIP_SELECTOR) : null;
+    return element && tipTextFor(element) ? element : null;
+  }
+
+  document.addEventListener('keydown', function () { keyboardModality = true; }, true);
+  document.addEventListener('pointerdown', function () {
+    keyboardModality = false;
+    hideTip();
+  }, true);
+  document.addEventListener('mousedown', function () { keyboardModality = false; }, true);
+  // Escape puts the tip away first, and only the tip.
+  window.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape' || !tipTarget) return;
+    event.preventDefault();
+    event.stopPropagation();
+    hideTip();
+  }, true);
+  document.addEventListener('focusin', function (event) {
+    const target = event.target;
+    if (!keyboardModality || !target || !target.matches || !target.matches(TIP_SELECTOR)) return;
+    showTip(target);
+  });
+  document.addEventListener('focusout', function (event) {
+    if (tipTarget && event.target === tipTarget) hideTip();
+  });
+  document.addEventListener('pointerover', function (event) {
+    if (event.pointerType === 'touch') return;
+    if (tipElement && tipElement.contains(event.target)) {
+      clearTimeout(tipHideTimer);
+      return;
+    }
+    const owner = tipOwner(event.target);
+    if (!owner || owner === tipTarget) {
+      if (owner) clearTimeout(tipHideTimer);
+      return;
+    }
+    clearTimeout(tipShowTimer);
+    const warm = Boolean(tipTarget) || Date.now() - tipLastHidden < 300;
+    tipShowTimer = setTimeout(function () { showTip(owner); }, warm ? 0 : 400);
+  });
+  document.addEventListener('pointerout', function (event) {
+    const next = event.relatedTarget;
+    const fromTip = tipElement && tipElement.contains(event.target);
+    const owner = fromTip ? tipTarget : tipOwner(event.target);
+    if (!owner || (next && (owner.contains(next) || (tipElement && tipElement.contains(next))))) return;
+    if (owner !== tipTarget) {
+      clearTimeout(tipShowTimer);
+      return;
+    }
+    clearTimeout(tipHideTimer);
+    tipHideTimer = setTimeout(hideTip, 100);
+  });
+  window.addEventListener('scroll', function () { if (tipTarget) hideTip(); }, true);
+  // A redraw that took the control away takes its tip with it.
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver(function () {
+      if (tipTarget && !document.contains(tipTarget)) hideTip();
+    }).observe(document.body || document.documentElement, { childList: true, subtree: true });
+  }
+`;
+}
+
+/**
  * Helpers every page script needs.
  *
  * This is inserted inside each page's own `<script>`, so the functions are
@@ -1469,166 +1644,7 @@ export function getComponentScript(): string {
   }
 
 
-  /**
-   * Tips: the longer explanation a control carries, shown on keyboard focus
-   * as well as under the pointer. A native title never shows on focus, so a
-   * keyboard reader never saw one; and it could not be dismissed or hovered.
-   *
-   *   data-tip           what the control does
-   *   data-tip-key       the key that does the same, drawn as <kbd>
-   *   data-tip-disabled  why it cannot act, used while aria-disabled="true"
-   *   data-tip-overflow  the whole of a tag or chip, shown only when cut short
-   *
-   * A keyboard focus shows the tip at once; the pointer after 400 ms, or at
-   * once within 300 ms of another tip closing, so a run along a toolbar does
-   * not wait at every button. Touch never shows one. Escape hides it, and is
-   * taken only while a tip shows, so it does not also close a menu behind it.
-   */
-  const TIP_SELECTOR = '[data-tip], [data-tip-overflow], [data-tip-disabled]';
-  let tipElement;
-  let tipTarget;
-  let tipShowTimer;
-  let tipHideTimer;
-  let tipLastHidden = 0;
-  let keyboardModality = false;
-
-  /** Whether a tag's or a chip's text is cut short where it is drawn. */
-  function isTruncated(element) {
-    return Array.prototype.some.call(element.querySelectorAll('.tag-namespace-text, .tag-value, .query-chip-label'), function (part) {
-      return part.scrollWidth > part.clientWidth;
-    });
-  }
-
-  /** What a tip says for an element now, or nothing. */
-  function tipTextFor(element) {
-    if (!element || !element.getAttribute) return '';
-    const disabled = element.getAttribute('aria-disabled') === 'true' ? element.getAttribute('data-tip-disabled') : null;
-    if (disabled) return disabled;
-    const tip = element.getAttribute('data-tip') || '';
-    const overflow = element.getAttribute('data-tip-overflow');
-    // A chip's own tip already names its whole term; a tag's tip is the tag.
-    if (overflow && isTruncated(element)) return tip || overflow;
-    return tip;
-  }
-
-  function accessibleNameOf(element) {
-    return String(element.getAttribute('aria-label') || element.textContent || '').trim();
-  }
-
-  function hideTip() {
-    clearTimeout(tipShowTimer);
-    clearTimeout(tipHideTimer);
-    tipShowTimer = undefined;
-    tipHideTimer = undefined;
-    if (!tipTarget) return;
-    const described = String(tipTarget.getAttribute('aria-describedby') || '').split(/\\s+/).filter(function (id) { return id && id !== 'deckard-tip'; });
-    if (described.length) tipTarget.setAttribute('aria-describedby', described.join(' '));
-    else tipTarget.removeAttribute('aria-describedby');
-    tipTarget = undefined;
-    if (tipElement) tipElement.hidden = true;
-    tipLastHidden = Date.now();
-  }
-
-  function showTip(element) {
-    clearTimeout(tipShowTimer);
-    clearTimeout(tipHideTimer);
-    tipShowTimer = undefined;
-    const text = tipTextFor(element);
-    if (!text || !document.contains(element)) {
-      if (tipTarget === element) hideTip();
-      return;
-    }
-    if (tipTarget && tipTarget !== element) hideTip();
-    if (!tipElement) {
-      tipElement = document.createElement('div');
-      tipElement.id = 'deckard-tip';
-      tipElement.className = 'popover is-tip';
-      tipElement.setAttribute('role', 'tooltip');
-      tipElement.hidden = true;
-      document.body.appendChild(tipElement);
-    }
-    const key = element.getAttribute('aria-disabled') === 'true' ? '' : element.getAttribute('data-tip-key');
-    tipElement.innerHTML = escapeHtml(text) + (key ? ' <kbd>' + escapeHtml(key) + '</kbd>' : '');
-    tipElement.hidden = false;
-    tipTarget = element;
-    // The tip is the name already on an icon button; said twice, it is noise.
-    if (text !== accessibleNameOf(element)) {
-      const described = String(element.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
-      if (described.indexOf('deckard-tip') < 0) described.push('deckard-tip');
-      element.setAttribute('aria-describedby', described.join(' '));
-    }
-    const at = element.getBoundingClientRect();
-    const size = tipElement.getBoundingClientRect();
-    const width = window.innerWidth || document.documentElement.clientWidth || 0;
-    const height = window.innerHeight || document.documentElement.clientHeight || 0;
-    let top = at.bottom + 6;
-    if (height && top + size.height > height - 8) top = at.top - 6 - size.height;
-    const left = at.left + at.width / 2 - size.width / 2;
-    tipElement.style.left = Math.max(8, width ? Math.min(left, width - size.width - 8) : left) + 'px';
-    tipElement.style.top = Math.max(8, top) + 'px';
-  }
-
-  function tipOwner(target) {
-    const element = target && target.closest ? target.closest(TIP_SELECTOR) : null;
-    return element && tipTextFor(element) ? element : null;
-  }
-
-  document.addEventListener('keydown', function () { keyboardModality = true; }, true);
-  document.addEventListener('pointerdown', function () {
-    keyboardModality = false;
-    hideTip();
-  }, true);
-  document.addEventListener('mousedown', function () { keyboardModality = false; }, true);
-  // Escape puts the tip away first, and only the tip.
-  window.addEventListener('keydown', function (event) {
-    if (event.key !== 'Escape' || !tipTarget) return;
-    event.preventDefault();
-    event.stopPropagation();
-    hideTip();
-  }, true);
-  document.addEventListener('focusin', function (event) {
-    const target = event.target;
-    if (!keyboardModality || !target || !target.matches || !target.matches(TIP_SELECTOR)) return;
-    showTip(target);
-  });
-  document.addEventListener('focusout', function (event) {
-    if (tipTarget && event.target === tipTarget) hideTip();
-  });
-  document.addEventListener('pointerover', function (event) {
-    if (event.pointerType === 'touch') return;
-    if (tipElement && tipElement.contains(event.target)) {
-      clearTimeout(tipHideTimer);
-      return;
-    }
-    const owner = tipOwner(event.target);
-    if (!owner || owner === tipTarget) {
-      if (owner) clearTimeout(tipHideTimer);
-      return;
-    }
-    clearTimeout(tipShowTimer);
-    const warm = Boolean(tipTarget) || Date.now() - tipLastHidden < 300;
-    tipShowTimer = setTimeout(function () { showTip(owner); }, warm ? 0 : 400);
-  });
-  document.addEventListener('pointerout', function (event) {
-    const next = event.relatedTarget;
-    const fromTip = tipElement && tipElement.contains(event.target);
-    const owner = fromTip ? tipTarget : tipOwner(event.target);
-    if (!owner || (next && (owner.contains(next) || (tipElement && tipElement.contains(next))))) return;
-    if (owner !== tipTarget) {
-      clearTimeout(tipShowTimer);
-      return;
-    }
-    clearTimeout(tipHideTimer);
-    tipHideTimer = setTimeout(hideTip, 100);
-  });
-  window.addEventListener('scroll', function () { if (tipTarget) hideTip(); }, true);
-  // A redraw that took the control away takes its tip with it.
-  if (typeof MutationObserver === 'function') {
-    new MutationObserver(function () {
-      if (tipTarget && !document.contains(tipTarget)) hideTip();
-    }).observe(document.body || document.documentElement, { childList: true, subtree: true });
-  }
-
+${getTipScript()}
   /**
    * An icon-only button: its label is its accessible name and its tip, and
    * it never carries title. options: { action, label, icon, tip, key,

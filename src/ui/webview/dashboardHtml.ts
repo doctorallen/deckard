@@ -624,7 +624,7 @@ ${getQueryEditorScript()}
     if (widget.doneToday) parts.push('<span>' + widget.doneToday + ' done today</span>');
     if (widget.needsNewDate) {
       const label = widget.needsNewDate + (widget.needsNewDate === 1 ? ' needs' : ' need') + ' a new date';
-      parts.push('<button type="button" class="text-button" data-action="open-search" data-query="' + escapeHtml(widget.needsNewDateQuery || 'is:needs-date') + '" title="Search the tasks more than a month past their due date">' + escapeHtml(label) + '</button>');
+      parts.push('<button type="button" class="text-button" data-action="open-search" data-query="' + escapeHtml(widget.needsNewDateQuery || 'is:needs-date') + '" data-tip="Search the tasks more than a month past their due date">' + escapeHtml(label) + '</button>');
     }
     return parts.length ? '<p class="home-widget-footer">' + parts.join(' · ') + '</p>' : '';
   }
@@ -641,7 +641,7 @@ ${getQueryEditorScript()}
   }
 
   function renderRowAction(action, attributes, label, title) {
-    return '<button type="button" class="home-row-action" data-action="' + action + '" ' + attributes + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
+    return '<button type="button" class="home-row-action" data-action="' + action + '" ' + attributes + ' data-tip="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
   }
 
   /**
@@ -675,7 +675,7 @@ ${getQueryEditorScript()}
       ? '<div class="home-list">' + pairs.map(function (pair) {
         const query = pair.tags[0].key + ' AND ' + pair.tags[1].key;
         const label = '<span class="home-tag-pair">' + renderTagLabel(pair.tags[0].label) + '<span class="home-tag-pair-join">+</span>' + renderTagLabel(pair.tags[1].label) + '</span>';
-        return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
+        return '<button type="button" class="row saved-filter-row home-row" data-action="open-search" data-query="' + escapeHtml(query) + '" data-tip="' + escapeHtml(pair.detail + '. Search for both.') + '"><span class="home-row-label">' + label + '</span><span class="home-row-detail">' + pair.count + '× · ' + Math.round(pair.overlap * 100) + '%</span></button>';
       }).join('') + '</div>'
       : '<p class="home-widget-empty">Two tags carried by the same note or task show up here.</p>';
   }
@@ -846,7 +846,7 @@ ${getQueryEditorScript()}
       groups.unshift('<div class="view-options-group is-stacked"><span>About</span><p class="home-widget-about">' + escapeHtml(description) + '</p></div>');
     }
     if (!groups.length) return '';
-    return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" title="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu popover is-dropdown">' + groups.join('') + '</div></details>';
+    return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" data-tip="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu popover is-dropdown">' + groups.join('') + '</div></details>';
   }
 
   function renderWidget(widget) {
@@ -862,9 +862,9 @@ ${getQueryEditorScript()}
     const actions = editingHome
       ? renderViewOptionChoices('set-widget-width', [['half', '½', 'Half width'], ['full', 'Full', 'Full width']], widget.width, 'Width', 'data-widget-id="' + escapeHtml(widget.id) + '"')
         + renderWidgetOptions(widget)
-        + '<button type="button" class="home-remove" data-action="remove-widget" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Remove ' + escapeHtml(widget.title) + '" title="Remove widget">&#215;</button>'
+        + '<button type="button" class="home-remove" data-action="remove-widget" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Remove ' + escapeHtml(widget.title) + '" data-tip="Remove widget">&#215;</button>'
       : renderWidgetOpen(widget);
-    return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" title="Drag to move, or press the menu key (Shift+F10) to move it first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
+    return '<article class="home-widget view-panel' + (widget.width === 'full' ? ' is-full' : '') + (editingHome ? ' is-editing is-draggable' : '') + '"' + (editingHome ? ' tabindex="0" data-tip="Drag to move, or press the menu key (Shift+F10) to move it first or last"' : '') + ' data-widget-id="' + escapeHtml(widget.id) + '" aria-label="' + escapeHtml(widget.title) + '">'
       + '<div class="home-widget-header"><h2 class="home-widget-title">' + (editingHome ? '<span class="home-widget-grip" aria-hidden="true">&#10303;</span>' : '') + escapeHtml(widget.title) + count + '</h2><div class="home-widget-actions">' + actions + '</div></div>'
       + renderWidgetBody(widget)
       + renderWidgetPaging(widget)
@@ -886,7 +886,7 @@ ${getQueryEditorScript()}
     const step = function (page, label, side, enabled) {
       return '<button type="button" data-action="set-widget-page" data-page="' + page + '" ' + attribute
         + (enabled ? '' : ' disabled')
-        + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" title="' + label + ' page">'
+        + ' aria-label="' + label + ' page of ' + escapeHtml(widget.title) + '" data-tip="' + label + ' page">'
         + (side === 'left' ? '${chevronLeftIcon}' : '${chevronRightIcon}') + '</button>';
     };
     // The sizes on offer, and whatever this widget is already set to, so a
@@ -929,7 +929,7 @@ ${getQueryEditorScript()}
     const bar = editingHome
       ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
         ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset widgets</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
-        : '<button type="button" data-action="reset-widgets" title="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
+        : '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
       // few times and skipped after. Customize stays in the gear throughout.
@@ -937,7 +937,7 @@ ${getQueryEditorScript()}
       // one means "Home is being edited".
       : (state.homeArranged || homeHintDismissed)
         ? ''
-        : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" title="Stop saying so">Dismiss</button></span></div>';
+        : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" data-tip="Stop saying so">Dismiss</button></span></div>';
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
       : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize</button></div>';

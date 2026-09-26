@@ -83,7 +83,7 @@ suite('Webview contracts', () => {
       'zoom-fit',
       'reset-graph-settings',
     ].forEach((id) => {
-      assert.strictEqual(new RegExp(`id="${id}"[^>]*title="[^"]+"`).test(html), true);
+      assert.strictEqual(new RegExp(`id="${id}"[^>]*data-tip="[^"]+"`).test(html), true);
     });
         assert.strictEqual(
       html.indexOf('id="reset-graph-settings"') >

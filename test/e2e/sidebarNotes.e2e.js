@@ -195,7 +195,7 @@ test('the note\'s tags are rows with a rail and a count', async () => {
     assert.strictEqual(rows[0].getAttribute('data-action'), 'open-tag');
     assert.ok(rows[0].querySelector('.tag-weight-rail'), 'with its weight');
     assert.strictEqual(rows[0].querySelector('.refine-count').textContent, '6', 'and the six notes carrying it');
-    assert.ok(rows[0].getAttribute('title').includes('6 notes · 0 tasks'));
+    assert.ok(rows[0].getAttribute('data-tip').includes('6 notes · 0 tasks'));
   } finally {
     close();
   }

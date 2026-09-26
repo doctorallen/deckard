@@ -105,7 +105,7 @@ ${getComponentScript()}
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = day.date === tabStopDate();
-    return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + tooltip + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
+    return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" data-tip="' + tooltip + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
   }
 
   /**
@@ -116,7 +116,7 @@ ${getComponentScript()}
   function renderWeek(week) {
     const days = week.days[0].date + ' to ' + week.days[6].date;
     const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
-    return '<div class="calendar-row" role="row"><span class="calendar-cell" role="rowheader"><button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
+    return '<div class="calendar-row" role="row"><span class="calendar-cell" role="rowheader"><button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" data-tip="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
       + '${calendarIcon}'
       + '</button></span>' + week.days.map(renderDay).join('') + '</div>';
   }
@@ -151,9 +151,9 @@ ${getComponentScript()}
     if (!state) return;
     const monthLabel = state.title + (state.notePath ? ', monthly note' : '');
     const header = '<div class="calendar-header">' +
-      '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.previousMonth) + '" aria-label="Previous month" title="Previous month">&lsaquo;</button>' +
-      '<button type="button" class="calendar-title" data-action="open-month" title="' + escapeHtml(monthLabel) + '" aria-label="' + escapeHtml(monthLabel) + '">' + escapeHtml(state.title) + '</button>' +
-      '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.nextMonth) + '" aria-label="Next month" title="Next month">&rsaquo;</button>' +
+      '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.previousMonth) + '" aria-label="Previous month" data-tip="Previous month">&lsaquo;</button>' +
+      '<button type="button" class="calendar-title" data-action="open-month" data-tip="' + escapeHtml(monthLabel) + '" aria-label="' + escapeHtml(monthLabel) + '">' + escapeHtml(state.title) + '</button>' +
+      '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.nextMonth) + '" aria-label="Next month" data-tip="Next month">&rsaquo;</button>' +
       (state.month === state.currentMonth ? '' : '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.currentMonth) + '">Today</button>') +
       '</div>';
     // Rows and cells as a grid is read: a header row of weekday names, then a

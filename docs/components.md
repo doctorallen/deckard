@@ -548,6 +548,7 @@ today, and how many tasks need a new date as a `.text-button` that opens
 | Function | Purpose |
 | --- | --- |
 | `createNonce()` | One nonce per page, gating its inline style and script. |
+| `getTipScript()` | The tip alone, for a page that does not take `getComponentScript()` (the Notes Graph). The component script includes it. |
 | `iconButtonHtml(options)` | `renderIconButton` for static HTML the host builds, such as the Notes Graph's zoom buttons. |
 | `getContentSecurityPolicy(cspSource, nonce, options)` | The shared CSP. `{ images: true }` adds `img-src`, `{ fonts: true }` adds `font-src`. |
 
@@ -585,8 +586,11 @@ Buttons, menu items, and command titles follow one table, and
   message; the host decides and sends new state back. Pages re-render from
   that state rather than editing the DOM in place.
 - **A visible label is the accessible name.** Do not add an `aria-label` that
-  duplicates or contradicts button text; use `title` for the longer
-  explanation.
+  duplicates or contradicts button text; use `data-tip` for the longer
+  explanation. A control never carries `title`, which no keyboard sees;
+  `src/test/components-primitives.test.ts` fails one that does. A
+  non-focusable span, such as the priority badge, and a select's `<option>`
+  may keep one.
 - **Backslashes in `getComponentScript()` are written doubled.** The string is
   interpolated into a template literal, so `\\s` is what reaches the browser
   as `\s`. This is not theoretical — it has silently broken regexes before,

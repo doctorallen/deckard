@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import {
   createNonce,
   getBaseCss,
+  getTipScript,
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
@@ -104,46 +105,46 @@ ${getPageTailCss()}
   <details class="control-group" open>
     <summary>Focus</summary>
     <div class="control-body">
-      <label class="toggle-row" title="Draw only the note open in the editor and what it is connected to."><input type="checkbox" id="local-graph" title="Draw only the note open in the editor and what it is connected to."> Around this note</label>
-      <div class="control-row"><label for="local-depth" title="How many connections out from the note the graph reaches.">Hops out</label><div class="slider-line"><input type="range" id="local-depth" min="1" max="3" step="1" value="1" title="How many connections out from the note the graph reaches."><output id="local-depth-out">1</output></div></div>
-      <label class="toggle-row" title="Daily, weekly, and monthly notes link to everything written that day. Passed through, they still count as a hop but are not drawn, and what they lead to is joined to where the path began."><input type="checkbox" id="skip-periodic" checked title="Pass through daily, weekly, and monthly notes"> Pass through daily notes</label>
+      <label class="toggle-row"><input type="checkbox" id="local-graph" data-tip="Draw only the note open in the editor and what it is connected to."> Around this note</label>
+      <div class="control-row"><label for="local-depth">Hops out</label><div class="slider-line"><input type="range" id="local-depth" data-tip="How many connections out from the note the graph reaches." min="1" max="3" step="1" value="1"><output id="local-depth-out">1</output></div></div>
+      <label class="toggle-row"><input type="checkbox" id="skip-periodic" checked data-tip="Pass through daily, weekly, and monthly notes"> Pass through daily notes</label>
       <p class="focus-note" id="focus-note">Open a note to draw the graph around it.</p>
     </div>
   </details>
   <details class="control-group" open>
     <summary>Filters</summary>
     <div class="control-body">
-      <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" title="Filter note, task, and tag titles and file paths.">
-      <label class="toggle-row" title="Show or hide note nodes and their visible links."><input type="checkbox" id="show-notes" checked title="Show or hide note nodes and their visible links."> Show notes</label>
-      <label class="toggle-row" title="Show or hide task nodes and their visible links."><input type="checkbox" id="show-tasks" checked title="Show or hide task nodes and their visible links."> Show tasks</label>
-      <label class="toggle-row" title="Show tag nodes and tag links; hidden tags still guide clustering."><input type="checkbox" id="show-tags" title="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
-      <label class="toggle-row" title="Show nodes with no currently visible connections."><input type="checkbox" id="show-orphans" checked title="Show nodes with no currently visible connections."> Show orphans</label>
-      <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" title="Narrow the tag checklist without changing the graph.">
+      <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" data-tip="Filter note, task, and tag titles and file paths.">
+      <label class="toggle-row"><input type="checkbox" id="show-notes" checked data-tip="Show or hide note nodes and their visible links."> Show notes</label>
+      <label class="toggle-row"><input type="checkbox" id="show-tasks" checked data-tip="Show or hide task nodes and their visible links."> Show tasks</label>
+      <label class="toggle-row"><input type="checkbox" id="show-tags" data-tip="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
+      <label class="toggle-row"><input type="checkbox" id="show-orphans" checked data-tip="Show nodes with no currently visible connections."> Show orphans</label>
+      <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" data-tip="Narrow the tag checklist without changing the graph.">
       <div class="tag-list" id="tag-list" role="group" aria-label="Tag filters"></div>
-      <button class="clear-tags" id="clear-tags" type="button" title="Remove all selected tag filters.">Clear tag filters</button>
+      <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove all selected tag filters.">Clear tag filters</button>
     </div>
   </details>
   <details class="control-group">
     <summary>Display</summary>
     <div class="control-body">
-      <div class="control-row"><label for="node-size" title="Scale node circles; larger nodes make highly connected items easier to spot.">Node size</label><div class="slider-line"><input type="range" id="node-size" min="0.5" max="3" step="0.1" value="1" title="Scale node circles; larger nodes make highly connected items easier to spot."><output id="node-size-out">1.0</output></div></div>
-      <div class="control-row"><label for="link-thickness" title="Scale the width of visible edges.">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" min="0.5" max="3" step="0.1" value="1" title="Scale the width of visible edges."><output id="link-thickness-out">1.0</output></div></div>
-      <div class="control-row"><label for="link-density" title="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections.">Connection density</label><div class="slider-line"><input type="range" id="link-density" min="0.15" max="1" step="0.05" value="0.3" title="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections."><output id="link-density-out">0.30</output></div></div>
-      <div class="control-row"><label for="tag-specificity" title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage.">Tag prevalence bias</label><div class="slider-line"><input type="range" id="tag-specificity" min="0" max="1" step="0.05" value="0.9" title="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage."><output id="tag-specificity-out">0.90</output></div></div>
-      <div class="control-row"><label for="bridge-strength" title="Control how strongly secondary tags and tag associations bridge different communities.">Secondary bridge strength</label><div class="slider-line"><input type="range" id="bridge-strength" min="0" max="1" step="0.05" value="0.15" title="Control how strongly secondary tags and tag associations bridge different communities."><output id="bridge-strength-out">0.15</output></div></div>
-      <label class="toggle-row" title="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."><input type="checkbox" id="show-all-links" title="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."> Show all links (comparison)</label>
-      <div class="control-row"><label for="label-threshold" title="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer.">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" min="0.5" max="4" step="0.1" value="1.4" title="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer."><output id="label-threshold-out">1.4</output></div></div>
+      <div class="control-row"><label for="node-size">Node size</label><div class="slider-line"><input type="range" id="node-size" data-tip="Scale node circles; larger nodes make highly connected items easier to spot." min="0.5" max="3" step="0.1" value="1"><output id="node-size-out">1.0</output></div></div>
+      <div class="control-row"><label for="link-thickness">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" data-tip="Scale the width of visible edges." min="0.5" max="3" step="0.1" value="1"><output id="link-thickness-out">1.0</output></div></div>
+      <div class="control-row"><label for="link-density">Connection density</label><div class="slider-line"><input type="range" id="link-density" data-tip="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections." min="0.15" max="1" step="0.05" value="0.3"><output id="link-density-out">0.30</output></div></div>
+      <div class="control-row"><label for="tag-specificity">Tag prevalence bias</label><div class="slider-line"><input type="range" id="tag-specificity" data-tip="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage." min="0" max="1" step="0.05" value="0.9"><output id="tag-specificity-out">0.90</output></div></div>
+      <div class="control-row"><label for="bridge-strength">Secondary bridge strength</label><div class="slider-line"><input type="range" id="bridge-strength" data-tip="Control how strongly secondary tags and tag associations bridge different communities." min="0" max="1" step="0.05" value="0.15"><output id="bridge-strength-out">0.15</output></div></div>
+      <label class="toggle-row"><input type="checkbox" id="show-all-links" data-tip="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."> Show all links (comparison)</label>
+      <div class="control-row"><label for="label-threshold">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" data-tip="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer." min="0.5" max="4" step="0.1" value="1.4"><output id="label-threshold-out">1.4</output></div></div>
     </div>
   </details>
   <details class="control-group">
     <summary>Forces</summary>
     <div class="control-body">
-      <div class="control-row"><label for="center-strength" title="Pull community anchors gently toward the center of the viewport.">Cluster centering</label><div class="slider-line"><input type="range" id="center-strength" min="0" max="1" step="0.05" value="0.4" title="Pull community anchors gently toward the center of the viewport."><output id="center-strength-out">0.40</output></div></div>
-      <div class="control-row"><label for="cluster-cohesion" title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor.">Cluster cohesion</label><div class="slider-line"><input type="range" id="cluster-cohesion" min="0.5" max="3" step="0.1" value="1.5" title="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."><output id="cluster-cohesion-out">1.5</output></div></div>
-      <div class="control-row"><label for="community-spacing" title="Increase or reduce the distance between detected communities; changing it recomputes the layout framing.">Community spacing</label><div class="slider-line"><input type="range" id="community-spacing" min="0.6" max="2.5" step="0.1" value="1.2" title="Increase or reduce the distance between detected communities; changing it recomputes the layout framing."><output id="community-spacing-out">1.2</output></div></div>
-      <div class="control-row"><label for="repel-strength" title="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart.">Repel strength</label><div class="slider-line"><input type="range" id="repel-strength" min="50" max="2000" step="25" value="220" title="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart."><output id="repel-strength-out">220</output></div></div>
-      <div class="control-row"><label for="link-strength" title="Increase or reduce the spring force along visible links.">Link strength</label><div class="slider-line"><input type="range" id="link-strength" min="0" max="2" step="0.05" value="1" title="Increase or reduce the spring force along visible links."><output id="link-strength-out">1.00</output></div></div>
-      <div class="control-row"><label for="link-distance" title="Set the target length of visible links; larger values spread connected nodes farther apart.">Link distance</label><div class="slider-line"><input type="range" id="link-distance" min="10" max="200" step="5" value="32" title="Set the target length of visible links; larger values spread connected nodes farther apart."><output id="link-distance-out">32</output></div></div>
+      <div class="control-row"><label for="center-strength">Cluster centering</label><div class="slider-line"><input type="range" id="center-strength" data-tip="Pull community anchors gently toward the center of the viewport." min="0" max="1" step="0.05" value="0.4"><output id="center-strength-out">0.40</output></div></div>
+      <div class="control-row"><label for="cluster-cohesion">Cluster cohesion</label><div class="slider-line"><input type="range" id="cluster-cohesion" data-tip="Strengthen or weaken the pull from notes and tasks toward their detected community anchor." min="0.5" max="3" step="0.1" value="1.5"><output id="cluster-cohesion-out">1.5</output></div></div>
+      <div class="control-row"><label for="community-spacing">Community spacing</label><div class="slider-line"><input type="range" id="community-spacing" data-tip="Increase or reduce the distance between detected communities; changing it recomputes the layout framing." min="0.6" max="2.5" step="0.1" value="1.2"><output id="community-spacing-out">1.2</output></div></div>
+      <div class="control-row"><label for="repel-strength">Repel strength</label><div class="slider-line"><input type="range" id="repel-strength" data-tip="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart." min="50" max="2000" step="25" value="220"><output id="repel-strength-out">220</output></div></div>
+      <div class="control-row"><label for="link-strength">Link strength</label><div class="slider-line"><input type="range" id="link-strength" data-tip="Increase or reduce the spring force along visible links." min="0" max="2" step="0.05" value="1"><output id="link-strength-out">1.00</output></div></div>
+      <div class="control-row"><label for="link-distance">Link distance</label><div class="slider-line"><input type="range" id="link-distance" data-tip="Set the target length of visible links; larger values spread connected nodes farther apart." min="10" max="200" step="5" value="32"><output id="link-distance-out">32</output></div></div>
     </div>
   </details>
   <details class="control-group">
@@ -157,12 +158,12 @@ ${getPageTailCss()}
 </div>
 <div class="graph-zoom-controls">
   <div class="zoom-controls" role="group" aria-label="Zoom controls">
-    <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out the graph.">${zoomOutIcon}</button>
+    <button type="button" id="zoom-out" aria-label="Zoom out" data-tip="Zoom out the graph.">${zoomOutIcon}</button>
     <span class="zoom-readout" id="zoom-readout">100%</span>
-    <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">${zoomInIcon}</button>
-    <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit graph</button>
+    <button type="button" id="zoom-in" aria-label="Zoom in" data-tip="Zoom in the graph.">${zoomInIcon}</button>
+    <button type="button" id="zoom-fit" aria-label="Fit graph to view" data-tip="Fit the full graph in the current view.">Fit graph</button>
   </div>
-  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph. Undo is offered for a few seconds.">Reset graph</button>
+  <button class="reset-graph-settings" id="reset-graph-settings" type="button" data-tip="Restore all graph controls and filters, clear node momentum, and reframe the graph. Undo is offered for a few seconds.">Reset graph</button>
   <span class="graph-reset-undo" id="graph-reset-undo" role="status" aria-live="polite"></span>
 </div>
 <div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
@@ -171,6 +172,7 @@ ${getPageTailCss()}
 (function () {
   'use strict';
   var vscode = acquireVsCodeApi();
+${getTipScript()}
   var canvas = document.getElementById('graph');
   var ctx = canvas.getContext('2d');
   var tooltip = document.getElementById('tooltip');

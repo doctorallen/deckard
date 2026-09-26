@@ -68,7 +68,7 @@ suite('Notes Graph behavior', () => {
   test('says what each control does', () => {
     const page = open();
 
-    const title = (id: string) => String(page.find(`#${id}`).getAttribute('title'));
+    const title = (id: string) => String(page.find(`#${id}`).getAttribute('data-tip'));
     assert.match(title('search'), /Filter note, task, and tag titles/);
     assert.match(title('show-tags'), /hidden tags still guide clustering/);
     assert.match(title('link-density'), /strongest links remain/);

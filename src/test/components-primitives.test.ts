@@ -103,6 +103,24 @@ suite('Component primitives', () => {
       assert.ok(String(apply.getAttribute('aria-describedby')).includes('deckard-tip'));
     });
 
+    test('the Notes Graph, which takes only the tip script, shows its tips too', () => {
+      page = openWebviewPage(getNotesGraphHtml(webview));
+      keyFocus(page, '#link-distance');
+      assert.match(String(tip(page)?.textContent), /length of visible links/);
+    });
+
+    test('no control on any page carries a native title', () => {
+      // A title never shows on keyboard focus; a control says it with
+      // data-tip. Non-focusable spans and a select's options may keep one.
+      const control = /<(button|summary|input|select|textarea|a)\b[^<>]*\btitle=/;
+      const focusable = /<[a-z]+\b(?=[^<>]*\btabindex=)[^<>]*\btitle=/;
+      for (const [name, render] of pages) {
+        const html = render();
+        const found = html.match(control) ?? html.match(focusable);
+        assert.strictEqual(found, null, `${name}: ${found?.[0].slice(0, 120)}`);
+      }
+    });
+
     test('the pointer waits 400 ms, and touch shows nothing', async () => {
       const search = openSearch();
       const apply = search.find('[data-action="apply-query"]');

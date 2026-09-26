@@ -267,7 +267,7 @@ suite('Related Notes behavior', () => {
     // search for it finds is in its label.
     assert.ok(page.findAll('.tag-weight-rail-segment').length > 0);
     assert.match(
-      String(page.find('.active-tag-list [data-action="open-tag"]').getAttribute('title')),
+      String(page.find('.active-tag-list [data-action="open-tag"]').getAttribute('data-tip')),
       /weight 1\.00\. 2 notes · 1 task/,
     );
   });
