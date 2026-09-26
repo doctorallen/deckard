@@ -11,6 +11,13 @@
 
 ### Added
 
+- **Try next.** Home's first widget suggests one thing, when your notes are
+  ready for it: a weekly review after five daily notes last week, merging
+  two tags that look alike, the Task board once there are ten open tasks,
+  or pinning a note you open often. **Not now** puts it off for a week, and
+  **Do not suggest this** for good; with nothing to suggest it takes no room.
+  Homes already arranged find it in **Add widget**.
+
 - **A first index says what it read.** The first scan of a workspace
   finished in silence; it now says, once, *Deckard read 412 notes: 1,204
   open tasks (17 overdue) and 185 tags.*, with **Open Dashboard** and **Get

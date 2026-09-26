@@ -634,6 +634,11 @@ Above the grid, one `.home-hint-bar` line at a time: after a feature update,
 (`.whats-new-bar`, from the snapshot's `whatsNew`); otherwise, until Home is
 arranged or the line is put away, *Home is yours to arrange.*
 
+The `tryNext` widget draws one card (`.try-next-text` over `.try-next-actions`)
+or, outside Customize, nothing at all: never an empty box. The host chooses
+the suggestion (`chooseTryNext()` in `state/tryNext.ts`) and runs its command
+from the suggestion it made, never from what the page posts.
+
 The header's `.metrics` are three `renderMetric` buttons (`.metric-open`) —
 Overdue, Due today, and Open — each opening the search it counts, scoped by
 `deckard.agenda.query`; Stats draws its figures with the same helper.

@@ -123,6 +123,12 @@ export function parseDashboardMessage(
     case 'openWhatsNew':
     case 'dismissWhatsNew':
       return { type: value.type };
+    case 'runTryNext':
+    case 'snoozeTryNext':
+    case 'retireTryNext':
+      return typeof value.key === 'string' && value.key.length > 0 && value.key.length <= 1000
+        ? { type: value.type, key: value.key }
+        : undefined;
     case 'openSearch':
       return typeof value.query === 'string' &&
         value.query.length <= MAX_QUERY_LENGTH

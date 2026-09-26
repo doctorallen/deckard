@@ -205,6 +205,8 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 /* The resting hint is a quiet line, not the dashed frame of edit mode. */
 .home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: var(--text-xs); }
+.try-next-text { margin: 0 0 var(--space-2, 8px); color: var(--text); }
+.try-next-actions { display: flex; flex-wrap: wrap; gap: var(--space-2, 8px); }
 .home-hint-actions { display: inline-flex; gap: 6px; }
 .home-widget-about { margin: 0; max-width: 220px; color: var(--muted); font-size: var(--text-xs); line-height: 1.35; white-space: normal; }
 .home-reset-confirm { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--warning-orange); }
@@ -314,6 +316,7 @@ ${getQueryEditorScript()}
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
     quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
+    tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
   };
 
   /**
@@ -711,6 +714,15 @@ ${getQueryEditorScript()}
   /** What one widget shows. */
   function renderWidgetBody(widget) {
     switch (widget.kind) {
+      case 'tryNext': {
+        const next = widget.tryNext;
+        if (!next) return '<p class="empty">Nothing to suggest yet. A suggestion appears here when your notes are ready for one.</p>';
+        const key = 'data-key="' + escapeHtml(next.key) + '"';
+        return '<p class="try-next-text">' + escapeHtml(next.text) + '</p><div class="try-next-actions">'
+          + '<button type="button" class="active" data-action="run-try-next" ' + key + '>' + escapeHtml(next.action.label) + '</button>'
+          + '<button type="button" data-action="snooze-try-next" ' + key + ' data-tip="Put it off for a week">Not now</button>'
+          + '<button type="button" data-action="retire-try-next" ' + key + '>Do not suggest this</button></div>';
+      }
       case 'search':
         return searchEditor.renderBar('');
       case 'tasks':
@@ -866,6 +878,9 @@ ${getQueryEditorScript()}
   }
 
   function renderWidget(widget) {
+    // Try next with nothing to suggest is not an empty box: it is nothing,
+    // until Home is being arranged.
+    if (widget.kind === 'tryNext' && !widget.tryNext && !editingHome) return '';
     const listed = WIDGET_KINDS[widget.kind] && WIDGET_KINDS[widget.kind].listed;
     // Each kind lists its own sort of entry, so the shown count is whichever
     // list the widget carries.
@@ -1107,6 +1122,13 @@ ${getQueryEditorScript()}
       }
       if (action === 'finish-customizing') {
         setEditingHome(false);
+        return;
+      }
+      if (action === 'run-try-next' || action === 'snooze-try-next' || action === 'retire-try-next') {
+        vscode.postMessage({
+          type: action === 'run-try-next' ? 'runTryNext' : action === 'snooze-try-next' ? 'snoozeTryNext' : 'retireTryNext',
+          key: target.getAttribute('data-key'),
+        });
         return;
       }
       if (action === 'open-whats-new') {

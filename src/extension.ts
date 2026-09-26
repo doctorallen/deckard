@@ -127,6 +127,7 @@ import { selectAgendaTasks } from './ui/state/agendaState';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
 import { isWhatsNewShown, WhatsNew } from './ui/commands/whatsNew';
 import { chooseTheme } from './ui/commands/chooseTheme';
+import { TryNextLedger } from './ui/commands/tryNext';
 import { openSettingAction, settingLabel } from './ui/commands/notify';
 import { settingTarget, writeSetting } from './ui/commands/settings';
 
@@ -167,6 +168,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     isShown: isWhatsNewShown,
   });
   context.subscriptions.push(whatsNew);
+  // What Home's Try next has been told, kept with the workspace. A
+  // suggestion is retired for good once its command runs from anywhere.
+  const tryNext = new TryNextLedger(context.workspaceState);
+  context.subscriptions.push(tryNext);
   void whatsNew.onActivate();
   // A sample opened from Create a Sample Workspace shows its README once.
   void showSampleReadmeOnce(context);
@@ -386,6 +391,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       addNextAction: (tagLabel) => captureNextAction(tagLabel),
     },
     whatsNew,
+    tryNext,
   );
   const quickFind = new QuickFind(indexer, preferences, {
     openTag: (tagKey) => searchPanels.show(tagKey),
@@ -770,9 +776,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.showNotesGraph', () =>
       notesGraph.show(),
     ),
-    vscode.commands.registerCommand('deckard.showTaskBoard', () =>
-      taskBoard.show(),
-    ),
+    vscode.commands.registerCommand('deckard.showTaskBoard', async () => {
+      await taskBoard.show();
+      await tryNext.retire('taskBoard');
+    }),
     vscode.commands.registerCommand(
       'deckard.activateNotesGraphNode',
       async (nodeId: unknown, open: unknown) => {
@@ -832,9 +839,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.openMonthlyNote', () =>
       openPeriodicNoteWithReview(indexer, preferences, 'month'),
     ),
-    vscode.commands.registerCommand('deckard.writeReview', () =>
-      writeReviewCommand(indexer, preferences),
-    ),
+    vscode.commands.registerCommand('deckard.writeReview', async () => {
+      await writeReviewCommand(indexer, preferences);
+      await tryNext.retire('weeklyReview');
+    }),
     // One editor, two names: which one the palette offers is decided by
     // whether the cursor is on a task.
     vscode.commands.registerCommand('deckard.editTask', () =>
@@ -850,14 +858,19 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     // pins that entry rather than wherever the cursor happens to be.
     vscode.commands.registerCommand(
       'deckard.pinNote',
-      (documentUri?: unknown, line?: unknown) =>
-        setNotePinnedCommand(
+      async (documentUri?: unknown, line?: unknown) => {
+        const pinned = await setNotePinnedCommand(
           indexer,
           preferences,
           true,
           typeof documentUri === 'string' ? documentUri : undefined,
           typeof line === 'number' ? line : undefined,
-        ),
+        );
+        if (pinned) {
+          await tryNext.retire('pinNote');
+        }
+        return pinned;
+      },
     ),
     vscode.commands.registerCommand(
       'deckard.unpinNote',

@@ -243,7 +243,7 @@ suite('Preferences store', () => {
     });
     assert.deepStrictEqual(
       store.value.dashboardWidgets.map((widget) => widget.kind),
-      ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
+      ['tryNext', 'search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
     );
     assert.strictEqual('dashboardNoteSortMode' in store.value, false);
 
@@ -272,7 +272,7 @@ suite('Preferences store', () => {
     ]);
 
     await store.resetDashboardWidgets();
-    assert.strictEqual(store.value.dashboardWidgets.length, 5);
+    assert.strictEqual(store.value.dashboardWidgets.length, 6);
     await store.setDashboardWidgets([]);
     assert.deepStrictEqual(store.value.dashboardWidgets, [], 'an empty Home stays empty');
 
@@ -503,15 +503,17 @@ suite('Preferences store', () => {
       true,
       'a copy with the same settings is the same layout',
     );
-    const [search, ...rest] = DEFAULT_DASHBOARD_WIDGETS;
-    assert.strictEqual(isDefaultHomeLayout(rest), false, 'a widget removed');
+    // Try next leads and is left alone; the search box is the widget moved.
+    const [tryNext, search, ...rest] = DEFAULT_DASHBOARD_WIDGETS;
+    assert.strictEqual(isDefaultHomeLayout([tryNext, ...rest]), false, 'a widget removed');
     assert.strictEqual(
-      isDefaultHomeLayout([...rest, search]),
+      isDefaultHomeLayout([tryNext, ...rest, search]),
       false,
       'a widget moved',
     );
     assert.strictEqual(
       isDefaultHomeLayout([
+        tryNext,
         search,
         { ...rest[0], width: 'full' },
         ...rest.slice(1),
@@ -521,6 +523,7 @@ suite('Preferences store', () => {
     );
     assert.strictEqual(
       isDefaultHomeLayout([
+        tryNext,
         search,
         { ...rest[0], count: 10 },
         ...rest.slice(1),

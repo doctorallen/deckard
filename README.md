@@ -409,10 +409,11 @@ Above Home, three figures say what wants doing: **Overdue** and **Due today**, a
 
 **What's new.** After an update that adds features, Home says *Updated to Deckard 1.23.* above its widgets, once, with **What's new**, which opens Help's list of the recent releases' highlights, and **Dismiss**. It goes from every window's Home once either is chosen. A patch says nothing, and there is never a pop-up. `deckard.showWhatsNew` turns the line off; Help's **What's new** lists the releases either way.
 
-**Home** is made of widgets you choose; a new Home starts with the search box, the Tasks view, open tasks, favorite tags, and saved searches:
+**Home** is made of widgets you choose; a new Home starts with Try next, the search box, the Tasks view, open tasks, favorite tags, and saved searches:
 
 | Widget | Shows | Leads to |
 |---|---|---|
+| **Try next** | One suggestion, when your notes are ready for it: a weekly review after five daily notes, merging two tags that look alike, the Task board at ten open tasks, or pinning a note you open often. **Not now** puts it off for a week and **Do not suggest this** for good; running its command anywhere retires it too. With nothing to suggest it takes no space | What it suggests |
 | **Search** | The [search box](#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
 | **Tasks** | The first tasks a search finds, `is:open` unless you set another, ranked as on the Task board | The Task board, on that search |
 | **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them, with a line under them saying how many were done today and how many need a new date, which opens them | The Tasks view |

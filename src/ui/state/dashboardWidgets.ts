@@ -6,6 +6,7 @@ import {
 } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
+  DashboardTryNext,
   DashboardWidget,
   DashboardWidgetConfig,
   DashboardWidgetKind,
@@ -56,6 +57,8 @@ export interface DashboardWidgetOptions {
     enableKeywordLinks: boolean;
     ranking: RelatedNotesRankingOptions;
   };
+  /** Try next's suggestion, which the host chooses. */
+  tryNext?: DashboardTryNext;
 }
 
 /** Each widget's heading. A saved-search widget is named after its search. */
@@ -79,6 +82,7 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   newTags: 'New tags',
   quietPeople: 'Gone quiet',
   pinnedNotes: 'Pinned notes',
+  tryNext: 'Try next',
 };
 
 /**
@@ -486,6 +490,8 @@ function createWidget(
       });
       return { ...widget, total: pinned.length, notes: take(pinned) };
     }
+    case 'tryNext':
+      return options.tryNext ? { ...widget, tryNext: options.tryNext } : widget;
   }
 }
 

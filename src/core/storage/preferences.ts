@@ -148,6 +148,8 @@ export const RECENT_QUERY_LIMIT = 20;
 
 /** The widgets Home starts with, and returns to on Reset. */
 export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
+  // One suggestion, when the notes are ready for it, and nothing otherwise.
+  { id: 'tryNext', kind: 'tryNext', width: 'full' },
   { id: 'search', kind: 'search', width: 'full' },
   // The Tasks view widget leads: what is overdue and due today comes before
   // every open task.
@@ -189,6 +191,7 @@ export const DASHBOARD_WIDGET_KINDS: Readonly<
   newTags: { repeatable: false, listed: true },
   quietPeople: { repeatable: false, listed: true },
   pinnedNotes: { repeatable: false, listed: true },
+  tryNext: { repeatable: false, listed: false },
 };
 
 /** How many days back each widget that looks back starts at. */

@@ -1,4 +1,8 @@
 import * as vscode from 'vscode';
+import { setPinned } from '../commands/pinNote';
+import { readWeekStart } from '../commands/datePrompt';
+import { TryNextSuggestion } from '../state/tryNext';
+import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../commands/tryNext';
 import { WhatsNew } from '../commands/whatsNew';
 import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
@@ -11,10 +15,12 @@ import {
 } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import {
-  DashboardMode,
   DashboardColumnCount,
   DashboardMessage,
+  DashboardMode,
   DashboardSnapshot,
+  PersistedPreferences,
+  WorkspaceIndex,
 } from '../../core/types';
 import {
   createDashboardSnapshot,
@@ -79,6 +85,8 @@ export class DashboardPanel implements vscode.Disposable {
     private readonly navigation: DashboardNavigation,
     /** Whether Home says Deckard was updated; absent, it never does. */
     private readonly whatsNew?: Pick<WhatsNew, 'pending' | 'clear' | 'onDidChange'>,
+    /** What Try next has been told; absent, it suggests nothing. */
+    private readonly tryNext?: Pick<TryNextLedger, 'retired' | 'snoozed' | 'retire' | 'snooze' | 'onDidChange'>,
   ) {
     const initialPreferences = preferences.value;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
@@ -86,6 +94,9 @@ export class DashboardPanel implements vscode.Disposable {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     if (whatsNew) {
       this.disposables.push(whatsNew.onDidChange(() => this.refresh()));
+    }
+    if (tryNext) {
+      this.disposables.push(tryNext.onDidChange(() => this.refresh()));
     }
     this.followEditor(vscode.window.activeTextEditor);
     this.disposables.push(
@@ -301,6 +312,53 @@ export class DashboardPanel implements vscode.Disposable {
     }
   }
 
+  /** Try next's suggestion now, only while Home holds the widget. */
+  private currentTryNext(
+    index: WorkspaceIndex,
+    preferences: PersistedPreferences,
+  ): TryNextSuggestion | undefined {
+    if (!this.tryNext || !preferences.dashboardWidgets.some((widget) => widget.kind === 'tryNext')) {
+      return undefined;
+    }
+    return suggestTryNext(this.tryNext, index, preferences, readWeekStart(), Date.now());
+  }
+
+  /**
+   * Acts on Try next's suggestion. The page names it by key; what runs is
+   * worked out here from the suggestion the host would make now.
+   */
+  private async handleTryNext(
+    type: 'runTryNext' | 'snoozeTryNext' | 'retireTryNext',
+    key: string,
+  ): Promise<void> {
+    if (!this.tryNext) {
+      return;
+    }
+    if (type === 'snoozeTryNext') {
+      await this.tryNext.snooze(key);
+      return;
+    }
+    if (type === 'retireTryNext') {
+      await this.tryNext.retire(key);
+      return;
+    }
+    const index = this.indexer.getSnapshot();
+    const preferences = this.preferences.value;
+    const suggestion = this.currentTryNext(index, preferences);
+    if (!suggestion || suggestion.key !== key) {
+      return;
+    }
+    await runTryNext(suggestion, collectTryNextInput(index, preferences, readWeekStart(), Date.now()), {
+      run: (command, ...args) => vscode.commands.executeCommand(command, ...args),
+      pin: async (filePath, line) => {
+        const pinned = await setPinned(index, this.preferences, { filePath, line }, true);
+        if (pinned) {
+          await this.tryNext?.retire(suggestion.key);
+        }
+      },
+    });
+  }
+
   /**
    * Sends a fresh projection whenever index or persisted preferences change.
    */
@@ -357,6 +415,9 @@ export class DashboardPanel implements vscode.Disposable {
               agendaQuery: configuration.get<string>('agenda.query', ''),
               tagTitleDisplayMode,
               sourceNotePath: this.getSourceNotePath(),
+              ...(this.currentTryNext(index, viewPreferences)
+                ? { tryNext: this.currentTryNext(index, viewPreferences) }
+                : {}),
               relatedNotes: {
                 enableKeywordLinks: configuration.get<boolean>(
                   'enableKeywordLinks',
@@ -574,6 +635,11 @@ export class DashboardPanel implements vscode.Disposable {
       }
       case 'openTaskBoard':
         await this.navigation.openTaskBoard(message.query);
+        return;
+      case 'runTryNext':
+      case 'snoozeTryNext':
+      case 'retireTryNext':
+        await this.handleTryNext(message.type, message.key);
         return;
       case 'openWhatsNew':
         await vscode.commands.executeCommand('deckard.openWhatsNew');

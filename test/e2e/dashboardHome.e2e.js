@@ -59,6 +59,7 @@ async function openDashboard(
   prepare = async () => undefined,
   indexerExtras = {},
   whatsNew = undefined,
+  tryNext = undefined,
 ) {
   vscode._test.createdPanels.length = 0;
   const updates = new vscode.EventEmitter();
@@ -77,6 +78,7 @@ async function openDashboard(
     { fsPath: '/ext' },
     navigation,
     whatsNew,
+    tryNext,
   );
   await dashboard.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -197,6 +199,45 @@ test('after an update Home says so once, and Dismiss takes the line away', async
   assert.strictEqual(view.findAll('.whats-new-bar').length, 0);
 });
 
+test('Try next suggests the Task board, and runs only the command it chose', async () => {
+  const index = createIndex();
+  for (let i = 0; i < 8; i += 1) {
+    const id = `more-${i}`;
+    index.tasks.set(id, { ...index.tasks.get('audit'), id, title: `More ${i}`, lineNumber: 10 + i });
+  }
+  const changed = new vscode.EventEmitter();
+  const retired = new Set();
+  const ledger = {
+    retired: () => retired,
+    snoozed: () => ({}),
+    retire: async (key) => {
+      retired.add(key);
+      changed.fire();
+    },
+    snooze: async () => undefined,
+    onDidChange: changed.event,
+  };
+  const { view, lastState } = await openDashboard(index, undefined, {}, undefined, ledger);
+  const card = lastState().data.widgets.find((widget) => widget.kind === 'tryNext');
+  assert.strictEqual(card.tryNext.id, 'taskBoard');
+  assert.match(view.find('.try-next-text').textContent, /^You have 11 open tasks\./);
+
+  vscode._test.executedCommands.length = 0;
+  view.posted.length = 0;
+  view.click(view.find('[data-action="run-try-next"]'));
+  await delay(20);
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.map((entry) => entry.command),
+    ['deckard.showTaskBoard'],
+  );
+
+  view.click(view.find('[data-action="retire-try-next"]'));
+  await delay(20);
+  assert.ok(retired.has('taskBoard'));
+  assert.strictEqual(lastState().data.widgets.find((widget) => widget.kind === 'tryNext').tryNext, undefined);
+  assert.strictEqual(view.findAll('.home-widget[data-widget-id="tryNext"]').length, 0);
+});
+
 test('a hidden Dashboard skips updates and catches up when shown', async () => {
   const { panel, updates } = await openDashboard();
   panel._setVisible(false);
@@ -280,18 +321,20 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
 
   view.click(widget('agenda').querySelector('[data-action="remove-widget"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), ['search', 'tasks', 'favoriteTags', 'savedSearches']);
+  // Try next is drawn while Home is arranged, though it has nothing to suggest.
+  assert.deepStrictEqual(ids(), ['tryNext', 'search', 'tasks', 'favoriteTags', 'savedSearches']);
   assert.ok(view.find('.home-edit-bar'), 'a change keeps Home in customizing');
   assert.strictEqual(lastState().data.homeArranged, true, 'and the host knows Home has been arranged');
 
   view.click(widget('tasks').querySelector('[data-action="set-widget-width"][data-value="full"]'));
   await delay(20);
   assert.ok(widget('tasks').classList.contains('is-full'));
-  assert.strictEqual(preferences.value.dashboardWidgets[1].width, 'full');
+  const tasksConfig = () => preferences.value.dashboardWidgets.find((entry) => entry.id === 'tasks');
+  assert.strictEqual(tasksConfig().width, 'full');
 
   view.click(widget('tasks').querySelector('[data-action="set-widget-count"][data-value="10"]'));
   await delay(20);
-  assert.strictEqual(preferences.value.dashboardWidgets[1].count, 10);
+  assert.strictEqual(tasksConfig().count, 10);
 
   const add = view.find('[data-action="add-widget"]');
   const offered = add.children.map((option) => option.getAttribute('value'));
@@ -312,7 +355,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.fire('pointermove', widget(added), { pointerId: 1, clientX: 10, clientY: 5 });
   view.fire('pointerup', widget(added), { pointerId: 1, clientX: 10, clientY: 5 });
   await delay(20);
-  assert.deepStrictEqual(ids(), [added, 'search', 'tasks', 'favoriteTags', 'savedSearches']);
+  assert.deepStrictEqual(ids(), ['tryNext', added, 'search', 'tasks', 'favoriteTags', 'savedSearches']);
 
   view.fire('contextmenu', widget('search'));
   assert.deepStrictEqual(
@@ -326,7 +369,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   // Reset discards an arrangement, so it asks before it does.
   view.click(view.find('[data-action="reset-widgets"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), [added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes until it is confirmed');
+  assert.deepStrictEqual(ids(), ['tryNext', added, 'tasks', 'favoriteTags', 'savedSearches', 'search'], 'nothing changes until it is confirmed');
   view.click(view.find('[data-action="cancel-reset-widgets"]'));
   await delay(20);
   assert.ok(view.find('[data-action="reset-widgets"]'), 'Reset is offered again');
@@ -334,7 +377,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.click(view.find('[data-action="reset-widgets"]'));
   view.click(view.find('[data-action="confirm-reset-widgets"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches']);
+  assert.deepStrictEqual(ids(), ['tryNext', 'search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches']);
 
   view.click(view.find('.home-edit-bar [data-action="finish-customizing"]'));
   assert.strictEqual(view.find('.home-edit-bar'), null);

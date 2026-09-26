@@ -468,6 +468,27 @@ suite('Dashboard behavior', () => {
     assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
   });
 
+  test('Try next draws one card, or nothing at all', () => {
+    const { page, snapshot } = open();
+    const tryNext = { id: 'tryNext', kind: 'tryNext', width: 'full', title: 'Try next' };
+    page.send({ ...snapshot, widgets: [tryNext, ...(snapshot.widgets ?? [])] });
+    assert.strictEqual(page.document.querySelector('.home-widget[data-widget-id="tryNext"]'), null, 'no empty box');
+
+    const suggestion = { id: 'taskBoard', key: 'taskBoard', text: 'You have 42 open tasks.', action: { label: 'Open Task board' } };
+    page.send({ ...snapshot, widgets: [{ ...tryNext, tryNext: suggestion }, ...(snapshot.widgets ?? [])] });
+    assert.strictEqual(page.text('.try-next-text'), 'You have 42 open tasks.');
+    assert.deepStrictEqual(
+      page.findAll('.try-next-actions button').map((button) => button.textContent),
+      ['Open Task board', 'Not now', 'Do not suggest this'],
+    );
+    page.click('[data-action="run-try-next"]');
+    assert.deepStrictEqual(page.lastPosted('runTryNext'), { type: 'runTryNext', key: 'taskBoard' });
+    page.click('[data-action="snooze-try-next"]');
+    assert.deepStrictEqual(page.lastPosted('snoozeTryNext'), { type: 'snoozeTryNext', key: 'taskBoard' });
+    page.click('[data-action="retire-try-next"]');
+    assert.deepStrictEqual(page.lastPosted('retireTryNext'), { type: 'retireTryNext', key: 'taskBoard' });
+  });
+
   test('the gear leads back to the walkthrough', () => {
     const { page } = open();
     page.click('[data-action="open-view"][data-view="walkthrough"]');

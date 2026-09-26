@@ -63,7 +63,8 @@ export type DashboardWidgetKind =
   | 'unhubbedTags'
   | 'newTags'
   | 'quietPeople'
-  | 'pinnedNotes';
+  | 'pinnedNotes'
+  | 'tryNext';
 
 /** Whether a widget takes one of Home's two columns or both. */
 export type DashboardWidgetWidth = 'half' | 'full';
@@ -572,6 +573,17 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   today?: DashboardWidgetToday;
   /** The note a related-notes widget ranks by. */
   sourceNote?: DashboardWidgetNote;
+  /** Try next's one suggestion; absent, the widget draws nothing outside Customize. */
+  tryNext?: DashboardTryNext;
+}
+
+/** One thing Home suggests trying, and the button that does it. */
+export interface DashboardTryNext {
+  id: string;
+  /** What the page posts back to run, put off, or retire it. */
+  key: string;
+  text: string;
+  action: { label: string };
 }
 
 /**
@@ -1210,6 +1222,12 @@ export interface OpenNoteMessage {
   filePath: string;
 }
 
+/** Runs, puts off for a week, or retires Try next's suggestion. */
+export interface TryNextMessage {
+  type: 'runTryNext' | 'snoozeTryNext' | 'retireTryNext';
+  key: string;
+}
+
 /** Opens Help's What's new, or stops Home saying there is something new. */
 export interface WhatsNewMessage {
   type: 'openWhatsNew' | 'dismissWhatsNew';
@@ -1460,7 +1478,8 @@ export type DashboardMessage =
   | AddNextActionMessage
   | PinNoteMessage
   | OpenNoteMessage
-  | WhatsNewMessage;
+  | WhatsNewMessage
+  | TryNextMessage;
 
 export type SearchPageMessage =
   | ExportResultsMessage
