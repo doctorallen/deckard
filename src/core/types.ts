@@ -365,6 +365,8 @@ export interface PersistedPreferences {
   relatedNotesSortMode: RelatedNotesSortMode;
   /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
   hideDailyNotes?: true;
+  /** The results chosen in Find for what was typed, which it offers first. */
+  findChoices?: FindChoice[];
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
   /** When each tag was last opened, in epoch milliseconds, for frecency. */
@@ -1296,6 +1298,17 @@ export interface AddNextActionMessage {
  * again rather than as the section's id, which is a hash of the heading's
  * line and text and changes whenever anything above it is written.
  */
+/** What Find learned: the result chosen after typing a search. */
+export interface FindChoice {
+  /** What was typed, trimmed, lowercased, spaces collapsed. */
+  input: string;
+  /** The result, by what it is rather than where it sits. */
+  key: string;
+  count: number;
+  /** When it was last chosen. */
+  at: number;
+}
+
 export interface PinnedNote {
   filePath: string;
   /** The heading it pins, as written; absent when it pins the whole note. */

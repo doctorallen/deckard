@@ -10,6 +10,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createQuerySuggestions } from '../ui/state/dashboardState';
 import {
   buildQuickFindResults,
+  findChoiceKey,
   fuzzyScore,
   QuickFindResults,
 } from '../ui/state/quickFindState';
@@ -236,6 +237,40 @@ suite('Quick Find', () => {
     assert.strictEqual(keyLabel('cmd+enter', 'linux'), 'Ctrl+Enter');
     assert.strictEqual(keyLabel('alt+enter', 'win32'), 'Alt+Enter');
     assert.strictEqual(keyLabel('cmd+.', 'win32'), 'Ctrl+.');
+  });
+
+  test('learns the result chosen for what was typed, and never ranks it above an exact title', async () => {
+    const finder = createFinder({
+      'contract.md': '# Vendor contract\nThe terms.',
+      'misc.md': '# Misc\nA vendor visited; vendor notes.',
+      'vendors.md': '# Vendors\nList.',
+    });
+    const store = new PreferencesStore(new MemoryMemento());
+    try {
+      const misc = finder.find('vend', store.value).notes.find((item) => item.label === 'Misc')!;
+      const key = findChoiceKey(finder.index, misc)!;
+      assert.ok(key.startsWith('note:'));
+      const before = finder.find('vend', store.value).notes.map((item) => item.label);
+      assert.notStrictEqual(before[0], 'Misc');
+      for (let n = 0; n < 3; n += 1) {
+        await store.recordFindChoice('Vend', key, Date.now());
+      }
+      for (const typed of ['vend', 'ven']) {
+        const labels = finder.find(typed, store.value).notes.map((item) => item.label);
+        assert.strictEqual(labels[0], 'Misc', typed);
+      }
+      // What was typed is exactly a title: that title still leads.
+      await store.recordFindChoice('vendors', key, Date.now());
+      assert.strictEqual(finder.find('vendors', store.value).notes[0].label, 'Vendors');
+      // An old choice weighs less than a fresh one.
+      const old = new PreferencesStore(new MemoryMemento());
+      await old.recordFindChoice('vend', key, Date.now() - 400 * 24 * 60 * 60 * 1000);
+      assert.notStrictEqual(finder.find('vend', old.value).notes[0].label, 'Misc');
+      old.dispose();
+    } finally {
+      finder.dispose();
+      store.dispose();
+    }
   });
 
   test('scores characters that start words and follow each other highest', () => {

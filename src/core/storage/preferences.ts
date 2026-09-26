@@ -13,6 +13,7 @@ import {
   DashboardViewState,
   DashboardWidgetConfig,
   DashboardWidgetKind,
+  FindChoice,
   DEFAULT_SEARCH_PAGE_SIZE,
   PersistedPreferences,
   PinnedNote,
@@ -69,6 +70,7 @@ const workspacePreferenceKeys = [
   'sectionAccessTimes',
   'savedFilters',
   'recentQueries',
+  'findChoices',
   'tagFirstSeen',
   'pinnedNotes',
   'dashboardWidgets',
@@ -385,6 +387,24 @@ export class PreferencesStore implements vscode.Disposable {
   /**
    * Keeps a search at the front of the recent list, without duplicates.
    */
+  /**
+   * Remembers the result chosen for what was typed, so Find can offer it
+   * first the next time the start of it is typed.
+   */
+  public async recordFindChoice(input: string, key: string, now = Date.now()): Promise<void> {
+    const typed = normalizeFindInput(input);
+    if (!typed) {
+      return;
+    }
+    const choices = this.preferences.findChoices ?? [];
+    const existing = choices.find((choice) => choice.input === typed && choice.key === key);
+    const next = [
+      { input: typed, key, count: (existing?.count ?? 0) + 1, at: now },
+      ...choices.filter((choice) => choice !== existing),
+    ];
+    await this.update({ findChoices: next.slice(0, FIND_CHOICE_LIMIT) }, true);
+  }
+
   /** Takes one search off the recent list. */
   public async removeRecentQuery(query: string): Promise<void> {
     const recentQueries = (this.preferences.recentQueries ?? []).filter(
@@ -969,7 +989,16 @@ export class PreferencesStore implements vscode.Disposable {
     // mentions one is not a reason to throw it away — it is a reason to say
     // so and let the reader decide. `findStale` finds them; the Tidy command
     // asks.
+    // A choice whose note or tag is gone is forgotten with it.
+    const findChoices = this.preferences.findChoices?.filter((choice) => {
+      const filePath = findChoiceFilePath(choice.key);
+      if (filePath !== undefined) {
+        return validFilePathSet?.has(filePath) ?? true;
+      }
+      return choice.key.startsWith('tag:') ? validTags.has(choice.key.slice(4)) : true;
+    });
     const changes: Partial<PersistedPreferences> = {
+      ...(findChoices ? { findChoices } : {}),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -1242,7 +1271,44 @@ function normalizePreferences(
       ? { tagFirstSeen: normalizeFirstSeenTimes(value.tagFirstSeen) }
       : {}),
     pinnedNotes: normalizePinnedNotes(value?.pinnedNotes),
+    ...(Array.isArray(value?.findChoices) && value.findChoices.length > 0
+      ? { findChoices: normalizeFindChoices(value.findChoices) }
+      : {}),
   };
+}
+
+/** The most Find choices kept; the least recently chosen goes first. */
+export const FIND_CHOICE_LIMIT = 200;
+
+function normalizeFindChoices(value: readonly unknown[]): FindChoice[] {
+  return value
+    .filter(
+      (choice): choice is FindChoice =>
+        typeof choice === 'object' &&
+        choice !== null &&
+        typeof (choice as FindChoice).input === 'string' &&
+        (choice as FindChoice).input.length > 0 &&
+        typeof (choice as FindChoice).key === 'string' &&
+        Number.isFinite((choice as FindChoice).count) &&
+        (choice as FindChoice).count > 0 &&
+        Number.isFinite((choice as FindChoice).at),
+    )
+    .map(({ input, key, count, at }) => ({ input, key, count, at }))
+    .sort((left, right) => right.at - left.at)
+    .slice(0, FIND_CHOICE_LIMIT);
+}
+
+/** The note a Find choice's key names, when it names one. */
+export function findChoiceFilePath(key: string): string | undefined {
+  if (!key.startsWith('note:') && !key.startsWith('task:')) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(key.slice(5)) as unknown;
+    return Array.isArray(parsed) && typeof parsed[0] === 'string' ? parsed[0] : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -1500,6 +1566,11 @@ function isPinRecord(value: unknown): value is Record<string, unknown> {
  * that text it was. Kept here so preferences can compare pins without
  * reaching into the view layer that resolves them.
  */
+/** A typed search as Find remembers it: trimmed, lowercased, spaces collapsed. */
+export function normalizeFindInput(input: string): string {
+  return input.trim().toLocaleLowerCase().replace(/\s+/g, ' ').slice(0, 100);
+}
+
 export function pinKey(pin: PinnedNote): string {
   // Printable, because a row carries this key in an HTML attribute and a
   // separator such as NUL does not survive being written into one.
@@ -1629,6 +1700,7 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     sectionAccessTimes: { ...value.sectionAccessTimes },
     recentQueries: [...(value.recentQueries ?? [])],
     dashboardWidgets: cloneWidgets(value.dashboardWidgets),
+    ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
   };
 }
 

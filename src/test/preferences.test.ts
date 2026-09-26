@@ -69,6 +69,22 @@ suite('Preferences store', () => {
     assert.strictEqual(store.value.hideDailyNotes, undefined);
   });
 
+  test('keeps what Find learned, at most 200, and forgets a choice whose note is gone', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    await store.recordFindChoice('  Vendor   Contract ', 'note:["a.md","Next",0]', 5);
+    await store.recordFindChoice('vendor contract', 'note:["a.md","Next",0]', 9);
+    await store.recordFindChoice('atlas', 'tag:#project/atlas', 7);
+    await store.recordFindChoice('gone', 'note:["gone.md","",0]', 8);
+    assert.deepStrictEqual(store.value.findChoices?.[0], { input: 'vendor contract', key: 'note:["a.md","Next",0]', count: 2, at: 9 });
+    await store.prune(['#project/atlas'], [], [], [], ['a.md']);
+    assert.deepStrictEqual(store.value.findChoices?.map((choice) => choice.input), ['vendor contract', 'atlas']);
+    for (let n = 0; n < 250; n += 1) {
+      await store.recordFindChoice(`word ${n}`, 'tag:#project/atlas', 100 + n);
+    }
+    assert.strictEqual(store.value.findChoices?.length, 200);
+    await store.removeRecentQuery('nothing');
+  });
+
   test('search pages start rendered, and Source sticks once it is chosen', async () => {
     assert.strictEqual(new PreferencesStore(new MemoryMemento()).value.renderMode, 'html', 'a new install is rendered');
 

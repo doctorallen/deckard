@@ -740,7 +740,7 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - Words that no note is called, and that read as a name rather than a search, offer **Create note “…”**, which creates it in your notes folder.
 - When what you type is a day, such as `friday`, `oct 3`, or `last friday`, Find offers to open that day's note first, and creates it when there is none, in place of **Create note**. A short weekday alone, such as `fri`, is searched for as a word.
 
-Ties are broken by how often and how recently you opened something, so a note you opened yesterday comes before one you opened often last year. A note counts as opened when it stays in the editor for a moment, however it was opened — from the Explorer, Quick Open, or a link as much as from Deckard — once for the heading the cursor is in, and again only after ten minutes. A heading keeps its count when lines above it change. This is kept in VS Code's preferences, beside the access counts, and never in your notes.
+Ties are broken by how often and how recently you opened something, so a note you opened yesterday comes before one you opened often last year. A note counts as opened when it stays in the editor for a moment, however it was opened — from the Explorer, Quick Open, or a link as much as from Deckard — once for the heading the cursor is in, and again only after ten minutes. A heading keeps its count when lines above it change. Find also remembers which result you chose for what you typed, and offers it higher the next time you type the start of it, though never above a note titled exactly what you typed; an old choice counts for less. This is kept in VS Code's preferences, beside the access counts, and never in your notes.
 
 ### The search box
 

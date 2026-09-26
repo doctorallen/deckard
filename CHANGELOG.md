@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Find learns what you pick.** Choosing a result after typing `vend`
+  lifts it for `vend`, `ven`, and whatever else starts it, more with each
+  pick and less as the pick ages, but never above a note titled exactly
+  what you typed. It is kept in VS Code's preferences, not in your notes.
+
 - **Find acts without leaving.** A task in Find has **Complete** (or
   **Reopen**) and **Set due**; Find stays open and redraws the row in place.
   <kbd>Cmd</kbd>+<kbd>.</kbd> lists everything a row can do, from copying a

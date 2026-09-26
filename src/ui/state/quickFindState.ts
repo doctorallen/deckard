@@ -19,7 +19,8 @@ import {
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { describeTagMatches, getHeadingPath } from './dashboardState';
 import { frecencyScore } from './frecency';
-import { findPinnedSection, resolvePin } from './pinnedNotes';
+import { createPinForLine, findPinnedSection, resolvePin } from './pinnedNotes';
+import { normalizeFindInput, pinKey } from '../../core/storage/preferences';
 
 /**
  * Ranks what Quick Find shows for what has been typed so far.
@@ -148,6 +149,7 @@ export function buildQuickFindResults(
     new Set(collectQueryTagKeys(parsed.node)),
     tagToken || isBareWord(token) ? beforeToken : input,
     now,
+    learnedWeights(preferences, input, now),
   );
   const savedViews = matchSavedViews(index, preferences, input.trim());
 
@@ -165,7 +167,8 @@ export function buildQuickFindResults(
     return results;
   }
 
-  const ranked = rankEntries(index, preferences, parsed.node, searchText, now);
+  const learned = learnedBonuses(index, preferences, input, now);
+  const ranked = rankEntries(index, preferences, parsed.node, searchText, now, learned);
   results.message ??= ranked.partial
     ? 'No entry has every word, so these have some of them.'
     : undefined;
@@ -205,6 +208,7 @@ function rankEntries(
   node: QueryNode,
   searchText: QuickFindTextSearch,
   now: number,
+  learned: ReadonlyMap<string, number> = new Map(),
 ): {
   notes: RankedEntry[];
   tasks: RankedEntry[];
@@ -264,12 +268,16 @@ function rankEntries(
     ...sections.map((section) => {
       const title = stripTags(section.heading) || getFileName(section.filePath);
       const found = textScores.get(section.id);
+      const titleScore = scoreTitle(words, title);
       return {
-        score:
+        score: withLearned(
           base +
-          scoreTitle(words, title) +
-          (found?.score ?? 0) +
-          frecencyBonus(preferences, section.id, now),
+            titleScore +
+            (found?.score ?? 0) +
+            frecencyBonus(preferences, section.id, now),
+          learned.get(section.id),
+          titleScore,
+        ),
         updatedAt: section.updatedAt ?? 0,
         item: createSectionItem(index, section, title, found?.excerpt),
       };
@@ -277,8 +285,13 @@ function rankEntries(
     ...files.map((file) => {
       const title = getFileName(file.filePath);
       const found = textScores.get(file.filePath);
+      const titleScore = scoreTitle(words, title);
       return {
-        score: base + scoreTitle(words, title) + (found?.score ?? 0),
+        score: withLearned(
+          base + titleScore + (found?.score ?? 0),
+          learned.get(file.filePath),
+          titleScore,
+        ),
         updatedAt: file.updatedAt ?? 0,
         item: {
           kind: 'note' as const,
@@ -296,13 +309,14 @@ function rankEntries(
     .map((task) => {
       const title = stripTags(task.title) || task.title;
       const found = textScores.get(task.id);
+      const titleScore = scoreTitle(words, title);
       return {
         // An open task is usually the one being looked for.
-        score:
-          base +
-          scoreTitle(words, title) +
-          (found?.score ?? 0) +
-          (task.completed ? 0 : 20),
+        score: withLearned(
+          base + titleScore + (found?.score ?? 0) + (task.completed ? 0 : 20),
+          learned.get(task.id),
+          titleScore,
+        ),
         updatedAt: task.updatedAt ?? 0,
         item: createTaskItem(index, task, title),
       };
@@ -316,6 +330,126 @@ function rankEntries(
     suggestion: text?.suggestion,
     searched: words.join(' '),
   };
+}
+
+/**
+ * Adds what Find learned to an entry's score. One pick lifts an entry past
+ * loose matches, three past titles holding every word, and nothing learned
+ * ever lifts one past a title that is exactly what was typed.
+ */
+function withLearned(score: number, weight: number | undefined, titleScore: number): number {
+  if (!weight) {
+    return score;
+  }
+  // One pick is worth more than a loose title match (about 1,100), three
+  // more than a title holding every word (about 2,400).
+  const lifted = score + Math.min(2800, 300 + 900 * weight);
+  return titleScore === EXACT_TITLE ? lifted : Math.min(lifted, EXACT_TITLE - 1);
+}
+
+/** How long a Find choice takes to count half as much. */
+const FIND_CHOICE_HALF_LIFE_DAYS = 30;
+
+/**
+ * How much each remembered result weighs for what is typed now. A choice
+ * counts when what was typed then starts with what is typed now, as
+ * Firefox's adaptive history has it: picking Vendor contract after `vend`
+ * lifts it for `v`, `ve`, and `ven` too. Keyed by the choice's key.
+ */
+export function learnedWeights(
+  preferences: PersistedPreferences,
+  input: string,
+  now: number,
+): Map<string, number> {
+  const typed = normalizeFindInput(input);
+  const weights = new Map<string, number>();
+  if (!typed) {
+    return weights;
+  }
+  (preferences.findChoices ?? []).forEach((choice) => {
+    if (!choice.input.startsWith(typed)) {
+      return;
+    }
+    const ageDays = Math.max(0, (now - choice.at) / (24 * 60 * 60 * 1000));
+    const weight = choice.count * 0.5 ** (ageDays / FIND_CHOICE_HALF_LIFE_DAYS);
+    weights.set(choice.key, (weights.get(choice.key) ?? 0) + weight);
+  });
+  return weights;
+}
+
+/**
+ * The learned weights, resolved to the entries they name now: a note's
+ * heading found again by its text, a task by its words.
+ */
+function learnedBonuses(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  input: string,
+  now: number,
+): Map<string, number> {
+  const resolved = new Map<string, number>();
+  learnedWeights(preferences, input, now).forEach((weight, key) => {
+    const id = resolveFindChoiceKey(index, key);
+    if (id !== undefined) {
+      resolved.set(id, (resolved.get(id) ?? 0) + weight);
+    }
+  });
+  return resolved;
+}
+
+function resolveFindChoiceKey(index: WorkspaceIndex, key: string): string | undefined {
+  const kind = key.slice(0, key.indexOf(':'));
+  if (kind !== 'note' && kind !== 'task') {
+    return undefined;
+  }
+  let parts: unknown;
+  try {
+    parts = JSON.parse(key.slice(kind.length + 1));
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parts) || typeof parts[0] !== 'string') {
+    return undefined;
+  }
+  const file = index.files.get(parts[0]);
+  if (!file) {
+    return undefined;
+  }
+  if (kind === 'task') {
+    return file.tasks.find((task) => stripTags(task.title) === parts[1])?.id;
+  }
+  if (!parts[1]) {
+    return file.filePath;
+  }
+  return findPinnedSection(file.sections, {
+    filePath: file.filePath,
+    heading: String(parts[1]),
+    occurrence: Number(parts[2]) || 0,
+  })?.id;
+}
+
+/**
+ * A result as Find remembers it was chosen: by what it is, so a heading
+ * that moves down its note, or a task whose line changes, is still known.
+ */
+export function findChoiceKey(index: WorkspaceIndex, item: QuickFindItem): string | undefined {
+  switch (item.kind) {
+    case 'note': {
+      if (!item.filePath || !item.line) {
+        return undefined;
+      }
+      const pin = createPinForLine(index, item.filePath, item.line);
+      return pin ? `note:${pinKey(pin)}` : undefined;
+    }
+    case 'task':
+      return item.filePath ? `task:${JSON.stringify([item.filePath, item.label])}` : undefined;
+    case 'tag':
+      return item.tagKey ? `tag:${item.tagKey}` : undefined;
+    case 'savedView':
+      return item.savedFilterId ? `view:${item.savedFilterId}` : undefined;
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -450,6 +584,7 @@ function matchTags(
   excluded: ReadonlySet<string>,
   prefix: string,
   now: number,
+  learned: ReadonlyMap<string, number> = new Map(),
 ): QuickFindItem[] {
   const wanted = word.replace(/^[#@]/, '').toLowerCase();
   if (wanted.length === 0) {
@@ -471,7 +606,8 @@ function matchTags(
         Math.max(leafScore, keyScore ?? 0) +
         (preferences.favoriteTags.includes(tag.key) ? 20 : 0) +
         tagFrecency(preferences, tag.key, now) * 10 +
-        Math.log2(1 + tag.count);
+        Math.log2(1 + tag.count) +
+        Math.min(150, 50 * (learned.get(`tag:${tag.key}`) ?? 0));
       return [{ tag, score }];
     })
     .sort(

@@ -5,6 +5,7 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { createQuerySuggestions } from '../state/dashboardState';
 import {
   buildQuickFindResults,
+  findChoiceKey,
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
@@ -223,6 +224,7 @@ export class QuickFind implements vscode.Disposable {
       await this.accept();
       return;
     }
+    await this.rememberChoice(this.picker?.value ?? '', item);
     await this.openResultBeside(item);
   }
 
@@ -232,6 +234,7 @@ export class QuickFind implements vscode.Disposable {
     if (!item || (item.kind !== 'note' && item.kind !== 'task') || !item.filePath) {
       return;
     }
+    await this.rememberChoice(this.picker?.value ?? '', item);
     this.picker?.hide();
     await this.insertLink(item.filePath, item.sectionId);
   }
@@ -287,6 +290,9 @@ export class QuickFind implements vscode.Disposable {
    */
   private async runAction(action: RowActionId, item: QuickFindItem, value?: string): Promise<void> {
     const returnTo = value ?? this.picker?.value ?? '';
+    if (item.kind !== 'recent') {
+      await this.rememberChoice(returnTo, item);
+    }
     const back = () => (STAYING_ACTIONS.has(action) ? this.show(returnTo, rowKey(item)) : Promise.resolve());
     const index = this.indexer.getSnapshot();
     const task = item.taskId ? this.indexer.getTask(item.taskId) : undefined;
@@ -455,6 +461,20 @@ export class QuickFind implements vscode.Disposable {
     this.picker = undefined;
   }
 
+  /**
+   * Remembers which result was chosen for what was typed, so Find offers
+   * it higher the next time. Only results are learned, never searches.
+   */
+  private async rememberChoice(typed: string, item: QuickFindItem): Promise<void> {
+    if (!typed.trim()) {
+      return;
+    }
+    const key = findChoiceKey(this.indexer.getSnapshot(), item);
+    if (key) {
+      await this.preferences.recordFindChoice(typed, key);
+    }
+  }
+
   /** Opens a result beside the editor without taking focus from Find. */
   private async openResultBeside(item: QuickFindItem): Promise<void> {
     if (!item.filePath || !item.line) {
@@ -567,6 +587,7 @@ export class QuickFind implements vscode.Disposable {
     picker.hide();
     if (query) {
       await this.preferences.recordRecentQuery(query);
+      await this.rememberChoice(query, item);
     }
     if (item.kind === 'tag' && item.tagKey) {
       await this.actions.openTag(item.tagKey);
@@ -623,6 +644,7 @@ export class QuickFind implements vscode.Disposable {
     }
     if (event.button === OPEN_BESIDE && item.filePath && item.line) {
       // The list stays open, so the next result can be opened beside too.
+      await this.rememberChoice(picker.value, item);
       await this.openResultBeside(item);
       return;
     }
@@ -635,6 +657,7 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     if (event.button === INSERT_LINK && item.filePath) {
+      await this.rememberChoice(picker.value, item);
       picker.hide();
       await this.insertLink(item.filePath, item.sectionId);
       return;
