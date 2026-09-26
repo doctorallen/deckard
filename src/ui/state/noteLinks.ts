@@ -1,3 +1,4 @@
+import { isParkedFile } from '../../core/workspace/parked';
 import { describeDistance, formatShortDay } from '../../core/markdown/dates';
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { isPeriodicNoteFile, stripTags } from '../../core/markdown/parser';
@@ -93,10 +94,14 @@ export function collectNoteLinks(
       updatedAt: index.files.get(filePath)?.updatedAt,
       sourceLines: sourceLines.sort((left, right) => left - right),
       linkCount: linked.filter((occurrence) => occurrence.sourcePath === filePath).length,
+      parked: isParkedFile(index, filePath),
     }))
+    // A link from a parked note is a fact, so it stays, after the rest.
     .sort(
       (left, right) =>
-        (right.updatedAt ?? 0) - (left.updatedAt ?? 0) || left.title.localeCompare(right.title),
+        Number(left.parked) - Number(right.parked) ||
+        (right.updatedAt ?? 0) - (left.updatedAt ?? 0) ||
+        left.title.localeCompare(right.title),
     );
   let room = LIMIT;
   const linkedFromNotes: NoteLinkGroup[] = [];
@@ -118,6 +123,7 @@ export function collectNoteLinks(
         return sectionText ? { ...row, sectionText } : row;
       }),
       linkCount: group.linkCount,
+      ...(group.parked ? { parked: true as const } : {}),
     });
   }
 

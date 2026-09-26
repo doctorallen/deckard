@@ -775,6 +775,8 @@ export interface HeadingTagSpan extends TagReference {
 }
 
 export interface RankedNote {
+  /** Parked: listed only beside a parked note, after the rest. */
+  parked?: true;
   sectionId?: string;
   filePath: string;
   title: string;
@@ -894,6 +896,8 @@ export interface DeckardStatsSnapshot {
   orphanNotes: StatsNoteItem[];
   /** How many such notes there are, listed or not. */
   orphanNoteCount: number;
+  /** How many notes hold something parked, and how many open tasks are; absent when nothing is. */
+  parked?: { notes: number; openTasks: number };
   /** Tags that look like two spellings of one idea: the clearest first. */
   lookalikeTags: TagMergeCandidate[];
   /** How many such pairs there are, listed or not. */
@@ -982,6 +986,8 @@ export interface NoteLinkGroup {
   entries: NoteLinkEntry[];
   /** How many links the note has here, listed or not. */
   linkCount: number;
+  /** The linking note is parked: listed after the rest, and said so. */
+  parked?: true;
 }
 
 /** A mention of the note's name without a link, which can be made one. */
@@ -1097,6 +1103,8 @@ export interface NotesGraphNode {
   tagKeys: string[];
   /** Precomputed edge count; drives node radius in the webview. */
   degree: number;
+  /** Parked, or a tag only parked notes carry: hidden unless Show parked is on. */
+  parked?: true;
 }
 
 export interface NotesGraphEdge {

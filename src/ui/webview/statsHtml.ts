@@ -28,6 +28,8 @@ export function getStatsHtml(webview: vscode.Webview): string {
 <style nonce="${nonce}">${getBaseCss()}
 .updated, .count { font-family: var(--font-mono); }
 .updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
+.parked-line { margin: var(--space-3) 0 0; color: var(--muted); font-size: var(--text-xs); }
+.parked-line .text-button { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 .reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
@@ -68,6 +70,14 @@ ${getComponentScript()}
    * tasks behind it: the totals were a dead end, even where a page existed
    * that listed exactly what was being counted.
    */
+  /** How much is parked, as a search for it; nothing when nothing is. */
+  function parkedLine() {
+    const parked = state.parked;
+    if (!parked) return '';
+    const words = 'Parked: ' + parked.notes + ' ' + (parked.notes === 1 ? 'note' : 'notes') + ', ' + parked.openTasks + ' open ' + (parked.openTasks === 1 ? 'task' : 'tasks');
+    return '<p class="parked-line"><button type="button" class="text-button" data-action="open-search" data-query="is:parked" data-tip="Search everything that is parked">' + escapeHtml(words) + '</button></p>';
+  }
+
   function metric(label, value, query, hint) {
     return renderMetric(label, value, query, hint);
   }
@@ -219,7 +229,7 @@ ${getComponentScript()}
       : '';
     const orphans = unread + '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article>'
       + '<article class="view-panel"><h2 class="with-action"><span>Links that open no note</span>' + ((state.missingLinkTargets || []).some(function (target) { return target.creatable; }) ? '<button type="button" class="merge" data-action="create-all-missing-notes" data-tip="Create a note for every name links write that no note carries">Create all</button>' : '') + '</h2>' + missingLinkList() + (unlistedMissing > 0 ? '<p class="empty">And ' + unlistedMissing + ' more.</p>' : '') + '</article></section>';
-    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
+    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section>' + parkedLine() + '<section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') { state = event.data.data; renderKeepingPlace(render); }

@@ -908,7 +908,31 @@ export function createDeckardStatsSnapshot(
     ...findOrphanNotes(index),
     ...findLookalikeTags(index),
     ...listMissingLinkTargets(index),
+    ...countParked(index),
   };
+}
+
+/** How many notes and open tasks are parked, when any are. */
+function countParked(index: WorkspaceIndex): Pick<DeckardStatsSnapshot, 'parked'> {
+  const parked = index.parked;
+  if (!parked || (parked.sections.size === 0 && parked.tasks.size === 0 && parked.files.size === 0)) {
+    return {};
+  }
+  let openTasks = 0;
+  parked.tasks.forEach((id) => {
+    if (index.tasks.get(id)?.completed === false) {
+      openTasks += 1;
+    }
+  });
+  // A note is parked when it is parked whole, or holds a parked entry.
+  const notes = new Set(parked.files);
+  parked.sections.forEach((id) => {
+    const section = index.sections.get(id);
+    if (section) {
+      notes.add(section.filePath);
+    }
+  });
+  return { parked: { notes: notes.size, openTasks } };
 }
 
 /** How many of the names that open no note the Stats page lists. */
@@ -959,7 +983,10 @@ function findOrphanNotes(
   const orphans = [...index.files.values()]
     .filter(
       (file) =>
-        backlinks.toNote(file.filePath).length === 0 && !isPeriodicNoteFile(file),
+        backlinks.toNote(file.filePath).length === 0 &&
+        !isPeriodicNoteFile(file) &&
+        // An archive is expected to be unlinked.
+        !isParkedFile(index, file.filePath),
     )
     .map((file) => ({ filePath: file.filePath, title: noteTitle(file.filePath) }))
     .sort(

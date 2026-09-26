@@ -124,6 +124,7 @@ ${getPageTailCss()}
       <label class="toggle-row"><input type="checkbox" id="show-tasks" checked data-tip="Show or hide task nodes and their visible links."> Show tasks</label>
       <label class="toggle-row"><input type="checkbox" id="show-tags" data-tip="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
       <label class="toggle-row"><input type="checkbox" id="show-orphans" checked data-tip="Show nodes with no currently visible connections."> Show orphans</label>
+      <label class="toggle-row"><input type="checkbox" id="show-parked" data-tip="Show parked notes, tasks, and tags. They are hidden unless this is on."> Show parked</label>
       <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" data-tip="Narrow the tag checklist without changing the graph.">
       <div class="tag-list" id="tag-list" role="group" aria-label="Tag filters"></div>
       <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove all selected tag filters.">Clear tag filters</button>
@@ -253,6 +254,7 @@ ${getUndoScript()}
     showTasks: true,
     showTags: false,
     showOrphans: true,
+    showParked: false,
     selectedTags: [],
     search: '',
     nodeSize: 1,
@@ -340,9 +342,12 @@ ${getUndoScript()}
       }
     }
 
+    var focusPath = snapshot.focus && snapshot.focus.local ? snapshot.focus.filePath : undefined;
     var candidate = snapshot.nodes.filter(function (node) {
       if (node.kind === 'note' && !settings.showNotes) { return false; }
       if (node.kind === 'task' && !settings.showTasks) { return false; }
+      // The note the graph is drawn around is drawn, parked or not.
+      if (node.parked && !settings.showParked && !(focusPath && node.filePath === focusPath)) { return false; }
       return true;
     });
     var candidateIndex = {};
@@ -1932,11 +1937,12 @@ ${getUndoScript()}
   sendFilter();
   bindToggle('show-tags', 'showTags', true);
   bindToggle('show-orphans', 'showOrphans', true);
+  bindToggle('show-parked', 'showParked', true);
   bindToggle('show-all-links', 'showAllLinks', true);
 
   /** Puts every control in step with settings, after a reset or an undo. */
   function applySettingsToControls() {
-    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-all-links']
+    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-parked', 'show-all-links']
       .forEach(function (id) {
         var key = id.replace(/-([a-z])/g, function (_, letter) {
           return letter.toUpperCase();

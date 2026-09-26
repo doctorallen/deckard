@@ -29,6 +29,12 @@
   parked** when the results mix them, and its Tags leave out a tag only
   parked notes carry.
 
+- **Parked notes stay out of the way.** Related Notes leaves them out
+  unless the note you are in is parked; Linked from keeps them, last. The
+  Notes Graph hides them until **Show parked** is on, tag completion leaves
+  out a tag only parked notes carry, Stats does not call a parked note
+  unlinked and says how much is parked, and Check My Setup counts them.
+
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds
   the rest of the note away; **Unfold All Sections** brings it back.

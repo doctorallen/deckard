@@ -55,6 +55,7 @@ export function createNotesGraphSnapshot(
     .sort((left, right) => left.id.localeCompare(right.id));
 
   applyDegrees(sources, tagNodes, edges);
+  markParked(index, sources, tagNodes);
 
   const nodes = [
     ...sources.map((source) => source.node),
@@ -162,7 +163,9 @@ export function graphInputsChanged(
       return true;
     }
   }
-  return false;
+  // Parking is a setting, not part of a note: a change to it redraws the
+  // graph without any note changing.
+  return !sameParking(before.parked, after.parked);
 }
 
 /** Which kinds of node the page shows. Tags are always sent. */
@@ -301,6 +304,55 @@ function createGraphSources(index: WorkspaceIndex): GraphSource[] {
   }
 
   return sources;
+}
+
+/** Marks the parked entries, tasks, and notes, and the tags only they carry. */
+function markParked(
+  index: WorkspaceIndex,
+  sources: GraphSource[],
+  tagNodes: Map<string, NotesGraphNode>,
+): void {
+  const parked = index.parked;
+  if (!parked) {
+    return;
+  }
+  sources.forEach(({ node }) => {
+    const [kind, ...rest] = node.id.split(':');
+    const id = rest.join(':');
+    const isParked =
+      kind === 'section'
+        ? parked.sections.has(id)
+        : kind === 'task'
+          ? parked.tasks.has(id)
+          : parked.files.has(id);
+    if (isParked) {
+      node.parked = true;
+    }
+  });
+  parked.tags.forEach((key) => {
+    const node = tagNodes.get(key);
+    if (node) {
+      node.parked = true;
+    }
+  });
+}
+
+/** Whether two indexes park the same things. */
+function sameParking(
+  before: WorkspaceIndex['parked'],
+  after: WorkspaceIndex['parked'],
+): boolean {
+  const sets = (state: WorkspaceIndex['parked']) =>
+    state ? [state.files, state.sections, state.tasks, state.tags] : [];
+  const left = sets(before);
+  const right = sets(after);
+  const empty = (list: Set<string>[]) => list.every((set) => set.size === 0);
+  if (left.length === 0 || right.length === 0) {
+    return empty(left) && empty(right);
+  }
+  return left.every(
+    (set, at) => set.size === right[at].size && [...set].every((value) => right[at].has(value)),
+  );
 }
 
 function createTagNodes(

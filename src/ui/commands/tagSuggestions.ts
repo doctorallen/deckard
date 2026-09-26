@@ -9,6 +9,7 @@ import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 import { whenPublished } from '../../core/workspace/publishing';
+import { isParkedFile, isParkedOnlyTag } from '../../core/workspace/parked';
 
 interface TagIndexSource {
   readonly ready: Promise<void>;
@@ -16,6 +17,8 @@ interface TagIndexSource {
   getSnapshot(): WorkspaceIndex;
   /** Whether a file is one of the notes, not a README in a code folder. */
   isNotesFile?(uri: vscode.Uri): boolean;
+  /** The note's path in the index, which says whether it is parked. */
+  getFilePath?(uri: vscode.Uri): string;
 }
 
 type TagAutocompleteEnabled = (document: vscode.TextDocument) => boolean;
@@ -136,10 +139,16 @@ export class TagCompletionProvider implements vscode.Disposable {
 
     await whenPublished(this.indexer);
     const query = context.query.toLowerCase();
-    return [...this.indexer.getSnapshot().tags.values()]
+    const index = this.indexer.getSnapshot();
+    // A tag only parked notes carry is left out, except while writing in a
+    // parked note, where those are the tags in use.
+    const filePath = this.indexer.getFilePath?.(document.uri);
+    const offerParked = filePath !== undefined && isParkedFile(index, filePath);
+    return [...index.tags.values()]
       .filter((tag) =>
         matchesTagCompletion(tag, context.marker, query, personMarker),
       )
+      .filter((tag) => offerParked || !isParkedOnlyTag(index, tag.key))
       .filter(
         (tag) =>
           context.marker !== '#' || !/^#?\d+$/.test(tag.key),

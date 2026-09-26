@@ -5,6 +5,7 @@
  * score, and a more specific entry outranks the broad heading it sits under.
  */
 
+import { isParkedFile, isParkedSection, isParkedTask } from '../../core/workspace/parked';
 import {
   ParsedFile,
   RelatedNotesSortMode,
@@ -186,8 +187,14 @@ export function rankRelatedNotes(
     ? createLexicalModel(index, activeFile)
     : undefined;
 
+  // Parked notes are left out, unless the note being read is parked itself;
+  // then they are ranked, after the rest.
+  const keepParked = activeFilePath !== undefined && isParkedFile(index, activeFilePath);
   index.files.forEach((file, filePath) => {
     if (filePath === activeFilePath) {
+      return;
+    }
+    if (!keepParked && isParkedFile(index, filePath)) {
       return;
     }
     if (options.hidePeriodicNotes && isPeriodicNoteFile(file)) {
@@ -234,6 +241,9 @@ export function rankRelatedNotes(
       0,
     );
     const matchingSections = file.sections.filter((section) => {
+      if (!keepParked && isParkedSection(index, section.id)) {
+        return false;
+      }
       const tags = getTagReferences(section.tags, section.tagLabels);
       const associatedMatches = findAssociatedMatches(tags);
       const linkEvidence = getLinkEvidence(
@@ -272,7 +282,9 @@ export function rankRelatedNotes(
       links: string[];
       headingPath: string[];
       dailyDate?: string;
+      parked?: boolean;
     }> = matchingSections.map((section) => ({
+      parked: isParkedSection(index, section.id),
       sectionId: section.id,
       title: getNoteTitle(section.heading, tagTitleDisplayMode),
       sourceLine: section.startLine,
@@ -293,6 +305,9 @@ export function rankRelatedNotes(
     // A task under a matching section is already visible through that section;
     // include only standalone matches to keep sidebar entries distinct.
     const matchingTasks = file.tasks.filter((task) => {
+      if (!keepParked && isParkedTask(index, task.id)) {
+        return false;
+      }
       const tags = getTagReferences(task.tags, task.tagLabels);
       const linkEvidence = getLinkEvidence(
         activeFile,
@@ -312,6 +327,7 @@ export function rankRelatedNotes(
 
     matchingTasks.forEach((task) => {
       references.push({
+        parked: isParkedTask(index, task.id),
         sectionId: task.sectionId,
         title: getNoteTitle(task.title, tagTitleDisplayMode),
         sourceLine: task.lineNumber,
@@ -427,6 +443,7 @@ export function rankRelatedNotes(
           relevanceScore - Math.round(specificityPenalty * 100),
         );
         return {
+          ...(reference.parked ? { parked: true as const } : {}),
           sectionId: reference.sectionId,
           filePath,
           title: reference.title,
@@ -549,6 +566,11 @@ export function sortRelatedNotes(
   sectionAccessCounts: Record<string, number> = {},
 ): RankedNote[] {
   return [...notes].sort((left, right) => {
+    // Parked notes, listed only beside a parked note, come after the rest.
+    const parkedOrder = Number(left.parked === true) - Number(right.parked === true);
+    if (parkedOrder !== 0) {
+      return parkedOrder;
+    }
     if (sortMode === 'newest' || sortMode === 'oldest') {
       const dateOrder = compareRelatedNoteDates(
         left.updatedAt,

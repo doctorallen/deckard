@@ -394,7 +394,7 @@ ${getComponentScript()}
       ? '<details class="links-group" data-links-group="linked"' + (linksOpen.linked ? ' open' : '') + '><summary>Linked from <span class="links-count">' + (links.linkedFromNoteCount || groups.length) + '</span></summary>'
         + groups.map(function (group) {
           const first = group.entries[0];
-          const meta = [group.updatedLabel, group.linkCount > 1 ? group.linkCount + ' links' : ''].filter(Boolean).join(' · ');
+          const meta = [group.updatedLabel, group.linkCount > 1 ? group.linkCount + ' links' : '', group.parked ? 'Parked' : ''].filter(Boolean).join(' · ');
           return '<section class="link-group" aria-label="' + escapeHtml(group.title) + '"><div class="link-group-head"><button type="button" class="link-group-open" data-action="open-link" data-file-path="' + escapeHtml(group.filePath) + '" data-line="' + (first ? first.line : 1) + '" data-tip="Open ' + escapeHtml(group.title) + ' at its first link here">' + escapeHtml(group.title) + '</button>' + (meta ? '<span class="link-group-meta">' + escapeHtml(meta) + '</span>' : '') + '</div>'
             + '<ul class="link-list">' + group.entries.map(function (entry) { return row(entry); }).join('') + '</ul></section>';
         }).join('') + foot + hiding + '</details>'
