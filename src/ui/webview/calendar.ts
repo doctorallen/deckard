@@ -174,6 +174,9 @@ export class CalendarView
           await openSourceAt(message.filePath, 1);
         }
         return;
+      case 'searchCreated':
+        await vscode.commands.executeCommand('deckard.search', `created = ${message.date}`);
+        return;
       case 'openTask': {
         const task = this.indexer.getSnapshot().tasks.get(message.taskId);
         if (task) {

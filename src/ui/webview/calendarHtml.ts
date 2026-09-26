@@ -78,6 +78,10 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .day-panel .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .day-move { align-self: center; padding: 0 var(--space-2); font-size: var(--text-xs); white-space: nowrap; }
 .day-more { margin-top: var(--space-1); }
+.day-notes { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.day-created { display: flex; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
+.day-created-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-created-folder { flex: none; max-width: 45%; overflow: hidden; color: var(--muted); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
 ${getPageTailCss()}
 </style>
 </head>
@@ -246,7 +250,19 @@ ${getComponentScript()}
     const done = day.done && day.done.length
       ? '<details class="day-group"><summary>Done (' + day.done.length + ')</summary><div class="task-list">' + day.done.map(function (item) { return renderDayTask(item); }).join('') + '</div></details>'
       : '';
-    return (due || scheduled ? '' : '<p class="empty">Nothing due or scheduled.</p>') + due + scheduled + done;
+    return (due || scheduled ? '' : '<p class="empty">Nothing due or scheduled.</p>') + due + scheduled + done + renderCreated(day);
+  }
+
+  /** The notes written that day, by their titles, with Search all for the rest. */
+  function renderCreated(day) {
+    if (!day.notes || !day.notes.length) return '';
+    const rest = day.notesTotal - day.notes.length;
+    return '<section class="day-group" aria-label="Notes created"><h3>Notes created (' + day.notesTotal + ')</h3><ul class="day-notes">'
+      + day.notes.map(function (note) {
+        return '<li><button type="button" class="day-created" data-action="open-note" data-file-path="' + escapeHtml(note.filePath) + '"><span class="day-created-title">' + escapeHtml(note.title) + '</span>' + (note.folder ? '<span class="day-created-folder">' + escapeHtml(note.folder) + '</span>' : '') + '</button></li>';
+      }).join('') + '</ul>'
+      + (rest > 0 ? '<button type="button" class="day-more" data-action="search-created" data-date="' + escapeHtml(day.date) + '" aria-label="' + escapeHtml('Search the ' + day.notesTotal + ' notes created on ' + day.date) + '">Search all ' + day.notesTotal + '</button>' : '')
+      + '</section>';
   }
 
   /** Marks a day as chosen at once, and tells the host after a pause. */
@@ -345,6 +361,7 @@ ${getComponentScript()}
       renderKeepingPlace(render);
     }
     else if (action === 'create-day') post({ type: 'createDay', date: target.getAttribute('data-date') });
+    else if (action === 'search-created') post({ type: 'searchCreated', date: target.getAttribute('data-date') });
   });
 
   // A task's checkbox completes it, or reopens it in Done.

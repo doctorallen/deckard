@@ -100,7 +100,14 @@ export interface CalendarDayDetail {
    * day, never earlier.
    */
   move: { date: string; label: 'Tomorrow' | 'Next day' };
+  /** Notes created that day, oldest first, daily, weekly, and monthly aside. */
+  notes: { filePath: string; title: string; folder: string }[];
+  /** How many there are, listed or not. */
+  notesTotal: number;
 }
+
+/** How many of a day's tasks, and of its new notes, the panel lists at once. */
+const PANEL_NOTES = 5;
 
 const dayTitle = new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' });
 const dayTitleWithYear = new Intl.DateTimeFormat('en', {
@@ -163,6 +170,31 @@ export function createCalendarDay(
     left.lineNumber - right.lineNumber;
   const rows = (tasks: Task[]): DashboardTask[] =>
     tasks.sort(byImportance).map((task) => createDashboardTask(task, index.sections, now.getTime()));
+  // Notes whose own created date is the day, the periodic notes aside: a
+  // daily note is the day itself, not something written on it.
+  const dailyPaths = new Set(listDailyNotes(index).map((note) => note.filePath));
+  const created = [...index.files.values()]
+    .filter((file) => {
+      if (!on(file.createdAt) || dailyPaths.has(file.filePath)) {
+        return false;
+      }
+      const name = (file.filePath.split('/').pop() ?? '').replace(/\.md$/i, '');
+      return !isPeriodicNoteName(name);
+    })
+    .sort(
+      (left, right) =>
+        (left.createdAt ?? 0) - (right.createdAt ?? 0) || left.filePath.localeCompare(right.filePath),
+    );
+  const notes = created.slice(0, PANEL_NOTES).map((file) => {
+    const heading = file.sections.find((section) => section.headingLevel === 1 && !section.isInline);
+    const name = (file.filePath.split('/').pop() ?? file.filePath).replace(/\.md$/i, '');
+    const folder = file.filePath.includes('/') ? file.filePath.slice(0, file.filePath.lastIndexOf('/')) : '';
+    return {
+      filePath: file.filePath,
+      title: (heading ? stripTags(heading.heading).trim() : '') || name,
+      folder,
+    };
+  });
   const tomorrow = addDaysTo(today, 1);
   const next = addDaysTo(date, 1);
   const target = next > tomorrow ? next : tomorrow;
@@ -175,6 +207,8 @@ export function createCalendarDay(
     scheduled: rows(scheduled),
     done: rows(done),
     move: { date: target, label: target === tomorrow ? 'Tomorrow' : 'Next day' },
+    notes,
+    notesTotal: created.length,
   };
 }
 

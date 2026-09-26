@@ -289,7 +289,7 @@ suite('The calendar day panel lists the day tasks', () => {
     try {
       assert.deepStrictEqual(
         page.findAll('.day-group > h3, .day-group > summary').map((heading) => heading.textContent),
-        ['Due (3)', 'Scheduled (1)', 'Done (1)'],
+        ['Due (3)', 'Scheduled (1)', 'Done (1)', 'Notes created (1)'],
       );
       assert.strictEqual(page.findAll('.day-panel details.day-group[open]').length, 0, 'Done starts folded');
       const scheduled = page.find('.day-group[aria-label="Scheduled"] [data-action="move-task"]');
@@ -327,5 +327,59 @@ suite('The calendar day panel lists the day tasks', () => {
     } finally {
       empty.dispose();
     }
+  });
+});
+
+suite('The calendar day panel lists the notes created that day', () => {
+  const at = (hour: number) => new Date(2026, 8, 25, hour).getTime();
+  const index = buildWorkspaceIndex(
+    new Map(
+      [
+        ['notes/2026-09-25.md', '# 2026-09-25\n', 7],
+        ['notes/week-2026-09-20-2026-09-26.md', '# Week\n', 7],
+        ['work/Atlas kickoff.md', '# Atlas kickoff #project/atlas\nBody\n', 9],
+        ['Ren 1on1.md', 'No heading here\n', 8],
+        ...Array.from({ length: 5 }, (_, n) => [`ideas/idea-${n}.md`, `# Idea ${n}\n`, 10 + n] as [string, string, number]),
+        ['old.md', '# Old\n', -30],
+      ].map(([filePath, content, hour]) => [
+        filePath as string,
+        parseMarkdown(filePath as string, content as string, { createdAt: at(hour as number), updatedAt: at(12) }, {}),
+      ]),
+    ),
+  );
+
+  test('oldest first, by their first heading or their name, daily and weekly notes aside', () => {
+    const day = createCalendarDay(index, '2026-09-25', NOW);
+    assert.strictEqual(day.notesTotal, 7);
+    assert.deepStrictEqual(
+      day.notes.map((note) => [note.title, note.folder]),
+      [
+        ['Ren 1on1', ''],
+        ['Atlas kickoff', 'work'],
+        ['Idea 0', 'ideas'],
+        ['Idea 1', 'ideas'],
+        ['Idea 2', 'ideas'],
+      ],
+    );
+  });
+
+  test('a row opens its note, and Search all searches the day', () => {
+    const page = openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      createCalendar(index, '2026-09', NOW, 0, { dayPanel: true }),
+    );
+    try {
+      page.click('.day-created');
+      assert.deepStrictEqual(page.lastPosted('openNote'), { type: 'openNote', filePath: 'Ren 1on1.md' });
+      const all = page.find('[data-action="search-created"]');
+      assert.strictEqual(all.textContent, 'Search all 7');
+      assert.strictEqual(all.getAttribute('aria-label'), 'Search the 7 notes created on 2026-09-25');
+      page.click('[data-action="search-created"]');
+      assert.deepStrictEqual(page.lastPosted('searchCreated'), { type: 'searchCreated', date: '2026-09-25' });
+    } finally {
+      page.dispose();
+    }
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'searchCreated', date: '2026-09-25' }), { type: 'searchCreated', date: '2026-09-25' });
+    assert.strictEqual(parseCalendarMessage({ type: 'searchCreated', date: 'today' }), undefined);
   });
 });

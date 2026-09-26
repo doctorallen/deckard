@@ -964,7 +964,8 @@ export type CalendarMessage =
   | { type: 'openNote'; filePath: string }
   | { type: 'openTask'; taskId: string }
   | { type: 'toggleTask'; taskId: string; completed: boolean }
-  | { type: 'moveTask'; taskId: string; field: 'due' | 'scheduled'; date: string };
+  | { type: 'moveTask'; taskId: string; field: 'due' | 'scheduled'; date: string }
+  | { type: 'searchCreated'; date: string };
 
 /** A line in another note that links to, or names, the note being read. */
 export interface NoteLinkEntry {

@@ -827,6 +827,8 @@ export function parseCalendarMessage(
         Object.keys(value).length === 2
         ? { type: 'openNote', filePath: value.filePath }
         : undefined;
+    case 'searchCreated':
+      return isDate && Object.keys(value).length === 2 ? { type: 'searchCreated', date } : undefined;
     case 'openTask':
       return typeof value.taskId === 'string' && value.taskId.length > 0 && Object.keys(value).length === 2
         ? { type: 'openTask', taskId: value.taskId }
