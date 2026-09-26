@@ -87,6 +87,12 @@
   and said nothing. Each now has a message, and a change made in the editor
   but not saved says to save the note, with Open Note.
 
+- **Adding a tag to a heading with closing hashes, or a line ending in a
+  block id, keeps both working.** Bulk edit's Add a tag wrote the tag at the
+  very end of the line, so `## Title ##` stopped being closed and `^id`
+  stopped being a block id, breaking links to it. The tag now goes before
+  them.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

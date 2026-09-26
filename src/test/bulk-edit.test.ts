@@ -53,6 +53,20 @@ suite('Bulk edits', () => {
       '- [ ] Book the room',
       'nothing but one tag is written',
     );
+    assert.strictEqual(
+      appendTagToLine('## Decision ##', '#risk/vendor'),
+      '## Decision #risk/vendor ##',
+      'a heading keeps its closing hashes',
+    );
+    assert.strictEqual(
+      appendTagToLine('- [ ] Book the room ^room', '#project/atlas'),
+      '- [ ] Book the room #project/atlas ^room',
+      'a block id stays last, where it is read as one',
+    );
+    assert.strictEqual(
+      appendTagToLine('## Decision ## ^pick', '#risk/vendor'),
+      '## Decision #risk/vendor ## ^pick',
+    );
   });
 
   test('reads the date a reader writes', () => {

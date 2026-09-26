@@ -4,6 +4,7 @@ import {
   extractTags,
   getEntityNamespaceAliases,
   getPersonMarker,
+  hasAtxHeadingClosingHashes,
 } from '../../core/markdown/parser';
 import {
   CompletionWrite,
@@ -67,8 +68,9 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
 /**
  * Writes a tag at the end of a line, unless the line already carries it.
  *
- * The tag goes last, where a tag written by hand goes, and the sentence in
- * front of it is left exactly as it was.
+ * The tag goes last, where a tag written by hand goes, ahead only of a
+ * block id or a heading's closing hashes, and the sentence in front of it is
+ * left exactly as it was.
  */
 export function appendTagToLine(
   line: string,
@@ -91,7 +93,24 @@ export function appendTagToLine(
   if (carried.some((candidate) => candidate.key === written[0].key)) {
     return line;
   }
-  return `${line.replace(/[ \t]+$/, '')} ${written[0].label}`;
+  // The tag goes before what must stay last: a trailing `^block-id`, which
+  // is read as one only at the end of a line, and a heading's closing `#`s,
+  // which would otherwise stop closing it.
+  let head = line.replace(/[ \t]+$/, '');
+  let tail = '';
+  const blockId = /[ \t]+\^[\w-]+$/.exec(head);
+  if (blockId) {
+    tail = blockId[0] + tail;
+    head = head.slice(0, blockId.index);
+  }
+  if (hasAtxHeadingClosingHashes(head)) {
+    const closing = /[ \t]+#+$/.exec(head);
+    if (closing) {
+      tail = closing[0] + tail;
+      head = head.slice(0, closing.index);
+    }
+  }
+  return `${head} ${written[0].label}${tail}`;
 }
 
 /**
