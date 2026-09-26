@@ -8,6 +8,7 @@ import { Section, TagInfo } from '../../core/types';
 import { PreferencesStore } from '../../core/storage/preferences';
 import { createPinForLine } from '../state/pinnedNotes';
 import { pickDestination } from './destinationPicker';
+import { CaptureSeed, captureSeed, withSourceLink } from './selectionSeed';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
@@ -26,7 +27,7 @@ export interface CaptureInsertion {
 }
 
 interface CaptureItem extends vscode.QuickPickItem {
-  action: 'add' | 'note' | 'tag';
+  action: 'add' | 'note' | 'tag' | 'restore';
 }
 
 /** What was typed, and how it is to be written. */
@@ -37,6 +38,8 @@ interface CaptureAnswer {
   asNote: boolean;
   /** The words kept as typed, with no date or priority read from them. */
   literal: boolean;
+  /** A link back to where the words were selected, written after them. */
+  link?: string;
 }
 
 /** What was being typed when Capture closed without writing it. */
@@ -92,16 +95,28 @@ export async function capture(
   preferences?: PreferencesStore,
 ): Promise<void> {
   await indexer.ready;
+  // Words selected in the editor are the newer and plainer intent, so they
+  // win over a draft, which is offered beside them instead.
+  const seed = captureSeed(
+    vscode.window.activeTextEditor,
+    indexer.getSnapshot(),
+    (uri) => (indexer.isNotesFile(uri) ? indexer.getFilePath(uri) : undefined),
+  );
   const answer = await askForCapture(
     indexer,
     initialTarget,
     drafts?.read(initialTarget),
     drafts,
+    seed,
   );
   if (!answer) {
     return;
   }
-  const line = writeCapture(answer);
+  const line = withSourceLink(
+    writeCapture(answer),
+    answer.link,
+    readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
+  );
 
   if (answer.target === 'today') {
     if (await captureToToday(answer.text, line)) {
@@ -352,9 +367,15 @@ export async function captureToToday(
 function askForCapture(
   indexer: WorkspaceIndexer,
   initialTarget: CaptureTarget,
-  restored?: CaptureDraft,
+  draft?: CaptureDraft,
   drafts?: CaptureDrafts,
+  seed?: CaptureSeed,
 ): Promise<CaptureAnswer | undefined> {
+  // A selection wins; the draft waits as the second row until it is chosen.
+  const restored = seed ? undefined : draft;
+  let offeredDraft = seed ? draft : undefined;
+  let link = seed?.link;
+  let linkBack = link !== undefined;
   const tags = [...indexer.getSnapshot().tags.values()];
   const personMarker = getPersonMarker(
     vscode.workspace.getConfiguration('deckard').get('personMarker'),
@@ -375,6 +396,14 @@ function askForCapture(
     iconPath: new vscode.ThemeIcon('wand'),
     tooltip: 'Read a date, priority, or repeat rule from the last words',
   };
+  const unlinkButton: vscode.QuickInputButton = {
+    iconPath: new vscode.ThemeIcon('close'),
+    tooltip: 'Do not link back to where this came from',
+  };
+  const linkButton: vscode.QuickInputButton = {
+    iconPath: new vscode.ThemeIcon('link'),
+    tooltip: 'Link back to where this came from',
+  };
   let literal = restored?.literal ?? false;
   const picker = vscode.window.createQuickPick<CaptureItem>();
   picker.placeholder =
@@ -387,6 +416,8 @@ function askForCapture(
   let restoring = restored !== undefined;
   if (restored) {
     picker.value = restored.text;
+  } else if (seed) {
+    picker.value = seed.text;
   }
 
   const update = (): void => {
@@ -394,6 +425,7 @@ function askForCapture(
       (target === 'today' ? 'Deckard: Capture' : 'Deckard: Capture Under a Heading') +
       (restoring ? ' — Restored what you were typing' : '');
     picker.buttons = [
+      ...(link ? [linkBack ? unlinkButton : linkButton] : []),
       literal ? readingButton : literalButton,
       target === 'today' ? headingButton : todayButton,
     ];
@@ -406,7 +438,9 @@ function askForCapture(
         action: 'tag',
       }),
     );
-    const written = value ? writeCapture({ text: value, asNote: false, literal }) : '';
+    const written = value
+      ? withSourceLink(writeCapture({ text: value, asNote: false, literal }), linkBack ? link : undefined)
+      : '';
     const add: CaptureItem = {
       label: value,
       description:
@@ -423,7 +457,17 @@ function askForCapture(
       alwaysShow: true,
       action: 'note',
     };
-    picker.items = value ? [add, note, ...suggestions] : suggestions;
+    const restore: CaptureItem[] = offeredDraft && offeredDraft.text !== value
+      ? [
+          {
+            label: 'Restore what you were typing',
+            description: offeredDraft.text,
+            alwaysShow: true,
+            action: 'restore',
+          },
+        ]
+      : [];
+    picker.items = value ? [add, ...restore, note, ...suggestions] : [...restore, ...suggestions];
   };
 
   return new Promise((resolve) => {
@@ -433,7 +477,9 @@ function askForCapture(
       update();
     });
     picker.onDidTriggerButton((button) => {
-      if (button === literalButton || button === readingButton) {
+      if (button === linkButton || button === unlinkButton) {
+        linkBack = !linkBack;
+      } else if (button === literalButton || button === readingButton) {
         literal = !literal;
       } else {
         target = target === 'today' ? 'heading' : 'today';
@@ -447,20 +493,40 @@ function askForCapture(
         update();
         return;
       }
+      if (item?.action === 'restore' && offeredDraft) {
+        // The draft's words replace the selection's, which it had no link to.
+        picker.value = offeredDraft.text;
+        literal = offeredDraft.literal;
+        offeredDraft = undefined;
+        link = undefined;
+        linkBack = false;
+        update();
+        return;
+      }
       const text = picker.value.trim();
       if (text) {
         accepted = true;
         // Kept until it is written: a heading picker closed, or a note that
         // refuses the edit, would otherwise lose it.
         void drafts?.save({ text, target, literal });
-        resolve({ text, target, literal, asNote: item?.action === 'note' });
+        resolve({
+          text,
+          target,
+          literal,
+          asNote: item?.action === 'note',
+          ...(linkBack && link ? { link } : {}),
+        });
         picker.hide();
       }
     });
     picker.onDidHide(() => {
       if (!accepted) {
         const text = picker.value.trim();
-        void (text ? drafts?.save({ text, target, literal }) : drafts?.clear());
+        // Selected words left as they were are not a draft; the draft kept
+        // for the next Capture stays.
+        if (!(seed && text === seed.text)) {
+          void (text ? drafts?.save({ text, target, literal }) : drafts?.clear());
+        }
       }
       resolve(undefined);
       picker.dispose();

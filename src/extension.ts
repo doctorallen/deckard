@@ -951,7 +951,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand(
       'deckard.searchWorkspace',
       (initialQuery?: unknown) =>
-        quickFind.show(getCommandTagArgument(initialQuery) ?? ''),
+        quickFind.show(getCommandTagArgument(initialQuery)),
     ),
     vscode.commands.registerCommand('deckard.quickFind.complete', () =>
       quickFind.complete(),

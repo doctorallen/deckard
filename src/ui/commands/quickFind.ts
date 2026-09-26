@@ -24,6 +24,7 @@ import { askForDueDate, dueDateFor, pickReschedule, setTasksDue } from './agenda
 import { buildRowActions, RowActionId, STAYING_ACTIONS } from './quickFindActions';
 import { quoteTaskTitle, toggleTask } from './taskActions';
 import { keyLabel } from './quickFindKeys';
+import { shortSelection } from './selectionSeed';
 
 /** Set while Quick Find is open, so Tab completes in it and nowhere else. */
 export const QUICK_FIND_CONTEXT = 'deckard.quickFindOpen';
@@ -144,11 +145,14 @@ export class QuickFind implements vscode.Disposable {
     private readonly actions: QuickFindActions,
   ) {}
 
-  public async show(initialQuery = '', activeKey?: string): Promise<void> {
+  public async show(initialQuery?: string, activeKey?: string): Promise<void> {
     // Coming back from a row's own list keeps the editor Find was opened from.
     if (activeKey === undefined) {
       this.editor = vscode.window.activeTextEditor;
     }
+    // Opened with nothing to search for, Find starts from the words
+    // selected in the editor, all selected, so typing replaces them.
+    const query = initialQuery ?? shortSelection(vscode.window.activeTextEditor) ?? '';
     this.picker?.dispose();
     const picker = vscode.window.createQuickPick<QuickFindPickItem>();
     this.picker = picker;
@@ -166,7 +170,7 @@ export class QuickFind implements vscode.Disposable {
     picker.matchOnDescription = false;
     picker.matchOnDetail = false;
     picker.buttons = [SHOW_ALL];
-    picker.value = initialQuery;
+    picker.value = query;
     void vscode.commands.executeCommand('setContext', QUICK_FIND_CONTEXT, true);
 
     picker.onDidChangeValue(() => this.scheduleRefresh());

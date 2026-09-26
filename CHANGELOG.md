@@ -12,6 +12,13 @@
 
 ### Added
 
+- **Find and Capture start from the selection.** With a few words selected
+  on one line, Find searches them and Capture starts from them; a capture
+  from a note links back to the heading they came from, after the words and
+  before the date, with a button to leave the link off. A selection wins
+  over an earlier draft, which is offered as **Restore what you were
+  typing**.
+
 - **Capture remembers its headings.** Capture Under a Heading lists the
   five headings it went under last first, the last one highlighted so Enter
   repeats it, then every heading from the notes you open most.
