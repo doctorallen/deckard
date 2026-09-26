@@ -67,9 +67,7 @@ ${getComponentScript()}
    * that listed exactly what was being counted.
    */
   function metric(label, value, query, hint) {
-    const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>';
-    if (!query) return '<article class="metric">' + body + '</article>';
-    return '<button type="button" class="metric metric-open" data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '">' + body + '</button>';
+    return renderMetric(label, value, query, hint);
   }
   // isTag draws the label as a tag, with its namespace dimmed as everywhere
   // else a tag is shown.

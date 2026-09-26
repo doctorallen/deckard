@@ -12,7 +12,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | --- | --- |
 | [Tags and entities](#markdown-format) | `#tags`, `@people`, and namespaced entities such as `#project/atlas` on headings, tasks, and lines become one workspace-wide index. |
 | [Front matter](#markdown-format) | Fields such as `project:` and `people:` tag a whole note, and a command moves a note's inline tags there. |
-| [Dashboard](#dashboard) | Workspace totals of notes, tasks, and tags, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
+| [Dashboard](#dashboard) | What is overdue, due today, and open, each a search, a Home of widgets you arrange, and every tag, with sorting, favorites, and saved searches. |
 | [Search pages](#search-pages) | Opening a tag collects every note section and task that uses it, along with the tags it is most often written with. Any other search opens the same kind of page, and [one bulk edit](#editing-a-searchs-results) can be made to everything it found. |
 | [Search](#search) | `Deckard: Find in Notes` searches notes, tasks, and tags as you type. The same search, with a builder and counts to narrow by, runs on search pages, a tag's overview among them, and on the Task board. |
 | [Query blocks](#query-blocks) | A `deckard` code fence keeps a live list of a query's results inside a note, drawn in the Markdown preview. |
@@ -72,7 +72,7 @@ Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a se
 
 Zen mode is not a theme, and it does not replace one. A theme picks the colors; zen picks how much frame is drawn around them, so the two compose — any of the eight themes above can be read in zen.
 
-**What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's totals are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
+**What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's figures are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
 
 **In the editor**, zen also drops the reference counts above headings, the lens that offers to link a note's unlinked mentions, and the band behind the section being edited. Link problems, task dependencies, daily-note arrows, and hover previews stay.
 
@@ -400,7 +400,9 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 
 ### Home
 
-**Home** is made of widgets you choose:
+Above Home, three figures say what wants doing: **Overdue** and **Due today**, as the [Tasks view](#tasks-view) counts them, and **Open**, every open task. Each opens a search for what it counts, scoped by `deckard.agenda.query` when that is set, so the number and the page agree. The workspace's totals of notes, tasks, and tags are on [Stats](#stats).
+
+**Home** is made of widgets you choose; a new Home starts with the search box, the Tasks view, open tasks, favorite tags, and saved searches:
 
 | Widget | Shows | Leads to |
 |---|---|---|
@@ -766,6 +768,7 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | --- | --- |
 | `is:open`, `is:done` | Open or completed tasks. |
 | `is:overdue` | Open tasks past their due date, however long ago. |
+| `is:today` | Open tasks due today, or scheduled for today or earlier and started: the Tasks view's **Today**. |
 | `is:needs-date` | Open tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days past their due date: the Tasks view's **Needs a new date**. |
 | `is:due` | Open tasks due within the next seven days, overdue ones included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |

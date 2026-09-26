@@ -40,6 +40,12 @@
 - A copied export is said in the status bar, and a saved one offers to open.
 - A task, the status bar count, and a calendar day say which, not only how many.
 - A first run offers its next step, indexing says how far it has got, and settings link to each other.
+- **Home leads with what is overdue, due today, and open.** The three
+  figures at the top of the Dashboard were totals of notes, tasks, and tags;
+  they are now Overdue, Due today, and Open, each a button that opens its
+  search, scoped by `deckard.agenda.query` so the number and the page agree.
+  `is:today` finds exactly the Tasks view's Today. A new or reset Home puts
+  the Tasks view widget before the open-tasks list.
 - **Done today.** The Tasks view ends with a folded Done today group of
   what was finished today; unchecking one reopens it. The status bar's hover
   and Home's Tasks view widget say how many.

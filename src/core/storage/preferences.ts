@@ -147,8 +147,10 @@ export const RECENT_QUERY_LIMIT = 20;
 /** The widgets Home starts with, and returns to on Reset. */
 export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
   { id: 'search', kind: 'search', width: 'full' },
-  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
+  // The Tasks view widget leads: what is overdue and due today comes before
+  // every open task.
   { id: 'agenda', kind: 'agenda', width: 'half', count: 5 },
+  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
   { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
   { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
 ];

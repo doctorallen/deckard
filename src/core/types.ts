@@ -418,6 +418,12 @@ export interface DashboardSnapshot {
   totalSectionCount: number;
   totalNoteCount: number;
   totalTaskCount: number;
+  /**
+   * Home's three tiles: the Tasks view's Overdue and Today counts and every
+   * open task, of what `deckard.agenda.query` lists, each with the search
+   * it opens, so a tile's number and its search agree.
+   */
+  taskGlance?: TaskGlance;
   tagColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
@@ -1651,3 +1657,13 @@ export type TaskBoardMessage =
   | ReorderTasksMessage
   | SetBoardStatusesMessage
   | SetBoardStatusNamespaceMessage;
+
+/** Home's tiles: what is overdue, due today, and open, each a search. */
+export interface TaskGlance {
+  overdue: number;
+  today: number;
+  open: number;
+  overdueQuery: string;
+  todayQuery: string;
+  openQuery: string;
+}

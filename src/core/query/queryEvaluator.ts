@@ -598,6 +598,23 @@ function matchesIs(
       );
     case 'needs-date':
       return open && needsNewDate(unit.dueAt, now);
+    case 'today': {
+      // Exactly the Tasks view's Today: due today, or scheduled for today or
+      // earlier and started, and not overdue.
+      if (!open) {
+        return false;
+      }
+      const today = startOfDay(now);
+      const tomorrow = today + DAY;
+      if (unit.dueAt !== undefined && unit.dueAt < today) {
+        return false;
+      }
+      if (unit.dueAt !== undefined && unit.dueAt < tomorrow) {
+        return true;
+      }
+      const started = unit.startAt === undefined || unit.startAt < tomorrow;
+      return started && unit.scheduledAt !== undefined && unit.scheduledAt < tomorrow;
+    }
     case 'waiting':
       // Waiting on someone: marked so, or handed to someone other than me.
       return (

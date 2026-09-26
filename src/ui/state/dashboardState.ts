@@ -23,6 +23,7 @@ import {
   WorkspaceIndex,
   DeckardStatsSnapshot,
   UnreadableNote,
+  TaskGlance,
 } from '../../core/types';
 import {
   findDailyNoteDate,
@@ -71,6 +72,7 @@ import {
 import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
+import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 import { createPinForLine, pinKey } from './pinnedNotes';
 import { findTagMergeCandidates } from './tagHygiene';
@@ -83,8 +85,10 @@ export function createDashboardSnapshot(
   preferences: PersistedPreferences,
   selectedTag?: string,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
+  options: { agendaQuery?: string; now?: number } = {},
 ): DashboardSnapshot {
   return {
+    taskGlance: createTaskGlance(index, options.agendaQuery ?? '', options.now ?? Date.now()),
     tags: sortTags(index.tags.values(), preferences),
     entities: sortEntities(index.entities.values(), preferences),
     totalSectionCount: index.sections.size,
@@ -98,6 +102,34 @@ export function createDashboardSnapshot(
     viewState: { ...preferences.dashboardViewState },
     savedFilters: createDashboardSavedFilters(index, preferences),
     widgetConfig: preferences.dashboardWidgets.map((widget) => ({ ...widget })),
+  };
+}
+
+/**
+ * Home's tiles, counted as the Tasks view and the status bar count: Overdue
+ * and Today are its groups, and Open every open task the agenda's search
+ * lists. Each search is scoped by that search too, so the tile's number and
+ * the page it opens say the same thing.
+ */
+export function createTaskGlance(
+  index: WorkspaceIndex,
+  agendaQuery: string,
+  now: number,
+): TaskGlance {
+  const selected = selectAgendaTasks(index, agendaQuery);
+  const groups = createAgenda(index, now, { tasks: selected.tasks, upcomingDays: 1 });
+  const count = (id: string): number =>
+    groups.find((group) => group.id === id)?.entries.length ?? 0;
+  const scope = normalizeAgendaQuery(agendaQuery);
+  const scoped = (clause: string): string =>
+    scope && !selected.error ? `(${scope}) AND ${clause}` : clause;
+  return {
+    overdue: count('overdue'),
+    today: count('today'),
+    open: selected.tasks.filter((task) => !task.completed).length,
+    overdueQuery: scoped('is:overdue -is:needs-date'),
+    todayQuery: scoped('is:today'),
+    openQuery: scoped('is:open'),
   };
 }
 
@@ -1588,6 +1620,7 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:done', label: 'is:done', detail: 'Completed tasks' },
   { value: 'is:overdue', label: 'is:overdue', detail: 'Open tasks past their due date' },
   { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
+  { value: 'is:today', label: 'is:today', detail: 'Open tasks due today, or scheduled for today or earlier and started' },
   { value: 'is:needs-date', label: 'is:needs-date', detail: 'Open tasks more than 30 days past their due date' },
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
@@ -1632,7 +1665,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, or is:unassigned';
+      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, or is:unassigned';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':

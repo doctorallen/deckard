@@ -121,20 +121,22 @@ suite('Dashboard behavior', () => {
       ...changes,
     });
 
-  test('counts notes, tasks, and tags, in those words', () => {
+  test('leads with what is overdue, due today, and open, each a search', () => {
     const { page, snapshot } = open();
     const labels = page
       .findAll('.metrics .metric-label')
       .map((label) => label.textContent);
-    assert.deepStrictEqual(labels, ['notes', 'tasks', 'tags']);
+    assert.deepStrictEqual(labels, ['Overdue', 'Due today', 'Open']);
     const values = page
       .findAll('.metrics .metric-value')
       .map((value) => Number(value.textContent));
-    assert.deepStrictEqual(values, [
-      snapshot.totalNoteCount,
-      snapshot.totalTaskCount,
-      snapshot.tags.length,
-    ]);
+    const glance = snapshot.taskGlance!;
+    assert.deepStrictEqual(values, [glance.overdue, glance.today, glance.open]);
+    assert.deepStrictEqual(
+      page.findAll('.metrics .metric-open').map((tile) => tile.getAttribute('data-query')),
+      ['is:overdue -is:needs-date', 'is:today', 'is:open'],
+    );
+    assert.strictEqual(page.find('.metrics')?.getAttribute('aria-label'), 'Tasks at a glance');
   });
 
   test('moves between Home and Tags, and marks where the reader is', () => {

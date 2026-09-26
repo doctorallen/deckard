@@ -8,6 +8,9 @@ import {
 } from '../ui/state/agendaState';
 import * as vscode from 'vscode';
 
+import { evaluateQuery } from '../core/query/queryEvaluator';
+import { parseQuery } from '../core/query/queryParser';
+import { createTaskGlance } from '../ui/state/dashboardState';
 import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
 
 const at = (month: number, day: number): number =>
@@ -32,6 +35,40 @@ suite('Agenda', () => {
       groups[0].entries.map((entry) => entry.task.id),
       ['ranked', 'yesterday', 'three-days', 'week-ago'],
     );
+  });
+
+  test('is:today finds exactly the Today group, and the tiles count as the Tasks view does', () => {
+    const index = createIndex([
+      createTask({ id: 'overdue', dueAt: at(9, 10) }),
+      createTask({ id: 'due-today', dueAt: at(9, 13) }),
+      createTask({ id: 'scheduled', scheduledAt: at(9, 11) }),
+      createTask({ id: 'not-started', scheduledAt: at(9, 12), startAt: at(9, 15) }),
+      createTask({ id: 'late-but-scheduled', dueAt: at(9, 12), scheduledAt: at(9, 13) }),
+      createTask({ id: 'upcoming', dueAt: at(9, 18) }),
+      createTask({ id: 'done', dueAt: at(9, 13), completed: true }),
+    ]);
+    const today = createAgenda(index, now, { upcomingDays: 7 })
+      .find((group) => group.id === 'today')
+      ?.entries.map((entry) => entry.task.id)
+      .sort();
+    const realNow = Date.now;
+    Date.now = () => now;
+    try {
+      const matched = evaluateQuery(index, parseQuery('is:today').node).tasks.map((task) => task.id).sort();
+      assert.deepStrictEqual(matched, today);
+      const glance = createTaskGlance(index, '', now);
+      assert.deepStrictEqual(
+        [glance.overdue, glance.today, glance.open],
+        [2, 2, 6],
+      );
+      assert.strictEqual(
+        createTaskGlance(index, '#project/atlas', now).todayQuery,
+        '(#project/atlas) AND is:today',
+        'scoped by the agenda search, so the tile and its page agree',
+      );
+    } finally {
+      Date.now = realNow;
+    }
   });
 
   test('splits Upcoming into a group per day when asked', () => {

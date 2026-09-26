@@ -167,7 +167,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     // Home starts with its default widgets.
     assert.deepStrictEqual(
       view.findAll('.home-widget').map((widget) => widget.dataset.widgetId),
-      ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches'],
+      ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
     );
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
     assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Zen']);
@@ -296,7 +296,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.click(view.find('[data-action="reset-widgets"]'));
   view.click(view.find('[data-action="confirm-reset-widgets"]'));
   await delay(20);
-  assert.deepStrictEqual(ids(), ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches']);
+  assert.deepStrictEqual(ids(), ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches']);
 
   view.click(view.find('.home-edit-bar [data-action="finish-customizing"]'));
   assert.strictEqual(view.find('.home-edit-bar'), null);
@@ -333,6 +333,18 @@ test('a widget\'s gear is a control, not a handle to drag the widget by', async 
   );
 });
 
+test('the tiles say what is overdue, due today, and open, and each opens its search', async () => {
+  const { view, navigation } = await openDashboard();
+  const tiles = view.findAll('.metrics .metric-open');
+  assert.deepStrictEqual(
+    tiles.map((tile) => tile.querySelector('.metric-label').textContent),
+    ['Overdue', 'Due today', 'Open'],
+  );
+  view.click(tiles[1]);
+  await delay(20);
+  assert.strictEqual(navigation.opened[navigation.opened.length - 1], 'search is:today');
+});
+
 test('a tasks widget runs the search set in its options', async () => {
   const { view, preferences } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));
@@ -342,7 +354,10 @@ test('a tasks widget runs the search set in its options', async () => {
   view.type(field(), 'text ~ audit');
   view.submit(view.find('.home-widget[data-widget-id="tasks"] [data-form="widget-query"]'));
   await delay(20);
-  assert.strictEqual(preferences.value.dashboardWidgets[1].query, 'text ~ audit');
+  assert.strictEqual(
+    preferences.value.dashboardWidgets.find((widget) => widget.id === 'tasks').query,
+    'text ~ audit',
+  );
   assert.deepStrictEqual(
     view.findAll('.home-widget[data-widget-id="tasks"] .task-row').map((row) => row.dataset.taskId),
     ['audit'],

@@ -1629,6 +1629,18 @@ export function getComponentScript(): string {
     if (drawn) drawn.focus();
   });
 
+  /**
+   * One figure in a row of .metrics: its label, its value, and, with a query,
+   * a button that opens the search the figure counts. code is the theme's
+   * decorative caption, such as TSK.OVR // 01.
+   */
+  function renderMetric(label, value, query, hint, code) {
+    const codeAttribute = code ? ' data-code="' + escapeHtml(code) + '"' : '';
+    const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>';
+    if (!query) return '<article class="metric"' + codeAttribute + '>' + body + '</article>';
+    return '<button type="button" class="metric metric-open"' + codeAttribute + ' data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '">' + body + '</button>';
+  }
+
   /** The Status, Priority, and Due date switch above a task board. */
   function renderTaskBoardGroupSwitch(groupBy) {
     return '<div class="segmented task-board-group" role="group" aria-label="Group tasks by">'

@@ -213,7 +213,7 @@ suite('Preferences store', () => {
     });
     assert.deepStrictEqual(
       store.value.dashboardWidgets.map((widget) => widget.kind),
-      ['search', 'tasks', 'agenda', 'favoriteTags', 'savedSearches'],
+      ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
     );
     assert.strictEqual('dashboardNoteSortMode' in store.value, false);
 

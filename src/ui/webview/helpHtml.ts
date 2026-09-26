@@ -29,7 +29,7 @@ export interface HelpManifest {
 
 /** A short line for what a command is for, beyond the name it goes by. */
 const COMMAND_NOTES: Readonly<Record<string, string>> = {
-  'deckard.showDashboard': 'Workspace totals, Home, and every tag.',
+  'deckard.showDashboard': 'What is overdue, due today, and open, Home, and every tag.',
   'deckard.showNotesGraph':
     'The whole workspace as a map, or one note’s neighborhood.',
   'deckard.showTaskBoard': 'Tasks as columns, or as a ranked list.',
@@ -416,6 +416,7 @@ updated: 2026-09-20
       <div class="table-scroll"><table><caption>Shorthands, written the way GitHub writes them</caption><thead><tr><th>Shorthand</th><th>Finds</th></tr></thead><tbody>
         <tr><td><code>is:open</code>, <code>is:done</code></td><td>Open or completed tasks.</td></tr>
         <tr><td><code>is:overdue</code>, <code>is:due</code></td><td>Past their due date, or due within seven days.</td></tr>
+        <tr><td><code>is:today</code></td><td>What the Tasks view lists under Today: due today, or scheduled for today or earlier and started.</td></tr>
         <tr><td><code>is:needs-date</code></td><td>More than 30 days past their due date, and reading <em>was due …</em>.</td></tr>
         <tr><td><code>is:task</code>, <code>is:note</code></td><td>Every task, or note entries without tasks.</td></tr>
         <tr><td><code>is:blocked</code>, <code>is:blocking</code></td><td>Waiting for an open task, and the tasks they wait for.</td></tr>
@@ -463,7 +464,7 @@ tag = #project/atlas AND task = open
 
     <section id="home">
       <h2>Home and pins</h2>
-      <p>The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
+      <p>Three figures at the top say what is <strong>Overdue</strong>, <strong>Due today</strong>, and <strong>Open</strong>; each opens its search. The Dashboard opens on <strong>Home</strong>, a page of widgets you arrange, with a <strong>Tags</strong> tab beside it — the Home/Tags tabs at the top of the page. Widgets cover today’s note, quick add, your tasks, the Tasks view's list, saved and recent searches, recently opened notes, workspace totals, tag pairs, tags without a hub, new tags, people gone quiet, and pinned notes. <strong>Customize</strong> in the view options rearranges them; each widget’s gear sets how many entries it lists and whether it pages.</p>
       <p><strong>Pinning happens where the note is</strong>, since a note is an entry rather than a file: <code>Deckard: Pin Note to Home</code> pins the entry the cursor is in, the hover on a tagged entry offers it beside its related notes, and a search result offers it on right-click. Each says what it did with <strong>Undo</strong> beside it.</p>
     </section>
 

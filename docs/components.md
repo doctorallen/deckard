@@ -465,6 +465,10 @@ In edit mode a widget is `.is-editing` and `.is-draggable`, carries a
 and is ranked with `installRankedRows`. The host projects each widget with
 `createDashboardWidgets()` in `dashboardWidgets.ts`.
 
+The header's `.metrics` are three `renderMetric` buttons (`.metric-open`) —
+Overdue, Due today, and Open — each opening the search it counts, scoped by
+`deckard.agenda.query`; Stats draws its figures with the same helper.
+
 The Tasks view widget ends with a `.home-widget-footer` line: what was done
 today, and how many tasks need a new date as a `.text-button` that opens
 `is:needs-date`. It is left out when both are zero.

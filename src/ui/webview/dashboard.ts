@@ -334,6 +334,7 @@ export class DashboardPanel implements vscode.Disposable {
         viewPreferences,
         undefined,
         tagTitleDisplayMode,
+        { agendaQuery: configuration.get<string>('agenda.query', ''), now: Date.now() },
       ),
       homeArranged: !isDefaultHomeLayout(preferences.dashboardWidgets),
       // Switching tabs asks the host again, so only Home gets its widgets.

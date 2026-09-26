@@ -997,12 +997,14 @@ ${getQueryEditorScript()}
         }).join('') + '</select>' + filterIcon + '</span></label>'
       : '';
     const tagColumnChoices = renderViewOptionChoices('set-columns', [1, 2, 3, 4].map(function (columns) { return [columns, String(columns), columns + ' columns']; }), state.tagColumns, 'Tag columns', 'data-section="tags"');
-    // One vocabulary everywhere: notes are the headed entries, tasks, and
-    // tags. Stats and the graph count the same things under the same names.
-    const metrics = '<div class="metrics" aria-label="Workspace totals">' +
-      '<div class="metric" data-code="IDX.NTE // 01"><span class="metric-value">' + state.totalNoteCount + '</span><span class="metric-label">notes</span></div>' +
-      '<div class="metric" data-code="IDX.TSK // 02"><span class="metric-value">' + state.totalTaskCount + '</span><span class="metric-label">tasks</span></div>' +
-      '<div class="metric" data-code="SYS.TAG // 1982-AZ"><span class="metric-value">' + state.tags.length + '</span><span class="metric-label">tags</span></div>' +
+    // What wants doing, not how much is written: the Tasks view's Overdue
+    // and Today and every open task, each a search. Totals are on Stats.
+    // The values stay neutral; the label says Overdue.
+    const glance = state.taskGlance || { overdue: 0, today: 0, open: 0, overdueQuery: 'is:overdue -is:needs-date', todayQuery: 'is:today', openQuery: 'is:open' };
+    const metrics = '<div class="metrics" role="group" aria-label="Tasks at a glance">' +
+      renderMetric('Overdue', glance.overdue, glance.overdueQuery, 'Search the overdue tasks', 'TSK.OVR // 01') +
+      renderMetric('Due today', glance.today, glance.todayQuery, 'Search what is due today', 'TSK.DUE // 02') +
+      renderMetric('Open', glance.open, glance.openQuery, 'Search every open task', 'TSK.OPN // 03') +
       '</div>';
     const dashboardOptions = renderViewOptions([
       { label: 'Home', html: '<button type="button" class="' + (editingHome ? 'active' : '') + '" data-action="' + (editingHome ? 'finish-customizing' : 'customize-home') + '" aria-pressed="' + editingHome + '">' + (editingHome ? 'Done customizing' : 'Customize') + '</button>' },
