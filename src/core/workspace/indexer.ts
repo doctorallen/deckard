@@ -13,7 +13,7 @@ import {
   SearchStore,
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../timing';
-import { ScanProgress, WorkspaceScanner, describeError } from './scanner';
+import { FileStamp, WorkspaceScanner, describeError } from './scanner';
 import { takeOwnWrite } from './ownWrites';
 import { IndexState, NoteChange } from './indexState';
 import { ViewUpdateOptions } from './publishing';
@@ -46,6 +46,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private readonly watcherDisposables: vscode.Disposable[] = [];
   /** The notes and the index derived from them, updated a note at a time. */
   private state = IndexState.build([]);
+  /** The parse settings the notes in the state were read under. */
+  private parsedUnder: string | undefined;
   private readonly pending = new Map<string, PendingUpdate>();
   private flushHandle: ReturnType<typeof setTimeout> | undefined;
   private readyPromise: Promise<void> = Promise.resolve();
@@ -241,11 +243,21 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
   /**
    * Performs a full replacement refresh while reporting progress in VS Code.
+   *
+   * A note whose saved time, created time, and size are what they were when
+   * it was last read, under the same parse settings, is not read again, so
+   * a rescan after an exclude or folder change costs a stat per note.
+   * `reuse: 'none'` rereads and reparses every note: Reindex Workspace.
    */
-  public async refresh(): Promise<void> {
+  public async refresh(options: { reuse?: 'session' | 'none' } = {}): Promise<void> {
     if (this.disposed) {
       return;
     }
+    const fingerprint = this.scanner.getParseFingerprint();
+    const reusable =
+      options.reuse !== 'none' && this.parsedUnder === fingerprint
+        ? this.state.files
+        : undefined;
 
     await vscode.window.withProgress(
       {
@@ -257,7 +269,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
         const parsedFiles = await measureAsync(
           'Scan workspace',
           () =>
-            this.scanner.scan((completed, total): void => {
+            this.scanner.scan(
+              (completed, total): void => {
               const step = Math.max(1, Math.floor(total / 50));
               if (completed === total || completed % step === 0) {
                 this.scanState = { completed, total };
@@ -270,7 +283,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
                     : 'No Markdown files',
                 increment: total > 0 ? 100 / total : 0,
               });
-            }),
+              },
+              reusable && ((filePath, stamp) => reuseUnchanged(reusable.get(filePath), stamp)),
+            ),
           (files) => `${files.length} notes`,
         );
         this.scanState = undefined;
@@ -278,12 +293,20 @@ export class WorkspaceIndexer implements vscode.Disposable {
           return;
         }
 
-        this.state = IndexState.build(parsedFiles);
+        const previous = this.state;
+        this.snapshot = measure(
+          'Build index',
+          () => {
+            this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
+            return this.state.snapshot();
+          },
+          (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+        );
+        this.parsedUnder = fingerprint;
         this.unreadable.clear();
         this.scanner.failures.forEach((failure) =>
           this.unreadable.set(failure.filePath, failure.reason),
         );
-        this.snapshot = undefined;
         measure(
           'Rebuild search index',
           () =>
@@ -573,6 +596,22 @@ function readPriority(subscription: ViewSubscription): number {
   } catch {
     return Number.MAX_SAFE_INTEGER;
   }
+}
+
+/**
+ * The note as already parsed, when the file is still as it was then: same
+ * saved time, created time, and size.
+ */
+function reuseUnchanged(
+  file: ParsedFile | undefined,
+  stamp: FileStamp,
+): ParsedFile | undefined {
+  return file &&
+    file.fileTimes?.updatedAt === stamp.mtime &&
+    file.fileTimes.createdAt === stamp.ctime &&
+    Buffer.byteLength(file.content, 'utf8') === stamp.size
+    ? file
+    : undefined;
 }
 
 interface PendingUpdate {

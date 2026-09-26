@@ -900,7 +900,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.reindexWorkspace', async () => {
       await indexer.ready;
-      await indexer.refresh();
+      // Asked for by hand, every note is read and parsed again.
+      await indexer.refresh({ reuse: 'none' });
       // Reindexing looked like it did nothing: a status-bar spinner, then
       // silence. Asked for by hand, it says what it found.
       const index = indexer.getSnapshot();

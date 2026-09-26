@@ -611,8 +611,12 @@ export class IndexState {
     };
   }
 
-  /** The state of a workspace holding these notes, in this order. */
-  public static build(files: Iterable<ParsedFile>): IndexState {
+  /**
+   * The state of a workspace holding these notes, in this order. A note
+   * whose parsed object `reuse` already holds keeps its worked-out part,
+   * since a parsed note never changes.
+   */
+  public static build(files: Iterable<ParsedFile>, reuse?: IndexState): IndexState {
     const state = new IndexState();
     const associationFiles = new Map<string, ReadonlySet<string>>();
     const tagUnits = new Map<string, number>();
@@ -628,7 +632,8 @@ export class IndexState {
         state.ordinals.set(file.filePath, state.nextOrdinal);
         state.nextOrdinal += 1;
       }
-      const contribution = computeContribution(file);
+      const kept = reuse?.contributions.get(file.filePath);
+      const contribution = kept?.file === file ? kept : computeContribution(file);
       state.notes.set(file.filePath, file);
       state.contributions.set(file.filePath, contribution);
       state.remember(file.filePath, contribution, associationFiles, tagUnits, copied);

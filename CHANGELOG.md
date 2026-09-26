@@ -319,6 +319,12 @@
   or moves one to another line, still redraws it. Hiding notes or tasks
   leaves them out of what is sent, and each link is sent lighter.
 
+- **Notes are read eight at a time, and a rescan skips notes that did not
+  change.** A rescan after a change to an exclude, folder, or templates
+  setting rereads only the notes whose size or saved time changed — about
+  a quarter of a second at 5,000 notes, down from over half a second.
+  `Deckard: Reindex Workspace` still reads and parses every note.
+
 - **Extract Heading takes any heading.** `Deckard: Extract Tagged
   Heading` is now `Deckard: Extract Heading`, and moves an untagged heading
   as readily as a tagged one; its picker lists every heading, naming the

@@ -93,7 +93,7 @@ The fastest way to see what Deckard does is to let it show you: `Deckard: Create
 
 Deckard scans the workspace Markdown scope automatically and refreshes when saved notes are added, edited, or deleted. The first time it reads a workspace it says what it found, once, such as *Deckard read 412 notes: 1,204 open tasks (17 overdue) and 185 tags.*, with **Open Dashboard** and **Get Started**; a workspace of 3,000 notes or more is also told how the "Exclude" setting leaves folders out.
 In a code repository, Deckard's editor features apply only to notes: a README outside `deckard.notesFolder`, or under `node_modules`, is left alone.
-Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan manually.
+Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan manually; it reads and parses every note again, where a rescan after a settings change rereads only the notes whose size or saved time changed.
 
 Run `Deckard: Open Help`, or select the question-mark button in the Related Notes toolbar, to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it; one that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
 
@@ -113,7 +113,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Get Started** | Opens the walkthrough: six steps, each checked off as you do it. |
 | **Deckard: What's New** | Opens Help at **What's new**, the highlights of recent releases. |
 | **Deckard: Open Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
-| **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
+| **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope, reading and parsing every note again. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists the favorites, pins, and tag-set searches that point at nothing in this workspace any more, and removes them only if you say so. Deckard never removes one of these on its own. |

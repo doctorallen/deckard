@@ -152,6 +152,13 @@ async function bench(size) {
   } else {
     row('Notes Graph check after a prose-only save', '—');
   }
+  // A rescan, as a change to an exclude setting makes, and Reindex Workspace.
+  let started = performance.now();
+  await cold.indexer.refresh();
+  row('Rescan, nothing changed', ms(performance.now() - started));
+  started = performance.now();
+  await cold.indexer.refresh({ reuse: 'none' });
+  row('Reindex Workspace, every note reread', ms(performance.now() - started));
   await cold.store?.whenIdle();
   cold.indexer.dispose();
 

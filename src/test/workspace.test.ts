@@ -169,6 +169,66 @@ suite('Workspace scanner and index', () => {
     }
   });
 
+  test('reads eight notes at a time, keeps the order found, and rereads only what changed', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-rescan');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+    const names = Array.from({ length: 30 }, (_, index) => `n${index}.md`);
+    const texts = new Map(names.map((name, index) => [name, `# Note ${index} #topic/t${index % 4}`]));
+    const times = new Map(names.map((name) => [name, 1000]));
+    const uriOf = (name: string) => vscode.Uri.joinPath(workspaceUri, name);
+    const nameOf = (uri: vscode.Uri) => uri.path.split('/').pop() ?? '';
+    let reading = 0;
+    let mostAtOnce = 0;
+    const reads: string[] = [];
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => names.filter((name) => texts.has(name)).map(uriOf),
+      readFile: async (uri) => {
+        reading += 1;
+        mostAtOnce = Math.max(mostAtOnce, reading);
+        reads.push(nameOf(uri));
+        // Later notes come back sooner, so order is not arrival order.
+        await new Promise((resolve) => setTimeout(resolve, 30 - names.indexOf(nameOf(uri))));
+        reading -= 1;
+        return Buffer.from(texts.get(nameOf(uri)) ?? '', 'utf8');
+      },
+      stat: async (uri) => ({
+        type: vscode.FileType.File,
+        ctime: 1,
+        mtime: times.get(nameOf(uri)) ?? 0,
+        size: Buffer.byteLength(texts.get(nameOf(uri)) ?? '', 'utf8'),
+      }),
+    });
+
+    const files = await scanner.scan();
+    assert.deepStrictEqual(files.map((file) => file.filePath), names, 'in the order found');
+    assert.strictEqual(mostAtOnce, 8, 'eight reads at a time, never more');
+
+    const indexer = new WorkspaceIndexer(scanner);
+    try {
+      await indexer.refresh();
+      reads.length = 0;
+      await indexer.refresh();
+      assert.deepStrictEqual(reads, [], 'a rescan reads no note that has not changed');
+
+      texts.set('n3.md', '# Note 3 changed #topic/new');
+      times.set('n3.md', 2000);
+      await indexer.refresh();
+      assert.deepStrictEqual(reads, ['n3.md'], 'only the note that changed');
+      assert.ok(indexer.getSnapshot().tags.has('#topic/new'));
+      assert.deepStrictEqual(
+        normalizeIndex(indexer.getSnapshot()),
+        normalizeIndex(buildWorkspaceIndex(new Map(indexer.getSnapshot().files))),
+      );
+
+      reads.length = 0;
+      await indexer.refresh({ reuse: 'none' });
+      assert.strictEqual(reads.length, names.length, 'Reindex Workspace reads every note');
+    } finally {
+      indexer.dispose();
+    }
+  });
+
   test('leaves the templates folder out of the notes', async () => {
     const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
     const noteUri = vscode.Uri.joinPath(workspaceUri, 'case.md');
