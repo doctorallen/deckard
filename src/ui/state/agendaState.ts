@@ -7,6 +7,7 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
+import { needsNewDate, readLineStatus } from '../../core/taskPolicy';
 import { Task, TaskPriority, WorkspaceIndex } from '../../core/types';
 import { getHeadingPath } from './dashboardState';
 import { stripTrailingTags } from './queryBlockState';
@@ -22,6 +23,9 @@ import { stripTrailingTags } from './queryBlockState';
  * - **Upcoming**: due, scheduled, or starting within the next few days.
  * - **Later**: dated, but past that horizon.
  * - **No date**: carrying no due, scheduled, or start date at all.
+ * - **Needs a new date**: due more than `needsNewDateAfterDays` ago. A task
+ *   a month past its date is not going to be done that day; it waits here,
+ *   folded, rather than piling up in Overdue.
  *
  * A task appears once, in the first group that applies. What is in the list
  * is the query's business; the groups only say when. So the same list is the
@@ -73,6 +77,7 @@ const GROUP_ORDER: readonly AgendaGroupId[] = [
   'upcoming',
   'later',
   'nodate',
+  'needsdate',
 ];
 
 const GROUP_LABELS: Readonly<Record<string, string>> = {
@@ -81,6 +86,7 @@ const GROUP_LABELS: Readonly<Record<string, string>> = {
   upcoming: 'Upcoming',
   later: 'Later',
   nodate: 'No date',
+  needsdate: 'Needs a new date',
 };
 
 /** What the Agenda is built from, beyond the index and the moment. */
@@ -275,12 +281,7 @@ function groupByStatus(
   namespace: string,
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const prefix = `#${namespace.toLowerCase()}/`;
-  const statusOf = (entry: AgendaEntry): string =>
-    (entry.task.associationTagGroups?.[0] ?? [])
-      .map((tag) => tag.key.toLowerCase())
-      .find((key) => key.startsWith(prefix))
-      ?.slice(prefix.length) ?? '';
+  const statusOf = (entry: AgendaEntry): string => readLineStatus(entry.task, namespace);
   return collect(
     entries,
     statusOf,
@@ -351,6 +352,9 @@ function placeTask(
     // No date to read, so no date to show: the entry carries its priority and
     // its note instead.
     return { group: 'nodate', at: NO_DATE, reason: '' };
+  }
+  if (dueAt !== undefined && needsNewDate(dueAt, today)) {
+    return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt)}` };
   }
   if (dueAt !== undefined && dueAt < today) {
     return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt)}` };

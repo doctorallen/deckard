@@ -514,6 +514,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
 - **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. `deckard.agenda.upcomingDays` sets how far that reaches.
 - **Later** holds the dated tasks past that, by the date each waits for, and **No date** the open tasks carrying no due, scheduled, or start date at all, most important first. Both start folded, out of the way of what cannot wait.
+- **Needs a new date** holds the open tasks more than 30 days past their due date, each saying when it *was due*. A task a month late is not going to be done today, so it leaves Overdue, the badge, and the status bar's count, and waits here, folded, for a new date: the calendar button beside it, or **Reschedule All…**, dates them. `deckard.tasks.needsNewDateAfterDays` sets how many days; `0` keeps every overdue task in Overdue. `is:overdue` still finds them all.
 - **What the view lists** is every open task, or the open tasks a search finds: set `deckard.agenda.query` to any [query](#query-language), such as `is:mine` for your own, `#project/atlas` for one project's, or `has:due OR has:scheduled OR has:start` to leave undated tasks out. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list, so the view, the widget, and the number agree. A query that does not parse hides nothing and says so at the top of the view. The search icon in the view's title opens its search on the [Task board](#task-board), where it can be tried and changed with the results in view; the board's **Tasks view** button then keeps it. The view's title line shows the search it lists.
 - **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones `deckard.agenda.query` finds, or every open one — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
   - **Priority** runs highest to lowest, each group marked with the same emoji the task lines use, and **No priority** last.
@@ -537,7 +538,8 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
 - `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, in one window, at the first minute on or after that time; if VS Code was closed or asleep then, when it next opens that day. It comes with **Open Tasks** beside it, **Reschedule Overdue…** when something is, and **Turn Off Reminders**, which clears the setting where it was set. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
-- Hovering the count lists the first few overdue tasks by name.
+- Hovering the count lists the first few overdue tasks by name, and says how many tasks [need a new date](#tasks-view).
+- A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue is left out of the count, its warning color, and the reminder: it is in the Tasks view's **Needs a new date**, not today's work. A day whose only dated tasks need a new date leaves the bar hidden.
 
 ## Task board
 
@@ -1036,6 +1038,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, people, and dependencies after typing `/` in a task. |
 | `deckard.tasks.assigneeFromPersonTag` | `false` | Read the first person named in a task's words as the person it is for, as Deckard did before the `👤` field; see [Who a task is for](#who-a-task-is-for). |
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](#who-a-task-is-for). |
+| `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to the Tasks view's folded **Needs a new date** group and leaves the status bar's count and warning color. `0` keeps every overdue task in Overdue. |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](#status-bar-and-reminders). |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day in one window. Empty means no reminder. |
 | `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |

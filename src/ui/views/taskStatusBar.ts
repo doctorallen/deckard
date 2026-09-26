@@ -17,6 +17,8 @@ import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 export interface DueTaskCounts {
   overdue: number;
   today: number;
+  /** Open tasks past `needsNewDateAfterDays`, which the count leaves out. */
+  needsNewDate?: number;
 }
 
 export function countDueTasks(
@@ -29,9 +31,13 @@ export function countDueTasks(
     tasks: selectAgendaTasks(index, query).tasks,
     upcomingDays: 1,
   });
-  const count = (id: 'overdue' | 'today'): number =>
+  const count = (id: 'overdue' | 'today' | 'needsdate'): number =>
     groups.find((group) => group.id === id)?.entries.length ?? 0;
-  return { overdue: count('overdue'), today: count('today') };
+  return {
+    overdue: count('overdue'),
+    today: count('today'),
+    needsNewDate: count('needsdate'),
+  };
 }
 
 /**
@@ -68,6 +74,17 @@ export function describeDueTasksAtLength(counts: DueTaskCounts): string {
     return `${tasks(counts.today)} due today.`;
   }
   return 'Nothing is due today.';
+}
+
+/**
+ * The neutral line for tasks past the line: they are named, not counted in
+ * the bar or colored, since a date a month gone is not today's emergency.
+ */
+export function describeNeedsNewDate(count: number | undefined): string | undefined {
+  if (!count) {
+    return undefined;
+  }
+  return count === 1 ? '1 task needs a new date.' : `${count} tasks need a new date.`;
 }
 
 /** Minutes past midnight for an `HH:MM` setting, or nothing when it is off. */
@@ -161,7 +178,8 @@ export class TaskStatusBar implements vscode.Disposable {
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.statusBar') ||
-          event.affectsConfiguration('deckard.agenda.query')
+          event.affectsConfiguration('deckard.agenda.query') ||
+          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();
         }
@@ -242,7 +260,7 @@ export class TaskStatusBar implements vscode.Disposable {
       return;
     }
     this.item.text = `$(checklist) ${text}`;
-    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts));
+    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts), counts);
     // Overdue work is the one state worth coloring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
@@ -255,7 +273,7 @@ export class TaskStatusBar implements vscode.Disposable {
    * The sentence, then the first few overdue tasks by name, so a glance
    * says which ones rather than how many.
    */
-  private createTooltip(sentence: string): vscode.MarkdownString {
+  private createTooltip(sentence: string, counts: DueTaskCounts): vscode.MarkdownString {
     const tooltip = new vscode.MarkdownString(`Deckard: ${sentence}`, true);
     const overdue = listOverdueTasks(this.indexer.getSnapshot(), this.now().getTime());
     if (overdue.length > 0) {
@@ -267,6 +285,10 @@ export class TaskStatusBar implements vscode.Disposable {
             .join('\n') +
           (overdue.length > 5 ? `\n- and ${overdue.length - 5} more` : ''),
       );
+    }
+    const needsDate = describeNeedsNewDate(counts.needsNewDate);
+    if (needsDate) {
+      tooltip.appendMarkdown(`\n\n${needsDate}`);
     }
     tooltip.appendMarkdown('\n\nSelect to open Tasks.');
     return tooltip;

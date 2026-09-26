@@ -1,3 +1,4 @@
+import { setTaskPolicy } from './core/taskPolicy';
 import { readWeekStart } from './ui/commands/datePrompt';
 import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
@@ -158,6 +159,24 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   readIdentity();
   // The day a search's this-week starts on, set the same way.
   setQueryWeekStart(readWeekStart());
+  // When an overdue task needs a new date, and where a task's status is
+  // written, for every view that lists tasks.
+  const readTaskPolicy = (): void => {
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    const days = configuration.get<number>('tasks.needsNewDateAfterDays', 30);
+    const onHold = configuration.get<unknown>('tasks.onHoldStatuses', ['waiting', 'someday']);
+    setTaskPolicy({
+      needsNewDateAfterDays: Number.isFinite(days) ? Math.max(0, Math.round(days)) : 30,
+      statusNamespace:
+        configuration.get<string>('board.statusNamespace', 'status').trim() || 'status',
+      onHoldStatuses: Array.isArray(onHold)
+        ? onHold.filter((status): status is string => typeof status === 'string')
+            .map((status) => status.trim().toLowerCase())
+            .filter(Boolean)
+        : ['waiting', 'someday'],
+    });
+  };
+  readTaskPolicy();
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('deckard.me')) {
@@ -166,7 +185,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       if (event.affectsConfiguration('deckard.calendar.weekStart')) {
         setQueryWeekStart(readWeekStart());
       }
+      if (
+        event.affectsConfiguration('deckard.tasks') ||
+        event.affectsConfiguration('deckard.board.statusNamespace')
+      ) {
+        readTaskPolicy();
+      }
     }),
+    { dispose: () => setTaskPolicy() },
     { dispose: () => setQueryIdentity(undefined) },
     { dispose: () => setQueryWeekStart(0) },
   );

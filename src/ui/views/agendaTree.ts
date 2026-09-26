@@ -58,10 +58,11 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   upcoming: new vscode.ThemeIcon('calendar'),
   later: new vscode.ThemeIcon('history'),
   nodate: new vscode.ThemeIcon('inbox'),
+  needsdate: new vscode.ThemeIcon('history'),
 };
 
 /** The groups that start folded: what can wait, out of the way of what cannot. */
-const FOLDED_GROUPS: ReadonlySet<string> = new Set(['later', 'nodate']);
+const FOLDED_GROUPS: ReadonlySet<string> = new Set(['later', 'nodate', 'needsdate']);
 
 /**
  * The icon a group takes when the Agenda is grouped by something else. A
@@ -136,7 +137,10 @@ export class AgendaTreeProvider
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.agenda')) {
+        if (
+          event.affectsConfiguration('deckard.agenda') ||
+          event.affectsConfiguration('deckard.tasks')
+        ) {
           this.refresh();
         }
       }),
@@ -459,9 +463,14 @@ function createGroupItem(
   item.id = `agenda:${group.id}`;
   item.description = String(group.entries.length);
   item.iconPath = GROUP_ICONS[group.id] ?? GROUPING_ICONS[groupBy];
-  // Overdue is told apart, since it is the group offered a date for all.
+  // Overdue, and what needs a new date, are told apart: they are the groups
+  // offered a date for all beside their name.
   item.contextValue =
-    group.id === 'overdue' ? 'deckardAgendaGroup.overdue' : 'deckardAgendaGroup';
+    group.id === 'overdue'
+      ? 'deckardAgendaGroup.overdue'
+      : group.id === 'needsdate'
+        ? 'deckardAgendaGroup.needsDate'
+        : 'deckardAgendaGroup';
   return item;
 }
 

@@ -9,6 +9,7 @@ import {
   countDueTasks,
   describeDueTasks,
   describeDueTasksAtLength,
+  describeNeedsNewDate,
   isReminderDue,
   parseReminderTime,
   REMINDER_DATE_KEY,
@@ -44,11 +45,30 @@ suite('Task status bar', () => {
     assert.deepStrictEqual(countDueTasks(index, now), {
       overdue: 1,
       today: 1,
+      needsNewDate: 0,
     });
     assert.deepStrictEqual(countDueTasks(indexOf({}), now), {
       overdue: 0,
       today: 0,
+      needsNewDate: 0,
     });
+  });
+
+  test('leaves a task more than 30 days overdue out of the count, and names it apart', () => {
+    const old = indexOf({
+      'notes/Old.md': [
+        '- [ ] Chase the contractor 📅 2026-09-17',
+        '- [ ] File the July report 📅 2026-07-01',
+        '- [ ] Renew the lease 📅 2026-06-12',
+      ].join('\n'),
+    });
+    assert.deepStrictEqual(countDueTasks(old, now), { overdue: 1, today: 0, needsNewDate: 2 });
+    assert.strictEqual(describeDueTasks(countDueTasks(old, now)), '1 overdue');
+    assert.strictEqual(describeNeedsNewDate(2), '2 tasks need a new date.');
+    assert.strictEqual(describeNeedsNewDate(1), '1 task needs a new date.');
+    assert.strictEqual(describeNeedsNewDate(0), undefined);
+    const onlyOld = indexOf({ 'notes/Old.md': '- [ ] Renew the lease 📅 2026-06-12' });
+    assert.strictEqual(describeDueTasks(countDueTasks(onlyOld, now)), undefined, 'the bar stays hidden');
   });
 
   test('says it in the bar, and at length in the reminder', () => {

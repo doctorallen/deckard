@@ -639,7 +639,7 @@
         },
         {
           "command": "deckard.agenda.reschedule",
-          "when": "view == deckard.agenda && viewItem == deckardAgendaGroup.overdue",
+          "when": "view == deckard.agenda && viewItem =~ /^deckardAgendaGroup\\.(overdue|needsDate)$/",
           "group": "inline@1"
         },
         {
@@ -1291,6 +1291,14 @@
             "type": "string",
             "default": "",
             "description": "Who you are in your notes, such as @ren-kade, so is:mine finds the tasks that name you as well as the ones for nobody in particular. Empty means is:mine finds only the latter.",
+            "order": 4
+          },
+          "deckard.tasks.needsNewDateAfterDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 365,
+            "default": 30,
+            "description": "How many days past its due date an open task stays in Overdue. After that it moves to the Tasks view's folded Needs a new date group, and leaves the status bar's count and its warning color. 0 keeps every overdue task in Overdue.",
             "order": 4
           },
           "deckard.statusBar": {
