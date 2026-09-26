@@ -58,6 +58,12 @@ jobs:
         if: steps.tag.outputs.exists != 'true'
         run: npm run package:vsix
 
+      - name: Read the release notes from the changelog
+        if: steps.tag.outputs.exists != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: node scripts/changelog.js notes "$VERSION" > "$RUNNER_TEMP/notes.md"
+
       - name: Create release and attach VSIX
         if: steps.tag.outputs.exists != 'true'
         env:
@@ -66,8 +72,15 @@ jobs:
         run: |
           vsix_path="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
           test -n "$vsix_path"
+          # The changelog's section for this version, or GitHub's list of
+          # pull requests when there is none.
+          if [ -s "$RUNNER_TEMP/notes.md" ]; then
+            notes=(--notes-file "$RUNNER_TEMP/notes.md")
+          else
+            notes=(--generate-notes)
+          fi
           gh release create "$TAG_NAME" "$vsix_path" \
-            --generate-notes \
+            "${notes[@]}" \
             --target "$GITHUB_SHA" \
             --title "Deckard $TAG_NAME" \
             --repo "$GITHUB_REPOSITORY"

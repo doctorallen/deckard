@@ -111,6 +111,13 @@
 
 ### Changed
 
+- **The release notes come from this changelog.** Each release now cuts
+  `## Unreleased` into its own dated section, which the GitHub release and
+  the Extensions view's Changelog tab both show. A feature release is not
+  cut until its three Highlights are written.
+
+### Changed
+
 - **Layout: columns are regions, a count is said once, and Home widens.**
   Board columns now stand on a ground half a step above the page in every
   theme, so five headers over one field of cards read as five columns. A

@@ -50,8 +50,12 @@ jobs:
             explicit_version=true
           fi
 
+          echo "base_version=$base_version" >> "$GITHUB_OUTPUT"
+
           if [ "$explicit_version" = true ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "value=$current_version" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
             echo "Version is explicitly set to $current_version."
             exit 0
           fi
@@ -68,6 +72,7 @@ jobs:
 
           if [ "$bump" = none ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "release=false" >> "$GITHUB_OUTPUT"
             echo "No release-level Conventional Commit was found."
             exit 0
           fi
@@ -85,6 +90,8 @@ jobs:
           console.log(next.join('.'));
           NODE
           )"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
           if [ "$current_version" = "$version" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "Version is already $version."
@@ -93,16 +100,32 @@ jobs:
 
           npm version "$version" --no-git-tag-version --allow-same-version --ignore-scripts
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      # Unreleased becomes the version's own section, which the release page
+      # and the Extensions view's Changelog tab both read. A feature release
+      # fails here until its Highlights are written.
+      - name: Cut the changelog
+        if: steps.version.outputs.release == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          VERSION: ${{ steps.version.outputs.value }}
+          BASE_VERSION: ${{ steps.version.outputs.base_version }}
+        run: |
+          git log --format=%s --no-merges "$BASE_SHA..HEAD" > "$RUNNER_TEMP/commits.txt"
+          node scripts/changelog.js cut "$VERSION" "$(TZ=America/New_York date +%F)" "$BASE_VERSION" "$RUNNER_TEMP/commits.txt"
 
       - name: Commit version update
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.release == 'true'
         env:
           VERSION: ${{ steps.version.outputs.value }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
+          if [ -z "$(git status --porcelain -- package.json package-lock.json CHANGELOG.md)" ]; then
+            echo "The version and the changelog are already cut."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
+          git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore: prepare release v$VERSION"
           git push origin "HEAD:$HEAD_REF"
