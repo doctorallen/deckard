@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { affectsPageChrome } from './components';
 
-import { getHelpHtml, HelpManifest } from './helpHtml';
+import { getHelpHtml, HelpManifest, isRunnableFromHelp } from './helpHtml';
+import { parseHelpMessage } from './messages';
 
 /**
  * Hosts Deckard's self-contained product guide in a reusable webview panel.
@@ -75,11 +76,20 @@ export class HelpPanel implements vscode.Disposable {
           );
         }
       }),
+      panel.webview.onDidReceiveMessage((message: unknown) => this.handle(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.disposePanelListeners();
       }),
     ];
+  }
+
+  /** Runs a command the page names, when Help is allowed to run it. */
+  public async handle(value: unknown): Promise<void> {
+    const message = parseHelpMessage(value);
+    if (message?.type === 'runCommand' && isRunnableFromHelp(this.manifest, message.command)) {
+      await vscode.commands.executeCommand(message.command);
+    }
   }
 
   private disposePanelListeners(): void {

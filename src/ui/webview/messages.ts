@@ -672,6 +672,27 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
   }
 }
 
+/** What the Help page may ask of its host. */
+export type HelpMessage = { type: 'runCommand'; command: string };
+
+/**
+ * Validates the Help page's messages. Only the shape is checked here; the
+ * host runs a command only when Help is allowed to run it.
+ */
+export function parseHelpMessage(value: unknown): HelpMessage | undefined {
+  if (!isRecord(value) || typeof value.type !== 'string') {
+    return undefined;
+  }
+  switch (value.type) {
+    case 'runCommand':
+      return typeof value.command === 'string' && /^deckard\.[\w.]+$/.test(value.command)
+        ? { type: 'runCommand', command: value.command }
+        : undefined;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Accepts the calendar page's messages. Dates and months are checked for their
  * shape; the host checks that each names a real day.

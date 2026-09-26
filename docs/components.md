@@ -206,6 +206,8 @@ treatment, so a toolbar reads as one row of controls.
 | `.query-facet` | One Refine group: its label above a `.query-facet-values` row, groups a wide step apart, so a group's edge is a shape. |
 | `.view-options` | **The gear every page's view options sit behind**, drawn by `renderViewOptions()`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. |
 | `.filter-count` | Small muted count inside a filter button. |
+| `.command-link` | **A command named in Help's prose that runs it.** The code chip's look in `--cyan`, underlined under the pointer and on focus. Help builds it with `linkCommandNames()` for every `<code>Deckard: …</code>` whose command needs no note in the editor; the host runs it only when `isRunnableFromHelp()` agrees. |
+| `kbd.shortcut` | A key binding beside a command's name, written for the platform: Cmd+Shift+Alt+F on macOS, Ctrl+Shift+Alt+F elsewhere. |
 
 **Disabled.** A control that cannot act never lights up under the pointer:
 every hover rule on a `button`, `select`, or `input`, in the shared sheet,

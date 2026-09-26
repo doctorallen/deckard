@@ -11,6 +11,12 @@
 
 ### Added
 
+- **A command named in Help runs from Help.** Every `Deckard: …` name in
+  the guide and its commands table is a button that runs the command, with
+  its shortcut beside it for this platform. A command that acts on the note
+  in the editor is named but not run. Help named `Deckard: Export` and
+  `Deckard: Import`, which do not exist; it now gives their real names.
+
 - **A saved search can show its results on Home.** Saving a search offers
   **Show Results on Home**, which adds a widget listing what it finds, and
   **Open Home**; a saved search's row on Home offers **Show results** until

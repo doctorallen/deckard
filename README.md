@@ -94,7 +94,7 @@ Deckard scans the workspace Markdown scope automatically and refreshes when save
 In a code repository, Deckard's editor features apply only to notes: a README outside `deckard.notesFolder`, or under `node_modules`, is left alone.
 Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan manually.
 
-Run `Deckard: Open Help`, or select the question-mark button in the Related Notes toolbar, to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.
+Run `Deckard: Open Help`, or select the question-mark button in the Related Notes toolbar, to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it; one that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
 
 ![Deckard Help page with quick-start instructions and feature navigation.](docs/images/help.png)
 
