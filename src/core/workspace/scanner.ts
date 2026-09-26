@@ -95,6 +95,8 @@ export class WorkspaceScanner {
   public async scan(
     onProgress?: ScanProgress,
     reuse?: ReuseParsedFile,
+    /** Called with each note read and parsed, between reads. */
+    onParsed?: (file: ParsedFile) => void,
   ): Promise<ParsedFile[]> {
     const entries: ScanEntry[] = [];
     const failures: UnreadableNote[] = [];
@@ -141,7 +143,7 @@ export class WorkspaceScanner {
         next += 1;
         const entry = entries[position];
         try {
-          results[position] = await this.readEntry(entry, reuse);
+          results[position] = await this.readEntry(entry, reuse, onParsed);
         } catch (error) {
           reportError(`Could not read ${entry.uri.toString()}`, error);
           results[position] = {
@@ -178,6 +180,7 @@ export class WorkspaceScanner {
   private async readEntry(
     entry: ScanEntry,
     reuse: ReuseParsedFile | undefined,
+    onParsed: ((file: ParsedFile) => void) | undefined,
   ): Promise<ParsedFile> {
     assertMarkdownFile(entry.uri);
     const stamp = await this.readStamp(entry.uri);
@@ -187,7 +190,9 @@ export class WorkspaceScanner {
         return reused;
       }
     }
-    return this.read(entry.uri, entry.workspaceFolder, stamp ?? null);
+    const file = await this.read(entry.uri, entry.workspaceFolder, stamp ?? null);
+    onParsed?.(file);
+    return file;
   }
 
   /**

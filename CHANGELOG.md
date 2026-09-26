@@ -325,6 +325,13 @@
   a quarter of a second at 5,000 notes, down from over half a second.
   `Deckard: Reindex Workspace` still reads and parses every note.
 
+- **The local cache keeps each note as Deckard last read it.** Beside the
+  words search uses, the cache now holds each parsed note, which the next
+  start can show before reading anything. A new version of Deckard, a
+  change to a parsing setting, or a new time zone rebuilds it; before, a
+  new version kept search rows written by the old parser. A note whose
+  created time alone changed is now written again, too.
+
 - **Extract Heading takes any heading.** `Deckard: Extract Tagged
   Heading` is now `Deckard: Extract Heading`, and moves an untagged heading
   as readily as a tagged one; its picker lists every heading, naming the

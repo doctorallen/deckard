@@ -257,6 +257,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const indexer = new WorkspaceIndexer(
     undefined,
     new SearchStore(context.storageUri),
+    { version: String(context.extension.packageJSON.version) },
   );
   // Favorites, pins and view counts name what is in a workspace, so they are
   // kept with it. A window with no folder open has no workspace to own them

@@ -21,6 +21,11 @@ import { ViewUpdateOptions } from './publishing';
 /** What the indexer can be given beyond its scanner and cache. */
 export interface WorkspaceIndexerOptions {
   /**
+   * Deckard's version. The parsed notes in the cache are kept only for the
+   * version that parsed them, since a new version may parse differently.
+   */
+  version?: string;
+  /**
    * Runs a view's redraw in a later host turn. `setImmediate` by default; a
    * test passes its own to step through the turns.
    */
@@ -70,6 +75,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private viewQueue: ViewSubscription[] = [];
   private viewTurnScheduled = false;
   private readonly schedule: (run: () => void) => void;
+  private readonly version: string;
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
@@ -77,6 +83,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
     options: WorkspaceIndexerOptions = {},
   ) {
     this.schedule = options.schedule ?? ((run) => void setImmediate(run));
+    this.version = options.version ?? '';
     this.disposables.push(this.updateEmitter, this.progressEmitter);
   }
 
@@ -285,6 +292,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
               });
               },
               reusable && ((filePath, stamp) => reuseUnchanged(reusable.get(filePath), stamp)),
+              // Each note is encoded for the cache as it is read, rather
+              // than all of them in one turn when the cache is written.
+              this.searchStore && ((file) => this.searchStore?.prepare(file)),
             ),
           (files) => `${files.length} notes`,
         );
@@ -310,10 +320,10 @@ export class WorkspaceIndexer implements vscode.Disposable {
         measure(
           'Rebuild search index',
           () =>
-            this.searchStore?.replace(
-              this.state.files.values(),
-              this.scanner.getParseFingerprint(),
-            ),
+            {
+              this.searchStore?.replace(this.state.files.values(), this.cacheFingerprint(fingerprint));
+              this.searchStore?.writeLastScan(this.scanner.lastScan);
+            },
           () => `${this.state.files.size} notes`,
         );
         // What the store handed to its worker is still being written. The
@@ -324,6 +334,16 @@ export class WorkspaceIndexer implements vscode.Disposable {
         this.emitUpdate();
       },
     );
+  }
+
+  /**
+   * What the notes in the cache were parsed under: the parse settings, this
+   * version of Deckard, and the time zone, since the parser reads a
+   * written date as a local one. Any change rebuilds the cache.
+   */
+  private cacheFingerprint(parseFingerprint = this.scanner.getParseFingerprint()): string {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
+    return [parseFingerprint, this.version, timeZone].join('\u0002');
   }
 
   /** Times the part of a rebuild that finished after the host moved on. */

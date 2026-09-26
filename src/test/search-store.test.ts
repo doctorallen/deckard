@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { SearchStore } from '../core/storage/searchStore';
+import { ParsedFile } from '../core/types';
 
 suite('Local search store', () => {
   test('persists and searches saved Markdown text locally', () => {
@@ -352,6 +353,32 @@ suite('Local search store', () => {
       assert.strictEqual(store.searchEntries('zzzz').suggestion, undefined);
     } finally {
       store.dispose();
+    }
+  });
+  test('keeps each parsed note, and rewrites one whose created time alone changed', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const store = new SearchStore(vscode.Uri.file(directory));
+    const note = (name: string, created: number) =>
+      parseMarkdown(name, `# ${name} #project/atlas\n- [ ] Task`, { createdAt: created, updatedAt: 5 });
+    try {
+      const first = [note('b.md', 1), note('a.md', 1), note('c.md', 1)];
+      store.replace(first, 'settings');
+      const read: ParsedFile[][] = [];
+      assert.strictEqual(await store.readParsedNotes('settings', (page) => read.push(page)), true);
+      assert.deepStrictEqual(read.flat(), first, 'every note, in the order first written');
+      assert.strictEqual(await store.readParsedNotes('other settings', () => assert.fail('read')), false);
+
+      const moved = note('a.md', 2);
+      store.replace([first[0], moved, first[2]], 'settings');
+      const after: ParsedFile[] = [];
+      await store.readParsedNotes('settings', (page) => after.push(...page));
+      assert.deepStrictEqual(after, [first[0], moved, first[2]], 'the created time is compared too');
+
+      store.writeLastScan({ found: 4, templates: 1, excluded: 0, read: 3 });
+      assert.deepStrictEqual(store.readLastScan(), { found: 4, templates: 1, excluded: 0, read: 3 });
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true });
     }
   });
 });
