@@ -190,6 +190,45 @@ suite('Quick Find', () => {
     }
   });
 
+  test('with nothing typed, lists pinned notes first, then the five opened last', async () => {
+    const finder = createFinder({
+      'atlas.md': '# Atlas\n## Next\nWork.',
+      'harbor.md': '# Harbor',
+      ...Object.fromEntries(Array.from({ length: 7 }, (_, n) => [`n${n}.md`, `# Note ${n}`])),
+    });
+    const store = new PreferencesStore(new MemoryMemento());
+    try {
+      const idOf = (heading: string) =>
+        [...finder.index.sections.values()].find((section) => section.heading === heading)!.id;
+      await store.pinNote({ filePath: 'atlas.md', heading: 'Next', headingLevel: 2, occurrence: 0 });
+      await store.pinNote({ filePath: 'harbor.md', heading: 'Gone', headingLevel: 1, occurrence: 0 });
+      await store.recordSectionAccess(idOf('Next'), 100);
+      for (let n = 0; n < 7; n += 1) {
+        await store.recordSectionAccess(idOf(`Note ${n}`), 200 + n);
+      }
+      for (let n = 0; n < 7; n += 1) {
+        await store.recordRecentQuery(`search ${n}`);
+      }
+      const results = finder.find('', store.value);
+      assert.deepStrictEqual(
+        results.pinned?.map((item) => [item.label, item.description, item.detail]),
+        [
+          ['Next', 'Pinned · atlas.md', undefined],
+          ['Gone', 'Pinned · harbor.md', 'heading not found'],
+        ],
+      );
+      assert.deepStrictEqual(results.notes.map((item) => item.label), ['Note 6', 'Note 5', 'Note 4', 'Note 3', 'Note 2']);
+      assert.strictEqual(results.recent.length, 5);
+      const labels = toPickItems(results, '')
+        .filter((item) => item.kind === vscode.QuickPickItemKind.Separator)
+        .map((item) => item.label);
+      assert.deepStrictEqual(labels, ['Pinned', 'Recently opened', 'Recent searches']);
+      assert.ok(toPickItems(results, '').some((item) => item.label === '$(pinned) Next'));
+    } finally {
+      finder.dispose();
+    }
+  });
+
   test('scores characters that start words and follow each other highest', () => {
     const initials = fuzzyScore('vc', 'vendor contract') ?? 0;
     const scattered = fuzzyScore('vc', 'every cocoa') ?? 0;

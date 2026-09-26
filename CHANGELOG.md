@@ -12,6 +12,10 @@
 
 ### Added
 
+- **Find starts with your pinned notes.** With nothing typed, Find lists
+  your pinned notes first, then the five notes you opened last, then five
+  recent searches, your saved searches, and your tags.
+
 - **A note counts as opened however it was opened.** A note that stays in
   the editor for a moment counts for Recently opened, Find, and `[[`
   completion, whether it was opened from Deckard, the Explorer, Quick

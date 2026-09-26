@@ -425,12 +425,21 @@ export function toPickItems(
       suggestion: results.suggestion,
     });
   }
-  group('Complete', results.conditions.map(row));
-  group('Recent searches', results.recent.map(row));
-  group('Tags', results.tags.map(row));
-  group('Saved searches', results.savedViews.map(row));
-  group(value.trim() ? 'Notes' : 'Recently opened', results.notes.map(row));
-  group('Tasks', results.tasks.map(row));
+  if (value.trim()) {
+    group('Complete', results.conditions.map(row));
+    group('Tags', results.tags.map(row));
+    group('Saved searches', results.savedViews.map(row));
+    group('Notes', results.notes.map(row));
+    group('Tasks', results.tasks.map(row));
+  } else {
+    // Before anything is typed: what was kept on purpose, then what was
+    // opened last, then the searches and tags most likely to be wanted.
+    group('Pinned', (results.pinned ?? []).map(row));
+    group('Recently opened', results.notes.map(row));
+    group('Recent searches', results.recent.map(row));
+    group('Saved searches', results.savedViews.map(row));
+    group('Tags', results.tags.map(row));
+  }
 
   // Plain words that no note is called can be the name of a new one, as a
   // quick switcher offers: Find finds, and makes what it did not find.
@@ -484,7 +493,7 @@ function iconFor(item: QuickFindItem): string {
     case 'task':
       return item.completed ? '$(pass-filled)' : '$(circle-large-outline)';
     case 'note':
-      return '$(note)';
+      return item.pinned ? '$(pinned)' : '$(note)';
     default:
       return '$(info)';
   }

@@ -19,6 +19,7 @@ import {
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { describeTagMatches, getHeadingPath } from './dashboardState';
 import { frecencyScore } from './frecency';
+import { findPinnedSection, resolvePin } from './pinnedNotes';
 
 /**
  * Ranks what Quick Find shows for what has been typed so far.
@@ -49,6 +50,8 @@ export interface QuickFindItem {
   line?: number;
   sectionId?: string;
   completed?: boolean;
+  /** A note pinned to Home, listed first in an empty Find. */
+  pinned?: boolean;
   /** The query a recent search or saved view stands for. */
   query?: string;
   savedFilterId?: string;
@@ -60,6 +63,8 @@ export interface QuickFindItem {
 }
 
 export interface QuickFindResults {
+  /** Pinned notes, offered first before anything is typed. */
+  pinned?: QuickFindItem[];
   tags: QuickFindItem[];
   conditions: QuickFindItem[];
   recent: QuickFindItem[];
@@ -88,6 +93,9 @@ const TAG_LIMIT = 5;
 const CONDITION_LIMIT = 4;
 const SAVED_VIEW_LIMIT = 3;
 const EMPTY_LIST_LIMIT = 8;
+/** How many pinned notes, and how many notes opened last, empty Find lists. */
+const EMPTY_PINNED_LIMIT = 10;
+const EMPTY_RECENT_LIMIT = 5;
 
 /** Tier floors. A higher tier always outranks a lower one. */
 const EXACT_TITLE = 3000;
@@ -521,16 +529,47 @@ function matchSavedViews(
 }
 
 /**
- * What Quick Find offers before anything is typed: recent searches, the tags
- * most likely to be wanted, saved views, and recently opened notes.
+ * What Quick Find offers before anything is typed: pinned notes, the notes
+ * opened last, recent searches, saved searches, and the tags most likely to
+ * be wanted.
  */
 function buildEmptyResults(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   now: number,
 ): QuickFindResults {
+  const pinnedSectionIds = new Set<string>();
+  const pinnedFiles = new Set<string>();
+  const pinned = (preferences.pinnedNotes ?? [])
+    .flatMap((pin): QuickFindItem[] => {
+      const resolved = resolvePin(index, pin);
+      if (!resolved) {
+        return [];
+      }
+      const file = index.files.get(pin.filePath);
+      const section = pin.heading && file ? findPinnedSection(file.sections, pin) : undefined;
+      if (section) {
+        pinnedSectionIds.add(section.id);
+      } else if (!pin.heading) {
+        pinnedFiles.add(pin.filePath);
+      }
+      const missing = resolved.detail.endsWith('heading not found');
+      return [
+        {
+          kind: 'note',
+          label: resolved.title,
+          description: `Pinned · ${getFileName(pin.filePath)}`,
+          ...(missing ? { detail: 'heading not found' } : {}),
+          filePath: resolved.filePath,
+          line: resolved.line,
+          ...(section ? { sectionId: section.id } : {}),
+          pinned: true,
+        },
+      ];
+    })
+    .slice(0, EMPTY_PINNED_LIMIT);
   const recent = (preferences.recentQueries ?? [])
-    .slice(0, EMPTY_LIST_LIMIT)
+    .slice(0, EMPTY_RECENT_LIMIT)
     .map((query) => ({
       kind: 'recent' as const,
       label: query,
@@ -558,7 +597,7 @@ function buildEmptyResults(
     .sort((left, right) => right[1] - left[1])
     .flatMap(([sectionId]) => {
       const section = index.sections.get(sectionId);
-      return section
+      return section && !pinnedSectionIds.has(sectionId) && !pinnedFiles.has(section.filePath)
         ? [
             createSectionItem(
               index,
@@ -568,8 +607,9 @@ function buildEmptyResults(
           ]
         : [];
     })
-    .slice(0, EMPTY_LIST_LIMIT);
+    .slice(0, EMPTY_RECENT_LIMIT);
   return {
+    pinned,
     tags,
     conditions: [],
     recent,
