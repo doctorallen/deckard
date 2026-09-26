@@ -8,6 +8,7 @@ import {
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the Notes Graph document: a full-viewport Canvas 2D force-directed
@@ -73,7 +74,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .zoom-controls { display: inline-flex; }
 .zoom-controls button { display: inline-grid; place-items: center; min-width: 32px; min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-sm) var(--font-mono); cursor: pointer; }
 .zoom-controls button + button, .zoom-controls .zoom-readout + button { margin-left: -1px; }
-.zoom-controls button:hover, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
+.zoom-controls button:hover${ENABLED}, .zoom-controls button:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); position: relative; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }

@@ -899,7 +899,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover, button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
+        'input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover:where(:not(:disabled):not([aria-disabled="true"])), button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }',
       ),
       true,
     );
@@ -940,7 +940,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       getDeckardThemeCss('lcars').includes(
-        '.control-icon select:hover + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
+        '.control-icon select:hover:where(:not(:disabled):not([aria-disabled="true"])) + .control-icon-svg, .related-notes-sort-icon { color: #050505; }',
       ),
       true,
     );
@@ -1028,7 +1028,7 @@ suite('Webview contracts', () => {
     // A tag's resting color never outranks the fill a theme gives it on hover.
     assert.strictEqual(/\.card \.tag-open, \.note-row \.tag-open \{ color/.test(cooper), false);
     // A hovered tag keeps Cooper's inverted button colors, not a dark ground under dark text.
-    assert.strictEqual(cooper.includes('.tag-open:hover, .note .tag-list button:hover { transform: translateX(3px); }'), true);
+    assert.strictEqual(cooper.includes('.tag-open:hover, .note .tag-list button:hover:where(:not(:disabled):not([aria-disabled="true"])) { transform: translateX(3px); }'), true);
     assert.strictEqual(/\.tag-open:hover[^{]*\{[^}]*background: var\(--panel-raised\)/.test(cooper), false);
     // The glow is drawn once over the whole panel, not tiled down a short page.
     assert.strictEqual(cooper.includes('html { min-height: 100%; }'), true);

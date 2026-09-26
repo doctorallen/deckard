@@ -15,6 +15,8 @@ import * as vscode from 'vscode';
 import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
 import { getDeckardTheme, getDeckardThemeCss } from './themes';
 import { isZenModeEnabled } from './zenMode';
+import { ENABLED } from './selectors';
+export { ENABLED };
 
 /**
  * The palette every webview starts from.
@@ -190,7 +192,7 @@ button { cursor: pointer; }
    the pointer still reads as chosen by the bar along its foot, which the
    hover ground does not cover. Hover raises the ground; chosen keeps the
    control's own ground and marks it with the accent border and the bar. */
-button:hover, select:hover, .tag-open:hover {
+button:hover${ENABLED}, select:hover${ENABLED}, .tag-open:hover {
   border-color: var(--amber);
   background: var(--hover-bg);
   color: var(--hover-fg);
@@ -211,7 +213,7 @@ input[type="text"]:focus, input[type="search"]:focus {
 /* Anything inside a control follows the control's own text color, so a hover
    that flips the background cannot leave a count or an icon on top of it in
    a color chosen for the background it used to have. */
-button:hover *, button.active *, button:focus-visible *,
+button:hover${ENABLED} *, button.active *, button:focus-visible *,
 .tag-open:hover *, .tag-open:focus-visible * {
   color: inherit;
 }
@@ -219,7 +221,11 @@ button:focus-visible, select:focus-visible, input:focus-visible {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
 }
-button[disabled] { opacity: .5; cursor: default; }
+/* A control that cannot act yet. One that holds its place in a bar uses
+   aria-disabled instead of disabled, so it stays in the Tab order and its
+   tip says why (data-tip-disabled); both look the same, and neither lights
+   up under the pointer (the ENABLED guard on every hover rule). */
+button:disabled, button[aria-disabled="true"] { opacity: .5; cursor: default; }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* The status node every page announces through. Off-screen, never hidden
    with display:none, which would stop it being announced at all. */
@@ -251,7 +257,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
 .control-icon-svg { position: absolute; z-index: var(--z-raised); top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
-.control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
+.control-icon select:hover${ENABLED} + .control-icon-svg { color: var(--hover-fg); }
 .control-icon select { padding-left: 29px; }
 
 /* Notes and Tasks tabs over a set of results, on a page that lists both. */
@@ -284,7 +290,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .page-range { color: var(--muted); font-family: var(--font-mono); }
 .page-controls { display: flex; align-items: center; gap: 4px; }
 .pagination button { min-width: 28px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 3px 8px; font: inherit; cursor: pointer; }
-.pagination button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.pagination button:hover${ENABLED}:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .pagination button[disabled] { color: var(--muted); cursor: default; opacity: 0.5; }
 .pagination .page-number.is-current { border-color: var(--chosen-bg); background: var(--panel-raised); color: var(--text); box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg); }
 .page-gap { color: var(--muted); padding: 0 2px; }
@@ -293,7 +299,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
    own, and this marks every other group the same way, rather than leaving
    them with the inverted treatment a pressed button takes. */
 .segmented button.active, .segmented button[aria-pressed="true"], .segmented button[aria-selected="true"],
-.segmented button.active:hover, .segmented button[aria-pressed="true"]:hover, .segmented button[aria-selected="true"]:hover {
+.segmented button.active:hover${ENABLED}, .segmented button[aria-pressed="true"]:hover${ENABLED}, .segmented button[aria-selected="true"]:hover${ENABLED} {
   border-color: var(--chosen-bg);
   background: var(--panel-raised);
   color: var(--text);
@@ -440,7 +446,7 @@ export function getPopoverCss(): string {
 .menu-check { flex: 0 0 16px; display: inline-grid; place-items: center; }
 .menu-check svg { width: 14px; height: 14px; }
 .menu-key { margin-left: auto; padding-left: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-button.menu-item:hover .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }
+button.menu-item:hover${ENABLED} .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }
 /* The one tip every page shares (data-tip), placed by the page script. A
    facet value's tip runs to several lines, so its line breaks are kept. */
 #deckard-tip { position: fixed; white-space: pre-line; }
@@ -698,11 +704,11 @@ export function getTaskListCss(): string {
 .result-table th { padding: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
 /* A header is the button that sorts by it, filling the cell so the whole label is the target. */
 .result-table th button { display: flex; width: 100%; gap: var(--space-1); align-items: center; min-height: 0; border: 0; padding: var(--space-2) var(--space-3); background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left; }
-.result-table th button:hover, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
+.result-table th button:hover${ENABLED}, .result-table th button:focus-visible { color: var(--hover-fg); background: var(--hover-bg); }
 /* The sorted column is told by weight and its arrow, not a color: amber on a panel is too faint for a small label in some themes.
    Hovered, it takes the hover pair like any other header, or it would be its own text on the hover ground. */
 .result-table th.is-sorted button { color: var(--text); font-weight: 700; }
-.result-table th.is-sorted button:hover, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
+.result-table th.is-sorted button:hover${ENABLED}, .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
 .result-table .result-check { width: 24px; padding-right: 0; }
 .result-table .result-row { cursor: pointer; }
 /* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
@@ -1240,6 +1246,18 @@ export function getComponentScript(): string {
     if (status.textContent === text) status.textContent = '';
     status.textContent = text;
   }
+
+  /**
+   * A control that holds its place with aria-disabled stays focusable, so
+   * its click is stopped here, once, before any page listener hears it; no
+   * page handler has to remember. Enter and Space on it raise the same click.
+   */
+  document.addEventListener('click', function (event) {
+    const target = event.target && event.target.closest ? event.target.closest('[aria-disabled="true"]') : null;
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
 
   /**
    * Redraw without losing the reader's place.
@@ -3054,6 +3072,10 @@ export function getQueryEditorScript(): string {
     function clearedText() {
       return options.clearedText ? String(options.clearedText() || '') : '';
     }
+    /** Why Clear cannot act: nothing is in the box, or only the page's own tag. */
+    function clearReason() {
+      return clearedText().trim() ? 'Only this page\\'s own tag is left' : 'The search is already empty';
+    }
     /** Whether Clear would change the search. */
     function canClear(text) {
       return String(text || '').trim() !== clearedText().trim();
@@ -3080,7 +3102,7 @@ export function getQueryEditorScript(): string {
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions popover is-dropdown" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + '<button class="query-apply" data-action="apply-query" data-tip="Run this search">Search</button>'
-        + '<button data-action="clear-query" data-query-clears data-tip="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
+        + '<button data-action="clear-query" data-query-clears data-tip="Clear the search" data-tip-disabled="' + escapeHtml(clearReason()) + '"' + (canClear(value) ? '' : ' aria-disabled="true"') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
         + '</div>'
         + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" data-tip="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
@@ -3248,10 +3270,12 @@ export function getQueryEditorScript(): string {
      */
     function syncTextButtons(text) {
       const hasText = Boolean(String(text || '').trim());
+      // aria-disabled rather than disabled: the button keeps its place in
+      // the Tab order, and says why it cannot act when focused.
       const enable = function (button, enabled) {
-        button.disabled = !enabled;
-        if (enabled) button.removeAttribute('disabled');
-        else button.setAttribute('disabled', '');
+        if (enabled) button.removeAttribute('aria-disabled');
+        else button.setAttribute('aria-disabled', 'true');
+        if (button.matches('[data-query-clears]')) button.setAttribute('data-tip-disabled', clearReason());
       };
       document.querySelectorAll('[data-query-needs-text]').forEach(function (button) { enable(button, hasText); });
       document.querySelectorAll('[data-query-clears]').forEach(function (button) { enable(button, canClear(text)); });
@@ -4064,7 +4088,7 @@ export function getQueryEditorScript(): string {
         const target = event.target.closest ? event.target.closest('[data-action]') : undefined;
         if (!target) return false;
         // A disabled button in the bar is there to hold its place, not to act.
-        if (target.disabled === true || (target.getAttribute && target.getAttribute('disabled') !== null)) return true;
+        if (target.disabled === true || (target.getAttribute && (target.getAttribute('disabled') !== null || target.getAttribute('aria-disabled') === 'true'))) return true;
         const action = target.dataset.action;
         if (action === 'toggle-builder') {
           builderOpen = !builderOpen;

@@ -197,13 +197,14 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   assert.ok(save(), 'Save sits in the search bar');
   view.click(view.find('[data-action="clear-query"]'));
   await delay(10);
-  assert.notStrictEqual(save().getAttribute('disabled'), null, 'with no search, there is nothing to save');
+  assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'with no search, there is nothing to save');
+  assert.strictEqual(save().getAttribute('data-tip-disabled'), 'Type a search to save it');
 
   const bar = view.find('[data-action="query-input"]');
   view.type(bar, '#project/atlas is:open');
   view.keydown(bar, 'Enter');
   await delay(10);
-  assert.strictEqual(save().getAttribute('disabled'), null);
+  assert.strictEqual(save().getAttribute('aria-disabled'), null);
 
   vscode._test.setInputBoxResponse('Atlas board');
   view.click(save());

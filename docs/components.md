@@ -205,6 +205,25 @@ treatment, so a toolbar reads as one row of controls.
 | `.view-options` | **The gear every page's view options sit behind**, drawn by `renderViewOptions()`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. |
 | `.filter-count` | Small muted count inside a filter button. |
 
+**Disabled.** A control that cannot act never lights up under the pointer:
+every hover rule on a `button`, `select`, or `input`, in the shared sheet,
+a page, or a theme, carries the zero-weight guard `ENABLED`
+(`:where(:not(:disabled):not([aria-disabled="true"]))`, from `selectors.ts`,
+re-exported by `components.ts`), and `components-primitives.test.ts` fails
+one that does not. At rest both kinds are drawn at half opacity.
+
+- **`aria-disabled="true"` with `data-tip-disabled`** for a control that
+  holds its place in a bar: Save, Clear, Back, and Forward. It stays in the
+  Tab order, focus shows its reason as the tip, and one capture-phase click
+  listener in `getComponentScript()` swallows its click, so no page handler
+  checks. The query editor's `syncTextButtons` flips `aria-disabled` in
+  place as a search is typed.
+- **`disabled`** for one whose reason is plain, such as a pagination step at
+  the end of the list.
+
+The layout suite forces every `:hover` rule onto each disabled control on
+its surfaces and fails if a color changes.
+
 ### `.segmented`
 
 Any group of joined buttons uses this, rather than each page restyling

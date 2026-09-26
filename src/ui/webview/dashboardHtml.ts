@@ -19,6 +19,7 @@ import {
   sortIcon,
   strokeIcon,
 } from './icons';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the dashboard document and its self-contained interaction layer.
@@ -189,7 +190,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-steps { display: flex; align-items: center; gap: 6px; }
 .home-widget-steps .page-range { margin-right: 2px; }
 .home-widget-steps button { display: grid; width: 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 0; cursor: pointer; }
-.home-widget-steps button:hover:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.home-widget-steps button:hover${ENABLED}:not([disabled]) { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .home-widget-steps button[disabled] { color: var(--muted); cursor: default; opacity: 0.45; }
 .home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .home-widget .query-workspace { margin-top: 0; }

@@ -8,6 +8,8 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
+import { ENABLED } from '../ui/webview/components';
+import { deckardThemes, getDeckardThemeCss } from '../ui/webview/themes';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml } from '../ui/webview/helpHtml';
 import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
@@ -80,6 +82,72 @@ suite('Component primitives', () => {
     return element;
   };
   const tip = (target: WebviewPage): HTMLElement | null => target.document.getElementById('deckard-tip');
+
+  suite('disabled controls (9b)', () => {
+    /** Every selector in a sheet, with @media flattened. */
+    const selectorsOf = (css: string): string[] => {
+      const text = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      const selectors: string[] = [];
+      for (const match of text.matchAll(/([^{}]+)\{[^{}]*\}/g)) {
+        const prelude = match[1].trim();
+        if (prelude.startsWith('@') || prelude.startsWith(':root')) continue;
+        let depth = 0;
+        let current = '';
+        for (const character of prelude) {
+          if (character === '(' || character === '[') depth += 1;
+          if (character === ')' || character === ']') depth -= 1;
+          if (character === ',' && depth === 0) {
+            selectors.push(current.trim());
+            current = '';
+            continue;
+          }
+          current += character;
+        }
+        selectors.push(current.trim());
+      }
+      return selectors.map((selector) => selector.replace(/^.*\{\s*/, ''));
+    };
+    const unguarded = (selector: string): boolean =>
+      selector
+        .replace(/:not\([^()]*(\([^()]*\))?[^()]*\)/g, (not) => (not.includes('disabled') ? not : ''))
+        .split(/\s*[>+~]\s*|\s+/)
+        .some((compound) => /^(button|select|input)\b/.test(compound) && compound.includes(':hover')
+          && !compound.includes(ENABLED) && !compound.includes(':not([disabled])'));
+
+    test('no hover rule on a control reaches a disabled one, in any theme', () => {
+      const sheets = pages.map(([name, render]) => [name, stylesOf(render())] as const);
+      for (const theme of deckardThemes) sheets.push([theme, getDeckardThemeCss(theme)]);
+      let guarded = 0;
+      for (const [name, css] of sheets) {
+        const found = selectorsOf(css).filter(unguarded);
+        assert.deepStrictEqual(found, [], `${name}: a hover on a control that may be disabled`);
+        guarded += selectorsOf(css).filter((selector) => selector.includes(`:hover${ENABLED}`)).length;
+      }
+      assert.ok(guarded > 40, `the guard is read where it is written (${guarded})`);
+      assert.ok(unguarded('.toolbar button:hover'), 'and a bare hover is caught');
+    });
+
+    test('Save and Clear hold their place while they cannot act, and say why', () => {
+      const board = openBoard();
+      const save = board.find('[data-action="save-board-search"]') as HTMLButtonElement;
+      const clear = board.find('[data-action="clear-query"]') as HTMLButtonElement;
+      for (const button of [save, clear]) {
+        assert.strictEqual(button.getAttribute('aria-disabled'), 'true');
+        assert.strictEqual(button.hasAttribute('disabled'), false);
+        assert.ok(button.tabIndex >= 0, 'still in the Tab order');
+        assert.ok(button.getAttribute('data-tip-disabled'));
+      }
+      board.click('[data-action="save-board-search"]');
+      assert.strictEqual(board.lastPosted('saveBoardSearch'), undefined, 'a click does nothing');
+      keyFocus(board, '[data-action="save-board-search"]');
+      assert.strictEqual(tip(board)?.textContent, 'Type a search to save it');
+      const input = board.find('[data-action="query-input"]') as HTMLInputElement;
+      input.value = '#project/atlas';
+      input.dispatchEvent(new board.window.Event('input', { bubbles: true }));
+      assert.strictEqual(save.getAttribute('aria-disabled'), null, 'typing enables it in place');
+      assert.strictEqual(board.find('[data-action="save-board-search"]'), save, 'without a redraw');
+    });
+  });
 
   suite('tips (9d)', () => {
     test('a keyboard focus shows the tip at once, with its key, and Escape hides it', () => {

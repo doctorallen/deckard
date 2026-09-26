@@ -174,7 +174,7 @@ ${getQueryEditorScript()}
     // in the split layout, where there are no tabs.
     countElsewhere: function () { return Boolean(state && state.layout !== 'split'); },
     actions: function (hasText) {
-      return '<button data-action="save-filter" data-query-needs-text data-tip="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-filter" data-query-needs-text data-tip="Keep this search, named, on Home" data-tip-disabled="Type a search to save it"' + (hasText ? '' : ' aria-disabled="true"') + '>Save</button>';
     },
   });
 
@@ -346,8 +346,8 @@ ${getQueryEditorScript()}
   function renderHistoryButtons() {
     const history = state.history || {};
     return '<span class="history-buttons" role="group" aria-label="Search history">'
-      + renderIconButton({ action: 'history-back', label: 'Back to the search before', key: 'Alt+←', icon: '‹', attributes: history.back ? '' : 'disabled' })
-      + renderIconButton({ action: 'history-forward', label: 'Forward to the search after', key: 'Alt+→', icon: '›', attributes: history.forward ? '' : 'disabled' })
+      + renderIconButton({ action: 'history-back', label: 'Back to the search before', key: 'Alt+←', icon: '‹', disabledReason: history.back ? '' : 'No search before this one' })
+      + renderIconButton({ action: 'history-forward', label: 'Forward to the search after', key: 'Alt+→', icon: '›', disabledReason: history.forward ? '' : 'No search after this one' })
       + '</span>';
   }
 

@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **A button that cannot act yet says why.** Save, Clear, Back, and
+  Forward stay in the Tab order while they cannot act, say why when focused
+  (*Type a search to save it*), and no longer light up under the pointer.
+  No disabled control in any theme changes color on hover.
+
 - **A button's tip shows on keyboard focus, and names its key.** Every
   page's buttons — the search page, the Task board, Home, Related Notes,
   Stats, the Calendar, and the Notes Graph's controls — explain themselves on

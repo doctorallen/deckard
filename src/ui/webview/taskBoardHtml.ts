@@ -99,7 +99,7 @@ ${getQueryEditorScript()}
     actions: function (hasText) {
       // The Tasks view lists a search of its own; this is where it is edited.
       const listed = !!(state && state.agendaListsThisSearch);
-      return '<button data-action="save-board-search" data-query-needs-text data-tip="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
+      return '<button data-action="save-board-search" data-query-needs-text data-tip="Keep this search, named, on Home; it reopens on the Task Board" data-tip-disabled="Type a search to save it"' + (hasText ? '' : ' aria-disabled="true"') + '>Save</button>'
         + '<button data-action="use-for-agenda" data-tip="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
         + '<button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
     },

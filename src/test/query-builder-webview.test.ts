@@ -465,7 +465,7 @@ suite('Tag overview query builder', () => {
 
     // Clear is always drawn, disabled while the box holds only the page's
     // own tag, so nothing appears beside the box when typing starts.
-    assert.match(html, /data-action="clear-query" data-query-clears[^>]*disabled/);
+    assert.match(html, /data-action="clear-query" data-query-clears[^>]*aria-disabled="true"/);
     // Builder sits under the box, not beside it.
     assert.ok(
       html.indexOf('data-action="toggle-builder"') > html.indexOf('class="query-status"'),

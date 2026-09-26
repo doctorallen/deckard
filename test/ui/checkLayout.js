@@ -187,6 +187,16 @@ function probeScript(surface) {
     return found;
   }
   const runs = [{ ...report('resting'), viewport: [innerWidth, innerHeight] }];
+  // A control that cannot act must not light up under the pointer: its
+  // colors at rest, to compare once every :hover rule is forced onto it.
+  function look(el) {
+    const style = getComputedStyle(el);
+    return [style.backgroundColor, style.borderTopColor, style.color].join(' ');
+  }
+  const disabled = [...document.querySelectorAll('button:disabled, [aria-disabled="true"]')];
+  disabled.forEach((el) => { el.style.transition = 'none'; });
+  const disabledAtRest = disabled.map(look);
+  runs[0].disabledCount = disabled.length;
   let target = null;
   let hoverTarget = '';
   for (const sel of ${JSON.stringify(surface.hovered)}) {
@@ -209,6 +219,10 @@ function probeScript(surface) {
     // Force layout so the rewritten rules apply before measuring.
     void target.offsetWidth;
     runs.push({ ...report('hovered'), transform: getComputedStyle(target).transform });
+    disabled.forEach((el) => el.classList.add('layout-probe-hover'));
+    runs[1].disabledLit = disabled
+      .map((el, i) => { const now = look(el); return now === disabledAtRest[i] ? '' : name(el) + ' ' + disabledAtRest[i] + ' -> ' + now; })
+      .filter(Boolean);
   }
   const pre = document.createElement('pre');
   pre.id = 'layout-probe';
@@ -355,6 +369,9 @@ try {
           if (box.scrollW > box.clientW) {
             problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
           }
+        }
+        for (const lit of run.disabledLit || []) {
+          problems.push(`a control that cannot act lights up under the pointer: ${lit}`);
         }
         for (const box of run.clippers) {
           if (box.scrollH > box.clientH && box.overflowY === 'hidden') {

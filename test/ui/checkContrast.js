@@ -71,7 +71,7 @@ function parseRules(css) {
     }
     const close = matchBrace(text, open);
     const body = text.slice(open + 1, close);
-    rules.push({ selectors: splitSelectors(prelude), declarations: parseDeclarations(body) });
+    rules.push({ selectors: splitSelectors(prelude).map(stripWhere), declarations: parseDeclarations(body) });
     index = close + 1;
   }
   return rules;
@@ -87,6 +87,22 @@ function matchBrace(text, open) {
     }
   }
   return text.length;
+}
+
+/**
+ * A selector without its `:where(…)` groups. They weigh nothing, and the
+ * hover guard on every control, `:where(:not(:disabled):not([aria-disabled]))`,
+ * only leaves a disabled control out; read with its nested parentheses, it
+ * turned `button:hover` into an element named `button)`.
+ */
+function stripWhere(selector) {
+  let result = selector;
+  for (let start = result.indexOf(':where('); start >= 0; start = result.indexOf(':where(')) {
+    const end = matchParen(result, start + 6);
+    if (end < 0) break;
+    result = result.slice(0, start) + result.slice(end + 1);
+  }
+  return result;
 }
 
 /** Splits on commas that are not inside brackets. */

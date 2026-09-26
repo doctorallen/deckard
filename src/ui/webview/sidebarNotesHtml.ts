@@ -18,6 +18,7 @@ import {
   strokeIcon,
   taskBoardIcon,
 } from './icons';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the compact Related Notes webview from host-provided snapshots.
@@ -97,9 +98,9 @@ select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2p
    amber border and amber text were both out of step with every other hover,
    and unreadable on a theme whose hover background is light. The icon sits
    over the control, so it follows the same text color. */
-select.related-notes-sort:hover ~ .related-notes-sort-icon { color: var(--hover-fg); }
+select.related-notes-sort:hover${ENABLED} ~ .related-notes-sort-icon { color: var(--hover-fg); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
-button:hover { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
+button:hover${ENABLED} { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .active-name .tag-open { max-width: 100%; min-height: 0; border: 0; background: transparent; color: inherit; padding: 0; text-transform: none; }
 .active-name .tag-open:hover, .active-name .tag-open:focus-visible { border-color: transparent; background: transparent; color: var(--cyan-bright); }
