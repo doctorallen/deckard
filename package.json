@@ -991,12 +991,14 @@
             "enum": [
               "off",
               "move",
+              "migrate",
               "copy"
             ],
             "enumDescriptions": [
               "Create today's note from the template alone.",
-              "Move the last daily note's unfinished tasks into today's note.",
-              "Copy them into today's note and leave them where they were."
+              "Move the unfinished tasks into today's note, under Carried over.",
+              "Copy them into today's note and mark each one left behind [>] with a link to today, as a bullet journal does.",
+              "Older name for migrate."
             ],
             "default": "off",
             "order": 8,
@@ -1005,8 +1007,8 @@
           "deckard.dailyNote.rolloverDays": {
             "type": "number",
             "minimum": 0,
-            "default": 0,
-            "description": "How many days back a rollover looks for unfinished tasks. 0 reaches as far back as your daily notes go, so a task left open before a week away still comes forward.",
+            "default": 7,
+            "description": "How many days back a rollover looks for unfinished tasks. 7 by default; 0 reaches as far back as your daily notes go. An older dated task shows under the Tasks view's Needs a new date anyway.",
             "order": 9
           },
           "deckard.templatesFolder": {

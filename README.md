@@ -920,15 +920,17 @@ A daily note that starts from its template every morning leaves last night's ope
 | --- | --- |
 | `off` *(default)* | starts from the template alone |
 | `move` | takes the last daily note's unfinished tasks out of it and into today's |
-| `copy` | writes them into today's and leaves them where they were |
+| `migrate` | writes them into today's, and marks each line left behind `[>]` with a link to today, as a bullet journal does: `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]` |
+| `copy` | the older name for `migrate`, which it now means |
 
 - The tasks come from **every earlier daily note**, oldest first, not only yesterday's: a task left open on Friday still comes forward on Monday, and one left before a week away comes forward when you are back. Other notes are left alone: a task written under a project note stays there, where it was filed.
-- `deckard.dailyNote.rolloverDays` bounds how far back it looks. The default, `0`, reaches as far as your daily notes go.
-- Each task is written exactly as it was, its dates, priority, people, and tags included, and they keep their order and their indentation. They go at the end of today's note, under whatever your template put there.
+- `deckard.dailyNote.rolloverDays` bounds how far back it looks: a week by default. `0` reaches as far as your daily notes go; an older dated task shows under the Tasks view's **Needs a new date** anyway.
+- Each task is written exactly as it was, its dates, priority, people, and tags included, and they keep their order and their indentation. They go under a **Carried over** heading at the end of today's note, one level below the note's first heading — `## Carried over` under the default `# {date}` — and a second rollover adds to the same heading.
+- A migrated `[>]` line is not a task to the index, so it stops counting as open, and its `[[link]]` gives today's note a backlink to where the task was.
 - A task is carried only when its line still reads as Deckard indexed it, the same check every other Deckard task edit makes, and never when today's note already holds that line. Running it twice changes nothing.
-- In `copy` mode a task that has waited several days is carried once, from the newest note that holds it.
+- In `migrate` mode a task that has waited several days, from before migrate marked its lines, is carried once, from the newest note that holds it.
 - Only a note Deckard creates rolls tasks in, so opening today's note again later in the day carries nothing.
-- `Deckard: Roll Unfinished Tasks Forward` does the same thing whenever you ask, whatever the setting says, creating today's note if it is not there yet. It moves the tasks unless the setting says `copy`.
+- `Deckard: Roll Unfinished Tasks Forward` does the same thing whenever you ask, whatever the setting says, creating today's note if it is not there yet. It moves the tasks unless the setting says `migrate` or `copy`.
 - The whole rollover is one write. What it says when it is done offers **Open**, for the day's note it wrote into — which it may have just created — and **Undo**, which puts every note back without opening any of them. `Deckard: Undo Last Change` does the same thing later.
 
 ## Calendar
@@ -976,7 +978,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.monthlyNoteTemplate": "# {month}\n\n",
 	"deckard.periodicNote.review": true,
 	"deckard.dailyNote.rollover": "off",
-	"deckard.dailyNote.rolloverDays": 0,
+	"deckard.dailyNote.rolloverDays": 7,
 	"deckard.templatesFolder": "templates",
 	"deckard.noteBoundaries": "line",
 	"deckard.outline.showTags": true,
@@ -1034,8 +1036,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` for the day VS Code's display language starts it. It sets the Calendar's rows, weekly notes and their reviews, a search's `this-week`, `last-week`, and `next-week`, and *next week* and *end of week* typed as a date. A weekly note written before a change still opens. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `September 2026`, and `{date}` its first day. |
 | `deckard.periodicNote.review` | `true` | Writes a review into a newly created weekly or monthly note. See [Writing a review](#writing-a-review). |
-| `deckard.dailyNote.rollover` | `off` | What a newly created daily note does with the last one's unfinished tasks: `off`, `move`, or `copy`. See [Carrying unfinished tasks forward](#carrying-unfinished-tasks-forward). |
-| `deckard.dailyNote.rolloverDays` | `0` | How many days back a rollover looks for unfinished tasks. `0` reaches as far as your daily notes go. |
+| `deckard.dailyNote.rollover` | `off` | What a newly created daily note does with the last one's unfinished tasks: `off`, `move`, or `migrate` (`copy` is its older name). See [Carrying unfinished tasks forward](#carrying-unfinished-tasks-forward). |
+| `deckard.dailyNote.rolloverDays` | `7` | How many days back a rollover looks for unfinished tasks. `0` reaches as far as your daily notes go. |
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](#templates), relative to the workspace folder. Deckard does not index it. Leave it empty to turn templates off. |
 | `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](#markdown-format). `line` indexes a tagged non-heading, non-task line as its own entry. `heading` keeps the tag on its line and returns the heading holding it. `marked` is `heading` except for a line carrying a `^block-id`. Tasks are their own entry under all three. |
 | `deckard.parseInlineTags` | `true` | Deprecated: use `deckard.noteBoundaries`. `false` is read as `heading`, which keeps a line's tags searchable through the heading that holds them rather than dropping them. |

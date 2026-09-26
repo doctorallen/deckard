@@ -67,6 +67,16 @@
 
 ### Changed
 
+- **Carried tasks go under Carried over, a week back, and migrate rather
+  than copy.** A rollover writes today's carried tasks under a **Carried
+  over** heading at the end of the note, one level below its first heading,
+  and a second run adds to it. `deckard.dailyNote.rolloverDays` now defaults
+  to 7 (it was 0, as far back as the notes go); older dated tasks show under
+  Needs a new date. **`copy` now means `migrate`:** the task is written into
+  today's note and the line left behind becomes `- [>] … → [[2026-09-25]]`,
+  so it stops counting as open. Users of `copy` will see their old notes'
+  lines rewritten this way on the next rollover; Undo takes it back.
+
 - **`is:waiting` now means waiting on someone.** It was an undocumented
   second spelling of `is:blocked`, so it disagreed with the board's own
   Waiting column. It now finds open tasks marked `#status/waiting` or

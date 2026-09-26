@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { markMigrated } from '../../core/markdown/taskMetadata';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { getCaptureInsertion } from './capture';
@@ -20,9 +21,10 @@ import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
  * Carries yesterday's unfinished tasks into today's note.
  *
  * A daily note that starts empty every morning loses what was still open the
- * night before, so the tasks are written into today's note as they were
- * written yesterday, metadata and all. Moving them takes them out of the note
- * they came from; copying leaves them where they are.
+ * night before, so the tasks are written into today's note, under Carried
+ * over, as they were written yesterday, metadata and all. Moving them takes
+ * them out of the note they came from; migrating marks the line left behind
+ * `[>]` with a link to today.
  */
 
 /** What a rollover would carry, and where from. */
@@ -33,15 +35,27 @@ export interface RolloverPlan {
   tasks: Task[];
 }
 
-/** Whether the tasks leave the note they came from. */
-export type RolloverMode = 'off' | 'move' | 'copy';
+/**
+ * What happens to a task carried forward: moved out of the note it came
+ * from, or migrated, copied and its old line marked `[>]` with a link to
+ * today, as a bullet journal does.
+ */
+export type RolloverMode = 'off' | 'move' | 'migrate';
 
+/** `copy`, the older name, reads as migrate. */
 export function getRolloverMode(uri?: vscode.Uri): RolloverMode {
   const setting = vscode.workspace
     .getConfiguration('deckard', uri)
     .get<string>('dailyNote.rollover', 'off');
-  return setting === 'move' || setting === 'copy' ? setting : 'off';
+  return setting === 'move'
+    ? 'move'
+    : setting === 'migrate' || setting === 'copy'
+      ? 'migrate'
+      : 'off';
 }
+
+/** The heading carried tasks go under, in today's note. */
+export const CARRIED_OVER_HEADING = 'Carried over';
 
 /**
  * The unfinished tasks waiting in earlier daily notes, oldest first.
@@ -56,10 +70,11 @@ export function planRollover(
   today: string,
   lookbackDays = 0,
   /**
-   * In copy mode the note a task came from keeps it, so Monday's task and
-   * Tuesday's copy of it are both still open on Wednesday. Only the newest
-   * is carried. Moving never leaves a copy behind, so two alike lines there
-   * are two tasks, and both are carried.
+   * A copy left open by the old copy mode means Monday's task and Tuesday's
+   * copy of it are both still open on Wednesday, so a migrate carries only
+   * the newest; a migrated line is marked and never open again. Moving never
+   * leaves a copy behind, so two alike lines there are two tasks, and both
+   * are carried.
    */
   mode: RolloverMode = 'move',
 ): RolloverPlan | undefined {
@@ -87,7 +102,7 @@ export function planRollover(
           byPath.get(right.filePath) ?? '',
         ) || left.lineNumber - right.lineNumber,
     );
-  const tasks = mode === 'copy' ? keepNewestCopies(open) : open;
+  const tasks = mode === 'migrate' ? keepNewestCopies(open) : open;
   if (tasks.length === 0) {
     return undefined;
   }
@@ -140,8 +155,13 @@ export interface RolloverResult {
 export async function applyRollover(
   plan: RolloverPlan,
   todayUri: vscode.Uri,
-  mode: Exclude<RolloverMode, 'off'>,
+  mode: Exclude<RolloverMode, 'off'> | 'copy',
+  /** Today's note's name, which a migrated line links to. */
+  todayName?: string,
 ): Promise<RolloverResult | undefined> {
+  if (mode === 'copy') {
+    mode = 'migrate';
+  }
   const today = await vscode.workspace.openTextDocument(todayUri);
   const todayText = today.getText();
   const todayLines = new Set(
@@ -190,16 +210,29 @@ export async function applyRollover(
   }
 
   const eol = todayText.includes('\r\n') ? '\r\n' : '\n';
-  const insertion = getCaptureInsertion(
-    todayText,
-    carried.map((task) => task.sourceLineText).join(eol),
-  );
   const edit = new vscode.WorkspaceEdit();
-  edit.insert(
+  const placed = placeCarriedOver(todayText, carried.map((task) => task.sourceLineText));
+  edit.replace(
     todayUri,
-    new vscode.Position(insertion.line, insertion.character),
-    insertion.text,
+    new vscode.Range(placed.start.line, placed.start.character, placed.end.line, placed.end.character),
+    placed.text,
   );
+  if (mode === 'migrate') {
+    // The line left behind says where the task went, and links there.
+    const target = todayName ?? todayUri.path.split('/').pop()?.replace(/\.md$/i, '') ?? '';
+    carried.forEach((task) => {
+      const source = sources.get(task.filePath);
+      if (!source) {
+        return;
+      }
+      const line = task.lineNumber - 1;
+      edit.replace(
+        source.uri,
+        source.document.lineAt(line).range,
+        markMigrated(task.sourceLineText, task.checkboxColumn, target),
+      );
+    });
+  }
   if (mode === 'move') {
     carried.forEach((task) => {
       const source = sources.get(task.filePath);
@@ -252,7 +285,7 @@ export async function rollTasksForward(
   }
   await indexer.ready;
   const mode =
-    options.mode ?? (getRolloverMode(folder.uri) === 'copy' ? 'copy' : 'move');
+    options.mode ?? (getRolloverMode(folder.uri) === 'migrate' ? 'migrate' : 'move');
   const plan = planRollover(
     indexer.getSnapshot(),
     formatLocalDate(new Date()),
@@ -269,7 +302,12 @@ export async function rollTasksForward(
   }
 
   const todayUri = await ensureDailyNote(folder);
-  const result = await applyRollover(plan, todayUri, mode);
+  const result = await applyRollover(
+    plan,
+    todayUri,
+    mode,
+    todayUri.path.split('/').pop()?.replace(/\.md$/i, ''),
+  );
   if (!result) {
     return undefined;
   }
@@ -340,7 +378,7 @@ export function describeRollover(
   if (result.carried === 0) {
     return `Nothing was carried forward: the open tasks in your earlier daily notes are already in today's note, or have changed since.`;
   }
-  const verb = mode === 'move' ? 'Moved' : 'Copied';
+  const verb = mode === 'move' ? 'Moved' : 'Migrated';
   // Where from: one day by name, several as the span they cover.
   const from =
     result.notes <= 1
@@ -357,11 +395,69 @@ export function describeRollover(
   )} forward${from}.${left}`;
 }
 
+/**
+ * Where carried tasks go in today's note: under its Carried over heading,
+ * after what is already there, or under a new one at the end of the note,
+ * one level deeper than the note's first heading (`##` under `# {date}`).
+ * Returns the stretch of the note to replace and what replaces it.
+ */
+export function placeCarriedOver(
+  content: string,
+  lines: readonly string[],
+): {
+  start: { line: number; character: number };
+  end: { line: number; character: number };
+  text: string;
+} {
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  const noteLines = content.split(/\r?\n/);
+  const heading = (text: string) => /^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/.exec(text);
+  const existing = noteLines.findIndex(
+    (text) => heading(text)?.[2].trim().toLowerCase() === CARRIED_OVER_HEADING.toLowerCase(),
+  );
+  if (existing >= 0) {
+    const level = heading(noteLines[existing])![1].length;
+    let endLine = noteLines.length;
+    for (let at = existing + 1; at < noteLines.length; at += 1) {
+      const next = heading(noteLines[at]);
+      if (next && next[1].length <= level) {
+        endLine = at;
+        break;
+      }
+    }
+    const insertion = getCaptureInsertion(content, lines.join(eol), {
+      startLine: existing + 1,
+      endLine,
+    });
+    const at = { line: insertion.line, character: insertion.character };
+    return { start: at, end: at, text: insertion.text };
+  }
+  const first = noteLines.map(heading).find(Boolean);
+  const level = first ? Math.min(first[1].length + 1, 6) : 2;
+  let last = noteLines.length - 1;
+  while (last >= 0 && noteLines[last].trim() === '') {
+    last -= 1;
+  }
+  const block = `${'#'.repeat(level)} ${CARRIED_OVER_HEADING}${eol}${eol}${lines.join(eol)}${eol}`;
+  if (last < 0) {
+    return {
+      start: { line: 0, character: 0 },
+      end: { line: noteLines.length - 1, character: noteLines[noteLines.length - 1].length },
+      text: block,
+    };
+  }
+  return {
+    start: { line: last, character: noteLines[last].length },
+    end: { line: noteLines.length - 1, character: noteLines[noteLines.length - 1].length },
+    text: `${eol}${eol}${block}`,
+  };
+}
+
 /** How far back a rollover looks, in days; zero reaches as far as the notes. */
 export function getRolloverLookbackDays(uri?: vscode.Uri): number {
   const days = vscode.workspace
     .getConfiguration('deckard', uri)
-    .get<number>('dailyNote.rolloverDays', 0);
+    .get<number>('dailyNote.rolloverDays', 7);
   return Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
 }
 

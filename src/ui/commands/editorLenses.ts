@@ -209,7 +209,7 @@ function provideDailyNoteLenses({
     index,
     formatLocalDate(now),
     getRolloverLookbackDays(document.uri),
-    getRolloverMode(document.uri) === 'copy' ? 'copy' : 'move',
+    getRolloverMode(document.uri) === 'migrate' ? 'migrate' : 'move',
   );
   if (!actions) {
     return [];
@@ -224,7 +224,7 @@ function provideDailyNoteLenses({
     getPeriodicNoteUri(folder, 'day', now).toString() ===
       document.uri.toString();
   if (isTodaysNote && actions.carryIn.length > 0) {
-    const verb = getRolloverMode(document.uri) === 'copy' ? 'Copy' : 'Move';
+    const verb = getRolloverMode(document.uri) === 'migrate' ? 'Migrate' : 'Move';
     lenses.push(
       new ActionLens(range, () => ({
         title: `Carry in ${pluralize(actions.carryIn.length, 'unfinished task')}`,

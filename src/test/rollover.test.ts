@@ -7,9 +7,12 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { markMigrated } from '../core/markdown/taskMetadata';
 import {
   applyRollover,
   describeRollover,
+  getRolloverLookbackDays,
+  placeCarriedOver,
   planRollover,
 } from '../ui/commands/rollover';
 import { workspaceWrites } from '../ui/commands/workspaceWrites';
@@ -72,6 +75,10 @@ suite('Task rollover', () => {
     assert.strictEqual(plan?.tasks.length, 1);
   });
 
+  test('looks back a week unless told otherwise', () => {
+    assert.strictEqual(getRolloverLookbackDays(), 7);
+  });
+
   test('looks back only as far as it is asked to', () => {
     const notes = indexOf({
       'notes/2026-08-12.md': '# 2026-08-12\n\n- [ ] Open since August\n',
@@ -120,7 +127,7 @@ suite('Task rollover', () => {
     await write(todayUri, '# 2026-09-24\n\n');
     const index = indexOf({ [monday.fsPath]: mondayText, [tuesday.fsPath]: tuesdayText });
 
-    const plan = planRollover(index, '2026-09-24', 0, 'copy');
+    const plan = planRollover(index, '2026-09-24', 0, 'migrate');
     assert.deepStrictEqual(
       plan?.tasks.map((task) => [task.filePath, task.sourceLineText]),
       [
@@ -142,6 +149,10 @@ suite('Task rollover', () => {
       (await read(todayUri)).split('Chase the vendor').length - 1,
       1,
       'the task arrives once',
+    );
+    assert.ok(
+      (await read(tuesday)).includes('- [>] Chase the vendor → [[2026-09-24]]'),
+      'copy is migrate now: the line left behind says where it went',
     );
     await deleteTemporaryRoot(root);
   });
@@ -183,11 +194,13 @@ suite('Task rollover', () => {
       [
         '# 2026-09-19',
         '',
+        '## Carried over',
+        '',
         '- [ ] Chase the contractor 📅 2026-09-19 @dana',
         '  - [ ] Get the survey back',
         '',
-        '',
       ].join('\n'),
+      'under a Carried over heading, one level below the note\'s first',
     );
     assert.strictEqual(
       await read(fromUri),
@@ -212,7 +225,7 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 
-  test('copies without emptying the note, and never carries twice', async () => {
+  test('migrates, marking the line left behind, and never carries twice', async () => {
     const root = await createTemporaryRoot();
     const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
     const todayUri = vscode.Uri.joinPath(root, '2026-09-19.md');
@@ -224,10 +237,27 @@ suite('Task rollover', () => {
     );
     assert.ok(plan);
 
-    assert.strictEqual((await applyRollover(plan, todayUri, 'copy'))?.carried, 2);
-    assert.strictEqual(await read(fromUri), yesterday, 'a copy leaves it alone');
+    assert.strictEqual((await applyRollover(plan, todayUri, 'migrate'))?.carried, 2);
+    const left = await read(fromUri);
+    assert.ok(
+      left.includes('- [>] Chase the contractor 📅 2026-09-19 @dana → [[2026-09-19]]'),
+      left,
+    );
+    assert.ok(left.includes('  - [>] Get the survey back → [[2026-09-19]]'), left);
+    assert.strictEqual(
+      parseMarkdown(fromUri.fsPath, left).tasks.filter((task) => !task.completed).length,
+      0,
+      'a migrated line is no longer an open task',
+    );
+    assert.deepStrictEqual(
+      parseMarkdown(fromUri.fsPath, left.replace('@dana', '@dana #project/atlas')).sections
+        .filter((section) => section.isInline)
+        .map((section) => section.heading),
+      [],
+      'nor a note on a tag\'s page',
+    );
 
-    const again = await applyRollover(plan, todayUri, 'copy');
+    const again = await applyRollover(plan, todayUri, 'migrate');
     assert.deepStrictEqual(again, {
       carried: 0,
       skipped: 2,
@@ -268,6 +298,24 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('adds to Carried over when it is there, and follows the note\'s heading level', () => {
+    assert.deepStrictEqual(
+      placeCarriedOver('# 2026-09-25\n\nMorning.\n\n## Carried over\n\n- [ ] One\n\n## Evening\n', ['- [ ] Two']),
+      { start: { line: 7, character: 0 }, end: { line: 7, character: 0 }, text: '- [ ] Two\n' },
+      'after what the heading already holds, before the next heading',
+    );
+    assert.strictEqual(
+      placeCarriedOver('## 2026-09-25\n', ['- [ ] Two']).text,
+      '\n\n### Carried over\n\n- [ ] Two\n',
+    );
+    assert.strictEqual(placeCarriedOver('', ['- [ ] Two']).text, '## Carried over\n\n- [ ] Two\n');
+    assert.strictEqual(
+      markMigrated('- [ ] Ship it 📅 2026-09-20 ^ship', 3, '2026-09-25'),
+      '- [>] Ship it 📅 2026-09-20 → [[2026-09-25]] ^ship',
+      'a block id stays last',
+    );
+  });
+
   test('says in one sentence what it did, and where from', () => {
     assert.strictEqual(
       describeRollover(
@@ -291,9 +339,9 @@ suite('Task rollover', () => {
     assert.strictEqual(
       describeRollover(
         { carried: 1, skipped: 2, fromDates: ['2026-09-18'], notes: 1 },
-        'copy',
+        'migrate',
       ),
-      'Copied 1 unfinished task forward from 2026-09-18. 2 tasks stayed behind, already carried or changed since.',
+      'Migrated 1 unfinished task forward from 2026-09-18. 2 tasks stayed behind, already carried or changed since.',
     );
     assert.ok(
       describeRollover(

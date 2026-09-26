@@ -136,7 +136,7 @@ suite('Editor lenses', () => {
       );
     });
 
-    test('in copy mode, counts a task that has waited several days once', () => {
+    test('in migrate mode, counts a task that has waited several days once', () => {
       const copies = createIndex({
         'notes/2026-09-22.md': '# 2026-09-22\n- [ ] Chase the vendor\n',
         'notes/2026-09-23.md': '# 2026-09-23\n- [ ] Chase the vendor\n',
@@ -147,7 +147,7 @@ suite('Editor lenses', () => {
         copies,
         '2026-09-24',
         0,
-        'copy',
+        'migrate',
       );
       assert.strictEqual(actions?.carryIn.length, 1);
     });

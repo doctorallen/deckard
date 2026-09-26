@@ -795,3 +795,26 @@ export function appendToTaskText(text: string, token: string): string {
   const body = (blockId ? text.slice(0, blockId.index) : text).trimEnd();
   return `${body} ${token}${blockId ? blockId[0].trimEnd() : ''}`;
 }
+
+/**
+ * A task carried forward and left behind, as a bullet journal marks it:
+ * `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`. It is not a task to the
+ * index, so it stops counting as open, and it is not a note either.
+ */
+export const MIGRATED_TASK_LINE = /^\s*[-*+][ \t]+\[>\]/;
+
+/**
+ * Marks a task line as migrated to a day's note: its box becomes `[>]` and
+ * a link to where it went follows its words, ahead of a trailing block id.
+ */
+export function markMigrated(line: string, checkboxColumn: number, target: string): string {
+  const marked =
+    line[checkboxColumn - 1] === '[' && line[checkboxColumn + 1] === ']'
+      ? `${line.slice(0, checkboxColumn)}>${line.slice(checkboxColumn + 1)}`
+      : line.replace(/\[[ xX]\]/, '[>]');
+  const trimmed = marked.replace(/[ \t]+$/, '');
+  const blockId = BLOCK_ID_PATTERN.exec(trimmed);
+  const head = blockId ? trimmed.slice(0, blockId.index) : trimmed;
+  const tail = blockId ? trimmed.slice(blockId.index) : '';
+  return `${head} → [[${target}]]${tail}`;
+}

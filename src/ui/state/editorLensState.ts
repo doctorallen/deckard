@@ -117,7 +117,7 @@ export function findDailyNoteActions(
   today: string,
   lookbackDays = 0,
   /** The rollover mode, which decides whether older copies of a task count. */
-  mode: 'move' | 'copy' = 'move',
+  mode: 'move' | 'migrate' = 'move',
 ): DailyNoteActions | undefined {
   const date = findDailyNoteDate(
     file.filePath,

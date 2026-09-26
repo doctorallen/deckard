@@ -10,6 +10,7 @@ import {
 } from '../types';
 import {
   BLOCK_ID_PATTERN,
+  MIGRATED_TASK_LINE,
   parseIsoDate,
   parseTaskMetadata,
 } from './taskMetadata';
@@ -1259,7 +1260,9 @@ function findInlineSections(
     if (
       fencedLines.has(lineIndex) ||
       headingPattern.test(line) ||
-      taskPattern.test(line)
+      taskPattern.test(line) ||
+      // A task migrated to another day is neither a task nor a note.
+      MIGRATED_TASK_LINE.test(line)
     ) {
       lineIndex += 1;
       continue;
