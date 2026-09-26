@@ -87,6 +87,13 @@
 
 ### Changed
 
+- **A setting is named in words, with a button that opens it.** Messages
+  that named a setting by its ID, such as `deckard.exclude`, name it as the
+  Settings editor does, *the "Exclude" setting*, and offer **Open Setting**.
+  When the Tasks view's search finds nothing, the view says which search and
+  offers **Show every open task**; `Deckard: Clear the Tasks View's Search`
+  does the same from the view's `…` menu.
+
 - **A failure says what did not happen, and what to do.** A message that
   something failed no longer ends with the raw error: it says what was not
   written or opened, in plain words, and offers **Open Log**, where the

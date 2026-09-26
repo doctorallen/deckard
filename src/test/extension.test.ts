@@ -82,6 +82,7 @@ suite('Extension Test Suite', () => {
         'deckard.outline.openTagOverview',
         'deckard.outline.renameTag',
         'deckard.agenda.editQuery',
+        'deckard.clearAgendaQuery',
         'deckard.agenda.setGrouping',
         'deckard.outline.enableFollowCursor',
         'deckard.outline.disableFollowCursor',

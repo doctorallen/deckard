@@ -120,6 +120,8 @@ import { listOverdueTasks, AgendaNode,
 import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
 import { selectAgendaTasks } from './ui/state/agendaState';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
+import { openSettingAction, settingLabel } from './ui/commands/notify';
+import { settingTarget, writeSetting } from './ui/commands/settings';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -265,12 +267,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       return;
     }
     await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
+    const open = openSettingAction('exclude');
     const choice = await vscode.window.showInformationMessage(
-      `Deckard read ${notes.toLocaleString('en-US')} notes. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, deckard.exclude leaves them out and makes every scan faster.`,
-      'Open Setting',
+      `Deckard read ${notes.toLocaleString('en-US')} files. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, the "${settingLabel('exclude')}" setting leaves them out and makes every scan faster.`,
+      open.title,
     );
-    if (choice === 'Open Setting') {
-      await vscode.commands.executeCommand('workbench.action.openSettings', 'deckard.exclude');
+    if (choice === open.title) {
+      await open.run();
     }
   });
   // The walkthrough checks its first steps off when there is a note, and a
@@ -637,6 +640,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.agenda.editQuery', () =>
       taskBoard.show(getAgendaQuery()),
     ),
+    vscode.commands.registerCommand('deckard.clearAgendaQuery', async () => {
+      if (await writeSetting('agenda.query', undefined, settingTarget('agenda.query'))) {
+        void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
+      }
+    }),
     vscode.commands.registerCommand('deckard.outline.enableFollowCursor', () =>
       setOutlineFollowCursor(true),
     ),

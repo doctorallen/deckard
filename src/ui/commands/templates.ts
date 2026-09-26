@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { chooseTargetFolder, formatLocalDate } from './dailyNote';
 import { getExtractedNoteFileName } from './extractHeading';
+import { openSettingAction, settingLabel } from './notify';
 
 /** A placeholder: `{ask:Question}`, or a variable such as `{date}`. */
 const PLACEHOLDER = /\{(?:ask:([^{}]*)|([a-z]+))\}/g;
@@ -93,9 +94,13 @@ export async function newNoteFromTemplate(
   }
   const templatesUri = indexer.getTemplatesFolderUri(folder);
   if (!templatesUri) {
-    void vscode.window.showInformationMessage(
-      'Set deckard.templatesFolder to a folder of note templates to use them.',
-    );
+    const open = openSettingAction('templatesFolder');
+    void vscode.window
+      .showInformationMessage(
+        `Deckard has no templates folder. Choose one in the "${settingLabel('templatesFolder')}" setting to create notes from templates.`,
+        open.title,
+      )
+      .then((choice) => (choice === open.title ? open.run() : undefined));
     return undefined;
   }
   const templates = await listTemplates(templatesUri);

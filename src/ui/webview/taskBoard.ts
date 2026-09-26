@@ -18,7 +18,7 @@ import {
 } from '../commands/taskBoardActions';
 import { askForDueDate, setTasksDue } from '../commands/agendaActions';
 import { openTask, quoteTaskTitle, toggleTask } from '../commands/taskActions';
-import { writeSetting } from '../commands/settings';
+import { settingTarget, writeSetting } from '../commands/settings';
 import {
   mergeOrder,
   normalizeTagTitleDisplayMode,
@@ -320,10 +320,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     }
     const query = again ? '' : normalizeAgendaQuery(this.query);
     // The value goes where it is already set, as the board's own settings do.
-    const target =
-      configuration.inspect('agenda.query')?.workspaceValue !== undefined
-        ? vscode.ConfigurationTarget.Workspace
-        : vscode.ConfigurationTarget.Global;
+    const target = settingTarget('agenda.query', configuration);
     if (again) {
       if (await writeSetting('agenda.query', '', target, configuration)) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');

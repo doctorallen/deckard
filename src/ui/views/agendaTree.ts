@@ -225,14 +225,21 @@ export class AgendaTreeProvider
       .reduce((total, group) => total + group.entries.length, 0);
     this.setStatus(
       selected.error
-        ? `deckard.agenda.query does not parse — ${selected.error} Showing every open task.`
+        ? `The Tasks view's search cannot be read: ${selected.error} It lists every open task until the search is fixed.`
         : groups.every((group) => group.id === 'donetoday')
           ? query
-            ? 'No open task matches deckard.agenda.query.'
+            ? `No open task matches the Tasks view's search, "${query}".`
             : 'No open tasks.'
           : undefined,
       urgent,
     );
+    // The way back to every open task is offered while a search narrows it.
+    void vscode.commands.executeCommand(
+      'setContext',
+      'deckard.agendaFiltered',
+      Boolean(query) && !selected.error,
+    );
+    void vscode.commands.executeCommand('setContext', 'deckard.agendaQuerySet', Boolean(query));
     // The view's own line says what it lists, when that is not everything.
     if (this.view) {
       this.view.description = query || undefined;

@@ -116,7 +116,13 @@
       },
       {
         "view": "deckard.agenda",
-        "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)"
+        "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)",
+        "when": "!deckard.agendaFiltered"
+      },
+      {
+        "view": "deckard.agenda",
+        "contents": "The Tasks view lists only the tasks its search finds, and none match now.\n[Show every open task](command:deckard.clearAgendaQuery)\n[Edit the search](command:deckard.agenda.editQuery)",
+        "when": "deckard.agendaFiltered"
       }
     ],
     "commands": [
@@ -336,6 +342,12 @@
         "icon": "$(search)"
       },
       {
+        "command": "deckard.clearAgendaQuery",
+        "title": "Clear the Tasks View's Search",
+        "category": "Deckard",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "deckard.agenda.setGrouping",
         "title": "Group Tasks By…",
         "category": "Deckard",
@@ -440,6 +452,10 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "deckard.clearAgendaQuery",
+          "when": "deckard.agendaQuerySet"
+        },
         {
           "command": "deckard.insertQueryBlock",
           "when": "editorLangId == markdown"
@@ -554,6 +570,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "deckard.clearAgendaQuery",
+          "when": "view == deckard.agenda && deckard.agendaQuerySet",
+          "group": "9_query"
+        },
         {
           "command": "deckard.agenda.editQuery",
           "when": "view == deckard.agenda",

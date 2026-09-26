@@ -50,7 +50,8 @@ suite('Settings writes', () => {
     );
     assert.strictEqual(ok, false);
     assert.match(describeUnregisteredSetting('agenda.groupBy'), /Quit and reopen VS Code/);
-    assert.match(describeUnregisteredSetting('agenda.groupBy'), /deckard\.agenda\.groupBy/);
+    assert.match(describeUnregisteredSetting('agenda.groupBy'), /"Agenda: Group By" setting/);
+    assert.doesNotMatch(describeUnregisteredSetting('agenda.groupBy'), /deckard\.agenda/);
   });
 
   test('lets any other failure through as it was', async () => {

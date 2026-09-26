@@ -1829,7 +1829,7 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:waiting', label: 'is:waiting', detail: 'Open tasks marked #status/waiting, or for someone else' },
   { value: 'is:available', label: 'is:available', detail: 'Open tasks you can start now: not blocked, started, not waiting or someday' },
   { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
-  { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person deckard.me names' },
+  { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person the "Me" setting names' },
   { value: 'is:assigned', label: 'is:assigned', detail: 'Tasks that name a person' },
   { value: 'is:unassigned', label: 'is:unassigned', detail: 'Tasks that name nobody' },
 ];

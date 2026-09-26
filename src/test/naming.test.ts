@@ -63,6 +63,17 @@ function callBodies(source: string, name: RegExp): string[] {
 
 const NOTIFICATION = /show(?:Information|Warning|Error)Message/;
 
+/** Every quoted string in a source, with `${…}` taken out of templates. */
+function literals(source: string): string[] {
+  const code = source.replace(/^\s*(?:\/\/|\*).*$/gm, '').replace(/\s\/\/\s.*$/gm, '');
+  return [...code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)].map(
+    (match) => (match[1] ?? match[2] ?? match[3] ?? '').replace(/\$\{[^}]*\}/g, ''),
+  )
+    // A backtick inside a regular expression pairs with the next template's;
+    // what lies between them is code, which ends a statement somewhere.
+    .filter((literal) => !/;\n/.test(literal));
+}
+
 function staticButtonLabels(source: string): string[] {
   // Labels written as literal text between a button's tags; labels built from
   // data are checked where they are built.
@@ -147,6 +158,19 @@ suite('Naming', () => {
         }
       }
       assert.deepStrictEqual(offenders, [], 'the raw error goes to the log through reportFailure, with Open Log');
+    });
+
+    test('a setting is named in words', () => {
+      const offenders: string[] = [];
+      // Check My Setup is a report of the settings as written, IDs and all.
+      for (const [name, source] of hosts.filter(([file]) => !file.endsWith('checkSetup.ts'))) {
+        for (const literal of literals(source)) {
+          if (/\s/.test(literal) && /\bdeckard\.[a-z]\w*(\.\w+)*\b/.test(literal) && !/[<>]/.test(literal)) {
+            offenders.push(`${name}: ${literal.slice(0, 100)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'say the "Exclude" setting, with Open Setting, as settingLabel names it');
     });
   });
 });
