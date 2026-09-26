@@ -12,6 +12,13 @@
 
 ### Added
 
+- **Toggle Task Done from the keyboard.** `Deckard: Toggle Task Done`,
+  <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd>
+  (<kbd>Ctrl</kbd> elsewhere), completes the tasks under every cursor and
+  selection, or reopens them when all are done, with the ✅ date and a
+  repeating task's next occurrence, in one edit that one Undo takes back.
+  It works in a note that is not saved yet.
+
 - **Move to… from the Tasks view, the board, and Find.** A task's context
   menu in the Tasks view (for one task or several), a board card's menu,
   and a task's list in Find (<kbd>Cmd</kbd>+<kbd>.</kbd>) offer **Move

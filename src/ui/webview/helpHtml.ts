@@ -155,6 +155,8 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.captureUnderHeading': 'Adds a task under a heading you choose.',
   'deckard.editTask': 'Opens the task on the cursor’s line, field by field.',
   'deckard.addTask': 'The same editor, where there is no task yet.',
+  'deckard.toggleTaskDone':
+    'Completes or reopens the tasks under the cursors, starting the next one of a repeating task.',
   'deckard.newNoteFromTemplate': 'A new note from one of your templates.',
   'deckard.copyMcpSetup': 'Copies the command that adds Deckard to Claude Code.',
   'deckard.resetMcpToken': 'Makes a new token, so old setups stop working.',
@@ -526,6 +528,7 @@ updated: 2026-09-20
       <div class="cards">
         <div class="card"><h3>Checklist tasks</h3><p>A task is an unordered checklist item: <code>- [ ] Send the proposal</code>, with <code>-</code>, <code>*</code>, or <code>+</code>, and <code>[x]</code> when it is done. Checking a box anywhere in Deckard writes the same checked edit into the note, including the ✅ date and the next occurrence of a repeating task, from the task editor as well.</p></div>
         <div class="card"><h3>The task editor</h3><p><code>Deckard: Edit Task</code> on a task line — and <code>Deckard: Add Task</code> anywhere else — opens every field at once: description, status, dates, priority, repeat rule, assignee, and a tag. Dates are taken in plain words: <code>friday</code>, <code>oct 3</code>, <code>next week</code> (its Monday), <code>end of month</code>, <code>in 3 days</code>, <code>last friday</code>, and in every other box that asks for a date too; the box says back the day it read and how far off it is. It is on the lightbulb too, as <strong>Edit task…</strong>.</p></div>
+        <div class="card"><h3>Done from the keyboard</h3><p><code>Deckard: Toggle Task Done</code> completes the tasks under every cursor, or reopens them when all of them are done, with the ✅ date and the next occurrence of a repeating task, as one edit that one Undo takes back.</p></div>
         <div class="card"><h3>Typing metadata</h3><p>Type <code>/</code> after a space inside a task to pick a due date, a priority, a repeat rule, or a dependency without remembering the markers. Suggestions use the format the task already uses, or <code>deckard.tasks.metadataFormat</code> for a task with none.</p></div>
         <div class="card"><h3>Who a task is for</h3><p>Write <code>👤 @dana</code> on a task — or <code>[assignee:: @dana]</code> in a Dataview vault — to say who it is for. A name in the words is a mention, not an assignment. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours — a task for nobody in particular is yours too.</p></div>
         <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code>, or Cmd/Ctrl+Shift+Alt+C, adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note, the ones used last first, above that heading’s sub-headings. With words selected, Capture and Find start from them, and a capture from a note links back to it. It stays open when you click away, and brings back what you had typed if you close it.</p></div>

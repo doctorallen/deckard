@@ -34,9 +34,10 @@ export function setTaskRankKeeper(keeper: TaskRankKeeper | undefined): void {
 
 /**
  * Tells the rank order that a task's line was rewritten, so a completed task
- * and a task put back by Undo both keep the place they were dragged to.
+ * and a task put back by Undo both keep the place they were dragged to. The
+ * line is one-based.
  */
-function carryRank(
+export function carryTaskRank(
   filePath: string,
   lineNumber: number,
   previousId: string,
@@ -160,7 +161,7 @@ export async function updateTaskLine(
       void reportFailure(describeUnsavedTaskEdit(uri));
       return false;
     }
-    carryRank(task.filePath, task.lineNumber, task.id, replacement);
+    carryTaskRank(task.filePath, task.lineNumber, task.id, replacement);
     const described =
       typeof description === 'function' ? description() : description;
     const said =
@@ -380,7 +381,8 @@ export function quoteTaskTitle(task: Task): string {
   return quoteTitle(task.title);
 }
 
-function quoteTitle(text: string): string {
+/** A task's words, quoted and short enough to sit in a notification. */
+export function quoteTitle(text: string): string {
   const title = text.trim();
   return `"${title.length > 60 ? `${title.slice(0, 57)}…` : title}"`;
 }

@@ -35,6 +35,7 @@ import {
   TaskLineContext,
 } from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
+import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -874,6 +875,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
+      toggleTaskDoneCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
       capture(indexer, 'today', captureDrafts, preferences),
