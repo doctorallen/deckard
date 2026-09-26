@@ -1361,6 +1361,27 @@ export function getComponentScript(): string {
   }
 
   /**
+   * How many values a Refine facet shows before "+N more": the page's and
+   * the sidebar's Refine both read it, so they cut at the same place.
+   */
+  const FACET_VISIBLE = 5;
+
+  /**
+   * The values of one facet a Refine shows, and the control that shows the
+   * rest or fewer. expanded is the set of facet ids opened in this page.
+   */
+  function facetValuesShown(facet, expanded, className) {
+    const all = facet.values || [];
+    const open = expanded.has(facet.id);
+    const values = open ? all : all.slice(0, FACET_VISIBLE);
+    const hidden = all.length - FACET_VISIBLE;
+    const more = hidden > 0
+      ? '<button type="button" class="' + className + '" data-action="facet-more" data-facet-id="' + escapeHtml(facet.id) + '" aria-expanded="' + open + '" aria-label="' + escapeHtml(open ? 'Show fewer ' + facet.label + ' values' : 'Show ' + hidden + ' more ' + facet.label + ' values') + '">' + (open ? 'Show fewer' : '+' + hidden + ' more') + '</button>'
+      : '';
+    return { values: values, more: more };
+  }
+
+  /**
    * A control that holds its place with aria-disabled stays focusable, so
    * its click is stopped here, once, before any page listener hears it; no
    * page handler has to remember. Enter and Space on it raise the same click.
@@ -3101,6 +3122,9 @@ export function getQueryEditorCss(): string {
 .query-facet-label { margin-right: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .query-facet-value { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 8px; font-size: var(--text-xs); text-transform: none; }
 .query-facet-count { color: var(--muted); font-size: var(--text-xs); }
+/* The rest of a facet's values, or fewer: words, the height of a value. */
+.query-facet-more.query-facet-more { min-height: 26px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
+.query-facet-more.query-facet-more:hover, .query-facet-more.query-facet-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
 .query-facets.is-elsewhere { padding-block: 6px; }`;
 }
 
@@ -3182,6 +3206,8 @@ export function getQueryEditorScript(): string {
     let appliedSeen;
     /** Set between applying a search and seeing the host's answer. */
     let awaitingApply = false;
+    /** Refine facets opened past their first five, kept through redraws. */
+    const expandedFacets = new Set();
     /** Fires a second into a search that has not come back. */
     let searchingTimer;
     let builderOpen = false;
@@ -3484,9 +3510,10 @@ export function getQueryEditorScript(): string {
       }
       const empty = facets.length ? '' : (recovery || '<span class="query-facets-empty">Nothing left to narrow by.</span>');
       return '<section class="query-facets" aria-label="Refine these results"><div class="query-facets-groups"><span class="query-facets-heading">Refine</span>' + empty + facets.map(function (facet) {
-        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span><span class="query-facet-values">' + facet.values.map(function (value) {
+        const shown = facetValuesShown(facet, expandedFacets, 'query-facet-more');
+        return '<div class="query-facet" role="group" aria-label="' + escapeHtml(facet.label) + '"><span class="query-facet-label">' + escapeHtml(facet.label) + '</span><span class="query-facet-values">' + shown.values.map(function (value) {
           return renderFacetValue(facet, value);
-        }).join('') + '</span></div>';
+        }).join('') + shown.more + '</span></div>';
       }).join('') + '</div>' + count + '</section>';
     }
 
@@ -4312,6 +4339,13 @@ export function getQueryEditorScript(): string {
         }
         if (action === 'facet') {
           refine(target.dataset.clause, target.dataset.facetId, event.altKey ? 'exclude' : event.shiftKey ? 'or' : 'and');
+          return true;
+        }
+        if (action === 'facet-more') {
+          const id = target.dataset.facetId;
+          if (expandedFacets.has(id)) expandedFacets.delete(id);
+          else expandedFacets.add(id);
+          renderKeepingPlace(options.render);
           return true;
         }
         if (action === 'builder-add-group') {

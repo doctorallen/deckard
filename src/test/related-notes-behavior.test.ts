@@ -352,6 +352,31 @@ suite('Related Notes behavior', () => {
     );
   });
 
+  test('Refine in the sidebar shows five of a facet, and the rest on request', () => {
+    const values = Array.from({ length: 8 }, (_, index) => ({ label: `#t${index}`, count: 1, clause: `#t${index}` }));
+    const page = open({
+      state: 'refine',
+      refine: {
+        page: 'search',
+        title: 'Project: Atlas',
+        resultKinds: ['notes', 'tasks'],
+        query: {
+          text: '#project/atlas', terms: [], canAppend: true, isAdvanced: false, diagnostics: [],
+          builder: { join: 'and', items: [] }, tags: [],
+          suggestions: { fields: [], values: {}, operators: {} as never, conditions: [], recent: [], aliases: {} },
+          matchCounts: { notes: 8, tasks: 0 },
+          facets: [{ id: 'tags', label: 'Tags', applied: [], values }],
+        },
+      },
+    });
+    assert.strictEqual(page.findAll('.refine-value').length, 5);
+    assert.strictEqual(page.text('.refine-more'), '+3 more');
+    page.click('.refine-more');
+    assert.strictEqual(page.findAll('.refine-value').length, 8);
+    assert.strictEqual(page.text('.refine-more'), 'Show fewer');
+    assert.strictEqual(page.find('.refine-more').getAttribute('aria-expanded'), 'true');
+  });
+
   test('narrows the active search from its Refine options', () => {
     const page = open({
       state: 'refine',

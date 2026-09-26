@@ -125,6 +125,29 @@ suite('Search page behavior', () => {
     assert.strictEqual(page.findAll('.card [data-action="toggle-card-body"]').length, 0);
   });
 
+  test('Refine shows five values of a facet, and the rest on request', () => {
+    const notes: Record<string, string> = {};
+    for (let index = 0; index < 12; index += 1) notes[`notes/n${index}.md`] = `# Note ${index} #work #t${index}`;
+    const { page, snapshot } = open(notes, '#work');
+    const facet = () => page.find('.query-facet-more').closest('.query-facet') as Element;
+    const values = () => facet().querySelectorAll('.query-facet-value').length;
+    const total = snapshot.query.facets.find((candidate) => candidate.values.length > 5)?.values.length ?? 0;
+    assert.ok(total > 5, 'a facet with more than five values');
+    assert.strictEqual(values(), 5);
+    const more = page.find('.query-facet-more');
+    assert.strictEqual(more.textContent, `+${total - 5} more`);
+    assert.strictEqual(more.getAttribute('aria-expanded'), 'false');
+    page.click('.query-facet-more');
+    assert.strictEqual(values(), total);
+    assert.strictEqual(page.text('.query-facet-more'), 'Show fewer');
+    page.send(snapshot);
+    assert.strictEqual(values(), total, 'a redraw keeps it open');
+    assert.ok(
+      page.findAll('.query-facet').every((group) => group.querySelectorAll('.query-facet-value').length > 5 || !group.querySelector('.query-facet-more')),
+      'a facet of five or fewer has no control',
+    );
+  });
+
   test('draws the notes and tasks a search found', () => {
     const { page } = open(
       {

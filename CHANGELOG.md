@@ -77,6 +77,10 @@
 
 ### Changed
 
+- **Refine shows five of each.** A facet lists its first five values and
+  **+N more** for the rest, on the search page and in the sidebar, so
+  thirty related tags no longer push the results down the page.
+
 - **Search results you can scan.** A result shows three lines of its entry,
   or, on a search of words, the paragraph the words are in when they sit
   further down; **Show all** opens the rest. The gear's new **Preview** row

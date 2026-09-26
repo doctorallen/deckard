@@ -152,6 +152,8 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .refine-open-tag:hover, .refine-open-tag:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-count { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.refine-more.refine-more { justify-self: start; min-height: 24px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 2px 8px; font: var(--text-xs) var(--font-mono); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
+.refine-more.refine-more:hover, .refine-more.refine-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
 .refine-choice { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; text-align: left; text-transform: none; }
 .refine-choice:hover, .refine-choice:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 .refine-heading { margin-top: 12px; padding: 8px 9px; border: 2px solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
@@ -249,6 +251,9 @@ ${getComponentScript()}
    * page shows its own search, terms, and counts, so the sidebar shows only
    * what could narrow them.
    */
+  /** Refine facets opened past their first five, for this session. */
+  const expandedRefine = new Set();
+
   function renderRefine(refine) {
     const query = refine.query;
     const facets = query.facets || [];
@@ -267,7 +272,8 @@ ${getComponentScript()}
     }
     if (!facets.length) return heading + '<div class="empty">Nothing left to narrow by.</div>';
     return heading + facets.map(function (facet) {
-      return '<section class="refine-facet" aria-label="' + escapeHtml(facet.label) + '"><span class="section-label">' + escapeHtml(facet.label) + '</span><div class="refine-values">' + facet.values.map(function (value) { return renderRefineValue(facet, value); }).join('') + '</div></section>';
+      const shown = facetValuesShown(facet, expandedRefine, 'refine-more');
+      return '<section class="refine-facet" aria-label="' + escapeHtml(facet.label) + '"><span class="section-label">' + escapeHtml(facet.label) + '</span><div class="refine-values">' + shown.values.map(function (value) { return renderRefineValue(facet, value); }).join('') + shown.more + '</div></section>';
     }).join('');
   }
 
@@ -584,6 +590,13 @@ ${getComponentScript()}
       }
       if (target.dataset.action === 'open-tag') {
         vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
+      }
+      if (target.dataset.action === 'facet-more') {
+        const id = target.dataset.facetId;
+        if (expandedRefine.has(id)) expandedRefine.delete(id);
+        else expandedRefine.add(id);
+        renderKeepingPlace(render);
+        return;
       }
       if (target.dataset.action === 'refine') {
         vscode.postMessage({

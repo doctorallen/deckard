@@ -581,6 +581,12 @@ empty field removes the last chip; and a term not added is let go when focus
 leaves the box. A search the host could not parse comes back as
 `QueryViewState.pending`, with the last good search as `text`.
 
+Each Refine facet shows its first `FACET_VISIBLE` (5) values; a sixth
+control, `.query-facet-more` (`.refine-more` in the sidebar), reads
+**+N more** and then **Show fewer**, drawn by `facetValuesShown(facet,
+expanded, className)`. Which facets are open is kept in the page for the
+session, so a redraw keeps them open. The host still sends every value.
+
 On the host, every page builds the box's state with `createQueryViewState()`
 and its **Refine** counts with `buildSearchFacets()`, from the results that
 page shows. A search of tags passes `related` values, ranked by association,
