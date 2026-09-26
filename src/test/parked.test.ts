@@ -161,7 +161,7 @@ suite('Parked notes', () => {
 
   test('the is: diagnostic lists parked', () => {
     const parsed = parseQuery('is:archived');
-    assert.match(parsed.diagnostics[0].message, /periodic, or parked — not "archived"/);
+    assert.match(parsed.diagnostics[0].message, /periodic, parked, or step — not "archived"/);
     assert.strictEqual(parseQuery('is:parked').diagnostics.length, 0);
   });
 

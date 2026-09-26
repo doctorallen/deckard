@@ -15,8 +15,16 @@ import {
   parseTaskMetadata,
 } from './taskMetadata';
 import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
+import { findListParents, findParentTaskLine } from './listNesting';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
+
+/**
+ * What the parser produces, named. A change to what a parsed note holds
+ * (steps' parent links, say) changes it, so the local cache, which keeps
+ * parsed notes, is rebuilt rather than served in the old shape.
+ */
+export const PARSE_FORMAT = 'steps';
 
 interface HeadingMatch {
   lineNumber: number;
@@ -1400,7 +1408,9 @@ function findTasks(
   /** See `readAssignee`. */
   assigneeFromPersonTag = false,
 ): Task[] {
-  return lines.flatMap((line, lineIndex) => {
+  const listParents = findListParents(lines, fencedLines);
+  const idsByLine = new Map<number, string>();
+  const tasks = lines.flatMap((line, lineIndex): Task[] => {
     if (fencedLines.has(lineIndex)) {
       return [];
     }
@@ -1431,9 +1441,14 @@ function findTasks(
         ? toTaskDate(fields.due)
         : findTaskDate(title, dateAnchor);
 
+    const id = createId('task', `${filePath}:${lineNumber}:${match[4]}`);
+    idsByLine.set(lineIndex, id);
+    const parentLine = findParentTaskLine(lines, listParents, lineIndex);
+    const parentTaskId = parentLine === undefined ? undefined : idsByLine.get(parentLine);
+
     return [
       {
-        id: createId('task', `${filePath}:${lineNumber}:${match[4]}`),
+        id,
         filePath,
         sectionId: section?.id,
         title: title || match[4],
@@ -1463,9 +1478,35 @@ function findTasks(
         sourceLineText: line,
         createdAt: metadata?.createdAt,
         updatedAt: metadata?.updatedAt,
+        ...(parentTaskId !== undefined ? { parentTaskId } : {}),
       },
     ];
   });
+  return summarizeSteps(tasks);
+}
+
+/**
+ * Gives each task with steps a summary of them: how many, how many are
+ * done, and which open one comes first. Only direct steps count.
+ */
+function summarizeSteps(tasks: Task[]): Task[] {
+  const byId = new Map<string, Task>();
+  tasks.forEach((task) => {
+    byId.set(task.id, task);
+    const parent = task.parentTaskId === undefined ? undefined : byId.get(task.parentTaskId);
+    if (!parent) {
+      return;
+    }
+    const steps = parent.steps ?? (parent.steps = { ids: [], total: 0, done: 0 });
+    steps.ids.push(task.id);
+    steps.total += 1;
+    if (task.completed) {
+      steps.done += 1;
+    } else if (steps.next === undefined) {
+      steps.next = task.title;
+    }
+  });
+  return tasks;
 }
 
 /**

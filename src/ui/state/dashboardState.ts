@@ -2007,8 +2007,8 @@ export function createQuerySuggestions(
     conditions: [
       ...IS_SUGGESTIONS.map((item) => ({ ...item, label: item.value })),
       ...HAS_SUGGESTIONS.flatMap((value) => [
-        { value: `has:${value}`, label: `has:${value}`, detail: `Tasks with a ${value === 'priority' ? 'priority' : `${value} date`}` },
-        { value: `no:${value}`, label: `no:${value}`, detail: `Tasks without a ${value === 'priority' ? 'priority' : `${value} date`}` },
+        { value: `has:${value}`, label: `has:${value}`, detail: describeHas(value, true) },
+        { value: `no:${value}`, label: `no:${value}`, detail: describeHas(value, false) },
       ]),
       { value: 'priority >= high', label: 'priority >= high', detail: 'High or highest priority tasks' },
       { value: 'updated >= 7d', label: 'updated >= 7d', detail: 'Updated in the last seven days' },
@@ -2091,6 +2091,7 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:daily', label: 'is:daily', detail: 'Written in a daily note' },
   { value: 'is:periodic', label: 'is:periodic', detail: 'Written in a daily, weekly, or monthly note' },
   { value: 'is:parked', label: 'is:parked', detail: 'Notes and tasks that are parked' },
+  { value: 'is:step', label: 'is:step', detail: 'Tasks written under another task' },
 ];
 
 const HAS_SUGGESTIONS = [
@@ -2101,7 +2102,24 @@ const HAS_SUGGESTIONS = [
   'priority',
   'id',
   'dependsOn',
+  'steps',
 ];
+
+/** What `has:` and `no:` find, for each value they take. */
+function describeHas(value: string, present: boolean): string {
+  switch (value) {
+    case 'priority':
+      return present ? 'Tasks with a priority' : 'Tasks without a priority';
+    case 'id':
+      return present ? 'Tasks with an id (🆔) others can wait for' : 'Tasks without an id (🆔)';
+    case 'dependsOn':
+      return present ? 'Tasks that wait for another task (⛔)' : 'Tasks that wait for no other task';
+    case 'steps':
+      return present ? 'Tasks broken into steps' : 'Tasks with no steps';
+    default:
+      return present ? `Tasks with a ${value} date` : `Tasks without a ${value} date`;
+  }
+}
 
 /**
  * Every folder that holds a note, parents before their children.
@@ -2127,9 +2145,9 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, or is:parked';
+      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, is:parked, or is:step';
     case 'has':
-      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
+      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, dependsOn, and steps';
     case 'in':
       return 'A folder and everything in it, as in in:notes/projects';
     case 'task':

@@ -132,6 +132,11 @@ export function randomNote(random: () => number, index: number, noteCount: numbe
       lines.push(`${'#'.repeat(1 + Math.floor(random() * 4))} Heading ${index}.${block} ${tags()}`.trimEnd());
     } else if (kind < 0.6) {
       lines.push(`- [${random() < 0.3 ? 'x' : ' '}] Task ${index}.${block} ${tags()}${random() < 0.3 ? ' 📅 2026-10-0' + (1 + Math.floor(random() * 9)) : ''}`.trimEnd());
+      // Now and then, steps under it: each is a task linked to this one.
+      const steps = random() < 0.3 ? 1 + Math.floor(random() * 3) : 0;
+      for (let step = 0; step < steps; step += 1) {
+        lines.push(`  - [${random() < 0.4 ? 'x' : ' '}] Step ${index}.${block}.${step} ${tags()}`.trimEnd());
+      }
     } else if (kind < 0.8) {
       lines.push(`Line ${block} about [[n${Math.floor(random() * noteCount)}]] ${tags()}`.trimEnd());
     } else {

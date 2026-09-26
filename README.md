@@ -840,6 +840,7 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `is:daily` | Anything written in a daily note — one named for a day, such as `2026-09-25.md`, or with a day in its top heading — tasks included. `is:journal` is the same. |
 | `is:periodic` | The same, and weekly and monthly notes too. `is:dated` is the same. |
 | `is:parked` | Notes, entries, and tasks that are [parked](#parking-notes): in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
+| `is:step`, `has:steps`, `no:steps` | A task's steps: checkboxes written under another task. `has:steps` finds tasks broken into steps, `no:steps` tasks with none. `-is:step` leaves steps out. |
 
 Put `-` in front of a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as you wrote it when it saves or formats a query.
 

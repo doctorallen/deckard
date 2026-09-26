@@ -93,6 +93,7 @@ export const QUERY_IS_VALUES = [
   'daily',
   'periodic',
   'parked',
+  'step',
 ] as const;
 
 /** Values `has:` and `no:` accept: a task date, a priority, or an id. */
@@ -104,6 +105,7 @@ export const QUERY_HAS_VALUES = [
   'priority',
   'id',
   'dependsOn',
+  'steps',
 ] as const;
 
 /** Task date fields. Each also accepts `none`, meaning no date is written. */

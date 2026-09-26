@@ -613,6 +613,7 @@ updated: 2026-09-20
         <tr><td><code>in:notes/work</code></td><td>A folder and everything inside it; <code>*</code> and <code>?</code> are wildcards.</td></tr>
         <tr><td><code>is:daily</code>, <code>is:periodic</code></td><td>Written in a daily note, or in a daily, weekly, or monthly note: entries and tasks alike.</td></tr>
         <tr><td><code>is:parked</code></td><td>Parked: in a folder <code>deckard.parked.folders</code> names, or under a tag <code>deckard.parked.tags</code> names. Notes and tasks alike.</td></tr>
+        <tr><td><code>is:step</code>, <code>has:steps</code></td><td>Steps of a task, and tasks broken into steps.</td></tr>
       </tbody></table></div>
       <div class="table-scroll"><table><caption>Fields</caption><thead><tr><th>Field</th><th>Matches</th><th>Example</th></tr></thead><tbody>
         <tr><td><code>tag</code></td><td>A tag, including inherited and front-matter tags. <code>*</code> and <code>?</code> are wildcards.</td><td><code>tag = #risk/*</code></td></tr>

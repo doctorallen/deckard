@@ -296,6 +296,10 @@ interface QueryUnit {
   links?: readonly UnitLink[];
   /** In a parked folder, or found by a search for a parked tag. */
   parked?: boolean;
+  /** A step: written under another task. */
+  step?: boolean;
+  /** How many steps are written under the task. */
+  stepCount?: number;
 }
 
 /**
@@ -536,6 +540,8 @@ function createTaskUnit(
     assignee: task.assignee,
     status: readLineStatus(task),
     parked: index.parked?.tasks.has(task.id) ?? false,
+    step: task.parentTaskId !== undefined,
+    stepCount: task.steps?.total ?? 0,
     blocked:
       !task.completed &&
       (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
@@ -790,6 +796,8 @@ function matchesIs(
       return unit.assignee !== undefined;
     case 'unassigned':
       return unit.assignee === undefined;
+    case 'step':
+      return unit.step === true;
     default:
       return false;
   }
@@ -816,6 +824,8 @@ function isTaskFieldPresent(unit: QueryUnit, field: string): boolean {
       return unit.dependencyId !== undefined;
     case 'dependsOn':
       return (unit.dependsOn?.length ?? 0) > 0;
+    case 'steps':
+      return (unit.stepCount ?? 0) > 0;
     default:
       return getTaskDate(unit, field) !== undefined;
   }

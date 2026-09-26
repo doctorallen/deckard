@@ -226,6 +226,20 @@ export interface Task {
   sourceLineText: string;
   createdAt?: number;
   updatedAt?: number;
+  /** The task this one is a step of: the checkbox it is indented under. */
+  parentTaskId?: string;
+  /** This task's own steps, the checkboxes indented directly under it. */
+  steps?: TaskSteps;
+}
+
+/** How far along a task's direct steps are. */
+export interface TaskSteps {
+  /** The steps' task ids, in the order they are written. */
+  ids: string[];
+  total: number;
+  done: number;
+  /** The first open step's title, as the index holds it. */
+  next?: string;
 }
 
 export interface ParsedFile {

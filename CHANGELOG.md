@@ -12,6 +12,10 @@
 
 ### Added
 
+- **Steps.** A checkbox indented under a task is now one of its steps:
+  `is:step` finds steps, and `has:steps` / `no:steps` find tasks with and
+  without them.
+
 - **Parked notes.** A note, folder, or tag can be parked: still indexed and
   searchable, with `is:parked` and last in Find and on search pages, but
   left out of the Tasks view, the status bar, the Task board, rollover, the

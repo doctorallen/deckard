@@ -10,6 +10,7 @@ import {
   MarkdownParseOptions,
   NoteBoundaries,
   parseMarkdown,
+  PARSE_FORMAT,
 } from '../markdown/parser';
 import { reportError } from '../timing';
 import { ParkedRules, toParkedTagKey } from './parked';
@@ -258,6 +259,7 @@ export class WorkspaceScanner {
       (folder) => {
         const options = this.getParseOptions(folder);
         return [
+          PARSE_FORMAT,
           folder?.uri.toString() ?? '',
           options.noteBoundaries ?? 'line',
           options.parseInlineTags === false ? 'no-inline' : 'inline',
