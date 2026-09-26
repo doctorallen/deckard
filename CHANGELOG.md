@@ -86,6 +86,10 @@
 
 ### Changed
 
+- **List in Tasks view is a switch in the Task board's gear.** It leaves
+  the search bar, shows whether the Tasks view lists the board's search, and
+  selected again gives the Tasks view back every open task.
+
 - **Tags on cards are text.** Search results, task rows, board cards, and
   Related Notes draw a tag as quiet monospace text that opens it, its
   namespace muted, with a faint underline under the pointer, rather than a

@@ -135,6 +135,25 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'priority:high' });
   });
 
+  test('List in Tasks view sits in the gear, and says when there is nothing to change', () => {
+    const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] One')]]));
+    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board' }, { query: 'is:mine' }, options, 'inline');
+    page = openWebviewPage(getTaskBoardHtml(webview), { ...board, agendaListsThisSearch: false, agendaQueryIsDefault: true });
+    assert.strictEqual(page.findAll('.query-bar-row [data-action="use-for-agenda"]').length, 0, 'not in the search bar');
+    const toggle = () => page!.find('.view-options [data-action="use-for-agenda"]');
+    assert.strictEqual(toggle().textContent, 'List in Tasks view');
+    assert.strictEqual(toggle().getAttribute('aria-pressed'), 'false');
+    page.click('.view-options [data-action="use-for-agenda"]');
+    assert.deepStrictEqual(page.lastPosted('useSearchForAgenda'), { type: 'useSearchForAgenda' });
+    page.send({ ...board, agendaListsThisSearch: true, agendaQueryIsDefault: false });
+    assert.strictEqual(toggle().getAttribute('aria-pressed'), 'true');
+    assert.strictEqual(toggle().getAttribute('aria-disabled'), null, 'pressed again, it lists every open task');
+    page.send({ ...board, agendaListsThisSearch: true, agendaQueryIsDefault: true });
+    assert.strictEqual(toggle().getAttribute('aria-disabled'), 'true');
+    assert.strictEqual(toggle().getAttribute('data-tip-disabled'), 'The Tasks view lists every open task, as this search does.');
+  });
+
   test('the menu closes on Escape and gives focus back to its button', () => {
     const { page } = open();
     page.click('.board-card [data-action="board-menu"]');

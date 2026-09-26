@@ -98,13 +98,27 @@ ${getQueryEditorScript()}
     refineElsewhere: function () { return Boolean(state && state.refineInSidebar); },
     // Saving sits with the search it saves; the saved search reopens here.
     actions: function (hasText) {
-      // The Tasks view lists a search of its own; this is where it is edited.
-      const listed = !!(state && state.agendaListsThisSearch);
       return '<button data-action="save-board-search" data-query-needs-text data-tip="Keep this search, named, on Home; it reopens on the Task Board" data-tip-disabled="Type a search to save it"' + (hasText ? '' : ' aria-disabled="true"') + '>Save</button>'
-        + '<button data-action="use-for-agenda" data-tip="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
         + '<button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
     },
   });
+
+  /**
+   * The gear's switch that makes the Tasks view list this search, and lists
+   * every open task again when pressed once more. The Tasks view lists a
+   * search of its own; this is where it is edited.
+   */
+  function renderAgendaToggle() {
+    const listed = Boolean(state.agendaListsThisSearch);
+    const everything = listed && state.agendaQueryIsDefault;
+    const tip = !listed
+      ? 'Make the Tasks view list this search'
+      : 'The Tasks view lists this search. Select to list every open task again.';
+    return '<button type="button" data-action="use-for-agenda" aria-pressed="' + listed + '"' + (listed ? ' class="active"' : '')
+      + ' data-tip="' + escapeHtml(tip) + '"'
+      + (everything ? ' aria-disabled="true" data-tip-disabled="The Tasks view lists every open task, as this search does."' : '')
+      + '>List in Tasks view</button>';
+  }
 
   /** Hide the rows and cards that do not have every plain word being typed. */
   function filterTaskEntries() {
@@ -215,6 +229,7 @@ ${getQueryEditorScript()}
       }).join('') + '</select>' + sortIcon + '</span></label>';
     const viewOptions = renderViewOptions([
       { label: 'Layout', html: renderViewOptionChoices('set-task-layout', [['list', 'List'], ['board', 'Board'], ['table', 'Table']], state.layout, 'Task layout') },
+      { label: 'Tasks view', html: renderAgendaToggle() },
       ...(isTable ? [{ label: 'Columns', html: renderColumnPicker(), stacked: true }] : []),
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
       renderZenOption(),

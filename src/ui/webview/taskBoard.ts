@@ -294,6 +294,12 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
             .getConfiguration('deckard')
             .get<string>('agenda.query', ''),
         ) === normalizeAgendaQuery(this.query),
+      agendaQueryIsDefault:
+        normalizeAgendaQuery(
+          vscode.workspace
+            .getConfiguration('deckard')
+            .get<string>('agenda.query', ''),
+        ) === '',
     };
   }
 
@@ -304,18 +310,26 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
    */
   private async useSearchForAgenda(): Promise<void> {
     const configuration = vscode.workspace.getConfiguration('deckard');
-    const query = normalizeAgendaQuery(this.query);
-    if (normalizeAgendaQuery(configuration.get<string>('agenda.query', '')) === query) {
-      void vscode.window.showInformationMessage(
-        'The Tasks view lists this search already.',
-      );
+    const listed = normalizeAgendaQuery(configuration.get<string>('agenda.query', ''));
+    // Pressed a second time, the switch gives the Tasks view back its own
+    // list of every open task; when that is what it lists, it does nothing.
+    const again = listed === normalizeAgendaQuery(this.query);
+    if (again && !listed) {
       return;
     }
+    const query = again ? '' : normalizeAgendaQuery(this.query);
     // The value goes where it is already set, as the board's own settings do.
     const target =
       configuration.inspect('agenda.query')?.workspaceValue !== undefined
         ? vscode.ConfigurationTarget.Workspace
         : vscode.ConfigurationTarget.Global;
+    if (again) {
+      if (await writeSetting('agenda.query', '', target, configuration)) {
+        void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
+        this.refresh();
+      }
+      return;
+    }
     if (await writeSetting('agenda.query', query, target, configuration)) {
       void vscode.window.showInformationMessage(
         query
