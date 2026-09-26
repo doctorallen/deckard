@@ -12,6 +12,12 @@
 
 ### Added
 
+- **The Outline focuses and filters.** **Focus Section**, on a heading in
+  the Outline, in the editor's Deckard submenu, or in Note Actions, folds
+  the rest of the note away; **Unfold All Sections** brings it back.
+  **Filter Outline by Tag…** shows only the headings that carry a tag, or
+  a tag under it, until it is cleared.
+
 - **The Outline counts.** Beside each heading, **2/5** for the tasks under
   it that are done and **↩3** for the links that name it, spelled out in
   its tooltip. Zen hides them; `deckard.outline.showCounts` turns them off.

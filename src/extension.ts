@@ -42,6 +42,11 @@ import { TaskLineDecorations } from './ui/commands/taskLineDecorations';
 import { RepeatRuleHealth } from './ui/commands/repeatRuleHealth';
 import { WordCountStatusBar } from './ui/views/wordCountStatusBar';
 import {
+  focusSectionCommand,
+  trackSectionFocus,
+  unfoldAllSectionsCommand,
+} from './ui/commands/focusSection';
+import {
   excludeFolderCommand,
   ExcludedFoldersContext,
   includeFolderCommand,
@@ -730,6 +735,43 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           await renameIndexedTag(indexer, tagKey, preferences);
         }
       },
+    ),
+    vscode.commands.registerCommand('deckard.focusSection', async (node?: unknown) => {
+      const outlineNode = asOutlineNode(node);
+      if (outlineNode) {
+        await outline.revealSection(outlineNode);
+      }
+      await focusSectionCommand(outlineNode?.line);
+    }),
+    vscode.commands.registerCommand('deckard.unfoldAllSections', () =>
+      unfoldAllSectionsCommand(),
+    ),
+    trackSectionFocus(),
+    vscode.commands.registerCommand('deckard.outline.filterByTag', async (node?: unknown) => {
+      const outlineNode = asOutlineNode(node);
+      if (outlineNode) {
+        const key = await pickOutlineTag(outlineNode, 'Choose a tag to filter the Outline by');
+        const tag = outlineNode.tags.find((candidate) => candidate.key === key);
+        if (tag) {
+          outline.setTagFilter(tag);
+        }
+        return;
+      }
+      const tags = outline.listTags();
+      if (tags.length === 0) {
+        void vscode.window.showInformationMessage('No heading in this note carries a tag to filter by.');
+        return;
+      }
+      const chosen = await vscode.window.showQuickPick(
+        tags.map((tag) => ({ label: tag.label, tag })),
+        { placeHolder: 'Show only the headings that carry a tag' },
+      );
+      if (chosen) {
+        outline.setTagFilter(chosen.tag);
+      }
+    }),
+    vscode.commands.registerCommand('deckard.outline.clearTagFilter', () =>
+      outline.setTagFilter(undefined),
     ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(),

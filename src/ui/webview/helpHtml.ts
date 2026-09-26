@@ -187,6 +187,10 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.agenda.setGrouping': 'What the Tasks view’s groups are.',
   'deckard.outline.enableFollowCursor': 'Selects the heading the cursor is in.',
   'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',
+  'deckard.focusSection': 'Folds the rest of the note away from the section the cursor is in.',
+  'deckard.unfoldAllSections': 'Unfolds the note again after Focus Section.',
+  'deckard.outline.filterByTag': 'Shows only the Outline headings that carry a tag, or a tag under it.',
+  'deckard.outline.clearTagFilter': 'Shows every heading in the Outline again.',
   'deckard.chooseTheme': 'Previews each theme on the open pages as you move through the list.',
 };
 
@@ -630,7 +634,7 @@ tag = #project/atlas AND task = open
       <h2>Related notes and the graph</h2>
       <div class="cards">
         <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing. Under them, <strong>Linked from</strong> lists the notes that link here, newest first, each line unfolding onto its section, and <strong>Open as search</strong> opens them all as a search. <strong>Hide daily notes</strong> leaves daily, weekly, and monthly notes out of both lists.</p></div>
-        <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each, and <strong>2/5 · ↩3</strong> for the tasks under a heading that are done and the links that name it. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
+        <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each, and <strong>2/5 · ↩3</strong> for the tasks under a heading that are done and the links that name it. It can follow the cursor, and a heading’s context menu opens or renames its tags. <code>Deckard: Focus Section</code> folds the rest of the note away from one heading, and <code>Deckard: Filter Outline by Tag…</code> keeps only the headings that carry a tag.</p></div>
         <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighborhood instead, one to three hops out, following the editor as you move between notes. Reset graph can be undone for a few seconds.</p></div>
         <div class="card"><h3>Stats</h3><p>Index totals of files, notes, tasks, and tags, the notes nothing links to, the tags that look like one idea spelled twice, the links that open no note, and the tags and notes you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
         <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>

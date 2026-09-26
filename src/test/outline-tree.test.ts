@@ -3,7 +3,9 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../core/markdown/parser';
 import {
   buildOutline,
+  collectOutlineTags,
   describeOutlineCounts,
+  filterOutline,
   findOutlineNodeAt,
   formatOutlineDescription,
   formatOutlineTags,
@@ -194,5 +196,26 @@ suite('Outline tree', () => {
     assert.strictEqual(formatOutlineDescription(plan, { tags: true, counts: false }), '#project/atlas');
     assert.strictEqual(formatOutlineDescription(notesHeading, { tags: true, counts: true }), '');
     assert.deepStrictEqual(describeOutlineCounts(plan), ['2 of 5 tasks done', 'Linked 3 times']);
+  });
+  test('filters to the headings that carry a tag, keeping their ancestors', () => {
+    const content = [
+      '# Plan',
+      '## Atlas work #project/atlas',
+      '### Detail',
+      '## Orion work #project/orion',
+      '# Other #topic/x',
+    ].join('\n');
+    const roots = buildOutline(parseMarkdown('notes/a.md', content));
+    const atlas = filterOutline(roots, '#project/atlas');
+    assert.deepStrictEqual(labels(atlas), ['Plan']);
+    assert.deepStrictEqual(labels(atlas[0].children), ['Atlas work']);
+    assert.strictEqual(atlas[0].id, roots[0].id, 'ids stay as they were');
+    // A namespace keeps the tags under it.
+    assert.deepStrictEqual(labels(filterOutline(roots, '#project')[0].children), ['Atlas work', 'Orion work']);
+    assert.deepStrictEqual(filterOutline(roots, '#nothing'), []);
+    assert.deepStrictEqual(
+      collectOutlineTags(roots).map((tag) => tag.label),
+      ['#project/atlas', '#project/orion', '#topic/x'],
+    );
   });
 });

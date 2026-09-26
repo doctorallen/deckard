@@ -34,6 +34,13 @@ suite('Note Actions', () => {
     ]);
   });
 
+  test('offers Focus Section under a heading', () => {
+    assert.deepStrictEqual(labels({ underHeading: true }).slice(-2), [
+      '$(target) Focus Section',
+      '$(pin) Pin Note to Home',
+    ]);
+  });
+
   test('opens Related Notes for the heading only inside a tagged entry', () => {
     const [, related] = buildNoteActionItems(
       { onTaskLine: false, pinned: false, inTaggedEntry: true, underHeading: true },

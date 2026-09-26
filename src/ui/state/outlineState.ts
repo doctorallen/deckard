@@ -137,6 +137,36 @@ export function formatOutlineDescription(
   return parts.join(' · ');
 }
 
+/**
+ * The headings that carry a tag, or a tag under it — `#project` keeps
+ * `#project/atlas` — with their ancestors kept for structure. Ids are
+ * unchanged, so the tree keeps what it had expanded.
+ */
+export function filterOutline(nodes: readonly OutlineNode[], tagKey: string): OutlineNode[] {
+  const carries = (node: OutlineNode) =>
+    node.tags.some((tag) => tag.key === tagKey || tag.key.startsWith(`${tagKey}/`));
+  return nodes.flatMap((node) => {
+    const children = filterOutline(node.children, tagKey);
+    return carries(node) || children.length > 0 ? [{ ...node, children }] : [];
+  });
+}
+
+/** Every tag written on a note's headings, once each, in order. */
+export function collectOutlineTags(nodes: readonly OutlineNode[]): TagReference[] {
+  const seen = new Map<string, TagReference>();
+  const visit = (list: readonly OutlineNode[]) =>
+    list.forEach((node) => {
+      node.tags.forEach((tag) => {
+        if (!seen.has(tag.key)) {
+          seen.set(tag.key, tag);
+        }
+      });
+      visit(node.children);
+    });
+  visit(nodes);
+  return [...seen.values()];
+}
+
 /** The counts beside a heading, spelled out for its tooltip. */
 export function describeOutlineCounts(node: OutlineNode): string[] {
   const lines: string[] = [];

@@ -499,6 +499,30 @@
         "icon": "$(eye)"
       },
       {
+        "command": "deckard.focusSection",
+        "title": "Focus Section",
+        "category": "Deckard",
+        "icon": "$(target)"
+      },
+      {
+        "command": "deckard.unfoldAllSections",
+        "title": "Unfold All Sections",
+        "category": "Deckard",
+        "icon": "$(unfold)"
+      },
+      {
+        "command": "deckard.outline.filterByTag",
+        "title": "Filter Outline by Tag…",
+        "category": "Deckard",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "deckard.outline.clearTagFilter",
+        "title": "Clear Outline Tag Filter",
+        "category": "Deckard",
+        "icon": "$(filter-filled)"
+      },
+      {
         "command": "deckard.chooseTheme",
         "title": "Choose Theme…",
         "category": "Deckard",
@@ -683,6 +707,22 @@
           "when": "deckard.outlineFollowCursor"
         },
         {
+          "command": "deckard.focusSection",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.unfoldAllSections",
+          "when": "deckard.sectionFocused"
+        },
+        {
+          "command": "deckard.outline.filterByTag",
+          "when": "!deckard.outlineFiltered"
+        },
+        {
+          "command": "deckard.outline.clearTagFilter",
+          "when": "deckard.outlineFiltered"
+        },
+        {
           "command": "deckard.enableZenMode",
           "when": "!deckard.zenMode"
         },
@@ -826,6 +866,10 @@
           "group": "2_heading@2"
         },
         {
+          "command": "deckard.focusSection",
+          "group": "2_heading@3"
+        },
+        {
           "command": "deckard.moveTo",
           "group": "3_move@1"
         },
@@ -907,6 +951,21 @@
           "group": "navigation@1"
         },
         {
+          "command": "deckard.unfoldAllSections",
+          "when": "view == deckard.outline && deckard.sectionFocused",
+          "group": "navigation@0"
+        },
+        {
+          "command": "deckard.outline.filterByTag",
+          "when": "view == deckard.outline && !deckard.outlineFiltered",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deckard.outline.clearTagFilter",
+          "when": "view == deckard.outline && deckard.outlineFiltered",
+          "group": "navigation@2"
+        },
+        {
           "command": "deckard.showDashboard",
           "when": "view == deckard.relatedNotes",
           "group": "navigation@1"
@@ -942,6 +1001,21 @@
           "command": "deckard.outline.renameTag",
           "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
           "group": "deckard@2"
+        },
+        {
+          "command": "deckard.outline.filterByTag",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@3"
+        },
+        {
+          "command": "deckard.focusSection",
+          "when": "view == deckard.outline",
+          "group": "inline"
+        },
+        {
+          "command": "deckard.focusSection",
+          "when": "view == deckard.outline",
+          "group": "1_focus@1"
         },
         {
           "command": "deckard.agenda.editTask",

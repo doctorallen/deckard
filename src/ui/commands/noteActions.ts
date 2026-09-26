@@ -54,6 +54,9 @@ export function buildNoteActionItems(
     },
     { label: '$(arrow-right) Move to…', command: 'deckard.moveTo' },
   );
+  if (state.underHeading) {
+    items.push({ label: '$(target) Focus Section', command: 'deckard.focusSection' });
+  }
   items.push(
     state.pinned
       ? { label: '$(pinned) Unpin Note from Home', command: 'deckard.unpinNote' }

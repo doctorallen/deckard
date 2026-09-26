@@ -153,6 +153,10 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Undo Last Change** | Puts every note back as it was before Deckard's last workspace-wide write, such as a tag rename or merge. |
 | **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
 | **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
+| **Deckard: Focus Section** | Folds the rest of the note away from the section the cursor is in, or the Outline heading it is run on, and opens that section's sub-headings. |
+| **Deckard: Unfold All Sections** | Unfolds the note again after Focus Section. |
+| **Deckard: Filter Outline by Tag…** | Shows only the Outline headings that carry a tag, or a tag under it, until it is cleared. |
+| **Deckard: Clear Outline Tag Filter** | Shows every heading in the Outline again. |
 
 ## Markdown format
 
@@ -524,6 +528,8 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 - The tree is built from editor text, so it follows the file as you type rather than waiting for a save.
 - Select a heading to jump to its line. Right-click a heading that carries tags for **Open the Tag's Search Page** and **Rename Tag**.
 - The eye control in the view title switches whether the Outline follows the cursor, and **Collapse all** is beside it.
+- **Focus Section**, the target button on a heading (also in the editor's **Deckard** submenu and Note Actions), folds the rest of the note away and opens the section's own sub-headings; lists and code blocks outside it fold too. **Unfold All Sections**, in the view title while a section is focused, unfolds everything, and moving to another note ends the focus. It needs `editor.folding` on.
+- **Filter Outline by Tag…**, the filter button in the view title or on a tagged heading's context menu, shows only the headings that carry that tag, or a tag under it (`#project` keeps `#project/atlas`), with their parent headings kept for structure. The filter stays as you move between notes until **Clear Outline Tag Filter**.
 
 Headings written in the underlined `Title`/`===` style are not shown, matching how Deckard indexes notes everywhere else.
 
