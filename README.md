@@ -33,7 +33,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Embeds](#embeds) | `![[Note#Heading]]` on a line of its own reads that note, section, or marked line in place, in the Markdown preview. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template, and can carry yesterday's unfinished tasks in. |
 | [Reviews](#writing-a-review) | A weekly or monthly note opens with a review written into it: what was finished, what slipped, what was written, and which tags are new. |
-| [Calendar](#calendar) | A month in the sidebar, in whole weeks from the day you start a week on, marking days with a daily note or tasks due. |
+| [Calendar](#calendar) | A month in the sidebar, in whole weeks from the day you start a week on, marking days with a daily note, tasks due, and tasks scheduled. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
@@ -1022,7 +1022,7 @@ A daily note that starts from its template every morning leaves last night's ope
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` starts them on Monday or where your display language does. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed and muted once it is more than 30 days gone, when its tasks need a new date — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` starts them on Monday or where your display language does. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed and muted once it is more than 30 days gone, when its tasks need a new date, and beside it, outlined, the open tasks scheduled (⏳) that day — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
 
 ## Quick capture
 

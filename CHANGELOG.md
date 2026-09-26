@@ -30,6 +30,10 @@
   line, refusing to take away one a heading gave it. The README has a
   recipe for GTD contexts and PARA areas.
 
+- **The calendar counts what is scheduled.** Beside a day's due count, an
+  outlined count marks the tasks scheduled (⏳) for it, and the day's
+  tooltip and label say "2 due, 1 scheduled".
+
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds
   the rest of the note away; **Unfold All Sections** brings it back.

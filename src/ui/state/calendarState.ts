@@ -30,6 +30,12 @@ export interface CalendarDay {
   /** The first few of them by name, and the daily note's headings, for its tooltip. */
   dueTitles?: string[];
   headings?: string[];
+  /**
+   * Open tasks scheduled (⏳) that day. A task due and scheduled on the same
+   * day is counted once, as due.
+   */
+  scheduledCount: number;
+  scheduledTitles?: string[];
 }
 
 /** One row of the calendar: seven days, from the week's first day. */
@@ -124,6 +130,23 @@ export function createCalendar(
       }
     }
   }
+  const scheduledCounts = new Map<string, number>();
+  const scheduledTitles = new Map<string, string[]>();
+  for (const task of index.tasks.values()) {
+    if (task.completed || task.scheduledAt === undefined || isParkedTask(index, task.id)) {
+      continue;
+    }
+    const date = formatLocalDate(new Date(task.scheduledAt));
+    if (task.dueAt !== undefined && formatLocalDate(new Date(task.dueAt)) === date) {
+      continue;
+    }
+    scheduledCounts.set(date, (scheduledCounts.get(date) ?? 0) + 1);
+    const titles = scheduledTitles.get(date) ?? [];
+    if (titles.length < TOOLTIP_ITEMS) {
+      titles.push(task.title.trim());
+      scheduledTitles.set(date, titles);
+    }
+  }
   /** A daily note's own headings, below its title, for a day's tooltip. */
   const headingsOf = (filePath: string): string[] =>
     (index.files.get(filePath)?.sections ?? [])
@@ -157,6 +180,8 @@ export function createCalendar(
         ...(notePath ? { notePath, headings: headingsOf(notePath) } : {}),
         dueCount: dueCounts.get(date) ?? 0,
         ...(dueTitles.has(date) ? { dueTitles: dueTitles.get(date) } : {}),
+        scheduledCount: scheduledCounts.get(date) ?? 0,
+        ...(scheduledTitles.has(date) ? { scheduledTitles: scheduledTitles.get(date) } : {}),
       };
     });
     const notePath = periodicNote('week', rowStart);

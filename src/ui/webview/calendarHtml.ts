@@ -48,9 +48,15 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .day.today { border-color: var(--amber); }
 .day-number { line-height: 15px; }
 .note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
+.counts { display: flex; align-items: center; gap: 2px; }
 .due { color: var(--green); font-size: var(--text-xs); line-height: 13px; }
 .due.overdue { color: var(--warning-orange); }
 .due.stale { color: var(--muted); }
+/* What is scheduled is drawn hollow and never in a warning color: it is a
+   plan for the day, not a deadline. */
+.scheduled-count { padding: 0 1px; border: 1px solid currentColor; border-radius: 3px; color: var(--muted); font-size: var(--text-xs); line-height: 11px; }
+.scheduled-count:empty { display: none; }
+.scheduled-ring { width: 5px; height: 5px; border: 1px solid var(--muted); border-radius: 50%; }
 ${getPageTailCss()}
 </style>
 </head>
@@ -78,9 +84,10 @@ ${getComponentScript()}
     if (day.notePath) parts.push('daily note');
     if (day.dueCount > 0) {
       parts.push(stale
-        ? day.dueCount + (day.dueCount === 1 ? ' task needs' : ' tasks need') + ' a new date'
-        : day.dueCount + (day.dueCount === 1 ? ' task ' : ' tasks ') + (overdue ? 'overdue' : 'due'));
+        ? day.dueCount + (day.dueCount === 1 ? ' needs' : ' need') + ' a new date'
+        : day.dueCount + (overdue ? ' overdue' : ' due'));
     }
+    if (day.scheduledCount > 0) parts.push(day.scheduledCount + ' scheduled');
     return parts.join(', ');
   }
 
@@ -97,12 +104,19 @@ ${getComponentScript()}
     // so the right day is found without opening each.
     const tooltip = escapeHtml([describeDay(day, overdue, stale)]
       .concat((day.dueTitles || []).map(function (title) { return '☐ ' + title; }))
+      .concat((day.scheduledTitles || []).map(function (title) { return '⏳ ' + title; }))
       .concat((day.headings || []).map(function (heading) { return '# ' + heading; }))
       .join('\\n'));
     // Both rows are always drawn, empty when there is nothing to mark, so
     // the number above them sits in the same place in every cell.
     const dot = day.notePath ? '<span class="note-dot" aria-hidden="true"></span>' : '<span aria-hidden="true"></span>';
-    const due = '<span class="due' + (overdue ? ' overdue' : stale ? ' stale' : '') + '" aria-hidden="true">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>';
+    // The due count, then what is scheduled, outlined. Where both run to two
+    // digits the second is a ring: a narrow cell has room for one number, and
+    // the tooltip and label keep both.
+    const scheduled = day.scheduledCount || 0;
+    const ring = scheduled > 0 && ((day.dueCount >= 10 && scheduled >= 10) || day.dueCount >= 100 || scheduled >= 100);
+    const due = '<span class="counts" aria-hidden="true"><span class="due' + (overdue ? ' overdue' : stale ? ' stale' : '') + '">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>'
+      + (ring ? '<span class="scheduled-ring"></span>' : '<span class="scheduled-count">' + (scheduled > 0 ? scheduled : '') + '</span>') + '</span>';
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = day.date === tabStopDate();

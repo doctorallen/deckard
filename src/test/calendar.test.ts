@@ -173,7 +173,7 @@ suite('Calendar', () => {
       const day = (date: string) =>
         page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
       assert.ok(day('2026-08-03').querySelector('.due.stale'), 'muted, not orange');
-      assert.match(day('2026-08-03').getAttribute('aria-label') ?? '', /1 task needs a new date/);
+      assert.match(day('2026-08-03').getAttribute('aria-label') ?? '', /, 1 needs a new date$/);
       assert.ok(day('2026-08-20').querySelector('.due.overdue'), 'within 30 days it is overdue');
     } finally {
       page.dispose();
