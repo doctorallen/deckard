@@ -716,6 +716,16 @@
           "command": "deckard.noteActions",
           "when": "resourceLangId == markdown && deckard.isNote",
           "group": "navigation@12"
+        },
+        {
+          "command": "deckard.enableZenMode",
+          "when": "activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode",
+          "group": "navigation@90"
+        },
+        {
+          "command": "deckard.disableZenMode",
+          "when": "activeWebviewPanelId =~ /^deckard\\./ && deckard.zenMode",
+          "group": "navigation@90"
         }
       ],
       "view/title": [

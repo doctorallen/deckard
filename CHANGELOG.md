@@ -12,6 +12,10 @@
 
 ### Added
 
+- **Zen from a page's title bar.** Every Deckard page — Home, a search
+  page, the Task board, Stats, Help, and the Notes Graph — has a zen button
+  in its title bar that enters zen, and leaves it again.
+
 - **A Deckard button in a note's title bar.** It opens `Deckard: Note
   Actions…`, which lists what can be done from where the cursor is: toggle,
   edit, or add a task, open Related Notes or `Deckard: Open Notes Graph

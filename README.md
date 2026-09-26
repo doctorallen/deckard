@@ -68,7 +68,7 @@ Run `Deckard: Choose Theme…`, or pick **Theme** in any page's gear, to preview
 
 ## Zen mode
 
-Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, or run `Deckard: Enter Zen Mode`, to turn Deckard's own chrome down.
+Set `deckard.zenMode` to `true`, pick **Zen** in the gear on the Dashboard, a search page, or the Task board, run `Deckard: Enter Zen Mode`, or select the zen button in the title bar of any Deckard page, to turn Deckard's own chrome down. The same button leaves it.
 
 Zen mode is not a theme, and it does not replace one. A theme picks the colors; zen picks how much frame is drawn around them, so the two compose — any of the eight themes above can be read in zen.
 

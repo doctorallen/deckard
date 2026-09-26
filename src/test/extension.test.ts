@@ -23,6 +23,13 @@ suite('Extension Test Suite', () => {
     assert.deepStrictEqual(title('deckard.noteActions'), [
       ['resourceLangId == markdown && deckard.isNote', 'navigation@12'],
     ]);
+    // Zen is one button on every Deckard page.
+    assert.deepStrictEqual(title('deckard.enableZenMode'), [
+      ['activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode', 'navigation@90'],
+    ]);
+    assert.deepStrictEqual(title('deckard.disableZenMode'), [
+      ['activeWebviewPanelId =~ /^deckard\\./ && deckard.zenMode', 'navigation@90'],
+    ]);
   });
 
   test('contributes the Deckard commands and settings', () => {
