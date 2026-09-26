@@ -4,9 +4,10 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
   getQueryEditorCss,
   getQueryEditorScript,
-  getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 import {
@@ -249,7 +250,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading index...</div></main>
+${loadingHtml('Loading index…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
@@ -928,7 +929,7 @@ ${getQueryEditorScript()}
 
   function renderHome() {
     // The widgets arrive once the host knows Home is showing.
-    if (!state.widgets) return '<div class="empty">Loading Home…</div>';
+    if (!state.widgets) return renderLoading('Loading Home…');
     const widgets = state.widgets;
     const bar = editingHome
       ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset

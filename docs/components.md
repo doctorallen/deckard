@@ -332,6 +332,21 @@ choosing a checked row posts nothing and says "…is already…".
 | `--z-modal` | `40` | The `?` key sheet |
 | `--z-drag` | `50` | The drag ghost, which sat under the menus at 10 |
 
+### Loading
+
+A page waiting for its first state shows `loadingHtml(label)` from the host:
+`<main id="app" aria-busy="true">` holding one `.loading` line, muted mono
+text in the page's flow rather than the dashed `.empty` box, revealed after
+400 ms by an animation step so a page that draws within that never flashes
+it. The words end in one ellipsis character: *Loading search…*,
+*Loading tasks…*. In a page script, `renderLoading(label, immediate)` draws
+the same line; `immediate` shows it at once, for a line that redraws every
+tick, such as the sidebar's indexing count. One `MutationObserver` on `#app`
+keeps `aria-busy="true"` exactly while `#app` holds a `.loading` or a search
+is still out, so no page handles it. A search still out a second after it
+ran puts `.is-searching` on its `.query-workspace`: a thin bar along the
+box's foot, still under reduced motion, and kept in zen as information.
+
 ### Tooltips
 
 A control explains itself with `data-tip`, never `title`: a native title
@@ -529,6 +544,7 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `formatEntityTitle(kind, name)` | `project` + `skybridge-signal` → `Project: Skybridge Signal`. |
 | `taskFilterIcon(filter)` | The `all` / `active` / `completed` icons. |
 | `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. Every context menu, this one and a page's own, opens on a `contextmenu` event, and the shared script raises that event on the focused tag, card, or row for the menu key, Shift+F10, and Alt+Enter, so no menu needs its own keyboard path. |
+| `renderLoading(label, immediate)` | A `.loading` line; `immediate` skips the 400 ms wait. |
 | `renderIconButton(options)` | An icon-only `.icon-button`: `label` is its accessible name and, unless `tip` is given, its tip; `key` becomes `data-tip-key`; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`. Never emits `title`. |
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
@@ -593,6 +609,7 @@ today, and how many tasks need a new date as a `.text-button` that opens
 | --- | --- |
 | `createNonce()` | One nonce per page, gating its inline style and script. |
 | `getTipScript()` | The tip alone, for a page that does not take `getComponentScript()` (the Notes Graph). The component script includes it. |
+| `loadingHtml(label, attributes)` | A page's `<main id="app">` before its first state: busy, with one `.loading` line. |
 | `iconButtonHtml(options)` | `renderIconButton` for static HTML the host builds, such as the Notes Graph's zoom buttons. |
 | `getContentSecurityPolicy(cspSource, nonce, options)` | The shared CSP. `{ images: true }` adds `img-src`, `{ fonts: true }` adds `font-src`. |
 

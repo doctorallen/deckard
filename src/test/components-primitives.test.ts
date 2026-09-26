@@ -174,6 +174,47 @@ suite('Component primitives', () => {
     });
   });
 
+  suite('loading (9f)', () => {
+    test('every page starts busy, with a loading line rather than an empty box', () => {
+      for (const [name, render] of pages.filter(([name]) => !['Help', 'Notes Graph'].includes(name))) {
+        const html = render();
+        assert.match(html, /<main id="app"[^>]* aria-busy="true"><div class="loading" role="status">/, `${name} starts busy`);
+      }
+    });
+
+    test('the sidebar\'s indexing count shows at once and keeps the page busy', async () => {
+      page = openWebviewPage(getSidebarNotesHtml(webview, '1.0.0'), {
+        state: 'loading', progress: { completed: 412, total: 3760 }, notes: [], activeTags: [], tagTitleDisplayMode: 'inline',
+      });
+      await Promise.resolve();
+      assert.strictEqual(page.text('.loading.is-immediate'), 'Indexing this workspace: 412 of 3,760 notes read…');
+      assert.strictEqual(page.find('#app').getAttribute('aria-busy'), 'true');
+    });
+
+    test('the first state clears the busy mark', async () => {
+      const board = openBoard();
+      await Promise.resolve();
+      assert.strictEqual(board.find('#app').getAttribute('aria-busy'), null);
+    });
+
+    test('a search still out after a second shows a bar, and its answer clears it', async () => {
+      const search = openSearch();
+      const input = search.find('[data-action="query-input"]') as HTMLInputElement;
+      input.value = 'lift';
+      input.dispatchEvent(new search.window.Event('input', { bubbles: true }));
+      search.click('[data-action="apply-query"]');
+      assert.ok(search.lastPosted('setOverviewQuery'), 'the search went out');
+      await wait(1100);
+      assert.ok(search.find('.query-workspace').classList.contains('is-searching'));
+      assert.strictEqual(search.find('#app').getAttribute('aria-busy'), 'true');
+      const index = buildWorkspaceIndex(new Map([['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas\nThe lift is stuck.\n')]]));
+      search.send(createSearchPageSnapshot(index, store!.value, '#project/atlas AND lift', {}));
+      await Promise.resolve();
+      assert.ok(!search.find('.query-workspace').classList.contains('is-searching'));
+      assert.strictEqual(search.find('#app').getAttribute('aria-busy'), null);
+    });
+  });
+
   suite('tips (9d)', () => {
     test('a keyboard focus shows the tip at once, with its key, and Escape hides it', () => {
       const search = openSearch('#project/atlas', { history: { back: true, forward: false } });

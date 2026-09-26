@@ -6,9 +6,10 @@ import {
   getBaseCss,
   getComponentScript,
   getContentSecurityPolicy,
+  getPageTailCss,
   getQueryEditorCss,
   getQueryEditorScript,
-  getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 
@@ -61,7 +62,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading tasks...</div></main>
+${loadingHtml('Loading tasks…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {

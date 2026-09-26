@@ -77,6 +77,12 @@
 
 ### Changed
 
+- **Loading waits before it speaks.** A page that loads quickly shows
+  nothing in the meantime; one that does not says *Loading search…* after
+  0.4 s, in a line rather than an empty box, and tells a screen reader it is
+  busy. A search still running after a second shows a thin bar under the
+  box.
+
 - **A long tag stays on one line.** A tag, a search term, or a Refine value
   too long for its place shortens, the namespace first, instead of breaking
   after its slash; the whole tag shows as its tip when it is cut short.

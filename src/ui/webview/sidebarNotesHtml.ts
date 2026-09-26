@@ -5,6 +5,7 @@ import {
   getBaseCss,
   getComponentScript,
   getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 import {
@@ -170,7 +171,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app" data-sidebar><div class="empty">Loading related notes...</div></main>
+${loadingHtml('Loading related notes…', 'data-sidebar')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {
@@ -374,9 +375,9 @@ ${getComponentScript()}
     } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
     } else if (state.state === 'loading') {
-      content = '<div class="empty">' + (state.progress && state.progress.total
+      content = renderLoading(state.progress && state.progress.total
         ? 'Indexing this workspace: ' + state.progress.completed.toLocaleString('en-US') + ' of ' + state.progress.total.toLocaleString('en-US') + ' notes read…'
-        : 'Indexing this workspace…') + '</div>';
+        : 'Indexing this workspace…', true);
     } else if (state.state === 'notIndexed') {
       content = '<div class="empty">This note is not indexed yet. Save it inside the notes folder to see related entries.</div>';
     } else if (state.state === 'noMarkdown') {

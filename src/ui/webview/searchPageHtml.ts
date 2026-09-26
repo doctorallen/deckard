@@ -12,9 +12,10 @@ import {
   createNonce,
   getBaseCss,
   getComponentScript,
+  getPageTailCss,
   getQueryEditorCss,
   getQueryEditorScript,
-  getPageTailCss,
+  loadingHtml,
   zenBodyAttribute,
 } from './components';
 
@@ -125,7 +126,7 @@ ${getPageTailCss()}
 </style>
 </head>
 <body${zenBodyAttribute()}>
-<main id="app"><div class="empty">Loading search...</div></main>
+${loadingHtml('Loading search…')}
 <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
 <script nonce="${nonce}">
 (function () {

@@ -395,6 +395,14 @@ mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transpar
 }
 
 /**
+ * What a page shows before its first state arrives: `#app`, busy, holding
+ * one `.loading` line. `attributes` adds any the page's main carries.
+ */
+export function loadingHtml(label: string, attributes = ''): string {
+  return `<main id="app"${attributes ? ` ${attributes}` : ''} aria-busy="true"><div class="loading" role="status"><span>${label}</span></div></main>`;
+}
+
+/**
  * An icon-only button for HTML the host builds, the twin of the page
  * script's renderIconButton: its label is its name and its tip, and it never
  * carries title, which no keyboard ever saw.
@@ -522,6 +530,14 @@ export function getSurfaceCss(): string {
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .metric-label { display: block; color: var(--muted); font-size: var(--text-xs); }
 .metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
+
+/* A page still waiting for what it shows: muted words in the page's flow,
+   not the dashed box an empty result is drawn in. Revealed after 400 ms by a
+   step rather than motion, so a page that draws within that never flashes
+   it, and reduced motion, which stops transitions, leaves it alone. */
+.loading { display: grid; min-height: 96px; place-items: center; color: var(--muted); font: var(--text-sm) var(--font-mono); opacity: 0; animation: loading-reveal 0s linear 400ms forwards; }
+.loading.is-immediate { opacity: 1; animation: none; }
+@keyframes loading-reveal { to { opacity: 1; } }
 
 .empty {
   margin-top: var(--space-5);
@@ -1254,6 +1270,31 @@ export function getComponentScript(): string {
     // Repeating the same string is not announced again, so clear it first.
     if (status.textContent === text) status.textContent = '';
     status.textContent = text;
+  }
+
+  /**
+   * Loading, drawn as the host's loadingHtml draws it. immediate shows it at
+   * once, for a line that redraws on every tick, such as the sidebar's
+   * indexing count, whose 400 ms wait would otherwise start over forever.
+   */
+  function renderLoading(label, immediate) {
+    return '<div class="loading' + (immediate ? ' is-immediate' : '') + '" role="status"><span>' + escapeHtml(label) + '</span></div>';
+  }
+
+  /**
+   * #app is busy exactly while it holds a .loading, or while a search it
+   * ran is still out; pages do nothing about it. #live-status sits outside
+   * #app, so what a page announces still goes through.
+   */
+  let searchInFlight = false;
+  function syncBusy() {
+    const app = document.getElementById('app');
+    if (!app) return;
+    if (searchInFlight || app.querySelector('.loading')) app.setAttribute('aria-busy', 'true');
+    else app.removeAttribute('aria-busy');
+  }
+  if (typeof MutationObserver === 'function' && document.getElementById('app')) {
+    new MutationObserver(syncBusy).observe(document.getElementById('app'), { childList: true, subtree: true });
   }
 
   /**
@@ -2874,7 +2915,12 @@ ${getTipScript()}
  */
 export function getQueryEditorCss(): string {
   return `
-.query-workspace { margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+.query-workspace { position: relative; margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
+/* A search still out after a second: a thin bar along the box's foot. It is
+   information, not ornament, so zen keeps it. */
+.query-workspace.is-searching::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: searching 1.1s linear infinite; }
+@keyframes searching { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+@media (prefers-reduced-motion: reduce) { .query-workspace.is-searching::after { animation: none; background: var(--accent); opacity: .5; } }
 .query-bar-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; padding: 10px; }
 .query-input { flex: 1 1 auto; min-width: 0; min-height: 32px; border: var(--edge) solid var(--line-strong); background: var(--panel-deep); color: var(--text); padding: 5px 9px; font: var(--text-sm) var(--font-mono); }
 .query-input:focus { border-color: var(--amber); outline: 2px solid transparent; }
@@ -3072,6 +3118,8 @@ export function getQueryEditorScript(): string {
     let appliedSeen;
     /** Set between applying a search and seeing the host's answer. */
     let awaitingApply = false;
+    /** Fires a second into a search that has not come back. */
+    let searchingTimer;
     let builderOpen = false;
     /**
      * Local builder rows. A row not finished yet contributes nothing to the
@@ -3145,7 +3193,7 @@ export function getQueryEditorScript(): string {
         ? '<span class="query-error" role="alert">' + escapeHtml(errors[0].message) + '</span>'
         : '<span class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>';
       const label = options.label || 'Search';
-      return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
+      return '<section class="query-workspace' + (searchInFlight ? ' is-searching' : '') + '"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions popover is-dropdown" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + '<button class="query-apply" data-action="apply-query" data-tip="Run this search">Search</button>'
@@ -3640,6 +3688,18 @@ export function getQueryEditorScript(): string {
      */
     function run(text, keepEntry, incidental, focusBar) {
       awaitingApply = true;
+      // A search still out after a second shows a thin bar under the box.
+      clearTimeout(searchingTimer);
+      // The page's document, held here: the timer can outlive the frame
+      // that set it, and must not reach for a global that has since gone.
+      const page = document;
+      searchingTimer = setTimeout(function () {
+        if (!awaitingApply || !page || !page.querySelectorAll) return;
+        searchInFlight = true;
+        page.querySelectorAll('.query-workspace').forEach(function (workspace) { workspace.classList.add('is-searching'); });
+        const app = page.getElementById ? page.getElementById('app') : null;
+        if (app) app.setAttribute('aria-busy', 'true');
+      }, 1000);
       lastEntry = entry;
       entryAfterRun = keepEntry ? entry : '';
       // The host answers with a fresh snapshot, and the page rebuilds itself
@@ -4037,6 +4097,12 @@ export function getQueryEditorScript(): string {
           }
           appliedSeen = text;
           awaitingApply = false;
+          clearTimeout(searchingTimer);
+          if (searchInFlight) {
+            searchInFlight = false;
+            document.querySelectorAll('.query-workspace.is-searching').forEach(function (workspace) { workspace.classList.remove('is-searching'); });
+            syncBusy();
+          }
         }
         if (text !== builderSourceText) {
           builderDraft = undefined;
