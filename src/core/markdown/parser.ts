@@ -1678,6 +1678,11 @@ function findNearestSection(
     )[0];
 }
 
+/** A list item's indentation, or undefined for a line that is not one. */
+export function listItemIndentation(line: string): number | undefined {
+  return getListItemMatch(line)?.indentation;
+}
+
 function getListItemMatch(line: string): ListItemMatch | undefined {
   const match = line.match(listItemPattern) ?? line.match(orderedListItemPattern);
   return match ? { indentation: match[1].length } : undefined;
@@ -1688,7 +1693,7 @@ function getListItemMatch(line: string): ListItemMatch | undefined {
  * same boundary rule as a heading section: the next sibling or ancestor item
  * ends the note.
  */
-function findListItemEndLine(
+export function findListItemEndLine(
   lines: string[],
   startIndex: number,
   indentation: number,

@@ -299,6 +299,12 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.moveTo",
+        "title": "Move to…",
+        "category": "Deckard",
+        "icon": "$(arrow-right)"
+      },
+      {
         "command": "deckard.extractHeading",
         "title": "Extract Heading",
         "category": "Deckard"
@@ -597,6 +603,10 @@
         },
         {
           "command": "deckard.extractHeading",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.moveTo",
           "when": "editorLangId == markdown"
         },
         {
@@ -1333,6 +1343,20 @@
             "default": "severalNotes",
             "order": 5,
             "markdownDescription": "When renaming or merging a tag, and renaming a heading, show the changes in VS Code's refactor preview before they are written, where each one can be left out. [Undo Last Change](command:deckard.undoLastChange) takes back whatever was written."
+          },
+          "deckard.moveTo.leaveBehind": {
+            "type": "string",
+            "enum": [
+              "link",
+              "nothing"
+            ],
+            "enumDescriptions": [
+              "A task becomes \"- [>] … → [[where it went]]\"; anything else becomes a [[link]] to where it went.",
+              "Nothing: the lines are taken out."
+            ],
+            "default": "link",
+            "order": 6,
+            "description": "What Move to… leaves where the lines were."
           },
           "deckard.editor.taskDependencies": {
             "type": "boolean",

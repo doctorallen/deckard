@@ -135,6 +135,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](#claude-code-and-other-mcp-clients) to Claude Code, offering to turn the server on first. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
+| **Deckard: Move to…** | Moves the line, task, or selection under another heading or into a new note, and leaves a link behind. |
 | **Deckard: Extract Heading** | Moves a heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
 | **Deckard: Open Search Page** | Opens a search page listing every note, ready for a search. |
@@ -899,6 +900,14 @@ Run `Deckard: Extract Heading` with the cursor inside a heading section, tagged 
 
 The note name is used as a single Markdown filename. Existing notes are never overwritten; choose a different name when a conflict is reported.
 
+### Moving lines and tasks
+
+`Deckard: Move to…` moves what the cursor is on — a task or list item with everything nested under it, or one line of prose — or every line a selection touches, under another heading, into today's note, or into a new note. A selection that ends at the start of a line leaves that line alone, and one whose last item has children takes them too. It will not move a heading (Extract Heading does that), a blank line, front matter, or half a code block. It is on the lightbulb of a task line or a selection, in the palette, on a task in the Tasks view, on a Task board card's menu, and in Find's list for a task.
+
+The list of places starts with **New note…** and **Today's note**, then the five headings Capture and Move to… went under last, then every heading. The lines go under the heading's own lines, above any heading nested in it, with the first line's indentation taken off. Where they were, a task left behind becomes `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`, as rollover's migrate writes it, and anything else becomes one `[[link]]` to where it went; set `deckard.moveTo.leaveBehind` to `nothing` to take the lines out without a trace. A `[>]` line is neither a task nor an entry on a tag's page.
+
+The lines are read again once you have chosen where they go: if they changed in the meantime, or the heading is gone, nothing is written. The move is one write, previewed only when `deckard.previewWorkspaceWrites` is `always`; the message's **Undo**, or `Deckard: Undo Last Change`, puts both notes back and removes a new note if it is unchanged.
+
 ## Daily notes
 
 Run `Deckard: Create Daily Note` from the Command Palette, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the shortcut in Related Notes. Deckard creates a note named with the local date, such as `2026-08-30.md`, in your configured notes folder or workspace root and opens it. If today's note already exists, Deckard opens it without replacing its contents.
@@ -1103,6 +1112,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.embedProblems` | `true` | Says above an `![[embed]]` the preview cannot draw which heading or `^marker` it is missing. |
 | `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, the other notes that name it without a link, with an action that links them. |
 | `deckard.updateLinksOnRename` | `true` | Rewrites every `[[Wiki link]]` that named a note by its old title when the note is renamed, in the same step as the rename. See [Renaming notes and headings](#renaming-notes-and-headings). |
+| `deckard.moveTo.leaveBehind` | `link` | What Move to… leaves where the lines were: a task becomes `- [>] … → [[where it went]]` and anything else a `[[link]]`; `nothing` takes the lines out. |
 | `deckard.previewWorkspaceWrites` | `severalNotes` | When a write reaches more than one note, shows it in VS Code's refactor preview first. `always` shows every write, `never` applies them straight away. See [Previewing and undoing a write](#previewing-and-undoing-a-write). |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks with Deckard queries and list tags, after you allow the first call in each session. See [AI assistants](#ai-assistants). |
 | `deckard.mcpServer.enabled` | `false` | Runs a Model Context Protocol server on 127.0.0.1 with the same tools, for Claude Code and other MCP clients that carry its token. See [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients). |

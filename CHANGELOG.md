@@ -12,6 +12,13 @@
 
 ### Added
 
+- **Move to….** `Deckard: Move to…`, or the lightbulb on a task line or a
+  selection, moves a line, a task with its steps, or a selection under
+  another heading, into today's note, or into a new note. A task left
+  behind becomes `- [>] … → [[where it went]]`, anything else a `[[link]]`
+  (`deckard.moveTo.leaveBehind`). Nothing is written if the lines changed
+  while you chose, and **Undo** puts both notes back.
+
 - **Find and Capture start from the selection.** With a few words selected
   on one line, Find searches them and Capture starts from them; a capture
   from a note links back to the heading they came from, after the words and

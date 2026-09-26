@@ -36,6 +36,7 @@ import {
 } from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
+import { moveToCommand, MoveToActions } from './ui/commands/moveTo';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import {
   CREATE_LINKED_NOTE_COMMAND,
@@ -935,6 +936,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.extractHeading', () =>
       extractHeadingCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.moveTo', () =>
+      moveToCommand(indexer, preferences),
+    ),
+    vscode.languages.registerCodeActionsProvider(
+      { pattern: '**/*.md' },
+      new MoveToActions(indexer),
+      { providedCodeActionKinds: MoveToActions.kinds },
     ),
   );
   context.subscriptions.push(

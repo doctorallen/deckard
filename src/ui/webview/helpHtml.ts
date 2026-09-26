@@ -158,6 +158,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.newNoteFromTemplate': 'A new note from one of your templates.',
   'deckard.copyMcpSetup': 'Copies the command that adds Deckard to Claude Code.',
   'deckard.resetMcpToken': 'Makes a new token, so old setups stop working.',
+  'deckard.moveTo': 'Moves this line, task, or selection under another heading, leaving a link.',
   'deckard.extractHeading':
     'Moves a heading and everything under it into a note of its own, leaving a link behind.',
   'deckard.showTagOverview': 'Opens a tag’s search page.',
@@ -637,7 +638,7 @@ tag = #project/atlas AND task = open
         <div class="card"><h3>Tags that look alike</h3><p>Stats ranks the pairs that look like one idea spelled twice — a name written with two markers, in two namespaces, punctuated two ways, pluralized, or mistyped — each with <strong>Merge</strong> beside it. A tag’s own page says how else it is written, with <strong>Include in search</strong> and <strong>Merge</strong>.</p></div>
         <div class="card"><h3>Hub notes</h3><p>A note whose front matter says <code>describes: [project/atlas]</code> leads that tag’s page, and its other fields are shown as the tag’s properties. Home lists the frequently used tags that have no hub yet, and a tag’s page without one offers <strong>Create hub note</strong> under its title. The entries that link to the hub are listed on the tag’s page too, marked <em>Links the hub note</em>, and the page counts the entries that write the tag’s name as a plain word, with <strong>Show them</strong>.</p></div>
         <div class="card"><h3>Before and after a write</h3><p>A write that reaches more than one note opens in VS Code’s refactor preview first, where any change can be left out. <code>Deckard: Undo Last Change</code> puts those notes back afterwards, leaving alone any note that changed since.</p></div>
-        <div class="card"><h3>Extracting a section</h3><p><code>Deckard: Extract Heading</code> moves a heading, and everything nested under it, into a note of its own and leaves a <code>[[link]]</code> in its place.</p></div>
+        <div class="card"><h3>Extracting and moving</h3><p><code>Deckard: Extract Heading</code> moves a heading, and everything nested under it, into a note of its own and leaves a <code>[[link]]</code> in its place. <code>Deckard: Move to…</code> moves a line, a task and its steps, or a selection under another heading, into today’s note, or into a new note, leaving a link or a <code>[&gt;]</code> task behind.</p></div>
         <div class="card"><h3>Templates</h3><p><code>Deckard: New Note from Template</code> creates a note from a file in your templates folder, filling in the date, the title, and anything the template asks for.</p></div>
       </div>
     </section>
