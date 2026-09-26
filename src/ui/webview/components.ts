@@ -3354,7 +3354,7 @@ export function getQueryEditorScript(): string {
    */
   function createQueryEditor(options) {
     const DEFAULT_OPERATORS = {
-      tag: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],
+      tag: ['eq', 'neq'], link: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],
       task: ['eq', 'neq'], due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
       start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
       priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], has: ['eq', 'neq'], kind: ['eq', 'neq'],
@@ -3370,7 +3370,7 @@ export function getQueryEditorScript(): string {
     /** Priority compares rank, not time. */
     const PRIORITY_OPERATOR_DESCRIPTIONS = { gt: 'above', gte: 'at or above', lt: 'below', lte: 'at or below' };
     const FIELD_PLACEHOLDERS = {
-      tag: '#project/atlas', text: 'vendor review', is: 'open', task: 'open', due: 'today', scheduled: 'today',
+      tag: '#project/atlas', link: 'Atlas#Decision', text: 'vendor review', is: 'open', task: 'open', due: 'today', scheduled: 'today',
       start: 'today', done: '7d', priority: 'high', has: 'due', kind: 'project', file: '2026-09-*.md',
       path: 'notes/*', in: 'notes/projects', created: '2026-09-13', updated: '30d',
     };
@@ -3488,7 +3488,7 @@ export function getQueryEditorScript(): string {
      */
     function scanQuery(text) {
       const tokens = [];
-      const pattern = /"(?:[^"\\\\]|\\\\.)*"?|'[^']*'?|[()]|[^\\s()]+/g;
+      const pattern = /-?\\[\\[[^\\]]*(?:\\]\\]?)?|"(?:[^"\\\\]|\\\\.)*"?|'[^']*'?|[()]|[^\\s()]+/g;
       let match;
       while ((match = pattern.exec(text))) {
         tokens.push({ text: match[0], start: match.index, end: match.index + match[0].length });
@@ -3498,6 +3498,11 @@ export function getQueryEditorScript(): string {
       for (let index = 0; index < tokens.length; index += 1) {
         const token = tokens[index];
         const word = token.text;
+        if (/^-?\\[\\[/.test(word)) {
+          // [[Atlas plan]] is one term, spaces and all.
+          pieces.push({ kind: 'link', start: token.start, end: token.end, negated: word.charAt(0) === '-' });
+          continue;
+        }
         let tag = /^(-|!)?([#@][^\\s()"']+)$/.exec(unquote(word));
         if (tag) {
           pieces.push({ kind: 'tag', start: token.start, end: token.end, negated: Boolean(tag[1]) });
@@ -3571,7 +3576,9 @@ export function getQueryEditorScript(): string {
       }
       const pieces = scanQuery(term.text);
       const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
-      const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) ? ' is-negated' : '');
+      // A link is one chip, struck through when negated, as a tag is.
+      const link = pieces.length === 1 && pieces[0].kind === 'link' ? pieces[0] : undefined;
+      const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) || (link && link.negated) ? ' is-negated' : '');
       return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" data-tip="Remove ' + escapeHtml(label) + '" data-tip-overflow="' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
     }
 
@@ -3903,14 +3910,21 @@ export function getQueryEditorScript(): string {
 
     /** One row as text, with shorthands written the way they are typed. */
     function formatBuilderCondition(row) {
+      if (row.field === 'link') return 'link ' + (OPERATOR_LABELS[row.operator] || '=') + ' [[' + stripLinkBrackets(row.value) + ']]';
       const value = quoteQueryValue(String(row.value).trim());
       if (row.field === 'has') return (row.operator === 'neq' ? 'no' : 'has') + ':' + value;
       if (SHORTHAND_FIELDS.indexOf(row.field) >= 0) return (row.operator === 'neq' ? '-' : '') + row.field + ':' + value;
       return row.field + ' ' + (OPERATOR_LABELS[row.operator] || '=') + ' ' + value;
     }
 
+    /** A link's note, as typed with or without its brackets and alias. */
+    function stripLinkBrackets(value) {
+      return String(value).trim().replace(/^\\[\\[/, '').replace(/\\]\\]$/, '').replace(/\\|.*$/, '').trim();
+    }
+
     function quoteQueryValue(value) {
-      return /[\\s:=<>~!()"']/.test(value) || !value
+      // [[x]] unquoted would read back as a link rather than the characters.
+      return /[\\s:=<>~!()"']/.test(value) || value.indexOf('[[') >= 0 || !value
         ? '"' + value.replace(/(["\\\\])/g, '\\\\$1') + '"'
         : value;
     }
@@ -3954,6 +3968,8 @@ export function getQueryEditorScript(): string {
       if (match && fieldFor(match[1])) {
         return row(fieldFor(match[1]), SYMBOL_OPERATORS[match[2]], unquote(match[3]));
       }
+      match = /^(-?)\\[\\[(.+?)\\]\\]$/.exec(value);
+      if (match) return row('link', match[1] ? 'neq' : 'eq', stripLinkBrackets(match[2]));
       if (/^-?[#@]/.test(value)) return row('tag', value.charAt(0) === '-' ? 'neq' : 'eq', value.replace(/^-/, ''));
       return row('text', 'contains', unquote(value));
     }

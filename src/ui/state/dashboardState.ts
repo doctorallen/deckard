@@ -71,7 +71,7 @@ import {
   parseDatePhrase,
   resolveDatePeriod,
 } from '../../core/markdown/dates';
-import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
+import { getBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
@@ -781,7 +781,7 @@ const ORPHAN_NOTE_LIMIT = 50;
 function findOrphanNotes(
   index: WorkspaceIndex,
 ): Pick<DeckardStatsSnapshot, 'orphanNotes' | 'orphanNoteCount'> {
-  const backlinks = buildBacklinkIndex(index);
+  const backlinks = getBacklinkIndex(index);
   const orphans = [...index.files.values()]
     .filter(
       (file) =>
@@ -1304,7 +1304,7 @@ function createTagOverviewCard(
 
 function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
   const heading = getFileName(file.filePath) ?? file.filePath;
-  const rawContent = getFrontmatterBody(file.content);
+  const rawContent = getFilePreamble(file);
   return {
     id: `frontmatter:${file.filePath}`,
     filePath: file.filePath,
@@ -1562,6 +1562,22 @@ function renderTaskTitle(task: Task): string {
 function getSectionBody(rawContent: string): string {
   const lines = rawContent.split(/\r?\n/);
   return lines.length > 1 ? lines.slice(1).join('\n').replace(/^\n/, '') : '';
+}
+
+/**
+ * What a note's own card shows. A note listed for its front matter tags shows
+ * its body; one listed only because a search by link found a link above its
+ * first heading shows the text above that heading, since each heading below
+ * is an entry of its own.
+ */
+function getFilePreamble(file: ParsedFile): string {
+  const body = getFrontmatterBody(file.content);
+  const firstHeading = file.sections.find((section) => !section.isInline);
+  if (file.frontmatterTags.length > 0 || !firstHeading) {
+    return body;
+  }
+  const lines = file.content.split(/\r?\n/).slice(0, firstHeading.startLine - 1);
+  return getFrontmatterBody(lines.join('\n')).trim();
 }
 
 function getFrontmatterBody(content: string): string {
@@ -1863,6 +1879,8 @@ export function describeQueryField(field: string): string {
   switch (field) {
     case 'tag':
       return 'A tag, including tags inherited from a parent heading';
+    case 'link':
+      return 'A note the entry links to, as [[Atlas]] or [[Atlas#Decision]]; aliases count';
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':

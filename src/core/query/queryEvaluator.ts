@@ -9,6 +9,14 @@ import {
   WorkspaceIndex,
 } from '../types';
 import { resolveIndexedTagKey } from '../workspace/tagNavigation';
+import {
+  getQueryLinkState,
+  LinkQuery,
+  LinkState,
+  matchesLinkQuery,
+  resolveLinkQuery,
+  UnitLink,
+} from './queryLinks';
 import { QueryConditionNode, QueryNode } from './queryTypes';
 
 /**
@@ -46,17 +54,86 @@ export function evaluateQuery(
   }
 
   const membership = buildTagMembership(index);
+  const context = createEvaluationContext(index, node);
+  const links = context.links;
+  const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
+    links ? { ...unit, links: links.byUnit.get(key) } : unit;
   const sections = [...index.sections.values()].filter((section) =>
-    matchesNode(node, createSectionUnit(index, membership, section)),
+    matchesNode(
+      node,
+      withLinks(createSectionUnit(index, membership, section), `section:${section.id}`),
+      context,
+    ),
   );
   const tasks = [...index.tasks.values()].filter((task) =>
-    matchesNode(node, createTaskUnit(index, membership, task)),
+    matchesNode(
+      node,
+      withLinks(createTaskUnit(index, membership, task), `task:${task.id}`),
+      context,
+    ),
   );
+  // A note is a result of its own only when it has tags of its own, or, for
+  // a search by link, a link none of its entries owns.
   const files = [...index.files.values()]
-    .filter((file) => (membership.files.get(file.filePath)?.size ?? 0) > 0)
-    .filter((file) => matchesNode(node, createFileUnit(membership, file)));
+    .filter(
+      (file) =>
+        (membership.files.get(file.filePath)?.size ?? 0) > 0 ||
+        (links?.looseFiles.has(file.filePath) ?? false),
+    )
+    .filter((file) =>
+      matchesNode(
+        node,
+        withLinks(createFileUnit(membership, file), `file:${file.filePath}`),
+        context,
+      ),
+    );
 
   return { sections, tasks, files };
+}
+
+/**
+ * What one evaluation reads besides the unit itself: the workspace's links,
+ * only when the search asks about them, and each link value read once.
+ */
+interface EvaluationContext {
+  index: WorkspaceIndex;
+  links?: LinkState;
+  linkQueries: Map<string, LinkQuery>;
+}
+
+function createEvaluationContext(
+  index: WorkspaceIndex,
+  node: QueryNode,
+): EvaluationContext {
+  return {
+    index,
+    ...(hasField(node, 'link') ? { links: getQueryLinkState(index) } : {}),
+    linkQueries: new Map(),
+  };
+}
+
+function hasField(node: QueryNode, field: QueryConditionNode['field']): boolean {
+  switch (node.type) {
+    case 'condition':
+      return node.field === field;
+    case 'not':
+      return hasField(node.child, field);
+    default:
+      return node.children.some((child) => hasField(child, field));
+  }
+}
+
+function matchesLinkCondition(
+  condition: QueryConditionNode,
+  unit: QueryUnit,
+  context: EvaluationContext,
+): boolean {
+  let query = context.linkQueries.get(condition.value);
+  if (!query) {
+    query = resolveLinkQuery(context.index, condition.value);
+    context.linkQueries.set(condition.value, query);
+  }
+  return applyNegation(condition, matchesLinkQuery(unit.links, query));
 }
 
 /** How many notes and tasks a search for a tag finds. */
@@ -214,6 +291,8 @@ interface QueryUnit {
   assignee?: string;
   /** The status written on the task's line, such as `waiting`, or ''. */
   status?: string;
+  /** The `[[links]]` on the unit's own lines, read for a `link` search. */
+  links?: readonly UnitLink[];
 }
 
 /**
@@ -438,26 +517,33 @@ function createFileUnit(
   };
 }
 
-function matchesNode(node: QueryNode, unit: QueryUnit): boolean {
+function matchesNode(
+  node: QueryNode,
+  unit: QueryUnit,
+  context: EvaluationContext,
+): boolean {
   switch (node.type) {
     case 'and':
-      return node.children.every((child) => matchesNode(child, unit));
+      return node.children.every((child) => matchesNode(child, unit, context));
     case 'or':
-      return node.children.some((child) => matchesNode(child, unit));
+      return node.children.some((child) => matchesNode(child, unit, context));
     case 'not':
-      return !matchesNode(node.child, unit);
+      return !matchesNode(node.child, unit, context);
     case 'condition':
-      return matchesCondition(node, unit);
+      return matchesCondition(node, unit, context);
   }
 }
 
 function matchesCondition(
   condition: QueryConditionNode,
   unit: QueryUnit,
+  context: EvaluationContext,
 ): boolean {
   switch (condition.field) {
     case 'tag':
       return applyNegation(condition, matchesTag(condition.value, unit));
+    case 'link':
+      return matchesLinkCondition(condition, unit, context);
     case 'text':
       return matchesText(condition, unit);
     case 'task':

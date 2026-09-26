@@ -1,3 +1,4 @@
+import { parseWikiTarget } from '../workspace/backlinks';
 import { resolveDateRange } from './queryEvaluator';
 import {
   ParsedQuery,
@@ -22,13 +23,14 @@ import {
  * andExpression := notExpression (AND? notExpression)*
  * notExpression := (NOT | '-' | '!')? primary
  * primary    := '(' orExpression ')' | condition
- * condition  := field operator value | tagToken | textToken
+ * condition  := field operator value | tagToken | linkToken | textToken
  * ```
  *
  * Adjacent terms are joined with an implicit AND, so `#project/atlas #urgent`
  * means the same thing as `#project/atlas AND #urgent`. A bare `#tag` or
  * `@person` token is a tag condition and a bare or quoted word is a text
- * condition, which keeps simple searches free of field syntax.
+ * condition, which keeps simple searches free of field syntax. A bare
+ * `[[Note]]` is a link condition, `link = [[Note]]`.
  *
  * `=` is the equality operator. `:` is still accepted as a synonym so queries
  * written before `=` became canonical keep working.
@@ -61,6 +63,9 @@ export function parseQuery(text: string): ParsedQuery {
 export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
   tag: 'tag',
   tags: 'tag',
+  link: 'link',
+  links: 'link',
+  linksto: 'link',
   text: 'text',
   content: 'text',
   body: 'text',
@@ -183,6 +188,7 @@ const PRIORITY_VALUE_ALIASES: Readonly<Record<string, string>> = {
 
 type TokenType =
   | 'word'
+  | 'link'
   | 'string'
   | 'operator'
   | 'and'
@@ -196,6 +202,8 @@ interface Token {
   value: string;
   start: number;
   end: number;
+  /** For a link, the whole `[[…]]` as written. */
+  raw?: string;
 }
 
 /** Characters that terminate a bare word. */
@@ -268,6 +276,30 @@ function tokenize(text: string, diagnostics: QueryDiagnostic[]): Token[] {
         });
       }
       tokens.push({ type: 'string', value, start, end: index });
+      continue;
+    }
+
+    if (text.startsWith('[[', index)) {
+      // `[[Atlas plan]]` is one term, spaces and all; links do not nest.
+      const start = index;
+      const close = text.indexOf(']]', index + 2);
+      const end = close < 0 ? text.length : close + 2;
+      if (close < 0) {
+        diagnostics.push({
+          message: 'This link is missing its closing ]].',
+          severity: 'error',
+          start,
+          end,
+        });
+      }
+      tokens.push({
+        type: 'link',
+        value: text.slice(start + 2, close < 0 ? end : close),
+        start,
+        end,
+        raw: text.slice(start, end),
+      });
+      index = end;
       continue;
     }
 
@@ -515,6 +547,11 @@ class Parser {
       return this.parseWordCondition();
     }
 
+    if (token.type === 'link') {
+      this.next();
+      return this.createCondition('link', 'eq', token.value, token.start, token.end);
+    }
+
     if (token.type === 'operator') {
       this.next();
       this.diagnostics.push({
@@ -589,7 +626,7 @@ class Parser {
       operator = QUERY_OPERATOR_INVERSES[operator];
     }
 
-    const valueToken = this.consumeValueToken();
+    const valueToken = this.consumeValueToken(field);
     if (!valueToken) {
       this.diagnostics.push({
         message: `${field} needs a value after "${operatorToken.value}".`,
@@ -626,12 +663,19 @@ class Parser {
   /**
    * Takes the token that supplies a condition's value, if one is present.
    */
-  private consumeValueToken(): Token | undefined {
+  private consumeValueToken(field?: QueryField): Token | undefined {
     const token = this.peek();
-    if (!token || (token.type !== 'word' && token.type !== 'string')) {
+    if (
+      !token ||
+      (token.type !== 'word' && token.type !== 'string' && token.type !== 'link')
+    ) {
       return undefined;
     }
-    return this.next();
+    this.next();
+    // `text ~ [[x]]` still means the characters; only `link` reads the name.
+    return token.type === 'link' && field !== 'link'
+      ? { ...token, type: 'word', value: token.raw ?? token.value }
+      : token;
   }
 
   /**
@@ -645,6 +689,19 @@ class Parser {
     end: number,
   ): QueryConditionNode | undefined {
     const value = rawValue.trim();
+    if (field === 'link') {
+      const target = readLinkValue(value);
+      if (!target) {
+        this.diagnostics.push({
+          message: "link needs a note's name, such as [[Atlas]] or [[Atlas#Decision]].",
+          severity: 'error',
+          start,
+          end,
+        });
+        return undefined;
+      }
+      return { type: 'condition', field, operator, value: target, start, end };
+    }
     if (!value) {
       this.diagnostics.push({
         message: `${field} needs a value.`,
@@ -788,11 +845,39 @@ class Parser {
     const type = this.peek()?.type;
     return (
       type === 'word' ||
+      type === 'link' ||
       type === 'string' ||
       type === 'lparen' ||
       type === 'not'
     );
   }
+}
+
+/**
+ * The note a `link` value names, as the AST keeps it: without brackets or an
+ * alias after `|`, such as `Atlas`, `Atlas#Decision`, or `Atlas#^q3`. Empty
+ * when no note is named, as in `[[#Decision]]`.
+ */
+export function readLinkValue(value: string): string {
+  let inner = value.trim();
+  if (inner.startsWith('[[')) {
+    inner = inner.slice(2);
+  }
+  if (inner.endsWith(']]')) {
+    inner = inner.slice(0, -2);
+  }
+  const bar = inner.indexOf('|');
+  if (bar >= 0) {
+    inner = inner.slice(0, bar);
+  }
+  const target = parseWikiTarget(inner);
+  if (!target.note) {
+    return '';
+  }
+  if (target.block) {
+    return `${target.note}#^${target.block}`;
+  }
+  return target.heading ? `${target.note}#${target.heading}` : target.note;
 }
 
 /**

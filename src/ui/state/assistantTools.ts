@@ -28,6 +28,7 @@ export const QUERY_SYNTAX_GUIDE = [
   'Deckard query syntax: conditions combine with AND, OR, NOT, and parentheses.',
   'tag = #project/atlas matches a tag, and tag = #risk/* a whole namespace; a bare #tag or @person also works.',
   'text ~ "vendor" matches words in note and task text.',
+  'link = [[Atlas]], or a bare [[Atlas]], matches the entries that link to the note Atlas, by its name or an alias; [[Atlas#Decision]] matches links to one heading.',
   'task = open, done, or any matches tasks only.',
   'due, scheduled, and start take a date such as 2026-09-20, today, tomorrow, a weekday such as friday (the next one), a phrase such as "oct 3" or end-of-month, a whole week or month such as this-week or next-month, a window such as 7d counted forward, or none.',
   'done = 7d matches tasks completed in the last seven days.',

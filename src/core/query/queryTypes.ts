@@ -16,6 +16,9 @@
  * Obsidian Tasks metadata, so only tasks can satisfy them. The remaining
  * fields describe the source unit itself.
  *
+ * `link` matches the entries that link to a note, written `link = [[Atlas]]`
+ * or as a bare `[[Atlas]]`; `[[Atlas#Decision]]` names one heading of it.
+ *
  * `assignee` reads the person a task is for: whoever the 👤 field on its
  * line names. Only tasks can satisfy it, the way the date fields work.
  *
@@ -26,6 +29,7 @@
  */
 export type QueryField =
   | 'tag'
+  | 'link'
   | 'text'
   | 'is'
   | 'task'
@@ -45,6 +49,7 @@ export type QueryField =
 
 export const QUERY_FIELDS: readonly QueryField[] = [
   'tag',
+  'link',
   'text',
   'is',
   'task',
@@ -136,6 +141,7 @@ export const QUERY_FIELD_OPERATORS: Readonly<
   Record<QueryField, readonly QueryOperator[]>
 > = {
   tag: ['eq', 'neq'],
+  link: ['eq', 'neq'],
   text: ['contains', 'notContains', 'eq', 'neq'],
   is: ['eq', 'neq'],
   task: ['eq', 'neq'],

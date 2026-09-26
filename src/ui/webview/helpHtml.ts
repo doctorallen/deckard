@@ -567,7 +567,7 @@ updated: 2026-09-20
 
     <section id="query">
       <h2>Query language</h2>
-      <p>A query is what you type into Find, a search box, a <a href="#query-blocks">query block</a>, or an <a href="#assistants">AI assistant</a>. Terms combine with <code>AND</code>, <code>OR</code>, <code>NOT</code>, and parentheses; <code>AND</code> binds tighter than <code>OR</code>, adjacent terms are joined by an implicit <code>AND</code>, and <code>-</code> or <code>!</code> negates a term. A bare <code>#tag</code> is a tag condition and a bare word is a text condition.</p>
+      <p>A query is what you type into Find, a search box, a <a href="#query-blocks">query block</a>, or an <a href="#assistants">AI assistant</a>. Terms combine with <code>AND</code>, <code>OR</code>, <code>NOT</code>, and parentheses; <code>AND</code> binds tighter than <code>OR</code>, adjacent terms are joined by an implicit <code>AND</code>, and <code>-</code> or <code>!</code> negates a term. A bare <code>#tag</code> is a tag condition, a bare <code>[[Note]]</code> is a link condition, and a bare word is a text condition.</p>
       <pre><code>(tag = #project/atlas AND tag = @ren-kade) OR (tag = #risk/vendor AND text ~ "elevator")</code></pre>
       <div class="table-scroll"><table><caption>Shorthands, written the way GitHub writes them</caption><thead><tr><th>Shorthand</th><th>Finds</th></tr></thead><tbody>
         <tr><td><code>is:open</code>, <code>is:done</code></td><td>Open or completed tasks.</td></tr>
@@ -584,6 +584,7 @@ updated: 2026-09-20
       </tbody></table></div>
       <div class="table-scroll"><table><caption>Fields</caption><thead><tr><th>Field</th><th>Matches</th><th>Example</th></tr></thead><tbody>
         <tr><td><code>tag</code></td><td>A tag, including inherited and front-matter tags. <code>*</code> and <code>?</code> are wildcards.</td><td><code>tag = #risk/*</code></td></tr>
+        <tr><td><code>link</code></td><td>The entries that link to a note, by its name or an alias. <code>[[Atlas#Decision]]</code> narrows to one heading; a link to a note not written yet counts too.</td><td><code>link = [[Atlas#Decision]]</code></td></tr>
         <tr><td><code>text</code></td><td>Words in a body or a task line. <code>:</code> and <code>~</code> match a substring; <code>=</code> a whole word.</td><td><code>text ~ elevator</code></td></tr>
         <tr><td><code>task</code></td><td><code>open</code>, <code>done</code>, or <code>any</code>. Only tasks satisfy it.</td><td><code>task = open</code></td></tr>
         <tr><td><code>due</code>, <code>scheduled</code>, <code>start</code></td><td>A task date: a day, <code>today</code>, <code>tomorrow</code>, <code>friday</code>, <code>"oct 3"</code> or <code>end-of-month</code>, <code>this-week</code>, <code>next-month</code>, a window such as <code>7d</code>, or <code>none</code>.</td><td><code>due &lt;= friday</code></td></tr>

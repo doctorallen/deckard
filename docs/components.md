@@ -602,7 +602,9 @@ field after them holds the next term. A group among the terms is a
 a `.query-chip-group-remove` at the end; groups nest as the query does. Each
 chip carries `data-without`, the whole search cut as written without that
 term, which `getTopLevelTerms()` in `queryEdit.ts` works out on the host.
-A chip or group turned around with NOT is `.is-negated`, in red. `data-query-text` on the shell is the whole
+A chip or group turned around with NOT is `.is-negated`, in red.
+`scanQuery()` reads the box's pieces: `tag`, `link` (a whole `[[Atlas plan]]`,
+spaces and all, so it is one chip), `op`, `paren`, and `word`. `data-query-text` on the shell is the whole
 search, chips and typed term together. A chosen completion that is a whole
 term becomes a chip at once; Enter adds the typed term by AND; Backspace in an
 empty field removes the last chip; and a term not added is let go when focus

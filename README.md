@@ -775,7 +775,7 @@ A Deckard query is what you type into Find, the search box, a [query block](#que
 (tag = #project/atlas AND tag = @ren-kade) OR (tag = #risk/vendor AND text ~ "elevator")
 ```
 
-Terms combine with `AND`, `OR`, `NOT`, and parentheses. `AND` binds tighter than `OR`, adjacent terms are joined by an implicit `AND`, and `-` or `!` in front of a term negates it. A bare `#tag` or `@person` is a tag condition and a bare or quoted word is a text condition, so `#project/atlas "vendor risk"` is a complete query.
+Terms combine with `AND`, `OR`, `NOT`, and parentheses. `AND` binds tighter than `OR`, adjacent terms are joined by an implicit `AND`, and `-` or `!` in front of a term negates it. A bare `#tag` or `@person` is a tag condition, a bare `[[Note]]` is a link condition, and a bare or quoted word is a text condition, so `#project/atlas "vendor risk"` is a complete query.
 
 Common filters have one-token shorthands, written the way GitHub writes them:
 
@@ -804,6 +804,7 @@ The fields:
 | Field | Matches | Example |
 | --- | --- | --- |
 | `tag` | A tag, including tags a section inherits from a parent heading and tags a note carries in its front matter. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
+| `link` | The entries that link to a note, by its name or any `aliases:` name. `[[Atlas#Decision]]` narrows to links to that heading, `[[Atlas#^q3]]` to that marked line, and the text after `\|` is ignored. Only `=` and `!=`; the brackets are optional after `link`. | `[[Atlas]]`, `link = [[Atlas#Decision]]`, `-[[Atlas]]` |
 | `text` | Words in a note body, a task line, or a front-matter-only file. `:` and `~` match a substring; `=` and `!=` match a whole word. | `text ~ elevator`, `text = plan` |
 | `task` | `open`, `done`, or `any`. Only tasks can satisfy it, so a query using it returns no notes. | `task = open` |
 | `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a weekday such as `friday` (the next one), any other [day in plain words](#dates-in-plain-words) quoted or with `-` for its spaces, a whole week or month (`this-week`, `next-week`, `this-month`, `next-month`, `2026-10`), a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `due <= friday`, `due <= "oct 3"`, `due = this-week`, `due = none` |
@@ -814,6 +815,8 @@ The fields:
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
 | `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, `today`, a weekday such as `friday` (the last one), a whole week or month (`this-week`, `last-week`, `this-month`, `last-month`, or `2026-08`). A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13`, `created = last-month` |
+
+A link belongs to the entry whose own lines hold it, as a tag written there would: the task on its line, the tagged line it sits in, or else the heading it is written under (not that heading's parents). A link in front matter or above a note's first heading answers for the note itself, which the search lists with the text above its first heading. Links count wherever Linked from counts them: front matter included, code blocks left out, and a note's links to itself left out unless they name one of its headings. A link to a note that does not exist yet still counts, so `[[Q4 offsite]]` finds everything waiting on that note. A search that held `[[…]]` before this release searched for the words inside it; it now searches for the link.
 
 A week or a month is the whole span: `due = this-week` is any day of this week, `due < next-week` is before next week starts, and `created >= last-month` is from the 1st of last month on. A week starts on the day `deckard.calendar.weekStart` names, Sunday unless you change it. `friday` is one day, the next one for `due`, `scheduled`, and `start`, and the last one for `created`, `updated`, and `done`. Values are read when the search runs, so a saved search or query block of `this-week` moves on with the week. A numeric date such as `10/3` is not read in a search, since it would mean a different day on another machine.
 

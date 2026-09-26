@@ -262,6 +262,51 @@ suite('Tag overview query builder', () => {
     ]);
   });
 
+  test('builds a link row from [[Atlas plan]] typed in a new row, and writes its brackets once', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '';
+    state.query.builder = { join: 'and', items: [] };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    const row = (path: string) => ({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p' + path, path } });
+    view.key(view.type(row('0'), '[[Atlas plan]]'), 'Enter');
+    view.key(view.type(row('1'), '-[[Budget]]'), 'Enter');
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'link = [[Atlas plan]] AND link != [[Budget]]');
+  });
+
+  test('writes a link row as link = [[…]] whether or not its value has brackets', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = 'link = [[Atlas]]';
+    state.query.builder = {
+      join: 'and',
+      items: [{ field: 'link', operator: 'eq', value: 'Atlas', supported: true, text: 'link = [[Atlas]]' }],
+    };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+    assert.match(view.html(), /placeholder="Atlas#Decision"/);
+    const input = view.type({ dataset: { action: 'builder-set-value', suggestKey: 'p0', field: 'link', path: '0' } }, '[[Atlas plan]]');
+    view.key(input, 'Enter');
+    const last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'link = [[Atlas plan]]');
+  });
+
+  test('shows [[Atlas plan]] as one chip with one remove', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: Record<string, unknown> };
+    state.query.text = '[[Atlas plan]] -[[Budget]]';
+    state.query.terms = [
+      { text: '[[Atlas plan]]', without: '-[[Budget]]' },
+      { text: '-[[Budget]]', without: '[[Atlas plan]]' },
+    ];
+    view.send(state);
+    const html = view.html();
+    assert.strictEqual((html.match(/class="query-chip-remove"/g) ?? []).length, 2);
+    assert.match(html, /class="query-chip is-negated" data-action="remove-term" data-without="\[\[Atlas plan\]\]"/);
+  });
+
   test('removes an empty row with Backspace', () => {
     const view = mountTagOverview();
     view.send(createState());

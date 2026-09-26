@@ -12,6 +12,15 @@
 
 ### Added
 
+- **Search: what links to a note.** `[[Atlas]]` in any search box, Find, a
+  query block, or an assistant's query finds the entries that link to the
+  note Atlas, by its name or an alias; `link = [[Atlas#Decision]]` narrows
+  to links to one heading, and `-[[Atlas]]` leaves them out. A link belongs
+  to the entry whose own lines hold it, and a link above a note's first
+  heading lists the note itself. Links to a note not written yet count, so
+  `[[Q4 offsite]]` finds what waits on it. The builder has a **link** row,
+  and `[[Atlas plan]]` is one chip in the search box.
+
 - **Try next.** Home's first widget suggests one thing, when your notes are
   ready for it: a weekly review after five daily notes last week, merging
   two tags that look alike, the Task board once there are ten open tasks,
@@ -126,6 +135,11 @@
   there is none. Find offers the same row when what you type is a day.
 
 ### Changed
+
+- **`[[…]]` in a search is a link.** A saved search, query block, or board
+  search that held `[[Atlas]]` searched for the word *atlas*; it now finds
+  the entries that link to Atlas. `text ~ "[[x]]"` still searches for the
+  characters.
 
 - **The sample workspace is dated the day it is made.** Its tasks were due
   in August and September, so a sample made later was all overdue. It is

@@ -7,11 +7,7 @@ import {
   Section,
   WorkspaceIndex,
 } from '../../core/types';
-import {
-  BacklinkIndex,
-  buildBacklinkIndex,
-  noteTitle,
-} from '../../core/workspace/backlinks';
+import { getBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { getHeadingPath } from './dashboardState';
 import { findUnlinkedMentions } from './editorLensState';
 
@@ -24,8 +20,6 @@ import { findUnlinkedMentions } from './editorLensState';
  * mentions could only be linked all at once. This is the list a note-taking
  * app keeps beside the note, read from the same index.
  */
-const backlinkCache = new WeakMap<WorkspaceIndex, BacklinkIndex>();
-
 /** No more than this many of each are listed; the count says the rest. */
 const LIMIT = 50;
 
@@ -33,12 +27,7 @@ export function collectNoteLinks(
   index: WorkspaceIndex,
   file: ParsedFile,
 ): NoteLinks {
-  let backlinks = backlinkCache.get(index);
-  if (!backlinks) {
-    backlinks = buildBacklinkIndex(index);
-    backlinkCache.set(index, backlinks);
-  }
-  const linked = backlinks.toNote(file.filePath);
+  const linked = getBacklinkIndex(index).toNote(file.filePath);
   const mentions = findUnlinkedMentions(file, index).filter(
     (mention) => mention.filePath !== file.filePath,
   );

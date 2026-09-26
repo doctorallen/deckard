@@ -19,6 +19,8 @@ export interface WikiLinkOccurrence {
   line: number;
   startColumn: number;
   endColumn: number;
+  /** The note's name as the link writes it, trimmed; empty for `[[#Heading]]`. */
+  note: string;
   /** The note it points at, when exactly one note has that name. */
   targetPath?: string;
   /** The heading after `#`, as written. */
@@ -196,6 +198,21 @@ export class BacklinkIndex {
   }
 }
 
+const backlinkIndexes = new WeakMap<WorkspaceIndex, BacklinkIndex>();
+
+/**
+ * The backlink index of one workspace index, built once and shared by every
+ * surface that reads links: Linked from, orphans, and a search's `link`.
+ */
+export function getBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
+  let backlinks = backlinkIndexes.get(index);
+  if (!backlinks) {
+    backlinks = buildBacklinkIndex(index);
+    backlinkIndexes.set(index, backlinks);
+  }
+  return backlinks;
+}
+
 /**
  * Finds every Wiki link in the workspace's saved notes, front matter
  * included, and code fences excluded.
@@ -218,6 +235,7 @@ export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
           line,
           startColumn,
           endColumn: startColumn + match[0].length,
+          note: target.note,
           targetPath: resolveWikiTarget(titles, target.note, sourcePath),
           heading: target.heading,
           block: target.block,
