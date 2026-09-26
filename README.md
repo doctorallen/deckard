@@ -19,9 +19,9 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Related Notes](#related-notes) | A sidebar ranks the notes most related to the one you are editing and explains each score. |
 | [Notes Graph](#notes-graph) | An interactive map of every note, task, and tag connection in the workspace, or of one note's neighborhood. |
 | [Outline](#outline) | A sidebar tree of the current file's headings, with each heading's tags beside it. |
-| [Tasks view](#tasks-view) | Open tasks grouped by due status, priority, status, or person, which you can complete from their checkboxes. |
+| [Tasks view](#tasks-view) | Open tasks grouped by due status, priority, status, person, or any tag namespace — see [contexts, areas, and projects](#contexts-areas-and-projects) — which you can complete from their checkboxes. |
 | [Status bar](#status-bar-and-reminders) | How many tasks are due today, beside VS Code's other status items, with an optional reminder at an hour you pick. |
-| [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, or person, where dragging a card rewrites the task in its note, or as a ranked list. |
+| [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, person, or any tag namespace, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and a 👤 field for who a task is for, written in either Obsidian Tasks format. |
 | [Task editor](#editing-a-whole-task) | One command builds or edits a whole task — dates in plain words, priority, repeat rule, what it waits for — and writes the line. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
@@ -591,7 +591,7 @@ Run `Deckard: Open Task Board`, or select the board icon in the title bar of Rel
 - **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. While fewer than a quarter of the open tasks carry a status, a line above the columns says how many have none, how to give a task one, and offers **Group by due date**, which works for any task. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
 - **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
 - **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, No due date, and a muted **Needs a new date** for tasks more than 30 days overdue. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
-- **Tag…** groups by the tags of one namespace, chosen from a menu of the namespaces your open tasks carry, including tags inherited from headings and front matter: `#context/phone` and `#context/computer` each get a column, busiest first, then **No context**. A task with two such tags is a card in each column, which says **also in** the other. Dropping a card writes the new tag on the task line in place of the one it came from, or removes the task's own tags in **No context**; a tag inherited from a heading or front matter stays, and Deckard says so.
+- **Tag…** groups by the tags of one namespace, chosen from a menu of the namespaces your open tasks carry, including tags inherited from headings and front matter: `#context/phone` and `#context/computer` each get a column, busiest first, then **No context**. A task with two such tags is a card in each column, which says **also in** the other. Dropping a card writes the new tag on the task line in place of the one it came from, or removes the task's own tags in **No context**; a tag inherited from a heading or front matter stays, and Deckard says so. See [Contexts, areas, and projects](#contexts-areas-and-projects).
 - A due date is written by its distance from today with the date beside it — **Overdue 15 days · 2026-09-08**, **Due tomorrow · 2026-09-24** — on a board card, in the list and table, on Home and search pages, and in query blocks, so nothing has to be subtracted, and an overdue task says so in words rather than in color alone. Beyond a month either way only the date is written, and a done task keeps its date as written. A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue reads **was due 2026-07-01**, in muted text rather than red, wherever it is listed: the calendar keeps its count but drops the warning color and says the tasks need a new date.
 - Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
 - Search the tasks with the same [search box](#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks, and a search you run is added to your recent searches. The board opens on `is:open`, since a board is for what is still to do; clear the box for every task, or search `is:done` for the finished ones.
@@ -607,6 +607,16 @@ Run `Deckard: Open Task Board`, or select the board icon in the title bar of Rel
 - **+ Add task** at the foot of a column that takes a drop captures a task straight into it, in today's note, already written with that column's status, priority, date, or person. A column that will not take a drop says so while a card is dragged, and each card's **⋯** menu offers **Due on a date…** for any day.
 - In **List** under Rank, and anywhere else rows are ranked, **Move up** and **Move down** are in a row's right-click menu, and **Alt+↑** and **Alt+↓** move a focused row one place.
 - Every move is checked against the indexed line first, like a checkbox, so an edit made since the board last refreshed is never overwritten.
+
+### Contexts, areas, and projects
+
+Grouping by a tag namespace turns the tags you already write into the lists GTD and PARA ask for.
+
+- **Contexts**, where a task can be done: `#context/phone`, `#context/computer`, `#context/errands`. Not `@phone`, which Deckard reads as a person.
+- **Areas**, what you keep up over time: `tags: [area/health]` in a note's front matter, so every task in the note is in the area.
+- **Projects**, what you finish: a heading tag, `## Launch #project/atlas`, so every task under the heading is in the project, however deep.
+
+Then choose **Group Tasks By…** in the Tasks view's title, **Tag namespace…**, and `#context`; or **Tag…** on the Task board. Set `deckard.agenda.query` to `is:open`, or to a narrower search such as `is:available`, to choose which tasks the groups hold. A task with two contexts is in both lists. Dragging a task to another context rewrites the tag on its line; a project or area it inherits from a heading or front matter stays, and Deckard says where it comes from.
 
 ## Related Notes
 
