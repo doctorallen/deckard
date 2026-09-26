@@ -387,11 +387,11 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       return;
     }
     const name = await vscode.window.showInputBox({
-      title: 'Save this search',
-      prompt: 'Name this Task Board search',
+      title: 'Save search',
+      prompt: 'Name this search. It opens on the Task Board.',
       value: query,
       validateInput: (value) =>
-        value.trim() ? undefined : 'A saved filter needs a name.',
+        value.trim() ? undefined : 'A saved search needs a name.',
     });
     if (name === undefined) {
       return;

@@ -171,7 +171,7 @@ suite('Dashboard Home widgets', () => {
         ['Open tasks', 3],
         ['Tasks', 4],
         ['Tags', 2],
-        ['Entities', 2],
+        ['Namespaced tags', 2],
       ],
     );
   });

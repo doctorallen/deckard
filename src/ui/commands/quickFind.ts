@@ -83,7 +83,7 @@ const ADD_TO_SEARCH: vscode.QuickInputButton = {
 };
 const SAVE_AS_VIEW: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('save'),
-  tooltip: 'Save as a view',
+  tooltip: 'Save search',
 };
 const OPEN_BESIDE: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('split-horizontal'),
@@ -95,7 +95,7 @@ const INSERT_LINK: vscode.QuickInputButton = {
 };
 const SHOW_ALL: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('list-flat'),
-  tooltip: 'Show every result on the Dashboard',
+  tooltip: 'Open every result on a search page',
 };
 
 /**
@@ -345,17 +345,17 @@ export class QuickFind implements vscode.Disposable {
       const query = item.query;
       picker.hide();
       const name = await vscode.window.showInputBox({
-        title: 'Save Deckard filter',
+        title: 'Save search',
         prompt: 'Name this search',
         value: query,
         validateInput: (value) =>
-          value.trim() ? undefined : 'A saved filter needs a name.',
+          value.trim() ? undefined : 'A saved search needs a name.',
       });
       if (name !== undefined) {
         const saved = await this.preferences.saveSavedQueryFilter(name, query);
         if (saved) {
           void vscode.window.showInformationMessage(
-            `Saved Deckard filter: ${saved.name}`,
+            `Saved the search "${saved.name}".`,
           );
         }
       }

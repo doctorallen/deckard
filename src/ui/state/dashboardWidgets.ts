@@ -286,7 +286,7 @@ function createWidget(
           { label: 'Open tasks', value: tasks.filter((task) => !task.completed).length },
           { label: 'Tasks', value: tasks.length },
           { label: 'Tags', value: index.tags.size },
-          { label: 'Entities', value: index.entities.size },
+          { label: 'Namespaced tags', value: index.entities.size },
         ],
       };
     }

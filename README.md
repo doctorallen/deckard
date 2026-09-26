@@ -137,7 +137,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Insert Query Block…** | Writes a live [query block](#query-blocks) of a saved or recent search, or one you type, at the cursor. |
 | **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](#find). |
 | **Deckard: Search Notes and Tasks** | Opens a search page on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
-| **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
+| **Deckard: Link Current Heading to Entity** | Adds a person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 | **Deckard: Merge Tag…** | Merges one indexed tag into another that already exists, after showing what the merge will change. |
@@ -723,7 +723,7 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - A word also finds tags by their last part, so `atlas` offers `#project/atlas`, and a value finds its condition, so `overd` offers `is:overdue`. <kbd>Tab</kbd> completes the highlighted tag or condition into the search, as does the **+** button beside a tag.
 - <kbd>Enter</kbd> opens the note or task at its line, a tag's page, or a saved search. **Show all results**, or the list button in the title bar, opens the search on a search page.
 - When no note has every word, Find says so and shows the notes with some of them. A misspelled word gets a **Search for … instead** row with the closest word your notes contain.
-- With nothing typed, Find offers your recent searches, favorite and recently opened tags, saved searches, and the notes you opened last. A recent search has a button to save it as a view.
+- With nothing typed, Find offers your recent searches, favorite and recently opened tags, saved searches, and the notes you opened last. A recent search has a **Save search** button.
 - A note or task found has a button to **open it to the side**, which leaves Find open for the next, and a note has one to **insert a link** to it, at its heading, where the cursor was when Find opened.
 - Words that no note is called, and that read as a name rather than a search, offer **Create note “…”**, which creates it in your notes folder.
 - When what you type is a day, such as `friday`, `oct 3`, or `last friday`, Find offers to open that day's note first, and creates it when there is none, in place of **Create note**. A short weekday alone, such as `fri`, is searched for as a word.
@@ -840,7 +840,7 @@ tag = #project/atlas AND is:open
 - Notes are listed alphabetically. Tasks are listed open first, soonest due date first, then in source order; completed tasks are struck through and overdue due dates are highlighted.
 - After `deckard`, `sort=` reorders the results by any column a task has — `title`, `due`, `scheduled`, `start`, `done`, `priority`, `for`, `status`, `note`, `created`, or `updated` — with `dir=asc` or `dir=desc` to say which way; dates sort newest first unless told otherwise, and a task with nothing in the column comes last either way. Notes know only `title`, `created`, and `updated`. `limit=10` shows at most ten notes and ten tasks, while the header still reports the full totals.
 - `view=table` draws the tasks as a table instead of a list, with `columns=due,priority,for,note` choosing the columns in order; the title is always first. The columns are the ones `sort=` accepts, plus `tags`, `blocked` (what a task waits for), and `id`. Without `columns=`, a table shows the title, due date, priority, who it is for, and its note. Notes stay a list above the table.
-- In the editor, the line above the fence shows the totals and **Open in search**, which opens the same query on a search page, where you can refine it.
+- In the editor, the line above the fence shows the totals and **Open search page**, which opens the same query on a search page, where you can refine it.
 - Results refresh when any note in the workspace changes, not only the note that holds the block.
 - A query that does not parse shows its error in place of results. An unknown option is reported as a warning, and the rest of the block still runs.
 

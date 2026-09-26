@@ -60,12 +60,12 @@ export async function linkCurrentHeading(
           entity,
         })),
       {
-        label: '$(add) Create a new entity',
-        description: 'Insert a canonical tag in this heading',
+        label: '$(add) A new person, project, or topic…',
+        description: 'Writes its tag at the end of the heading',
         create: true,
       },
     ],
-    { placeHolder: `Link "${headingName}" to an entity` },
+    { placeHolder: `Tag "${headingName}" with a person, project, or other namespaced tag` },
   );
   if (!choice) {
     return;
@@ -108,7 +108,7 @@ async function createEntity(
   ];
   const kind = await vscode.window.showQuickPick<EntityKindChoice>(
     kinds,
-    { placeHolder: 'Choose entity type' },
+    { placeHolder: 'What is it?' },
   );
   if (!kind) {
     return undefined;

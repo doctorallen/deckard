@@ -315,13 +315,13 @@ export class TaskStatusBar implements vscode.Disposable {
     // What is overdue can be moved on from here, and a reminder that is no
     // longer wanted can be turned off where it is heard, not in Settings.
     const choices = counts.overdue > 0
-      ? ['Open Tasks', 'Reschedule Overdue…', 'Turn Off Reminders']
-      : ['Open Tasks', 'Turn Off Reminders'];
+      ? ['Open Tasks View', 'Reschedule Overdue…', 'Turn Off Reminders']
+      : ['Open Tasks View', 'Turn Off Reminders'];
     const choice = await vscode.window.showInformationMessage(
       `Deckard: ${describeDueTasksAtLength(counts)}`,
       ...choices,
     );
-    if (choice === 'Open Tasks') {
+    if (choice === 'Open Tasks View') {
       await vscode.commands.executeCommand(SHOW_AGENDA);
     } else if (choice === 'Reschedule Overdue…') {
       await vscode.commands.executeCommand(RESCHEDULE_OVERDUE);

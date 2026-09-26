@@ -659,6 +659,8 @@ Buttons, menu items, and command titles follow one table, and
 | A verb and its object when the object is not on the button's own row. | Export tasks, Reset widgets, Reset graph, Fit graph | Export, Reset, Fit |
 | No word does two jobs on one page. | Finish (customizing Home), Done (the board's column) | Done for both |
 | A command that opens a page or view says Open. | Open Stats, Open Log | Show Stats |
+| A toast button says Open, and names a place. | Open Stats, Open Tasks View | Show Stats, Open Tasks |
+| A search kept under a name is a saved search, and keeping one is Save search. | Save search, A saved search needs a name. | Save as a view, Save Deckard filter |
 | A mode is entered and left with verbs. | Enter Zen Mode, Leave Zen Mode | Zen Mode |
 | A command that will ask a question ends with an ellipsis, in the palette and on a menu alike. | Open a Tag's Search Page… | Open the Tag's Search Page… |
 | One name per place. | Tasks view (the sidebar view and the Home widget that mirrors it); search page (a tag's page too) | Agenda; tag overview; tag search |

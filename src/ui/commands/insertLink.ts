@@ -46,7 +46,7 @@ export function createWikiLink(
   return paths.length > 1
     ? {
         text,
-        warning: `${paths.length} notes are called “${title}”, so this link will not resolve until one of them is renamed.`,
+        warning: `${paths.length} notes are called “${title}”, so this link will not open a note until one of them is renamed.`,
       }
     : { text };
 }

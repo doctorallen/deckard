@@ -886,13 +886,13 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
     const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
     const name = await vscode.window.showInputBox({
-      title: 'Save this search',
+      title: 'Save search',
       prompt: 'Name this search',
       value: isTagSet
         ? tagKeys.map((tagKey) => index.tags.get(tagKey)?.label ?? tagKey).join(' + ')
         : text,
       validateInput: (value) =>
-        value.trim() ? undefined : 'A saved filter needs a name.',
+        value.trim() ? undefined : 'A saved search needs a name.',
     });
     if (name === undefined) {
       return;

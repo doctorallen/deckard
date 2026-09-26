@@ -19,7 +19,7 @@ interface IndexSource {
 
 /**
  * Connects query blocks to VS Code: results in the Markdown preview, and a
- * summary with an **Open in search** action above each fence in the editor.
+ * summary with an **Open search page** action above each fence in the editor.
  *
  * Both surfaces read the snapshot the indexer last published rather than
  * building one per block, and both refresh when it changes, so a block keeps
@@ -115,7 +115,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     return [
       label(describeQueryBlockCounts(snapshot)),
       new vscode.CodeLens(range, {
-        title: 'Open in search',
+        title: 'Open search page',
         tooltip: 'Open this query on a search page',
         command: 'deckard.searchNotes',
         arguments: [snapshot.query],

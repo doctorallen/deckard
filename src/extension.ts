@@ -462,16 +462,17 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         const count = unreadable.length;
         void vscode.window
           .showWarningMessage(
+            // The reason is in the log already, where the scanner wrote it.
             count === 1
-              ? `Deckard could not read ${unreadable[0].filePath}, so it is not indexed: ${unreadable[0].reason}`
-              : `Deckard could not read ${count} notes, so they are not indexed.`,
-            'Show Stats',
-            'Show Log',
+              ? `Deckard could not read ${unreadable[0].filePath}, so it is missing from search and Home.`
+              : `Deckard could not read ${count} files, so they are missing from search and Home.`,
+            'Open Stats',
+            'Open Log',
           )
           .then((choice) => {
-            if (choice === 'Show Stats') {
+            if (choice === 'Open Stats') {
               void vscode.commands.executeCommand('deckard.showStats');
-            } else if (choice === 'Show Log') {
+            } else if (choice === 'Open Log') {
               void vscode.commands.executeCommand('deckard.showLog');
             }
           });
@@ -1103,10 +1104,10 @@ async function showTagOverview(
       await vscode.window.showQuickPick(
         tags.map((tag) => ({
           label: tag.label,
-          description: `${tag.count} items`,
+          description: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
           key: tag.key,
         })),
-        { placeHolder: 'Choose a tag to inspect' },
+        { placeHolder: 'Choose a tag to open its page' },
       )
     )?.key;
 

@@ -173,6 +173,49 @@ suite('Naming', () => {
       assert.deepStrictEqual(offenders, [], 'say the "Exclude" setting, with Open Setting, as settingLabel names it');
     });
 
+    test('a toast button opens rather than shows', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const match of source.matchAll(/(?:choice|confirm) === '([^']+)'|title: '(Show [^']*)',\s*run:/g)) {
+          const label = match[1] ?? match[2];
+          if (/^Show /.test(label)) {
+            offenders.push(`${name}: ${label}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'a button that opens a place says Open');
+    });
+
+    test('a saved search is a search', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const literal of literals(source)) {
+          if (/saved filter|Deckard filter|as a view/i.test(literal)) {
+            offenders.push(`${name}: ${literal.slice(0, 80)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, []);
+    });
+
+    test('entity stays in the code', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        const shown = [
+          ...[...source.matchAll(/\b(?:label|placeHolder|placeholder|description|prompt|tooltip):\s*(['"`])((?:(?!\1)[^\\]|\\.)*)\1/g)].map(
+            (match) => match[2],
+          ),
+          ...callBodies(source, NOTIFICATION).flatMap(literals),
+        ];
+        for (const text of shown) {
+          if (/\bentit(y|ies)\b/i.test(text)) {
+            offenders.push(`${name}: ${text.slice(0, 80)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'say person, project, or namespaced tag');
+    });
+
     test('a message that wrote nothing is an error, and a changed note is said one way', () => {
       const offenders: string[] = [];
       for (const [name, source] of hosts) {

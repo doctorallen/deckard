@@ -263,6 +263,15 @@
 
 ### Fixed
 
+- **Saving a search says search, and places are called by their names.**
+  Find, the search pages, and the Task Board all title the box **Save
+  search** and say *A saved search needs a name.*; Find no longer says
+  "filter" or "view". A query block's lens says **Open search page**; the
+  reminder's button is **Open Tasks View**; the unreadable-note message
+  offers **Open Stats** and **Open Log** and counts files; Home's Workspace
+  widget says **Namespaced tags**, as Stats does; tagging a heading asks
+  about a person, project, or topic rather than an "entity".
+
 - **A message's weight follows one rule.** An error means nothing was
   written; a warning means it was written with a caveat; a message that only
   asks for a note or a folder to be open is information, and one that needs

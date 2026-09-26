@@ -60,7 +60,7 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
     }
 
     const action = new vscode.CodeAction(
-      'Link this heading to an entity',
+      'Tag this heading with a person or project…',
       vscode.CodeActionKind.QuickFix,
     );
     action.command = {

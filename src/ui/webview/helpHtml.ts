@@ -66,7 +66,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.insertQueryBlock': 'A live query block of a saved or recent search, or one you type, at the cursor.',
   'deckard.searchWorkspace': 'Finds notes, tasks, and tags as you type.',
   'deckard.searchNotes': 'Opens a search page on a query you write.',
-  'deckard.linkCurrentHeading': 'Adds an approved entity tag to this heading.',
+  'deckard.linkCurrentHeading': 'Adds a person or project tag to this heading.',
   'deckard.moveTagsToFrontmatter': 'Moves a note’s inline tags into its front matter.',
   'deckard.renameTag': 'Renames a tag everywhere it is written.',
   'deckard.mergeTag': 'Merges one tag into another, after saying what that costs.',
@@ -448,7 +448,7 @@ updated: 2026-09-20
 
     <section id="query-blocks">
       <h2>Query blocks</h2>
-      <p>A <code>deckard</code> code fence keeps a live list inside a note. The Markdown preview replaces the fence with what the query matches; the editor shows the totals above it with <strong>Open in search</strong>. <code>Deckard: Insert Query Block…</code> writes one of a saved or recent search at the cursor.</p>
+      <p>A <code>deckard</code> code fence keeps a live list inside a note. The Markdown preview replaces the fence with what the query matches; the editor shows the totals above it with <strong>Open search page</strong>. <code>Deckard: Insert Query Block…</code> writes one of a saved or recent search at the cursor.</p>
       <pre><code>&#96;&#96;&#96;deckard sort=updated limit=10
 tag = #project/atlas AND task = open
 &#96;&#96;&#96;</code></pre>
