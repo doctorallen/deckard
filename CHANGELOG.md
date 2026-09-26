@@ -38,6 +38,13 @@
   `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder`.
   Every tagged entry keeps its Show related notes and Pin to Home hover.
 
+- **`node_modules` stays out of the index.** Deckard now leaves out what
+  `search.exclude` hides, as well as `files.exclude` and `deckard.exclude`,
+  and skips those folders while scanning rather than after reading them.
+  If you keep notes in a folder hidden from search, set its pattern to
+  `false` in `deckard.exclude` to index it again. The hint about large
+  workspaces is now said once per workspace, not once per machine.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

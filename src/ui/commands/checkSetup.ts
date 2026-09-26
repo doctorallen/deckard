@@ -141,9 +141,9 @@ export function buildSetupReport(facts: SetupFacts, now = new Date()): string {
   }
   if (scan.excluded > 0) {
     const share = scan.found > 0 ? Math.round((scan.excluded / scan.found) * 100) : 0;
-    const text = `${scan.excluded} of ${scan.found} kept out by exclude patterns (${facts.excludePatterns.map((p) => `\`${p}\``).join(', ') || '`files.exclude`'}).`;
+    const text = `${scan.excluded} of ${scan.found} kept out by exclude patterns (${facts.excludePatterns.map((p) => `\`${p}\``).join(', ') || '`files.exclude` or `search.exclude`'}).`;
     if (share >= 50) {
-      warn(`${text} That is ${share}% of what was found.`, 'Check `deckard.exclude` and `files.exclude`; one pattern may be wider than meant.');
+      warn(`${text} That is ${share}% of what was found.`, 'Check `deckard.exclude`, `files.exclude`, and `search.exclude`; one pattern may be wider than meant.');
     } else {
       lines.push(`- ℹ️ ${text}`);
     }

@@ -220,11 +220,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     if (
       notes < LARGE_WORKSPACE_NOTES ||
       Object.keys(exclude ?? {}).length > 0 ||
-      context.globalState.get<boolean>(EXCLUDE_HINT_SHOWN)
+      context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)
     ) {
       return;
     }
-    await context.globalState.update(EXCLUDE_HINT_SHOWN, true);
+    await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
     const choice = await vscode.window.showInformationMessage(
       `Deckard read ${notes.toLocaleString('en-US')} notes. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, deckard.exclude leaves them out and makes every scan faster.`,
       'Open Setting',

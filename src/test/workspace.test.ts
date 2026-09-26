@@ -7,7 +7,9 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex, WorkspaceIndexer } from '../core/workspace/indexer';
 import {
+  collectExcludePatterns,
   createExcludeMatcher,
+  toExcludeGlob,
   WorkspaceFileAccess,
   WorkspaceScanner,
 } from '../core/workspace/scanner';
@@ -149,6 +151,56 @@ suite('Workspace scanner and index', () => {
       createExcludeMatcher({ archive: false }, { '**/archive': true })('archive/old.md'),
       true,
     );
+  });
+
+  test('leaves out what search.exclude hides, unless deckard.exclude takes it back', () => {
+    assert.deepStrictEqual(
+      collectExcludePatterns(
+        { archive: true },
+        { '**/.git': true },
+        { '**/node_modules': true, '**/*.code-search': { when: 'x' } },
+      ),
+      ['**/.git', '**/node_modules', 'archive'],
+      'a pattern with a when clause is not applied',
+    );
+    assert.deepStrictEqual(
+      collectExcludePatterns({ '**/node_modules': false }, {}, { '**/node_modules': true }),
+      [],
+      'false in deckard.exclude brings a hidden folder back',
+    );
+    assert.strictEqual(
+      toExcludeGlob(['**/node_modules', 'a/{b,c}']),
+      '{**/node_modules,**/node_modules/**}',
+    );
+    assert.strictEqual(toExcludeGlob([]), undefined);
+  });
+
+  test('asks findFiles to skip what search.exclude hides, such as node_modules', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-search-exclude');
+    const noteUri = vscode.Uri.joinPath(workspaceUri, 'readme.md');
+    const dependencyUri = vscode.Uri.joinPath(workspaceUri, 'pkg', 'node_modules', 'x', 'README.md');
+    const workspaceFolder = {
+      uri: workspaceUri,
+      name: 'deckard-search-exclude',
+      index: 0,
+    } as vscode.WorkspaceFolder;
+    const excludes: (vscode.GlobPattern | undefined)[] = [];
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async (_include, exclude) => {
+        excludes.push(exclude);
+        return [noteUri, dependencyUri];
+      },
+      readFile: async () => Buffer.from('# Readme', 'utf8'),
+    });
+
+    // VS Code's default search.exclude hides node_modules.
+    const files = await scanner.scan();
+    const exclude = excludes[0];
+    assert.ok(exclude instanceof vscode.RelativePattern, 'an exclude is passed');
+    assert.ok(exclude.pattern.includes('**/node_modules'), exclude.pattern);
+    assert.deepStrictEqual(files.map((file) => file.filePath), ['readme.md']);
+    assert.strictEqual(scanner.isNotesFile(dependencyUri), false);
   });
 
   test('leaves out notes that deckard.exclude or files.exclude matches', async () => {

@@ -302,7 +302,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
         );
         const excludeChanged =
           event.affectsConfiguration('deckard.exclude') ||
-          event.affectsConfiguration('files.exclude');
+          event.affectsConfiguration('files.exclude') ||
+          event.affectsConfiguration('search.exclude');
         if (
           notesFolderChanged ||
           inlineTagsChanged ||

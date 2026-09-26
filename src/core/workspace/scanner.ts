@@ -79,9 +79,18 @@ export class WorkspaceScanner {
 
     for (const workspaceFolder of this.access.workspaceFolders ?? []) {
       const pattern = this.createPattern(workspaceFolder);
-      const uris = await this.access.findFiles(pattern);
+      const excludePatterns = this.getExcludePatterns(workspaceFolder);
+      // Leaving the excluded folders out of the search itself means a code
+      // repository's node_modules is never walked. An explicit exclude
+      // replaces the `files.exclude` default, so it carries those patterns
+      // too; one with a `when` clause is not applied, which is rare for `.md`.
+      const excludeGlob = toExcludeGlob(excludePatterns);
+      const uris = await this.access.findFiles(
+        pattern,
+        excludeGlob ? new vscode.RelativePattern(workspaceFolder, excludeGlob) : undefined,
+      );
       const templatesUri = this.getTemplatesFolderUri(workspaceFolder);
-      const isExcluded = this.getExcludeMatcher(workspaceFolder);
+      const isExcluded = createExcludeMatcherFromPatterns(excludePatterns);
 
       const markdown = uris.filter((uri) => isMarkdownFile(uri));
       const outsideTemplates = markdown.filter(
@@ -294,8 +303,8 @@ export class WorkspaceScanner {
   }
 
   /**
-   * Checks the Markdown extension, configured-folder containment, and
-   * `deckard.exclude`, so watchers and editors agree with the full scan.
+   * Checks the Markdown extension, configured-folder containment, and the
+   * exclude settings, so watchers and editors agree with the full scan.
    */
   public isNotesFile(uri: vscode.Uri): boolean {
     if (!isMarkdownFile(uri)) {
@@ -360,22 +369,29 @@ export class WorkspaceScanner {
   }
 
   /**
-   * Compiles the root's `deckard.exclude` and `files.exclude` patterns, so a
-   * note saved in a hidden folder stays out just as it does in the full scan.
-   *
-   * A `files.exclude` pattern with a `when` clause is left to `findFiles`,
-   * which applies it during the full scan, because checking for its sibling
-   * file would need a filesystem read on every call.
+   * Compiles the root's exclude patterns, so a note saved in a hidden folder
+   * stays out just as it does in the full scan.
    */
   private getExcludeMatcher(
     workspaceFolder: vscode.WorkspaceFolder,
   ): ExcludeMatcher {
-    return createExcludeMatcher(
-      this.getConfiguration(workspaceFolder).get<unknown>('exclude', {}),
-      vscode.workspace
-        .getConfiguration('files', workspaceFolder.uri)
-        .get<unknown>('exclude', {}),
+    return createExcludeMatcherFromPatterns(
+      this.getExcludePatterns(workspaceFolder),
     );
+  }
+
+  /**
+   * What the root leaves out: `deckard.exclude`, `files.exclude`, and
+   * `search.exclude`, less any pattern `deckard.exclude` sets to `false`.
+   * A pattern with a `when` clause is skipped, because checking for its
+   * sibling file would need a filesystem read on every call.
+   */
+  private getExcludePatterns(workspaceFolder: vscode.WorkspaceFolder): string[] {
+    const read = (section: string): unknown =>
+      vscode.workspace
+        .getConfiguration(section, workspaceFolder.uri)
+        .get<unknown>('exclude', {});
+    return collectExcludePatterns(read('deckard'), read('files'), read('search'));
   }
 
   /**
@@ -485,6 +501,63 @@ export function createExcludeMatcher(...settings: unknown[]): ExcludeMatcher {
       isMatch(segments.slice(0, index + 1).join('/')),
     );
   };
+}
+
+/** The keys of an exclude setting set to `value`, trimmed. */
+function readExcludeKeys(setting: unknown, value: boolean): string[] {
+  return setting && typeof setting === 'object' && !Array.isArray(setting)
+    ? Object.entries(setting)
+        .filter(([pattern, enabled]) => enabled === value && pattern.trim() !== '')
+        .map(([pattern]) => pattern.trim())
+    : [];
+}
+
+/**
+ * Everything the index leaves out: the `true` entries of `files.exclude`,
+ * `search.exclude`, and `deckard.exclude`, less any pattern that
+ * `deckard.exclude` sets to `false`. That is the way back in for a folder
+ * hidden from search that holds notes.
+ */
+export function collectExcludePatterns(
+  deckard: unknown,
+  files: unknown,
+  search: unknown,
+): string[] {
+  const keptIn = new Set(readExcludeKeys(deckard, false));
+  return [
+    ...new Set([
+      ...readExcludeKeys(files, true),
+      ...readExcludeKeys(search, true),
+      ...readExcludeKeys(deckard, true),
+    ]),
+  ].filter((pattern) => !keptIn.has(pattern));
+}
+
+/**
+ * One glob for `findFiles` that leaves out each pattern and everything
+ * inside what it matches. Patterns with their own braces or commas are left
+ * to the matcher, since nested braces are unreliable.
+ */
+export function toExcludeGlob(patterns: readonly string[]): string | undefined {
+  const simple = patterns.filter((pattern) => !/[{},]/.test(pattern));
+  if (simple.length === 0) {
+    return undefined;
+  }
+  return `{${simple
+    .flatMap((pattern) => {
+      const trimmed = pattern.replace(/\/+$/, '');
+      return [trimmed, `${trimmed}/**`];
+    })
+    .join(',')}}`;
+}
+
+/** A matcher over patterns already collected. */
+export function createExcludeMatcherFromPatterns(
+  patterns: readonly string[],
+): ExcludeMatcher {
+  return createExcludeMatcher(
+    Object.fromEntries(patterns.map((pattern) => [pattern, true])),
+  );
 }
 
 /**
