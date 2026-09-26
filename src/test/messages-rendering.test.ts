@@ -620,7 +620,7 @@ suite('Webview contracts', () => {
     );
         assert.strictEqual(html.includes('.dashboard-tabs { display: inline-flex; margin-top: 18px; }'), true);
     assert.strictEqual(
-      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }'),
+      html.includes('.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }'),
       true,
     );
                         assert.strictEqual(html.includes("kinds: {\n      tag: { selector: '.tag-row[data-tag-key]', key: 'tagKey' },"), true);
@@ -695,6 +695,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
     assert.strictEqual(corpo.includes('body { background: var(--vscode-editor-background); }'), true);
     // Every overlay is opaque: VS Code's hover color is often semi-transparent.
+    assert.strictEqual(corpo.includes('.popover, .tag-filter-menu,'), true);
     assert.strictEqual(corpo.includes('.sidebar-association-tooltip, .query-suggestions { clip-path: none;'), true);
     // A page VS Code gives no backdrop paints its own, or it renders blank.
     assert.strictEqual(corpo.includes('body:has(> main[data-sidebar])'), true);
@@ -1129,7 +1130,7 @@ suite('Webview contracts', () => {
       true,
     );
         assert.strictEqual(
-      html.includes('.segmented > .active { position: relative; z-index: 1; }'),
+      html.includes('.segmented > .active { position: relative; z-index: var(--z-raised); }'),
       true,
     );
                             // The closer spelling a search page offers, and the batch it carries of

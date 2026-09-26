@@ -136,6 +136,7 @@ re-declare the same names.
 | `--focus` | `var(--cyan)` | Every focus ring |
 | `--space-1` … `--space-6` | `4px`, `8px`, `12px`, `16px`, `24px`, `32px` | The spacing scale. Every padding, gap, and margin in the shared sheet is a step; `src/test/spacing-scale.test.ts` holds it. Zen re-declares the steps on `body.zen` and restates no rule. |
 | `--text-xs` … `--text-lg` | `11px`, `12px`, `13px`, `14px` | The type scale. `--text-xs` is the floor: counts, captions, and meta lines; nothing a reader acts on goes below it. `--text-md` is body text. |
+| `--z-raised` … `--z-drag` | `1`, `10`, `20`, `30`, `40`, `50` | The stacking order. See **Popovers and menus**. |
 
 **Color a meaning, not a palette entry.** A rule that colors a state takes
 `--danger`, `--favorite`, `--positive`, `--focus`, or `--accent`, so red is
@@ -252,7 +253,45 @@ the tag-association view switch.
 | `.inline-tag` | A tag inside a heading or task title, sized to the text around it. |
 | `.tag-list` | Wrapping row of tags. |
 | `.tag-namespace` | The dimmed `#namespace/` prefix. Emitted by `renderTagLabel`. |
-| `.tag-context-menu` | The right-click menu, positioned by `openTagContextMenu`. |
+| `.tag-context-menu` | The right-click menu, positioned by `openTagContextMenu`. A `.popover`. |
+
+---
+
+## Popovers and menus
+
+`getPopoverCss()`, inside `getBaseCss()`. Everything that floats over a page
+is a `.popover`: one amber edge at `--edge`, the raised panel, one shadow.
+Each keeps its own class for where it sits (`.tag-context-menu`,
+`.action-menu`, `.rank-context-menu`, `.view-options-menu`,
+`.home-widget-options-menu`, `.query-suggestions`, `.relevance-tooltip`),
+and none of those declares a border, ground, shadow, or z-index of its own.
+Corpo draws every popover in VS Code's widget colors, and a tip in its hover
+widget colors.
+
+| Class | What it is |
+| --- | --- |
+| `.popover` | A menu positioned `fixed`, at `--z-menu`. |
+| `.popover.is-dropdown` | Attached to a control: the gear's menu, a widget's options, completions. |
+| `.popover.is-tip` | A tip: 1px `--line-strong` edge, `--text-xs`, at most 280px. |
+| `.menu-item` | One row of any menu, 28px tall. Its label is a `.menu-label`. |
+| `.menu-check` | The 16px column a checked item's check sits in (see the card menu). |
+| `.menu-key` | The key that does the same, at the row's right, in muted mono. |
+
+**The stacking order** is a token scale, and a rule never writes a number:
+
+| Token | Value | For |
+| --- | --- | --- |
+| `--z-raised` | `1` | A chosen segment over its neighbors |
+| `--z-dropdown` | `10` | Attached to a control: the gear's menu, a widget's options, completions |
+| `--z-menu` | `20` | Context and action menus |
+| `--z-tooltip` | `30` | Tips, the relevance tooltip, the graph's hover card |
+| `--z-modal` | `40` | The `?` key sheet |
+| `--z-drag` | `50` | The drag ghost, which sat under the menus at 10 |
+
+Three things keep numbers of their own, and
+`src/test/components-primitives.test.ts` lists them: the provenance lift
+(`z-index: 1/2`, Decision 5), the sidebar's `.note:hover { z-index: 20 }`,
+and the Notes Graph's overlay layers over its canvas.
 
 ---
 

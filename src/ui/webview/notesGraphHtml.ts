@@ -89,7 +89,7 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 /* The panels follow the theme rather than a fixed near-black, which was
    unreadable when corpo took its text color from a light VS Code theme. */
 .control-group { background: var(--panel); }
-.tooltip { position: absolute; z-index: 3; display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
+.tooltip { position: absolute; z-index: var(--z-tooltip); display: none; max-width: 320px; border: 1px solid var(--slate-border); background: var(--panel-raised); padding: 6px 9px; pointer-events: none; }
 .tooltip .tooltip-title { color: var(--text); font: 700 var(--text-xs) var(--font-mono); }
 .tooltip .tooltip-meta { color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: 2px; }
 .focus-note { margin: 2px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }

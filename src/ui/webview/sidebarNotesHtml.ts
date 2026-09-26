@@ -118,7 +118,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .note:hover .insert-link, .note:focus-within .insert-link, .insert-link:focus-visible { opacity: 1; }
 .insert-link:hover { background: transparent; color: var(--text); }
 .relevance-wrap { position: relative; flex: 0 0 auto; }
-.relevance-tooltip { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; display: none; width: 220px; border: 2px solid var(--amber); background: var(--panel-raised); color: var(--text); padding: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: var(--text-xs); line-height: 1.35; }
+.relevance-tooltip { position: absolute; top: calc(100% + 7px); right: 0; display: none; width: 220px; max-width: none; padding: 8px; line-height: 1.35; }
 .relevance-wrap:hover .relevance-tooltip, .relevance-wrap:focus-within .relevance-tooltip, .relevance-wrap.is-open .relevance-tooltip { display: block; }
 .relevance-score { border: 0; background: transparent; padding: 0; cursor: pointer; }
 .relevance-score:hover, .relevance-score:focus-visible { background: transparent; color: var(--amber); }
@@ -452,7 +452,7 @@ ${getComponentScript()}
         // breakdown for anyone who wants it.
         const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
         const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
-        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored." title="Relevance ' + relevanceWord + '. How this note was scored">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip popover is-tip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
         const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
         // Writing a link to a result is the reason to have found it, and
         // the sidebar sits beside the note being written in. The button

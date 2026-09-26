@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **Menus, the gear, and completions look like one family.** The tag menu,
+  a board card's menu, the rank menu, the gear's menu, a Home widget's
+  options, and search completions share one edge, ground, and shadow, and
+  one stacking order, so a dragged row no longer passes under an open menu.
+
 - **Carried tasks go under Carried over, a week back, and migrate rather
   than copy.** A rollover writes today's carried tasks under a **Carried
   over** heading at the end of the note, one level below its first heading,

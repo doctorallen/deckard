@@ -56,7 +56,7 @@ ${getQueryEditorCss()}
 .dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
 .dashboard-tabs button + button { margin-left: -1px; }
-.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: 1; }
+.dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }
 .dashboard-panel { min-width: 0; padding-top: 16px; }
 .dashboard-panel[hidden] { display: none; }
 section { min-width: 0; }
@@ -210,7 +210,7 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-options summary:hover { border-color: var(--amber-bright); }
 .home-widget-options summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .home-widget-options .settings-icon { width: 14px; height: 14px; }
-.home-widget-options-menu { position: absolute; z-index: 4; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
+.home-widget-options-menu { position: absolute; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 240px; padding: 10px; }
 .home-widget-form { display: flex; gap: 4px; }
 .home-widget-form input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .home-widget-form button { min-height: 26px; padding: 2px 8px; }
@@ -548,7 +548,7 @@ ${getQueryEditorScript()}
     },
     menuActions: function (kind) {
       return kind === 'tag'
-        ? ['<button type="button" role="menuitem" data-context-action="rename-tag">Rename tag</button>']
+        ? [renderMenuItem('rename-tag', 'Rename tag')]
         : [];
     },
     onMenuAction: function (action, kind, key) {
@@ -846,7 +846,7 @@ ${getQueryEditorScript()}
       groups.unshift('<div class="view-options-group is-stacked"><span>About</span><p class="home-widget-about">' + escapeHtml(description) + '</p></div>');
     }
     if (!groups.length) return '';
-    return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" title="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu">' + groups.join('') + '</div></details>';
+    return '<details class="home-widget-options" ' + attribute + (openWidgetOptions === widget.id ? ' open' : '') + '><summary aria-label="Widget options" title="Widget options">' + '${settingsIcon}' + '</summary><div class="home-widget-options-menu popover is-dropdown">' + groups.join('') + '</div></details>';
   }
 
   function renderWidget(widget) {

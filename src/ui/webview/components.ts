@@ -102,6 +102,15 @@ export function getDesignTokens(): string {
   /* A focus ring is drawn at least 2px in every theme, zen included, rather
      than at the edge width, which is a hairline in Corpo and zen. */
   --focus-width: 2px;
+  /* The stacking order, low to high. Every popover, menu, tip, sheet, and
+     drag ghost takes one of these, so a new one cannot land between two
+     others by accident: the drag ghost used to sit under the menus. */
+  --z-raised: 1;
+  --z-dropdown: 10;
+  --z-menu: 20;
+  --z-tooltip: 30;
+  --z-modal: 40;
+  --z-drag: 50;
 }`;
 }
 
@@ -241,7 +250,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* A labeled control, such as a sort, drawn the same way on every page. */
 .control-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-icon { position: relative; display: inline-block; }
-.control-icon-svg { position: absolute; z-index: 1; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
+.control-icon-svg { position: absolute; z-index: var(--z-raised); top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: var(--text); transform: translateY(-50%); }
 .control-icon select:hover + .control-icon-svg { color: var(--hover-fg); }
 .control-icon select { padding-left: 29px; }
 
@@ -255,7 +264,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .segmented > * + * { margin-left: calc(var(--edge) * -1); }
 .segmented > :first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .segmented > :last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
-.segmented > .active { position: relative; z-index: 1; }
+.segmented > .active { position: relative; z-index: var(--z-raised); }
 
 /* An icon-only control, square and the same height as the rest. */
 .icon-button {
@@ -304,7 +313,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .view-options summary:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .view-options .settings-icon { width: 16px; height: 16px; }
-.view-options-menu { position: absolute; z-index: 3; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; border: 1px solid var(--slate-border); background: var(--panel-raised); }
+.view-options-menu { position: absolute; top: calc(100% + 5px); right: 0; display: grid; gap: 10px; min-width: 210px; padding: 10px; }
 .view-options-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* A group whose control is taller than a row, such as a list, sits under its label. */
 .view-options-group.is-stacked { display: grid; justify-content: stretch; }
@@ -314,7 +323,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices button + button { margin-left: -1px; }
 .view-options-choices button:first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .view-options-choices button:last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
-.view-options-choices button.active { position: relative; z-index: 1; }`;
+.view-options-choices button.active { position: relative; z-index: var(--z-raised); }`;
 }
 
 /**
@@ -351,29 +360,12 @@ export function getTagCss(): string {
 .tag-weight-rail-segment.filled { background: var(--cyan); opacity: 1; }
 .task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
 
-/* Right-click actions on any tag. */
-.tag-context-menu {
-  position: fixed;
-  z-index: 20;
-  min-width: 150px;
-  padding: 4px;
-  border: var(--edge) solid var(--amber);
-  background: var(--panel-raised);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
-}
-.tag-context-menu[hidden] { display: none; }
-.tag-context-menu button {
-  display: block;
-  width: 100%;
-  border: 0;
-  padding: 8px 9px;
-  text-align: left;
-  text-transform: none;
-}
+/* Right-click actions on any tag; drawn by .popover. */
+.tag-context-menu { position: fixed; }
 /* A searched word where it appears in a result. */
 mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transparent); color: inherit; }
 /* The page's keys, on ?. */
-.key-sheet { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.key-sheet { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--bg) 70%, transparent); }
 .key-sheet-panel { max-width: 520px; max-height: calc(100vh - 48px); overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); color: var(--text); padding: var(--space-4); }
 .key-sheet-panel h2 { margin: 0 0 var(--space-2); }
 .key-sheet-panel h3 { margin: var(--space-3) 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
@@ -385,6 +377,46 @@ mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transpar
 /* A group's name inside a menu of several: Status, Priority, Due. */
 .tag-context-menu .menu-heading { padding: var(--space-2) var(--space-2) var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .tag-context-menu > .menu-group:first-child .menu-heading { padding-top: var(--space-1); }`;
+}
+
+/**
+ * Everything that floats over a page: menus, the gear's menu, completions,
+ * and tips. One look, one stacking order, and one menu row, so the tag menu,
+ * the card menu, the rank menu, and the gear read as one family. Each keeps
+ * its own class for where it is placed.
+ */
+export function getPopoverCss(): string {
+  return `
+.popover {
+  z-index: var(--z-menu);
+  min-width: 150px;
+  padding: var(--space-1);
+  border: var(--edge) solid var(--amber);
+  border-radius: var(--control-radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.popover[hidden] { display: none; }
+.popover.is-dropdown { z-index: var(--z-dropdown); }
+.popover.is-tip { z-index: var(--z-tooltip); max-width: 280px; padding: var(--space-1) var(--space-2); border-width: 1px; border-color: var(--line-strong); font-size: var(--text-xs); line-height: 1.4; }
+/* One row for every menu. 28px tall, over WCAG 2.5.8's 24px. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  border: 0;
+  padding: 0 var(--space-2);
+  text-align: left;
+  text-transform: none;
+}
+.menu-check { flex: 0 0 16px; display: inline-grid; place-items: center; }
+.menu-check svg { width: 14px; height: 14px; }
+.menu-key { margin-left: auto; padding-left: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+button.menu-item:hover .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }`;
 }
 
 /**
@@ -630,11 +662,9 @@ export function getTaskListCss(): string {
 .is-draggable { cursor: grab; touch-action: none; }
 .is-draggable:active { cursor: grabbing; }
 .is-dragging { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
-.drag-ghost { position: fixed; z-index: 10; top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
+.drag-ghost { position: fixed; z-index: var(--z-drag); top: -10000px; left: -10000px; pointer-events: none; opacity: .95; border: 1px solid var(--amber-bright); background: var(--panel-raised); }
 .drag-placeholder { border: 1px dashed var(--toxic-green); background: transparent; opacity: .9; pointer-events: none; }
-.rank-context-menu { position: fixed; z-index: 20; min-width: 170px; padding: var(--space-1); border: 1px solid var(--amber-bright); background: var(--panel-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
-.rank-context-menu[hidden] { display: none; }
-.rank-context-menu button { display: block; width: 100%; border: 0; padding: var(--space-2) var(--space-3); text-align: left; text-transform: none; }
+.rank-context-menu { position: fixed; min-width: 170px; }
 .result-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .result-table th, .result-table td { padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .result-table th { padding: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
@@ -673,6 +703,7 @@ export function getBaseCss(): string {
     getTypographyCss(),
     getControlCss(),
     getTagCss(),
+    getPopoverCss(),
     getSurfaceCss(),
     getTaskBoardCss(),
     getTaskListCss(),
@@ -1437,12 +1468,12 @@ export function getComponentScript(): string {
     if (!tagContextMenu) {
       tagContextMenu = document.createElement('div');
       tagContextMenu.id = 'tag-context-menu';
-      tagContextMenu.className = 'tag-context-menu';
+      tagContextMenu.className = 'tag-context-menu popover';
       tagContextMenu.setAttribute('role', 'menu');
       document.body.appendChild(tagContextMenu);
     }
     tagContextMenu.innerHTML = items.map(function (item) {
-      return '<button type="button" role="menuitem" data-context-action="' + escapeHtml(item.action) + '">' + escapeHtml(item.label) + '</button>';
+      return '<button type="button" class="menu-item" role="menuitem" data-context-action="' + escapeHtml(item.action) + '"><span class="menu-label">' + escapeHtml(item.label) + '</span></button>';
     }).join('');
     tagContextMenu.hidden = false;
     const bounds = tagContextMenu.getBoundingClientRect();
@@ -1508,7 +1539,7 @@ export function getComponentScript(): string {
     if (!actionMenu) {
       actionMenu = document.createElement('div');
       actionMenu.id = 'action-menu';
-      actionMenu.className = 'tag-context-menu action-menu';
+      actionMenu.className = 'tag-context-menu action-menu popover';
       actionMenu.setAttribute('role', 'menu');
       actionMenu.hidden = true;
       document.body.appendChild(actionMenu);
@@ -1546,7 +1577,7 @@ export function getComponentScript(): string {
     // heard as one of the Due choices rather than as a bare item.
     actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group, groupIndex) {
       const items = group.items.map(function (item) {
-        return '<button type="button" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
+        return '<button type="button" class="menu-item" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '"><span class="menu-label">' + escapeHtml(item.label) + '</span></button>';
       }).join('');
       if (!group.label) return items;
       const headingId = 'action-menu-group-' + groupIndex;
@@ -2063,7 +2094,7 @@ export function getComponentScript(): string {
   function renderViewOptions(groups) {
     const wasOpen = Boolean(document.querySelector('.view-options[open]'));
     return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">' + '${settingsIcon}' + '</summary>'
-      + '<div class="view-options-menu">' + groups.map(function (group) {
+      + '<div class="view-options-menu popover is-dropdown">' + groups.map(function (group) {
         return '<div class="view-options-group' + (group.stacked ? ' is-stacked' : '') + '"><span>' + escapeHtml(group.label) + '</span>' + group.html + '</div>';
       }).join('') + '</div></details>';
   }
@@ -2203,6 +2234,11 @@ export function getComponentScript(): string {
    *               data-context-action
    *   onMenuAction(action, kind, key) optional; runs one of those
    */
+  /** One row of a context menu, as every menu draws it. */
+  function renderMenuItem(action, label) {
+    return '<button type="button" class="menu-item" role="menuitem" data-context-action="' + escapeHtml(action) + '"><span class="menu-label">' + escapeHtml(label) + '</span></button>';
+  }
+
   let rankMenu;
   let rankMenuKind;
   let rankMenuKey;
@@ -2338,10 +2374,10 @@ export function getComponentScript(): string {
         const labels = options.kinds[kind].edgeLabels || ['Move to top', 'Move to bottom'];
         // One step at a time as well as to either end, so any place in the
         // order is reachable without dragging (WCAG 2.5.7).
-        actions.push('<button type="button" role="menuitem" data-context-action="up">Move up</button>');
-        actions.push('<button type="button" role="menuitem" data-context-action="down">Move down</button>');
-        actions.push('<button type="button" role="menuitem" data-context-action="top">' + escapeHtml(labels[0]) + '</button>');
-        actions.push('<button type="button" role="menuitem" data-context-action="bottom">' + escapeHtml(labels[1]) + '</button>');
+        actions.push(renderMenuItem('up', 'Move up'));
+        actions.push(renderMenuItem('down', 'Move down'));
+        actions.push(renderMenuItem('top', labels[0]));
+        actions.push(renderMenuItem('bottom', labels[1]));
       }
       if (!actions.length) return;
       event.preventDefault();
@@ -2349,7 +2385,7 @@ export function getComponentScript(): string {
       if (!rankMenu) {
         rankMenu = document.createElement('div');
         rankMenu.setAttribute('id', 'rank-context-menu');
-        rankMenu.setAttribute('class', 'rank-context-menu');
+        rankMenu.setAttribute('class', 'rank-context-menu popover');
         rankMenu.setAttribute('role', 'menu');
         document.body.appendChild(rankMenu);
       }
@@ -2583,7 +2619,7 @@ export function getQueryEditorCss(): string {
 .query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
 .query-op { font-size: inherit; }
 .query-paren { color: var(--muted); }
-.query-suggestions { position: absolute; z-index: 12; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; border: var(--edge) solid var(--amber); background: var(--panel-raised); }
+.query-suggestions { position: absolute; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; padding: 0; }
 .query-suggestions[hidden] { display: none; }
 /* A completion reads as written, whatever a theme does to buttons, and each
    sits on its own ruled row; a long one wraps beside its note. */
@@ -2811,7 +2847,7 @@ export function getQueryEditorScript(): string {
       const label = options.label || 'Search';
       return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
-        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
+        + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions popover is-dropdown" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
         + '<button data-action="clear-query" data-query-clears title="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
@@ -3128,7 +3164,7 @@ export function getQueryEditorScript(): string {
       const remove = '<button class="query-builder-remove" data-action="builder-remove-row"' + position + ' aria-label="Remove this condition">Remove</button>';
       if (row.pending) {
         return '<div class="query-builder-row">' + joiner
-          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
+          + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value query-builder-pending" data-action="builder-set-value" data-pending="true" data-suggest-key="' + suggestKey + '"' + position + ' value="' + escapeHtml(row.value || '') + '" placeholder="Type a tag, a word, or a value such as open" aria-label="New condition" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions popover is-dropdown" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
           + remove + '</div>';
       }
       if (!row.supported) {
@@ -3150,7 +3186,7 @@ export function getQueryEditorScript(): string {
       return '<div class="query-builder-row">' + joiner
         + '<select data-action="builder-set-field"' + position + ' aria-label="Field">' + fields + '</select>'
         + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" title="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
-        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
+        + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions popover is-dropdown" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + remove + '</div>';
     }
 
