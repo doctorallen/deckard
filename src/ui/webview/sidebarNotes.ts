@@ -560,6 +560,10 @@ export class SidebarNotesView
         0,
       ),
       hidePeriodicNotes: this.preferences.value.hideDailyNotes === true,
+      // The board's status is how a task moves, not what a note is about.
+      excludedTagNamespaces: [
+        vscode.workspace.getConfiguration('deckard').get<string>('board.statusNamespace', 'status').trim() || 'status',
+      ],
     };
   }
 

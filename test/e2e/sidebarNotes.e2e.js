@@ -328,6 +328,33 @@ test('the gear sets Preview: None takes the excerpts away, and 2 lines brings th
   }
 });
 
+test('a note with no tags lists entries worded like it, through the real host', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/today.md', '# Thursday\nThe northern route audit found Northwind late on deliveries again.'),
+    note('notes/audit.md', '# Northwind audit #risk/vendor\nNorthwind deliveries on the northern route are late.'),
+    note('notes/garden.md', '# Garden #hobby/garden\nTomatoes and beans.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
+  vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/today.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
+  const sidebarView = new SidebarNotesView(indexer, new PreferencesStore(createGlobalState()), new ActiveSearch(), () => undefined, '0.0.0-test');
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  try {
+    await settle();
+    assert.ok(view.findAll('.section-label').some((label) => label.textContent === 'Similar wording (no tags yet)'));
+    assert.deepStrictEqual(view.findAll('.similar-wording .note').map((card) => card.getAttribute('data-file-path')), ['notes/audit.md']);
+    assert.deepStrictEqual(view.findAll('.suggested-tag [data-tag-key]').map((tag) => tag.getAttribute('data-tag-key')), ['#risk/vendor']);
+  } finally {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+  }
+});
+
 test('Hide daily notes leaves a daily note out of Linked from, and says so', async () => {
   const note = (filePath, content, updatedAt) =>
     parseMarkdown(filePath, content, { createdAt: 1, updatedAt }, {});

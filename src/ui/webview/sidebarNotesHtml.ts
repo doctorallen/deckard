@@ -110,6 +110,10 @@ body .note:hover { transform: none; }
 /* A result's first lines, clamped to the Preview the gear sets. */
 main { --preview-lines: 1; }
 main[data-preview-lines="2"] { --preview-lines: 2; }
+.suggested-tags { display: grid; gap: 4px; margin: 10px 0; }
+.suggested-tag { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
+.suggested-tag .tag-open { flex: 1 1 auto; min-width: 0; }
+.similar-hint { margin: 0 0 6px; color: var(--muted); font-size: var(--text-xs); }
 .note-excerpt { display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: var(--preview-lines); overflow-wrap: anywhere; }
 select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
@@ -355,6 +359,7 @@ ${getComponentScript()}
       state.activeEntryTitle,
       state.relatedNotesSortMode,
       state.hideDailyNotes,
+      Boolean(state.similar),
     ]);
   }
 
@@ -419,6 +424,112 @@ ${getComponentScript()}
     return '<section class="note-links" aria-label="Links to this note">' + linked + mentions + '</section>';
   }
 
+  /** One ranked result: its title, score, where it is, excerpt, and why. */
+  function renderRankedNote(note) {
+    const title = note.title || note.fileName || note.filePath;
+    const titleHtml = state.tagTitleDisplayMode === 'inline'
+      ? renderInlineTitle(title, note.titleTags)
+      : escapeHtml(title);
+    const fileName = note.fileName || note.filePath;
+    const tags = state.tagTitleDisplayMode === 'separate'
+      ? renderTags(note.matchedTags, 'matched-tag')
+      : '';
+    // The tags drawn as chips on the card: the matched tags under the
+    // title when tags are shown apart from it, or the title's own when
+    // they are shown inline. A reason that only lists tags the chips
+    // already name, "Shared: …" or "Associated: …", said them twice;
+    // it goes, and the line moves on to the next reason, or to nothing.
+    const chipLabels = (tags ? note.matchedTags || [] : note.titleTags || []).map(function (tag) { return tag.label; });
+    const namesOnlyChips = function (reason) {
+      const match = /^(Shared|Associated): (.+)$/.exec(reason);
+      if (!match) return false;
+      const listed = match[2].split(', ');
+      return listed.length > 0 && listed.every(function (label) { return chipLabels.indexOf(label) >= 0; });
+    };
+    const dropped = (note.reasons || []).filter(namesOnlyChips);
+    const reasons = (note.reasons || []).filter(function (reason) { return !namesOnlyChips(reason); });
+    const relevanceReasons = reasons.length
+      ? reasons
+      : dropped.length ? [] : ['Related note'];
+    const evidence = note.relevanceEvidence || {
+      directTagWeight: 0,
+      associationWeight: note.associationWeight || 0,
+      normalizedAssociationWeight: note.associationWeight || 0,
+      appliedAssociationWeight: note.associationWeight || 0,
+      entryLinkWeight: 0,
+      fileLinkWeight: 0,
+      lexicalWeight: 0,
+      recencyWeight: 0,
+      specificityPenalty: 0,
+      lexicalTerms: [],
+    };
+    const weights = [
+      ['Shared-tag weight', evidence.directTagWeight],
+      ['Association weight', evidence.appliedAssociationWeight],
+      ['Direct entry-link weight', evidence.entryLinkWeight],
+      ['File-link weight', evidence.fileLinkWeight],
+      ['Lexical weight', evidence.lexicalWeight],
+      ['Recency tie-breaker', evidence.recencyWeight],
+    ].filter(function (item) { return item[1] > 0; });
+    const specificityAdjustment = evidence.specificityPenalty > 0
+      ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
+      : '';
+    // A precise-looking percentage from a heuristic ranker invites a
+    // reader to build a model of it that two close scores then break.
+    // The rail says strong, moderate, or weak; the number is in the
+    // breakdown for anyone who wants it.
+    const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
+    const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
+    const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored.">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip popover is-tip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
+    const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
+    // Writing a link to a result is the reason to have found it, and
+    // the sidebar sits beside the note being written in. The button
+    // stays out of the way until the card is under the pointer.
+    const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" data-tip="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
+    // The words the card shares with the note, marked in its excerpt.
+    const terms = (evidence.lexicalTerms || []).slice(0, 5).map(function (term) { return term.term; });
+    const excerpt = note.excerpt && previewLines() > 0
+      ? '<p class="note-excerpt">' + escapeHtml(note.excerpt) + '</p>'
+      : '';
+    return renderNoteCard(
+      '',
+      'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"' + (terms.length ? ' data-terms="' + escapeHtml(terms.join(' ')) + '"' : ''),
+      titleHtml,
+      '<div class="note-actions">' + insertLink + relevance + '</div>',
+      '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
+      (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + excerpt + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+    );
+  }
+
+  /** Why an untagged note's list is empty, or the similar entries in its place. */
+  function renderNoTags() {
+    if (!state.similar) return '<div class="empty">This note has no tags yet.</div>';
+    if (!state.similar.notes.length && !state.similar.tags.length) {
+      return '<div class="empty">This note has no tags yet, and no other entry shares enough of its wording to suggest any.</div>';
+    }
+    return renderSimilar(state.similar);
+  }
+
+  /**
+   * For a note with no tags: the tags entries worded like it use, first,
+   * since tagging it is the way out of guessing, then those entries,
+   * each marked weak and kept apart from the related notes.
+   */
+  function renderSimilar(similar) {
+    if (!similar || (!similar.notes.length && !similar.tags.length)) return '';
+    const tags = similar.tags.length
+      ? '<section class="suggested-tags" aria-label="Tags used by similar notes"><span class="section-label">Tags used by similar notes</span>'
+        + similar.tags.map(function (tag) {
+          const tip = 'On ' + tag.entryCount + ' of the similar entries below. Add writes it on the heading or line where the cursor is.';
+          return '<div class="suggested-tag"><button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" data-tip="' + escapeHtml(tip) + '">' + renderTagLabel(tag.label) + '<span class="refine-count">' + tag.entryCount + '</span></button></div>';
+        }).join('') + '</section>'
+      : '';
+    const notes = similar.notes.length
+      ? '<section class="similar-wording" aria-label="Similar wording (no tags yet)"><span class="section-label">Similar wording (no tags yet)</span><p class="similar-hint">These share words with this note, not tags or links.</p><div class="note-list">' + similar.notes.map(renderRankedNote).join('') + '</div></section>'
+      : '';
+    return tags + notes;
+  }
+
   function render() {
     if (!state) return;
     closeTagContextMenu();
@@ -434,7 +545,7 @@ ${getComponentScript()}
     } else if (state.state === 'noMarkdown') {
       content = '<div class="empty">Open a Markdown note to see related entries.</div>';
     } else if (state.state === 'noTags') {
-      content = '<div class="empty">This note has no tags yet.</div>';
+      content = renderNoTags();
     } else if (state.state === 'noMatches') {
       content = '<div class="empty">No other notes share its tags.</div>';
     } else {
@@ -448,81 +559,7 @@ ${getComponentScript()}
       const showMore = hiddenNoteCount > 0
         ? '<button type="button" class="show-more-notes" data-action="show-more-notes">' + (hiddenNoteCount > NOTE_PAGE_SIZE ? 'Show ' + NOTE_PAGE_SIZE + ' more of ' + hiddenNoteCount : 'Show ' + hiddenNoteCount + ' more') + '</button>'
         : '';
-      content = '<div class="note-list">' + shownNotes.map(function (note) {
-        const title = note.title || note.fileName || note.filePath;
-        const titleHtml = state.tagTitleDisplayMode === 'inline'
-          ? renderInlineTitle(title, note.titleTags)
-          : escapeHtml(title);
-        const fileName = note.fileName || note.filePath;
-        const tags = state.tagTitleDisplayMode === 'separate'
-          ? renderTags(note.matchedTags, 'matched-tag')
-          : '';
-        // The tags drawn as chips on the card: the matched tags under the
-        // title when tags are shown apart from it, or the title's own when
-        // they are shown inline. A reason that only lists tags the chips
-        // already name, "Shared: …" or "Associated: …", said them twice;
-        // it goes, and the line moves on to the next reason, or to nothing.
-        const chipLabels = (tags ? note.matchedTags || [] : note.titleTags || []).map(function (tag) { return tag.label; });
-        const namesOnlyChips = function (reason) {
-          const match = /^(Shared|Associated): (.+)$/.exec(reason);
-          if (!match) return false;
-          const listed = match[2].split(', ');
-          return listed.length > 0 && listed.every(function (label) { return chipLabels.indexOf(label) >= 0; });
-        };
-        const dropped = (note.reasons || []).filter(namesOnlyChips);
-        const reasons = (note.reasons || []).filter(function (reason) { return !namesOnlyChips(reason); });
-        const relevanceReasons = reasons.length
-          ? reasons
-          : dropped.length ? [] : ['Related note'];
-        const evidence = note.relevanceEvidence || {
-          directTagWeight: 0,
-          associationWeight: note.associationWeight || 0,
-          normalizedAssociationWeight: note.associationWeight || 0,
-          appliedAssociationWeight: note.associationWeight || 0,
-          entryLinkWeight: 0,
-          fileLinkWeight: 0,
-          lexicalWeight: 0,
-          recencyWeight: 0,
-          specificityPenalty: 0,
-          lexicalTerms: [],
-        };
-        const weights = [
-          ['Shared-tag weight', evidence.directTagWeight],
-          ['Association weight', evidence.appliedAssociationWeight],
-          ['Direct entry-link weight', evidence.entryLinkWeight],
-          ['File-link weight', evidence.fileLinkWeight],
-          ['Lexical weight', evidence.lexicalWeight],
-          ['Recency tie-breaker', evidence.recencyWeight],
-        ].filter(function (item) { return item[1] > 0; });
-        const specificityAdjustment = evidence.specificityPenalty > 0
-          ? '<span>Specificity adjustment</span><strong>-' + Math.round(evidence.specificityPenalty * 100) + ' pts</strong>'
-          : '';
-        // A precise-looking percentage from a heuristic ranker invites a
-        // reader to build a model of it that two close scores then break.
-        // The rail says strong, moderate, or weak; the number is in the
-        // breakdown for anyone who wants it.
-        const relevanceLevel = getWeightLevel(note.relevanceScore / 100);
-        const relevanceWord = relevanceLevel >= 3 ? 'strong' : relevanceLevel === 2 ? 'moderate' : 'weak';
-        const relevance = '<span class="relevance-wrap"><button type="button" class="relevance-score" data-action="show-relevance" aria-expanded="false" aria-label="Relevance ' + relevanceWord + ', ' + note.relevanceScore + ' of 100. Show how this was scored.">' + renderWeightRail(relevanceLevel) + '</button><span class="relevance-tooltip popover is-tip" role="tooltip"><span class="relevance-tooltip-header"><strong>Relevance score</strong><strong>' + note.relevanceScore + '%</strong></span><ul>' + relevanceReasons.map(function (reason) { return '<li>' + escapeHtml(reason) + '</li>'; }).join('') + '</ul><div class="relevance-weights">' + weights.map(function (item) { return '<span>' + escapeHtml(item[0]) + '</span><strong>' + Number(item[1]).toFixed(2) + '</strong>'; }).join('') + specificityAdjustment + '</div></span></span>';
-        const pathHtml = renderHeadingPath(note.headingPath, fileName, note.title);
-        // Writing a link to a result is the reason to have found it, and
-        // the sidebar sits beside the note being written in. The button
-        // stays out of the way until the card is under the pointer.
-        const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" data-tip="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
-        // The words the card shares with the note, marked in its excerpt.
-        const terms = (evidence.lexicalTerms || []).slice(0, 5).map(function (term) { return term.term; });
-        const excerpt = note.excerpt && previewLines() > 0
-          ? '<p class="note-excerpt">' + escapeHtml(note.excerpt) + '</p>'
-          : '';
-        return renderNoteCard(
-          '',
-          'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"' + (terms.length ? ' data-terms="' + escapeHtml(terms.join(' ')) + '"' : ''),
-          titleHtml,
-          '<div class="note-actions">' + insertLink + relevance + '</div>',
-          '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + excerpt + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
-        );
-      }).join('') + '</div>' + showMore;
+      content = '<div class="note-list">' + shownNotes.map(renderRankedNote).join('') + '</div>' + showMore + renderSimilar(state.similar);
     }
     // The note's own tags are context for the list below them, so only the
     // first few are kept on screen; the rest are one press away. A note with

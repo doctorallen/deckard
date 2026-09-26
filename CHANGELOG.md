@@ -12,6 +12,11 @@
 
 ### Added
 
+- **A note with no tags still finds its neighbors.** Related Notes lists up
+  to ten entries with similar wording, marked weak and kept apart from
+  related notes, and the tags those entries use. For a note with tags,
+  wording alone still never makes a note related.
+
 - **Related Notes previews each result.** A card shows the first line of
   what the entry says, starting where it shares a word with your note,
   with those words marked. The sidebar's new gear sets Preview to None, 1

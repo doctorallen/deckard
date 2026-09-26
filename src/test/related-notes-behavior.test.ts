@@ -106,6 +106,55 @@ suite('Related Notes behavior', () => {
     assert.deepStrictEqual(page.lastPosted('setHideDailyNotes'), { type: 'setHideDailyNotes', hide: true });
   });
 
+  test('a note with no tags lists the tags similar notes use, then those notes, weak', () => {
+    const similarNote = note({
+      kind: 'wording',
+      filePath: 'vendors/audit.md',
+      fileName: 'audit.md',
+      title: 'Northwind audit',
+      relevanceScore: 24,
+      reasons: ['Similar wording: northwind, northern, route'],
+      excerpt: 'The audit of Northwind on the northern route.',
+    });
+    const page = open({
+      state: 'noTags',
+      relatedNotesSortMode: 'tags',
+      similar: { notes: [similarNote], tags: [{ key: '#risk/vendor', label: '#risk/vendor', entryCount: 3 }] },
+    });
+    const labels = page.findAll('.section-label').map((label) => label.textContent);
+    assert.deepStrictEqual(labels, ['Tags used by similar notes', 'Similar wording (no tags yet)']);
+    assert.strictEqual(page.text('.similar-hint'), 'These share words with this note, not tags or links.');
+    assert.strictEqual(page.findAll('.similar-wording .relevance-score .tag-weight-rail-segment.filled').length, 1);
+    assert.match(page.find('.similar-wording .relevance-score').getAttribute('aria-label') ?? '', /^Relevance weak, 24 of 100\./);
+    assert.strictEqual(page.text('.similar-wording .relevance-reason'), 'Similar wording: northwind, northern, route');
+    assert.match(page.find('.suggested-tag .tag-open').getAttribute('data-tip') ?? '', /^On 3 of the similar entries below\./);
+    page.click('.suggested-tag [data-action="open-tag"]');
+    assert.deepStrictEqual(page.lastPosted('openTag'), { type: 'openTag', tagKey: '#risk/vendor' });
+  });
+
+  test('a note with no tags says why nothing is listed', () => {
+    let page = open({ state: 'noTags', similar: { notes: [], tags: [] } });
+    assert.strictEqual(
+      page.text('.empty'),
+      'This note has no tags yet, and no other entry shares enough of its wording to suggest any.',
+    );
+    page.dispose();
+    page = open({ state: 'noTags' });
+    assert.strictEqual(page.text('.empty'), 'This note has no tags yet.');
+  });
+
+  test('a note with no tags but a link lists its related notes first, then the similar ones', () => {
+    const page = open({
+      notes: [note()],
+      similar: { notes: [note({ kind: 'wording', filePath: 'b.md', sourceLine: 3, title: 'B', relevanceScore: 20 })], tags: [] },
+    });
+    assert.deepStrictEqual(page.findAll('.section-label').map((label) => label.textContent), [
+      'Related notes',
+      'Similar wording (no tags yet)',
+    ]);
+    assert.strictEqual(page.findAll('.note').length, 2);
+  });
+
   test('opens a result at its line, and beside the note when asked', () => {
     const page = open({ notes: [note()] });
 

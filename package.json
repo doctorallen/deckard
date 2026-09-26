@@ -1920,7 +1920,7 @@
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link. Shared wording never makes a note related on its own. Turn off to rank by tags and links alone.",
+            "description": "Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link, and list entries with similar wording under a note that has no tags yet. For a note with tags, shared wording never makes a note related on its own. Turn off to rank by tags and links alone.",
             "tags": [
               "advanced"
             ],

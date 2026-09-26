@@ -382,6 +382,36 @@ displayedScore = max(0, baseScore - 5)
 This makes the more specific child entry appear ahead of a broad parent when
 both match the same tags.
 
+### A note with no tags
+
+The one exception to "wording never qualifies a candidate" is a note with
+no tags at all: no front-matter, heading, inline, or task tag. It has
+nothing to rank by but its links, so Related Notes lists, apart from the
+related notes and under **Similar wording (no tags yet)**, the entries worded
+like it. The rule applies only when the note being read has no tags; a note
+with one tag never gets this list.
+
+- **Query.** The note's terms by tf·idf over the corpus, the top 25 (Lucene's
+  MoreLikeThis default), and only terms some other note holds. A long
+  journal note would otherwise match everything.
+- **Candidates.** Only entries holding a query term, found through a
+  term → entries postings map built once per index. A task under a listed
+  section is seen through the section. Parked notes are left out, and daily
+  notes when Hide daily notes is on.
+- **Floor.** Two shared terms, or one whose contribution alone is at least
+  1.5 (a rare word).
+- **Spread.** At most two entries from one note, and ten in all. The Sort
+  control applies.
+- **Order and score.** Ordered by the raw BM25 sum (`rawWeight`, §6); the
+  displayed score is `min(30, round(min(0.3, raw / (raw + 1)) × 100))`, so the
+  rail is weak at most.
+- **Tags used by similar notes.** Each listed entry's tags, weighted by its
+  raw BM25 sum, each tag's sum multiplied by `ln(1 + entries / (1 +
+  tagEntries))`. People, the board's status namespace, parked tags, and a tag
+  on more than a third of all entries (a journal's `#daily`) are left out. A
+  tag on two or more listed entries comes first; single ones fill up to
+  three; five at most.
+
 ## 6. BM25-style lexical similarity
 
 ### What BM25 means
@@ -455,6 +485,9 @@ The constants `1.2`, `0.75`, and `2.2` provide term-frequency saturation and
 length normalization. The `0.3` cap keeps text similarity below direct tags
 and links. The debug page lists the per-term `termContribution`; the overall
 `lexicalWeight` in the evidence summary is the capped value used in ranking.
+
+The sum before the cap is kept as `rawWeight`. It orders the Similar
+wording list under a note with no tags (§5), where nothing else does.
 
 ### Lexical example
 
@@ -569,7 +602,7 @@ and any specificity adjustment.
 
 | Setting | Default | Effect on Related Notes |
 |---|---:|---|
-| `deckard.enableKeywordLinks` | `true` | Enables the capped lexical text signal, which adjusts the score of a candidate that already qualifies. Disable it to rank by tags, associations, and Wiki links alone. Shared wording never qualifies a candidate either way. |
+| `deckard.enableKeywordLinks` | `true` | Enables the capped lexical text signal, which adjusts the score of a candidate that already qualifies, and the Similar wording list under a note with no tags. Disable it to rank by tags, associations, and Wiki links alone. For a note with tags, shared wording never qualifies a candidate either way. |
 | `deckard.relatedNotesAssociationMinimumSupport` | `1` | Requires an association to appear in at least this many distinct source units. Raising it suppresses one-off learned associations without removing them from the index. |
 | `deckard.relatedNotesRecencyHalfLifeDays` | `0` | Enables the optional recency contribution when greater than zero. |
 | `deckard.parseInlineTags` | `true` | Controls whether tagged prose and list lines become separate indexed entries and association source units. |
@@ -586,7 +619,8 @@ If an expected relationship is missing, check the following:
 3. Is `relatedNotesAssociationMinimumSupport` higher than the pair's
    **Shared source units** count?
 4. Does the candidate share only wording with the selected entry? Shared
-   wording adjusts scores but never qualifies a candidate on its own.
+   wording adjusts scores but never qualifies a candidate on its own
+   (unless the note has no tags; see §5).
 5. Is a namespace alias causing two source spellings to use one canonical key?
 
 If a candidate has no exact shared tag, it can still appear through an

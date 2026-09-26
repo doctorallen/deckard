@@ -182,6 +182,29 @@ function createSurfaces(zen) {
       clippers: [],
       hovered: ['.note'],
     },
+    {
+      // A note with no tags: the tags similar notes use, each a full-width
+      // row, then the entries worded like it, at the same narrow width.
+      name: 'sidebarNotesUntagged',
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => {
+        const untaggedFiles = new Map(files);
+        const untagged = parseMarkdown('notes/untagged.md', [
+          '# Thursday',
+          'Walked the neon market with Dana about the Atlas project and the replicants report.',
+          'The related note on the Atlas project needs an entry before the rain.',
+        ].join('\n'));
+        untaggedFiles.set('notes/untagged.md', untagged);
+        return {
+          ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, true, 'tags', {}, 'inline'),
+          previewLines: 1,
+        };
+      },
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note'],
+    },
     // Zen folds each card's file and line away and reveals it on hover, so a
     // hovered result is the one row that grows. The search page is where that
     // reveal sits inside a .card-header rather than at the end of the row.

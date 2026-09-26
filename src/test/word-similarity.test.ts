@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createLexicalModel, getLexicalWeight } from '../ui/state/wordSimilarity';
+import { createLexicalModel, createMoreLikeThisModel, getLexicalWeight } from '../ui/state/wordSimilarity';
 
 /** What the wording two entries share counts for, and what it does not. */
 suite('Word similarity', () => {
@@ -40,5 +40,24 @@ suite('Word similarity', () => {
     const another = getLexicalWeight(model, 'Standup', 'Standup outcome noted recorded.');
     assert.deepStrictEqual(another.terms, []);
     assert.strictEqual(another.weight, 0);
+  });
+
+  test('a note with nothing else to go on is queried by its 25 rarest shared words', () => {
+    const words = Array.from({ length: 40 }, (_, at) => `word${String.fromCharCode(97 + (at % 26))}${String.fromCharCode(97 + Math.floor(at / 26))}`);
+    const active = parseMarkdown('notes/a.md', `# Long\n${words.join(' ')}\n`);
+    const index = buildWorkspaceIndex(
+      new Map([
+        ['notes/a.md', active],
+        note('notes/b.md', `# Other\n${words.slice(0, 30).join(' ')}\n`),
+        note('notes/c.md', `# Third\n${words.slice(0, 10).join(' ')}\n`),
+        note('notes/d.md', '# Unrelated\nNothing alike here.\n'),
+      ]),
+    );
+    const model = createMoreLikeThisModel(index, active);
+    assert.strictEqual(model.queryTerms.size, 25, 'at most 25 terms');
+    assert.ok(!model.queryTerms.has(words[35]), 'a word no other note holds is not asked for');
+    assert.ok(model.queryTerms.has(words[20]), 'the rarer shared words come first');
+    const evidence = getLexicalWeight(model, 'Other', words.slice(0, 30).join(' '));
+    assert.ok(evidence.rawWeight >= evidence.weight);
   });
 });

@@ -26,6 +26,14 @@ export interface EvaluationCase {
 export const ACTIVE_NOTE = 'journal/2026-09-20.md';
 export const UNTAGGED_NOTE = 'journal/2026-09-21.md';
 
+/** What a reader would call related to the untagged note, judged by hand. */
+export const UNTAGGED_RELEVANT: ReadonlySet<string> = new Set([
+  'vendors/northwind-audit.md:1',
+  'journal/2026-09-20.md:11',
+  'suppliers/northwind.md:1',
+  'vendors/escalations.md:2',
+]);
+
 const NOTES: Record<string, string> = {
   [ACTIVE_NOTE]: [
     '---', // 1

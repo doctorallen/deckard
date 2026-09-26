@@ -642,7 +642,9 @@ Then choose **Group Tasks By…** in the Tasks view's title, **Tag namespace…*
 
 ## Related Notes
 
-Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work. Each result shows the first line of what the entry says, with the words it shares with your note marked. The gear beside **Sort by** sets **Preview** to None, 1 line, or 2 lines, and **Daily notes** to Show or Hide. Parked notes are not suggested, unless the note you are in is parked itself; then they come after the rest. Linked from still lists a parked note that links here, last, marked **Parked**.
+Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work. Each result shows the first line of what the entry says, with the words it shares with your note marked. The gear beside **Sort by** sets **Preview** to None, 1 line, or 2 lines, and **Daily notes** to Show or Hide.
+
+A note with no tags yet has nothing to rank by, so Related Notes lists up to ten entries whose wording is similar, under **Similar wording (no tags yet)**, each marked weak and kept apart from the related notes, and above them, under **Tags used by similar notes**, the tags those entries use, most telling first. A note with a tag never gets this list: for it, wording alone never makes another note related. `deckard.enableKeywordLinks` turns it off along with the wording signal. Parked notes are not suggested, unless the note you are in is parked itself; then they come after the rest. Linked from still lists a parked note that links here, last, marked **Parked**.
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](docs/images/related-notes.png)
 
@@ -658,7 +660,7 @@ The view's title bar holds its shortcuts, as every other view's does: Home, the 
 | Parent or child-heading context | Your selected entry sits under a `#project/atlas` parent heading, or a selected heading contains one | Useful, but lighter |
 | Associated tag | `#project/atlas` and `#risk/vendor` are often written together | Supporting evidence |
 | Entry Wiki link | An entry links to `[[Launch plan#Decision]]` | Small supporting evidence |
-| Shared wording | Both entries use distinctive section wording | Adjusts the score of an entry that qualifies another way; never makes an entry related on its own |
+| Shared wording | Both entries use distinctive section wording | Adjusts the score of an entry that qualifies another way; never makes an entry related on its own, unless the note you are reading has no tags at all |
 
 For example, if you select `#project/atlas #follow-up`, a note with both tags ranks ahead of a note that only contains an associated `#risk/vendor` tag. Associations retain their raw source evidence but are normalized for support and tag prevalence before diminishing returns are applied, so generic tags cannot dominate and indirect connections cannot overtake a complete direct match.
 
@@ -1220,7 +1222,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tagTitleDisplayMode` | `inline` | Keeps tags in Related Notes, search page, and Dashboard note/task titles as clickable buttons by default. Set to `separate` to remove tags from titles and show them as separate tag controls. |
 | `deckard.enableHeadingTagRelationships` | `true` | Offers related **Tags** in a tag search's Refine, ranked by association. Disable it to refine by the tags the results carry instead, without changing indexed tags or note content. |
 | `deckard.enableTagAutocomplete` | `true` | Shows indexed tag and people suggestions after a marker. Disable it without changing tag indexing, highlighting, or navigation. |
-| `deckard.enableKeywordLinks` | `true` | Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link. Shared wording never makes a note related on its own. Turn off to rank by tags and links alone. |
+| `deckard.enableKeywordLinks` | `true` | Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link, and list entries with similar wording under a note that has no tags yet. For a note with tags, shared wording never makes a note related on its own. Turn off to rank by tags and links alone. |
 | `deckard.relatedNotesAssociationMinimumSupport` | `1` | How many headings, tagged lines, or tasks must write two tags together before Related Notes treats the tags as associated. 1 counts an association written once. |
 | `deckard.relatedNotesRecencyHalfLifeDays` | `0` | Give recently written notes a small lift in Related Notes: a note this many days old gets half the lift of one written today. 0 turns it off. A daily note's date or a front-matter date is used before the file's. |
 | `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps one `#namespace` to another. Targets can be built-in or custom; for example, `{ "proj": "project", "leadership": "management" }` treats `#proj/atlas` as a project and collapses `#leadership/performance` into `#management/performance`. Other namespaced tags become entities automatically without configuration. |

@@ -803,6 +803,8 @@ export interface RankedNote {
    * tagged line, whose title is its whole text.
    */
   excerpt?: string;
+  /** Listed for its wording alone, under a note with no tags: never strong. */
+  kind?: 'wording';
   sectionId?: string;
   filePath: string;
   title: string;
@@ -1090,6 +1092,11 @@ export interface SidebarNotesSnapshot {
   hideDailyNotes?: boolean;
   /** How many lines of each result's excerpt the cards show, 0 for none. */
   previewLines?: 0 | 1 | 2;
+  /**
+   * For a note with no tags: entries worded like it, kept apart from the
+   * related notes, and the tags those entries use.
+   */
+  similar?: { notes: RankedNote[]; tags: SuggestedTag[] };
   tagTitleDisplayMode: TagTitleDisplayMode;
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
@@ -1116,6 +1123,14 @@ export interface SearchRefineState {
   query: QueryViewState;
   /** What the page can find, so the counts name only those. */
   resultKinds: Array<'notes' | 'tasks'>;
+}
+
+/** A tag the entries worded like an untagged note use, offered to add. */
+export interface SuggestedTag {
+  key: string;
+  label: string;
+  /** How many of the similar entries carry it. */
+  entryCount: number;
 }
 
 export interface SidebarTag extends TagReference {
