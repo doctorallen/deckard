@@ -59,6 +59,12 @@ ${getPageTailCss()}
 (function () {
   const vscode = acquireVsCodeApi();
   let state;
+  // The day that holds the grid's one tab stop. It is kept here, not on the
+  // state, which each message from the host replaces.
+  let focusDate;
+  // The day a keyboard step into another month lands on, focused once that
+  // month is drawn.
+  let pendingFocusDate;
 ${getComponentScript()}
   const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -90,7 +96,7 @@ ${getComponentScript()}
     const due = '<span class="due' + (overdue ? ' overdue' : '') + '" aria-hidden="true">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>';
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
-    const focusable = state.focusDate ? day.date === state.focusDate : day.isToday;
+    const focusable = day.date === tabStopDate();
     return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" title="' + tooltip + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
   }
 
@@ -105,6 +111,32 @@ ${getComponentScript()}
     return '<div class="calendar-row" role="row"><span class="calendar-cell" role="rowheader"><button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
       + '${calendarIcon}'
       + '</button></span>' + week.days.map(renderDay).join('') + '</div>';
+  }
+
+  /** The focused day when it is drawn, else today, else the 1st. */
+  function tabStopDate() {
+    const days = [];
+    state.weeks.forEach(function (week) { week.days.forEach(function (day) { days.push(day); }); });
+    const has = function (date) { return date && days.some(function (day) { return day.date === date; }); };
+    if (has(focusDate)) return focusDate;
+    const today = days.filter(function (day) { return day.isToday; })[0];
+    if (today) return today.date;
+    const first = days.filter(function (day) { return day.inMonth; })[0];
+    return first ? first.date : undefined;
+  }
+
+  /** A date moved by some days, as YYYY-MM-DD. */
+  function shiftDate(date, days) {
+    const parts = date.split('-').map(Number);
+    const moved = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+    return moved.toISOString().slice(0, 10);
+  }
+
+  /** The same day of the month in another month, or its last day. */
+  function sameDayIn(date, month) {
+    const parts = month.split('-').map(Number);
+    const last = new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate();
+    return month + '-' + String(Math.min(Number(date.slice(8, 10)), last)).padStart(2, '0');
   }
 
   function render() {
@@ -139,6 +171,8 @@ ${getComponentScript()}
     } else if (event.key === 'PageUp' || event.key === 'PageDown') {
       event.preventDefault();
       const month = event.key === 'PageUp' ? state.previousMonth : state.nextMonth;
+      pendingFocusDate = sameDayIn(day.dataset.date, month);
+      focusDate = pendingFocusDate;
       vscode.postMessage({ type: 'showMonth', month: month });
       return;
     } else {
@@ -147,10 +181,14 @@ ${getComponentScript()}
     event.preventDefault();
     // A step past the edge of the drawn weeks moves to the next month.
     if (!next) {
+      if (steps[event.key] !== undefined) {
+        pendingFocusDate = shiftDate(day.dataset.date, steps[event.key]);
+        focusDate = pendingFocusDate;
+      }
       vscode.postMessage({ type: 'showMonth', month: steps[event.key] < 0 ? state.previousMonth : state.nextMonth });
       return;
     }
-    state.focusDate = next.dataset.date;
+    focusDate = next.dataset.date;
     days.forEach(function (candidate) { candidate.setAttribute('tabindex', candidate === next ? '0' : '-1'); });
     next.focus();
   });
@@ -166,7 +204,17 @@ ${getComponentScript()}
   });
 
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'state') { state = event.data.data; render(); }
+    if (!event.data || event.data.type !== 'state') return;
+    state = event.data.data;
+    // A save anywhere redraws the month; the focus stays on the day it was on.
+    renderKeepingPlace(render);
+    if (pendingFocusDate) {
+      const stepped = document.querySelector('.calendar-grid .day[data-date="' + pendingFocusDate + '"]');
+      if (stepped) {
+        pendingFocusDate = undefined;
+        stepped.focus();
+      }
+    }
   });
   post({ type: 'ready' });
 }());

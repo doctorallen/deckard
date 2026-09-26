@@ -1006,7 +1006,7 @@ export function getComponentScript(): string {
    * failing that, the entry it was in; failing that, the entry that took
    * its place in the list, so completing a task leaves focus on the next.
    */
-  const PLACE_KEYS = ['taskId', 'tagKey', 'widgetId', 'columnId', 'status', 'filePath', 'line', 'action', 'value', 'kind', 'section'];
+  const PLACE_KEYS = ['taskId', 'tagKey', 'widgetId', 'columnId', 'status', 'filePath', 'line', 'action', 'value', 'kind', 'section', 'date'];
   const PLACE_ITEMS = [['taskId', '[data-task-id]'], ['tagKey', '[data-tag-key]'], ['filePath', '[data-file-path]']];
 
   function placeSelector(element) {

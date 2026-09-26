@@ -97,6 +97,11 @@
   `has:task`, which Deckard does not read, so the page opened on an error.
   It now searches `is:task`.
 
+- **The calendar keeps keyboard focus through an update.** Every save in
+  the workspace redrew the month and dropped the focus, and so did PageUp
+  and PageDown. The focus now stays on its day, and a step into another
+  month lands on the day it stepped to.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

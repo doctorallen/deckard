@@ -497,6 +497,10 @@ Buttons, menu items, and command titles follow one table, and
   focus moved to Undo so Enter takes it back; any later change to the page's
   controls withdraws the offer. The Notes Graph's Reset graph is the first to
   do this; Piece 9g makes it a shared primitive.
+- **Focus survives a redraw.** A page that redraws from new state does it
+  through `renderKeepingPlace(render)`, which finds the focused control again
+  by its `data-*` keys (`PLACE_KEYS`: task, tag, widget, column, status,
+  file, line, action, value, kind, section, and `date` for calendar days).
 - **Escape everything from the host.** Snapshot values are data, not markup.
 - **Post intent, do not mutate.** A control carries `data-action` and posts a
   message; the host decides and sends new state back. Pages re-render from

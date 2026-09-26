@@ -1,10 +1,14 @@
 import * as assert from 'assert';
 
+import * as vscode from 'vscode';
+
 import { parseMarkdown } from '../core/markdown/parser';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { parseLocalDate } from '../ui/commands/dailyNote';
 import { createCalendar, shiftMonth } from '../ui/state/calendarState';
+import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { parseCalendarMessage } from '../ui/webview/messages';
+import { openWebviewPage } from './webviewPage';
 
 suite('Calendar', () => {
   const note = (filePath: string, content: string) =>
@@ -104,5 +108,38 @@ suite('Calendar', () => {
     assert.strictEqual(parseCalendarMessage({ type: 'openWeek', date: '../notes' }), undefined);
     assert.strictEqual(parseCalendarMessage({ type: 'deleteNote' }), undefined);
     assert.strictEqual(parseCalendarMessage('openDay'), undefined);
+  });
+
+  test('keeps keyboard focus on its day through a redraw, and after a month step', () => {
+    const page = openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      calendar,
+    );
+    try {
+      const day = (date: string) =>
+        page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+      const key = (target: HTMLElement, name: string) =>
+        target.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: name, bubbles: true }));
+
+      day('2026-09-13').focus();
+      key(day('2026-09-13'), 'ArrowRight');
+      assert.strictEqual(page.document.activeElement, day('2026-09-14'));
+
+      // A save anywhere sends the month again.
+      page.send(calendar);
+      assert.strictEqual(page.document.activeElement, day('2026-09-14'), 'focus survives the redraw');
+      assert.strictEqual(day('2026-09-14').getAttribute('tabindex'), '0');
+
+      key(day('2026-09-14'), 'PageDown');
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' });
+      page.send(createCalendar(index, '2026-10', new Date(2026, 8, 13, 10)));
+      assert.strictEqual(
+        (page.document.activeElement as HTMLElement).dataset.date,
+        '2026-10-14',
+        'the same day of the next month',
+      );
+    } finally {
+      page.dispose();
+    }
   });
 });
