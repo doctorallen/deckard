@@ -34,6 +34,42 @@ interface CaptureAnswer {
   literal: boolean;
 }
 
+/** What was being typed when Capture closed without writing it. */
+export interface CaptureDraft {
+  text: string;
+  target: CaptureTarget;
+  literal: boolean;
+}
+
+const DRAFT_KEY = 'deckard.capture.draft';
+
+/**
+ * Keeps what was typed into Capture until it is written, so closing the box,
+ * or another quick input taking its place, does not lose the words.
+ */
+export class CaptureDrafts {
+  public constructor(private readonly memory: Pick<vscode.Memento, 'get' | 'update'>) {}
+
+  /** The draft, when it was typed into the same command. */
+  public read(target: CaptureTarget): CaptureDraft | undefined {
+    const draft = this.memory.get<CaptureDraft>(DRAFT_KEY);
+    return draft &&
+      typeof draft.text === 'string' &&
+      draft.text.trim() !== '' &&
+      draft.target === target
+      ? { text: draft.text, target, literal: draft.literal === true }
+      : undefined;
+  }
+
+  public save(draft: CaptureDraft): Thenable<void> {
+    return this.memory.update(DRAFT_KEY, draft);
+  }
+
+  public clear(): Thenable<void> {
+    return this.memory.update(DRAFT_KEY, undefined);
+  }
+}
+
 const TAG_SUGGESTION_LIMIT = 8;
 /** The word being typed: everything after the last space or opening bracket. */
 const TRAILING_WORD = /[^\s([{]*$/;
@@ -47,16 +83,24 @@ const labelCollator = new Intl.Collator();
 export async function capture(
   indexer: WorkspaceIndexer,
   initialTarget: CaptureTarget = 'today',
+  drafts?: CaptureDrafts,
 ): Promise<void> {
   await indexer.ready;
-  const answer = await askForCapture(indexer, initialTarget);
+  const answer = await askForCapture(
+    indexer,
+    initialTarget,
+    drafts?.read(initialTarget),
+    drafts,
+  );
   if (!answer) {
     return;
   }
   const line = writeCapture(answer);
 
   if (answer.target === 'today') {
-    await captureToToday(answer.text, line);
+    if (await captureToToday(answer.text, line)) {
+      await drafts?.clear();
+    }
     return;
   }
 
@@ -87,7 +131,11 @@ export async function capture(
     );
     return;
   }
-  announce(uri, await appendCapture(uri, line, section));
+  const taskLine = await appendCapture(uri, line, section);
+  if (taskLine !== undefined) {
+    await drafts?.clear();
+  }
+  announce(uri, taskLine);
 }
 
 /**
@@ -266,6 +314,8 @@ export async function captureToToday(
 function askForCapture(
   indexer: WorkspaceIndexer,
   initialTarget: CaptureTarget,
+  restored?: CaptureDraft,
+  drafts?: CaptureDrafts,
 ): Promise<CaptureAnswer | undefined> {
   const tags = [...indexer.getSnapshot().tags.values()];
   const personMarker = getPersonMarker(
@@ -287,15 +337,24 @@ function askForCapture(
     iconPath: new vscode.ThemeIcon('wand'),
     tooltip: 'Read a date, priority, or repeat rule from the last words',
   };
-  let literal = false;
+  let literal = restored?.literal ?? false;
   const picker = vscode.window.createQuickPick<CaptureItem>();
   picker.placeholder =
     'A task to add, such as Call Ren about the #project/atlas budget friday p2';
+  // Clicking into the editor or a view no longer closes the box; Escape does.
+  picker.ignoreFocusOut = true;
   let target = initialTarget;
+  // Said in the title until the first keystroke, so restored words are not
+  // mistaken for a stray paste.
+  let restoring = restored !== undefined;
+  if (restored) {
+    picker.value = restored.text;
+  }
 
   const update = (): void => {
     picker.title =
-      target === 'today' ? 'Deckard: Capture' : 'Deckard: Capture Under a Heading';
+      (target === 'today' ? 'Deckard: Capture' : 'Deckard: Capture Under a Heading') +
+      (restoring ? ' — Restored what you were typing' : '');
     picker.buttons = [
       literal ? readingButton : literalButton,
       target === 'today' ? headingButton : todayButton,
@@ -330,7 +389,11 @@ function askForCapture(
   };
 
   return new Promise((resolve) => {
-    picker.onDidChangeValue(update);
+    let accepted = false;
+    picker.onDidChangeValue(() => {
+      restoring = false;
+      update();
+    });
     picker.onDidTriggerButton((button) => {
       if (button === literalButton || button === readingButton) {
         literal = !literal;
@@ -348,11 +411,19 @@ function askForCapture(
       }
       const text = picker.value.trim();
       if (text) {
+        accepted = true;
+        // Kept until it is written: a heading picker closed, or a note that
+        // refuses the edit, would otherwise lose it.
+        void drafts?.save({ text, target, literal });
         resolve({ text, target, literal, asNote: item?.action === 'note' });
         picker.hide();
       }
     });
     picker.onDidHide(() => {
+      if (!accepted) {
+        const text = picker.value.trim();
+        void (text ? drafts?.save({ text, target, literal }) : drafts?.clear());
+      }
       resolve(undefined);
       picker.dispose();
     });

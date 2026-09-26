@@ -5,7 +5,7 @@ import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
-import { capture, captureToToday } from './ui/commands/capture';
+import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
 import {
   createDailyNote,
@@ -341,6 +341,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const queryBlocks = new QueryBlocks(indexer);
   const agenda = new AgendaTreeProvider(indexer, preferences);
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
+  // What was typed into Capture and not yet written, for this workspace.
+  const captureDrafts = new CaptureDrafts(context.workspaceState);
   activeServices = {
     indexer,
     preferences,
@@ -696,7 +698,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
     ),
-    vscode.commands.registerCommand('deckard.capture', () => capture(indexer)),
+    vscode.commands.registerCommand('deckard.capture', () =>
+      capture(indexer, 'today', captureDrafts),
+    ),
     // The hover on a tagged entry passes the line it was shown on, so it
     // pins that entry rather than wherever the cursor happens to be.
     vscode.commands.registerCommand(
@@ -722,7 +726,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         ),
     ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
-      capture(indexer, 'heading'),
+      capture(indexer, 'heading', captureDrafts),
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer),

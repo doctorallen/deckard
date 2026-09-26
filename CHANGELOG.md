@@ -58,6 +58,12 @@
   hour, and the status bar's count moves to the new day without waiting for
   the window to regain focus.
 
+- **Capture stays open when you click away, and keeps what you were
+  typing.** Clicking into the editor closed the box and lost the words, and
+  so did closing the heading picker in Capture Under a Heading. Words not
+  yet written come back the next time the same command opens, and the title
+  says so.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

@@ -894,7 +894,7 @@ The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunda
 
 ## Quick capture
 
-Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using.
+Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using. The box stays open when you click elsewhere. If you close it with words in it, the next Capture brings them back.
 
 The words at the end of a capture are read as a task manager's quick add reads them, in any order: a day (`today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, or a date), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), and a repeat rule (`every week`, `daily`). `Call Ren friday p2` is written as `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the line it will write is shown under what you type before it is saved. The **Keep the words as written** button in the capture box reads nothing from them. **Add as a note line**, under the task, writes a plain `- …` list item instead, for an idea that is not a to-do. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
 

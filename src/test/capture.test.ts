@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import {
   appendCapture,
+  CaptureDrafts,
   CaptureInsertion,
   completeLastWord,
   findSameSection,
@@ -41,6 +42,25 @@ suite('Quick capture', () => {
     { label: '#risk/atlas-budget', count: 5 },
     { label: '@alex-smith', count: 4 },
   ];
+
+  test('keeps what was typed for the command it was typed into', async () => {
+    const stored = new Map<string, unknown>();
+    const drafts = new CaptureDrafts({
+      get: <T>(key: string) => stored.get(key) as T,
+      update: async (key: string, value: unknown) => void stored.set(key, value),
+    } as unknown as vscode.Memento);
+
+    await drafts.save({ text: 'Call Ren friday', target: 'today', literal: true });
+    assert.deepStrictEqual(drafts.read('today'), {
+      text: 'Call Ren friday',
+      target: 'today',
+      literal: true,
+    });
+    assert.strictEqual(drafts.read('heading'), undefined, 'kept for Capture, not the other');
+
+    await drafts.clear();
+    assert.strictEqual(drafts.read('today'), undefined);
+  });
 
   test('suggests tags for the word being typed, most used first', () => {
     assert.deepStrictEqual(getTagSuggestions('Call Ren #pro', tags), [
