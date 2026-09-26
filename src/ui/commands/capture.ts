@@ -187,8 +187,16 @@ export function completeLastWord(value: string, label: string): string {
 
 /**
  * The line a capture is written as: a note line, the task as typed, or the
- * task with the date, priority, and repeat rule its last words name.
+ * task with the date, priority, and repeat rule its last words name. Find's
+ * Capture row writes through this too, so it shows the same line.
  */
+export function formatCapture(
+  text: string,
+  options: { literal?: boolean; asNote?: boolean } = {},
+): string {
+  return writeCapture({ text, literal: options.literal === true, asNote: options.asNote === true });
+}
+
 function writeCapture(answer: Omit<CaptureAnswer, 'target'>): string {
   if (answer.asNote) {
     return formatNoteLine(answer.text);

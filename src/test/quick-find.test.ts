@@ -15,6 +15,8 @@ import {
   QuickFindResults,
 } from '../ui/state/quickFindState';
 import { findDailyNoteRow, isNoteName, keyLabel, toPickItems } from '../ui/commands/quickFind';
+import { formatCapture } from '../ui/commands/capture';
+import { parseDatePhrase } from '../core/markdown/dates';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -59,7 +61,7 @@ function createFinder(notes: Record<string, string>) {
         preferences,
         input,
         (text) => store.searchEntries(text, { limit: 200 }),
-        { conditions },
+        { conditions, formatCapture: (text) => formatCapture(text) },
       ),
     dispose: () => store.dispose(),
   };
@@ -270,6 +272,25 @@ suite('Quick Find', () => {
     } finally {
       finder.dispose();
       store.dispose();
+    }
+  });
+
+  test('offers to capture what it could not find, when the words read as something to do', () => {
+    const finder = createFinder({
+      'atlas.md': '# Atlas #project/atlas\nThe budget is due.',
+      'ren.md': '# Ren\nRen likes coffee.',
+    });
+    try {
+      const friday = parseDatePhrase('friday', Date.now(), { direction: 'future' })?.date;
+      const none = finder.find('Call Ren friday p2');
+      assert.strictEqual(none.capture?.text, 'Call Ren friday p2');
+      assert.strictEqual(none.capture?.line, `- [ ] Call Ren ⏫ 📅 ${friday}`);
+      assert.ok(toPickItems(none, 'Call Ren friday p2').some((item) => item.label === '$(inbox) Capture “Call Ren friday p2” to today’s note'));
+      assert.ok(finder.find('#project/atlas budget meeting').capture, 'a tag among the words');
+      assert.strictEqual(finder.find('is:overdue zebra').capture, undefined, 'not a search with a condition');
+      assert.strictEqual(finder.find('budget').capture, undefined, 'not when a note has every word');
+    } finally {
+      finder.dispose();
     }
   });
 

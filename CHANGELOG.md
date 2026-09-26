@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Find offers to capture what it could not find.** When no entry has
+  every word, and what was typed is only words, tags, and people, Find adds
+  **Capture “…” to today's note**, showing the line Capture would write,
+  date and priority read from the words.
+
 - **Find learns what you pick.** Choosing a result after typing `vend`
   lifts it for `vend`, `ven`, and whatever else starts it, more with each
   pick and less as the pick ages, but never above a note titled exactly

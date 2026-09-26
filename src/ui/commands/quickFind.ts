@@ -13,6 +13,7 @@ import { describeDistance, formatShortDay, parseDatePhrase } from '../../core/ma
 import { parseIsoDate } from '../../core/markdown/taskMetadata';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
+import { captureToToday, formatCapture } from './capture';
 import { createWikiLink } from './insertLink';
 import { createLinkedNote } from './linkHealth';
 import { openSourceAt } from './navigation';
@@ -48,6 +49,8 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   indexing?: boolean;
   /** The row that opens the daily note for the day typed. */
   openDate?: string;
+  /** The row that captures what was typed to today's note. */
+  capture?: { text: string; line: string };
 }
 
 /** The row that opens a day's note, when what is typed is a day. */
@@ -529,7 +532,10 @@ export class QuickFind implements vscode.Disposable {
       this.preferences.value,
       picker.value,
       (text) => this.indexer.searchEntries(text, { limit: 200 }),
-      { conditions: createQuerySuggestions(index).conditions },
+      {
+        conditions: createQuerySuggestions(index).conditions,
+        formatCapture: (text) => formatCapture(text),
+      },
     );
     picker.items = toPickItems(
       results,
@@ -563,6 +569,13 @@ export class QuickFind implements vscode.Disposable {
     if (chosen.openDate !== undefined) {
       picker.hide();
       await openDailyNoteFor(this.indexer, chosen.openDate);
+      return;
+    }
+    if (chosen.capture) {
+      picker.hide();
+      // Written as Capture writes it; the words were captured, so they are
+      // not kept as a search.
+      await captureToToday(chosen.capture.text, chosen.capture.line);
       return;
     }
     if (chosen.create !== undefined) {
@@ -762,6 +775,19 @@ export function toPickItems(
       label: `$(new-file) Create note “${name}”`,
       alwaysShow: true,
       create: name,
+    });
+  }
+
+  // What could not be found may be something to do.
+  if (name && results.capture) {
+    if (!(name && !named && !dateRow && isNoteName(name))) {
+      items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+    }
+    items.push({
+      label: `$(inbox) Capture “${results.capture.text}” to today’s note`,
+      detail: results.capture.line,
+      alwaysShow: true,
+      capture: results.capture,
     });
   }
 

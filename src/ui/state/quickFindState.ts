@@ -80,6 +80,11 @@ export interface QuickFindResults {
   suggestion?: string;
   /** Every match, before the lists above were cut short. */
   totals: { notes: number; tasks: number };
+  /**
+   * What was typed, and the line Capture would write, when Find found
+   * nothing that has every word and the words read as something to do.
+   */
+  capture?: { text: string; line: string };
 }
 
 export type QuickFindTextSearch = (text: string) => EntrySearchResult;
@@ -90,6 +95,8 @@ export interface QuickFindOptions {
   taskLimit?: number;
   /** Whole conditions to offer for the word being typed, such as `is:open`. */
   conditions?: readonly QuerySuggestion[];
+  /** Writes typed words as Capture would, for Find's Capture row. */
+  formatCapture?: (text: string) => string;
 }
 
 const TAG_LIMIT = 5;
@@ -179,6 +186,16 @@ export function buildQuickFindResults(
     notes: ranked.notes.length,
     tasks: ranked.tasks.length,
   };
+  // Nothing had every word: what was typed may be something to do rather
+  // than something to find.
+  if (
+    options.formatCapture &&
+    isCaptureable(parsed.node) &&
+    (ranked.notes.length + ranked.tasks.length === 0 || ranked.partial)
+  ) {
+    const text = input.trim();
+    results.capture = { text, line: options.formatCapture(text) };
+  }
   results.notes = ranked.notes
     .slice(0, options.noteLimit ?? 30)
     .map((entry) => entry.item);
@@ -840,6 +857,29 @@ function createTaskItem(
     taskId: task.id,
     completed: task.completed,
   };
+}
+
+/**
+ * Whether a search reads as words to capture: plain words, with tags and
+ * people among them, and nothing else — no `is:`, `in:`, dates, OR, NOT, or
+ * parentheses — and at least one word.
+ */
+export function isCaptureable(node: QueryNode): boolean {
+  let words = 0;
+  const plain = (current: QueryNode): boolean => {
+    if (current.type === 'and') {
+      return current.children.every(plain);
+    }
+    if (current.type !== 'condition') {
+      return false;
+    }
+    if (current.field === 'text' && current.operator === 'contains') {
+      words += 1;
+      return true;
+    }
+    return current.field === 'tag' && current.operator === 'eq';
+  };
+  return plain(node) && words > 0;
 }
 
 /** Every word a search looks for, used only to order its results. */
