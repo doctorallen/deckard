@@ -424,6 +424,8 @@ export interface DashboardSavedFilter {
 
 export interface DashboardTask {
   task: Task;
+  /** Listed on a tag's page because it links to the tag's hub note. */
+  via?: 'hubLink';
   renderedTitle: string;
   titleTags: TagReference[];
   sectionHeading?: string;
@@ -623,6 +625,8 @@ export interface SearchPageSnapshot {
   entity?: SearchPageEntity;
   /** The note that describes the tag. */
   hub?: TagOverviewHub;
+  /** What a tag's page says under its hub: how else it is reached. */
+  tagPage?: SearchPageTagNotes;
   /** The search box's state, and the facets that could narrow it. */
   query: QueryViewState;
   /** The search the page was opened with, which Clear returns to. */
@@ -668,6 +672,14 @@ export interface SearchPageSnapshot {
   draftWords?: string[];
 }
 
+/** The quiet lines under a tag's page's hub. */
+export interface SearchPageTagNotes {
+  /** Entries listed because they link to a hub note without the tag. */
+  hubLinkCount: number;
+  /** The hub note they link to, by title. */
+  hubTitle?: string;
+}
+
 export interface TagOverviewHub {
   filePath: string;
   fileName: string;
@@ -685,6 +697,8 @@ export interface TagOverviewCard {
   id: string;
   filePath: string;
   heading: string;
+  /** Listed on a tag's page because it links to the tag's hub note. */
+  via?: 'hubLink';
   /** Whether this entry is pinned to Home, so a menu says which it offers. */
   pinned?: boolean;
   titleTags: TagReference[];
@@ -1175,6 +1189,11 @@ export interface CreateHubNoteMessage {
   type: 'createHubNote';
 }
 
+/** A tag's page's Leave them out: stop listing what only links the hub. */
+export interface ExcludeHubLinksMessage {
+  type: 'excludeHubLinks';
+}
+
 export interface SetDashboardColumnsMessage {
   type: 'setDashboardColumns';
   section: 'tags';
@@ -1543,7 +1562,8 @@ export type SearchPageMessage =
   | SetResultsPerPageMessage
   | PreviewSearchMessage
   | EditResultsMessage
-  | CreateHubNoteMessage;
+  | CreateHubNoteMessage
+  | ExcludeHubLinksMessage;
 
 export type SidebarMessage =
   | LinkMentionMessage

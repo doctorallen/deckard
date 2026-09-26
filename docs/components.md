@@ -434,6 +434,15 @@ one `.links-more` foot line whose `.links-search` button posts
 `.hide-daily-toggle` (`aria-pressed`) posts `setHideDailyNotes`; while it
 hides a note, a `.links-hiding` line says how many, with **Show them**.
 
+### A tag's page's quiet lines
+
+Under a one-tag page's hub, `renderTagNotes()` draws `.tag-notes`: one muted
+`.tag-note` line per thing worth knowing about how the tag is reached, each
+with a `.tag-note-action` text button. It is the pattern for a page-level
+hint: a sentence, then at most two actions, never a box. An entry listed
+because of such a line carries a `.card-via` note after its location, such
+as *Links the hub note* (`via: 'hubLink'` on the card or task).
+
 ### Task board
 
 `getTaskBoardCss()` and four script helpers draw the Task Board page's

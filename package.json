@@ -1222,11 +1222,17 @@
             "description": "Show a tag's hub note open at the top of its page. When off, the hub starts collapsed to its title row; select the title to open it.",
             "order": 6
           },
+          "deckard.tagOverview.includeHubLinks": {
+            "type": "boolean",
+            "default": true,
+            "description": "On a tag's page, also list the entries that link to its hub note without carrying the tag, each marked \"Links the hub note\".",
+            "order": 7
+          },
           "deckard.enableHeadingTagRelationships": {
             "type": "boolean",
             "default": true,
             "description": "Offer related tags, weighted by explicit co-occurrence and heading proximity, when refining a search of tags.",
-            "order": 7
+            "order": 8
           }
         },
         "order": 1

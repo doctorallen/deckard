@@ -12,6 +12,13 @@
 
 ### Added
 
+- **A tag's page lists what links to its hub note.** On a tag with a hub
+  note, the page also lists every entry and task that links to the hub
+  without carrying the tag, each marked *Links the hub note*, and says
+  *Also listing 5 entries that link to Atlas plan without the tag.* with
+  **Leave them out**. Counts, pages, Bulk edit, and Export include them;
+  `deckard.tagOverview.includeHubLinks` turns it off.
+
 - **Related Notes can leave out daily notes.** **Hide daily notes**, beside
   the sort, leaves daily, weekly, and monthly notes out of the related notes
   and of Linked from, since a daily note links to everything written that

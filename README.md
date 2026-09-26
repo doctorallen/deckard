@@ -696,6 +696,7 @@ Migration of billing onto the new ledger.
 - Hovering the tag in the editor names its hub note, and renaming the tag updates `describes:` too.
 - Filtered and query views leave the hub out, so they show only their results.
 - Select the hub's title row to collapse or expand it; the overview remembers your choice until it closes. `deckard.tagOverview.hubNoteExpanded` sets whether hubs start open, which they do by default.
+- The page also lists every entry and task that links to the hub note without carrying the tag, each marked *Links the hub note* beside its location, and says so under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* **Leave them out** turns `deckard.tagOverview.includeHubLinks` off. Counts, tabs, pages, Bulk edit, and Export include them while it is on.
 
 ### Merging tags
 
@@ -989,6 +990,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.showWhatsNew": true,
 	"deckard.dashboard.openOnStartup": false,
 	"deckard.tagOverview.hubNoteExpanded": true,
+	"deckard.tagOverview.includeHubLinks": true,
 	"deckard.notesFolder": "notes",
 	"deckard.exclude": {
 		"**/archive": true
@@ -1052,6 +1054,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. Help's What's new section lists recent releases either way. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
+| `deckard.tagOverview.includeHubLinks` | `true` | On a tag's page, also lists the entries that link to its [hub note](#hub-notes) without carrying the tag, each marked *Links the hub note*. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
 | `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its first day. |
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` for the day VS Code's display language starts it. It sets the Calendar's rows, weekly notes and their reviews, a search's `this-week`, `last-week`, and `next-week`, and *next week* and *end of week* typed as a date. A weekly note written before a change still opens. |

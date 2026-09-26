@@ -4,7 +4,6 @@ import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
-import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { formatQuery } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { measure } from '../../core/timing';
@@ -23,6 +22,7 @@ import {
 import {
   createQueryViewState,
   createSearchPageSnapshot,
+  evaluateSearchPage,
   normalizeTagTitleDisplayMode,
   resolveQueryTagIntersection,
 } from '../state/dashboardState';
@@ -76,6 +76,7 @@ export class SearchPanels implements vscode.Disposable {
         if (
           event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
           event.affectsConfiguration('deckard.tagOverview.hubNoteExpanded') ||
+          event.affectsConfiguration('deckard.tagOverview.includeHubLinks') ||
           event.affectsConfiguration('deckard.enableHeadingTagRelationships')
         ) {
           this.refresh();
@@ -498,6 +499,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         notePage: this.notePage,
         taskPage: this.taskPage,
         previewWords: this.previewWords,
+        includeHubLinks: this.includesHubLinks(),
         enableHeadingTagRelationships: vscode.workspace
           .getConfiguration('deckard')
           .get<boolean>('enableHeadingTagRelationships', true),
@@ -537,6 +539,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         : {}),
       refineInSidebar: this.activeSearch.isRefineInSidebar(this),
     };
+  }
+
+  private includesHubLinks(): boolean {
+    return vscode.workspace
+      .getConfiguration('deckard')
+      .get<boolean>('tagOverview.includeHubLinks', true);
   }
 
   private isHubNoteExpanded(): boolean {
@@ -729,6 +737,12 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'saveTagOverviewFilter':
         await this.saveSearch();
         return;
+      case 'excludeHubLinks':
+        // A preference about every tag's page, so it is the user's.
+        await vscode.workspace
+          .getConfiguration('deckard')
+          .update('tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global);
+        return;
       case 'createHubNote': {
         const tagKey = this.currentSnapshot().tag?.key;
         if (tagKey) {
@@ -830,7 +844,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         }),
       };
     }
-    const results = evaluateQuery(index, node);
+    // The same list the page shows: on a tag's page, what links its hub too.
+    const { results } = evaluateSearchPage(index, this.queryText, {
+      includeHubLinks: this.includesHubLinks(),
+    });
     return {
       // The search is the filter: is:open, is:done, and the rest say which
       // tasks, so the pane shows every task the search found.

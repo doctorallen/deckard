@@ -44,6 +44,7 @@ import {
   countTagMatches,
   evaluateQuery,
   getQueryWeekStart,
+  QueryResults,
 } from '../../core/query/queryEvaluator';
 import {
   collectQueryTagKeys,
@@ -234,6 +235,11 @@ export interface SearchPageOptions {
    * of the reader's; it outranks `paged`.
    */
   pageSize?: number;
+  /**
+   * On a tag's page, also list the entries that link to its hub note without
+   * the tag, as `deckard.tagOverview.includeHubLinks` says. On unless false.
+   */
+  includeHubLinks?: boolean;
   /** Which page of each list to carry, 1-based and clamped. */
   notePage?: number;
   taskPage?: number;
@@ -263,30 +269,9 @@ export function createSearchPageSnapshot(
   options: SearchPageOptions = {},
 ): SearchPageSnapshot {
   const text = queryText.trim();
-  const parsed = parseQuery(text);
-  // The words being typed narrow the search before they are committed to the
-  // box. They are run as part of the search rather than matched against what
-  // is on screen, so a page of thirty is not what a reader is searching, and
-  // so what the preview finds is exactly what pressing Enter will find.
-  const preview = (options.previewWords ?? [])
-    .map((word) => word.trim())
-    .filter(Boolean);
-  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
+  const page = evaluateSearchPage(index, text, options);
+  const { parsed, drafted, preview, tagKeys, focusTag, hubFile, results, viaHub } = page;
   const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
-  const tagKeys = resolveQueryTagIntersection(index, parsed);
-  const focusTag =
-    tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
-  const hubFile = focusTag?.hubFilePaths?.length
-    ? index.files.get(focusTag.hubFilePaths[0])
-    : undefined;
-
-  const results = drafted.node
-    ? evaluateQuery(index, drafted.node)
-    : {
-        sections: [...index.sections.values()],
-        tasks: [...index.tasks.values()],
-        files: listFrontmatterOnlyFiles(index),
-      };
   // Which entries are pinned, so a card's menu offers pinning or unpinning
   // rather than one word that is wrong half the time.
   const pinnedKeys = new Set(
@@ -339,9 +324,13 @@ export function createSearchPageSnapshot(
   const snippetWords = [...new Set([...getTextWords(drafted.node), ...preview])]
     .map((word) => word.toLowerCase())
     .filter((word) => word.length >= 2);
+  const markVia = <T extends object>(item: T, id: string): T =>
+    viaHub.has(id) ? { ...item, via: 'hubLink' as const } : item;
   const sections = takePage(ranked, notePaging).map((key) =>
     withPreview(
-      key.section ? cardFor(key.section) : createFileOverviewCard(key.file as ParsedFile),
+      key.section
+        ? markVia(cardFor(key.section), key.section.id)
+        : markVia(createFileOverviewCard(key.file as ParsedFile), (key.file as ParsedFile).filePath),
       preferences.searchPreview,
       snippetWords,
     ),
@@ -394,6 +383,14 @@ export function createSearchPageSnapshot(
                 ),
               }
             : {}),
+          ...(hubFile
+            ? {
+                tagPage: {
+                  hubLinkCount: viaHub.size,
+                  ...(page.hubTitle ? { hubTitle: page.hubTitle } : {}),
+                },
+              }
+            : {}),
         }
       : {}),
     query: createQueryViewState(
@@ -421,7 +418,9 @@ export function createSearchPageSnapshot(
         : findMatchingSavedQueryName(preferences.savedFilters, parsed),
     sections,
     notePaging,
-    tasks: takePage(tasks, taskPaging).map((task) => createDashboardTask(task, index.sections)),
+    tasks: takePage(tasks, taskPaging).map((task) =>
+      markVia(createDashboardTask(task, index.sections), task.id),
+    ),
     taskPaging,
     taskCounts: {
       all: tasks.length,
@@ -436,6 +435,102 @@ export function createSearchPageSnapshot(
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
     tagTitleDisplayMode,
+  };
+}
+
+/** What one search page lists, before it is sorted, paged, and drawn. */
+export interface SearchPageResults {
+  parsed: ParsedQuery;
+  /** The search with the words still being typed. */
+  drafted: ParsedQuery;
+  preview: string[];
+  tagKeys?: string[];
+  focusTag?: TagInfo;
+  hubFile?: ParsedFile;
+  results: QueryResults;
+  /**
+   * What is listed only because it links to the tag's hub note: section and
+   * task ids, and file paths.
+   */
+  viaHub: Set<string>;
+  hubTitle?: string;
+}
+
+/**
+ * Evaluates a search page's search, as the page, Bulk edit, and Export all
+ * need it. A tag's page with a hub note also lists what links to the hub
+ * without carrying the tag, unless `includeHubLinks` is false; the hub notes'
+ * own entries stay out of that, as they are the hub.
+ */
+export function evaluateSearchPage(
+  index: WorkspaceIndex,
+  queryText: string,
+  options: Pick<SearchPageOptions, 'previewWords' | 'includeHubLinks'> = {},
+): SearchPageResults {
+  const text = queryText.trim();
+  const parsed = parseQuery(text);
+  // The words being typed narrow the search before they are committed to the
+  // box. They are run as part of the search rather than matched against what
+  // is on screen, so a page of thirty is not what a reader is searching, and
+  // so what the preview finds is exactly what pressing Enter will find.
+  const preview = (options.previewWords ?? [])
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
+  const tagKeys = resolveQueryTagIntersection(index, parsed);
+  const focusTag =
+    tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
+  const hubPaths = focusTag?.hubFilePaths ?? [];
+  const hubFile = hubPaths.length ? index.files.get(hubPaths[0]) : undefined;
+
+  const results: QueryResults = drafted.node
+    ? evaluateQuery(index, drafted.node)
+    : {
+        sections: [...index.sections.values()],
+        tasks: [...index.tasks.values()],
+        files: listFrontmatterOnlyFiles(index),
+      };
+  const viaHub = new Set<string>();
+  if (!hubFile || options.includeHubLinks === false || !drafted.node) {
+    return { parsed, drafted, preview, tagKeys, focusTag, hubFile, results, viaHub };
+  }
+  const hubs = new Set(hubPaths);
+  const links = hubPaths
+    .map((filePath) => `link = [[${noteTitle(filePath)}]]`)
+    .join(' OR ');
+  const linking = evaluateQuery(
+    index,
+    parseQuery(preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
+  );
+  const sectionIds = new Set(results.sections.map((section) => section.id));
+  const taskIds = new Set(results.tasks.map((task) => task.id));
+  const filePaths = new Set(results.files.map((file) => file.filePath));
+  const sections = linking.sections.filter(
+    (section) => !sectionIds.has(section.id) && !hubs.has(section.filePath),
+  );
+  const tasks = linking.tasks.filter(
+    (task) => !taskIds.has(task.id) && !hubs.has(task.filePath),
+  );
+  const files = linking.files.filter(
+    (file) => !filePaths.has(file.filePath) && !hubs.has(file.filePath),
+  );
+  sections.forEach((section) => viaHub.add(section.id));
+  tasks.forEach((task) => viaHub.add(task.id));
+  files.forEach((file) => viaHub.add(file.filePath));
+  return {
+    parsed,
+    drafted,
+    preview,
+    tagKeys,
+    focusTag,
+    hubFile,
+    results: {
+      sections: [...results.sections, ...sections],
+      tasks: [...results.tasks, ...tasks],
+      files: [...results.files, ...files],
+    },
+    viaHub,
+    hubTitle: noteTitle(hubFile.filePath),
   };
 }
 

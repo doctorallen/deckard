@@ -103,6 +103,11 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub-properties dd { margin: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
+/* A tag's page's quiet lines under its hub, and what they mark on cards. */
+.tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
+.tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+.card-via { margin-left: 6px; color: var(--muted); font-size: var(--text-xs); font-style: italic; }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: var(--text-sm); }
 .empty-action { margin: 12px 0 0; }
 .pagination .page-size { font-size: var(--text-sm); }
@@ -272,6 +277,20 @@ ${getQueryEditorScript()}
     return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" data-tip="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
   }
 
+  /**
+   * The quiet lines under a tag's page's hub: how else the tag is reached.
+   * Only a one-tag page has them.
+   */
+  function renderTagNotes() {
+    if (!state.tag || !state.tagPage) return '';
+    const notes = [];
+    const page = state.tagPage;
+    if (page.hubLinkCount > 0 && page.hubTitle) {
+      notes.push('<p class="tag-note">Also listing ' + page.hubLinkCount + ' ' + (page.hubLinkCount === 1 ? 'entry that links' : 'entries that link') + ' to ' + escapeHtml(page.hubTitle) + ' without the tag. <button type="button" class="tag-note-action" data-action="exclude-hub-links" data-tip="List only the entries that carry the tag">Leave them out</button></p>');
+    }
+    return notes.length ? '<div class="tag-notes">' + notes.join('') + '</div>' : '';
+  }
+
   /** Cards opened with Show all, by id, until the search changes. */
   let openedCards = new Set();
   let openedFor;
@@ -318,13 +337,20 @@ ${getQueryEditorScript()}
       return renderTagButton(tag);
     }).join('') : '';
     const searchText = [section.heading, fileName, section.rawContent, section.tags.map(function (tag) { return tag.label; }).join(' ')].join(' ').toLowerCase();
-    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '</div>' + content + '</article>';
+    return '<article class="card" tabindex="0" data-search-entry="notes" data-search-text="' + escapeHtml(searchText) + '" data-file-path="' + escapeHtml(section.filePath) + '" data-line="' + section.startLine + '" data-pinned="' + (section.pinned ? 'true' : 'false') + '"><div class="card-header"><h2 class="card-title">' + titleHtml + (tags ? '<span class="tag-list" aria-label="Section tags">' + tags + '</span>' : '') + '</h2><div class="source">' + escapeHtml(formatSourceLocation(fileName, section.startLine)) + (section.via === 'hubLink' ? ' <span class="card-via">Links the hub note</span>' : '') + '</div>' + (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + '</div>' + content + '</article>';
   }
 
   /** A task row, marked so plain words being typed can hide it. */
   function renderTask(item) {
-    return renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })
+    let html = renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode })
       .replace('<div class="row task-row', '<div data-search-entry="tasks" class="row task-row');
+    if (item.via === 'hubLink') {
+      // Said after the task's location, as a card says it in its source row.
+      const at = html.indexOf('<span class="task-source">');
+      const end = at >= 0 ? html.indexOf('</span>', at) : -1;
+      if (end >= 0) html = html.slice(0, end + 7) + '<span class="card-via">Links the hub note</span>' + html.slice(end + 7);
+    }
+    return html;
   }
 
   /** Lay the result grids out in their columns; a style attribute is not allowed here. */
@@ -490,7 +516,7 @@ ${getQueryEditorScript()}
     const suggestion = !invalid && state.suggestion
       ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + hubOffer + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + hubOffer + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + renderTagNotes() + staleNotice + suggestion + layoutContent;
     applyColumns();
     // A clamped body that fits its three lines has nothing more to show.
     document.querySelectorAll('.card-body.is-clamped').forEach(function (body) {
@@ -593,6 +619,7 @@ ${getQueryEditorScript()}
       if (action === 'history-back' || action === 'history-forward') vscode.postMessage({ type: 'navigateSearchHistory', direction: action === 'history-back' ? 'back' : 'forward' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
+      if (action === 'exclude-hub-links') vscode.postMessage({ type: 'excludeHubLinks' });
       if (action === 'open-source') vscode.postMessage(openSourceMessage(target, event));
       if (action === 'open-tag') vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       return;

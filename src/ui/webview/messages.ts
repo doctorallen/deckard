@@ -300,6 +300,7 @@ export function parseSearchPageMessage(
         : undefined;
     case 'saveTagOverviewFilter':
     case 'createHubNote':
+    case 'excludeHubLinks':
     case 'clearOverviewQuery':
     case 'openHelp':
       return Object.keys(value).length === 1 ? { type: value.type } : undefined;

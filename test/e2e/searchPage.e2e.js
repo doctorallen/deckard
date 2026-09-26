@@ -179,6 +179,43 @@ test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Shutdown telemetry audit']);
 });
 
+/** The page's index, with a note and a task that link to the hub without the tag. */
+function createHubLinkIndex() {
+  const note = (filePath, content) =>
+    parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/2026-09-09.md', '## Atlas planning #project/atlas\nSequencing for the milestone.'),
+    note('notes/budget.md', '## Budget\nThe money for [[atlas]] is late.\n- [ ] Ask about [[atlas]] funding'),
+    note('notes/atlas.md', '---\ndescribes: project/atlas\n---\n# Atlas\nRetire the old ledger. See [[atlas]].'),
+  ];
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}
+
+test('a tag\'s page lists what links its hub note, each saying so, and can leave them out', async () => {
+  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
+  const { view } = await openOverview('#project/atlas', { index: createHubLinkIndex() });
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Budget']);
+  const budget = view.findAll('.card').find((card) => card.textContent.includes('Budget'));
+  assert.ok(budget.querySelector('.card-via'), 'the linking entry says why it is here');
+  assert.strictEqual(budget.querySelector('.card-via').textContent, 'Links the hub note');
+  const planning = view.findAll('.card').find((card) => card.textContent.includes('Atlas planning'));
+  assert.ok(!planning.querySelector('.card-via'));
+  assert.ok(view.find('.task-row .card-via'), 'and so does the linking task');
+  const line = view.find('.tag-note');
+  assert.strictEqual(line.textContent, 'Also listing 2 entries that link to atlas without the tag. Leave them out');
+
+  vscode._test.configurationUpdates.length = 0;
+  view.click(view.find('[data-action="exclude-hub-links"]'));
+  await settle();
+  assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]), [
+    ['deckard.tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global],
+  ]);
+  await settle();
+  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
+  assert.ok(!view.find('.tag-note'));
+  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
+});
+
 test('anything more than the one tag is a search, shown by its box alone', async () => {
   const { view, panel } = await openOverview();
   search(view, '@ren-kade');
