@@ -35,6 +35,7 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
 import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -91,7 +92,13 @@ export class DashboardPanel implements vscode.Disposable {
     const initialPreferences = preferences.value;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Home', priority: () => panelPriority(this.panel) },
+        () => this.refresh(),
+      ),
+    );
     if (whatsNew) {
       this.disposables.push(whatsNew.onDidChange(() => this.refresh()));
     }

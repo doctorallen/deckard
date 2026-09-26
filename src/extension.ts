@@ -10,6 +10,7 @@ import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
 import { WorkspaceIndexer } from './core/workspace/indexer';
+import { VIEW_PRIORITY } from './core/workspace/publishing';
 import { capture, CaptureDrafts, captureToToday } from './ui/commands/capture';
 import { createHubNote } from './ui/commands/hubNote';
 import {
@@ -567,7 +568,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // it to the new id before anything is pruned.
   let previousIndex = indexer.getSnapshot();
   context.subscriptions.push(
-    indexer.onDidUpdate(() => {
+    indexer.onDidUpdateView(() => {
       const index = indexer.getSnapshot();
       const moved = carrySectionIds(previousIndex, index);
       previousIndex = index;
@@ -583,7 +584,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           index.files.keys(),
         );
       })();
-    }),
+    }, { name: 'tidy of derived counts', priority: () => VIEW_PRIORITY.housekeeping }),
     new NoteVisits(indexer, preferences),
   );
   context.subscriptions.push(

@@ -13,6 +13,7 @@ import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
 import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
 
 /**
  * Provides an overview of indexed content and recorded local views. Each
@@ -31,7 +32,13 @@ export class StatsPanel implements vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Stats', priority: () => panelPriority(this.panel) },
+        () => this.refresh(),
+      ),
+    );
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       onDidChangePageChrome(() => {

@@ -20,6 +20,23 @@ import {
 import { measure, measureAsync, reportError } from '../timing';
 import { ScanProgress, WorkspaceScanner, describeError } from './scanner';
 import { takeOwnWrite } from './ownWrites';
+import { ViewUpdateOptions } from './publishing';
+
+/** What the indexer can be given beyond its scanner and cache. */
+export interface WorkspaceIndexerOptions {
+  /**
+   * Runs a view's redraw in a later host turn. `setImmediate` by default; a
+   * test passes its own to step through the turns.
+   */
+  schedule?: (run: () => void) => void;
+}
+
+/** A view waiting for its turn to redraw from the index. */
+interface ViewSubscription {
+  listener: () => void;
+  options: ViewUpdateOptions;
+  disposed: boolean;
+}
 
 /**
  * Owns the live note cache and turns scanner output into lookup maps for the UI.
@@ -48,11 +65,19 @@ export class WorkspaceIndexer implements vscode.Disposable {
    * it is waiting can say how far along it is.
    */
   public readonly onDidProgress = this.progressEmitter.event;
+  /** Views that redraw in turns of their own, in the order they asked. */
+  private readonly views = new Set<ViewSubscription>();
+  /** The views still to redraw from the last publish, next first. */
+  private viewQueue: ViewSubscription[] = [];
+  private viewTurnScheduled = false;
+  private readonly schedule: (run: () => void) => void;
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
     private readonly searchStore?: SearchStore,
+    options: WorkspaceIndexerOptions = {},
   ) {
+    this.schedule = options.schedule ?? ((run) => void setImmediate(run));
     this.disposables.push(this.updateEmitter, this.progressEmitter);
   }
 
@@ -69,6 +94,26 @@ export class WorkspaceIndexer implements vscode.Disposable {
   }
 
   public readonly onDidUpdate = this.updateEmitter.event;
+
+  /**
+   * Redraws a view from the index after each update, in a host turn of its
+   * own, after the plain listeners and in order of `priority` (the view in
+   * front first). A view that has not had its turn when the index changes
+   * again runs once, with the newer index.
+   */
+  public onDidUpdateView(
+    listener: () => void,
+    options: ViewUpdateOptions,
+  ): vscode.Disposable {
+    const subscription: ViewSubscription = { listener, options, disposed: false };
+    this.views.add(subscription);
+    return {
+      dispose: () => {
+        subscription.disposed = true;
+        this.views.delete(subscription);
+      },
+    };
+  }
 
   /**
    * Installs change listeners before the first refresh so edits during startup
@@ -284,6 +329,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
       .splice(0)
       .forEach((disposable) => disposable.dispose());
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+    this.views.clear();
+    this.viewQueue = [];
     this.searchStore?.dispose();
   }
 
@@ -450,12 +497,69 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
   /**
    * Publishes a newly derived snapshot after the cache is internally consistent.
-   * The measurement covers every listener, so it is what one save costs.
+   *
+   * The plain listeners, which only keep the index or fire a cheap event, run
+   * now. Each view then redraws in a host turn of its own, the one in front
+   * first, so no single turn pays for every open view and other extensions
+   * get a turn in between. A publish while views are still waiting starts
+   * the order again, and each waiting view still runs once.
    */
   private emitUpdate(): void {
     measure('Refresh views after an index update', () =>
       this.updateEmitter.fire(this.getSnapshot()),
     );
+    this.viewQueue = [...this.views]
+      .map((subscription, order) => ({
+        subscription,
+        order,
+        priority: readPriority(subscription),
+      }))
+      .sort((left, right) => left.priority - right.priority || left.order - right.order)
+      .map(({ subscription }) => subscription);
+    this.scheduleViewTurn();
+  }
+
+  private scheduleViewTurn(): void {
+    if (this.viewTurnScheduled || this.viewQueue.length === 0) {
+      return;
+    }
+    this.viewTurnScheduled = true;
+    this.schedule(() => {
+      this.viewTurnScheduled = false;
+      this.runNextView();
+    });
+  }
+
+  /** Redraws the next view waiting, if any, then leaves the rest a turn. */
+  private runNextView(): void {
+    if (this.disposed) {
+      return;
+    }
+    let next = this.viewQueue.shift();
+    while (next?.disposed) {
+      next = this.viewQueue.shift();
+    }
+    if (next) {
+      const view = next;
+      try {
+        measure(`Refresh ${view.options.name} after an index update`, () =>
+          view.listener(),
+        );
+      } catch (error) {
+        reportError(`Could not refresh ${view.options.name}`, error);
+      }
+    }
+    this.scheduleViewTurn();
+  }
+}
+
+/** A view's priority now, or last when it cannot say. */
+function readPriority(subscription: ViewSubscription): number {
+  try {
+    const priority = subscription.options.priority();
+    return Number.isFinite(priority) ? priority : Number.MAX_SAFE_INTEGER;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
   }
 }
 

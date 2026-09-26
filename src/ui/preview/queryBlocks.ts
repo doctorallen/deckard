@@ -5,6 +5,10 @@ import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
+  onIndexUpdateInTurn,
+  VIEW_PRIORITY,
+} from '../../core/workspace/publishing';
+import {
   describeQueryBlockCounts,
   findQueryBlocks,
   getQueryBlockSnapshot,
@@ -41,12 +45,18 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       indexer.onDidUpdate((index) => {
         this.index = index;
         this.changeEmitter.fire();
-        // Refreshing re-renders every open preview, so it waits until a
-        // preview has actually drawn a block.
-        if (this.previewReadsIndex) {
-          void refreshMarkdownPreviews();
-        }
       }),
+      // Refreshing re-renders every open preview, so it waits until a
+      // preview has actually drawn a block, and for a turn of its own.
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'query block previews', priority: () => VIEW_PRIORITY.visible },
+        () => {
+          if (this.previewReadsIndex) {
+            void refreshMarkdownPreviews();
+          }
+        },
+      ),
       vscode.languages.registerCodeLensProvider({ pattern: '**/*.md' }, this),
     ];
   }

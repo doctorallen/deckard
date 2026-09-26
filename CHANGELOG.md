@@ -306,6 +306,11 @@
 
 ### Changed
 
+- **A save no longer redraws every open view in one go.** The views on
+  screen redraw one at a time after a save, the one in front first, so it
+  is not kept waiting on the ones behind it, and other extensions get a turn
+  in between. Hidden views still catch up when they are shown.
+
 - **Extract Heading takes any heading.** `Deckard: Extract Tagged
   Heading` is now `Deckard: Extract Heading`, and moves an untagged heading
   as readily as a tagged one; its picker lists every heading, naming the

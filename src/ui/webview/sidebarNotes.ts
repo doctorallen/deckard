@@ -33,6 +33,7 @@ import { parseSidebarMessage } from './messages';
 import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
 import { applyWorkspaceWrite } from '../commands/workspaceWrites';
+import { onIndexUpdateInTurn, viewPriority } from '../../core/workspace/publishing';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -65,7 +66,13 @@ export class SidebarNotesView
     private readonly onOpenTag: (tagKey: string) => void | Promise<void>,
     private readonly extensionVersion: string,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Related Notes', priority: () => viewPriority(this.view) },
+        () => this.refresh(),
+      ),
+    );
     // While the first scan runs, the waiting line says how far it has got.
     if (indexer.onDidProgress) {
       this.disposables.push(

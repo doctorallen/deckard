@@ -27,6 +27,7 @@ import {
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { parseNotesGraphMessage } from './messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
+import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
 
 /**
  * Owns the workspace-wide Notes Graph panel and validates navigation requests
@@ -70,10 +71,14 @@ export class NotesGraphPanel implements vscode.Disposable {
     ) => void | Promise<void>,
   ) {
     this.disposables.push(
-      indexer.onDidUpdate(() => {
-        this.snapshot = undefined;
-        this.refresh();
-      }),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Notes Graph', priority: () => panelPriority(this.panel) },
+        () => {
+          this.snapshot = undefined;
+          this.refresh();
+        },
+      ),
     );
     this.disposables.push(
       onDidChangePageChrome(() => {

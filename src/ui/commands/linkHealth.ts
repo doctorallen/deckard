@@ -10,6 +10,10 @@ import {
   parseWikiTarget,
 } from '../../core/workspace/backlinks';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import {
+  onIndexUpdateInTurn,
+  VIEW_PRIORITY,
+} from '../../core/workspace/publishing';
 import { getExtractedNoteFileName } from './extractHeading';
 
 /** A `[[link]]` that opens no note. */
@@ -245,7 +249,11 @@ export class LinkHealth implements vscode.Disposable {
         },
         { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
       ),
-      indexer.onDidUpdate(() => this.checkOpenNotes()),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'link checks', priority: () => VIEW_PRIORITY.visible },
+        () => this.checkOpenNotes(),
+      ),
       vscode.workspace.onDidOpenTextDocument((document) => this.check(document)),
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (event.contentChanges.length > 0) {

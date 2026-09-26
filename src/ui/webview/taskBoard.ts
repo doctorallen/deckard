@@ -31,6 +31,7 @@ import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
 
 /**
  * Shows tasks as a Kanban board or as a list, narrowed by the search box
@@ -82,10 +83,14 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     private readonly activeSearch: ActiveSearch,
   ) {
     this.disposables.push(
-      indexer.onDidUpdate(() => {
-        this.writeIndexAt = undefined;
-        this.refresh();
-      }),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Task board', priority: () => panelPriority(this.panel) },
+        () => {
+          this.writeIndexAt = undefined;
+          this.refresh();
+        },
+      ),
     );
     // A task write carries the task's rank into the preferences before the
     // index has read the note back, and a redraw from that index put a

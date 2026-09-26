@@ -41,6 +41,7 @@ import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
+import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is
@@ -60,7 +61,9 @@ export class SearchPanels implements vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
   ) {
-    this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    // A page about a tag that is gone closes at once; each page still open
+    // redraws in a turn of its own.
+    this.disposables.push(indexer.onDidUpdate(() => this.closeMissingTagPages()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
       activeSearch.onDidChangeRefineVisibility(() =>
@@ -209,6 +212,13 @@ export class SearchPanels implements vscode.Disposable {
    * Refreshes every page. A page about a tag that no longer exists closes,
    * as a renamed tag's page is replaced by the new tag's.
    */
+  private closeMissingTagPages(): void {
+    const index = this.indexer.getSnapshot();
+    [...this.panels]
+      .filter((panel) => panel.isForMissingTag(index))
+      .forEach((panel) => panel.dispose());
+  }
+
   private refresh(): void {
     const index = this.indexer.getSnapshot();
     [...this.panels].forEach((panel) => {
@@ -352,7 +362,15 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly activeSearch: ActiveSearch,
     private readonly host: SearchPanelHost,
-  ) {}
+  ) {
+    this.disposables.push(
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'search page', priority: () => panelPriority(this.panel) },
+        () => this.refresh(),
+      ),
+    );
+  }
 
   public key(): string {
     return getSearchKey(this.indexer.getSnapshot(), this.queryText);

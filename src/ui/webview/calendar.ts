@@ -18,6 +18,7 @@ import { readWeekStart } from '../commands/datePrompt';
 import { createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
+import { onIndexUpdateInTurn, viewPriority } from '../../core/workspace/publishing';
 
 interface CalendarIndexSource {
   readonly ready: Promise<void>;
@@ -42,7 +43,11 @@ export class CalendarView
 
   public constructor(private readonly indexer: CalendarIndexSource) {
     this.disposables.push(
-      indexer.onDidUpdate(() => this.refresh()),
+      onIndexUpdateInTurn(
+        indexer,
+        { name: 'Calendar', priority: () => viewPriority(this.view) },
+        () => this.refresh(),
+      ),
       // What counts as today moves at midnight.
       vscode.window.onDidChangeWindowState((state) => {
         if (state.focused) {
