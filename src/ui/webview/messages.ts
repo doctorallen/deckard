@@ -118,6 +118,9 @@ export function parseDashboardMessage(
         : undefined;
     case 'resetDashboardWidgets':
       return { type: 'resetDashboardWidgets' };
+    case 'openWhatsNew':
+    case 'dismissWhatsNew':
+      return { type: value.type };
     case 'openSearch':
       return typeof value.query === 'string' &&
         value.query.length <= MAX_QUERY_LENGTH
@@ -673,7 +676,7 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
 }
 
 /** What the Help page may ask of its host. */
-export type HelpMessage = { type: 'runCommand'; command: string };
+export type HelpMessage = { type: 'runCommand'; command: string } | { type: 'openChangelog' };
 
 /**
  * Validates the Help page's messages. Only the shape is checked here; the
@@ -688,6 +691,8 @@ export function parseHelpMessage(value: unknown): HelpMessage | undefined {
       return typeof value.command === 'string' && /^deckard\.[\w.]+$/.test(value.command)
         ? { type: 'runCommand', command: value.command }
         : undefined;
+    case 'openChangelog':
+      return { type: 'openChangelog' };
     default:
       return undefined;
   }

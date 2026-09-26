@@ -487,6 +487,8 @@ export interface DashboardSnapshot {
    * do not, Home says it can be arranged; once they do, the reader knows.
    */
   homeArranged?: boolean;
+  /** After a feature update, the version Home says it was updated to, such as `1.23`. */
+  whatsNew?: { version: string };
 }
 
 /** A tag a Home widget lists, with what searching for it finds. */
@@ -1208,6 +1210,11 @@ export interface OpenNoteMessage {
   filePath: string;
 }
 
+/** Opens Help's What's new, or stops Home saying there is something new. */
+export interface WhatsNewMessage {
+  type: 'openWhatsNew' | 'dismissWhatsNew';
+}
+
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
@@ -1446,7 +1453,8 @@ export type DashboardMessage =
   | CreateTagHubMessage
   | AddNextActionMessage
   | PinNoteMessage
-  | OpenNoteMessage;
+  | OpenNoteMessage
+  | WhatsNewMessage;
 
 export type SearchPageMessage =
   | ExportResultsMessage

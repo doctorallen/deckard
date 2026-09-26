@@ -8,6 +8,7 @@ import {
 } from './components';
 import { getFavoriteHeartAssetUris } from './icons';
 import { ENABLED } from './selectors';
+import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
 
 /**
  * What the Help page reads from the extension's own manifest.
@@ -128,6 +129,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.showStats':
     'Index totals, notes nothing links to, and tags that look alike.',
   'deckard.showHelp': 'This guide.',
+  'deckard.openWhatsNew': 'Opens the highlights of recent releases in Help.',
   'deckard.showLog': 'What Deckard did, and how long each step took.',
   'deckard.reindexWorkspace': 'Reads every note again.',
   'deckard.createDailyNote':
@@ -252,18 +254,51 @@ function escapeHtml(value: string): string {
 /**
  * Builds a static, navigable Help page so guidance is available offline.
  */
+export interface HelpOptions {
+  platform?: NodeJS.Platform;
+  /** The shipped changelog's releases, for What's new. */
+  releases?: readonly Release[];
+  /** The version the reader updated from: releases after it are marked New. */
+  newSince?: string;
+  /** A section to scroll to once the page has loaded. */
+  anchor?: string;
+}
+
 export function getHelpHtml(
   webview: Pick<vscode.Webview, 'cspSource' | 'asWebviewUri'>,
   extensionUri: vscode.Uri,
   manifest: HelpManifest = {},
-  options: { platform?: NodeJS.Platform } = {},
+  options: HelpOptions = {},
 ): string {
   const platform = options.platform ?? process.platform;
   return linkCommandNames(
-    buildHelpHtml(webview, extensionUri, manifest, platform),
+    buildHelpHtml(webview, extensionUri, manifest, platform, options),
     describeHelpCommands(manifest),
     platform,
   );
+}
+
+/** How many releases What's new lists. */
+const WHATS_NEW_RELEASES = 5;
+
+/** Help's What's new: the Highlights of recent releases, newest first. */
+export function renderWhatsNew(releases: readonly Release[], newSince?: string): string {
+  const listed = releasesWithHighlights(releases, undefined, '99999.0.0').slice(0, WHATS_NEW_RELEASES);
+  const changelog =
+    '<p><button type="button" data-action="open-changelog">Full changelog</button></p>';
+  if (listed.length === 0) {
+    return `<p>This version's changes are listed in the changelog.</p>${changelog}`;
+  }
+  return `<p>The highlights of recent releases, newest first. The changelog has every change.</p>${listed
+    .map(
+      (release) =>
+        `<h3>${escapeHtml(release.version)}${release.date ? ` · ${escapeHtml(release.date)}` : ''}${
+          newSince && compareVersions(release.version, newSince) > 0
+            ? ' <span class="whats-new-chip">New</span>'
+            : ''
+        }</h3><ul>${release.highlights.map((text) => `<li>${renderHighlightHtml(text)}</li>`).join('')}</ul>`,
+    )
+    .join('')}${changelog}`;
 }
 
 function buildHelpHtml(
@@ -271,6 +306,7 @@ function buildHelpHtml(
   extensionUri: vscode.Uri,
   manifest: HelpManifest,
   platform: NodeJS.Platform,
+  options: HelpOptions,
 ): string {
   const nonce = createNonce();
   const logoUri = webview
@@ -348,6 +384,8 @@ section { scroll-margin-top: 20px; }
 .command-link:hover${ENABLED}, .command-link:focus-visible { text-decoration: underline; }
 .command-link:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
 td .command-link { display: inline-block; min-height: var(--control-height); }
+.whats-new-chip { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); color: var(--cyan); font: var(--text-xs) var(--font-mono); vertical-align: middle; }
+#whats-new h3 { margin-top: 16px; }
 kbd.shortcut { display: inline-block; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
 @media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
 
@@ -374,11 +412,12 @@ h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
 ${getPageTailCss()}
 </style>
 </head>
-<body${zenBodyAttribute()}>
+<body${zenBodyAttribute()}${options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : ''}>
 <main>
   <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
     <a href="#quick-start">Quick start</a>
+    <a href="#whats-new">What's new</a>
     <span class="nav-group">Writing</span>
     <a class="nav-sub" href="#tags">Tags and people</a>
     <a class="nav-sub" href="#frontmatter">Front matter</a>
@@ -420,6 +459,11 @@ ${getPageTailCss()}
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what. Hover or Tab to any button to see what it does.</p></div></div>
       </div>
       <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Open Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there. When something fails, its message offers <strong>Open Log</strong>, where the details are.</p>
+    </section>
+
+    <section id="whats-new">
+      <h2>What's new</h2>
+      ${renderWhatsNew(options.releases ?? [], options.newSince)}
     </section>
 
     <section id="tags">
@@ -641,9 +685,23 @@ tag = #project/atlas AND task = open
   // A command named in the guide runs from it; the host checks the id.
   var vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
   document.addEventListener('click', function (event) {
-    var button = event.target && event.target.closest ? event.target.closest('.command-link') : null;
+    var target = event.target && event.target.closest ? event.target : null;
+    var button = target ? target.closest('.command-link') : null;
     if (button && vscode) vscode.postMessage({ type: 'runCommand', command: button.getAttribute('data-command') });
+    if (target && target.closest('[data-action="open-changelog"]') && vscode) vscode.postMessage({ type: 'openChangelog' });
   });
+  // Opened on a section, such as What's new, the page goes to it.
+  function reveal(anchor) {
+    var section = anchor ? document.getElementById(anchor) : null;
+    if (!section) return;
+    if (section.scrollIntoView) section.scrollIntoView({ block: 'start' });
+    var heading = section.querySelector('h2');
+    if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+  }
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'reveal') reveal(event.data.anchor);
+  });
+  reveal(document.body.getAttribute('data-anchor'));
 })();
 (function () {
   // The rail marks the section under the top of the window as the reader

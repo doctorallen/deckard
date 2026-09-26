@@ -120,6 +120,7 @@ import { listOverdueTasks, AgendaNode,
 import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
 import { selectAgendaTasks } from './ui/state/agendaState';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
+import { isWhatsNewShown, WhatsNew } from './ui/commands/whatsNew';
 import { openSettingAction, settingLabel } from './ui/commands/notify';
 import { settingTarget, writeSetting } from './ui/commands/settings';
 
@@ -144,6 +145,22 @@ const LARGE_WORKSPACE_NOTES = 3000;
 const EXCLUDE_HINT_SHOWN = 'deckard.excludeHintShown';
 
 export function activate(context: vscode.ExtensionContext): DeckardExports {
+  // Read before anything below stores a value: whether Deckard has run here
+  // before, which tells an update from a new install.
+  const ranBefore =
+    context.globalState.keys().length > 0 || context.workspaceState.keys().length > 0;
+  const whatsNew = new WhatsNew({
+    globalState: context.globalState,
+    version: String(context.extension.packageJSON.version),
+    existingUser: ranBefore,
+    readChangelog: async () =>
+      Buffer.from(
+        await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md')),
+      ).toString('utf8'),
+    isShown: isWhatsNewShown,
+  });
+  context.subscriptions.push(whatsNew);
+  void whatsNew.onActivate();
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
   const log = vscode.window.createOutputChannel('Deckard', { log: true });
@@ -341,6 +358,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       },
       addNextAction: (tagLabel) => captureNextAction(tagLabel),
     },
+    whatsNew,
   );
   const quickFind = new QuickFind(indexer, preferences, {
     openTag: (tagKey) => searchPanels.show(tagKey),
@@ -365,6 +383,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const help = new HelpPanel(
     context.extensionUri,
     context.extension.packageJSON.contributes,
+    whatsNew,
   );
   const notesGraph = new NotesGraphPanel(
     indexer,
@@ -707,6 +726,10 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.showStats', () => stats.show()),
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
+    vscode.commands.registerCommand('deckard.openWhatsNew', async () => {
+      await help.show('whats-new');
+      await whatsNew.clear();
+    }),
     vscode.commands.registerCommand('deckard.showNotesGraph', () =>
       notesGraph.show(),
     ),

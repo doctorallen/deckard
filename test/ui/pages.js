@@ -47,7 +47,13 @@ const pages = [
   ['searchPage', () => require('../../out/ui/webview/searchPageHtml.js').getSearchPageHtml(webview)],
   ['sidebarNotes', () => require('../../out/ui/webview/sidebarNotesHtml.js').getSidebarNotesHtml(webview, '1.0.0')],
   ['notesGraph', () => require('../../out/ui/webview/notesGraphHtml.js').getNotesGraphHtml(webview)],
-  ['help', () => require('../../out/ui/webview/helpHtml.js').getHelpHtml(webview, { fsPath: '/ext' }, require('../../package.json').contributes)],
+  // Help with the shipped changelog's releases, so What's new is measured too.
+  ['help', () => require('../../out/ui/webview/helpHtml.js').getHelpHtml(webview, { fsPath: '/ext' }, require('../../package.json').contributes, {
+    releases: require('../../out/core/changelog.js').parseChangelog(
+      require('node:fs').readFileSync(path.join(__dirname, '..', '..', 'CHANGELOG.md'), 'utf8'),
+    ),
+    newSince: '1.20.0',
+  })],
   ['stats', () => require('../../out/ui/webview/statsHtml.js').getStatsHtml(webview)],
   ['taskBoard', () => require('../../out/ui/webview/taskBoardHtml.js').getTaskBoardHtml(webview)],
   ['calendar', () => require('../../out/ui/webview/calendarHtml.js').getCalendarHtml(webview)],

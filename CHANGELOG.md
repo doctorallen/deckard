@@ -11,6 +11,13 @@
 
 ### Added
 
+- **What's new, in the product.** After an update that adds features, Home
+  says *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**;
+  a patch says nothing, and there is no pop-up. Help has a **What's new**
+  section listing the highlights of the last five releases, newest first,
+  with those since your update marked **New**, and `Deckard: What's New`
+  opens it. `deckard.showWhatsNew` turns Home's line off.
+
 - **A command named in Help runs from Help.** Every `Deckard: …` name in
   the guide and its commands table is a button that runs the command, with
   its shortcut beside it for this platform. A command that acts on the note

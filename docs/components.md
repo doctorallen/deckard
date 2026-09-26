@@ -627,6 +627,11 @@ In edit mode a widget is `.is-editing` and `.is-draggable`, carries a
 and is ranked with `installRankedRows`. The host projects each widget with
 `createDashboardWidgets()` in `dashboardWidgets.ts`.
 
+Above the grid, one `.home-hint-bar` line at a time: after a feature update,
+*Updated to Deckard 1.23.* with **What's new** and **Dismiss**
+(`.whats-new-bar`, from the snapshot's `whatsNew`); otherwise, until Home is
+arranged or the line is put away, *Home is yours to arrange.*
+
 The header's `.metrics` are three `renderMetric` buttons (`.metric-open`) —
 Overdue, Due today, and Open — each opening the search it counts, scoped by
 `deckard.agenda.query`; Stats draws its figures with the same helper.

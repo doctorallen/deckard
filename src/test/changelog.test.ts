@@ -2,6 +2,14 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import {
+  compareVersions,
+  isFeatureUpdate,
+  parseChangelog,
+  releasesWithHighlights,
+  renderHighlightHtml,
+} from '../core/changelog';
+
 /** The release script, which the workflows run with Node. */
 interface ChangelogScript {
   cutChangelog(
@@ -44,6 +52,80 @@ const BEFORE = [
 ].join('\n');
 
 suite('Changelog', () => {
+  test('reads each release and its Highlights, wrapped bullets and all', () => {
+    const releases = parseChangelog(
+      [
+        '# Changelog',
+        '',
+        '## Unreleased',
+        '',
+        '### Highlights',
+        '',
+        '- Soon.',
+        '',
+        '## 1.23.0 - 2026-10-02',
+        '',
+        '### Highlights',
+        '',
+        '- Tasks wait under **Needs a new date**, and',
+        '  wrap onto a second line.',
+        '- `Deckard: Choose Theme…` previews.',
+        '',
+        '### Added',
+        '',
+        '- Not a highlight.',
+        '',
+        '## 1.14.0 - 2026-09-17',
+        '',
+        '### Fixed',
+        '',
+        '- Old.',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(releases, [
+      { version: 'Unreleased', highlights: ['Soon.'] },
+      {
+        version: '1.23.0',
+        date: '2026-10-02',
+        highlights: ['Tasks wait under **Needs a new date**, and wrap onto a second line.', '`Deckard: Choose Theme…` previews.'],
+      },
+      { version: '1.14.0', date: '2026-09-17', highlights: [] },
+    ]);
+    assert.deepStrictEqual(
+      releasesWithHighlights(releases, '1.22.0', '1.23.0').map((release) => release.version),
+      ['1.23.0'],
+    );
+  });
+
+  test('knows a feature update from a patch or a downgrade', () => {
+    assert.strictEqual(isFeatureUpdate('1.22.0', '1.23.0'), true);
+    assert.strictEqual(isFeatureUpdate('1.22.0', '1.22.1'), false);
+    assert.strictEqual(isFeatureUpdate('1.22.0', '2.0.0'), true);
+    assert.strictEqual(isFeatureUpdate('1.23.0', '1.22.0'), false);
+    assert.strictEqual(compareVersions('1.10.0', '1.9.3'), 1);
+  });
+
+  test('a Highlight keeps bold and code, and nothing else', () => {
+    assert.strictEqual(
+      renderHighlightHtml('**Bold** and `code` <script>alert(1)</script>'),
+      '<strong>Bold</strong> and <code>code</code> &lt;script&gt;alert(1)&lt;/script&gt;',
+    );
+  });
+
+  test("a feature release has one to three short Highlights", () => {
+    const version = (JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { version: string }).version;
+    const [major, minor, patch] = version.split('.').map(Number);
+    if (patch !== 0 || compareVersions(version, '1.23.0') < 0 || (major === 1 && minor < 23)) {
+      return;
+    }
+    const release = parseChangelog(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8')).find(
+      (candidate) => candidate.version === version,
+    );
+    assert.ok(release, `CHANGELOG.md has a section for ${version}`);
+    assert.ok(release.highlights.length >= 1 && release.highlights.length <= 3, 'one to three Highlights');
+    release.highlights.forEach((text) => assert.ok(text.length <= 140, `at most 140 characters: ${text}`));
+  });
+
   test('cuts Unreleased into the version, opens a fresh one, and merges repeated groups', () => {
     const cut = script.cutChangelog(BEFORE, {
       version: '1.22.0',

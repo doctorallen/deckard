@@ -58,6 +58,38 @@ suite('Help page', () => {
     assert.match(helpHtml('linux'), /<kbd class="shortcut">Ctrl\+Shift\+Alt\+F<\/kbd>/);
   });
 
+  test("lists what is new, newest first, and marks what is new since the update", () => {
+    const release = (version: string, date: string) => ({ version, date, highlights: [`**${version}** things.`] });
+    const releases = [
+      { version: 'Unreleased', highlights: ['Not yet.'] },
+      ...['1.27.0', '1.26.0', '1.25.0', '1.24.0', '1.23.0', '1.22.0'].map((version, i) =>
+        release(version, `2026-10-0${9 - i}`),
+      ),
+    ];
+    const page = openWebviewPage(
+      getHelpHtml(webview, extensionUri, manifest, { releases, newSince: '1.25.0', anchor: 'whats-new' }),
+    );
+    try {
+      assert.deepStrictEqual(
+        page.findAll('#whats-new h3').map((heading) => heading.firstChild?.textContent),
+        ['1.27.0 · 2026-10-09', '1.26.0 · 2026-10-08', '1.25.0 · 2026-10-07', '1.24.0 · 2026-10-06', '1.23.0 · 2026-10-05'],
+      );
+      assert.strictEqual(page.findAll('#whats-new .whats-new-chip').length, 2, 'New only after 1.25.0');
+      assert.strictEqual(page.find('#whats-new li strong').textContent, '1.27.0');
+      assert.strictEqual(page.document.body.getAttribute('data-anchor'), 'whats-new');
+      assert.strictEqual(page.document.activeElement?.textContent, "What's new", 'opened on What is new, it goes there');
+      page.click('[data-action="open-changelog"]');
+      assert.ok(page.lastPosted('openChangelog'));
+      assert.ok(page.find('nav a[href="#whats-new"]'));
+    } finally {
+      page.dispose();
+    }
+    assert.match(
+      getHelpHtml(webview, extensionUri, manifest, { releases: [] }),
+      /This version's changes are listed in the changelog\./,
+    );
+  });
+
   test('its host runs only what Help may run', async () => {
     const commands = vscode.commands as unknown as Record<string, unknown>;
     const original = commands.executeCommand;
@@ -114,7 +146,7 @@ suite('Help page', () => {
     const help = new HelpPanel(extensionUri);
     const restoredHelp = new HelpPanel(extensionUri);
     try {
-      help.show();
+      await help.show();
       assert.strictEqual((made[0] as vscode.WebviewPanelOptions & vscode.WebviewOptions).enableScripts, true);
 
       const restored = fakePanel();

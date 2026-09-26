@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { WhatsNew } from '../commands/whatsNew';
 import { affectsPageChrome } from './components';
 import { setZenMode } from './zenMode';
 
@@ -76,11 +77,16 @@ export class DashboardPanel implements vscode.Disposable {
     private readonly preferences: PreferencesStore,
     private readonly extensionUri: vscode.Uri,
     private readonly navigation: DashboardNavigation,
+    /** Whether Home says Deckard was updated; absent, it never does. */
+    private readonly whatsNew?: Pick<WhatsNew, 'pending' | 'clear' | 'onDidChange'>,
   ) {
     const initialPreferences = preferences.value;
     this.dashboardTagColumns = initialPreferences.dashboardTagColumns;
     this.dashboardMode = initialPreferences.dashboardViewState.mode;
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
+    if (whatsNew) {
+      this.disposables.push(whatsNew.onDidChange(() => this.refresh()));
+    }
     this.followEditor(vscode.window.activeTextEditor);
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -110,7 +116,8 @@ export class DashboardPanel implements vscode.Disposable {
         if (
           chromeChanged ||
           titleDisplayChanged ||
-          event.affectsConfiguration('deckard.agenda')
+          event.affectsConfiguration('deckard.agenda') ||
+          event.affectsConfiguration('deckard.showWhatsNew')
         ) {
           this.refresh();
         }
@@ -341,6 +348,7 @@ export class DashboardPanel implements vscode.Disposable {
         { agendaQuery: configuration.get<string>('agenda.query', ''), now: Date.now() },
       ),
       homeArranged: !isDefaultHomeLayout(preferences.dashboardWidgets),
+      ...(this.whatsNew?.pending() ? { whatsNew: this.whatsNew.pending() } : {}),
       // Switching tabs asks the host again, so only Home gets its widgets.
       ...(this.dashboardMode === 'home'
         ? {
@@ -564,6 +572,12 @@ export class DashboardPanel implements vscode.Disposable {
       }
       case 'openTaskBoard':
         await this.navigation.openTaskBoard(message.query);
+        return;
+      case 'openWhatsNew':
+        await vscode.commands.executeCommand('deckard.openWhatsNew');
+        return;
+      case 'dismissWhatsNew':
+        await this.whatsNew?.clear();
         return;
       case 'openView':
         await vscode.commands.executeCommand(

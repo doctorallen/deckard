@@ -37,6 +37,18 @@ link providers in the Extension Development Host. The integration test runner
 uses the same `--disable-extensions` safeguard. The directories are ignored by
 Git and can be removed when a clean development profile is needed.
 
+## Writing Highlights
+
+Each release's section in `CHANGELOG.md` opens with `### Highlights`: one to
+three bullets, each one sentence of at most 140 characters, which may wrap
+onto indented lines. Only `**bold**` and `` `code` `` are allowed inline, and
+no links, since the same text is read on GitHub, in the Extensions view, and
+in Help's **What's new**, which Home links to after a feature update. Write
+them under `## Unreleased` before the release pull request merges. A feature
+release (`x.y.0`) must have them: `scripts/changelog.js` refuses to cut one
+without, and `src/test/changelog.test.ts` fails on one that has none, or more
+than three.
+
 ## Release workflow
 
 Open pull requests from `dev` into `main` or the current `master` branch.

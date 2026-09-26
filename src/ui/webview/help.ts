@@ -3,6 +3,8 @@ import { affectsPageChrome } from './components';
 
 import { getHelpHtml, HelpManifest, isRunnableFromHelp } from './helpHtml';
 import { parseHelpMessage } from './messages';
+import { Release } from '../../core/changelog';
+import { WhatsNew } from '../commands/whatsNew';
 
 /**
  * Hosts Deckard's self-contained product guide in a reusable webview panel.
@@ -18,13 +20,34 @@ export class HelpPanel implements vscode.Disposable {
      * describe this version rather than a copy written beside them.
      */
     private readonly manifest: HelpManifest = {},
+    /** The shipped changelog's Highlights, for What's new. */
+    private readonly whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>,
   ) {}
 
-  public show(): void {
+  /** Opens Help, at a section when one is named, such as `whats-new`. */
+  public async show(anchor?: string): Promise<void> {
     if (!this.panel) {
-      this.createPanel();
+      await this.loadReleases();
+      this.createPanel(anchor);
+    } else if (anchor) {
+      void this.panel.webview.postMessage({ type: 'reveal', anchor });
     }
     this.panel?.reveal(vscode.ViewColumn.Active);
+  }
+
+  private releases: Release[] = [];
+
+  private async loadReleases(): Promise<void> {
+    this.releases = (await this.whatsNew?.releases()) ?? [];
+  }
+
+  private html(webview: vscode.Webview, anchor?: string): string {
+    const newSince = this.whatsNew?.newSince();
+    return getHelpHtml(webview, this.extensionUri, this.manifest, {
+      releases: this.releases,
+      ...(newSince ? { newSince } : {}),
+      ...(anchor ? { anchor } : {}),
+    });
   }
 
   public async restore(panel: vscode.WebviewPanel): Promise<void> {
@@ -32,6 +55,7 @@ export class HelpPanel implements vscode.Disposable {
       panel.dispose();
       return;
     }
+    await this.loadReleases();
     this.attachPanel(panel);
   }
 
@@ -40,7 +64,7 @@ export class HelpPanel implements vscode.Disposable {
     this.panel?.dispose();
   }
 
-  private createPanel(): void {
+  private createPanel(anchor?: string): void {
     const panel = vscode.window.createWebviewPanel(
       'deckard.help',
       'Deckard Help',
@@ -52,10 +76,10 @@ export class HelpPanel implements vscode.Disposable {
         retainContextWhenHidden: true,
       },
     );
-    this.attachPanel(panel);
+    this.attachPanel(panel, anchor);
   }
 
-  private attachPanel(panel: vscode.WebviewPanel): void {
+  private attachPanel(panel: vscode.WebviewPanel, anchor?: string): void {
     this.panel = panel;
     // A panel restored after a reload keeps the options it was made with,
     // which before 1.23 had no scripts.
@@ -65,15 +89,11 @@ export class HelpPanel implements vscode.Disposable {
       'resources',
       'deckard.svg',
     );
-    panel.webview.html = getHelpHtml(panel.webview, this.extensionUri, this.manifest);
+    panel.webview.html = this.html(panel.webview, anchor);
     this.panelDisposables = [
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (affectsPageChrome(event) && this.panel) {
-          this.panel.webview.html = getHelpHtml(
-            this.panel.webview,
-            this.extensionUri,
-            this.manifest,
-          );
+          this.panel.webview.html = this.html(this.panel.webview);
         }
       }),
       panel.webview.onDidReceiveMessage((message: unknown) => this.handle(message)),
@@ -89,6 +109,11 @@ export class HelpPanel implements vscode.Disposable {
     const message = parseHelpMessage(value);
     if (message?.type === 'runCommand' && isRunnableFromHelp(this.manifest, message.command)) {
       await vscode.commands.executeCommand(message.command);
+    } else if (message?.type === 'openChangelog') {
+      await vscode.commands.executeCommand(
+        'markdown.showPreview',
+        vscode.Uri.joinPath(this.extensionUri, 'CHANGELOG.md'),
+      );
     }
   }
 

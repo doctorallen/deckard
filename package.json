@@ -156,6 +156,12 @@
         "icon": "$(question)"
       },
       {
+        "command": "deckard.openWhatsNew",
+        "title": "What's New",
+        "category": "Deckard",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "deckard.showLog",
         "title": "Open Log",
         "category": "Deckard"
@@ -968,6 +974,12 @@
             "default": false,
             "description": "Turn Deckard's own chrome down: hide decorative labels and backdrops, thin the borders, fold each row's file and line out of sight until it is hovered or focused, and in the editor, drop the reference counts, the unlinked-mention lens, and the section highlight. Nothing is removed from a page, and it works with any theme.",
             "order": 2
+          },
+          "deckard.showWhatsNew": {
+            "type": "boolean",
+            "default": true,
+            "description": "After an update that adds features, Home shows one line linking to what is new. Help's What's new section lists recent releases either way.",
+            "order": 3
           },
           "deckard.dashboard.openOnStartup": {
             "type": "boolean",

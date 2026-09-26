@@ -951,6 +951,9 @@ ${getQueryEditorScript()}
       // few times and skipped after. Customize stays in the gear throughout.
       // It is not the customizing bar, and does not share its class: that
       // one means "Home is being edited".
+      // What's new comes first, and takes the line while it has something to say.
+      : state.whatsNew
+        ? '<div class="home-hint-bar whats-new-bar"><span>Updated to Deckard ' + escapeHtml(state.whatsNew.version) + '.</span><span class="home-hint-actions"><button type="button" data-action="open-whats-new">What\'s new</button><button type="button" data-action="dismiss-whats-new" data-tip="Stop saying so">Dismiss</button></span></div>'
       : (state.homeArranged || homeHintDismissed)
         ? ''
         : '<div class="home-hint-bar"><span>Home is yours to arrange.</span><span class="home-hint-actions"><button type="button" data-action="customize-home">Customize</button><button type="button" data-action="dismiss-home-hint" data-tip="Stop saying so">Dismiss</button></span></div>';
@@ -1102,6 +1105,14 @@ ${getQueryEditorScript()}
       }
       if (action === 'finish-customizing') {
         setEditingHome(false);
+        return;
+      }
+      if (action === 'open-whats-new') {
+        vscode.postMessage({ type: 'openWhatsNew' });
+        return;
+      }
+      if (action === 'dismiss-whats-new') {
+        vscode.postMessage({ type: 'dismissWhatsNew' });
         return;
       }
       if (action === 'dismiss-home-hint') {

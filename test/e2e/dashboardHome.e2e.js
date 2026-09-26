@@ -58,6 +58,7 @@ async function openDashboard(
   index = createIndex(),
   prepare = async () => undefined,
   indexerExtras = {},
+  whatsNew = undefined,
 ) {
   vscode._test.createdPanels.length = 0;
   const updates = new vscode.EventEmitter();
@@ -75,6 +76,7 @@ async function openDashboard(
     preferences,
     { fsPath: '/ext' },
     navigation,
+    whatsNew,
   );
   await dashboard.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -172,6 +174,27 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
     assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Zen']);
   }
+});
+
+test('after an update Home says so once, and Dismiss takes the line away', async () => {
+  const changed = new vscode.EventEmitter();
+  let pending = { version: '1.23' };
+  const whatsNew = {
+    pending: () => pending,
+    clear: async () => {
+      pending = undefined;
+      changed.fire();
+    },
+    onDidChange: changed.event,
+  };
+  const { view, lastState } = await openDashboard(createIndex(), undefined, {}, whatsNew);
+  assert.deepStrictEqual(lastState().data.whatsNew, { version: '1.23' });
+  assert.strictEqual(view.find('.whats-new-bar span').textContent, 'Updated to Deckard 1.23.');
+
+  view.click(view.find('[data-action="dismiss-whats-new"]'));
+  await delay(20);
+  assert.strictEqual(lastState().data.whatsNew, undefined, 'the next state has no line');
+  assert.strictEqual(view.findAll('.whats-new-bar').length, 0);
 });
 
 test('a hidden Dashboard skips updates and catches up when shown', async () => {

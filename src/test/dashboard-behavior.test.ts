@@ -461,6 +461,24 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('after an update, says so in the hint line first', () => {
+    const { page, snapshot } = open();
+    page.send({ ...snapshot, whatsNew: { version: '1.23' } });
+    assert.strictEqual(page.text('.home-hint-bar span'), 'Updated to Deckard 1.23.');
+    assert.strictEqual(
+      page.document.querySelector('[data-action="dismiss-home-hint"]'),
+      null,
+      'one line at a time: the arrange hint waits',
+    );
+    page.click('[data-action="open-whats-new"]');
+    assert.ok(page.lastPosted('openWhatsNew'));
+    page.click('[data-action="dismiss-whats-new"]');
+    assert.ok(page.lastPosted('dismissWhatsNew'));
+
+    page.send({ ...snapshot });
+    assert.strictEqual(page.text('.home-hint-bar span'), 'Home is yours to arrange.');
+  });
+
   test('offers to rearrange Home, and to put it back', () => {
     const { page } = open();
 

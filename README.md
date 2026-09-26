@@ -107,6 +107,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, or the person each task is for. |
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
+| **Deckard: What's New** | Opens Help at **What's new**, the highlights of recent releases. |
 | **Deckard: Open Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
@@ -402,6 +403,8 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 ### Home
 
 Above Home, three figures say what wants doing: **Overdue** and **Due today**, as the [Tasks view](#tasks-view) counts them, and **Open**, every open task. Each opens a search for what it counts, scoped by `deckard.agenda.query` when that is set, so the number and the page agree. The workspace's totals of notes, tasks, and tags are on [Stats](#stats).
+
+**What's new.** After an update that adds features, Home says *Updated to Deckard 1.23.* above its widgets, once, with **What's new**, which opens Help's list of the recent releases' highlights, and **Dismiss**. It goes from every window's Home once either is chosen. A patch says nothing, and there is never a pop-up. `deckard.showWhatsNew` turns the line off; Help's **What's new** lists the releases either way.
 
 **Home** is made of widgets you choose; a new Home starts with the search box, the Tasks view, open tasks, favorite tags, and saved searches:
 
@@ -974,6 +977,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 ```json
 {
 	"deckard.theme": "corpo",
+	"deckard.showWhatsNew": true,
 	"deckard.dashboard.openOnStartup": false,
 	"deckard.tagOverview.hubNoteExpanded": true,
 	"deckard.notesFolder": "notes",
@@ -1036,6 +1040,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide, such as `node_modules`. Set an inherited pattern to `false` here to index it anyway. |
 | `deckard.theme` | `corpo` | Selects the visual style for Deckard webviews: `corpo`, which follows your VS Code theme, or one of `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.zenMode` | `false` | Turns Deckard's own chrome down in every webview: decorative labels and the grid backdrop are hidden, borders and headings thin out, and each row's file and line fold away until the row is hovered or focused. No control, count, or tag is removed. See [Zen mode](#zen-mode). |
+| `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. Help's What's new section lists recent releases either way. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |

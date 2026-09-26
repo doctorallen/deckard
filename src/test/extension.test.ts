@@ -16,7 +16,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 59);
+    assert.strictEqual(Object.keys(settings).length, 60);
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
     assert.deepStrictEqual(settings['deckard.board.limits'].default, {});
     assert.deepStrictEqual(settings['deckard.tasks.onHoldStatuses'].default, ['waiting', 'someday']);
@@ -45,6 +45,7 @@ suite('Extension Test Suite', () => {
         'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
+        'deckard.openWhatsNew',
         'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createDailyNote',
