@@ -1278,7 +1278,8 @@
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Let capped, section-scoped similarity of wording adjust the score of a related note that already shares a tag, association, or Wiki link. Shared wording never makes a note related on its own. Disable to rank by tags and links alone.",
+            "description": "Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link. Shared wording never makes a note related on its own. Turn off to rank by tags and links alone.",
+            "tags": ["advanced"],
             "order": 1
           },
           "deckard.relatedNotesAssociationMinimumSupport": {
@@ -1287,7 +1288,8 @@
             "minimum": 1,
             "maximum": 20,
             "default": 1,
-            "description": "Minimum distinct atomic source units required before a learned tag association affects Related Notes. One preserves intentional one-off associations.",
+            "description": "How many headings, tagged lines, or tasks must write two tags together before Related Notes treats the tags as associated. 1 counts an association written once.",
+            "tags": ["advanced"],
             "order": 2
           },
           "deckard.relatedNotesRecencyHalfLifeDays": {
@@ -1296,7 +1298,8 @@
             "minimum": 0,
             "maximum": 3650,
             "default": 0,
-            "description": "Optional Related Notes recency tie-breaker half-life in days. Zero disables it; daily-note and front-matter dates are preferred over filesystem dates.",
+            "description": "Give recently written notes a small lift in Related Notes: a note this many days old gets half the lift of one written today. 0 turns it off. A daily note's date or a front-matter date is used before the file's.",
+            "tags": ["advanced"],
             "order": 3
           }
         },

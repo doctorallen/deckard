@@ -57,6 +57,9 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-row label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-row output { color: var(--toxic-green); font: var(--text-xs) var(--font-mono); }
 .control-row .slider-line { display: flex; align-items: center; gap: 8px; }
+.slider-end { flex: none; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.control-group.advanced { border: 0; background: transparent; }
+.control-group.advanced > summary { padding: 4px 0; color: var(--muted); }
 input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
 input[type='checkbox'] { accent-color: var(--amber-bright); }
 .toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: var(--text-xs) var(--font-mono); cursor: pointer; }
@@ -131,11 +134,16 @@ ${getPageTailCss()}
     <div class="control-body">
       <div class="control-row"><label for="node-size">Node size</label><div class="slider-line"><input type="range" id="node-size" data-tip="Scale node circles; larger nodes make highly connected items easier to spot." min="0.5" max="3" step="0.1" value="1"><output id="node-size-out">1.0</output></div></div>
       <div class="control-row"><label for="link-thickness">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" data-tip="Scale the width of visible edges." min="0.5" max="3" step="0.1" value="1"><output id="link-thickness-out">1.0</output></div></div>
-      <div class="control-row"><label for="link-density">Connection density</label><div class="slider-line"><input type="range" id="link-density" data-tip="Choose how many of each node's strongest links remain in the visual backbone; lower values reduce clutter without changing sidebar connections." min="0.15" max="1" step="0.05" value="0.3"><output id="link-density-out">0.30</output></div></div>
-      <div class="control-row"><label for="tag-specificity">Tag prevalence bias</label><div class="slider-line"><input type="range" id="tag-specificity" data-tip="Control how strongly rare and common tag populations affect visual-link scores; higher values favor useful coverage." min="0" max="1" step="0.05" value="0.9"><output id="tag-specificity-out">0.90</output></div></div>
-      <div class="control-row"><label for="bridge-strength">Secondary bridge strength</label><div class="slider-line"><input type="range" id="bridge-strength" data-tip="Control how strongly secondary tags and tag associations bridge different communities." min="0" max="1" step="0.05" value="0.15"><output id="bridge-strength-out">0.15</output></div></div>
-      <label class="toggle-row"><input type="checkbox" id="show-all-links" data-tip="Display every indexed visual link instead of only the strongest local backbone; useful for comparison but potentially dense."> Show all links (comparison)</label>
+      <div class="control-row"><label for="link-density">Links per note</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Fewer</span><input type="range" id="link-density" data-tip="How many of each note's strongest links are drawn. Fewer is easier to read. The sidebar's connections do not change." data-words="fewest,fewer,about half,more,most" min="0.15" max="1" step="0.05" value="0.3"><span class="slider-end" aria-hidden="true">More</span></div></div>
       <div class="control-row"><label for="label-threshold">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" data-tip="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer." min="0.5" max="4" step="0.1" value="1.4"><output id="label-threshold-out">1.4</output></div></div>
+      <details class="control-group advanced">
+        <summary>Advanced</summary>
+        <div class="control-body">
+          <div class="control-row"><label for="tag-specificity">Favor rare tags</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Less</span><input type="range" id="tag-specificity" data-tip="How much more a tag on a few notes counts than a tag on nearly every note, when choosing which links to draw." data-words="least,less,about half,more,most" min="0" max="1" step="0.05" value="0.9"><span class="slider-end" aria-hidden="true">More</span></div></div>
+          <div class="control-row"><label for="bridge-strength">Links between groups</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Fewer</span><input type="range" id="bridge-strength" data-tip="How strongly a note's other tags pull it toward other groups." data-words="fewest,fewer,about half,more,most" min="0" max="1" step="0.05" value="0.15"><span class="slider-end" aria-hidden="true">More</span></div></div>
+          <label class="toggle-row"><input type="checkbox" id="show-all-links" data-tip="Draw every link rather than each note's strongest. Busy on a large workspace."> Show every link</label>
+        </div>
+      </details>
     </div>
   </details>
   <details class="control-group">
@@ -153,7 +161,7 @@ ${getPageTailCss()}
     <summary>Relationships</summary>
     <div class="control-body">
       <p class="relationship-note">The graph uses prevalence-aware visual communities: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
-      <p class="relationship-note">Connection density controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
+      <p class="relationship-note">Links per note controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
       <p class="relationship-note">Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p>
     </div>
   </details>
@@ -1919,9 +1927,9 @@ ${getUndoScript()}
     [
       ['node-size', 'nodeSize', 1],
       ['link-thickness', 'linkThickness', 1],
-      ['link-density', 'linkDensity', 2],
-      ['tag-specificity', 'tagSpecificity', 2],
-      ['bridge-strength', 'bridgeStrength', 2],
+      ['link-density', 'linkDensity', null],
+      ['tag-specificity', 'tagSpecificity', null],
+      ['bridge-strength', 'bridgeStrength', null],
       ['label-threshold', 'labelThreshold', 1],
       ['center-strength', 'centerStrength', 2],
       ['cluster-cohesion', 'clusterCohesion', 1],
@@ -1932,8 +1940,7 @@ ${getUndoScript()}
     ].forEach(function (definition) {
       var input = document.getElementById(definition[0]);
       input.value = String(settings[definition[1]]);
-      document.getElementById(definition[0] + '-out').textContent =
-        Number(settings[definition[1]]).toFixed(definition[2]);
+      showSliderValue(input, settings[definition[1]], definition[2]);
     });
     searchInput.value = settings.search;
   }
@@ -2023,23 +2030,38 @@ ${getUndoScript()}
     document.getElementById(id).addEventListener('click', dismissResetUndo);
   });
 
+  /**
+   * Says a slider's value: as a number in its output, or, for a slider with
+   * no number worth reading (decimals null), as a word a screen reader says.
+   */
+  function showSliderValue(element, value, decimals) {
+    if (decimals === null) {
+      var words = (element.getAttribute('data-words') || '').split(',');
+      var min = Number(element.min);
+      var span = Number(element.max) - min || 1;
+      var fifth = Math.min(4, Math.floor(((Number(value) - min) / span) * 5));
+      element.setAttribute('aria-valuetext', words[Math.max(0, fifth)] || String(value));
+      return;
+    }
+    document.getElementById(element.id + '-out').textContent = Number(value).toFixed(decimals);
+  }
+
   function bindSlider(id, key, decimals, onChange) {
     var element = document.getElementById(id);
-    var output = document.getElementById(id + '-out');
     element.value = String(settings[key]);
-    output.textContent = Number(settings[key]).toFixed(decimals);
+    showSliderValue(element, settings[key], decimals);
     element.addEventListener('input', function () {
       settings[key] = Number(element.value);
-      output.textContent = Number(settings[key]).toFixed(decimals);
+      showSliderValue(element, settings[key], decimals);
       persist();
       onChange();
     });
   }
   bindSlider('node-size', 'nodeSize', 1, scheduleFrame);
   bindSlider('link-thickness', 'linkThickness', 1, scheduleFrame);
-  bindSlider('link-density', 'linkDensity', 2, rebuildView);
-  bindSlider('tag-specificity', 'tagSpecificity', 2, rebuildView);
-  bindSlider('bridge-strength', 'bridgeStrength', 2, rebuildView);
+  bindSlider('link-density', 'linkDensity', null, rebuildView);
+  bindSlider('tag-specificity', 'tagSpecificity', null, rebuildView);
+  bindSlider('bridge-strength', 'bridgeStrength', null, rebuildView);
   bindSlider('label-threshold', 'labelThreshold', 1, scheduleFrame);
   bindSlider('center-strength', 'centerStrength', 2, function () { reheat(0.5); });
   bindSlider('cluster-cohesion', 'clusterCohesion', 1, function () { reheat(0.5); });

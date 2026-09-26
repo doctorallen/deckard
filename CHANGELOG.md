@@ -87,6 +87,14 @@
 
 ### Changed
 
+- **The Notes Graph's link sliders say what they do.** *Connection
+  density* is **Links per note**, from **Fewer** to **More**, and a screen
+  reader hears a word rather than 0.30. *Tag prevalence bias*, *Secondary
+  bridge strength*, and *Show all links* are **Favor rare tags**, **Links
+  between groups**, and **Show every link**, folded under **Advanced**.
+  Related Notes' three tuning settings are described in plain words and
+  marked advanced.
+
 - **A setting is named in words, with a button that opens it.** Messages
   that named a setting by its ID, such as `deckard.exclude`, name it as the
   Settings editor does, *the "Exclude" setting*, and offer **Open Setting**.

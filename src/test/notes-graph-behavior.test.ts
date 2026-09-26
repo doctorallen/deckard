@@ -71,12 +71,35 @@ suite('Notes Graph behavior', () => {
     const title = (id: string) => String(page.find(`#${id}`).getAttribute('data-tip'));
     assert.match(title('search'), /Filter note, task, and tag titles/);
     assert.match(title('show-tags'), /hidden tags still guide clustering/);
-    assert.match(title('link-density'), /strongest links remain/);
-    assert.match(title('tag-specificity'), /rare and common tag populations/);
+    assert.match(title('link-density'), /strongest links are drawn/);
+    assert.match(title('tag-specificity'), /tag on a few notes/);
     assert.match(title('cluster-cohesion'), /toward their detected community/);
     assert.match(title('community-spacing'), /distance between detected communities/);
     assert.match(title('link-distance'), /length of visible links/);
     assert.match(title('reset-graph-settings'), /Restore all graph controls/);
+  });
+
+  test('says the link sliders in words, with the rarer ones folded under Advanced', () => {
+    const page = open();
+
+    ['link-density', 'tag-specificity', 'bridge-strength'].forEach((id) => {
+      assert.strictEqual(page.document.getElementById(`${id}-out`), null, `${id} shows no number`);
+      assert.ok(page.find(`#${id}`).getAttribute('aria-valuetext'), `${id} is said in a word`);
+    });
+    const density = page.find('#link-density') as HTMLInputElement;
+    const before = density.getAttribute('aria-valuetext');
+    density.value = density.max;
+    density.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+    assert.strictEqual(density.getAttribute('aria-valuetext'), 'most');
+    assert.notStrictEqual(before, 'most');
+
+    const advanced = page.document.querySelector('details.advanced') as HTMLDetailsElement;
+    assert.strictEqual(advanced.querySelector('summary')?.textContent, 'Advanced');
+    assert.strictEqual(advanced.open, false, 'closed to begin with');
+    ['tag-specificity', 'bridge-strength', 'show-all-links'].forEach((id) => {
+      assert.ok(advanced.querySelector(`#${id}`), `${id} is under Advanced`);
+    });
+    assert.strictEqual(advanced.querySelector('#link-density'), null);
   });
 
   test('offers the zoom and framing controls', () => {
