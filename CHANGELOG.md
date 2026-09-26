@@ -517,7 +517,7 @@
   written or opened, in plain words, and offers **Open Log**, where the
   details are. Starting the MCP server on a port in use says so and offers
   **Open Setting**; an unreadable preferences file says nothing was
-  imported; a sample folder already there offers **Choose Another Folder**.
+  imported; a sample folder already there offers **Replace** or **Open As It Is**.
 
 - **A long board column shows 100 cards, and the rest on request.** A
   column of hundreds drew every card; it now draws the first 100 with
