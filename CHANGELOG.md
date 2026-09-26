@@ -58,6 +58,11 @@
   rest say *overdue* muted beside a red dot. `deckard.board.limits` sets
   work-in-progress limits, such as `{ "doing": 3 }`: the header reads
   **5 / 3** and the column gets a neutral outline. A drop is never refused.
+- **A review looks ahead.** A weekly or monthly review gains **Coming up**:
+  the open tasks due, scheduled, or starting in the next period, each led by
+  its day. Its summary line counts them, and says how many of the tasks due
+  in the period were done on time. `deckard.periodicNote.reviewSections`
+  adds sections of your own, each a title and a search, written as a list.
 - **Done today.** The Tasks view ends with a folded Done today group of
   what was finished today; unchecking one reopens it. The status bar's hover
   and Home's Tasks view widget say how many.

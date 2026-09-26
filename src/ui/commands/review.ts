@@ -6,6 +6,7 @@ import {
   formatReview,
   REVIEW_START,
   ReviewRange,
+  ReviewSectionSetting,
   summarizeReview,
   writeReviewInto,
 } from '../state/reviewState';
@@ -38,6 +39,20 @@ export function isReviewOnCreateEnabled(uri?: vscode.Uri): boolean {
   return vscode.workspace
     .getConfiguration('deckard', uri)
     .get<boolean>('periodicNote.review', true);
+}
+
+/** `deckard.periodicNote.reviewSections`, keeping the ones with a title and a search. */
+export function readReviewSections(uri?: vscode.Uri): ReviewSectionSetting[] {
+  const value = vscode.workspace
+    .getConfiguration('deckard', uri)
+    .get<unknown>('periodicNote.reviewSections', []);
+  return Array.isArray(value)
+    ? value.flatMap((entry) => {
+        const title = typeof entry?.title === 'string' ? entry.title.trim() : '';
+        const query = typeof entry?.query === 'string' ? entry.query.trim() : '';
+        return title && query ? [{ title, query }] : [];
+      })
+    : [];
 }
 
 /** The days a period covers: its first midnight, and the midnight after it. */
@@ -86,9 +101,14 @@ export async function writeReview(
     return undefined;
   }
   await indexer.ready;
-  const range = options.range ?? getReviewRange(period, day, readWeekStart());
+  const weekStart = readWeekStart();
+  const range = options.range ?? getReviewRange(period, day, weekStart);
   const summary = summarizeReview(indexer.getSnapshot(), range, {
     tagFirstSeen: preferences?.value.tagFirstSeen,
+    // The period after this one, which the review looks ahead at.
+    next: getReviewRange(period, new Date(range.end), weekStart),
+    nextLabel: period === 'week' ? 'next week' : 'next month',
+    sections: readReviewSections(options.noteUri ?? folder?.uri),
   });
   const review = formatReview(summary);
 
@@ -123,7 +143,7 @@ export async function writeReview(
   }
   if (!options.silent) {
     void offerReview(
-      `Wrote the review of ${range.title}: ${summary.completed.length} done, ${summary.slipped.length} still open.`,
+      `Wrote the review of ${range.title}: ${summary.completed.length} done, ${summary.slipped.length} still open, ${summary.comingUp.length} coming up.`,
       noteUri,
       indexer,
     );

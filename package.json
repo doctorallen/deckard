@@ -984,7 +984,28 @@
             "type": "boolean",
             "default": true,
             "order": 7,
-            "markdownDescription": "Write a review into a newly created weekly or monthly note: what was completed, what is still open, the notes written and changed, and the tags first seen in that period. [Write a Review](command:deckard.writeReview) writes or updates one whenever you ask."
+            "markdownDescription": "Write a review into a newly created weekly or monthly note: what was completed, what is still open, what is coming up next, the notes written and changed, and the tags first seen in that period. [Write a Review](command:deckard.writeReview) writes or updates one whenever you ask."
+          },
+          "deckard.periodicNote.reviewSections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "query"
+              ]
+            },
+            "default": [],
+            "order": 7,
+            "markdownDescription": "Sections of your own at the end of a review, each a title and a Deckard search, such as `{ \"title\": \"Waiting on others\", \"query\": \"is:waiting\" }`. Written as a plain list when the review is written, so it says what was true then."
           },
           "deckard.dailyNote.rollover": {
             "type": "string",

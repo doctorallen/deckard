@@ -900,10 +900,13 @@ A review reads the index for that period and says:
 | --- | --- |
 | **Completed** | Tasks with a ✅ date in the period, oldest first |
 | **Still open** | Tasks due by the end of the period that are still open: what slipped |
+| **Coming up** | Open tasks due, scheduled, or starting in the next week or month, each led by its day, soonest first |
 | **Notes written** | Notes created in the period |
 | **Notes changed** | Notes written earlier and changed in it |
 | **New tags** | Tags Deckard first saw in the period |
 
+- The line under the heading sums it up — **Done:** 12 (8 of 11 that were due) · **Still open:** 5 · **Coming up:** 9 · … — where the share says how many tasks due in the period were done by their day.
+- `deckard.periodicNote.reviewSections` adds sections of your own at the end, each a title and a search: `[{ "title": "Waiting on others", "query": "is:waiting" }]`. Each is written as a plain list of what the search found then, up to 20; a search that does not parse says so in its section rather than failing the review.
 - A review is **named by the days it covers** — *Review of 2026-09-13 to 2026-09-19* — since a week number says little when you read it back. The note it is in still says which period it is.
 - It is **ordinary Markdown**, not a live query, because a review should say what that week was rather than what this week is. Run it again and it is rewritten from the index as it stands.
 - When one is written, Deckard says so with **Open** to read it — at the review itself — and **Undo** to take it back out of the note.
@@ -1035,6 +1038,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its first day. |
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` for the day VS Code's display language starts it. It sets the Calendar's rows, weekly notes and their reviews, a search's `this-week`, `last-week`, and `next-week`, and *next week* and *end of week* typed as a date. A weekly note written before a change still opens. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `September 2026`, and `{date}` its first day. |
+| `deckard.periodicNote.reviewSections` | `[]` | Sections of your own at the end of a review, each `{ "title": …, "query": … }`. See [Writing a review](#writing-a-review). |
 | `deckard.periodicNote.review` | `true` | Writes a review into a newly created weekly or monthly note. See [Writing a review](#writing-a-review). |
 | `deckard.dailyNote.rollover` | `off` | What a newly created daily note does with the last one's unfinished tasks: `off`, `move`, or `migrate` (`copy` is its older name). See [Carrying unfinished tasks forward](#carrying-unfinished-tasks-forward). |
 | `deckard.dailyNote.rolloverDays` | `7` | How many days back a rollover looks for unfinished tasks. `0` reaches as far as your daily notes go. |
