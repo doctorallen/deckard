@@ -117,7 +117,7 @@ import { AssistantTools } from './ui/commands/assistantTools';
 import { QuickFind } from './ui/commands/quickFind';
 import { DashboardPanel } from './ui/webview/dashboard';
 import { HelpPanel } from './ui/webview/help';
-import { NotesGraphPanel } from './ui/webview/notesGraph';
+import { NotesGraphPanel, readNotesGraphOptions } from './ui/webview/notesGraph';
 import { SidebarNotesView } from './ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from './ui/webview/relatedNotesDebug';
 import { StatsPanel } from './ui/webview/stats';
@@ -907,8 +907,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       await help.show('whats-new');
       await whatsNew.clear();
     }),
-    vscode.commands.registerCommand('deckard.showNotesGraph', () =>
-      notesGraph.show(),
+    vscode.commands.registerCommand('deckard.showNotesGraph', (options?: unknown) =>
+      notesGraph.show(readNotesGraphOptions(options)),
     ),
     vscode.commands.registerCommand('deckard.showNotesGraphAroundNote', async () => {
       const uri = vscode.window.activeTextEditor?.document.uri;

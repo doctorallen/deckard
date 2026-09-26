@@ -32,6 +32,24 @@ import { parseNotesGraphMessage } from './messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
 import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
+/** What the Notes Graph can be opened showing. */
+export interface NotesGraphShowOptions {
+  /** Turn on Only links I wrote. */
+  onlyWrittenLinks?: boolean;
+}
+
+/**
+ * The options `deckard.showNotesGraph` was run with, keeping only what it
+ * understands: a command can be run from anywhere with anything.
+ */
+export function readNotesGraphOptions(value: unknown): NotesGraphShowOptions {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+  const onlyWrittenLinks = (value as { onlyWrittenLinks?: unknown }).onlyWrittenLinks;
+  return onlyWrittenLinks === true ? { onlyWrittenLinks: true } : {};
+}
+
 /**
  * Owns the workspace-wide Notes Graph panel and validates navigation requests
  * against the current index before opening editors or tag overviews.
@@ -110,7 +128,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     );
   }
 
-  public async show(): Promise<void> {
+  public async show(options: NotesGraphShowOptions = {}): Promise<void> {
     if (!this.panel) {
       this.applyOpeningScope();
       this.createPanel();
@@ -119,6 +137,13 @@ export class NotesGraphPanel implements vscode.Disposable {
     this.panel?.reveal(vscode.ViewColumn.Active);
     await whenPublished(this.indexer);
     this.refresh();
+    // After the graph itself, so the page has something to filter.
+    if (options.onlyWrittenLinks) {
+      void this.panel?.webview.postMessage({
+        type: 'applyFilters',
+        onlyWrittenLinks: true,
+      });
+    }
   }
 
   /**

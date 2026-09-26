@@ -423,6 +423,18 @@ and the Notes Graph's overlay layers over its canvas.
 | `.markdown` | Raw Markdown source, amber left rule. |
 | `.rendered` | Rendered Markdown body. |
 
+### Notes Graph canvas
+
+The graph paints into a canvas, so none of the sheet reaches it. Every color
+it paints is read from a token through `themeColor()` on `:root`, with a
+system color in its place under forced colors, and the kinds of edge — wiki
+link, heading, tag, through a daily note — are told apart by **dash
+pattern**, not color, so they survive forced colors, colorblindness, and
+every theme; the status line's legend draws the same patterns as inline
+SVG. Drawing stays cheap: one batched path per kind of edge and per kind of
+node, never a stroke per line. Past 3,000 lines in a frame the dashes are
+left off and the kinds differ by alpha alone.
+
 ### Linked from
 
 Related Notes' **Linked from** is a `.link-group` per linking note: a

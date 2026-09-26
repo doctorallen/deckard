@@ -1,4 +1,4 @@
-import { zoomInIcon, zoomOutIcon } from './icons';
+import { edgeLegendLine as legendLine, zoomInIcon, zoomOutIcon } from './icons';
 import * as vscode from 'vscode';
 
 import {
@@ -92,6 +92,12 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .legend-note { background: var(--cyan-bright); }
 .legend-task { background: var(--amber-bright); }
 .legend-tag { background: var(--toxic-green); }
+/* A line sample per kind of edge, drawn with the canvas's own dash pattern.
+   Kinds are told apart by pattern, not color, so the legend survives forced
+   colors, colorblindness, and every theme. */
+.graph-legend .legend-line { display: inline-block; width: 16px; height: 8px; margin-left: 7px; color: var(--muted); }
+.graph-legend .legend-line line { stroke: currentColor; stroke-width: 1.5; }
+.graph-legend .legend-line[hidden], .graph-legend .legend-word[hidden] { display: none; }
 /* The panels follow the theme rather than a fixed near-black, which was
    unreadable when corpo took its text color from a light VS Code theme. */
 .control-group { background: var(--panel); }
@@ -124,6 +130,7 @@ ${getPageTailCss()}
       <label class="toggle-row"><input type="checkbox" id="show-tasks" checked data-tip="Show or hide task nodes and their visible links."> Show tasks</label>
       <label class="toggle-row"><input type="checkbox" id="show-tags" data-tip="Show tag nodes and tag links; hidden tags still guide clustering."> Show tags</label>
       <label class="toggle-row"><input type="checkbox" id="show-orphans" checked data-tip="Show nodes with no currently visible connections."> Show orphans</label>
+      <label class="toggle-row"><input type="checkbox" id="only-written-links" data-tip="Draw only the wiki links written in your notes. Headings and tags still place each note, but are not drawn."> Only links I wrote</label>
       <label class="toggle-row"><input type="checkbox" id="show-parked" data-tip="Show parked notes, tasks, and tags. They are hidden unless this is on."> Show parked</label>
       <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" data-tip="Narrow the tag checklist without changing the graph.">
       <div class="tag-list" id="tag-list" role="group" aria-label="Tag filters"></div>
@@ -177,7 +184,7 @@ ${getPageTailCss()}
   <button class="reset-graph-settings" id="reset-graph-settings" type="button" data-tip="Restore all graph controls and filters, clear node momentum, and reframe the graph. Undo is offered for a few seconds.">Reset graph</button>
   <span class="graph-reset-undo" id="graph-reset-undo" role="status" aria-live="polite"></span>
 </div>
-<div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
+<div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags${legendLine('wiki', '')}<span class="legend-word">Wiki link</span>${legendLine('heading', '5 3')}<span class="legend-word">Heading</span>${legendLine('tag', '1 3')}<span class="legend-word">Tag</span>${legendLine('joined', '8 3 1 3', true)}<span class="legend-word" data-legend="joined" hidden>Through a daily note</span></span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>
 <script nonce="${nonce}">
 (function () {
@@ -255,6 +262,7 @@ ${getUndoScript()}
     showTags: false,
     showOrphans: true,
     showParked: false,
+    onlyWrittenLinks: false,
     selectedTags: [],
     search: '',
     nodeSize: 1,
@@ -332,6 +340,34 @@ ${getUndoScript()}
   var selectedIndex = -1;
   var selectedNeighbors = {};
 
+  // ---- edge kinds ---------------------------------------------------------
+  // An edge is drawn as its strongest kind: a wiki link, then a heading, then
+  // a tag, then an edge a focused graph joins through a daily note.
+  var EDGE_WIKI = 0;
+  var EDGE_HEADING = 1;
+  var EDGE_TAG = 2;
+  var EDGE_JOINED = 3;
+  /** Dash patterns in screen pixels, and each kind's alpha against the base. */
+  var EDGE_STYLES = [
+    { dash: [], alpha: 1.6, cap: 'butt' },
+    { dash: [5, 3], alpha: 1, cap: 'butt' },
+    { dash: [1, 3], alpha: 0.8, cap: 'round' },
+    { dash: [8, 3, 1, 3], alpha: 1, cap: 'butt' }
+  ];
+  /**
+   * Past this many lines in one frame the dashes are left off and the kinds
+   * are told apart by alpha alone: a dashed stroke over thousands of
+   * segments costs far more than a solid one.
+   */
+  var MAXIMUM_DASHED_EDGES = 3000;
+  var hasJoinedEdges = false;
+  function edgeKind(types) {
+    if (types.indexOf('wiki-link') !== -1) { return EDGE_WIKI; }
+    if (types.indexOf('heading') !== -1) { return EDGE_HEADING; }
+    if (types.length === 0) { return EDGE_JOINED; }
+    return EDGE_TAG;
+  }
+
   // ---- view construction ------------------------------------------------
   function rebuildView(repositionCommunities) {
     if (!snapshot) { return; }
@@ -366,6 +402,21 @@ ${getUndoScript()}
       settings.tagSpecificity,
       settings.bridgeStrength
     );
+    // Only links I wrote draws every wiki link, past the budget that keeps a
+    // hub's twentieth link off screen, and nothing else. The other edges
+    // stay in the view undrawn, so each note is placed where it was.
+    var onlyWritten = Boolean(settings.onlyWrittenLinks);
+    var writtenConnected = {};
+    if (onlyWritten) {
+      var included = {};
+      candidateEdges.forEach(function (edge) { included[edge.id] = true; });
+      allCandidateEdges.forEach(function (edge) {
+        if (edge.types.indexOf('wiki-link') === -1) { return; }
+        writtenConnected[edge.source] = true;
+        writtenConnected[edge.target] = true;
+        if (!included[edge.id]) { candidateEdges.push(edge); }
+      });
+    }
 
     var connected = {};
     candidateEdges.forEach(function (edge) {
@@ -383,7 +434,11 @@ ${getUndoScript()}
     });
 
     if (!settings.showOrphans) {
-      candidate = candidate.filter(function (node) { return connected[node.id]; });
+      candidate = candidate.filter(function (node) {
+        return onlyWritten && node.kind !== 'tag'
+          ? writtenConnected[node.id]
+          : connected[node.id];
+      });
       candidateIndex = {};
       candidate.forEach(function (node, index) { candidateIndex[node.id] = index; });
       candidateEdges = candidateEdges.filter(function (edge) {
@@ -395,13 +450,17 @@ ${getUndoScript()}
     nodes = candidate;
     nodeIndexById = candidateIndex;
     edges = candidateEdges.map(function (edge) {
+      var kind = edgeKind(edge.types);
       return {
         a: candidateIndex[edge.source],
         b: candidateIndex[edge.target],
         weight: edge.weight,
-        types: edge.types
+        types: edge.types,
+        kind: kind,
+        drawn: !onlyWritten || kind === EDGE_WIKI
       };
     });
+    hasJoinedEdges = snapshot.edges.some(function (edge) { return edge.types.length === 0; });
 
     var count = nodes.length;
     px = new Float32Array(count);
@@ -426,6 +485,9 @@ ${getUndoScript()}
     edges.forEach(function (edge) {
       degrees[edge.a] += 1;
       degrees[edge.b] += 1;
+      // A neighbor is what a drawn line leads to, so an undrawn edge is
+      // not highlighted with the node it touches.
+      if (!edge.drawn) { return; }
       adjacency[edge.a].push(edge.b);
       adjacency[edge.b].push(edge.a);
     });
@@ -1003,6 +1065,9 @@ ${getUndoScript()}
     specificity
   ) {
     var score = 0;
+    // An edge a focused graph joins through a daily note stands for a link
+    // path, so it is kept as a heading is rather than scored as nothing.
+    if (edge.types.length === 0) { score += 0.9; }
     if (edge.types.indexOf('wiki-link') !== -1) { score += 2.5; }
     if (edge.types.indexOf('heading') !== -1) { score += 0.9; }
     if (edge.types.indexOf('associated-tag') !== -1) {
@@ -1404,25 +1469,45 @@ ${getUndoScript()}
     var focusIndex = hovering ? hoverIndex : selectedIndex;
     var dimmingActive = focusIndex >= 0 || matchSet !== null || tagMatchSet !== null;
 
-    // Edges: one batched path for base edges, a second for highlighted ones.
+    // Edges: one batched path per kind, each with its own dash pattern, and
+    // one more, solid, for a selected node's links, so they read as a
+    // single highlight. Up to five strokes a frame.
     var edgeAlpha = Math.min(0.45, 0.1 + 0.18 * k);
-    ctx.lineWidth = settings.linkThickness / k;
-    ctx.strokeStyle = colors.edge;
-    ctx.globalAlpha = dimmingActive ? edgeAlpha * 0.25 : edgeAlpha;
-    ctx.beginPath();
+    var byKind = [[], [], [], []];
     var highlighted = [];
+    var shownEdges = 0;
     for (var e = 0; e < edges.length; e += 1) {
       var edge = edges[e];
+      if (!edge.drawn) { continue; }
       if (!isRendered(edge.a) || !isRendered(edge.b)) { continue; }
       if (!inView(edge.a) && !inView(edge.b)) { continue; }
       if (focusIndex >= 0 && (edge.a === focusIndex || edge.b === focusIndex)) {
         highlighted.push(edge);
         continue;
       }
-      ctx.moveTo(px[edge.a], py[edge.a]);
-      ctx.lineTo(px[edge.b], py[edge.b]);
+      byKind[edge.kind].push(edge);
+      shownEdges += 1;
     }
-    ctx.stroke();
+    var dashed = shownEdges <= MAXIMUM_DASHED_EDGES;
+    ctx.lineWidth = settings.linkThickness / k;
+    ctx.strokeStyle = colors.edge;
+    for (var kindIndex = 0; kindIndex < byKind.length; kindIndex += 1) {
+      var kindEdges = byKind[kindIndex];
+      if (kindEdges.length === 0) { continue; }
+      var style = EDGE_STYLES[kindIndex];
+      var kindAlpha = Math.min(0.7, edgeAlpha * style.alpha);
+      ctx.globalAlpha = dimmingActive ? kindAlpha * 0.25 : kindAlpha;
+      ctx.setLineDash(dashed ? style.dash.map(function (length) { return length / k; }) : []);
+      ctx.lineCap = dashed ? style.cap : 'butt';
+      ctx.beginPath();
+      for (var ke = 0; ke < kindEdges.length; ke += 1) {
+        ctx.moveTo(px[kindEdges[ke].a], py[kindEdges[ke].a]);
+        ctx.lineTo(px[kindEdges[ke].b], py[kindEdges[ke].b]);
+      }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
     if (highlighted.length > 0) {
       ctx.strokeStyle = colors.edgeHighlight;
       ctx.globalAlpha = Math.min(0.9, edgeAlpha * 3);
@@ -1535,18 +1620,41 @@ ${getUndoScript()}
   function updateStatus() {
     if (!snapshot) { return; }
     var visibleEdgeCount = edges.filter(function (edge) {
-      return isRendered(edge.a) && isRendered(edge.b);
+      return edge.drawn && isRendered(edge.a) && isRendered(edge.b);
     }).length;
     var matchCount = matchSet ? Object.keys(matchSet).length : -1;
     var searchNote = matchCount >= 0
       ? matchCount + (matchCount === 1 ? ' match' : ' matches') + ' · '
       : '';
+    updateLegend();
+    if (settings.onlyWrittenLinks) {
+      var linked = {};
+      edges.forEach(function (edge) {
+        if (!edge.drawn) { return; }
+        linked[edge.a] = true;
+        linked[edge.b] = true;
+      });
+      var without = 0;
+      nodes.forEach(function (node, index) {
+        if (node.kind !== 'tag' && !linked[index]) { without += 1; }
+      });
+      statusCounts.textContent = searchNote + visibleEdgeCount +
+        (visibleEdgeCount === 1 ? ' wiki link · ' : ' wiki links · ') +
+        without + (without === 1 ? ' node with none' : ' nodes with none');
+      return;
+    }
+    var indexed = snapshot.edgeCount !== undefined ? snapshot.edgeCount : snapshot.edges.length;
     statusCounts.textContent = searchNote + snapshot.totalNoteCount + ' notes · ' +
-      snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount +
-      ' strong links / ' +
-      (snapshot.edgeCount !== undefined ? snapshot.edgeCount : snapshot.edges.length) +
-      ' indexed · ' +
+      snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount + ' of ' +
+      indexed + ' links drawn · ' +
       communityCount + ' communities';
+  }
+
+  /** The legend names "Through a daily note" only while such lines exist. */
+  function updateLegend() {
+    document.querySelectorAll('#graph-legend [data-legend="joined"]').forEach(function (element) {
+      element.hidden = !hasJoinedEdges;
+    });
   }
 
   // ---- frame loop -------------------------------------------------------
@@ -1938,11 +2046,12 @@ ${getUndoScript()}
   bindToggle('show-tags', 'showTags', true);
   bindToggle('show-orphans', 'showOrphans', true);
   bindToggle('show-parked', 'showParked', true);
+  bindToggle('only-written-links', 'onlyWrittenLinks', true);
   bindToggle('show-all-links', 'showAllLinks', true);
 
   /** Puts every control in step with settings, after a reset or an undo. */
   function applySettingsToControls() {
-    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-parked', 'show-all-links']
+    ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-parked', 'only-written-links', 'show-all-links']
       .forEach(function (id) {
         var key = id.replace(/-([a-z])/g, function (_, letter) {
           return letter.toUpperCase();
@@ -2208,6 +2317,16 @@ ${getUndoScript()}
       renderTagList();
       updateFocus();
     }
+    // The host turns a filter on for a reader who came to see it, such as
+    // Stats' Wiki links total.
+    if (message && message.type === 'applyFilters') {
+      if (typeof message.onlyWrittenLinks === 'boolean') {
+        settings.onlyWrittenLinks = message.onlyWrittenLinks;
+        document.getElementById('only-written-links').checked = settings.onlyWrittenLinks;
+        persist();
+        rebuildView();
+      }
+    }
     if (message && message.type === 'highlightNode') {
       externalHoverNodeId = message.nodeId || null;
       setHoverIndex(findNodeIndex(externalHoverNodeId));
@@ -2229,4 +2348,3 @@ ${getUndoScript()}
 </body>
 </html>`;
 }
-

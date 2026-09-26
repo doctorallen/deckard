@@ -104,7 +104,7 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('function isPhysicalNode('), true);
     assert.strictEqual(html.includes('function tickCommunityAnchors('), true);
     assert.strictEqual(html.includes('communityEdges = communityData.edges'), true);
-    assert.strictEqual(html.includes('strong links / '), true);
+    assert.strictEqual(html.includes(' links drawn · '), true);
     assert.strictEqual(html.includes("message.type === 'selectNode'"), true);
     assert.strictEqual(html.includes('selectedNeighbors[index]'), true);
   });

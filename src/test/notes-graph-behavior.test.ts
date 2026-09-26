@@ -1,15 +1,57 @@
 import * as assert from 'assert';
 
 import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
-import { openWebviewPage, WebviewPage } from './webviewPage';
+import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
+
+type GraphNode = { id: string; kind: string; title: string; tagKeys: string[]; degree: number; filePath?: string; line?: number; links?: Record<string, number> };
+type GraphEdge = { source: string; target: string; weight: number; types: string[] };
+
+/** A graph as the host sends it, with every count filled in from the nodes. */
+export function graphState(nodes: GraphNode[], edges: GraphEdge[], extra: Record<string, unknown> = {}): Record<string, unknown> {
+  const tagKeys = new Set(nodes.filter((node) => node.kind === 'tag').map((node) => node.id.slice(4)));
+  return {
+    updatedAt: 1,
+    nodes,
+    edges,
+    tags: [...tagKeys].map((key) => [key, key, 1]),
+    totalNoteCount: nodes.filter((node) => node.kind === 'note').length,
+    totalTaskCount: nodes.filter((node) => node.kind === 'task').length,
+    ...extra,
+  };
+}
+
+export function note(id: string, extra: Partial<GraphNode> = {}): GraphNode {
+  return { id: `section:${id}`, kind: 'note', title: id, tagKeys: [], degree: 1, filePath: `notes/${id}.md`, line: 1, ...extra };
+}
+
+/** Every call of the last frame the page drew, from its background fill on. */
+export function lastFrame(page: WebviewPage): CanvasCall[] {
+  const calls = page.canvasCalls;
+  let start = calls.length - 1;
+  while (start >= 0 && calls[start].op !== 'fillRect') {
+    start -= 1;
+  }
+  return calls.slice(start);
+}
+
+/** A stroke's dash pattern in the screen pixels it was written in. */
+function pattern(call: CanvasCall): number[] {
+  if (call.lineDash.length === 0) {
+    return [];
+  }
+  const unit = call.lineDash[1] / 3;
+  return call.lineDash.map((length) => Math.round(length / unit));
+}
+
+/** Delivers any message the host might send, as the host sends it. */
+export function post(page: WebviewPage, data: unknown): void {
+  page.window.dispatchEvent(new page.window.MessageEvent('message', { data }));
+}
 
 /**
- * The Notes Graph's controls, driven as VS Code drives them.
- *
- * The graph draws into a canvas, which jsdom has no context for, so what it
- * paints cannot be asserted here. Its controls and the settings they carry
- * can be, and the clustering itself is still held to its source text in
- * `messages-rendering.test.ts` — see the note there.
+ * The Notes Graph's controls, driven as VS Code drives them, and what it
+ * paints, read from a recording canvas (`canvas: true`). The clustering
+ * itself is still held to its source text in `messages-rendering.test.ts`.
  */
 suite('Notes Graph behavior', () => {
   let page: WebviewPage | undefined;
@@ -134,7 +176,7 @@ suite('Notes Graph behavior', () => {
       hiddenNodeCount: 3,
       edgeCount: 7,
     });
-    assert.match(page.text('#status-counts') ?? '', /\/ 7 indexed/, 'the indexed count is the whole graph');
+    assert.match(page.text('#status-counts') ?? '', /of 7 links drawn/, 'the indexed count is the whole graph');
     assert.notStrictEqual((page.find('#empty-state') as HTMLElement).style.display, 'grid');
 
     page.send({
@@ -209,5 +251,81 @@ suite('Notes Graph behavior', () => {
       null,
       'a later change takes the offer away',
     );
+  });
+
+  suite('edge kinds', () => {
+    const openCanvas = (): WebviewPage => {
+      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      return page;
+    };
+    const check = (page: WebviewPage, id: string, checked: boolean) => {
+      const box = page.find(`#${id}`) as HTMLInputElement;
+      box.checked = checked;
+      box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    };
+    const threeKinds = () => graphState(
+      [note('a'), note('b'), note('c'), { id: 'tag:#x', kind: 'tag', title: '#x', tagKeys: [], degree: 1 }],
+      [
+        { source: 'section:a', target: 'section:b', weight: 2, types: ['wiki-link'] },
+        { source: 'section:a', target: 'section:c', weight: 1, types: ['heading'] },
+        { source: 'section:c', target: 'tag:#x', weight: 1, types: ['tag-membership'] },
+      ],
+    );
+    const strokes = (page: WebviewPage) => {
+      page.flushFrames(1);
+      return lastFrame(page).filter((call) => call.op === 'stroke').map(pattern);
+    };
+
+    test('a wiki link is solid, a heading dashed, and a tag dotted', () => {
+      const page = openCanvas();
+      check(page, 'show-tags', true);
+      check(page, 'show-all-links', true);
+      page.send(threeKinds());
+      assert.deepStrictEqual(strokes(page), [[], [5, 3], [1, 3]]);
+      const dotted = lastFrame(page).filter((call) => call.op === 'stroke')[2];
+      assert.ok(dotted.globalAlpha > 0, 'drawn');
+    });
+
+    test('Only links I wrote draws the wiki links alone, and says so', () => {
+      const page = openCanvas();
+      check(page, 'show-tags', true);
+      check(page, 'show-all-links', true);
+      page.send(threeKinds());
+      check(page, 'only-written-links', true);
+      assert.deepStrictEqual(strokes(page), [[]]);
+      assert.strictEqual(page.text('#status-counts'), '1 wiki link · 1 node with none');
+      assert.strictEqual((page.savedState() as { onlyWrittenLinks: boolean }).onlyWrittenLinks, true, 'kept');
+
+      page.click('#reset-graph-settings');
+      assert.strictEqual((page.find('#only-written-links') as HTMLInputElement).checked, false, 'Reset turns it off');
+      assert.strictEqual((page.savedState() as { onlyWrittenLinks: boolean }).onlyWrittenLinks, false);
+    });
+
+    test('the status line says how many of the indexed links are drawn', () => {
+      const page = openCanvas();
+      check(page, 'show-all-links', true);
+      page.send(threeKinds());
+      assert.match(page.text('#status-counts') ?? '', /^3 notes · 0 tasks · \d+ of 3 links drawn · /);
+    });
+
+    test('the legend names each kind, and Through a daily note only while there is one', () => {
+      const page = openCanvas();
+      page.send(threeKinds());
+      const words = () => page.findAll('#graph-legend .legend-word').filter((word) => !(word as HTMLElement).hidden).map((word) => word.textContent);
+      assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag']);
+      assert.strictEqual(page.findAll('#graph-legend svg.legend-line[aria-hidden="true"]').length, 4);
+
+      page.send(graphState([note('a'), note('b')], [{ source: 'section:a', target: 'section:b', weight: 0.5, types: [] }]));
+      assert.deepStrictEqual(words(), ['Wiki link', 'Heading', 'Tag', 'Through a daily note']);
+      assert.deepStrictEqual(strokes(page), [[8, 3, 1, 3]]);
+    });
+
+    test('the host can turn Only links I wrote on', () => {
+      const page = openCanvas();
+      page.send(threeKinds());
+      post(page, { type: 'applyFilters', onlyWrittenLinks: true });
+      assert.strictEqual((page.find('#only-written-links') as HTMLInputElement).checked, true);
+      assert.match(page.text('#status-counts') ?? '', /^1 wiki link · /);
+    });
   });
 });

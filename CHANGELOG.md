@@ -12,6 +12,12 @@
 
 ### Added
 
+- **The Notes Graph tells its lines apart.** A wiki link you wrote is a
+  solid line, a heading a dashed one, a shared tag a dotted one, and a path
+  through a daily note a dash-dot one, with a sample of each in the legend.
+  **Only links I wrote**, under Filters, draws every wiki link and nothing
+  else, and the status line says how many of the indexed links are drawn.
+
 - **A note with no tags still finds its neighbors.** Related Notes lists up
   to ten entries with similar wording, marked weak and kept apart from
   related notes, and the tags those entries use, each with **Add**, which
