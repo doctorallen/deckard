@@ -90,12 +90,12 @@ suite('Component primitives', () => {
       const selectors: string[] = [];
       for (const match of text.matchAll(/([^{}]+)\{[^{}]*\}/g)) {
         const prelude = match[1].trim();
-        if (prelude.startsWith('@') || prelude.startsWith(':root')) continue;
+        if (prelude.startsWith('@') || prelude.startsWith(':root')) {continue;}
         let depth = 0;
         let current = '';
         for (const character of prelude) {
-          if (character === '(' || character === '[') depth += 1;
-          if (character === ')' || character === ']') depth -= 1;
+          if (character === '(' || character === '[') {depth += 1;}
+          if (character === ')' || character === ']') {depth -= 1;}
           if (character === ',' && depth === 0) {
             selectors.push(current.trim());
             current = '';
@@ -116,7 +116,7 @@ suite('Component primitives', () => {
 
     test('no hover rule on a control reaches a disabled one, in any theme', () => {
       const sheets = pages.map(([name, render]) => [name, stylesOf(render())] as const);
-      for (const theme of deckardThemes) sheets.push([theme, getDeckardThemeCss(theme)]);
+      for (const theme of deckardThemes) {sheets.push([theme, getDeckardThemeCss(theme)]);}
       let guarded = 0;
       for (const [name, css] of sheets) {
         const found = selectorsOf(css).filter(unguarded);

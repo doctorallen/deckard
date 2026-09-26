@@ -127,7 +127,7 @@ suite('Search page behavior', () => {
 
   test('Refine shows five values of a facet, and the rest on request', () => {
     const notes: Record<string, string> = {};
-    for (let index = 0; index < 12; index += 1) notes[`notes/n${index}.md`] = `# Note ${index} #work #t${index}`;
+    for (let index = 0; index < 12; index += 1) {notes[`notes/n${index}.md`] = `# Note ${index} #work #t${index}`;}
     const { page, snapshot } = open(notes, '#work');
     const facet = () => page.find('.query-facet-more').closest('.query-facet') as Element;
     const values = () => facet().querySelectorAll('.query-facet-value').length;
