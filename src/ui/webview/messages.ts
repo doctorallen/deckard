@@ -459,6 +459,9 @@ export function parseSidebarMessage(
   if (value.type === 'openLinksSearch') {
     return { type: 'openLinksSearch' };
   }
+  if (value.type === 'setHideDailyNotes' && typeof value.hide === 'boolean') {
+    return { type: 'setHideDailyNotes', hide: value.hide };
+  }
   if (value.type === 'insertLink' && isSourceMessage(value)) {
     return {
       type: 'insertLink',

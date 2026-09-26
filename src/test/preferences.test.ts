@@ -60,6 +60,15 @@ suite('Preferences store', () => {
     assert.strictEqual(await store.addSavedSearchWidget('nope'), 'missing');
   });
 
+  test('remembers whether daily notes are hidden from Related Notes', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    assert.strictEqual(store.value.hideDailyNotes, undefined);
+    await store.setHideDailyNotes(true);
+    assert.strictEqual(store.value.hideDailyNotes, true);
+    await store.setHideDailyNotes(false);
+    assert.strictEqual(store.value.hideDailyNotes, undefined);
+  });
+
   test('search pages start rendered, and Source sticks once it is chosen', async () => {
     assert.strictEqual(new PreferencesStore(new MemoryMemento()).value.renderMode, 'html', 'a new install is rendered');
 

@@ -4,6 +4,7 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { collectNoteLinks, createLinksSearchQuery } from '../ui/state/noteLinks';
+import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 8, 25, 12).getTime();
@@ -82,5 +83,33 @@ suite('What links to a note', () => {
 
   test('opens as the search for what links here', () => {
     assert.strictEqual(createLinksSearchQuery({ filePath: 'notes/Atlas plan.md' }), 'link = [[Atlas plan]]');
+    assert.strictEqual(
+      createLinksSearchQuery({ filePath: 'notes/Atlas plan.md' }, true),
+      'link = [[Atlas plan]] -is:periodic',
+    );
+  });
+
+  test('leaves daily and weekly notes out when asked, and counts them', () => {
+    const index = createIndex({
+      'notes/Atlas.md': '# Atlas #project/atlas\n',
+      'notes/2026-09-24.md': '# Thursday #project/atlas\nSee [[Atlas]].\n',
+      'notes/week-2026-09-20-2026-09-26.md': '# Week #project/atlas\nSee [[Atlas]].\n',
+      'notes/Budget.md': '# Budget #project/atlas\nSee [[Atlas]].\n',
+    });
+    const atlas = index.files.get('notes/Atlas.md')!;
+    const all = collectNoteLinks(index, atlas);
+    assert.strictEqual(all.linkedFromNoteCount, 3);
+    assert.strictEqual(all.hiddenDailyNoteCount, undefined);
+    const hidden = collectNoteLinks(index, atlas, { hideDailyNotes: true });
+    assert.deepStrictEqual(hidden.linkedFromNotes.map((group) => group.title), ['Budget']);
+    assert.strictEqual(hidden.hiddenDailyNoteCount, 2);
+    assert.strictEqual(hidden.linkedFromCount, 1);
+
+    const ranked = (hidePeriodicNotes: boolean) =>
+      createSidebarSnapshot(index, atlas.filePath, atlas, true, 'tags', {}, 'inline', undefined, undefined, { hidePeriodicNotes })
+        .notes.map((note) => note.filePath)
+        .sort();
+    assert.deepStrictEqual(ranked(false), ['notes/2026-09-24.md', 'notes/Budget.md', 'notes/week-2026-09-20-2026-09-26.md']);
+    assert.deepStrictEqual(ranked(true), ['notes/Budget.md']);
   });
 });

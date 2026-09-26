@@ -430,7 +430,9 @@ Related Notes' **Linked from** is a `.link-group` per linking note: a
 (`aria-expanded`, *Show the rest of this section*) that unfolds a
 `.link-section`; which rows are open is kept across redraws. The group ends in
 one `.links-more` foot line whose `.links-search` button posts
-`openLinksSearch`; the host builds the search itself.
+`openLinksSearch`; the host builds the search itself. Beside the sort select, the
+`.hide-daily-toggle` (`aria-pressed`) posts `setHideDailyNotes`; while it
+hides a note, a `.links-hiding` line says how many, with **Show them**.
 
 ### Task board
 

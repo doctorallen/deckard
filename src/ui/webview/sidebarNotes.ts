@@ -446,9 +446,14 @@ export class SidebarNotesView
     );
     // What links here is about the whole note, whichever entry is selected.
     const indexedFile = selectedFilePath ? index.files.get(selectedFilePath) : undefined;
+    const hideDailyNotes = this.preferences.value.hideDailyNotes === true;
     return indexedFile
-      ? { ...snapshot, links: collectNoteLinks(index, indexedFile) }
-      : snapshot;
+      ? {
+          ...snapshot,
+          hideDailyNotes,
+          links: collectNoteLinks(index, indexedFile, { hideDailyNotes }),
+        }
+      : { ...snapshot, hideDailyNotes };
   }
 
   private getTagTitleDisplayMode(): TagTitleDisplayMode {
@@ -540,6 +545,7 @@ export class SidebarNotesView
         'relatedNotesRecencyHalfLifeDays',
         0,
       ),
+      hidePeriodicNotes: this.preferences.value.hideDailyNotes === true,
     };
   }
 
@@ -655,12 +661,21 @@ export class SidebarNotesView
       return;
     }
 
+    if (message.type === 'setHideDailyNotes') {
+      await this.preferences.setHideDailyNotes(message.hide);
+      this.refresh();
+      return;
+    }
+
     if (message.type === 'openLinksSearch') {
       // Built here from the note itself, never from text the page sent.
       const filePath = this.getSelectedFilePath();
       const file = filePath ? index.files.get(filePath) : undefined;
       if (file) {
-        await vscode.commands.executeCommand('deckard.search', createLinksSearchQuery(file));
+        await vscode.commands.executeCommand(
+          'deckard.search',
+          createLinksSearchQuery(file, this.preferences.value.hideDailyNotes === true),
+        );
       }
       return;
     }

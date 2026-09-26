@@ -21,6 +21,7 @@ import {
 import {
   extractWikiLinks,
   findDailyNoteDate,
+  isPeriodicNoteFile,
   stripTags,
 } from '../../core/markdown/parser';
 import { countTagMatches } from '../../core/query/queryEvaluator';
@@ -161,6 +162,8 @@ export interface RelatedNotesRankingOptions {
   associationMinimumSupport?: number;
   /** Disabled at zero; a positive value is the recency decay half-life. */
   recencyHalfLifeDays?: number;
+  /** Leaves out daily, weekly, and monthly notes. */
+  hidePeriodicNotes?: boolean;
 }
 
 export function rankRelatedNotes(
@@ -185,6 +188,9 @@ export function rankRelatedNotes(
 
   index.files.forEach((file, filePath) => {
     if (filePath === activeFilePath) {
+      return;
+    }
+    if (options.hidePeriodicNotes && isPeriodicNoteFile(file)) {
       return;
     }
 

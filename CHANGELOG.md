@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Related Notes can leave out daily notes.** **Hide daily notes**, beside
+  the sort, leaves daily, weekly, and monthly notes out of the related notes
+  and of Linked from, since a daily note links to everything written that
+  day. Linked from says *Hiding 8 daily notes.* with **Show them**, and the
+  choice is remembered.
+
 - **Related Notes: Linked from by note.** Linked from lists the notes that
   link here, newest updated first, each saying when it was updated and how
   many links it has, with its lines beneath; the count is of notes. A line

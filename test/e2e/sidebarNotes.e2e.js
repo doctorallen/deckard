@@ -310,6 +310,46 @@ test('Linked from groups its lines by note, newest first, and unfolds a line ont
   }
 });
 
+test('Hide daily notes leaves a daily note out of Linked from, and says so', async () => {
+  const note = (filePath, content, updatedAt) =>
+    parseMarkdown(filePath, content, { createdAt: 1, updatedAt }, {});
+  const files = [
+    note('notes/atlas.md', '# Atlas #project/atlas\nThe plan.', 1),
+    note('notes/2026-09-24.md', '# Thursday #project/atlas\nSee [[atlas]].', 20),
+    note('notes/budget.md', '# Budget #project/atlas\nSee [[atlas]].', 10),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = { ready: Promise.resolve(), getSnapshot: () => index, getFilePath: (uri) => uri.fsPath, onDidUpdate: new vscode.EventEmitter().event };
+  vscode.window.activeTextEditor = { document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' }, selection: { active: { line: 0 } } };
+  const preferences = new PreferencesStore(createGlobalState());
+  const sidebarView = new SidebarNotesView(indexer, preferences, new ActiveSearch(), () => undefined, '0.0.0-test');
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  try {
+    await settle();
+    const toggle = () => view.find('[data-action="set-hide-daily"]');
+    assert.strictEqual(toggle().getAttribute('aria-pressed'), 'false');
+    assert.strictEqual(view.findAll('.link-group').length, 2);
+    view.click(toggle());
+    await settle();
+    assert.strictEqual(preferences.value.hideDailyNotes, true);
+    assert.strictEqual(toggle().getAttribute('aria-pressed'), 'true');
+    assert.deepStrictEqual(view.findAll('.link-group-open').map((button) => button.textContent), ['budget']);
+    assert.deepStrictEqual(view.findAll('.note-list [data-file-path]').map((card) => card.getAttribute('data-file-path')), ['notes/budget.md']);
+    assert.ok(view.find('.links-hiding').textContent.startsWith('Hiding 1 daily note.'));
+    view.click(view.find('[data-action="show-daily-notes"]'));
+    await settle();
+    assert.strictEqual(preferences.value.hideDailyNotes, undefined);
+    assert.strictEqual(view.findAll('.link-group').length, 2);
+  } finally {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+  }
+});
+
 // ---------------------------------------------------------------------------
 
 (async () => {

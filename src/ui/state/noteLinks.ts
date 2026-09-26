@@ -1,6 +1,6 @@
 import { describeDistance, formatShortDay } from '../../core/markdown/dates';
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
-import { stripTags } from '../../core/markdown/parser';
+import { isPeriodicNoteFile, stripTags } from '../../core/markdown/parser';
 import {
   NoteLinkEntry,
   NoteLinkGroup,
@@ -32,6 +32,8 @@ const SECTION_CHARACTERS = 1500;
 
 export interface NoteLinkOptions {
   now?: number;
+  /** Leave out links from daily, weekly, and monthly notes, and count them. */
+  hideDailyNotes?: boolean;
 }
 
 export function collectNoteLinks(
@@ -40,7 +42,20 @@ export function collectNoteLinks(
   options: NoteLinkOptions = {},
 ): NoteLinks {
   const now = options.now ?? Date.now();
-  const linked = getBacklinkIndex(index).toNote(file.filePath);
+  const everyLink = getBacklinkIndex(index).toNote(file.filePath);
+  // A daily note links to everything written that day, so it can be left
+  // out; the notes left out are counted, so the list can say so.
+  const hidden = new Set<string>();
+  const linked = options.hideDailyNotes
+    ? everyLink.filter((occurrence) => {
+        const source = index.files.get(occurrence.sourcePath);
+        if (source && isPeriodicNoteFile(source)) {
+          hidden.add(occurrence.sourcePath);
+          return false;
+        }
+        return true;
+      })
+    : everyLink;
   const mentions = findUnlinkedMentions(file, index).filter(
     (mention) => mention.filePath !== file.filePath,
   );
@@ -110,6 +125,7 @@ export function collectNoteLinks(
     linkedFromNotes,
     linkedFromCount: linked.length,
     linkedFromNoteCount: groups.length,
+    ...(hidden.size > 0 ? { hiddenDailyNoteCount: hidden.size } : {}),
     mentions: mentions.slice(0, LIMIT).map(
       (mention): NoteMention => ({
         ...entry(mention.filePath, mention.line),
@@ -124,10 +140,13 @@ export function collectNoteLinks(
 
 /**
  * The search that lists every entry linking to a note, for Linked from's
- * Open as search.
+ * Open as search, leaving out daily notes while Linked from does.
  */
-export function createLinksSearchQuery(file: Pick<ParsedFile, 'filePath'>): string {
-  return `link = [[${noteTitle(file.filePath)}]]`;
+export function createLinksSearchQuery(
+  file: Pick<ParsedFile, 'filePath'>,
+  hideDailyNotes = false,
+): string {
+  return `link = [[${noteTitle(file.filePath)}]]${hideDailyNotes ? ' -is:periodic' : ''}`;
 }
 
 /** When a note was updated, in words: `today`, `3 days ago`, or its day. */

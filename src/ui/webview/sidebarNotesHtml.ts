@@ -103,7 +103,9 @@ body .note:hover { transform: none; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
-.related-notes-sort-control { position: relative; display: block; margin-top: 10px; }
+.related-notes-controls { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin-top: 10px; }
+.related-notes-sort-control { position: relative; display: block; flex: 1 1 120px; min-width: 0; }
+.hide-daily-toggle { flex: 0 0 auto; min-height: 30px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 /* The sort control takes the shared control hover, border and all: its own
@@ -347,6 +349,7 @@ ${getComponentScript()}
       state.activeFileName,
       state.activeEntryTitle,
       state.relatedNotesSortMode,
+      state.hideDailyNotes,
     ]);
   }
 
@@ -383,6 +386,10 @@ ${getComponentScript()}
     const foot = links.linkedFromCount > shownLines
       ? '<p class="links-more">' + (links.linkedFromCount - shownLines) + ' more not listed. <button type="button" class="links-search" data-action="open-links-search" data-tip="' + searchTip + '">Open all as a search</button></p>'
       : '<p class="links-more"><button type="button" class="links-search" data-action="open-links-search" data-tip="' + searchTip + '">Open as search</button></p>';
+    const hidden = links.hiddenDailyNoteCount || 0;
+    const hiding = hidden
+      ? '<p class="links-more links-hiding">Hiding ' + hidden + ' daily ' + (hidden === 1 ? 'note' : 'notes') + '. <button type="button" class="links-search" data-action="show-daily-notes">Show them</button></p>'
+      : '';
     const linked = links.linkedFromCount
       ? '<details class="links-group" data-links-group="linked"' + (linksOpen.linked ? ' open' : '') + '><summary>Linked from <span class="links-count">' + (links.linkedFromNoteCount || groups.length) + '</span></summary>'
         + groups.map(function (group) {
@@ -390,7 +397,7 @@ ${getComponentScript()}
           const meta = [group.updatedLabel, group.linkCount > 1 ? group.linkCount + ' links' : ''].filter(Boolean).join(' · ');
           return '<section class="link-group" aria-label="' + escapeHtml(group.title) + '"><div class="link-group-head"><button type="button" class="link-group-open" data-action="open-link" data-file-path="' + escapeHtml(group.filePath) + '" data-line="' + (first ? first.line : 1) + '" data-tip="Open ' + escapeHtml(group.title) + ' at its first link here">' + escapeHtml(group.title) + '</button>' + (meta ? '<span class="link-group-meta">' + escapeHtml(meta) + '</span>' : '') + '</div>'
             + '<ul class="link-list">' + group.entries.map(function (entry) { return row(entry); }).join('') + '</ul></section>';
-        }).join('') + foot + '</details>'
+        }).join('') + foot + hiding + '</details>'
       : '';
     const mentions = links.mentionCount
       ? '<details class="links-group" data-links-group="mentions"' + (linksOpen.mentions ? ' open' : '') + '><summary>Mentioned without a link <span class="links-count">' + links.mentionCount + '</span></summary>'
@@ -531,7 +538,8 @@ ${getComponentScript()}
           + activeTags + '</details>'
         : '');
     const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
-      ? '<span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
+      ? '<div class="related-notes-controls"><span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
+        + '<button type="button" class="hide-daily-toggle toolbar-toggle' + (state.hideDailyNotes ? ' active' : '') + '" data-action="set-hide-daily" aria-pressed="' + (state.hideDailyNotes ? 'true' : 'false') + '" data-tip="Leave out daily, weekly, and monthly notes, which link to everything written that day">Hide daily notes</button></div>'
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
@@ -571,6 +579,15 @@ ${getComponentScript()}
       render();
       const again = Array.prototype.find.call(document.querySelectorAll('[data-action="toggle-link-section"]'), function (button) { return button.dataset.sectionKey === key; });
       if (again && again.focus) again.focus();
+      return;
+    }
+    if (event.target.closest('[data-action="show-daily-notes"]')) {
+      vscode.postMessage({ type: 'setHideDailyNotes', hide: false });
+      return;
+    }
+    const hideDaily = event.target.closest('[data-action="set-hide-daily"]');
+    if (hideDaily) {
+      vscode.postMessage({ type: 'setHideDailyNotes', hide: hideDaily.getAttribute('aria-pressed') !== 'true' });
       return;
     }
     if (event.target.closest('[data-action="open-links-search"]')) {

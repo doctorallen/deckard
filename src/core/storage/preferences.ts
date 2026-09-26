@@ -622,6 +622,14 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   /**
+   * Leaves daily, weekly, and monthly notes out of Related Notes and Linked
+   * from, or lets them back in.
+   */
+  public async setHideDailyNotes(hide: boolean): Promise<void> {
+    await this.update({ hideDailyNotes: hide ? true : undefined });
+  }
+
+  /**
    * Increments section usage counts for the overview's access sort.
    */
   public async recordSectionAccess(
@@ -1143,6 +1151,7 @@ function normalizePreferences(
       relatedNotesSortMode === 'access'
         ? relatedNotesSortMode
         : 'tags',
+    ...(value?.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
     taskBoardLayout:

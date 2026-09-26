@@ -363,6 +363,8 @@ export interface PersistedPreferences {
   /** How much of each result a search page shows. */
   searchPreview: SearchPreview;
   relatedNotesSortMode: RelatedNotesSortMode;
+  /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
+  hideDailyNotes?: true;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
   /** When each tag was last opened, in epoch milliseconds, for frecency. */
@@ -912,6 +914,12 @@ export interface LinkMentionMessage {
   startColumn: number;
 }
 
+/** Related Notes' Hide daily notes. */
+export interface SetHideDailyNotesMessage {
+  type: 'setHideDailyNotes';
+  hide: boolean;
+}
+
 /** Related Notes' Open as search: every entry that links to the note. */
 export interface OpenLinksSearchMessage {
   type: 'openLinksSearch';
@@ -930,6 +938,8 @@ export interface NoteLinks {
   linkedFromCount: number;
   /** How many notes they are in. */
   linkedFromNoteCount: number;
+  /** Daily, weekly, and monthly notes left out of Linked from. */
+  hiddenDailyNoteCount?: number;
   mentions: NoteMention[];
   mentionCount: number;
 }
@@ -944,6 +954,8 @@ export interface SidebarNotesSnapshot {
   activeTags: SidebarTag[];
   notes: RankedNote[];
   relatedNotesSortMode?: RelatedNotesSortMode;
+  /** Whether daily notes are left out of the list and of Linked from. */
+  hideDailyNotes?: boolean;
   tagTitleDisplayMode: TagTitleDisplayMode;
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
@@ -1536,6 +1548,7 @@ export type SearchPageMessage =
 export type SidebarMessage =
   | LinkMentionMessage
   | OpenLinksSearchMessage
+  | SetHideDailyNotesMessage
   | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage
