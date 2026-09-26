@@ -129,6 +129,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.showStats':
     'Index totals, notes nothing links to, and tags that look alike.',
   'deckard.showHelp': 'This guide.',
+  'deckard.openWalkthrough': 'Opens the walkthrough: six steps, each checked off as you do it.',
   'deckard.openWhatsNew': 'Opens the highlights of recent releases in Help.',
   'deckard.showLog': 'What Deckard did, and how long each step took.',
   'deckard.reindexWorkspace': 'Reads every note again.',
@@ -453,6 +454,7 @@ ${getPageTailCss()}
 
     <section id="quick-start">
       <h2>Quick start</h2>
+      <p><strong>New to Deckard?</strong> <code>Deckard: Get Started</code> opens the walkthrough: six steps, each checked off as you do it.</p>
       <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> writes nine small notes, dated from the day you make them and written the way Deckard reads them, and opens them. Its README says what each shows and what to try first.</p>
       <div class="steps">
         <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar for Related Notes, the Outline, Tasks, and the Calendar.</p></div></div>

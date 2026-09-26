@@ -1046,6 +1046,7 @@ ${getQueryEditorScript()}
     const dashboardOptions = renderViewOptions([
       { label: 'Home', html: '<button type="button" class="' + (editingHome ? 'active' : '') + '" data-action="' + (editingHome ? 'finish-customizing' : 'customize-home') + '" aria-pressed="' + editingHome + '">' + (editingHome ? 'Done customizing' : 'Customize') + '</button>' },
       { label: 'Tag columns', html: tagColumnChoices },
+      { label: 'Get started', html: '<button type="button" data-action="open-view" data-view="walkthrough">Walkthrough</button>' },
       renderThemeOption(),
       renderZenOption(),
     ]);

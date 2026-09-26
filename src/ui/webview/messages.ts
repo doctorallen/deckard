@@ -141,7 +141,8 @@ export function parseDashboardMessage(
       return value.view === 'agenda' ||
         value.view === 'stats' ||
         value.view === 'sampleWorkspace' ||
-        value.view === 'checkSetup'
+        value.view === 'checkSetup' ||
+        value.view === 'walkthrough'
         ? { type: 'openView', view: value.view }
         : undefined;
     case 'openDailyNote':

@@ -81,11 +81,30 @@
             ]
           },
           {
+            "id": "deckard.walkthrough.captureTask",
+            "title": "Capture a task",
+            "description": "Write a task from anywhere without leaving what you are doing. Capture adds it to today's note and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Capture a task](command:deckard.capture)\n[Open the Tasks view](command:deckard.agenda.focus)",
+            "media": {
+              "image": "resources/walkthrough/tasks.png",
+              "altText": "The Tasks view listing overdue, today's, and upcoming tasks beside a daily note."
+            },
+            "completionEvents": [
+              "onCommand:deckard.capture",
+              "onContext:deckard.hasTasks"
+            ]
+          },
+          {
             "id": "deckard.walkthrough.openHome",
             "title": "See the workspace",
-            "description": "Home collects today's note, your tasks, what is due, and the searches you keep.\n[Open the Dashboard](command:deckard.showDashboard)",
+            "description": "Home collects today's note, your tasks, what is due, and the searches you keep. Customize in its gear adds, resizes, and reorders the widgets.\n[Open the Dashboard](command:deckard.showDashboard)",
             "media": {
-              "markdown": "resources/walkthrough/home.md"
+              "image": {
+                "dark": "resources/walkthrough/home-dark.png",
+                "light": "resources/walkthrough/home-light.png",
+                "hc": "resources/walkthrough/home-dark.png",
+                "hcLight": "resources/walkthrough/home-light.png"
+              },
+              "altText": "Home, with today's note, the Tasks view's list, and favorite tags as widgets."
             },
             "completionEvents": [
               "onCommand:deckard.showDashboard"
@@ -94,13 +113,28 @@
           {
             "id": "deckard.walkthrough.search",
             "title": "Find anything",
-            "description": "Find searches as you type. A search page holds the whole result, and Refine narrows it.\n[Find a note](command:deckard.searchWorkspace)",
+            "description": "Find searches as you type. A search page holds the whole result, and Refine narrows it. Write words, #tags, is:open, or updated >= 7d, joined with AND, OR, and NOT.\n[Find a note](command:deckard.searchWorkspace)",
             "media": {
-              "markdown": "resources/walkthrough/search.md"
+              "image": "resources/walkthrough/search.png",
+              "altText": "A search page with its results and Refine beside them."
             },
             "completionEvents": [
               "onCommand:deckard.searchWorkspace",
               "onCommand:deckard.search"
+            ]
+          },
+          {
+            "id": "deckard.walkthrough.makeItYours",
+            "title": "Make it yours",
+            "description": "Deckard's pages come in eight looks. Choose Theme previews each as you move through them. Zen draws less frame around any of them.\n[Choose a theme](command:deckard.chooseTheme)\n[Enter zen mode](command:deckard.enableZenMode)",
+            "media": {
+              "image": "resources/walkthrough/themes.png",
+              "altText": "The Dashboard in four of Deckard's eight themes: Corpo, Replicant, LCARS, and Cooper."
+            },
+            "completionEvents": [
+              "onCommand:deckard.chooseTheme",
+              "onSettingChanged:deckard.theme",
+              "onSettingChanged:deckard.zenMode"
             ]
           }
         ],
@@ -154,6 +188,12 @@
         "title": "Open Help",
         "category": "Deckard",
         "icon": "$(question)"
+      },
+      {
+        "command": "deckard.openWalkthrough",
+        "title": "Get Started",
+        "category": "Deckard",
+        "icon": "$(rocket)"
       },
       {
         "command": "deckard.openWhatsNew",
@@ -1540,6 +1580,7 @@
     "capture:dashboard:promote": "DECKARD_SCREENSHOT_PROMOTE=1 node scripts/capture-dashboard-screenshot.mjs",
     "capture:dashboard:all": "node scripts/capture-all-dashboard-screenshots.mjs",
     "capture:readme-screenshots": "node scripts/capture-readme-screenshots.mjs",
+    "capture:walkthrough": "node scripts/build-walkthrough-images.mjs",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",

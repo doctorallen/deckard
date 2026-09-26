@@ -588,6 +588,7 @@ export class DashboardPanel implements vscode.Disposable {
             stats: 'deckard.showStats',
             sampleWorkspace: 'deckard.createSampleWorkspace',
             checkSetup: 'deckard.checkSetup',
+            walkthrough: 'deckard.openWalkthrough',
           }[message.view],
         );
         return;

@@ -45,6 +45,7 @@ suite('Extension Test Suite', () => {
         'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
+        'deckard.openWalkthrough',
         'deckard.openWhatsNew',
         'deckard.showLog',
         'deckard.reindexWorkspace',
@@ -198,6 +199,57 @@ suite('Extension Test Suite', () => {
         (container: { id: string }) => container.id === 'deckard',
       ),
     );
+  });
+
+  test('walks a new reader through six steps it can check off', async () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    const root = extension.extensionPath;
+    const contributes = extension.packageJSON.contributes;
+    const steps: Array<{
+      id: string;
+      description: string;
+      media: { image?: string | Record<string, string>; markdown?: string; altText?: string };
+      completionEvents?: string[];
+    }> = contributes.walkthroughs[0].steps;
+    assert.deepStrictEqual(
+      steps.map((step) => step.id.replace('deckard.walkthrough.', '')),
+      ['openNote', 'addTags', 'captureTask', 'openHome', 'search', 'makeItYours'],
+    );
+    const commands = new Set<string>(contributes.commands.map((command: { command: string }) => command.command));
+    const views = new Set<string>(
+      Object.values(contributes.views as Record<string, Array<{ id: string }>>).flat().map((view) => `${view.id}.focus`),
+    );
+    const compiled = (await import('fs')).readFileSync(path.join(root, 'out', 'extension.js'), 'utf8');
+    let total = 0;
+    for (const step of steps) {
+      for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {
+        assert.ok(commands.has(match[1]) || views.has(match[1]), `${step.id} links ${match[1]}`);
+      }
+      for (const event of step.completionEvents ?? []) {
+        const key = /^onContext:(.+)$/.exec(event)?.[1];
+        if (key) {
+          assert.ok(compiled.includes(`'setContext', '${key}'`), `${step.id} waits on ${key}, which is set`);
+        }
+      }
+      const media = step.media.image ?? step.media.markdown;
+      const paths = typeof media === 'string' ? [media] : Object.values(media ?? {});
+      for (const file of new Set(paths)) {
+        const { size } = (await import('fs')).statSync(path.join(root, file));
+        if (file.endsWith('.png')) {
+          assert.ok(size <= 150 * 1024, `${file} is at most 150 KB`);
+          total += size;
+        }
+      }
+      if (step.media.image) {
+        assert.ok(step.media.altText, `${step.id} says what its image shows`);
+      }
+    }
+    assert.ok(total <= 1024 * 1024, 'the walkthrough images come to at most 1 MB');
+    await extension.activate();
+    assert.ok((await vscode.commands.getCommands(true)).includes('deckard.openWalkthrough'));
   });
 
   test('activates and registers the dashboard command', async () => {

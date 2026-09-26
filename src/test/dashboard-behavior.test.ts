@@ -468,6 +468,12 @@ suite('Dashboard behavior', () => {
     assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
   });
 
+  test('the gear leads back to the walkthrough', () => {
+    const { page } = open();
+    page.click('[data-action="open-view"][data-view="walkthrough"]');
+    assert.deepStrictEqual(page.lastPosted('openView'), { type: 'openView', view: 'walkthrough' });
+  });
+
   test('after an update, says so in the hint line first', () => {
     const { page, snapshot } = open();
     page.send({ ...snapshot, whatsNew: { version: '1.23' } });

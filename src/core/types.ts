@@ -1218,7 +1218,7 @@ export interface WhatsNewMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup';
+  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
 }
 
 export interface ReorderTagsMessage {

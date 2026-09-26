@@ -11,6 +11,13 @@
 
 ### Added
 
+- **The walkthrough covers tasks and themes.** It had four steps and never
+  mentioned tasks; it now has six: open a note, tag it, **Capture a task**,
+  see the workspace, find anything, and **Make it yours** with Choose Theme…
+  and zen, with screenshots of the Tasks view, Home, a search page, and four
+  themes. `Deckard: Get Started` opens it, and so do Help's Quick start and
+  **Walkthrough** in Home's gear.
+
 - **Choose Theme… previews each theme.** `Deckard: Choose Theme…`, or
   **Theme** above **Zen** in the gear on Home, a search page, or the Task
   board, lists the eight themes with what each looks like; moving through

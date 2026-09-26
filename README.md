@@ -84,6 +84,7 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colors; 
 
 The fastest way to see what Deckard does is to let it show you: `Deckard: Create a Sample Workspace` writes nine small notes — five daily notes, the last two yesterday's and today's, two project hubs, a person, a team — and opens them, in this window when no folder is open and otherwise in a new one or this one, as you choose. They are dated from the day you make them, so one task is overdue, two are due today, and one is due later this week, and three tasks already have a status for the Task board. The sample is kept in VS Code's storage for Deckard, with a `.vscode/settings.json` of its own so your settings cannot hide its notes; its README opens once the window has reloaded, and says what each note shows and what to try first. Running the command again offers to replace it with a fresh copy dated from that day.
 
+`Deckard: Get Started`, or **Walkthrough** in Home's gear, opens the walkthrough: six steps — open a note, tag it, capture a task, see the workspace, find anything, and choose a theme — each checked off as you do it.
 
 1. Open a folder or workspace in VS Code.
 2. Open any Markdown note in the workspace, or [restrict indexing to a folder](#settings).
@@ -108,6 +109,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Choose Theme…** | Previews each theme on the open pages as you move through the list; Enter keeps one, Escape puts back the one in use. |
+| **Deckard: Get Started** | Opens the walkthrough: six steps, each checked off as you do it. |
 | **Deckard: What's New** | Opens Help at **What's new**, the highlights of recent releases. |
 | **Deckard: Open Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |

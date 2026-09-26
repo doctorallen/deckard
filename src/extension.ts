@@ -298,9 +298,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   // The walkthrough checks its first steps off when there is a note, and a
   // tag, in the index, rather than when a button in it is pressed.
-  const syncWalkthroughContext = (index: { files: Map<string, unknown>; tags: Map<string, unknown> }): void => {
+  const syncWalkthroughContext = (index: {
+    files: Map<string, unknown>;
+    tags: Map<string, unknown>;
+    tasks: Map<string, unknown>;
+  }): void => {
     void vscode.commands.executeCommand('setContext', 'deckard.hasNotes', index.files.size > 0);
     void vscode.commands.executeCommand('setContext', 'deckard.hasTags', index.tags.size > 0);
+    void vscode.commands.executeCommand('setContext', 'deckard.hasTasks', index.tasks.size > 0);
   };
   context.subscriptions.push(indexer.onDidUpdate(syncWalkthroughContext));
   // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
@@ -731,6 +736,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
     vscode.commands.registerCommand('deckard.chooseTheme', () =>
       chooseTheme(context.extension.packageJSON.contributes),
+    ),
+    vscode.commands.registerCommand('deckard.openWalkthrough', () =>
+      vscode.commands.executeCommand(
+        'workbench.action.openWalkthrough',
+        `${context.extension.id}#deckard.gettingStarted`,
+        false,
+      ),
     ),
     vscode.commands.registerCommand('deckard.openWhatsNew', async () => {
       await help.show('whats-new');
