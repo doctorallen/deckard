@@ -362,6 +362,13 @@ is still out, so no page handles it. A search still out a second after it
 ran puts `.is-searching` on its `.query-workspace`: a thin bar along the
 box's foot, still under reduced motion, and kept in zen as information.
 
+While the workspace is first indexed, a host calls `followIndexing(indexer,
+post)` (`indexingProgress.ts`) as it attaches its panel: it posts `{ type:
+'indexing', progress }` as the scan goes, and the component script writes
+`describeIndexing(progress)` — *Indexing this workspace: 412 of 3,760 notes
+read…* — into `#app .loading`, shown at once. The sidebar says the same
+through the same function.
+
 ### Tooltips
 
 A control explains itself with `data-tip`, never `title`: a native title

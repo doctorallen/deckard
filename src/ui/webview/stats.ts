@@ -9,6 +9,7 @@ import { openResultAt } from '../commands/navigation';
 import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
+import { followIndexing } from './indexingProgress';
 
 /**
  * Provides an overview of indexed content and recorded local views. Each
@@ -90,6 +91,7 @@ export class StatsPanel implements vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.panelDisposables = [
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.disposePanelListeners();

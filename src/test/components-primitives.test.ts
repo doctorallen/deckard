@@ -202,6 +202,14 @@ suite('Component primitives', () => {
       assert.strictEqual(page.find('#app').getAttribute('aria-busy'), 'true');
     });
 
+    test('a page waiting on the first scan says how far it has got', () => {
+      page = openWebviewPage(getSearchPageHtml(webview));
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'indexing', progress: { completed: 412, total: 3760 } } }));
+      assert.strictEqual(page.text('#app .loading.is-immediate'), 'Indexing this workspace: 412 of 3,760 notes read…');
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'indexing', progress: null } }));
+      assert.strictEqual(page.text('#app .loading'), 'Indexing this workspace…');
+    });
+
     test('the first state clears the busy mark', async () => {
       const board = openBoard();
       await Promise.resolve();

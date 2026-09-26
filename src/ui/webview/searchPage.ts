@@ -39,6 +39,7 @@ import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
+import { followIndexing } from './indexingProgress';
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is
@@ -85,7 +86,24 @@ export class SearchPanels implements vscode.Disposable {
    * Opens a tag's page: the search for that one tag.
    */
   public async show(tagKey: string): Promise<void> {
-    await this.indexer.ready;
+    // Before the first scan the page opens at once and says how far it has
+    // got; the tag is looked up once there is an index to look in.
+    if (this.indexer.hasIndexed === false) {
+      const early = this.openWhileIndexing(tagKey);
+      await this.indexer.ready;
+      const found = resolveIndexedTagKey(this.indexer.getSnapshot().tags, tagKey);
+      if (found === tagKey) {
+        this.settle(early);
+        return;
+      }
+      early.dispose();
+      if (!found) {
+        void vscode.window.showWarningMessage(`Deckard could not find the tag: ${tagKey}`);
+        return;
+      }
+      await this.showQuery(found);
+      return;
+    }
     const canonicalTagKey = resolveIndexedTagKey(
       this.indexer.getSnapshot().tags,
       tagKey,
@@ -104,7 +122,12 @@ export class SearchPanels implements vscode.Disposable {
    * empty search opens a page that lists every note.
    */
   public async showQuery(queryText: string): Promise<void> {
-    await this.indexer.ready;
+    if (this.indexer.hasIndexed === false) {
+      const early = this.openWhileIndexing(queryText.trim());
+      await this.indexer.ready;
+      this.settle(early);
+      return;
+    }
     const text = queryText.trim();
     const index = this.indexer.getSnapshot();
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text));
@@ -149,6 +172,36 @@ export class SearchPanels implements vscode.Disposable {
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
     [...this.panels].forEach((panel) => panel.dispose());
     this.panels.clear();
+  }
+
+  /** A page opened before the index is ready, showing the scan's progress. */
+  private openWhileIndexing(text: string): SearchPanel {
+    const panel = this.createPanel(text);
+    panel.show();
+    return panel;
+  }
+
+  /**
+   * A page opened while indexing, once the index is ready: it gives way to
+   * a page already showing its search, or records the visit and draws.
+   */
+  private settle(panel: SearchPanel): void {
+    const index = this.indexer.getSnapshot();
+    const key = panel.key();
+    const other = [...this.panels].find((candidate) => candidate !== panel && candidate.key() === key);
+    if (other) {
+      panel.dispose();
+      other.show();
+      return;
+    }
+    const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()));
+    if (tagKeys?.length === 1) {
+      void this.preferences.recordTagAccess(tagKeys[0]);
+      if (index.entities.has(tagKeys[0])) {
+        void this.preferences.recordEntityAccess(tagKeys[0]);
+      }
+    }
+    panel.refresh();
   }
 
   /**
@@ -304,6 +357,11 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     return getSearchKey(this.indexer.getSnapshot(), this.queryText);
   }
 
+  /** The search the page shows, as typed. */
+  public searchText(): string {
+    return this.queryText;
+  }
+
   /** Whether the page is about one tag the index no longer has. */
   public isForMissingTag(index: WorkspaceIndex): boolean {
     const parsed = parseQuery(this.queryText);
@@ -344,6 +402,10 @@ class SearchPanel implements SearchSource, vscode.Disposable {
 
   public refresh(): void {
     if (!this.panel) {
+      return;
+    }
+    // Before the first scan there is nothing to show but how far it has got.
+    if (this.indexer.hasIndexed === false) {
       return;
     }
     // A hidden page keeps what it shows and catches up when shown again.
@@ -501,6 +563,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.disposables.push(
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.dispose();

@@ -27,6 +27,7 @@ import { openResultAt, openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
+import { followIndexing } from './indexingProgress';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -258,6 +259,7 @@ export class DashboardPanel implements vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.panelDisposables = [
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.disposePanelListeners();

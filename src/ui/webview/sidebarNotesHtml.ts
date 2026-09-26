@@ -380,9 +380,7 @@ ${getComponentScript()}
     } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
     } else if (state.state === 'loading') {
-      content = renderLoading(state.progress && state.progress.total
-        ? 'Indexing this workspace: ' + state.progress.completed.toLocaleString('en-US') + ' of ' + state.progress.total.toLocaleString('en-US') + ' notes read…'
-        : 'Indexing this workspace…', true);
+      content = renderLoading(describeIndexing(state.progress), true);
     } else if (state.state === 'notIndexed') {
       content = '<div class="empty">This note is not indexed yet. Save it inside the notes folder to see related entries.</div>';
     } else if (state.state === 'noMarkdown') {

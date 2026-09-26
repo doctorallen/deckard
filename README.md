@@ -1106,6 +1106,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 
 - **Something is not there, and you are not sure why:** run `Deckard: Check My Setup`. It says where notes are read from and whether that folder exists, how many files the exclude patterns kept out, which notes could not be read, and whether `deckard.me` matches anyone — each with what to do.
 - **A note is missing from every search:** open `Deckard: Open Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
+- **Opened while the workspace is first indexed:** Find, search pages, Home, the Task board, and Stats open at once and say how far the scan has got, such as *Indexing this workspace: 412 of 3,760 notes read…*; what you typed in Find is kept, and the results take the line's place when the index is ready.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.

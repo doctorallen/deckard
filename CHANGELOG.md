@@ -86,6 +86,12 @@
 
 ### Changed
 
+- **Find and search pages open while the workspace is indexing.** They
+  opened only once the first scan finished; now Find opens at once, busy,
+  keeps what is typed, and shows *Indexing this workspace: 412 of 3,760
+  notes read…* until its results arrive, and a search page, Home, the Task
+  board, and Stats show the same count in place of *Loading…*.
+
 - **A moved card moves at once.** A card moved from the keyboard or its ⋯
   menu, as well as by dragging, goes to its new column straight away, both
   columns recount, and it shows as pending until the note is written; a

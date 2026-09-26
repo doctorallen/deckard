@@ -1419,6 +1419,27 @@ export function getComponentScript(): string {
   }
 
   /**
+   * How far the first scan has got, in the words the sidebar and every
+   * page use: "Indexing this workspace: 412 of 3,760 notes read…".
+   */
+  function describeIndexing(progress) {
+    return progress && progress.total
+      ? 'Indexing this workspace: ' + Number(progress.completed).toLocaleString('en-US') + ' of ' + Number(progress.total).toLocaleString('en-US') + ' notes read…'
+      : 'Indexing this workspace…';
+  }
+
+  // A page waiting on the first scan says how far it has got, in its
+  // loading line, as the host sends it; the page's first state replaces it.
+  window.addEventListener('message', function (event) {
+    if (!event.data || event.data.type !== 'indexing') return;
+    const line = document.querySelector('#app .loading');
+    if (!line) return;
+    line.classList.add('is-immediate');
+    const words = line.querySelector('span') || line;
+    words.textContent = describeIndexing(event.data.progress);
+  });
+
+  /**
    * #app is busy exactly while it holds a .loading, or while a search it
    * ran is still out; pages do nothing about it. #live-status sits outside
    * #app, so what a page announces still goes through.

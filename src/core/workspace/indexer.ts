@@ -56,6 +56,13 @@ export class WorkspaceIndexer implements vscode.Disposable {
     this.disposables.push(this.updateEmitter, this.progressEmitter);
   }
 
+  /** Whether a first scan has finished, so the index holds the workspace. */
+  public get hasIndexed(): boolean {
+    return this.indexedOnce;
+  }
+
+  private indexedOnce = false;
+
   /** How far the scan under way has got: "412 of 3,760 notes", or nothing. */
   public get scanProgress(): { completed: number; total: number } | undefined {
     return this.scanState;
@@ -249,6 +256,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
         // log says when it lands, because until then a search finds a note
         // by its title and tags but not yet by the words inside it.
         this.reportSearchIndexWritten();
+        this.indexedOnce = true;
         this.emitUpdate();
       },
     );

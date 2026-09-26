@@ -34,6 +34,8 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   suggestion?: string;
   /** The row that creates a note by the name typed, when none has it. */
   create?: string;
+  /** The row that says the first scan is still under way. */
+  indexing?: boolean;
   /** The row that opens the daily note for the day typed. */
   openDate?: string;
 }
@@ -116,7 +118,6 @@ export class QuickFind implements vscode.Disposable {
   ) {}
 
   public async show(initialQuery = ''): Promise<void> {
-    await this.indexer.ready;
     this.editor = vscode.window.activeTextEditor;
     this.picker?.dispose();
     const picker = vscode.window.createQuickPick<QuickFindPickItem>();
@@ -148,6 +149,19 @@ export class QuickFind implements vscode.Disposable {
       }
     });
 
+    // Before the first scan Find opens at once, busy, and says how far the
+    // scan has got; what is typed is kept, and the results come in its place.
+    if (this.indexer.hasIndexed === false) {
+      picker.busy = true;
+      const progress = this.indexer.onDidProgress(() => this.refresh());
+      void this.indexer.ready.then(() => {
+        progress.dispose();
+        picker.busy = false;
+        if (this.picker === picker) {
+          this.refresh();
+        }
+      });
+    }
     this.refresh();
     picker.show();
   }
@@ -187,6 +201,21 @@ export class QuickFind implements vscode.Disposable {
     if (!picker) {
       return;
     }
+    if (this.indexer.hasIndexed === false) {
+      const scan = this.indexer.scanProgress;
+      picker.items = [
+        {
+          label: `$(sync~spin) ${
+            scan?.total
+              ? `Indexing this workspace: ${scan.completed.toLocaleString('en-US')} of ${scan.total.toLocaleString('en-US')} notes read…`
+              : 'Indexing this workspace…'
+          }`,
+          alwaysShow: true,
+          indexing: true,
+        },
+      ];
+      return;
+    }
     const index = this.indexer.getSnapshot();
     const results = buildQuickFindResults(
       index,
@@ -205,7 +234,7 @@ export class QuickFind implements vscode.Disposable {
   private async accept(): Promise<void> {
     const picker = this.picker;
     const chosen = picker?.activeItems[0];
-    if (!picker || !chosen) {
+    if (!picker || !chosen || chosen.indexing) {
       return;
     }
     const query = picker.value.trim();

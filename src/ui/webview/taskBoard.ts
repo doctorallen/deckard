@@ -29,6 +29,7 @@ import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
+import { followIndexing } from './indexingProgress';
 
 /**
  * Shows tasks as a Kanban board or as a list, narrowed by the search box
@@ -203,6 +204,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     panel.webview.options = { enableScripts: true };
     this.renderHtml();
     this.panelDisposables = [
+      followIndexing(this.indexer, (message) => void panel.webview.postMessage(message)),
       panel.onDidDispose(() => {
         this.panel = undefined;
         this.lastSnapshot = undefined;
