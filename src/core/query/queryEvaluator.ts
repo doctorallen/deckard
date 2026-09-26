@@ -492,14 +492,14 @@ function createSectionUnit(
   };
 }
 
-function createTaskUnit(
-  index: WorkspaceIndex,
-  membership: TagMembership,
-  task: Task,
-): QueryUnit {
-  const tagKeys = new Set(membership.tasks.get(task.id) ?? []);
-  const dependencies = getDependencyState(index);
-  task.tags.forEach((tagKey) => tagKeys.add(tagKey));
+/**
+ * Every tag a `tag:` search finds a task by: its own line, the heading it is
+ * under and every heading above that, and its note's front matter. The Tasks
+ * view and the board group by the same set, so a column and the search for
+ * its tag always hold the same tasks.
+ */
+export function readTaskTagKeys(index: WorkspaceIndex, task: Task): Set<string> {
+  const tagKeys = new Set(task.tags);
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
@@ -507,6 +507,17 @@ function createTaskUnit(
     section.tags.forEach((tagKey) => tagKeys.add(tagKey));
     collectInheritedTagKeys(index, section, tagKeys);
   }
+  return tagKeys;
+}
+
+function createTaskUnit(
+  index: WorkspaceIndex,
+  membership: TagMembership,
+  task: Task,
+): QueryUnit {
+  const tagKeys = readTaskTagKeys(index, task);
+  membership.tasks.get(task.id)?.forEach((tagKey) => tagKeys.add(tagKey));
+  const dependencies = getDependencyState(index);
   return {
     kind: 'task',
     tagKeys,

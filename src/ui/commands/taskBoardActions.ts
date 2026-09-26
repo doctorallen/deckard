@@ -8,6 +8,7 @@ import {
   isValidStatusName,
   resolveTaskMove,
   TaskBoardOptions,
+  TaskMoveContext,
 } from '../state/taskBoardState';
 import {
   readTaskMetadataFormat,
@@ -78,8 +79,9 @@ export async function updateTaskBoardSetting(
 export async function moveTaskToColumn(
   task: Task,
   columnId: string,
+  context: TaskMoveContext = {},
 ): Promise<boolean> {
-  const move = resolveTaskMove(task, columnId, readTaskBoardOptions());
+  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(), context);
   switch (move.kind) {
     case 'unchanged':
       return false;

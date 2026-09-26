@@ -1,3 +1,11 @@
+import {
+  findTagSource,
+  isNamespaceName,
+  NamespaceValue,
+  noValueLabel,
+  quoteTask,
+  readNamespaceValues,
+} from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
 import { needsNewDate } from '../../core/taskPolicy';
@@ -15,7 +23,7 @@ import {
   TaskMetadataFormat,
   describeDueDate,
 } from '../../core/markdown/taskMetadata';
-import { readPerson } from '../../core/markdown/parser';
+import { extractTags, readPerson } from '../../core/markdown/parser';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
@@ -420,10 +428,20 @@ function describeStatusCoverage(
  * written in the task's sentence rather than as metadata is left alone,
  * because there is no marker Deckard could safely remove.
  */
+/**
+ * What a move reads besides the task: the index, which says which of the
+ * task's tags it inherits, and the column the card was dragged from.
+ */
+export interface TaskMoveContext {
+  index?: WorkspaceIndex;
+  from?: string;
+}
+
 export function resolveTaskMove(
   task: Task,
   columnId: string,
   options: TaskBoardOptions,
+  context: TaskMoveContext = {},
 ): TaskMove {
   if (columnId === 'done') {
     return task.completed ? { kind: 'unchanged' } : { kind: 'complete' };
@@ -538,9 +556,130 @@ export function resolveTaskMove(
         edit: (line) => setTaskAssignee(reopen(line), column, person, options.format),
       };
     }
+    case 'tag':
+      return resolveTagMove(task, value, context, reopen);
     default:
       return refuse('That column no longer exists on the board. Refresh the board and try again.');
   }
+}
+
+/**
+ * A move between the tags of one namespace. The column's tag is written on
+ * the task's line, in place of the one the card came from when that one is
+ * written there; a tag the task inherits from a heading or its note's front
+ * matter cannot be taken away by a drag, and the move says where it comes
+ * from instead.
+ */
+function resolveTagMove(
+  task: Task,
+  value: string,
+  context: TaskMoveContext,
+  reopen: (line: string) => string,
+): TaskMove {
+  const slash = value.indexOf('/');
+  const namespace = slash < 0 ? value : value.slice(0, slash);
+  const target = slash < 0 ? '' : value.slice(slash + 1).toLowerCase();
+  const tag = `#${namespace}/${target}`;
+  if (!isNamespaceName(namespace) || slash < 0) {
+    return refuse(`Deckard cannot write "${tag}" as a tag.`);
+  }
+  if (target) {
+    const parsed = extractTags(tag);
+    if (parsed.length !== 1 || parsed[0].key.toLowerCase() !== tag.toLowerCase()) {
+      return refuse(`Deckard cannot write "${tag}" as a tag.`);
+    }
+  }
+  const values = readNamespaceValues(context.index, task, namespace);
+  const from = context.from?.startsWith(`tag:${namespace.toLowerCase()}/`)
+    ? context.from.slice(`tag:${namespace}/`.length).toLowerCase()
+    : undefined;
+  const inheritedRefusal = (entry: NamespaceValue): TaskMove => {
+    const source = context.index
+      ? findTagSource(context.index, task, entry.key)
+      : { kind: 'frontmatter' as const };
+    return refuse(
+      source.kind === 'heading'
+        ? `${quoteTask(task)} is in ${entry.label} because its heading "${source.heading}" is, so moving it cannot take it out. Change the heading instead.`
+        : `${quoteTask(task)} is in ${entry.label} because its note's front matter is, so moving it cannot take it out. Change the front matter instead.`,
+    );
+  };
+  const column = task.checkboxColumn;
+
+  if (!target) {
+    const inherited = values.find((entry) => entry.inherited);
+    if (inherited) {
+      return inheritedRefusal(inherited);
+    }
+    const written = values.filter((entry) => entry.written);
+    if (written.length === 0 && !task.completed) {
+      return { kind: 'unchanged' };
+    }
+    return {
+      kind: 'edit',
+      label: noValueLabel(namespace),
+      edit: (line) =>
+        setTaskNamespaceTags(reopen(line), column, {
+          remove: written.map((entry) => entry.label),
+        }),
+    };
+  }
+
+  const has = values.some((entry) => entry.value === target);
+  const source = from ? values.find((entry) => entry.value === from) : undefined;
+  if (source && from !== target) {
+    if (source.inherited) {
+      return inheritedRefusal(source);
+    }
+    return {
+      kind: 'edit',
+      label: tag,
+      edit: (line) =>
+        setTaskNamespaceTags(reopen(line), column, {
+          remove: [source.label],
+          ...(has ? {} : { add: tag }),
+        }),
+    };
+  }
+  if (has && !task.completed) {
+    return { kind: 'unchanged' };
+  }
+  return {
+    kind: 'edit',
+    label: tag,
+    edit: (line) => {
+      const opened = reopen(line);
+      return has ? opened : setTaskNamespaceTags(opened, column, { remove: [], add: tag });
+    },
+  };
+}
+
+/**
+ * Takes tags out of a task line, by their written labels, and writes one:
+ * in place of the first taken out, else at the end of the task's words,
+ * ahead of a `^block-id`.
+ */
+export function setTaskNamespaceTags(
+  line: string,
+  checkboxColumn: number,
+  change: { remove: readonly string[]; add?: string },
+): string {
+  const head = line.slice(0, checkboxColumn + 2);
+  let text = line.slice(checkboxColumn + 2);
+  let placed = change.add === undefined;
+  change.remove.forEach((label) => {
+    const pattern = new RegExp(`[ \\t]+${escapeRegExp(label)}(?![A-Za-z0-9_/-])`, 'gi');
+    text = text.replace(pattern, (match) => {
+      if (!placed && change.add !== undefined) {
+        placed = true;
+        return match.replace(/\S+$/, change.add);
+      }
+      return '';
+    });
+  });
+  if (!placed && change.add !== undefined) {
+    text = appendToTaskText(text, change.add);
+  }
+  return head + text;
 }
 
 /**

@@ -375,7 +375,7 @@ export class AgendaTreeProvider
     const refused: string[] = [];
     let moved = 0;
     for (const task of tasks) {
-      const move = resolveTaskMove(task, columnId, options);
+      const move = resolveTaskMove(task, columnId, options, { index: this.index });
       if (move.kind === 'refused') {
         refused.push(move.reason);
         continue;
