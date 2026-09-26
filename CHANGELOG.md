@@ -231,6 +231,10 @@
 
 ### Fixed
 
+- **A screen reader hears a task's whole title.** What the Task board and
+  the search pages announced about a task — *Completed …*, *Moved … to
+  Todo* — dropped every letter s from its title, since a pattern in the
+  page script lost its backslash.
 - **The search page's format buttons show their own mode.** Source shows
   `<>` and Rendered shows the eye; they were swapped.
 

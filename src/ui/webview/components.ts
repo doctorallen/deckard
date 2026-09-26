@@ -1695,7 +1695,7 @@ export function getComponentScript(): string {
   function taskTitleOf(element) {
     const row = element && element.closest ? element.closest('[data-task-id]') : null;
     const title = row ? row.querySelector('.task-title') : null;
-    return title ? title.textContent.trim().replace(/\s+/g, ' ') : 'the task';
+    return title ? title.textContent.trim().replace(/\\s+/g, ' ') : 'the task';
   }
 
   /**
