@@ -63,6 +63,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
     'Moves a tagged section into a note of its own, leaving a link behind.',
   'deckard.showTagOverview': 'Opens a tag’s search page.',
   'deckard.search': 'A search page, ready for a search.',
+  'deckard.insertQueryBlock': 'A live query block of a saved or recent search, or one you type, at the cursor.',
   'deckard.searchWorkspace': 'Finds notes, tasks, and tags as you type.',
   'deckard.searchNotes': 'Opens a search page on a query you write.',
   'deckard.linkCurrentHeading': 'Adds an approved entity tag to this heading.',
@@ -408,7 +409,7 @@ updated: 2026-09-20
         <div class="card"><h3>Refine</h3><p>Under the box, <strong>Refine</strong> counts what the results could be narrowed by, five of each kind until <strong>+N more</strong> shows the rest. Selecting a value adds it with <strong>AND</strong>; Alt-click adds <strong>AND NOT</strong>, and Shift-click adds <strong>OR</strong>, widening the value chosen before it. Every value writes ordinary query text, so a refined search can be saved or copied into a note.</p></div>
         <div class="card"><h3>Saving a search</h3><p><strong>Save</strong> beside the box keeps a search, which reopens on the page it was saved from and can sit on Home as a widget. Recent searches are kept too. Save stays in place until there is a search to save, and says so when focused.</p></div>
       </div>
-          <p><strong>Taking a result out.</strong> <strong>Export notes</strong> and <strong>Export tasks</strong>, beside Bulk edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. The index itself never leaves the machine.</p>
+          <p><strong>Taking a result out.</strong> <strong>Export notes</strong> and <strong>Export tasks</strong>, beside Bulk edit over a search page’s notes or tasks and beside Save on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a list with a link to each result, or CSV, and copies it or saves it to a file. Its first choice, <strong>Copy as live query block</strong>, copies the search itself as a <code>deckard</code> fence to paste into a note, where it stays up to date. The index itself never leaves the machine.</p>
     </section>
 
     <section id="query">
@@ -446,7 +447,7 @@ updated: 2026-09-20
 
     <section id="query-blocks">
       <h2>Query blocks</h2>
-      <p>A <code>deckard</code> code fence keeps a live list inside a note. The Markdown preview replaces the fence with what the query matches; the editor shows the totals above it with <strong>Open in search</strong>.</p>
+      <p>A <code>deckard</code> code fence keeps a live list inside a note. The Markdown preview replaces the fence with what the query matches; the editor shows the totals above it with <strong>Open in search</strong>. <code>Deckard: Insert Query Block…</code> writes one of a saved or recent search at the cursor.</p>
       <pre><code>&#96;&#96;&#96;deckard sort=updated limit=10
 tag = #project/atlas AND task = open
 &#96;&#96;&#96;</code></pre>

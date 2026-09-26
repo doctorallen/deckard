@@ -119,6 +119,7 @@ import { listOverdueTasks, AgendaNode,
 } from './ui/views/agendaTree';
 import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
 import { selectAgendaTasks } from './ui/state/agendaState';
+import { insertQueryBlock } from './ui/commands/insertQueryBlock';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -848,6 +849,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.search', (query?: unknown) =>
       searchPanels.showQuery(getCommandTagArgument(query) ?? ''),
+    ),
+    vscode.commands.registerCommand('deckard.insertQueryBlock', () =>
+      insertQueryBlock(preferences),
     ),
     vscode.commands.registerCommand(
       'deckard.searchWorkspace',

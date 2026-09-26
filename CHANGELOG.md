@@ -10,6 +10,11 @@
 
 ### Added
 
+- **A search becomes a live query block.** **Export** on a search page or
+  the Task Board offers **Copy as live query block** first, which copies the
+  search, with its sort or table columns, as a `deckard` fence that stays up
+  to date in a note. `Deckard: Insert Query Block…` writes one at the cursor
+  from a saved or recent search, or one you type.
 - Related Notes says each shared tag once.
 - A board card's menu is a button that opens a menu.
 - The Help rail marks the section being read.

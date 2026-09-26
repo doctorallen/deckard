@@ -9,6 +9,7 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
 import { openResultAt } from '../commands/navigation';
 import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
+import { formatQueryBlock, QueryBlockWriteOptions } from '../state/queryBlockState';
 import {
   captureIntoColumn,
   moveTaskToColumn,
@@ -342,6 +343,27 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   /**
    * Names the board's search and keeps it as a saved view that reopens here.
    */
+  /**
+   * How the board is laid out, as a query block's options: a list sorted by
+   * date keeps that sort, a table its columns and sorted column, and the
+   * board's columns have no block of their own.
+   */
+  private queryBlockOptions(): QueryBlockWriteOptions {
+    const preferences = this.preferences.value;
+    if (preferences.taskBoardLayout === 'table') {
+      const sort = preferences.taskTableSort;
+      return {
+        view: 'table',
+        ...(preferences.taskTableColumns?.length ? { columns: preferences.taskTableColumns } : {}),
+        ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
+      };
+    }
+    if (preferences.taskBoardLayout === 'list' && preferences.taskSortMode !== 'rank') {
+      return { sort: preferences.taskSortMode };
+    }
+    return {};
+  }
+
   private async saveSearch(): Promise<void> {
     const query = this.query.trim();
     if (!query) {
@@ -402,7 +424,13 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
           'inline',
         );
         const rows = taskRows((board.tasks ?? []).map((item) => item.task), index);
-        await exportResults('tasks', rows.length, (format) => formatTasks(rows, format));
+        const search = this.query.trim();
+        await exportResults(
+          'tasks',
+          rows.length,
+          (format) => formatTasks(rows, format),
+          search ? () => formatQueryBlock(search, this.queryBlockOptions()) : undefined,
+        );
         return;
       }
       case 'setBoardGroup':

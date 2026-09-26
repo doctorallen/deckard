@@ -262,6 +262,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.insertQueryBlock",
+        "title": "Insert Query Block…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.searchWorkspace",
         "title": "Find in Notes",
         "category": "Deckard"
@@ -435,6 +440,10 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "deckard.insertQueryBlock",
+          "when": "editorLangId == markdown"
+        },
         {
           "command": "deckard.outline.revealSection",
           "when": "false"

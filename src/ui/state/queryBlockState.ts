@@ -129,6 +129,33 @@ export interface QueryBlockSnapshot {
   openTaskCount: number;
 }
 
+/** The options a live query block is written with. */
+export interface QueryBlockWriteOptions {
+  sort?: string;
+  direction?: 'asc' | 'desc';
+  view?: 'list' | 'table';
+  columns?: readonly string[];
+}
+
+/**
+ * A search written as a live query block, which a note keeps up to date:
+ * the fence grows past any run of backticks the search holds.
+ */
+export function formatQueryBlock(query: string, options: QueryBlockWriteOptions = {}): string {
+  const longest = Math.max(0, ...[...query.matchAll(/`+/g)].map((run) => run[0].length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  const info = [
+    QUERY_BLOCK_LANGUAGE,
+    options.view ? `view=${options.view}` : '',
+    options.columns?.length ? `columns=${options.columns.join(',')}` : '',
+    options.sort ? `sort=${options.sort}` : '',
+    options.direction ? `dir=${options.direction}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return `${fence}${info}\n${query.trim()}\n${fence}\n`;
+}
+
 /**
  * Reads a fence's info string, returning undefined for any fence that is not
  * a query block.

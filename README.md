@@ -134,6 +134,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
 | **Deckard: Open Search Page** | Opens a search page listing every note, ready for a search. |
+| **Deckard: Insert Query Block…** | Writes a live [query block](#query-blocks) of a saved or recent search, or one you type, at the cursor. |
 | **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](#find). |
 | **Deckard: Search Notes and Tasks** | Opens a search page on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
 | **Deckard: Link Current Heading to Entity** | Adds a user-approved canonical person, project, topic, organization, or meeting tag to the current heading. |
@@ -646,7 +647,7 @@ Opening a tag's page records tag access. Opening a section records section acces
 
 ### Taking a search's results out
 
-**Export**, beside **Bulk edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
+**Export**, beside **Bulk edit** over a search page's notes or tasks and beside **Save** on the Task Board, takes everything the search found — not only the page on screen — as a Markdown table, a Markdown list with a link to each result, or CSV, and either copies it or saves it to a file you choose. When the page has a search, the first choice is **Copy as live query block**, which copies the search itself as a [query block](#query-blocks), with its sort, to paste into a note where it stays up to date. Nothing else leaves the machine: the index stays where it is, and what goes is what you would have read on the page.
 
 ### Editing a search's results
 
@@ -816,7 +817,7 @@ While a search page is the active editor, the Related Notes sidebar shows that s
 
 ## Query blocks
 
-Put a Deckard query in a `deckard` code fence to keep a live list inside a note:
+Put a Deckard query in a `deckard` code fence to keep a live list inside a note. `Deckard: Insert Query Block…` writes one at the cursor from a saved or recent search, and **Copy as live query block** in a search page's or the Task Board's **Export** copies the page's search as one:
 
 ````markdown
 ```deckard sort=updated limit=10

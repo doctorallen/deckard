@@ -29,6 +29,7 @@ import { isWritten } from '../state/searchFacets';
 import { SearchHistory, SearchHistoryEntry } from '../state/searchHistory';
 import { editResults } from '../commands/bulkEditPrompts';
 import { exportResults, formatNotes, formatTasks, noteRows, taskRows } from '../commands/exportResults';
+import { formatQueryBlock } from '../state/queryBlockState';
 import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
 import { openResultAt, ResultOpening } from '../commands/navigation';
@@ -715,12 +716,19 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'exportResults': {
         const results = this.currentResults();
         const index = this.indexer.getSnapshot();
+        // A page with a search can hand it on as a live query block; a
+        // page of every note has none to hand on.
+        const search = this.queryText.trim();
+        const sort = this.preferences.value.tagOverviewSortMode;
+        const liveBlock = search
+          ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
+          : undefined;
         if (message.kind === 'tasks') {
           const rows = taskRows(results.tasks, index);
-          await exportResults('tasks', rows.length, (format) => formatTasks(rows, format));
+          await exportResults('tasks', rows.length, (format) => formatTasks(rows, format), liveBlock);
         } else {
           const rows = noteRows(results.sections);
-          await exportResults('notes', rows.length, (format) => formatNotes(rows, format));
+          await exportResults('notes', rows.length, (format) => formatNotes(rows, format), liveBlock);
         }
         return;
       }
