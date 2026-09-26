@@ -1,3 +1,4 @@
+import { captureNextAction } from './ui/commands/taskBoardActions';
 import { setTaskPolicy } from './core/taskPolicy';
 import { readWeekStart } from './ui/commands/datePrompt';
 import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
@@ -334,6 +335,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       createHubNote: async (tagKey) => {
         await createHubNote(indexer, tagKey);
       },
+      addNextAction: (tagLabel) => captureNextAction(tagLabel),
     },
   );
   const quickFind = new QuickFind(indexer, preferences, {

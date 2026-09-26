@@ -306,7 +306,7 @@ ${getQueryEditorScript()}
     tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
     unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
     newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']], defaultDays: 14 },
-    quietPeople: { label: 'People gone quiet', description: 'People you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
+    quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']], defaultDays: 90 },
     pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
   };
 
@@ -755,8 +755,17 @@ ${getQueryEditorScript()}
         return renderHomeTags(widget.tags, 'No tag was first seen in the last ' + (widget.days || 14) + ' days.', function (tag) {
           return renderRowAction('rename-tag', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Rename', 'Rename ' + tag.label + ' everywhere');
         });
-      case 'quietPeople':
-        return renderHomeTags(widget.tags, 'Everyone you write about has come up in the last ' + (widget.days || 90) + ' days.');
+      case 'quietPeople': {
+        const namespace = widget.namespace || 'person';
+        const kind = namespace === 'person' ? 'person' : namespace;
+        const empty = widget.noOpenTasks
+          ? 'Every ' + kind + ' tag written in the last ' + (widget.days || 90) + ' days has an open task.'
+          : 'Every ' + kind + ' tag has come up in the last ' + (widget.days || 90) + ' days.';
+        // A tag with nothing open is a stuck project: offer its next action.
+        return renderHomeTags(widget.tags, empty, widget.noOpenTasks ? function (tag) {
+          return renderRowAction('add-next-action', 'data-tag-key="' + escapeHtml(tag.key) + '"', 'Add next action', 'Capture a next action for ' + tag.label);
+        } : undefined);
+      }
       case 'pinnedNotes':
         // Home lists pins and lets go of them; pinning happens where the
         // note is: the editor, a search result, or the command.
@@ -815,6 +824,13 @@ ${getQueryEditorScript()}
     }
     if (traits.days) {
       groups.push('<div class="view-options-group"><span>' + (widget.kind === 'newTags' ? 'Seen within' : 'Unchanged for') + '</span>' + renderViewOptionChoices('set-widget-days', traits.days, widget.days || traits.defaultDays, 'Days', attribute) + '</div>');
+    }
+    if (widget.kind === 'quietPeople') {
+      const namespaces = widget.namespaces && widget.namespaces.length ? widget.namespaces : ['person'];
+      groups.push('<div class="view-options-group is-stacked"><span>Namespace</span><select data-action="set-widget-namespace" ' + attribute + ' aria-label="Namespace to watch">' + namespaces.map(function (name) {
+        return '<option value="' + escapeHtml(name) + '"' + (name === (widget.namespace || 'person') ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
+      }).join('') + '</select></div>');
+      groups.push('<div class="view-options-group"><label class="control-label"><input type="checkbox" data-action="set-widget-no-open-tasks" ' + attribute + (widget.noOpenTasks ? ' checked' : '') + '> Only those with no open tasks</label></div>');
     }
     if (widget.kind === 'tasks') {
       const draft = widgetQueryDrafts[widget.id] !== undefined ? widgetQueryDrafts[widget.id] : (widget.query || '');
@@ -1120,6 +1136,7 @@ ${getQueryEditorScript()}
       }
       if (action === 'open-daily-note') send({ type: 'openDailyNote' });
       if (action === 'create-tag-hub') send({ type: 'createTagHub', tagKey: target.dataset.tagKey });
+      if (action === 'add-next-action') send({ type: 'addNextAction', tagKey: target.dataset.tagKey });
       if (action === 'rename-tag') send({ type: 'renameTag', tagKey: target.dataset.tagKey });
       if (action === 'open-note') send({ type: 'openNote', filePath: target.dataset.filePath });
       if (action === 'unpin-note') send({ type: 'unpinNote', filePath: target.dataset.filePath || ' ', pinKey: target.dataset.pinKey });
@@ -1211,6 +1228,8 @@ ${getQueryEditorScript()}
     }
     if (target.dataset.action === 'add-widget' && target.value) addWidget(target.value);
     if (target.dataset.action === 'set-widget-filter') updateWidget(target.dataset.widgetId, { filterId: target.value });
+    if (target.dataset.action === 'set-widget-namespace') updateWidget(target.dataset.widgetId, { namespace: target.value === 'person' ? undefined : target.value, page: 1 });
+    if (target.dataset.action === 'set-widget-no-open-tasks') updateWidget(target.dataset.widgetId, { noOpenTasks: target.checked ? true : undefined, page: 1 });
     // A different page size is a different set of pages, so the list is read
     // again from its top.
     if (target.dataset.action === 'set-widget-page-size') updateWidget(target.dataset.widgetId, { count: Number(target.value), page: 1 });

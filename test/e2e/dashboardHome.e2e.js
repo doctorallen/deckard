@@ -345,6 +345,35 @@ test('the tiles say what is overdue, due today, and open, and each opens its sea
   assert.strictEqual(navigation.opened[navigation.opened.length - 1], 'search is:today');
 });
 
+test('Gone quiet chooses its namespace, and a project with nothing open offers a next action', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 1 }, {});
+  const files = [
+    note('notes/beacon.md', '# Beacon #project/beacon\n- [x] Shipped'),
+    note('notes/ren.md', '# Call @ren-kade'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view, preferences } = await openDashboard(index, async (store) => {
+    await store.setDashboardWidgets([
+      { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 30, namespace: 'project', noOpenTasks: true },
+    ]);
+  });
+  const action = view.find('.home-widget[data-widget-id="q"] [data-action="add-next-action"]');
+  assert.ok(action, 'a stuck project offers its next action');
+  view.posted.length = 0;
+  view.click(action);
+  assert.deepStrictEqual(view.posted.filter((message) => message.type === 'addNextAction'), [
+    { type: 'addNextAction', tagKey: '#project/beacon' },
+  ]);
+
+  view.click(view.find('[data-action="customize-home"]'));
+  const select = view.find('.home-widget[data-widget-id="q"] [data-action="set-widget-namespace"]');
+  assert.ok(select, 'the gear chooses the namespace');
+  assert.ok(view.find('.home-widget[data-widget-id="q"] [data-action="set-widget-no-open-tasks"]'));
+  view.change(select, 'person');
+  await delay(20);
+  assert.strictEqual(preferences.value.dashboardWidgets[0].namespace, undefined, 'person is the default');
+});
+
 test('a tasks widget runs the search set in its options', async () => {
   const { view, preferences } = await openDashboard();
   view.click(view.find('[data-action="customize-home"]'));

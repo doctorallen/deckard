@@ -2,7 +2,8 @@ import { isPersonTag } from '../../core/markdown/parser';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
 
 /**
- * When each person was last written about, and who has gone quiet.
+ * When each person, or any tag of a namespace, was last written about, and
+ * which have gone quiet.
  *
  * People are first-class in the index, but nothing said when a name last
  * appeared. That is the question a 1:1 or a standing meeting asks: who have
@@ -96,4 +97,73 @@ function lastWritten(index: WorkspaceIndex, tag: TagInfo): number {
     newest = Math.max(newest, at);
   });
   return newest;
+}
+
+/** Which tags Gone quiet watches, and whether only those with nothing open. */
+export interface QuietTagOptions {
+  /** A tag namespace such as `project`; `person` means people, `@` tags too. */
+  namespace?: string;
+  /** Leave out a tag that still has an open task: a stuck project. */
+  noOpenTasks?: boolean;
+}
+
+/** Whether a tag belongs to a namespace, as Gone quiet reads it. */
+export function isInNamespace(tagKey: string, namespace: string): boolean {
+  const name = namespace.toLowerCase();
+  return name === 'person'
+    ? isPersonTag(tagKey)
+    : tagKey.toLowerCase().startsWith(`#${name}/`);
+}
+
+/**
+ * The tags of a namespace not written for `days`, longest ago first. Open
+ * tasks count those that carry the tag themselves or inherit it from a
+ * heading above them, since a project's tag usually sits on its heading.
+ */
+export function listQuietTags(
+  index: WorkspaceIndex,
+  now: number,
+  days: number,
+  options: QuietTagOptions = {},
+): PersonRecency[] {
+  const namespace = options.namespace?.trim() || 'person';
+  const openTasksByTag = new Map<string, number>();
+  index.tasks.forEach((task) => {
+    if (task.completed) {
+      return;
+    }
+    const keys = new Set(task.tags);
+    for (
+      let section = task.sectionId ? index.sections.get(task.sectionId) : undefined;
+      section;
+      section = section.parentSectionId ? index.sections.get(section.parentSectionId) : undefined
+    ) {
+      section.tags.forEach((key) => keys.add(key));
+    }
+    keys.forEach((key) => {
+      if (isInNamespace(key, namespace)) {
+        openTasksByTag.set(key, (openTasksByTag.get(key) ?? 0) + 1);
+      }
+    });
+  });
+  const cutoff = now - Math.max(1, days) * 24 * 60 * 60 * 1000;
+  return [...index.tags.values()]
+    .filter((tag) => isInNamespace(tag.key, namespace))
+    .map((tag) => ({
+      tag,
+      lastWrittenAt: lastWritten(index, tag),
+      openTasks: openTasksByTag.get(tag.key) ?? 0,
+      entries: tag.count,
+    }))
+    .filter(
+      (entry) =>
+        entry.lastWrittenAt > 0 &&
+        entry.lastWrittenAt < cutoff &&
+        (!options.noOpenTasks || entry.openTasks === 0),
+    )
+    .sort(
+      (left, right) =>
+        left.lastWrittenAt - right.lastWrittenAt ||
+        left.tag.label.localeCompare(right.tag.label),
+    );
 }

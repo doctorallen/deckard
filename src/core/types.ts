@@ -92,6 +92,10 @@ export interface DashboardWidgetConfig {
    * unchanged, or how recently a new tag was first seen.
    */
   days?: number;
+  /** The namespace Gone quiet watches: `person` by default, or `project`. */
+  namespace?: string;
+  /** Whether Gone quiet lists only the tags with no open task. */
+  noOpenTasks?: boolean;
 }
 
 export type TagTitleDisplayMode = 'inline' | 'separate';
@@ -498,6 +502,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   queries?: string[];
   savedFilters?: DashboardSavedFilter[];
   agenda?: DashboardWidgetAgendaGroup[];
+  /** The namespaces Gone quiet can watch, for its gear. */
+  namespaces?: string[];
   /** Open tasks past `needsNewDateAfterDays`, which the agenda leaves out. */
   needsNewDate?: number;
   /** Tasks completed today, said under the Tasks view widget's list. */
@@ -1110,6 +1116,12 @@ export interface CreateTagHubMessage {
   tagKey: string;
 }
 
+/** Captures a next action for a tag that has nothing open. */
+export interface AddNextActionMessage {
+  type: 'addNextAction';
+  tagKey: string;
+}
+
 /**
  * A note pinned to Home: an entry of a file, or the file itself.
  *
@@ -1368,6 +1380,7 @@ export type DashboardMessage =
   | OpenDailyNoteMessage
   | QuickAddMessage
   | CreateTagHubMessage
+  | AddNextActionMessage
   | PinNoteMessage
   | OpenNoteMessage;
 

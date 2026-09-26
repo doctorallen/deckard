@@ -151,6 +151,10 @@ export function parseDashboardMessage(
       return typeof value.tagKey === 'string' && value.tagKey.length > 0
         ? { type: 'createTagHub', tagKey: value.tagKey }
         : undefined;
+    case 'addNextAction':
+      return typeof value.tagKey === 'string' && value.tagKey.length > 0 && value.tagKey.length <= 200
+        ? { type: 'addNextAction', tagKey: value.tagKey }
+        : undefined;
     case 'openNote':
       return typeof value.filePath === 'string' && value.filePath.length > 0
         ? { type: value.type, filePath: value.filePath }

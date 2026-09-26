@@ -63,6 +63,11 @@
   its day. Its summary line counts them, and says how many of the tasks due
   in the period were done on time. `deckard.periodicNote.reviewSections`
   adds sections of your own, each a title and a search, written as a list.
+- **Gone quiet watches any namespace.** Home's People gone quiet widget is
+  now **Gone quiet**: its gear chooses the namespace, people by default or
+  `project` or any other, and **Only those with no open tasks** lists the
+  stuck ones, each with **Add next action**, which captures a task with the
+  tag to today's note.
 - **Done today.** The Tasks view ends with a folded Done today group of
   what was finished today; unchecking one reopens it. The status bar's hover
   and Home's Tasks view widget say how many.

@@ -44,6 +44,8 @@ export interface DashboardNavigation {
   /** Adds a task to today's daily note; true when it was added. */
   quickAdd(text: string): boolean | Promise<boolean>;
   createHubNote(tagKey: string): void | Promise<void>;
+  /** Asks for a next action for a tag, and captures it to today's note. */
+  addNextAction?(tagLabel: string): void | Promise<unknown>;
 }
 
 /**
@@ -578,6 +580,13 @@ export class DashboardPanel implements vscode.Disposable {
           text: message.text,
           added,
         });
+        return;
+      }
+      case 'addNextAction': {
+        const tag = index.tags.get(message.tagKey);
+        if (tag) {
+          await this.navigation.addNextAction?.(tag.label);
+        }
         return;
       }
       case 'createTagHub':

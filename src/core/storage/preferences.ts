@@ -1205,6 +1205,15 @@ export function normalizeDashboardWidgets(
           ? Math.min(DASHBOARD_WIDGET_DAYS_LIMIT, Math.max(1, days))
           : defaultDays;
     }
+    if (widgetKind === 'quietPeople') {
+      const namespace = typeof candidate.namespace === 'string' ? candidate.namespace.trim() : '';
+      if (namespace && namespace.length <= 64 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace) && namespace.toLowerCase() !== 'person') {
+        widget.namespace = namespace.toLowerCase();
+      }
+      if (candidate.noOpenTasks === true) {
+        widget.noOpenTasks = true;
+      }
+    }
     if (widgetKind === 'savedQuery') {
       if (typeof candidate.filterId !== 'string' || !candidate.filterId) {
         continue;

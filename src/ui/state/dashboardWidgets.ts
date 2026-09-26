@@ -28,7 +28,7 @@ import {
   sortTasks,
 } from './dashboardState';
 import { frecencyScore } from './frecency';
-import { listQuietPeople } from './peopleRecency';
+import { listQuietTags } from './peopleRecency';
 import { pinKey, resolvePin } from './pinnedNotes';
 import {
   collectFileTags,
@@ -77,7 +77,7 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   tagPairs: 'Tags written together',
   unhubbedTags: 'Tags without a hub',
   newTags: 'New tags',
-  quietPeople: 'People gone quiet',
+  quietPeople: 'Gone quiet',
   pinnedNotes: 'Pinned notes',
 };
 
@@ -451,9 +451,21 @@ function createWidget(
       };
     }
     case 'quietPeople': {
-      const quiet = listQuietPeople(index, options.now, config.days ?? 90);
+      const quiet = listQuietTags(index, options.now, config.days ?? 90, {
+        namespace: config.namespace,
+        noOpenTasks: config.noOpenTasks,
+      });
       return {
         ...widget,
+        // What the gear offers: every namespace the index holds.
+        namespaces: [
+          ...new Set(
+            [...index.entities.values()].map((entity) => String(entity.kind).toLowerCase()),
+          ),
+          'person',
+        ]
+          .filter((name, at, all) => all.indexOf(name) === at)
+          .sort(),
         total: quiet.length,
         tags: take(quiet).map((person) => ({
           key: person.tag.key,

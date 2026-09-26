@@ -17,6 +17,7 @@ import {
 } from './taskActions';
 import { writeSetting } from './settings';
 import { captureToToday, formatCaptureLine } from './capture';
+import { appendTagToLine } from './bulkEdit';
 
 const DEFAULT_STATUSES = ['todo', 'doing', 'waiting'];
 
@@ -140,4 +141,28 @@ export function readBoardLimits(value: unknown): Record<string, number> {
         typeof entry[1] === 'number' && Number.isInteger(entry[1]) && entry[1] >= 1,
     ),
   );
+}
+
+/**
+ * A next action for a tag with nothing open, the stuck-projects review: the
+ * words are read as Capture reads them, the tag is written at the end, and
+ * the task goes into today's note.
+ */
+export async function captureNextAction(tagLabel: string): Promise<boolean> {
+  const text = await vscode.window.showInputBox({
+    title: `Next action for ${tagLabel}`,
+    prompt: "It goes in today's note, with the tag. A date, priority, or repeat rule at the end is read as Capture reads it: Call Ren friday p2",
+    placeHolder: 'Draft the kickoff agenda',
+    ignoreFocusOut: true,
+  });
+  if (!text?.trim()) {
+    return false;
+  }
+  const line = readCaptureText(
+    formatCaptureLine(text),
+    readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
+    Date.now(),
+    readDateOptions(),
+  ).line;
+  return captureToToday(text, appendTagToLine(line, tagLabel));
 }
