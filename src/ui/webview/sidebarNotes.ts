@@ -30,7 +30,7 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
 import { parseSidebarMessage } from './messages';
-import { collectNoteLinks } from '../state/noteLinks';
+import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
 import { applyWorkspaceWrite } from '../commands/workspaceWrites';
 
@@ -655,6 +655,16 @@ export class SidebarNotesView
       return;
     }
 
+    if (message.type === 'openLinksSearch') {
+      // Built here from the note itself, never from text the page sent.
+      const filePath = this.getSelectedFilePath();
+      const file = filePath ? index.files.get(filePath) : undefined;
+      if (file) {
+        await vscode.commands.executeCommand('deckard.search', createLinksSearchQuery(file));
+      }
+      return;
+    }
+
     if (message.type === 'linkAllMentions') {
       const filePath = this.createSnapshot().links ? this.getSelectedFilePath() : undefined;
       const uri = filePath ? await resolveSourceUri(filePath) : undefined;
@@ -671,7 +681,7 @@ export class SidebarNotesView
     const snapshot = this.createSnapshot();
     // A line that links here, or names this note, opens where it is.
     const link = [
-      ...(snapshot.links?.linkedFrom ?? []),
+      ...(snapshot.links?.linkedFromNotes.flatMap((group) => group.entries) ?? []),
       ...(snapshot.links?.mentions ?? []),
     ].find(
       (candidate) =>

@@ -242,6 +242,74 @@ test('a hidden sidebar ranks again only when it is shown', async () => {
   }
 });
 
+/** A note that three others link to, two lines from one of them. */
+async function openLinked() {
+  const note = (filePath, content, updatedAt) =>
+    parseMarkdown(filePath, content, { createdAt: 1, updatedAt }, {});
+  const files = [
+    note('notes/atlas.md', '# Atlas #project/atlas\nThe plan.', 1),
+    note('notes/standup.md', '# Standup\n## Risks\n[[atlas]] depends on sign-off.\nThe vendor is late.\n## Decisions\nWe moved [[atlas]] to Q4.', 30),
+    note('notes/old.md', '# Old\nSee [[atlas]].', 10),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const indexer = {
+    ready: Promise.resolve(),
+    getSnapshot: () => index,
+    getFilePath: (uri) => uri.fsPath,
+    onDidUpdate: new vscode.EventEmitter().event,
+  };
+  vscode.window.activeTextEditor = {
+    document: { uri: vscode.Uri.file('notes/atlas.md'), languageId: 'markdown' },
+    selection: { active: { line: 0 } },
+  };
+  const sidebarView = new SidebarNotesView(indexer, new PreferencesStore(createGlobalState()), new ActiveSearch(), () => undefined, '0.0.0-test');
+  const host = vscode._test.createWebviewView();
+  host._onWebviewMessage = host._fromWebview;
+  sidebarView.resolveWebviewView(host);
+  const view = mountWebview(host.webview.html, host);
+  host.posted.forEach((message) => host._deliver(message));
+  const close = () => {
+    sidebarView.dispose();
+    vscode.window.activeTextEditor = undefined;
+  };
+  return { view, host, close };
+}
+
+test('Linked from groups its lines by note, newest first, and unfolds a line onto its section', async () => {
+  const { view, host, close } = await openLinked();
+  try {
+    await settle();
+    assert.strictEqual(view.find('[data-links-group="linked"] .links-count').textContent, '2', 'two notes');
+    const heads = view.findAll('.link-group-open').map((button) => button.textContent);
+    assert.deepStrictEqual(heads, ['standup', 'old']);
+    assert.ok(view.find('.link-group-meta').textContent.includes('2 links'));
+    assert.strictEqual(view.findAll('.link-group')[0].querySelectorAll('.link-row').length, 2);
+
+    const expander = () => view.find('[data-action="toggle-link-section"]');
+    assert.strictEqual(expander().getAttribute('aria-expanded'), 'false');
+    assert.strictEqual(expander().getAttribute('aria-label'), 'Show the rest of this section');
+    view.click(expander());
+    assert.strictEqual(expander().getAttribute('aria-expanded'), 'true');
+    assert.ok(view.find('.link-section').textContent.includes('The vendor is late.'));
+
+    // A redraw keeps the line unfolded.
+    view.change(view.find('[data-action="set-related-notes-sort"]'), 'newest');
+    await settle();
+    assert.strictEqual(expander().getAttribute('aria-expanded'), 'true');
+
+    const search = view.find('[data-action="open-links-search"]');
+    assert.strictEqual(search.textContent, 'Open as search');
+    vscode._test.executedCommands.length = 0;
+    view.click(search);
+    await settle();
+    const ran = vscode._test.executedCommands.find((entry) => entry.command === 'deckard.search');
+    assert.deepStrictEqual(ran && ran.args, ['link = [[atlas]]']);
+    assert.ok(host);
+  } finally {
+    close();
+  }
+});
+
 // ---------------------------------------------------------------------------
 
 (async () => {

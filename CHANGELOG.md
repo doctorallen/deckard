@@ -12,6 +12,13 @@
 
 ### Added
 
+- **Related Notes: Linked from by note.** Linked from lists the notes that
+  link here, newest updated first, each saying when it was updated and how
+  many links it has, with its lines beneath; the count is of notes. A line
+  unfolds onto the rest of its section, and **Open as search** (or **Open
+  all as a search** past fifty lines) opens every linking entry as a search
+  page, ready for Refine, Bulk edit, Save, and Export.
+
 - **Search: `is:daily` and `is:periodic`.** `is:daily` finds what was
   written in daily notes, tasks included, and `-is:daily` leaves it out;
   `is:periodic` adds weekly and monthly notes. Both are in the builder's

@@ -421,6 +421,17 @@ and the Notes Graph's overlay layers over its canvas.
 | `.markdown` | Raw Markdown source, amber left rule. |
 | `.rendered` | Rendered Markdown body. |
 
+### Linked from
+
+Related Notes' **Linked from** is a `.link-group` per linking note: a
+`.link-group-head` with the note's `.link-group-open` button and its
+`.link-group-meta` (*3 days ago · 2 links*), then a `.link-list` of
+`.link-row`s. A row with a section to show has a `.link-expand` chevron
+(`aria-expanded`, *Show the rest of this section*) that unfolds a
+`.link-section`; which rows are open is kept across redraws. The group ends in
+one `.links-more` foot line whose `.links-search` button posts
+`openLinksSearch`; the host builds the search itself.
+
 ### Task board
 
 `getTaskBoardCss()` and four script helpers draw the Task Board page's

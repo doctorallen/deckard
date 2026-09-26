@@ -876,6 +876,24 @@ export interface NoteLinkEntry {
   text: string;
   /** The headings the line sits under, outermost first. */
   headingPath: string[];
+  /**
+   * The rest of the section the line is in, as plain text, cut at 15 lines
+   * or 1,500 characters, for a link row to unfold.
+   */
+  sectionText?: string;
+}
+
+/** The lines of one note that link to the note being read. */
+export interface NoteLinkGroup {
+  filePath: string;
+  title: string;
+  updatedAt?: number;
+  /** When the note was last updated, in words: `3 days ago`. */
+  updatedLabel?: string;
+  /** The lines listed, in the order they are written. */
+  entries: NoteLinkEntry[];
+  /** How many links the note has here, listed or not. */
+  linkCount: number;
 }
 
 /** A mention of the note's name without a link, which can be made one. */
@@ -894,6 +912,11 @@ export interface LinkMentionMessage {
   startColumn: number;
 }
 
+/** Related Notes' Open as search: every entry that links to the note. */
+export interface OpenLinksSearchMessage {
+  type: 'openLinksSearch';
+}
+
 /** Related Notes' Link all: every mention of the note, as one write. */
 export interface LinkAllMentionsMessage {
   type: 'linkAllMentions';
@@ -901,8 +924,12 @@ export interface LinkAllMentionsMessage {
 
 /** What points at the note being read. */
 export interface NoteLinks {
-  linkedFrom: NoteLinkEntry[];
+  /** The notes that link here, newest updated first, each with its lines. */
+  linkedFromNotes: NoteLinkGroup[];
+  /** How many links there are, listed or not. */
   linkedFromCount: number;
+  /** How many notes they are in. */
+  linkedFromNoteCount: number;
   mentions: NoteMention[];
   mentionCount: number;
 }
@@ -1508,6 +1535,7 @@ export type SearchPageMessage =
 
 export type SidebarMessage =
   | LinkMentionMessage
+  | OpenLinksSearchMessage
   | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage

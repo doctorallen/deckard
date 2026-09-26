@@ -456,6 +456,9 @@ export function parseSidebarMessage(
   if (value.type === 'linkAllMentions') {
     return { type: 'linkAllMentions' };
   }
+  if (value.type === 'openLinksSearch') {
+    return { type: 'openLinksSearch' };
+  }
   if (value.type === 'insertLink' && isSourceMessage(value)) {
     return {
       type: 'insertLink',

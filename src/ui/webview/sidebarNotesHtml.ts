@@ -10,6 +10,7 @@ import {
 } from './components';
 import {
   calendarPlusIcon,
+  chevronRightIcon,
   dashboardIcon,
   helpIcon,
   ICON_PATHS,
@@ -54,7 +55,17 @@ export function getSidebarNotesHtml(
 .links-group summary { color: var(--muted); font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .links-count { color: var(--text); }
 .link-list { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
-.link-row { display: flex; align-items: flex-start; gap: var(--space-1); }
+.link-row { display: grid; gap: 2px; }
+.link-line { display: flex; align-items: flex-start; gap: var(--space-1); min-width: 0; }
+.link-group { display: grid; gap: 2px; margin-top: var(--space-2); }
+.link-group-head { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; padding: 0 var(--space-2); }
+.link-group-open { flex: 0 1 auto; min-width: 0; min-height: 0; padding: 0; overflow: hidden; border-color: transparent; background: transparent; color: var(--cyan); font-size: var(--text-sm); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.link-group-meta { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); }
+.link-expand { flex: 0 0 auto; width: 28px; min-width: 28px; min-height: 28px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
+.link-expand svg { width: 14px; height: 14px; transition: transform 120ms ease; }
+.link-expand[aria-expanded="true"] svg { transform: rotate(90deg); }
+.link-section { margin: 0 0 var(--space-1) var(--space-2); padding-left: var(--space-2); border-left: 1px solid var(--line); color: var(--muted); font-size: var(--text-xs); white-space: pre-wrap; overflow-wrap: anywhere; }
+.links-search { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .link-open { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; min-height: 0; padding: var(--space-1) var(--space-2); border-color: transparent; background: transparent; text-align: left; }
 .link-note { color: var(--cyan); font-size: var(--text-sm); }
 .link-path { color: var(--muted); font-size: var(--text-xs); }
@@ -342,30 +353,50 @@ ${getComponentScript()}
   /** Render explicit empty states so the sidebar explains why no notes appear. */
   /** Which of the Links groups are open, kept across redraws. */
   const linksOpen = { linked: true, mentions: false };
+  /** The link rows unfolded onto their section, by file and line. */
+  const openLinkSections = new Set();
 
   /**
-   * What points at the note: the notes that link to it, each line under its
-   * headings, and the notes that name it without a link, each of which can
-   * be made one here or all at once.
+   * What points at the note: the notes that link to it, each with its lines
+   * under their headings, and the notes that name it without a link, each of
+   * which can be made one here or all at once.
    */
   function renderLinks(links) {
     if (!links || (!links.linkedFromCount && !links.mentionCount)) return '';
-    const row = function (entry, extra) {
+    const row = function (entry, extra, withTitle) {
       const path = entry.headingPath && entry.headingPath.length ? '<span class="link-path">' + escapeHtml(entry.headingPath.join(' › ')) + '</span>' : '';
-      return '<li class="link-row"><button type="button" class="link-open" data-action="open-link" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-tip="Open this line. Cmd/Ctrl-click to open it beside the note."><span class="link-note">' + escapeHtml(entry.title) + '</span>' + path + '<span class="link-context">' + escapeHtml(entry.text) + '</span></button>' + (extra || '') + '</li>';
+      const key = entry.filePath + ':' + entry.line;
+      const expanded = entry.sectionText && openLinkSections.has(key);
+      const expander = entry.sectionText
+        ? '<button type="button" class="link-expand" data-action="toggle-link-section" data-section-key="' + escapeHtml(key) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-label="Show the rest of this section" data-tip="Show the rest of this section">${chevronRightIcon}</button>'
+        : '';
+      return '<li class="link-row"><div class="link-line"><button type="button" class="link-open" data-action="open-link" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-tip="Open this line. Cmd/Ctrl-click to open it beside the note.">' + (withTitle ? '<span class="link-note">' + escapeHtml(entry.title) + '</span>' : '') + path + '<span class="link-context">' + escapeHtml(entry.text) + '</span></button>' + (extra || '') + expander + '</div>'
+        + (expanded ? '<p class="link-section">' + escapeHtml(entry.sectionText) + '</p>' : '')
+        + '</li>';
     };
     const more = function (shown, count) {
       return count > shown ? '<p class="links-more">' + (count - shown) + ' more not listed</p>' : '';
     };
+    const groups = links.linkedFromNotes || [];
+    const shownLines = groups.reduce(function (total, group) { return total + group.entries.length; }, 0);
+    const searchTip = 'Search for every entry that links here, so Refine, Bulk edit, Save, and Export work on them';
+    const foot = links.linkedFromCount > shownLines
+      ? '<p class="links-more">' + (links.linkedFromCount - shownLines) + ' more not listed. <button type="button" class="links-search" data-action="open-links-search" data-tip="' + searchTip + '">Open all as a search</button></p>'
+      : '<p class="links-more"><button type="button" class="links-search" data-action="open-links-search" data-tip="' + searchTip + '">Open as search</button></p>';
     const linked = links.linkedFromCount
-      ? '<details class="links-group" data-links-group="linked"' + (linksOpen.linked ? ' open' : '') + '><summary>Linked from <span class="links-count">' + links.linkedFromCount + '</span></summary><ul class="link-list">'
-        + links.linkedFrom.map(function (entry) { return row(entry); }).join('') + '</ul>' + more(links.linkedFrom.length, links.linkedFromCount) + '</details>'
+      ? '<details class="links-group" data-links-group="linked"' + (linksOpen.linked ? ' open' : '') + '><summary>Linked from <span class="links-count">' + (links.linkedFromNoteCount || groups.length) + '</span></summary>'
+        + groups.map(function (group) {
+          const first = group.entries[0];
+          const meta = [group.updatedLabel, group.linkCount > 1 ? group.linkCount + ' links' : ''].filter(Boolean).join(' · ');
+          return '<section class="link-group" aria-label="' + escapeHtml(group.title) + '"><div class="link-group-head"><button type="button" class="link-group-open" data-action="open-link" data-file-path="' + escapeHtml(group.filePath) + '" data-line="' + (first ? first.line : 1) + '" data-tip="Open ' + escapeHtml(group.title) + ' at its first link here">' + escapeHtml(group.title) + '</button>' + (meta ? '<span class="link-group-meta">' + escapeHtml(meta) + '</span>' : '') + '</div>'
+            + '<ul class="link-list">' + group.entries.map(function (entry) { return row(entry); }).join('') + '</ul></section>';
+        }).join('') + foot + '</details>'
       : '';
     const mentions = links.mentionCount
       ? '<details class="links-group" data-links-group="mentions"' + (linksOpen.mentions ? ' open' : '') + '><summary>Mentioned without a link <span class="links-count">' + links.mentionCount + '</span></summary>'
         + '<button type="button" class="link-all" data-action="link-all-mentions" data-tip="Make every mention a [[link]], as one change Undo Last Change takes back">Link all</button><ul class="link-list">'
         + links.mentions.map(function (entry) {
-          return row(entry, '<button type="button" class="link-one" data-action="link-mention" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-start-column="' + entry.startColumn + '" aria-label="Link this mention of ' + escapeHtml(entry.name) + ' in ' + escapeHtml(entry.title) + '" data-tip="Make this mention a [[link]]">Link</button>');
+          return row(entry, '<button type="button" class="link-one" data-action="link-mention" data-file-path="' + escapeHtml(entry.filePath) + '" data-line="' + entry.line + '" data-start-column="' + entry.startColumn + '" aria-label="Link this mention of ' + escapeHtml(entry.name) + ' in ' + escapeHtml(entry.title) + '" data-tip="Make this mention a [[link]]">Link</button>', true);
         }).join('') + '</ul>' + more(links.mentions.length, links.mentionCount) + '</details>'
       : '';
     return '<section class="note-links" aria-label="Links to this note">' + linked + mentions + '</section>';
@@ -530,6 +561,20 @@ ${getComponentScript()}
     const one = event.target.closest('[data-action="link-mention"]');
     if (one) {
       vscode.postMessage({ type: 'linkMention', filePath: one.dataset.filePath, line: Number(one.dataset.line), startColumn: Number(one.dataset.startColumn) });
+      return;
+    }
+    const expand = event.target.closest('[data-action="toggle-link-section"]');
+    if (expand) {
+      const key = expand.dataset.sectionKey;
+      if (openLinkSections.has(key)) openLinkSections.delete(key);
+      else openLinkSections.add(key);
+      render();
+      const again = Array.prototype.find.call(document.querySelectorAll('[data-action="toggle-link-section"]'), function (button) { return button.dataset.sectionKey === key; });
+      if (again && again.focus) again.focus();
+      return;
+    }
+    if (event.target.closest('[data-action="open-links-search"]')) {
+      vscode.postMessage({ type: 'openLinksSearch' });
       return;
     }
     if (event.target.closest('[data-action="link-all-mentions"]')) vscode.postMessage({ type: 'linkAllMentions' });

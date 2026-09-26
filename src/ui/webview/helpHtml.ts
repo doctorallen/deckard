@@ -612,7 +612,7 @@ tag = #project/atlas AND task = open
     <section id="connections">
       <h2>Related notes and the graph</h2>
       <div class="cards">
-        <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing.</p></div>
+        <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing. Under them, <strong>Linked from</strong> lists the notes that link here, newest first, each line unfolding onto its section, and <strong>Open as search</strong> opens them all as a search.</p></div>
         <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each. It can follow the cursor, and a heading’s context menu opens or renames its tags.</p></div>
         <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighborhood instead, one to three hops out, following the editor as you move between notes. Reset graph can be undone for a few seconds.</p></div>
         <div class="card"><h3>Stats</h3><p>Index totals of files, notes, tasks, and tags, the notes nothing links to, the tags that look like one idea spelled twice, and the tags and notes you open most. It also lists any note Deckard could not read, with why, so a search that comes back short does not just look like a bad search.</p></div>
