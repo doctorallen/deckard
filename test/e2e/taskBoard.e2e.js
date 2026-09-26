@@ -57,12 +57,12 @@ function createGlobalState() {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function openBoard(prepare = async () => undefined) {
+async function openBoard(prepare = async () => undefined, makeIndex = createIndex) {
   vscode._test.createdPanels.length = 0;
   vscode._test.settings.clear();
   vscode._test.configurationUpdates.length = 0;
   const updates = new vscode.EventEmitter();
-  const index = createIndex();
+  const index = makeIndex();
   const preferences = new PreferencesStore(createGlobalState());
   await prepare(preferences);
   const activeSearch = new ActiveSearch();
@@ -241,6 +241,39 @@ test('a card breaks into steps from its menu and from s, which ask the host', as
   } finally {
     panel._onWebviewMessage = deliver;
   }
+});
+
+/** A task with three steps: one done, one plain, and one with a date of its own. */
+function createIndexWithSteps() {
+  const index = createIndex();
+  const step = (id, title, lineNumber, completed, extra = {}) => ({
+    id, filePath: 'notes/tasks.md', title, completed, tags: [], tagLabels: {},
+    associationTagGroups: [[]], lineNumber, checkboxColumn: 5, checkboxValue: completed ? 'x' : ' ',
+    sourceLineText: `  - [${completed ? 'x' : ' '}] ${title}`, parentTaskId: 'plan', ...extra,
+  });
+  index.tasks.set('plan', {
+    id: 'plan', filePath: 'notes/tasks.md', title: 'Plan the offsite', completed: false, tags: [], tagLabels: {},
+    associationTagGroups: [[]], lineNumber: 10, checkboxColumn: 3, checkboxValue: ' ',
+    sourceLineText: '- [ ] Plan the offsite',
+    steps: { ids: ['venue', 'email', 'caterer'], total: 3, done: 1, next: 'Draft the email' },
+  });
+  index.tasks.set('venue', step('venue', 'Book the venue', 11, true));
+  index.tasks.set('email', step('email', 'Draft the email', 12, false));
+  index.tasks.set('caterer', step('caterer', 'Call the caterer', 13, false, { dueAt: Date.now(), dueText: 'today' }));
+  return index;
+}
+
+test('a card says how far along its steps are, and a plain step rides on it', async () => {
+  const { view, cards } = await openBoard(undefined, createIndexWithSteps);
+  const ids = cards();
+  assert.ok(ids.includes('plan'));
+  assert.ok(!ids.includes('email'), 'a plain step has no card of its own');
+  assert.ok(ids.includes('caterer'), 'a dated step keeps its card');
+  const plan = view.find('.board-card[data-task-id="plan"]');
+  assert.strictEqual(plan.querySelector('.board-steps').textContent, '1 of 3 steps · next: Draft the email');
+  assert.ok(plan.getAttribute('aria-label').includes('1 of 3 steps'));
+  view.click(plan.querySelector('[data-action="board-menu"]'));
+  assert.ok(view.find('#action-menu [data-menu-value="break-steps"]').textContent.includes('Add steps…'));
 });
 
 test('a column that takes a card takes a new task, and a menu offers any date', async () => {

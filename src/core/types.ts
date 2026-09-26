@@ -486,6 +486,8 @@ export interface DashboardTask {
   overdue?: boolean;
   /** Whether it passed so long ago the task needs a new date; drawn muted. */
   stale?: boolean;
+  /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
+  stepsLabel?: string;
 }
 
 export interface DashboardNote extends TagOverviewCard {
@@ -1774,6 +1776,8 @@ export interface TaskBoardCard {
    * `due:` is no due date; a date other than today or tomorrow adds none.
    */
   current: string[];
+  /** How far along its steps are, `2 of 5 steps`, and the next open one. */
+  steps?: { label: string; next?: string };
 }
 
 export interface TaskBoardColumn {

@@ -16,9 +16,12 @@
   in the palette and the editor's Deckard submenu, on the Tasks view's
   right-click menu, and on a board card's ⋯ menu or its **s** key — writes
   `- [ ]` steps under a task, one per line typed, shown beside the steps
-  already written, in one change Undo takes back. A checkbox indented under
-  a task is now one of its steps: `is:step` finds steps, and `has:steps` /
-  `no:steps` find tasks with and without them.
+  already written, in one change Undo takes back. The task then says
+  "2 of 5 steps · next: Draft the email" on its card and row, and opens to
+  its steps in the Tasks view. A checkbox indented under a task is now one
+  of its steps: `is:step` finds steps, and `has:steps` / `no:steps` find
+  tasks with and without them.
+
 
 - **Parked notes.** A note, folder, or tag can be parked: still indexed and
   searchable, with `is:parked` and last in Find and on search pages, but
@@ -342,6 +345,14 @@
   there is none. Find offers the same row when what you type is a day.
 
 ### Changed
+
+- **Nested checklists fold into their task.** On the Task board and in the
+  Tasks view — and so Home's agenda and the status bar count — a plain
+  checkbox written under a task now rides on that task's card or row
+  instead of being a card of its own, so an existing note with nested
+  checklists shows fewer, richer cards. A step with its own date,
+  priority, person, or tag is still listed; search pages list every step
+  they find.
 
 - **A save no longer holds VS Code up while Deckard redraws.** A save
   updates only that note's part of the index — about 20 ms at 5,000 notes,

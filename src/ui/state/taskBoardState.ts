@@ -9,6 +9,7 @@ import {
   quoteTask,
   readNamespaceValues,
 } from './tagGrouping';
+import { describeStepParts, foldSteps } from '../../core/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
 import { needsNewDate } from '../../core/taskPolicy';
@@ -157,7 +158,10 @@ export function createTaskBoard(
   options: TaskBoardOptions,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): TaskBoardSnapshot {
-  const { tasks, parkedLeftOut } = selectTasks(index, search.query);
+  const selected = selectTasks(index, search.query);
+  // A plain step rides on its task's card, so five steps are not five cards.
+  const tasks = foldSteps(selected.tasks);
+  const { parkedLeftOut } = selected;
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
 
@@ -1036,6 +1040,7 @@ function createCard(
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
     current: currentMoves(task, today, statusNamespace),
+    ...(task.steps ? { steps: describeStepParts(task.steps) } : {}),
   };
 }
 

@@ -1,5 +1,6 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
+import { describeSteps, isPlainStep } from '../../core/markdown/taskSteps';
 import {
   addDays,
   formatIsoDate,
@@ -71,6 +72,10 @@ export interface AgendaEntry {
   at: number;
   /** Short facts shown beside the title, such as "due Mon 2026-09-14". */
   details: string[];
+  /** The task's own steps, done and open, in the order they are written. */
+  steps?: Task[];
+  /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
+  stepsLabel?: string;
 }
 
 export interface AgendaGroup {
@@ -210,7 +215,14 @@ export function createAgenda(
     statusNamespace = 'status',
     taskOrder = [],
   } = options;
-  const listed = [...tasks];
+  // A plain step rides on its open task's row, so five steps are not five
+  // rows, nor five in the count; one with a date, priority, person, or tag
+  // of its own is still listed on its own.
+  const all = [...tasks];
+  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
+  const listed = all.filter(
+    (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
+  );
   const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
   const byRank =
     (fallback: (left: AgendaEntry, right: AgendaEntry) => number) =>
@@ -559,6 +571,10 @@ function createEntry(
   const blockers = (task.dependsOn ?? []).filter((id) =>
     openDependencyIds.has(id),
   );
+  const stepsLabel = task.steps ? describeSteps(task.steps) : undefined;
+  const steps = task.steps?.ids
+    .map((id) => index.tasks.get(id))
+    .filter((step): step is Task => step !== undefined);
   return {
     task,
     title: stripTrailingTags(task.title) || task.title,
@@ -569,8 +585,11 @@ function createEntry(
       placement.reason,
       task.priority ? `${task.priority} priority` : '',
       blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
+      stepsLabel ?? '',
       fileName,
     ].filter(Boolean),
+    ...(steps && steps.length > 0 ? { steps } : {}),
+    ...(stepsLabel ? { stepsLabel } : {}),
   };
 }
 

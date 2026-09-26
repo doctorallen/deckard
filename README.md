@@ -24,7 +24,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, person, or any tag namespace, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and a 👤 field for who a task is for, written in either Obsidian Tasks format. |
 | [Task editor](#editing-a-whole-task) | One command builds or edits a whole task — dates in plain words, priority, repeat rule, what it waits for — and writes the line. |
-| [Steps](#breaking-a-task-into-steps) | Break a task into steps written under it. |
+| [Steps](#breaking-a-task-into-steps) | Break a task into steps; its card says how far along it is and what is next. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
@@ -360,6 +360,8 @@ A checkbox indented under a task is one of its **steps**:
 
 A step follows its list's indentation: a heading, a code block, or an unindented paragraph ends the list, a blank line does not, and a checkbox under a plain bullet is a task of its own. `is:step` finds steps, and `has:steps` the tasks that have them.
 
+A task with steps says how far along it is — **2 of 5 steps · next: Draft the email** — on its board card, in task rows on search pages and Home, and in the Tasks view, where it opens to its steps, each with its own checkbox and menu. On the Task board and in the Tasks view a step rides on its task rather than being listed on its own, so five steps are not five cards; a step with its own date, priority, person, or tag stays listed, since it would otherwise leave Today or someone's column, and a step whose task is done or not in the list is listed as any task is. Search pages list what they find: `-is:step` leaves steps out.
+
 ### Typing metadata
 
 Type `/` after a space in a task to pick metadata instead of typing it:
@@ -578,6 +580,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Drag a task onto a group** to make it belong to that group, written into the task through the same checked edit the board's drops make: a **priority**, a **status**, **Today** for a due date, a **tag** in the namespace, replacing the one it was dragged from, or a **person**, which rewrites who the task is for and leaves anyone else named on the line as a mention. **Nobody named** takes the name off. **Overdue**, **Later**, and **Needs a new date** cover a range of days rather than one, so they name no edit and say so. A tag the task inherits cannot be taken away by dragging, and Deckard says which heading or front matter gave it.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - **Right-click a task** to make it due today, tomorrow, or next Monday, or on a date typed [in plain words](#dates-in-plain-words), to open it in the task editor, which the pencil beside it does too, or to [break it into steps](#breaking-a-task-into-steps). Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
+- **A task with steps** reads *2 of 5 steps · next: Draft the email* and opens to its steps, each with a checkbox; plain steps are not listed again on their own. See [Breaking a task into steps](#breaking-a-task-into-steps).
 - **Reschedule All…** on a group dates every task in it at once, and the calendar button beside **Overdue** does the same for what is overdue. `Deckard: Reschedule Overdue Tasks…` does it from the palette. Each day it offers says how full it already is — *Fri 2026-09-25 · 3 due · 1 scheduled* — and for several tasks it offers two more:
   - **Spread over the next 5 days** gives them the next five weekdays, from today or from Monday on a weekend, oldest due first, so 17 tasks are 4, 4, 3, 3, and 3.
   - **3 for today, the rest next week**, for four or more, keeps the three most important today and moves the rest to next Monday.
@@ -601,7 +604,7 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu — the card moves at once, and the board says so if the note could not be written — which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The menu's **Note** group has **Move to…**, which moves the task and its steps under another heading. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns. Parked tasks are left off the board unless its search says `is:parked`; Refine's **Parked** value, with how many were left out, adds it.
+Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu — the card moves at once, and the board says so if the note could not be written — which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The menu's **Note** group has **Move to…**, which moves the task and its steps under another heading. A card whose task has steps carries a line under its details, **2 of 5 steps · next: Draft the email**, and its plain steps have no cards of their own. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns. Parked tasks are left off the board unless its search says `is:parked`; Refine's **Parked** value, with how many were left out, adds it.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 

@@ -1,3 +1,4 @@
+import { describeSteps } from '../../core/markdown/taskSteps';
 import {
   isParkedFile,
   isParkedSection,
@@ -1459,6 +1460,7 @@ export function createDashboardTask(
           ...(due.stale ? { stale: true } : {}),
         }
       : {}),
+    ...(task.steps ? { stepsLabel: describeSteps(task.steps) } : {}),
   };
 }
 

@@ -44,11 +44,16 @@ if (!chrome) {
 }
 
 /** Enough tasks that the busiest column must scroll, and titles that wrap. */
-function createIndex() {
+function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
     lines.push(`- [ ] ${i === 1 ? long : `Overdue task ${i}`} 📅 2026-09-01 #status/doing`);
+    // The board's cards: the long first task has steps, the next of them
+    // too long for a column, so its line must ellipsize, not widen the card.
+    if (i === 1 && withSteps) {
+      lines.push('  - [x] Find the market stall', '  - [ ] Draft the report for the precinct before the rain comes back');
+    }
   }
   for (let i = 1; i <= 12; i += 1) {
     lines.push(`- [ ] Later task ${i} 📅 2026-12-01`);
@@ -112,13 +117,15 @@ const NOW = new Date(2026, 8, 21, 12).getTime();
  */
 function createSurfaces(zen) {
   const { index, files } = createIndex();
+  // Only the board's surfaces carry steps, so no other page's pixels move.
+  const boardIndex = createIndex(true).index;
   const preferences = new PreferencesStore(createGlobalState());
   return [
     {
       page: 'taskBoard',
       viewport: [1400, 900],
       snapshot: () => createTaskBoard(
-        index,
+        boardIndex,
         preferences.value,
         { query: '' },
         { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
@@ -135,7 +142,7 @@ function createSurfaces(zen) {
       page: 'taskBoard',
       viewport: [900, 700],
       snapshot: () => createTaskBoard(
-        index,
+        boardIndex,
         { ...preferences.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
         { query: '' },
         { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },

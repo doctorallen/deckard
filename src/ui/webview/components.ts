@@ -662,6 +662,9 @@ export function getTaskBoardCss(): string {
    "overdue" muted beside a small red dot, so the word still says it. */
 .task .board-details .overdue.quiet { color: var(--muted); }
 .task .board-details .overdue.quiet::before { content: ""; display: inline-block; width: 0; height: 0; margin-right: 4px; border: 3px solid var(--danger); border-radius: 50%; vertical-align: middle; }
+/* A task's steps, one line under its details: the count comes first, so
+   in a narrow column it is the next step that gives way to the ellipsis. */
+.board-steps { margin: 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Over its work-in-progress limit: a neutral dashed outline, never red. */
 .board-column.over-limit { outline: var(--edge) dashed var(--line-strong); outline-offset: -1px; }
 .board-column[data-column-id="due:needsdate"] .board-column-title { color: var(--muted); }
@@ -2339,7 +2342,12 @@ ${getUndoScript()}
     // in full otherwise: its title, its column, and when it is due.
     const columnLabel = (columns.find(function (column) { return column.id === columnId; }) || {}).label;
     const dueDetail = (card.details || []).find(function (detail) { return /^(due|overdue|was due)/i.test(detail); });
-    const cardName = [plainTitle, columnLabel, dueDetail].filter(Boolean).join(', ');
+    const steps = card.steps
+      ? '<p class="source board-steps"><span class="board-steps-label">' + escapeHtml(card.steps.label) + '</span>'
+        + (card.steps.next ? '<span class="board-steps-next"> · next: ' + escapeHtml(card.steps.next) + '</span>' : '')
+        + '</p>'
+      : '';
+    const cardName = [plainTitle, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
     // The board is one Tab stop: the card last focused, or the first. Arrow
     // keys move between cards, and a card's checkbox and menu are keys of
     // their own, so neither is a Tab stop either.
@@ -2349,6 +2357,7 @@ ${getUndoScript()}
       + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" data-tip="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
+      + steps
       + '<span class="task-source">' + escapeHtml(formatSourceLocation(String(card.filePath).split('/').pop() || card.filePath, card.line)) + '</span>'
       + (cardPath ? '<span class="task-source heading-path">' + cardPath + '</span>' : '')
       + renderIconButton({
@@ -2890,13 +2899,16 @@ ${getUndoScript()}
     const recurrence = task.recurrence
       ? '<span class="task-detail">Repeats ' + escapeHtml(task.recurrence) + '</span>'
       : '';
+    const steps = item.stepsLabel
+      ? '<span class="task-detail task-steps">' + escapeHtml(item.stepsLabel) + '</span>'
+      : '';
     const title = settings.titleDisplay === 'separate' ? item.renderedTitle : renderTaskTitle(item.renderedTitle, item.titleTags);
     // The headings above the task, tags stripped, under the file and line:
     // the same two lines a note card and the sidebar show.
     const taskPath = renderHeadingPath(item.headingPath, item.fileName, '');
     return '<div class="row task-row' + (task.completed ? ' completed' : '') + (settings.draggable ? ' is-draggable' : '') + '" draggable="false" tabindex="0" data-task-id="' + escapeHtml(task.id) + '" data-file-path="' + escapeHtml(task.filePath) + '" data-line="' + task.lineNumber + '">'
       + '<input type="checkbox" data-action="toggle-task" data-task-id="' + escapeHtml(task.id) + '" ' + (task.completed ? 'checked' : '') + ' aria-label="Toggle ' + escapeHtml(task.title) + '">'
-      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + (item.parked ? renderParkedLabel() : '') + dueDate + scheduled + priority + recurrence + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
+      + '<div><div class="task-title">' + title + '</div><div class="task-meta">' + (item.parked ? renderParkedLabel() : '') + dueDate + scheduled + priority + recurrence + steps + '<span class="task-source">' + escapeHtml(formatSourceLocation(item.fileName, task.lineNumber)) + '</span>' + (taskPath ? '<span class="task-source heading-path">' + taskPath + '</span>' : '') + '</div></div>'
       + (settings.trailing || '')
       + '</div>';
   }

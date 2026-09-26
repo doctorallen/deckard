@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 
+import { describeSteps } from '../../core/markdown/taskSteps';
 import { Task, WorkspaceIndex } from '../../core/types';
+import { stripTrailingTags } from '../state/queryBlockState';
 import { resolveSourceUri } from '../commands/navigation';
 import { writeSetting } from '../commands/settings';
 import {
@@ -48,7 +50,15 @@ export type AgendaNode =
       groupId?: string;
     }
   /** The row under a long group that shows the rest of it. */
-  | { kind: 'more'; groupId: string; hidden: number };
+  | { kind: 'more'; groupId: string; hidden: number }
+  /** One of a task's steps, under its task. */
+  | {
+      kind: 'step';
+      task: Task;
+      parentId: string;
+      uri: vscode.Uri | undefined;
+      groupId?: string;
+    };
 
 /**
  * How many overdue tasks are drawn before "Show N more". Seventeen overdue
@@ -171,6 +181,9 @@ export class AgendaTreeProvider
     if (node.kind === 'more') {
       return createMoreItem(node);
     }
+    if (node.kind === 'step') {
+      return createStepItem(node);
+    }
     return node.kind === 'group'
       ? createGroupItem(node.group, node.groupBy)
       : createTaskItem(node.entry, node.uri, node.groupId);
@@ -183,7 +196,22 @@ export class AgendaTreeProvider
   }
 
   public async getChildren(node?: AgendaNode): Promise<AgendaNode[]> {
-    if (node?.kind === 'task' || node?.kind === 'more') {
+    if (node?.kind === 'task') {
+      // A task with steps opens to them, each read again from the index.
+      const steps = (node.entry.steps ?? []).map(
+        (step) => this.indexer.getTask(step.id) ?? step,
+      );
+      return Promise.all(
+        steps.map(async (task) => ({
+          kind: 'step' as const,
+          task,
+          parentId: node.entry.task.id,
+          uri: await resolveSourceUri(task.filePath),
+          groupId: node.groupId,
+        })),
+      );
+    }
+    if (node?.kind === 'more' || node?.kind === 'step') {
       return [];
     }
     if (node?.kind === 'group') {
@@ -281,6 +309,13 @@ export class AgendaTreeProvider
       if (each.kind === 'more') {
         continue;
       }
+      if (each.kind === 'step') {
+        if (!seen.has(each.task.id)) {
+          seen.add(each.task.id);
+          tasks.push(this.indexer.getTask(each.task.id) ?? each.task);
+        }
+        continue;
+      }
       const entries = each.kind === 'task' ? [each.entry] : each.group.entries;
       for (const entry of entries) {
         if (seen.has(entry.task.id)) {
@@ -299,7 +334,8 @@ export class AgendaTreeProvider
     data: vscode.DataTransfer,
   ): void {
     // Each task goes with the group it was dragged from, which a move
-    // between tags needs: the tag to replace is the one it came from.
+    // between tags needs: the tag to replace is the one it came from. A
+    // step stays where it is written, under its task, so it is not dragged.
     const dragged: DraggedTask[] = source.flatMap((node) =>
       node.kind === 'task' ? [{ taskId: node.entry.task.id, groupId: node.groupId }] : [],
     );
@@ -333,7 +369,7 @@ export class AgendaTreeProvider
     if (tasks.length === 0) {
       return;
     }
-    if (target.kind === 'more') {
+    if (target.kind === 'more' || target.kind === 'step') {
       return;
     }
     if (target.kind === 'task') {
@@ -445,15 +481,17 @@ export class AgendaTreeProvider
   ): Promise<void> {
     let failed = false;
     for (const [node, state] of event.items) {
-      if (node.kind !== 'task') {
+      if (node.kind !== 'task' && node.kind !== 'step') {
         continue;
       }
-      // An open task's box completes it; a box under Done today reopens it.
+      // An open task's box completes it; a box under Done today, or a done
+      // step's, reopens it.
       const complete = state === vscode.TreeItemCheckboxState.Checked;
-      if (complete === node.entry.task.completed) {
+      const drawn = node.kind === 'task' ? node.entry.task : node.task;
+      if (complete === drawn.completed) {
         continue;
       }
-      const task = this.indexer.getTask(node.entry.task.id) ?? node.entry.task;
+      const task = this.indexer.getTask(drawn.id) ?? drawn;
       if (!(await toggleTask(task, complete))) {
         failed = true;
       }
@@ -488,7 +526,7 @@ export function createTaskTooltip(entry: AgendaEntry): vscode.MarkdownString {
   tooltip.appendMarkdown(
     `\n\n$(file) ${escapeMarkdown([entry.fileName, ...entry.context].join(' › '))}, line ${entry.task.lineNumber}`,
   );
-  tooltip.appendMarkdown('\n\nRight-click to date or edit it.');
+  tooltip.appendMarkdown('\n\nRight-click to date, edit, or break it into steps.');
   return tooltip;
 }
 
@@ -552,7 +590,9 @@ function createTaskItem(
 ): vscode.TreeItem {
   const item = new vscode.TreeItem(
     entry.title,
-    vscode.TreeItemCollapsibleState.None,
+    entry.steps && entry.steps.length > 0
+      ? vscode.TreeItemCollapsibleState.Collapsed
+      : vscode.TreeItemCollapsibleState.None,
   );
   // The group is part of the id: a task with two tags is drawn twice, and
   // VS Code refuses two items with one id.
@@ -580,6 +620,40 @@ function createTaskItem(
         uri,
         { selection: new vscode.Range(position, position), preview: false },
       ],
+    };
+  }
+  return item;
+}
+
+/**
+ * One of a task's steps, under it: checked when done, and its box completes
+ * or reopens it; it opens its line, and takes the same menu as a task.
+ */
+function createStepItem(node: {
+  task: Task;
+  parentId: string;
+  uri: vscode.Uri | undefined;
+  groupId?: string;
+}): vscode.TreeItem {
+  const { task } = node;
+  const item = new vscode.TreeItem(
+    stripTrailingTags(task.title) || task.title,
+    vscode.TreeItemCollapsibleState.None,
+  );
+  item.id = `agenda:step:${node.groupId ?? ''}:${node.parentId}:${task.id}`;
+  const done = task.completed;
+  item.checkboxState = {
+    state: done ? vscode.TreeItemCheckboxState.Checked : vscode.TreeItemCheckboxState.Unchecked,
+    tooltip: done ? 'Reopen this step' : 'Complete this step',
+  };
+  item.description = task.steps ? describeSteps(task.steps) : undefined;
+  item.contextValue = done ? 'deckardAgendaDoneTask' : 'deckardAgendaTask';
+  if (node.uri) {
+    const position = new vscode.Position(Math.max(task.lineNumber - 1, 0), 0);
+    item.command = {
+      command: 'vscode.open',
+      title: 'Open Task',
+      arguments: [node.uri, { selection: new vscode.Range(position, position), preview: false }],
     };
   }
   return item;
