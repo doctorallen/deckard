@@ -6,7 +6,6 @@ import {
   getPersonMarker,
   stripTags,
 } from '../../core/markdown/parser';
-import { formatIsoDate, startOfDay } from '../../core/markdown/taskMetadata';
 import { Section, Task } from '../../core/types';
 import {
   applyBulkEdit,
@@ -14,6 +13,7 @@ import {
   BulkEntry,
   describeBulkEditResult,
 } from './bulkEdit';
+import { askForDate } from './datePrompt';
 
 /**
  * Asking what to do to a search's results, and to which of them.
@@ -54,24 +54,6 @@ export function listBulkEdits(
     },
     tag,
   ];
-}
-
-/** A date a reader wrote, as the day it means. */
-export function parseBulkDate(
-  value: string,
-  now: number = Date.now(),
-): { date: string | undefined } | undefined {
-  const text = value.trim().toLowerCase();
-  if (!text) {
-    return { date: undefined };
-  }
-  if (text === 'today') {
-    return { date: formatIsoDate(startOfDay(now)) };
-  }
-  if (text === 'tomorrow') {
-    return { date: formatIsoDate(startOfDay(now) + 24 * 60 * 60 * 1000) };
-  }
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? { date: text } : undefined;
 }
 
 /** How one result reads in the list of results to choose from. */
@@ -164,19 +146,8 @@ async function readEdit(
   uri?: vscode.Uri,
 ): Promise<BulkEdit | undefined> {
   if (chosen === 'due') {
-    const written = await vscode.window.showInputBox({
-      title: 'Due date',
-      prompt: 'A date such as 2026-09-20, today, or tomorrow. Leave it empty to clear the date.',
-      validateInput: (value) =>
-        parseBulkDate(value)
-          ? undefined
-          : 'Write the date as YYYY-MM-DD, or today, or tomorrow.',
-    });
-    if (written === undefined) {
-      return undefined;
-    }
-    const parsed = parseBulkDate(written);
-    return parsed ? { kind: 'due', date: parsed.date } : undefined;
+    const read = await askForDate({ title: 'Due date' });
+    return read ? { kind: 'due', date: read.date } : undefined;
   }
 
   if (chosen === 'tag') {

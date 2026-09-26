@@ -7,6 +7,7 @@ import {
   getWikiLinkCompletionContext,
   WikiLinkCompletionProvider,
 } from '../ui/commands/linkSuggestions';
+import { describeDay, parseDatePhrase } from '../core/markdown/dates';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
@@ -129,6 +130,12 @@ suite('Wiki link suggestions', () => {
     const days = await complete('See [[tomorrow');
     assert.strictEqual(days.length, 1);
     assert.match(String(days[0].insertText), /^\d{4}-\d{2}-\d{2}\]\]$/, 'a day links to its daily note');
+    const october = await complete('See [[oct 3');
+    const expected = parseDatePhrase('oct 3')!.date!;
+    assert.strictEqual(october[0].label, expected, 'a month and day links to that day');
+    assert.strictEqual(october[0].detail, `${describeDay(expected)}, that day's note`);
+    const atlas = await complete('See [[Atlas');
+    assert.ok(atlas.every((item) => !/^\d{4}-/.test(String(item.label))), 'a name is not a day');
     provider.dispose();
   });
 

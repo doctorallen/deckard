@@ -1,12 +1,11 @@
 import * as assert from 'assert';
 
 import {
-  describeTaskDate,
   formatTaskDraft,
   isTaskLine,
-  parseTaskDateInput,
   parseTaskDraft,
 } from '../core/markdown/taskDraft';
+import { nameDay, parseDatePhrase } from '../core/markdown/dates';
 
 /** A Monday, so a weekday answer is easy to read. */
 const now = new Date(2026, 8, 21, 9, 0, 0).getTime();
@@ -83,7 +82,7 @@ suite('Task drafts', () => {
 
   test('reads a date the way people write one', () => {
     const date = (written: string): string | undefined | null => {
-      const read = parseTaskDateInput(written, now);
+      const read = parseDatePhrase(written, now);
       return read === undefined ? null : read.date;
     };
     assert.strictEqual(date('2026-09-25'), '2026-09-25');
@@ -101,6 +100,6 @@ suite('Task drafts', () => {
   });
 
   test('says a date back with its weekday', () => {
-    assert.strictEqual(describeTaskDate('2026-09-25'), 'Friday 2026-09-25');
+    assert.strictEqual(nameDay('2026-09-25'), 'Friday 2026-09-25');
   });
 });

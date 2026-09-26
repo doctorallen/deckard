@@ -24,6 +24,18 @@ suite('Capture reads its last words', () => {
     assert.strictEqual(read('Ship by 2026-10-02').due, '2026-10-02');
   });
 
+  test('a week, a month end, or a month and day, and a numeric date after a lead word', () => {
+    assert.strictEqual(read('Call Ren next week').line, '- [ ] Call Ren 📅 2026-09-28');
+    assert.strictEqual(read('Pay rent end of the month').due, '2026-09-30');
+    assert.strictEqual(read('Dinner oct 3').due, '2026-10-03');
+    const mdy = (text: string) =>
+      readCaptureText(`- [ ] ${text}`, 'emoji', now, { numericOrder: 'mdy' });
+    assert.strictEqual(mdy('Ship by 10/3').due, '2026-10-03');
+    assert.strictEqual(mdy('Ship 10/3').line, '- [ ] Ship 10/3', 'a numeric date needs its lead word');
+    assert.strictEqual(read('plan the weekend').line, '- [ ] plan the weekend');
+    assert.strictEqual(read('Read chapter 3').line, '- [ ] Read chapter 3');
+  });
+
   test('priority and a repeat rule, in any order with the day', () => {
     const reading = read('Water plants every week p2 friday');
     assert.strictEqual(reading.priority, 'high');

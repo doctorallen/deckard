@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../core/markdown/captureWords';
+import { readDateOptions } from './datePrompt';
 import { getPersonMarker } from '../../core/markdown/parser';
 import { Section, TagInfo } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -191,7 +192,12 @@ function writeCapture(answer: Omit<CaptureAnswer, 'target'>): string {
   const line = formatCaptureLine(answer.text);
   return answer.literal
     ? line
-    : readCaptureText(line, readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard'))).line;
+    : readCaptureText(
+        line,
+        readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
+        Date.now(),
+        readDateOptions(),
+      ).line;
 }
 
 /** Writes a capture as a plain list item, for an idea that is not a to-do. */

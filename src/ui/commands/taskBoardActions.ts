@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../core/markdown/captureWords';
+import { readDateOptions } from './datePrompt';
 import { parseMarkdown } from '../../core/markdown/parser';
 import { Task } from '../../core/types';
 import {
@@ -112,6 +113,8 @@ export async function captureIntoColumn(columnId: string): Promise<boolean> {
   let line = readCaptureText(
     formatCaptureLine(text),
     readTaskMetadataFormat(configuration),
+    Date.now(),
+    readDateOptions(),
   ).line;
   const [task] = parseMarkdown('capture.md', line).tasks;
   const move = task ? resolveTaskMove(task, columnId, readTaskBoardOptions()) : undefined;

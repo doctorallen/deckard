@@ -43,6 +43,15 @@
 
 ### Changed
 
+- **One way to write a date.** Every date box — the task editor, Due on a
+  Date, Reschedule, bulk edit, `[[` day links, and Capture — reads month
+  names (`oct 3`), `next week`, `end of month`, `last friday`, `3 days ago`,
+  and your display language's numeric dates (`10/3`), and says back the day
+  it read and how far off it is, such as *Monday 2026-09-28 · in 3 days*.
+  Words it cannot read get one message everywhere. Due Next Week is now
+  **Due Next Monday**, which is what it did; `+1m` from January 31st is
+  February 28th, not March 3rd.
+
 - **The release notes come from this changelog.** Each release now cuts
   `## Unreleased` into its own dated section, which the GitHub release and
   the Extensions view's Changelog tab both show. A feature release is not

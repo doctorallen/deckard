@@ -229,6 +229,8 @@ module.exports = {
     asRelativePath: (value) => String(value),
   },
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+  env: { language: 'en' },
+  InputBoxValidationSeverity: { Info: 1, Warning: 2, Error: 3 },
   commands: {
     registerCommand: () => ({ dispose: () => undefined }),
     // Host code sets context keys through this; a test reads what it set.

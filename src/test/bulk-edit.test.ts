@@ -16,8 +16,8 @@ import {
 import {
   describeEntry,
   listBulkEdits,
-  parseBulkDate,
 } from '../ui/commands/bulkEditPrompts';
+import { DATE_INPUT_ERROR, validateDateInput } from '../ui/commands/datePrompt';
 import { parseSearchPageMessage } from '../ui/webview/messages';
 import { workspaceWrites } from '../ui/commands/workspaceWrites';
 
@@ -69,17 +69,18 @@ suite('Bulk edits', () => {
     );
   });
 
-  test('reads the date a reader writes', () => {
+  test('reads the date a reader writes, as every date box does', () => {
     const now = new Date(2026, 8, 19, 10, 0, 0).getTime();
-    assert.deepStrictEqual(parseBulkDate('2026-09-20', now), {
-      date: '2026-09-20',
-    });
-    assert.deepStrictEqual(parseBulkDate('today', now), { date: '2026-09-19' });
-    assert.deepStrictEqual(parseBulkDate('Tomorrow', now), {
-      date: '2026-09-20',
-    });
-    assert.deepStrictEqual(parseBulkDate('  ', now), { date: undefined });
-    assert.strictEqual(parseBulkDate('next week', now), undefined);
+    const message = (value: string) => {
+      const said = validateDateInput(value, now);
+      return typeof said === 'object' ? said.message : said;
+    };
+    assert.strictEqual(message('2026-09-20'), 'Sunday 2026-09-20 · tomorrow');
+    assert.strictEqual(message('today'), 'Saturday 2026-09-19 · today');
+    assert.strictEqual(message('Tomorrow'), 'Sunday 2026-09-20 · tomorrow');
+    assert.strictEqual(message('  '), undefined, 'empty clears the date');
+    assert.strictEqual(message('next week'), 'Monday 2026-09-21 · in 2 days');
+    assert.strictEqual(message('whenever'), DATE_INPUT_ERROR);
   });
 
   test('offers notes only what a note can take', () => {

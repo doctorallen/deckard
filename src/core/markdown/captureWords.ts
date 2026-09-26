@@ -1,5 +1,6 @@
 import { TaskPriority } from '../types';
-import { parseTaskDateInput, parseTaskDraft, formatTaskDraft } from './taskDraft';
+import { DatePhraseOptions, parseDatePhrase } from './dates';
+import { parseTaskDraft, formatTaskDraft } from './taskDraft';
 import { parseRecurrence, TaskMetadataFormat } from './taskMetadata';
 
 /**
@@ -39,11 +40,31 @@ const REPEAT_WORDS: Readonly<Record<string, string>> = {
   yearly: 'every year',
 };
 
+const MONTH_NAME =
+  '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+
 /**
- * A day that needs no lead word: today, tomorrow, a whole weekday name, or
- * `in 3 days`, whose "in" already says it is a distance.
+ * A day that needs no lead word: today, tomorrow, a whole weekday name,
+ * `in 3 days`, whose "in" already says it is a distance, `next week`,
+ * `end of the month`, `this weekend`, or a month name with its day.
  */
-const PLAIN_DAY = /^(?:today|tomorrow|(?:next[ \t]+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)|in[ \t]+\d+[ \t]*(?:days?|weeks?|months?))$/;
+const PLAIN_DAY = new RegExp(
+  [
+    '^(?:today|tomorrow',
+    '(?:next )?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)',
+    'in \\d+ ?(?:days?|weeks?|months?)',
+    'next (?:week|month)',
+    'end of (?:the )?(?:week|month)',
+    'this weekend',
+    `${MONTH_NAME} \\d{1,2}(?:st|nd|rd|th)?`,
+    `\\d{1,2}(?:st|nd|rd|th)? ${MONTH_NAME})$`,
+  ].join('|'),
+);
+
+export function isPlainDay(phrase: string): boolean {
+  return PLAIN_DAY.test(phrase.toLowerCase().replace(/[ \t]+/g, ' '));
+}
+
 /** A day that reads as one only after a lead word: `fri`, `+2w`, `2026-10-02`. */
 const LEAD_WORDS = new Set(['on', 'by', 'due']);
 
@@ -51,6 +72,7 @@ export function readCaptureText(
   text: string,
   format: TaskMetadataFormat,
   now: number = Date.now(),
+  options: DatePhraseOptions = {},
 ): CaptureReading {
   const draft = parseTaskDraft(text.trim(), format);
   const words = draft.description.trim().split(/[ \t]+/).filter(Boolean);
@@ -85,7 +107,7 @@ export function readCaptureText(
       }
     }
     if (reading.due === undefined) {
-      const found = readTrailingDay(words, now);
+      const found = readTrailingDay(words, now, options);
       if (found) {
         reading.due = found.date;
         words.splice(words.length - found.length);
@@ -112,15 +134,16 @@ export function readCaptureText(
 function readTrailingDay(
   words: readonly string[],
   now: number,
+  options: DatePhraseOptions,
 ): { date: string; length: number } | undefined {
-  for (let length = Math.min(3, words.length - 1); length >= 1; length -= 1) {
+  for (let length = Math.min(4, words.length - 1); length >= 1; length -= 1) {
     const phrase = words.slice(words.length - length).join(' ').toLowerCase();
     const lead = words[words.length - length - 1]?.toLowerCase();
     const hasLead = lead !== undefined && LEAD_WORDS.has(lead) && words.length - length - 1 > 0;
-    if (!PLAIN_DAY.test(phrase) && !hasLead) {
+    if (!isPlainDay(phrase) && !hasLead) {
       continue;
     }
-    const parsed = parseTaskDateInput(phrase, now);
+    const parsed = parseDatePhrase(phrase, now, options);
     if (parsed?.date) {
       return { date: parsed.date, length: length + (hasLead ? 1 : 0) };
     }

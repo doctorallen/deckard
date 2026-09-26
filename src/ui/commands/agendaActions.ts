@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-import { parseTaskDateInput } from '../../core/markdown/taskDraft';
 import {
   addDays,
   formatIsoDate,
@@ -9,6 +8,7 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { Task } from '../../core/types';
 import { applyBulkEdit, describeBulkEditResult } from './bulkEdit';
+import { askForDate } from './datePrompt';
 import {
   quoteTaskTitle,
   readTaskMetadataFormat,
@@ -28,7 +28,10 @@ import {
 /** The dates offered by name, beside one typed in plain words. */
 export type DueChoice = 'today' | 'tomorrow' | 'nextWeek';
 
-/** The date a named choice means, as `YYYY-MM-DD`. Next week is its Monday. */
+/**
+ * The date a named choice means, as `YYYY-MM-DD`. `nextWeek` is the next
+ * Monday, and never today: on a Monday it is the Monday after.
+ */
 export function dueDateFor(choice: DueChoice, now: number = Date.now()): string {
   const today = startOfDay(now);
   if (choice === 'today') {
@@ -42,7 +45,7 @@ export function dueDateFor(choice: DueChoice, now: number = Date.now()): string 
 }
 
 /**
- * Asks for a date in plain words: `friday`, `in 3 days`, `2026-10-02`.
+ * Asks for a date in plain words: `friday`, `oct 3`, `in 3 days`.
  *
  * Returns the date, `undefined` for an empty answer, which clears the date,
  * or `null` when the box was closed.
@@ -50,19 +53,8 @@ export function dueDateFor(choice: DueChoice, now: number = Date.now()): string 
 export async function askForDueDate(
   subject: string,
 ): Promise<string | undefined | null> {
-  const answer = await vscode.window.showInputBox({
-    title: `Due date for ${subject}`,
-    prompt: 'A date in plain words: friday, next monday, in 3 days, +2w, or 2026-10-02. Empty clears it.',
-    placeHolder: 'friday',
-    validateInput: (value) =>
-      parseTaskDateInput(value) === undefined
-        ? 'Deckard cannot read that as a date.'
-        : undefined,
-  });
-  if (answer === undefined) {
-    return null;
-  }
-  return parseTaskDateInput(answer)?.date;
+  const read = await askForDate({ title: `Due date for ${subject}` });
+  return read === undefined ? null : read.date;
 }
 
 /**
@@ -117,8 +109,8 @@ export async function pickReschedule(
   const items: (vscode.QuickPickItem & { date?: string | undefined; ask?: boolean })[] = [
     { label: 'Today', description: dueDateFor('today', now), date: dueDateFor('today', now) },
     { label: 'Tomorrow', description: dueDateFor('tomorrow', now), date: dueDateFor('tomorrow', now) },
-    { label: 'Next week', description: dueDateFor('nextWeek', now), date: dueDateFor('nextWeek', now) },
-    { label: 'A date…', description: 'friday, in 3 days, 2026-10-02', ask: true },
+    { label: 'Next Monday', description: dueDateFor('nextWeek', now), date: dueDateFor('nextWeek', now) },
+    { label: 'A date…', description: 'friday, oct 3, in 3 days, 2026-10-02', ask: true },
     { label: 'No due date', date: undefined },
   ];
   const chosen = await vscode.window.showQuickPick(items, {

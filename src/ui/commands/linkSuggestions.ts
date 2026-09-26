@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
 import { BLOCK_ID_PATTERN, stripTags } from '../../core/markdown/parser';
-import { describeTaskDate, parseTaskDateInput } from '../../core/markdown/taskDraft';
+import { describeDay, parseDatePhrase } from '../../core/markdown/dates';
+import { readDateOptions } from './datePrompt';
 import { measureAsync } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
 import {
@@ -24,8 +25,6 @@ interface AccessSource {
   };
 }
 
-/** A date named in words inside `[[`, which links to that day's note. */
-const DATE_WORDS = /^(?:today|tomorrow|yesterday|(?:next[ \t]+)?(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*|in[ \t]+\d+[ \t]*[a-z]+|[+]\d+[dwm])$/i;
 
 interface IndexSource {
   readonly ready: Promise<void>;
@@ -219,15 +218,16 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
    */
   private completeDates(typed: string, range: vscode.Range): vscode.CompletionItem[] {
     const words = typed.trim();
-    if (!DATE_WORDS.test(words)) {
+    // A written ISO date is already the note's name, which the notes offer.
+    if (!words || /^\d{4}-\d{2}-\d{2}$/.test(words)) {
       return [];
     }
-    const date = parseTaskDateInput(words)?.date;
+    const date = parseDatePhrase(words, Date.now(), readDateOptions())?.date;
     if (!date) {
       return [];
     }
     const item = new vscode.CompletionItem(date, vscode.CompletionItemKind.Value);
-    item.detail = `${describeTaskDate(date)}, that day's note`;
+    item.detail = `${describeDay(date)}, that day's note`;
     item.insertText = `${date}]]`;
     item.filterText = typed;
     item.sortText = '!';

@@ -317,7 +317,7 @@ The pick lists every field with what the task says now, headed by the line as it
 | **Blocked by** | The `🆔` ids of the tasks that come first |
 | **Add a tag** | A tag from your workspace, or a new one, written at the end of the description |
 
-Dates are written the way people write them — `2026-09-25`, `today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `+2w`, `1 month` — and the box says which day it read as you type, such as *Friday 2026-09-25*. An empty answer clears the date, and words Deckard cannot read as a day are refused rather than guessed at.
+Dates are written the way people write them — `friday`, `oct 3`, `next week`, `end of month`, `in 3 days`, `3 days ago`, `2026-09-25`; see [Dates in plain words](#dates-in-plain-words) — and the box says which day it read and how far off it is as you type, such as *Monday 2026-09-28 · in 3 days*. An empty answer clears the date, and words Deckard cannot read as a day are refused rather than guessed at.
 
 - **Assignee** offers the people your notes already name, or takes a new one — `dana` and `@dana` both read as the person. It writes the `👤` field and leaves the words alone, so a person the task mentions stays mentioned. **Nobody** takes the field off.
 - **Nothing is written until you choose Write the task.** Escape leaves the line as it was.
@@ -338,12 +338,35 @@ Type `/` after a space in a task to pick metadata instead of typing it:
 
 Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the format the task already uses, or `deckard.tasks.metadataFormat` for a task without metadata. Set `deckard.tasks.metadataSuggestions` to `false` to turn them off.
 
+### Dates in plain words
+
+Every box that asks for a date — the task editor, a date from the Tasks view or the Task board, a bulk edit, `[[` day links, and [Quick capture](#quick-capture) — reads the same words, and says back the day it read before anything is written, such as *Monday 2026-09-28 · in 3 days*. On Friday 2026-09-25:
+
+| Written | Means |
+| --- | --- |
+| `2026-10-02`, `2026/10/02` | that day |
+| `today`, `tomorrow`, `yesterday` | as named |
+| `in 3 days`, `+2w`, `3 weeks`, `1 month` | that far ahead; a month is a calendar month, so Jan 31 plus a month is Feb 28 |
+| `3 days ago`, `2 weeks ago` | that far back |
+| `friday`, `fri`, `next friday`, `this friday` | the next Friday to come, never today: 2026-10-02 |
+| `last friday` | the Friday before today: 2026-09-18 |
+| `oct 3`, `3 Oct`, `October 3rd`, `Oct 3, 2027` | that day; with no year, the next one on or after today |
+| `next week` | next week's Monday: 2026-09-28 |
+| `end of week`, `eow` | the last day of this week: Saturday 2026-09-26 |
+| `end of month`, `eom` | the last day of this month: 2026-09-30 |
+| `next month` | the 1st of next month |
+| `weekend`, `this weekend` | the coming Saturday, or today on a weekend |
+
+A numeric date such as `10/3` is read in the order VS Code's display language writes dates: month first in English, day first in German or French. When it is not a real day in that order but is in the other, as `25/9` in English, the other order is used. Numeric dates are read only in a box, which shows the day before it writes it, never in a search.
+
+A search reads these too, but a week or a month there is the whole span: `due = next-week` is every day of next week, where `next week` in a date box is its Monday.
+
 ## Editor assistance
 
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its page, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
 - Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).
-- Inside `[[`, notes are offered in the order [Find](#find) ranks them: the words typed against each title, then how often and how lately you opened the note, with the notes you opened last first before anything is typed. After `[[Note#`, that note's headings are offered, written as a link names them, with their tags taken out; `[[#` offers this note's own, and `[[##words` searches the headings of every note. A day named in words, such as `[[tomorrow` or `[[next fri`, offers the link to that day's note, `[[2026-09-26]]`.
+- Inside `[[`, notes are offered in the order [Find](#find) ranks them: the words typed against each title, then how often and how lately you opened the note, with the notes you opened last first before anything is typed. After `[[Note#`, that note's headings are offered, written as a link names them, with their tags taken out; `[[#` offers this note's own, and `[[##words` searches the headings of every note. A day named in words, such as `[[tomorrow`, `[[next fri`, or `[[oct 3`, offers the link to that day's note, `[[2026-09-26]]`, with the day and how far off it is beside it.
 - **Reference counts** sit above a note's lines. The first line says **Linked from N notes** when other notes link to it, and each heading shows **N references** for links that name it, such as `[[Launch plan#Decision]]` or `[[#Decision]]`, and **N open tasks** for the open tasks beneath it. Select a count to list those links or tasks in VS Code's references peek. A tagged heading also shows **N entries share a tag**: the note sections, tasks, and front-matter-only notes elsewhere that carry one of the tags written on that heading. Tags inherited from a parent heading or the note's front matter do not count, and neither do entries in the same note. Select it to open [Related Notes](#related-notes) focused on the heading, which lists those entries along with weaker matches such as associated tags and shared keywords. Set `deckard.editor.referenceCounts` to `false` to hide them.
 - **Hovering a `[[Wiki link]]`** previews the note, or the section its `#Heading` names, and says how many other notes link to it. A link to a note that does not exist yet, or to a name several notes share, says so instead.
 - **Link problems** are marked in open notes. A `[[link]]` to a note that does not exist yet gets a **Create note** quick fix, which creates the note in your notes folder, and a name several notes share is a warning. `deckard.editor.linkDiagnostics` turns this off.
@@ -500,7 +523,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Drag a task onto another** to rank it there, which writes nothing to your notes — it is the same rank the [Task board's](#task-board) list uses.
 - **Drag a task onto a group** to make it belong to that group, written into the task through the same checked edit the board's drops make: a **priority**, a **status**, **Today** for a due date, or a **person**, which rewrites who the task is for and leaves anyone else named on the line as a mention. **Nobody named** takes the name off. **Overdue** and **Upcoming** cover a range of days rather than one, so they name no edit and say so.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
-- **Right-click a task** to make it due today, tomorrow, or next week (its Monday), or on a date typed in plain words, or to open it in the task editor, which the pencil beside it does too. Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
+- **Right-click a task** to make it due today, tomorrow, or next Monday, or on a date typed [in plain words](#dates-in-plain-words), or to open it in the task editor, which the pencil beside it does too. Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
 - **Reschedule All…** on a group dates every task in it at once, and the calendar button beside **Overdue** does the same for what is overdue. `Deckard: Reschedule Overdue Tasks…` does it from the palette.
 - Hovering a task shows its words, its dates and priority, and where it is written, under the headings above it.
 - The view's badge counts the tasks that are overdue or due today, whatever it is grouped by.
@@ -896,7 +919,7 @@ The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunda
 
 Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using. The box stays open when you click elsewhere. If you close it with words in it, the next Capture brings them back.
 
-The words at the end of a capture are read as a task manager's quick add reads them, in any order: a day (`today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, or a date), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), and a repeat rule (`every week`, `daily`). `Call Ren friday p2` is written as `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the line it will write is shown under what you type before it is saved. The **Keep the words as written** button in the capture box reads nothing from them. **Add as a note line**, under the task, writes a plain `- …` list item instead, for an idea that is not a to-do. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
+The words at the end of a capture are read as a task manager's quick add reads them, in any order: a day (`today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `next week`, `end of month`, `oct 3`, or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, `the weekend`, a date, or a numeric date such as `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), and a repeat rule (`every week`, `daily`). `Call Ren friday p2` is written as `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the line it will write is shown under what you type before it is saved. The **Keep the words as written** button in the capture box reads nothing from them. **Add as a note line**, under the task, writes a plain `- …` list item instead, for an idea that is not a to-do. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
 
 A capture goes after the last list item already there, or after a blank line below the last text. A note open in an editor keeps its unsaved changes, and the note is saved.
 

@@ -5,11 +5,10 @@ import {
   isPersonTag,
   readPerson,
 } from '../../core/markdown/parser';
+import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../core/markdown/dates';
 import {
-  describeTaskDate,
   formatTaskDraft,
   isTaskLine,
-  parseTaskDateInput,
   parseTaskDraft,
   TaskDraft,
 } from '../../core/markdown/taskDraft';
@@ -23,6 +22,7 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
+import { askForDate } from './datePrompt';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 
 /**
@@ -95,17 +95,17 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
     { label: 'Dates', kind: vscode.QuickPickItemKind.Separator },
     {
       label: '$(calendar) Due',
-      description: value(draft.due && describeTaskDate(draft.due)),
+      description: value(draft.due && nameDay(draft.due)),
       field: 'due',
     },
     {
       label: '$(watch) Scheduled',
-      description: value(draft.scheduled && describeTaskDate(draft.scheduled)),
+      description: value(draft.scheduled && nameDay(draft.scheduled)),
       field: 'scheduled',
     },
     {
       label: '$(rocket) Start',
-      description: value(draft.start && describeTaskDate(draft.start)),
+      description: value(draft.start && nameDay(draft.start)),
       field: 'start',
     },
     { label: 'And', kind: vscode.QuickPickItemKind.Separator },
@@ -249,8 +249,9 @@ export function setDraftDate(
   field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>,
   written: string,
   now: number,
+  options: DatePhraseOptions = {},
 ): TaskDraft | undefined {
-  const read = parseTaskDateInput(written, now);
+  const read = parseDatePhrase(written, now, options);
   return read ? { ...draft, [field]: read.date } : undefined;
 }
 
@@ -375,29 +376,12 @@ async function readDate(
   field: Extract<TaskDateField, 'due' | 'scheduled' | 'start'>,
   now: number,
 ): Promise<TaskDraft | undefined> {
-  const written = await vscode.window.showInputBox({
+  const read = await askForDate({
     title: `${field[0].toUpperCase()}${field.slice(1)} date`,
-    prompt:
-      'A date such as 2026-09-25, today, tomorrow, friday, next monday, or in 3 days. Leave it empty to clear it.',
     value: draft[field] ?? '',
-    ignoreFocusOut: true,
-    validateInput: (value) => {
-      const read = parseTaskDateInput(value, now);
-      if (!read) {
-        return 'Deckard cannot read that as a day.';
-      }
-      // Saying the day back is the point of accepting words for one.
-      return read.date
-        ? {
-            message: describeTaskDate(read.date),
-            severity: vscode.InputBoxValidationSeverity.Info,
-          }
-        : undefined;
-    },
+    now,
   });
-  return written === undefined
-    ? undefined
-    : setDraftDate(draft, field, written, now);
+  return read === undefined ? undefined : { ...draft, [field]: read.date };
 }
 
 /** Offers the tags already in the workspace, and takes a new one as typed. */

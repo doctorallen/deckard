@@ -13,6 +13,7 @@ import {
   parseIsoDate,
   parseTaskMetadata,
 } from './taskMetadata';
+import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
 
@@ -1556,42 +1557,8 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   return undefined;
 }
 
-const monthNumbers: Record<string, number> = {
-  january: 0,
-  jan: 0,
-  february: 1,
-  feb: 1,
-  march: 2,
-  mar: 2,
-  april: 3,
-  apr: 3,
-  may: 4,
-  june: 5,
-  jun: 5,
-  july: 6,
-  jul: 6,
-  august: 7,
-  aug: 7,
-  september: 8,
-  sep: 8,
-  sept: 8,
-  october: 9,
-  oct: 9,
-  november: 10,
-  nov: 10,
-  december: 11,
-  dec: 11,
-};
-
-const weekdayNames = [
-  'sunday',
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-];
+const monthNumbers = MONTH_NUMBERS;
+const weekdayNames = WEEKDAY_NAMES;
 
 function createLocalDate(
   year: number,
