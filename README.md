@@ -995,6 +995,8 @@ A capture goes after the last list item already there, or after a blank line bel
 
 Put Markdown files in a `templates` folder at the root of your workspace, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Deckard asks which template to use and the new note's title, then creates the note in your notes folder and opens it. Deckard never indexes the templates folder, so a template's tags and tasks stay out of your notes.
 
+Right-click a folder in the Explorer and choose **Deckard → New Note from Template Here…** to write the note into that folder instead; if Deckard does not index that folder, it says so. **Deckard: Create Daily Note** and **Deckard: New Note from Template** are also in **File → New File…** and on the Welcome page.
+
 | Placeholder | Becomes |
 | --- | --- |
 | `{title}` | The title you enter, which is also the file name. |
@@ -1074,7 +1076,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | Setting | Default | Description |
 | --- | --- | --- |
 | `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
-| `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide, such as `node_modules`. Set an inherited pattern to `false` here to index it anyway. |
+| `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide, such as `node_modules`. Set an inherited pattern to `false` here to index it anyway. Right-click a folder in the Explorer and choose **Deckard → Exclude from Deckard** to add it here, with Undo; **Include in Deckard** takes it out again. |
 | `deckard.theme` | `corpo` | Selects the visual style for Deckard webviews: `corpo`, which follows your VS Code theme, or one of `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.zenMode` | `false` | Turns Deckard's own chrome down in every webview: decorative labels and the grid backdrop are hidden, borders and headings thin out, and each row's file and line fold away until the row is hovered or focused. No control, count, or tag is removed. See [Zen mode](#zen-mode). |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. Help's What's new section lists recent releases either way. |

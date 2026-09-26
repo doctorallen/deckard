@@ -83,13 +83,25 @@ export async function listTemplates(
  * Creates a note from a template in the templates folder, asking for its title
  * and anything the template asks, and opens it. An existing note is never
  * overwritten.
+ *
+ * From the Explorer, `targetFolder` is the folder that was right-clicked: the
+ * note is written there rather than in the notes folder, and a folder Deckard
+ * does not index is said so once the note is made.
  */
 export async function newNoteFromTemplate(
   indexer: WorkspaceIndexer,
+  targetFolder?: vscode.Uri,
 ): Promise<vscode.Uri | undefined> {
   const title = 'Deckard: New Note from Template';
-  const folder = await chooseTargetFolder();
+  const folder = targetFolder
+    ? vscode.workspace.getWorkspaceFolder(targetFolder)
+    : await chooseTargetFolder();
   if (!folder) {
+    if (targetFolder) {
+      void vscode.window.showInformationMessage(
+        'Deckard writes notes inside a workspace folder. Choose a folder in the workspace.',
+      );
+    }
     return undefined;
   }
   const templatesUri = indexer.getTemplatesFolderUri(folder);
@@ -144,7 +156,7 @@ export async function newNoteFromTemplate(
     return undefined;
   }
 
-  const notesUri = indexer.getNotesFolderUri(folder);
+  const notesUri = noteFolderFor(indexer.getNotesFolderUri(folder), targetFolder);
   const noteUri = vscode.Uri.joinPath(notesUri, fileName);
   if (await exists(noteUri)) {
     void reportFailure({
@@ -162,7 +174,17 @@ export async function newNoteFromTemplate(
   await vscode.workspace.fs.createDirectory(notesUri);
   await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
   await vscode.window.showTextDocument(noteUri, { preview: false });
+  if (targetFolder && !indexer.isNotesFile(noteUri)) {
+    void vscode.window.showInformationMessage(
+      `Deckard does not index ${vscode.workspace.asRelativePath(targetFolder, false)}, so it will not list this note.`,
+    );
+  }
   return noteUri;
+}
+
+/** Where a new note is written: the folder chosen, else the notes folder. */
+export function noteFolderFor(notesUri: vscode.Uri, targetFolder?: vscode.Uri): vscode.Uri {
+  return targetFolder ?? notesUri;
 }
 
 async function exists(uri: vscode.Uri): Promise<boolean> {

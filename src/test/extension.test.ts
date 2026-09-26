@@ -40,6 +40,22 @@ suite('Extension Test Suite', () => {
         '4_pin@2 deckard.unpinNote',
       ],
     );
+    // A folder in the Explorer can take a note, or leave Deckard and come back.
+    assert.deepStrictEqual(menus['explorer/context'], [
+      { submenu: 'deckard.explorer.context', when: 'explorerResourceIsFolder', group: 'z_deckard@1' },
+    ]);
+    assert.deepStrictEqual(
+      menus['deckard.explorer.context'].map((entry) => [entry.command, entry.when]),
+      [
+        ['deckard.newNoteFromTemplateHere', undefined],
+        ['deckard.excludeFromIndex', 'resourcePath not in deckard.excludedFolders'],
+        ['deckard.includeInIndex', 'resourcePath in deckard.excludedFolders'],
+      ],
+    );
+    assert.deepStrictEqual(
+      menus['file/newFile'].map((entry) => entry.command),
+      ['deckard.createDailyNote', 'deckard.newNoteFromTemplate'],
+    );
     // Zen is one button on every Deckard page.
     assert.deepStrictEqual(title('deckard.enableZenMode'), [
       ['activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode', 'navigation@90'],
@@ -111,6 +127,9 @@ suite('Extension Test Suite', () => {
         'deckard.writeReview',
         'deckard.rollTasksForward',
         'deckard.newNoteFromTemplate',
+        'deckard.newNoteFromTemplateHere',
+        'deckard.excludeFromIndex',
+        'deckard.includeInIndex',
         'deckard.copyMcpSetup',
         'deckard.resetMcpToken',
         'deckard.moveTo',

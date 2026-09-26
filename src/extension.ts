@@ -38,6 +38,11 @@ import { newNoteFromTemplate } from './ui/commands/templates';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
+import {
+  excludeFolderCommand,
+  ExcludedFoldersContext,
+  includeFolderCommand,
+} from './ui/commands/excludeFolders';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -933,6 +938,17 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer),
     ),
+    // The Explorer passes the folder that was right-clicked.
+    vscode.commands.registerCommand('deckard.newNoteFromTemplateHere', (folder?: unknown) =>
+      newNoteFromTemplate(indexer, folder instanceof vscode.Uri ? folder : undefined),
+    ),
+    vscode.commands.registerCommand('deckard.excludeFromIndex', (folder?: unknown) =>
+      excludeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
+    ),
+    vscode.commands.registerCommand('deckard.includeInIndex', (folder?: unknown) =>
+      includeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
+    ),
+    new ExcludedFoldersContext(),
     vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
       mcpServer.copySetup(),
     ),

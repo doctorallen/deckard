@@ -12,6 +12,12 @@
 
 ### Added
 
+- **The Explorer knows Deckard.** Right-click a folder for a **Deckard**
+  submenu: **New Note from Template Here…** writes the note into that
+  folder, and **Exclude from Deckard** leaves the folder out of the index
+  (with Undo), while **Include in Deckard** brings it back. Create Daily
+  Note and New Note from Template are in **File → New File…**.
+
 - **A Deckard menu in the editor.** Right-click in a note for a **Deckard**
   submenu: the task on the line, the heading the cursor is in, Move to…,
   and Pin or Unpin.

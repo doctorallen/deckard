@@ -311,6 +311,21 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.newNoteFromTemplateHere",
+        "title": "New Note from Template Here…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.excludeFromIndex",
+        "title": "Exclude from Deckard",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.includeInIndex",
+        "title": "Include in Deckard",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.copyMcpSetup",
         "title": "Copy MCP Server Setup",
         "category": "Deckard"
@@ -554,6 +569,10 @@
       {
         "id": "deckard.editor.context",
         "label": "Deckard"
+      },
+      {
+        "id": "deckard.explorer.context",
+        "label": "Deckard"
       }
     ],
     "menus": {
@@ -705,6 +724,18 @@
         {
           "command": "deckard.agenda.showMore",
           "when": "false"
+        },
+        {
+          "command": "deckard.newNoteFromTemplateHere",
+          "when": "false"
+        },
+        {
+          "command": "deckard.excludeFromIndex",
+          "when": "false"
+        },
+        {
+          "command": "deckard.includeInIndex",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -778,6 +809,41 @@
           "command": "deckard.unpinNote",
           "when": "deckard.activeNotePinned",
           "group": "4_pin@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "submenu": "deckard.explorer.context",
+          "when": "explorerResourceIsFolder",
+          "group": "z_deckard@1"
+        }
+      ],
+      "deckard.explorer.context": [
+        {
+          "command": "deckard.newNoteFromTemplateHere",
+          "group": "1_new@1"
+        },
+        {
+          "command": "deckard.excludeFromIndex",
+          "when": "resourcePath not in deckard.excludedFolders",
+          "group": "2_index@1"
+        },
+        {
+          "command": "deckard.includeInIndex",
+          "when": "resourcePath in deckard.excludedFolders",
+          "group": "2_index@2"
+        }
+      ],
+      "file/newFile": [
+        {
+          "command": "deckard.createDailyNote",
+          "when": "workspaceFolderCount > 0",
+          "group": "file"
+        },
+        {
+          "command": "deckard.newNoteFromTemplate",
+          "when": "workspaceFolderCount > 0",
+          "group": "file"
         }
       ],
       "view/title": [
