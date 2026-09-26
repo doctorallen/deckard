@@ -2043,6 +2043,7 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:unassigned', label: 'is:unassigned', detail: 'Tasks that name nobody' },
   { value: 'is:daily', label: 'is:daily', detail: 'Written in a daily note' },
   { value: 'is:periodic', label: 'is:periodic', detail: 'Written in a daily, weekly, or monthly note' },
+  { value: 'is:parked', label: 'is:parked', detail: 'Notes and tasks that are parked' },
 ];
 
 const HAS_SUGGESTIONS = [
@@ -2079,7 +2080,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, or is:periodic';
+      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, or is:parked';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':

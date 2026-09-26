@@ -140,6 +140,7 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   journal: 'daily',
   periodic: 'periodic',
   dated: 'periodic',
+  parked: 'parked',
 };
 
 /**
@@ -720,7 +721,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, due, today, needs-date, waiting, available, blocked, blocking, mine, assigned, unassigned, daily, or periodic — not "${value}".`,
+          message: `is: accepts open, done, task, note, overdue, due, today, needs-date, waiting, available, blocked, blocking, mine, assigned, unassigned, daily, periodic, or parked — not "${value}".`,
           severity: 'error',
           start,
           end,

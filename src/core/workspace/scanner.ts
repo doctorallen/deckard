@@ -4,6 +4,7 @@ import picomatch = require('picomatch');
 import * as vscode from 'vscode';
 
 import {
+  extractTags,
   getEntityNamespaceAliases,
   getPersonMarker,
   MarkdownParseOptions,
@@ -11,6 +12,7 @@ import {
   parseMarkdown,
 } from '../markdown/parser';
 import { reportError } from '../timing';
+import { ParkedRules, toParkedTagKey } from './parked';
 import { ParsedFile,
   UnreadableNote,
 } from '../types';
@@ -265,6 +267,68 @@ export class WorkspaceScanner {
       },
     );
     return described.join('\u0001');
+  }
+
+  /**
+   * What `deckard.parked.folders` and `deckard.parked.tags` park, read now.
+   * Folder patterns are relative to each workspace folder, like
+   * `deckard.exclude`; tags are keyed as the index keys them, so an alias
+   * such as `organization/acme` parks `#org/acme`.
+   */
+  public getParkedRules(): ParkedRules {
+    const folders = this.access.workspaceFolders ?? [];
+    const multiRoot = folders.length > 1;
+    const matchers = folders.map((folder) => ({
+      prefix: multiRoot ? `${folder.name}/` : '',
+      isParked: createExcludeMatcher(
+        this.getConfiguration(folder).get<unknown>('parked.folders', {}),
+      ),
+    }));
+    const hasFolders = folders.some((folder) => {
+      const value = this.getConfiguration(folder).get<unknown>('parked.folders', {});
+      return (
+        value !== null &&
+        typeof value === 'object' &&
+        Object.values(value).some((enabled) => enabled === true)
+      );
+    });
+    const cache = new Map<string, boolean>();
+    const options = this.getParseOptions(folders[0]);
+    const written = vscode.workspace.getConfiguration('deckard').get<unknown>('parked.tags', ['parked']);
+    const tags = [
+      ...new Set(
+        (Array.isArray(written) ? written : [])
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => {
+            const key = toParkedTagKey(value);
+            if (!key || key.startsWith('@')) {
+              return key;
+            }
+            return (
+              extractTags(key, options.entityNamespaceAliases, options.personMarker)[0]?.key.toLowerCase() ??
+              key
+            );
+          })
+          .filter((key): key is string => key !== undefined),
+      ),
+    ];
+    return {
+      hasFolders,
+      tags,
+      isParkedPath: (filePath) => {
+        if (!hasFolders) {
+          return false;
+        }
+        const known = cache.get(filePath);
+        if (known !== undefined) {
+          return known;
+        }
+        const matcher = matchers.find((candidate) => filePath.startsWith(candidate.prefix));
+        const parked = matcher?.isParked(filePath.slice(matcher.prefix.length)) ?? false;
+        cache.set(filePath, parked);
+        return parked;
+      },
+    };
   }
 
   /**

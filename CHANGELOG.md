@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Parked notes, found with `is:parked`.** `deckard.parked.folders` and
+  `deckard.parked.tags` (`#parked` by default) park a folder, a note, a
+  heading, or a task: it stays indexed and searchable, and `is:parked`
+  finds it.
+
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds
   the rest of the note away; **Unfold All Sections** brings it back.

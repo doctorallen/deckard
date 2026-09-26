@@ -334,7 +334,30 @@ export interface WorkspaceIndex {
   entities: Map<string, Entity>;
   /** Tag key -> weighted co-occurrence and heading-proximity associations. */
   tagAssociations?: ReadonlyMap<string, TagAssociation[]>;
+  /** What `deckard.parked` parks, set by the indexer; absent means nothing. */
+  parked?: ParkedState;
   updatedAt: number;
+}
+
+/**
+ * What is parked in one index, worked out once per snapshot.
+ *
+ * A note, heading, or task is parked when it is in a parked folder, or when a
+ * search for a parked tag would find it.
+ */
+export interface ParkedState {
+  /** Notes parked whole: by their folder, or by a tag in their front matter. */
+  files: Set<string>;
+  sections: Set<string>;
+  tasks: Set<string>;
+  /** Tags every use of which is parked. */
+  tags: Set<string>;
+  /** Notes parked by a front-matter tag and not by their folder. */
+  taggedFiles: Set<string>;
+  /** How many notes their folder parks. */
+  byFolder: number;
+  /** How many notes a front-matter tag parks and their folder does not. */
+  byTag: number;
 }
 
 export interface PersistedPreferences {

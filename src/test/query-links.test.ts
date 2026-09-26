@@ -204,7 +204,7 @@ suite('Searching daily notes', () => {
   });
 
   test('says is:daily and is:periodic when is: is misspelled', () => {
-    assert.match(errorOf('is:dialy'), /unassigned, daily, or periodic — not "dialy"\.$/);
+    assert.match(errorOf('is:dialy'), /unassigned, daily, periodic, or parked — not "dialy"\.$/);
   });
 });
 

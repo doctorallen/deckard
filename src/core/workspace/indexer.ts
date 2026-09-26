@@ -18,6 +18,7 @@ import { FileStamp, WorkspaceScanner, describeError } from './scanner';
 import { takeOwnWrite } from './ownWrites';
 import { IndexState, NoteChange } from './indexState';
 import { ViewUpdateOptions } from './publishing';
+import { computeParked, NO_PARKED_RULES, ParkedRules } from './parked';
 
 /** What the indexer can be given beyond its scanner and cache. */
 export interface WorkspaceIndexerOptions {
@@ -195,7 +196,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
           'Build index',
           () => {
             this.state = IndexState.build(cached);
-            return this.state.snapshot();
+            return this.withParking(this.state.snapshot());
           },
           (index) => `${index.files.size} notes, ${index.sections.size} entries`,
         );
@@ -253,11 +254,28 @@ export class WorkspaceIndexer implements vscode.Disposable {
   public getSnapshot(): WorkspaceIndex {
     this.snapshot ??= measure(
       'Build index',
-      () => this.state.snapshot(),
+      () => this.withParking(this.state.snapshot()),
       (index) => `${index.files.size} notes, ${index.sections.size} entries`,
     );
     return this.snapshot;
   }
+
+  /**
+   * Marks what `deckard.parked` parks on a newly derived index. Parking is a
+   * setting, not part of a note, so it is worked out after the notes' own
+   * parts are folded, and a change to it redraws without reading any note.
+   */
+  private withParking(index: WorkspaceIndex): WorkspaceIndex {
+    // A stand-in scanner in a test may not read settings at all.
+    this.parkedRules ??=
+      typeof this.scanner.getParkedRules === 'function'
+        ? this.scanner.getParkedRules()
+        : NO_PARKED_RULES;
+    index.parked = computeParked(index, this.parkedRules);
+    return index;
+  }
+
+  private parkedRules: ParkedRules | undefined;
 
   /**
    * Looks up a task from the latest derived index for source-safe actions.
@@ -349,6 +367,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
       return;
     }
     const checking = options.reuse === 'cache';
+    this.parkedRules = undefined;
     const fingerprint = this.scanner.getParseFingerprint();
     const reusable =
       options.reuse !== 'none' && this.parsedUnder === fingerprint
@@ -408,7 +427,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
               'Update index',
               () => {
                 this.state.apply(changes);
-                return this.state.snapshot();
+                return this.withParking(this.state.snapshot());
               },
               (index) => `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
             );
@@ -419,7 +438,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
             'Build index',
             () => {
               this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
-              return this.state.snapshot();
+              return this.withParking(this.state.snapshot());
             },
             (index) => `${index.files.size} notes, ${index.sections.size} entries`,
           );
@@ -534,6 +553,16 @@ export class WorkspaceIndexer implements vscode.Disposable {
           event.affectsConfiguration('files.exclude') ||
           event.affectsConfiguration('search.exclude');
         if (
+          event.affectsConfiguration('deckard.parked') ||
+          event.affectsConfiguration('deckard.entityNamespaceAliases')
+        ) {
+          this.parkedRules = undefined;
+          if (event.affectsConfiguration('deckard.parked') && this.indexedOnce) {
+            this.snapshot = undefined;
+            this.emitUpdate();
+          }
+        }
+        if (
           notesFolderChanged ||
           inlineTagsChanged ||
           entityNamespaceAliasesChanged ||
@@ -551,6 +580,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
     this.disposables.push(
       vscode.workspace.onDidChangeWorkspaceFolders(() => {
         this.replaceWatchers();
+        this.parkedRules = undefined;
         this.readyPromise = this.refresh();
       }),
     );
@@ -647,7 +677,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
       'Update index',
       () => {
         this.state.apply(changes);
-        return this.state.snapshot();
+        return this.withParking(this.state.snapshot());
       },
       (index) =>
         `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,

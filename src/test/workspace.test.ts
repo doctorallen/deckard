@@ -229,6 +229,50 @@ suite('Workspace scanner and index', () => {
     }
   });
 
+  test('parks what deckard.parked.tags names, and redraws without reading a note when it changes', async () => {
+    const workspaceUri = vscode.Uri.file('/tmp/deckard-parked');
+    const workspaceFolder = { uri: workspaceUri, name: 'w', index: 0 } as vscode.WorkspaceFolder;
+    const noteUri = vscode.Uri.joinPath(workspaceUri, 'a.md');
+    let reads = 0;
+    let finds = 0;
+    const scanner = new WorkspaceScanner({
+      workspaceFolders: [workspaceFolder],
+      findFiles: async () => {
+        finds += 1;
+        return [noteUri];
+      },
+      readFile: async () => {
+        reads += 1;
+        return Buffer.from('# A\n- [ ] Idea #parked\n- [ ] Later #someday\n', 'utf8');
+      },
+    });
+    const indexer = new WorkspaceIndexer(scanner);
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    try {
+      indexer.start();
+      await indexer.ready;
+      const titles = () =>
+        [...(indexer.getSnapshot().parked?.tasks ?? [])].map((id) => indexer.getTask(id)?.title.split(' ')[0]);
+      assert.deepStrictEqual(titles(), ['Idea'], 'parked by default');
+      const scans = finds;
+      const readsBefore = reads;
+      const updated = new Promise<void>((resolve) => {
+        const listener = indexer.onDidUpdate(() => {
+          listener.dispose();
+          resolve();
+        });
+      });
+      await configuration.update('parked.tags', ['someday'], vscode.ConfigurationTarget.Global);
+      await updated;
+      assert.deepStrictEqual(titles(), ['Later']);
+      assert.strictEqual(finds, scans, 'no rescan');
+      assert.strictEqual(reads, readsBefore, 'no note read again');
+    } finally {
+      await configuration.update('parked.tags', undefined, vscode.ConfigurationTarget.Global);
+      indexer.dispose();
+    }
+  });
+
   test('leaves the templates folder out of the notes', async () => {
     const workspaceUri = vscode.Uri.file('/tmp/deckard-scanner');
     const noteUri = vscode.Uri.joinPath(workspaceUri, 'case.md');

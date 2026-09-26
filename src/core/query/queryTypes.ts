@@ -92,6 +92,7 @@ export const QUERY_IS_VALUES = [
   'unassigned',
   'daily',
   'periodic',
+  'parked',
 ] as const;
 
 /** Values `has:` and `no:` accept: a task date, a priority, or an id. */

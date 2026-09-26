@@ -823,6 +823,7 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
 | `is:daily` | Anything written in a daily note — one named for a day, such as `2026-09-25.md`, or with a day in its top heading — tasks included. `is:journal` is the same. |
 | `is:periodic` | The same, and weekly and monthly notes too. `is:dated` is the same. |
+| `is:parked` | Notes, entries, and tasks that are parked: in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
 
 Put `-` in front of a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as you wrote it when it saves or formats a query.
 
@@ -1092,7 +1093,9 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | Setting | Default | Description |
 | --- | --- | --- |
 | `deckard.notesFolder` | Empty | Optional workspace-relative folder Deckard scans. An empty value indexes all workspace Markdown files. |
-| `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide, such as `node_modules`. Set an inherited pattern to `false` here to index it anyway. Right-click a folder in the Explorer and choose **Deckard → Exclude from Deckard** to add it here, with Undo; **Include in Deckard** takes it out again. |
+| `deckard.exclude` | `{}` | Glob patterns of files and folders Deckard leaves out of its index, written like VS Code's `files.exclude`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. For example, `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide, such as `node_modules`. Set an inherited pattern to `false` here to index it anyway. Right-click a folder in the Explorer and choose **Deckard → Exclude from Deckard** to add it here, with Undo; **Include in Deckard** takes it out again. To keep an archive searchable, park it instead.
+| `deckard.parked.folders` | `{}` | Glob patterns of folders and notes Deckard parks, written like `deckard.exclude`. A parked note stays indexed and searchable — `is:parked` finds it — but is left out of the lists of things to do. A pattern that matches a folder parks everything in it. `deckard.exclude` wins: an excluded note is not indexed at all. |
+| `deckard.parked.tags` | `["parked"]` | Tags that park whatever carries them: a note whose front matter has one, a heading and everything under it, or a task. A tag parks its sub-tags too, so `project/old` parks `#project/old/phase-1`. |
 | `deckard.theme` | `corpo` | Selects the visual style for Deckard webviews: `corpo`, which follows your VS Code theme, or one of `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.zenMode` | `false` | Turns Deckard's own chrome down in every webview: decorative labels and the grid backdrop are hidden, borders and headings thin out, and each row's file and line fold away until the row is hovered or focused. No control, count, or tag is removed. See [Zen mode](#zen-mode). |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. Help's What's new section lists recent releases either way. |

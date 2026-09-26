@@ -84,7 +84,7 @@ export function evaluateQuery(
     .filter((file) =>
       matchesNode(
         node,
-        withLinks(createFileUnit(membership, file), `file:${file.filePath}`),
+        withLinks(createFileUnit(index, membership, file), `file:${file.filePath}`),
         context,
       ),
     );
@@ -174,7 +174,7 @@ export function countTagMatches(
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
-      add(createFileUnit(membership, file).tagKeys, 'notes');
+      add(createFileUnit(index, membership, file).tagKeys, 'notes');
     }
   });
   tagMatchCounts.set(index, counts);
@@ -249,7 +249,7 @@ export function countTagPairMatches(
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
-      add(createFileUnit(membership, file).tagKeys, 'notes');
+      add(createFileUnit(index, membership, file).tagKeys, 'notes');
     }
   });
   const pairs = [...counts.values()];
@@ -294,6 +294,8 @@ interface QueryUnit {
   status?: string;
   /** The `[[links]]` on the unit's own lines, read for a `link` search. */
   links?: readonly UnitLink[];
+  /** In a parked folder, or found by a search for a parked tag. */
+  parked?: boolean;
 }
 
 /**
@@ -486,6 +488,7 @@ function createSectionUnit(
     filePath: section.filePath,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
+    parked: index.parked?.sections.has(section.id) ?? false,
   };
 }
 
@@ -521,6 +524,7 @@ function createTaskUnit(
     dependsOn: task.dependsOn,
     assignee: task.assignee,
     status: readLineStatus(task),
+    parked: index.parked?.tasks.has(task.id) ?? false,
     blocked:
       !task.completed &&
       (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
@@ -532,6 +536,7 @@ function createTaskUnit(
 }
 
 function createFileUnit(
+  index: WorkspaceIndex,
   membership: TagMembership,
   file: ParsedFile,
 ): QueryUnit {
@@ -544,6 +549,7 @@ function createFileUnit(
     filePath: file.filePath,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
+    parked: index.parked?.files.has(file.filePath) ?? false,
   };
 }
 
@@ -698,6 +704,10 @@ function matchesIs(
   if (value === 'note') {
     return unit.kind !== 'task';
   }
+  if (value === 'parked') {
+    // Notes and tasks alike: parking is about where a thing is, not its kind.
+    return unit.parked === true;
+  }
   if (unit.kind !== 'task') {
     return false;
   }
@@ -749,6 +759,7 @@ function matchesIs(
       // started, and its status does not put it on hold.
       return (
         open &&
+        unit.parked !== true &&
         unit.blocked !== true &&
         (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY) &&
         !getTaskPolicy().onHoldStatuses.includes(unit.status ?? '')
