@@ -90,6 +90,7 @@ suite('Dashboard navigation', () => {
     ]);
     const preferences = {
       onDidChange: () => ({ dispose: () => undefined }),
+      onDidRecordVisit: () => ({ dispose: () => undefined }),
       value: defaultPreferences,
     } as unknown as PreferencesStore;
     const navigation = createNavigation();
@@ -117,6 +118,7 @@ suite('Dashboard navigation', () => {
     ]);
     const preferences = {
       onDidChange: () => ({ dispose: () => undefined }),
+      onDidRecordVisit: () => ({ dispose: () => undefined }),
       value: {
         ...defaultPreferences,
         savedFilters: [
@@ -156,6 +158,7 @@ suite('Dashboard navigation', () => {
     const calls: string[] = [];
     const preferences = {
       onDidChange: () => ({ dispose: () => undefined }),
+      onDidRecordVisit: () => ({ dispose: () => undefined }),
       value: {
         ...defaultPreferences,
         savedFilters: [{ id: 'kept', name: 'Kept', tagKeys: [], query: 'is:open' }],
@@ -210,6 +213,7 @@ suite('Dashboard navigation', () => {
     const columnUpdates: Array<{ section: string; columns: number }> = [];
     const preferences = {
       onDidChange: () => ({ dispose: () => undefined }),
+      onDidRecordVisit: () => ({ dispose: () => undefined }),
       value: defaultPreferences,
       setDashboardColumns: async (section: string, columns: number) => {
         columnUpdates.push({ section, columns });

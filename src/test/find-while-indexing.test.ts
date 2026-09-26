@@ -16,6 +16,7 @@ suite('Find while indexing', () => {
       hasIndexed: false,
       scanProgress: { completed: 412, total: 3760 } as { completed: number; total: number } | undefined,
       onDidProgress: progress.event,
+      onDidUpdate: new vscode.EventEmitter<void>().event,
       ready: new Promise<void>((resolve) => {
         finish = resolve;
       }),
