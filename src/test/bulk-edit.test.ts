@@ -149,6 +149,22 @@ suite('Bulk edits', () => {
     await clean();
   });
 
+  test('writes a due date of its own on each task, as one write', async () => {
+    const { file, read, clean } = await writeNote(note);
+    const open = file.tasks.filter((task) => !task.completed);
+    const dates = new Map(open.map((task, index) => [task.id, `2026-10-0${index + 1}`]));
+    const result = await applyBulkEdit(
+      open.map((task) => ({ kind: 'task', task })),
+      { kind: 'dueEach', dates },
+    );
+    assert.strictEqual(result?.changed, open.length);
+    const after = await read();
+    assert.ok(after.includes('- [ ] Chase the contractor 📅 2026-10-01'), after);
+    assert.ok(after.includes('- [ ] Book the room 📅 2026-10-02'), after);
+    assert.strictEqual(describeBulkEdit({ kind: 'dueEach', dates }, 3), 'spreading the due dates of 3 results');
+    await clean();
+  });
+
   test('tags the notes a search found, headings and all', async () => {
     const { file, read, clean } = await writeNote(note);
     const entries: BulkEntry[] = file.sections

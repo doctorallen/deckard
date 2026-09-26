@@ -46,6 +46,12 @@
   search, scoped by `deckard.agenda.query` so the number and the page agree.
   `is:today` finds exactly the Tasks view's Today. A new or reset Home puts
   the Tasks view widget before the open-tasks list.
+- **Rescheduling can spread tasks over the week, and says how full a day
+  is.** Reschedule All… and Reschedule Overdue Tasks… say how many tasks
+  are already due and scheduled on each day offered, and for several tasks
+  offer **Spread over the next 5 days** and **3 for today, the rest next
+  week**, each one previewed, undoable write. A move of several tasks ends
+  by saying how full the day now is.
 - **Done today.** The Tasks view ends with a folded Done today group of
   what was finished today; unchecking one reopens it. The status bar's hover
   and Home's Tasks view widget say how many.

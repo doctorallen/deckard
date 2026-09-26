@@ -529,7 +529,10 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Drag a task onto a group** to make it belong to that group, written into the task through the same checked edit the board's drops make: a **priority**, a **status**, **Today** for a due date, or a **person**, which rewrites who the task is for and leaves anyone else named on the line as a mention. **Nobody named** takes the name off. **Overdue**, **Later**, and **Needs a new date** cover a range of days rather than one, so they name no edit and say so.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
 - **Right-click a task** to make it due today, tomorrow, or next Monday, or on a date typed [in plain words](#dates-in-plain-words), or to open it in the task editor, which the pencil beside it does too. Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
-- **Reschedule All…** on a group dates every task in it at once, and the calendar button beside **Overdue** does the same for what is overdue. `Deckard: Reschedule Overdue Tasks…` does it from the palette.
+- **Reschedule All…** on a group dates every task in it at once, and the calendar button beside **Overdue** does the same for what is overdue. `Deckard: Reschedule Overdue Tasks…` does it from the palette. Each day it offers says how full it already is — *Fri 2026-09-25 · 3 due · 1 scheduled* — and for several tasks it offers two more:
+  - **Spread over the next 5 days** gives them the next five weekdays, from today or from Monday on a weekend, oldest due first, so 17 tasks are 4, 4, 3, 3, and 3.
+  - **3 for today, the rest next week**, for four or more, keeps the three most important today and moves the rest to next Monday.
+  Either is one write, previewed and undone like any other, and the message after a move of several says how full the day now is: *Today now has 8 tasks.*
 - Hovering a task shows its words, its dates and priority, and where it is written, under the headings above it.
 - The view's badge counts the tasks that are overdue or due today, whatever it is grouped by.
 

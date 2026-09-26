@@ -32,6 +32,8 @@ import { applyWorkspaceWrite } from './workspaceWrites';
 export type BulkEdit =
   | { kind: 'complete'; completed: boolean }
   | { kind: 'due'; date: string | undefined }
+  /** A due date of its own for each task, by task id, as a spread writes. */
+  | { kind: 'dueEach'; dates: ReadonlyMap<string, string> }
   | { kind: 'tag'; tag: string };
 
 /** One result an edit can be made to. */
@@ -60,6 +62,8 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
       return edit.date
         ? `setting the due date of ${count} to ${edit.date}`
         : `clearing the due date of ${count}`;
+    case 'dueEach':
+      return `spreading the due dates of ${count}`;
     default:
       return `adding ${edit.tag} to ${count}`;
   }
@@ -232,6 +236,12 @@ function rewrite(
       text: setTaskDate(line, task.checkboxColumn, 'due', edit.date, options.format),
     };
   }
+  if (edit.kind === 'dueEach') {
+    const date = edit.dates.get(task.id);
+    return date === undefined
+      ? undefined
+      : { text: setTaskDate(line, task.checkboxColumn, 'due', date, options.format) };
+  }
   if (task.completed === edit.completed) {
     return undefined;
   }
@@ -272,7 +282,9 @@ export function describeBulkEditResult(
         ? edit.date
           ? `Set the due date to ${edit.date} on`
           : 'Cleared the due date on'
-        : `Added ${edit.tag} to`;
+        : edit.kind === 'dueEach'
+          ? 'Set a due date on'
+          : `Added ${edit.tag} to`;
   const left =
     result.skipped === 0
       ? ''

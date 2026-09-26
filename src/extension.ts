@@ -52,7 +52,9 @@ import {
   askForDueDate,
   dueDateFor,
   DueChoice,
-  pickReschedule,
+  countLoad,
+  RescheduleContext,
+  rescheduleTasks,
   setTasksDue,
 } from './ui/commands/agendaActions';
 import { createPinForLine } from './ui/state/pinnedNotes';
@@ -114,7 +116,8 @@ import { listOverdueTasks, AgendaNode,
   getAgendaQuery,
   pickAgendaGrouping,
 } from './ui/views/agendaTree';
-import { TaskStatusBar } from './ui/views/taskStatusBar';
+import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
+import { selectAgendaTasks } from './ui/state/agendaState';
 
 let activeServices: ExtensionServices | undefined;
 
@@ -523,16 +526,44 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`;
       const chosen = await date(subject);
       if (chosen !== null) {
-        await setTasksDue(tasks, chosen);
+        await setTasksDue(tasks, chosen, rescheduleContext());
       }
     };
   const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice));
+  // How full a day is, of what the Tasks view lists, read beside the
+  // reschedule choices and again after the write.
+  const rescheduleContext = (): RescheduleContext => ({
+    load: (date) =>
+      countLoad(selectAgendaTasks(indexer.getSnapshot(), getAgendaQuery()).tasks, date),
+    refresh: async () => {
+      try {
+        await indexer.refresh();
+      } catch {
+        // The watcher catches up; the load is read from what is there.
+      }
+    },
+    todayCount: () =>
+      countDueTasks(indexer.getSnapshot(), Date.now(), getAgendaQuery()).today,
+  });
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
     vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
     vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
     vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
-    vscode.commands.registerCommand('deckard.agenda.reschedule', dueFromView(pickReschedule)),
+    vscode.commands.registerCommand(
+      'deckard.agenda.reschedule',
+      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+        const tasks = agenda.tasksFor(node, selected);
+        if (tasks.length === 0) {
+          return;
+        }
+        await rescheduleTasks(
+          tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`,
+          tasks,
+          rescheduleContext(),
+        );
+      },
+    ),
     vscode.commands.registerCommand('deckard.agenda.showMore', (groupId?: unknown) => {
       if (typeof groupId === 'string') {
         agenda.showMore(groupId);
@@ -545,12 +576,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         void vscode.window.showInformationMessage('Nothing is overdue.');
         return;
       }
-      const date = await pickReschedule(
+      await rescheduleTasks(
         overdue.length === 1 ? quoteTaskTitle(overdue[0]) : `${overdue.length} overdue tasks`,
+        overdue,
+        rescheduleContext(),
       );
-      if (date !== null) {
-        await setTasksDue(overdue, date);
-      }
     }),
     vscode.commands.registerCommand(
       'deckard.agenda.editTask',
