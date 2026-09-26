@@ -24,6 +24,7 @@ import { chooseTargetFolder, ensureDailyNote, getPeriodicNote } from './dailyNot
 import { readWeekStart } from './datePrompt';
 import { Destination, pickDestination } from './destinationPicker';
 import { validateExtractedNoteName } from './extractHeading';
+import { carryMovedTaskRank } from './taskActions';
 import { createWikiLink } from './insertLink';
 import { resolveSourceUri } from './navigation';
 import { reportFailure } from './notify';
@@ -199,8 +200,10 @@ async function moveBlocks(
     entry.splices.push(blockSplice(text, source.block, leaveBehind(source.block, lines, target.link, mode)));
     splicesBy.set(key, entry);
   }
+  let insertedAt: number | undefined;
   if (!target.create) {
     const insertion = getCaptureInsertion(targetText, moved, target.section);
+    insertedAt = insertion.taskLine;
     const offset = (targetDocument as vscode.TextDocument).offsetAt(
       new vscode.Position(insertion.line, insertion.character),
     );
@@ -251,6 +254,18 @@ async function moveBlocks(
     return;
   }
   const mine = workspaceWrites.lastWrite;
+  // A task moved to another note keeps its place on the board.
+  if (insertedAt !== undefined && sources.every((source) => source.uri.toString() !== target.uri.toString())) {
+    const targetPath = indexer.getFilePath(target.uri);
+    let line = insertedAt;
+    for (const source of sources) {
+      const first = dedentBlock(source.block.lines)[0];
+      if (source.task) {
+        carryMovedTaskRank(source.task.id, targetPath, line + 1, first);
+      }
+      line += source.block.lines.length;
+    }
+  }
   if (target.heading) {
     const pin = createPinForLine(indexer.getSnapshot(), target.heading.filePath, target.heading.line);
     if (pin?.heading) {
@@ -418,8 +433,6 @@ function describeTask(line: string): string {
  * on almost every line.
  */
 export class MoveToActions implements vscode.CodeActionProvider {
-  public static readonly kinds = [vscode.CodeActionKind.RefactorMove];
-
   public constructor(private readonly indexer: Pick<WorkspaceIndexer, 'isNotesFile'>) {}
 
   public provideCodeActions(

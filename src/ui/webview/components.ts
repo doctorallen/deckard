@@ -2256,6 +2256,7 @@ ${getUndoScript()}
       group('Due', dueOptions),
       group('This board', others),
       group('Done', done ? [done] : []),
+      group('Note', [{ value: 'move-to', label: 'Move to…' }]),
     ];
   }
 
@@ -2542,6 +2543,10 @@ ${getUndoScript()}
       openActionMenu(opener, groups, function (value) {
         if (value === 'pick-date') {
           post({ type: 'pickTaskDate', taskId: card.dataset.taskId });
+          return;
+        }
+        if (value === 'move-to') {
+          post({ type: 'moveTaskTo', taskId: card.dataset.taskId });
           return;
         }
         // Said as the menu said it: "Draft spec: Priority, High."

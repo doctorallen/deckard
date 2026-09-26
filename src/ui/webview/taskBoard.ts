@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { moveTasks } from '../commands/moveTo';
 import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
@@ -557,6 +558,13 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         const date = await askForDueDate(quoteTaskTitle(task));
         if (date !== null) {
           await setTasksDue([task], date);
+        }
+        return;
+      }
+      case 'moveTaskTo': {
+        const task = index.tasks.get(message.taskId);
+        if (task) {
+          await moveTasks(this.indexer, this.preferences, [task]);
         }
         return;
       }

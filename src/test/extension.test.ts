@@ -68,6 +68,7 @@ suite('Extension Test Suite', () => {
         'deckard.resetMcpToken',
         'deckard.extractHeading',
         'deckard.moveTo',
+        'deckard.agenda.moveTo',
         'deckard.showTagOverview',
         'deckard.search',
         'deckard.insertQueryBlock',

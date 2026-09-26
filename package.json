@@ -507,6 +507,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.agenda.moveTo",
+        "title": "Move to…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.agenda.reschedule",
         "title": "Reschedule All…",
         "category": "Deckard",
@@ -654,6 +659,10 @@
           "when": "false"
         },
         {
+          "command": "deckard.agenda.moveTo",
+          "when": "false"
+        },
+        {
           "command": "deckard.agenda.showMore",
           "when": "false"
         }
@@ -755,6 +764,11 @@
           "command": "deckard.agenda.editTask",
           "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
           "group": "2_edit@1"
+        },
+        {
+          "command": "deckard.agenda.moveTo",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "2_edit@2"
         },
         {
           "command": "deckard.agenda.reschedule",

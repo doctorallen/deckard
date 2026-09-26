@@ -36,7 +36,7 @@ import {
 } from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
-import { moveToCommand, MoveToActions } from './ui/commands/moveTo';
+import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
 import {
   CREATE_LINKED_NOTE_COMMAND,
@@ -400,6 +400,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     openTag: (tagKey) => searchPanels.show(tagKey),
     openSavedFilter: (filterId) => dashboard.openSavedFilter(filterId),
     showSearch: (query) => searchPanels.showQuery(query),
+    moveTask: (task) => moveTasks(indexer, preferences, [task]),
   });
   const sidebarNotes = new SidebarNotesView(
     indexer,
@@ -623,6 +624,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
     vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
     vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
+    vscode.commands.registerCommand(
+      'deckard.agenda.moveTo',
+      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+        const tasks = agenda.tasksFor(node, selected);
+        if (tasks.length > 0) {
+          await moveTasks(indexer, preferences, tasks);
+        }
+      },
+    ),
     vscode.commands.registerCommand(
       'deckard.agenda.reschedule',
       async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
@@ -943,7 +953,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.languages.registerCodeActionsProvider(
       { pattern: '**/*.md' },
       new MoveToActions(indexer),
-      { providedCodeActionKinds: MoveToActions.kinds },
+      { providedCodeActionKinds: [vscode.CodeActionKind.RefactorMove] },
     ),
   );
   context.subscriptions.push(

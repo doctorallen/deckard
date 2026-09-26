@@ -57,6 +57,23 @@ function carryRank(
   }
 }
 
+/**
+ * Tells the rank order that a task now lives on another line, in its own
+ * note or another one, as Move to… leaves it, so it keeps its place on the
+ * board. The line is one-based.
+ */
+export function carryMovedTaskRank(
+  previousId: string,
+  filePath: string,
+  lineNumber: number,
+  lineText: string,
+): void {
+  const nextId = getTaskLineId(filePath, lineNumber, lineText);
+  if (keepTaskRank && nextId) {
+    keepTaskRank(previousId, nextId);
+  }
+}
+
 /** What an edit to a task line may need to know about its document. */
 export interface TaskLineContext {
   uri: vscode.Uri;

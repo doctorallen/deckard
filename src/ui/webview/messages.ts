@@ -571,6 +571,7 @@ export function parseTaskBoardMessage(
         ? { type: 'moveTask', taskId: value.taskId, column: value.column }
         : undefined;
     case 'pickTaskDate':
+    case 'moveTaskTo':
     case 'editTask':
       return typeof value.taskId === 'string' && Object.keys(value).length === 2
         ? { type: value.type, taskId: value.taskId }

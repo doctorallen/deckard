@@ -547,6 +547,8 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - Hovering a task shows its words, its dates and priority, and where it is written, under the headings above it.
 - The view's badge counts the tasks that are overdue or due today, whatever it is grouped by.
 
+Right-click a task, or several, for **Move to…**, which moves each with its steps under another heading, into today's note, or into a new note, leaving a link behind; see [Moving lines and tasks](#moving-lines-and-tasks).
+
 ## Status bar and reminders
 
 Deckard puts one count in VS Code's status bar: **3 due today**, counting the same open tasks the Tasks view's Overdue and Today groups hold. Selecting it opens that view.
@@ -560,7 +562,7 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu — the card moves at once, and the board says so if the note could not be written — which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
+Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu — the card moves at once, and the board says so if the note could not be written — which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The menu's **Note** group has **Move to…**, which moves the task and its steps under another heading. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 

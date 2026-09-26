@@ -204,6 +204,23 @@ test('a card\'s menu checks where the task is, and its keys work inside it', asy
   assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
 });
 
+test('a card\'s menu has a Note group with Move to…, which asks the host', async () => {
+  const { view, panel } = await openBoard();
+  const card = view.find('.board-card[data-task-id="audit"]');
+  view.click(card.querySelector('[data-action="board-menu"]'));
+  const moveTo = view.find('#action-menu [data-menu-value="move-to"]');
+  assert.ok(moveTo, 'Move to… is in the menu');
+  assert.ok(moveTo.textContent.includes('Move to…'));
+  const deliver = panel._onWebviewMessage;
+  panel._onWebviewMessage = () => undefined;
+  try {
+    view.click(moveTo);
+    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTaskTo', taskId: 'audit' });
+  } finally {
+    panel._onWebviewMessage = deliver;
+  }
+});
+
 test('a column that takes a card takes a new task, and a menu offers any date', async () => {
   const { view } = await openBoard();
   const add = view.find('[data-action="board-add-task"]');

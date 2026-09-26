@@ -1869,6 +1869,12 @@ export interface PickTaskDateMessage {
   taskId: string;
 }
 
+/** The card menu's Move to…: the task and its steps under another heading. */
+export interface MoveTaskToMessage {
+  type: 'moveTaskTo';
+  taskId: string;
+}
+
 /** The board's e key: the whole task in the task editor. */
 export interface EditTaskMessage {
   type: 'editTask';
@@ -1883,6 +1889,7 @@ export interface AddTaskToColumnMessage {
 
 export type TaskBoardMessage =
   | PickTaskDateMessage
+  | MoveTaskToMessage
   | EditTaskMessage
   | AddTaskToColumnMessage
   | ExportResultsMessage

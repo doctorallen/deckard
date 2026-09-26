@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Move to… from the Tasks view, the board, and Find.** A task's context
+  menu in the Tasks view (for one task or several), a board card's menu,
+  and a task's list in Find (<kbd>Cmd</kbd>+<kbd>.</kbd>) offer **Move
+  to…**; a task moved to another note keeps its place on the board.
+
 - **Move to….** `Deckard: Move to…`, or the lightbulb on a task line or a
   selection, moves a line, a task with its steps, or a selection under
   another heading, into today's note, or into a new note. A task left

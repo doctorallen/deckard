@@ -465,6 +465,10 @@ without their cards.
 | `.board-card` on screen | A card off screen takes `content-visibility: auto` (`contain-intrinsic-size: auto 72px`), so a long column lays out only what shows. A hovered, focused, or dragged card is left out, since the paint containment would clip the file-and-line it carries down; the layout suite's "nothing clipped" check on a hovered card proves it. An open column draws its first 100 cards (`columnLimit`), Done its 20; `showColumnRest` with a column id adds it to the host's `shownColumns` until the grouping or the search changes. |
 | `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." |
 
+The card menu ends with a **Note** group holding **Move to…** (`move-to`),
+which posts `{ type: 'moveTaskTo', taskId }`; the host runs Move to… on the
+task, and the card waits for the next state rather than moving on the page.
+
 The board's controls use their own `data-action` names (`board-toggle-task`,
 `board-move`, `set-board-group`), so a page's handlers for its other rows never
 act on a board card as well.
