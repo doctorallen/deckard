@@ -1992,7 +1992,8 @@
     "test:ui": "npm run compile-tests && node test/ui/verifyWebviews.js && node test/ui/checkWebviewScripts.js && node test/ui/checkContrast.js",
     "test:layout": "npm run compile-tests && node test/ui/checkLayout.js && node test/ui/checkRenderedContrast.js",
     "test:contrast": "npm run compile-tests && node test/ui/checkContrast.js",
-    "test:visual": "npm run compile-tests && node test/ui/checkVisual.js"
+    "test:visual": "npm run compile-tests && node test/ui/checkVisual.js",
+    "bench:index": "npm run compile-tests && node test/perf/indexSpeed.js 1000 5000"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
