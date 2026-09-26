@@ -102,6 +102,23 @@ function createSurfaces(zen) {
       hovered: ['.board-card'],
     },
     {
+      // Grouped by a tag namespace, the switch has five segments: it must
+      // wrap rather than push the page sideways at a narrower width.
+      name: 'taskBoardByTag',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard(
+        index,
+        { ...preferences.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
+        { query: '' },
+        { now: NOW, statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        'inline',
+      ),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+    {
       // As narrow as a reader is likely to drag the sidebar: the page's own
       // floor is 220px.
       page: 'sidebarNotes',
@@ -373,9 +390,10 @@ try {
       // LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking at it.
       // LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it.
       const only = process.env.LAYOUT_ONLY;
-      if (only && only !== `${label}:${surface.page}` && only !== surface.page && only !== label) continue;
+      const surfaceName = surface.name || surface.page;
+      if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
       const html = rendered.get(surface.page);
-      const file = path.join(dir, `${label}-${surface.page}.html`);
+      const file = path.join(dir, `${label}-${surfaceName}.html`);
       writeFileSync(file, buildPage(html, surface));
       const problems = [];
       let runs;
@@ -423,10 +441,10 @@ try {
         console.log(`  wrote ${file}`);
       } else if (problems.length === 0) {
         const scrolls = runs[0]?.scrollers.filter((box) => box.scrollH > box.clientH).length ?? 0;
-        console.log(`  ok   ${label.padEnd(14)} ${surface.page.padEnd(13)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
+        console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${scrolls} scroller(s) scrolling, nothing clipped, nothing sideways`);
       } else {
         failed += 1;
-        console.log(`  FAIL ${label.padEnd(14)} ${surface.page}`);
+        console.log(`  FAIL ${label.padEnd(14)} ${surfaceName}`);
         problems.forEach((problem) => console.log(`         ${problem}`));
       }
     }

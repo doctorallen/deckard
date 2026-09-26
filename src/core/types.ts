@@ -408,6 +408,8 @@ export interface PersistedPreferences {
   taskTableSort?: TableSort;
   /** What the Task Board's columns group tasks by. */
   taskBoardGroup: TaskBoardGroupBy;
+  /** The namespace whose tags are the board's columns when grouped by tag. */
+  taskBoardGroupNamespace?: string;
 
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];
@@ -1719,7 +1721,7 @@ export type SidebarMessage =
   | RefineActiveSearchMessage;
 
 /** How the task board arranges its columns. */
-export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee';
+export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee' | 'tag';
 
 export interface TaskBoardCard {
   taskId: string;
@@ -1779,6 +1781,10 @@ export interface TaskBoardLayout {
    * offers the due-date grouping, which works for any task.
    */
   statusHint?: { withoutStatus: number; open: number };
+  /** The namespace the columns are the tags of, when grouped by tag. */
+  groupNamespace?: string;
+  /** The namespaces open tasks carry, busiest first, for the Tag… menu. */
+  tagNamespaces?: { name: string; openTasks: number }[];
 }
 
 /** The Task Board page, which chooses its tasks with a search. */
@@ -1899,11 +1905,15 @@ export interface MoveTaskMessage {
   type: 'moveTask';
   taskId: string;
   column: string;
+  /** The column the card was moved from: a task with two tags has two cards. */
+  from?: string;
 }
 
 export interface SetBoardGroupMessage {
   type: 'setBoardGroup';
   groupBy: TaskBoardGroupBy;
+  /** The namespace, when grouping by tag. */
+  namespace?: string;
 }
 
 export interface SetBoardQueryMessage {

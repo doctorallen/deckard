@@ -1,6 +1,9 @@
 import {
   findTagSource,
+  formatNamespaceValue,
   isNamespaceName,
+  labelValue,
+  listTaskNamespaces,
   NamespaceValue,
   noValueLabel,
   quoteTask,
@@ -105,6 +108,8 @@ interface ColumnDraft {
   label: string;
   droppable: boolean;
   tasks: Task[];
+  /** By task, the other columns a task is also in, which its card says. */
+  alsoIn?: Map<string, string[]>;
 }
 
 const STATUS_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -158,7 +163,7 @@ export function createTaskBoard(
 
   const board: TaskBoardLayout =
     layout === 'board'
-      ? layoutTaskBoard(index, tasks, groupBy, options)
+      ? layoutTaskBoard(index, tasks, groupBy, options, preferences.taskBoardGroupNamespace)
       : { groupBy, columns: [], taskCount: tasks.length };
   return {
     ...board,
@@ -281,9 +286,13 @@ function toTableTask(task: Task, statusNamespace: string): TableTask {
 export function layoutTaskBoard(
   index: WorkspaceIndex,
   tasks: readonly Task[],
-  groupBy: TaskBoardGroupBy,
+  requestedGroupBy: TaskBoardGroupBy,
   options: TaskBoardOptions,
+  namespace?: string,
 ): TaskBoardLayout {
+  // A tag grouping without a namespace to group by lays out as status.
+  const groupBy: TaskBoardGroupBy =
+    requestedGroupBy === 'tag' && !isNamespaceName(namespace) ? 'status' : requestedGroupBy;
   const open = tasks.filter((task) => !task.completed);
   const done = tasks.filter((task) => task.completed).sort(compareDone);
   const shown = options.shownColumns;
@@ -294,8 +303,17 @@ export function layoutTaskBoard(
       .filter((task) => !task.completed && task.dependencyId)
       .map((task) => task.dependencyId as string),
   );
-  const toCard = (task: Task): TaskBoardCard =>
-    createCard(task, groupBy, options.now, openDependencyIds, index.sections, options.statusNamespace);
+  const toCard = (task: Task, draft?: ColumnDraft): TaskBoardCard => {
+    const card = createCard(task, groupBy, options.now, openDependencyIds, index.sections, options.statusNamespace);
+    const others = draft?.alsoIn?.get(task.id);
+    const withTags =
+      groupBy === 'tag' && namespace
+        ? { ...card, current: [...card.current, ...tagMoves(index, task, namespace)] }
+        : card;
+    return others && others.length > 0
+      ? { ...withTags, details: [...withTags.details, `also in ${others.join(', ')}`] }
+      : withTags;
+  };
 
   // A status named done is the board's own Done: an open task carrying it
   // sits at the head of that column rather than in a second column of the
@@ -311,7 +329,9 @@ export function layoutTaskBoard(
         ? createPriorityColumns(open)
         : groupBy === 'assignee'
           ? createAssigneeColumns(open, index)
-          : createDueColumns(open, options.now);
+          : groupBy === 'tag' && namespace
+            ? createTagColumns(open, index, namespace)
+            : createDueColumns(open, options.now);
 
   const columns: TaskBoardColumn[] = [
     ...drafts.map((draft) => {
@@ -319,7 +339,7 @@ export function layoutTaskBoard(
       // request: building thousands of cards made the whole board slow.
       const sorted = draft.tasks.sort(compareOpen);
       const drawn = shown?.has(draft.id) ? sorted : sorted.slice(0, columnLimit);
-      const cards = drawn.map(toCard);
+      const cards = drawn.map((task) => toCard(task, draft));
       const limit = findLimit(draft.id, options.limits);
       return {
         id: draft.id,
@@ -336,7 +356,7 @@ export function layoutTaskBoard(
       id: 'done',
       label: 'Done',
       droppable: true,
-      cards: [...markedDone.sort(compareOpen), ...done.slice(0, doneLimit)].map(toCard),
+      cards: [...markedDone.sort(compareOpen), ...done.slice(0, doneLimit)].map((task) => toCard(task)),
       hiddenCount: Math.max(0, done.length - doneLimit),
     },
   ];
@@ -346,7 +366,85 @@ export function layoutTaskBoard(
     columns,
     taskCount: tasks.length,
     ...describeStatusCoverage(groupBy, columns, open.length),
+    ...(groupBy === 'tag' && namespace ? { groupNamespace: namespace.toLowerCase() } : {}),
+    tagNamespaces: listBoardNamespaces(index, options.statusNamespace),
   };
+}
+
+const boardNamespaces = new WeakMap<WorkspaceIndex, Map<string, { name: string; openTasks: number }[]>>();
+
+/** The namespaces the Tag… menu offers, worked out once per index. */
+function listBoardNamespaces(
+  index: WorkspaceIndex,
+  statusNamespace: string,
+): { name: string; openTasks: number }[] {
+  const cached = boardNamespaces.get(index) ?? new Map<string, { name: string; openTasks: number }[]>();
+  boardNamespaces.set(index, cached);
+  let found = cached.get(statusNamespace);
+  if (!found) {
+    found = listTaskNamespaces(index, [statusNamespace]).map(({ name, openTasks }) => ({ name, openTasks }));
+    cached.set(statusNamespace, found);
+  }
+  return found;
+}
+
+/** A task's tag columns in a namespace, for its card's menu to check. */
+function tagMoves(index: WorkspaceIndex, task: Task, namespace: string): string[] {
+  const values = readNamespaceValues(index, task, namespace);
+  const name = namespace.toLowerCase();
+  return values.length > 0 ? values.map((value) => `tag:${name}/${value.value}`) : [`tag:${name}/`];
+}
+
+/**
+ * A column per tag of a namespace, busiest first, then the tasks with none.
+ * A tag counts however the task has it; a task with two is in both columns.
+ */
+function createTagColumns(
+  open: Task[],
+  index: WorkspaceIndex,
+  namespace: string,
+): ColumnDraft[] {
+  const name = namespace.toLowerCase();
+  const columns = new Map<string, { label: string; tasks: Task[] }>();
+  const none: Task[] = [];
+  const alsoIn = new Map<string, Map<string, string[]>>();
+  open.forEach((task) => {
+    const values = readNamespaceValues(index, task, name);
+    if (values.length === 0) {
+      none.push(task);
+      return;
+    }
+    const labels = values.map((value) =>
+      formatNamespaceValue(labelValue(index.tags.get(value.key)?.label ?? value.label)),
+    );
+    values.forEach((value, at) => {
+      const id = `tag:${name}/${value.value}`;
+      const column = columns.get(id) ?? { label: labels[at], tasks: [] };
+      column.tasks.push(task);
+      columns.set(id, column);
+      const others = labels.filter((_, other) => other !== at);
+      if (others.length > 0) {
+        const byTask = alsoIn.get(id) ?? new Map<string, string[]>();
+        byTask.set(task.id, others);
+        alsoIn.set(id, byTask);
+      }
+    });
+  });
+  return [
+    ...[...columns.entries()]
+      .sort(
+        (left, right) =>
+          right[1].tasks.length - left[1].tasks.length || left[1].label.localeCompare(right[1].label),
+      )
+      .map(([id, column]) => ({
+        id,
+        label: column.label,
+        droppable: true,
+        tasks: column.tasks,
+        ...(alsoIn.has(id) ? { alsoIn: alsoIn.get(id) } : {}),
+      })),
+    { id: `tag:${name}/`, label: noValueLabel(name), droppable: true, tasks: none },
+  ];
 }
 
 /** A column's limit: by its whole id, or by the status it holds. */

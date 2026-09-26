@@ -1,0 +1,152 @@
+import * as assert from 'assert';
+
+import * as vscode from 'vscode';
+
+import { parseMarkdown } from '../core/markdown/parser';
+import { PreferencesStore } from '../core/storage/preferences';
+import { PersistedPreferences, WorkspaceIndex } from '../core/types';
+import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
+import { parseTaskBoardMessage } from '../ui/webview/messages';
+import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import { openWebviewPage, WebviewPage } from './webviewPage';
+
+const options: TaskBoardOptions = {
+  now: Date.parse('2026-09-21T12:00:00Z'),
+  statusNamespace: 'status',
+  statuses: ['todo'],
+  format: 'emoji',
+};
+
+const NOTE = [
+  '# Atlas #project/atlas',
+  '- [ ] Call Ren #context/phone',
+  '- [ ] Draft #context/computer #context/phone',
+  '- [ ] Loose',
+  '- [ ] Waits #status/waiting @dana',
+  '',
+].join('\n');
+
+function indexOf(): WorkspaceIndex {
+  return buildWorkspaceIndex(new Map([['a.md', parseMarkdown('a.md', NOTE)]]));
+}
+
+function preferences(values: Partial<PersistedPreferences>): PersistedPreferences {
+  const store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+  const value = { ...store.value, taskBoardLayout: 'board' as const, ...values };
+  store.dispose();
+  return value;
+}
+
+function board(values: Partial<PersistedPreferences>) {
+  return createTaskBoard(indexOf(), preferences(values), { query: 'is:open' }, options, 'inline');
+}
+
+suite('The Task board grouped by a tag namespace', () => {
+  test('a column per tag, busiest first, No context last before Done, a task in each of its columns', () => {
+    const snapshot = board({ taskBoardGroup: 'tag', taskBoardGroupNamespace: 'context' });
+    assert.deepStrictEqual(
+      snapshot.columns.map((column) => [column.id, column.label, column.cards.length]),
+      [
+        ['tag:context/phone', 'Phone', 2],
+        ['tag:context/computer', 'Computer', 1],
+        ['tag:context/', 'No context', 2],
+        ['done', 'Done', 0],
+      ],
+    );
+    assert.strictEqual(snapshot.taskCount, 4, 'tasks are counted once');
+    const draft = snapshot.columns[1].cards[0];
+    assert.strictEqual(draft.details[draft.details.length - 1], 'also in Phone');
+    assert.ok(draft.current.includes('tag:context/computer') && draft.current.includes('tag:context/phone'));
+    assert.strictEqual(snapshot.groupNamespace, 'context');
+    assert.deepStrictEqual(snapshot.tagNamespaces, [
+      { name: 'project', openTasks: 4 },
+      { name: 'context', openTasks: 2 },
+    ]);
+  });
+
+  test('a tag grouping without a namespace lays out by status', () => {
+    assert.strictEqual(board({ taskBoardGroup: 'tag' }).groupBy, 'status');
+  });
+
+  test('keeps tag and its namespace in preferences, and nothing else under that name', () => {
+    const read = (value: unknown) => {
+      const store = new PreferencesStore({
+        get: (key: string, fallback?: unknown) => (key === 'deckard.preferences' ? value : fallback),
+        keys: () => [],
+        update: async () => undefined,
+      } as never);
+      const { taskBoardGroup, taskBoardGroupNamespace } = store.value;
+      store.dispose();
+      return [taskBoardGroup, taskBoardGroupNamespace];
+    };
+    assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'Context' }), ['tag', 'context']);
+    assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag' }), ['status', undefined]);
+    assert.deepStrictEqual(read({ version: 1, taskBoardGroup: 'tag', taskBoardGroupNamespace: '1 bad' }), ['status', undefined]);
+  });
+
+  test('the host takes a tag grouping only with a namespace, and a move with where it came from', () => {
+    assert.deepStrictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag', namespace: 'context' }), {
+      type: 'setBoardGroup',
+      groupBy: 'tag',
+      namespace: 'context',
+    });
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag' }), undefined);
+    assert.strictEqual(parseTaskBoardMessage({ type: 'setBoardGroup', groupBy: 'tag', namespace: 'a b' }), undefined);
+    assert.deepStrictEqual(
+      parseTaskBoardMessage({ type: 'moveTask', taskId: 't', column: 'tag:context/phone', from: 'tag:context/' }),
+      { type: 'moveTask', taskId: 't', column: 'tag:context/phone', from: 'tag:context/' },
+    );
+    assert.strictEqual(parseTaskBoardMessage({ type: 'moveTask', taskId: 't', column: 'done', from: 3 }), undefined);
+  });
+
+  suite('on the page', () => {
+    let page: WebviewPage | undefined;
+    teardown(() => {
+      page?.dispose();
+      page = undefined;
+    });
+    const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+    const open = (values: Partial<PersistedPreferences>): WebviewPage => {
+      page = openWebviewPage(getTaskBoardHtml(webview), board(values));
+      return page;
+    };
+
+    test('Tag… opens a menu of namespaces, and a choice groups by it', () => {
+      const view = open({ taskBoardGroup: 'status' });
+      const button = view.find('[data-action="pick-board-namespace"]');
+      assert.strictEqual(button.textContent, 'Tag…');
+      assert.strictEqual(button.getAttribute('aria-pressed'), 'false');
+      view.click('[data-action="pick-board-namespace"]');
+      assert.deepStrictEqual(view.findAll('#action-menu .menu-heading').map((heading) => heading.textContent), ['Group by tag namespace']);
+      assert.deepStrictEqual(
+        view.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent),
+        ['#project · 4 open tasks', '#context · 2 open tasks'],
+      );
+      view.click('#action-menu [data-menu-value="context"]');
+      assert.deepStrictEqual(view.lastPosted('setBoardGroup'), { type: 'setBoardGroup', groupBy: 'tag', namespace: 'context' });
+    });
+
+    test('grouped by a namespace, the switch names it, and pressed', () => {
+      const view = open({ taskBoardGroup: 'tag', taskBoardGroupNamespace: 'context' });
+      const button = view.find('[data-action="pick-board-namespace"]');
+      assert.strictEqual(button.textContent, '#context');
+      assert.strictEqual(button.getAttribute('aria-pressed'), 'true');
+    });
+
+    test('a task in two columns is two cards, each moved from its own column, and one Tab stop', () => {
+      const view = open({ taskBoardGroup: 'tag', taskBoardGroupNamespace: 'context' });
+      const copies = view.findAll('.board-card').filter((card) => (card.textContent ?? '').includes('Draft'));
+      assert.deepStrictEqual(copies.map((card) => card.getAttribute('data-card-column')), ['tag:context/phone', 'tag:context/computer']);
+      assert.strictEqual(view.findAll('.board-card[tabindex="0"]').length, 1);
+      view.click('.board-card[data-card-column="tag:context/computer"] [data-action="board-menu"]');
+      view.click('#action-menu [data-menu-value="tag:context/"]');
+      assert.deepStrictEqual(view.lastPosted('moveTask'), {
+        type: 'moveTask',
+        taskId: copies[1].getAttribute('data-task-id'),
+        column: 'tag:context/',
+        from: 'tag:context/computer',
+      });
+    });
+  });
+});

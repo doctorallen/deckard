@@ -511,8 +511,13 @@ export class PreferencesStore implements vscode.Disposable {
 
   public async setTaskBoardGroup(
     taskBoardGroup: TaskBoardGroupBy,
+    namespace?: string,
   ): Promise<void> {
-    await this.update({ taskBoardGroup });
+    await this.update(
+      taskBoardGroup === 'tag' && namespace
+        ? { taskBoardGroup, taskBoardGroupNamespace: namespace.toLowerCase() }
+        : { taskBoardGroup },
+    );
   }
 
   /** Chooses the table layout's columns; the title is always among them. */
@@ -1267,9 +1272,14 @@ function normalizePreferences(
     taskBoardGroup:
       value?.taskBoardGroup === 'priority' ||
       value?.taskBoardGroup === 'due' ||
-      value?.taskBoardGroup === 'assignee'
+      value?.taskBoardGroup === 'assignee' ||
+      // A tag grouping holds only with a namespace to group by.
+      (value?.taskBoardGroup === 'tag' && isBoardNamespace(value?.taskBoardGroupNamespace))
         ? value.taskBoardGroup
         : 'status',
+    ...(isBoardNamespace(value?.taskBoardGroupNamespace)
+      ? { taskBoardGroupNamespace: value.taskBoardGroupNamespace.toLowerCase() }
+      : {}),
     tagAccessTimes: normalizeAccessTimes(value?.tagAccessTimes),
     sectionAccessTimes: normalizeAccessTimes(value?.sectionAccessTimes),
     recentQueries: uniqueStrings(
@@ -1808,4 +1818,9 @@ export function carryLegacyIds(
       ? renameKeys(preferences.sectionAccessTimes)
       : preferences.sectionAccessTimes,
   };
+}
+
+/** A namespace the board can group by: `project`, `context`. */
+function isBoardNamespace(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z][a-z0-9_-]*$/.test(value.toLowerCase());
 }

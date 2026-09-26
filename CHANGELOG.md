@@ -22,12 +22,13 @@
   beside it. Until now the only way to set notes aside was
   `deckard.exclude`, which hid them from search too.
 
-- **Group tasks by your own tags.** The Tasks view groups by the tags of
-  any namespace — #project, #context, #area — as well as by due date,
-  priority, status, and person. A tag inherited from a heading or a note's
-  front matter counts, a task with two such tags is in both groups, and
-  dragging between groups rewrites the tag on the task line, refusing to
-  take away one a heading gave it.
+- **Group tasks by your own tags.** The Tasks view and the Task board
+  group by the tags of any namespace — #project, #context, #area — as well
+  as by due date, priority, status, and person. A tag inherited from a
+  heading or a note's front matter counts, a task with two such tags is in
+  both groups, and dragging between groups rewrites the tag on the task
+  line, refusing to take away one a heading gave it. The README has a
+  recipe for GTD contexts and PARA areas.
 
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds

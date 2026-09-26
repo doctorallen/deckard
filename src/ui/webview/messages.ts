@@ -603,8 +603,14 @@ export function parseTaskBoardMessage(
     case 'moveTask':
       return typeof value.taskId === 'string' &&
         typeof value.column === 'string' &&
-        value.column.length > 0
-        ? { type: 'moveTask', taskId: value.taskId, column: value.column }
+        value.column.length > 0 &&
+        (value.from === undefined || (typeof value.from === 'string' && value.from.length > 0))
+        ? {
+            type: 'moveTask',
+            taskId: value.taskId,
+            column: value.column,
+            ...(typeof value.from === 'string' ? { from: value.from } : {}),
+          }
         : undefined;
     case 'pickTaskDate':
     case 'moveTaskTo':
@@ -619,6 +625,11 @@ export function parseTaskBoardMessage(
         ? { type: 'addTaskToColumn', column: value.column }
         : undefined;
     case 'setBoardGroup':
+      if (value.groupBy === 'tag') {
+        return typeof value.namespace === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value.namespace)
+          ? { type: 'setBoardGroup', groupBy: 'tag', namespace: value.namespace.toLowerCase() }
+          : undefined;
+      }
       return isTaskBoardGroupBy(value.groupBy)
         ? { type: 'setBoardGroup', groupBy: value.groupBy }
         : undefined;
@@ -688,7 +699,8 @@ export function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
     value === 'status' ||
     value === 'priority' ||
     value === 'due' ||
-    value === 'assignee'
+    value === 'assignee' ||
+    value === 'tag'
   );
 }
 

@@ -252,7 +252,7 @@ ${getQueryEditorScript()}
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>'
       + '<div class="board-header-actions"><span class="board-total">' + total + '</span>' + renderHelpButton('board') + viewOptions + '</div></header>'
-      + editor.renderBar((isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy)) + renderAvailableToggle())
+      + editor.renderBar((isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy, state.groupNamespace, state.tagNamespaces)) + renderAvailableToggle())
       + editor.renderFacets()
       + '<section class="board-area" aria-label="Tasks">' + content + '</section>';
     filterTaskEntries();

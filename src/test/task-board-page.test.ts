@@ -74,7 +74,7 @@ suite('Task Board page', () => {
     assert.strictEqual(page.document.activeElement, page.find('#action-menu [aria-checked="true"]'), 'focus is on what the task is now');
 
     page.click('#action-menu [data-menu-value="status:doing"]');
-    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'status:doing' });
+    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'status:doing', from: 'status:' });
     assert.strictEqual(menu.hidden, true, 'the menu closes on a choice');
     assert.strictEqual(button.getAttribute('aria-expanded'), 'false');
   });
@@ -132,7 +132,7 @@ suite('Task Board page', () => {
     // The key a row shows works while the menu is open.
     page.click('.board-card [data-action="board-menu"]');
     page.document.activeElement?.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: '2', bubbles: true }));
-    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'priority:high' });
+    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'priority:high', from: 'status:' });
   });
 
   test('List in Tasks view sits in the gear, and says when there is nothing to change', () => {
@@ -161,7 +161,7 @@ suite('Task Board page', () => {
     assert.strictEqual(column('status:').querySelector('.board-count')?.textContent, '1');
     (card() as HTMLElement).focus();
     card().dispatchEvent(new page.window.KeyboardEvent('keydown', { key: ']', bubbles: true }));
-    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'status:todo' });
+    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'status:todo', from: 'status:' });
     assert.strictEqual(card().closest('.board-column')?.getAttribute('data-column-id'), 'status:todo', 'in its new column before the host answers');
     assert.ok(card().classList.contains('is-pending'));
     assert.strictEqual(card().getAttribute('aria-busy'), 'true');

@@ -1526,7 +1526,7 @@ export function getComponentScript(): string {
    * failing that, the entry it was in; failing that, the entry that took
    * its place in the list, so completing a task leaves focus on the next.
    */
-  const PLACE_KEYS = ['taskId', 'tagKey', 'widgetId', 'columnId', 'status', 'filePath', 'line', 'action', 'value', 'kind', 'section', 'date'];
+  const PLACE_KEYS = ['taskId', 'cardColumn', 'tagKey', 'widgetId', 'columnId', 'status', 'filePath', 'line', 'action', 'value', 'kind', 'section', 'date'];
   const PLACE_ITEMS = [['taskId', '[data-task-id]'], ['tagKey', '[data-tag-key]'], ['filePath', '[data-file-path]']];
 
   function placeSelector(element) {
@@ -2218,12 +2218,39 @@ ${getUndoScript()}
   }
 
   /** The Status, Priority, and Due date switch above a task board. */
-  function renderTaskBoardGroupSwitch(groupBy) {
+  /** The namespaces the board's Tag… menu offers, from the last state. */
+  let taskBoardNamespaces = [];
+  let taskBoardNamespace;
+
+  function renderTaskBoardGroupSwitch(groupBy, namespace, namespaces) {
+    taskBoardNamespaces = namespaces || [];
+    taskBoardNamespace = groupBy === 'tag' ? namespace : undefined;
+    const byTag = groupBy === 'tag' && namespace;
+    const none = taskBoardNamespaces.length === 0 && !byTag;
+    // Tag… is a menu of the namespaces in use, and names the one chosen.
+    const tag = '<button type="button" class="' + (byTag ? 'active' : '') + '" data-action="pick-board-namespace" aria-haspopup="menu" aria-expanded="false" aria-pressed="' + Boolean(byTag) + '"'
+      + (none
+        ? ' aria-disabled="true" data-tip-disabled="No open task carries a namespaced tag such as #context/phone yet"'
+        : ' data-tip="' + (byTag ? 'Grouped by #' + escapeHtml(namespace) + '/… tags. Choose another namespace' : 'Group by the tags in one namespace, such as #project/… or #context/…') + '"')
+      + '>' + (byTag ? '#' + escapeHtml(namespace) : 'Tag…') + '</button>';
     return '<div class="segmented task-board-group" role="group" aria-label="Group tasks by">'
       + [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date'], ['assignee', 'Person']].map(function (option) {
         const active = option[0] === groupBy;
         return '<button type="button" class="' + (active ? 'active' : '') + '" data-action="set-board-group" data-group="' + option[0] + '" aria-pressed="' + active + '">' + option[1] + '</button>';
-      }).join('') + '</div>';
+      }).join('') + tag + '</div>';
+  }
+
+  /**
+   * A card's key: its column and its task. A task with two tags in the
+   * namespace the board is grouped by is two cards, and each is found,
+   * moved, and focused as itself.
+   */
+  function boardCardKey(columnId, taskId) {
+    return String(columnId) + '\\u0000' + String(taskId);
+  }
+
+  function cardKeyOf(card) {
+    return boardCardKey(card.dataset.cardColumn, card.dataset.taskId);
   }
 
   /**
@@ -2285,7 +2312,7 @@ ${getUndoScript()}
   const ELLIPSIS_ICON = '${strokeIcon(ICON_PATHS.ellipsis)}';
 
   function renderTaskBoardCard(card, columnId, columns, settings) {
-    taskBoardMoves[card.taskId] = taskCardMoves(card, columnId, columns, settings);
+    taskBoardMoves[boardCardKey(columnId, card.taskId)] = taskCardMoves(card, columnId, columns, settings);
     const details = card.details.map(function (detail) {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
@@ -2315,9 +2342,9 @@ ${getUndoScript()}
     // The board is one Tab stop: the card last focused, or the first. Arrow
     // keys move between cards, and a card's checkbox and menu are keys of
     // their own, so neither is a Tab stop either.
-    const tabStop = card.taskId === taskBoardTabStop ? '0' : '-1';
+    const tabStop = boardCardKey(columnId, card.taskId) === taskBoardTabStop ? '0' : '-1';
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="' + tabStop + '" aria-label="' + escapeHtml(cardName) + '" aria-keyshortcuts="x t m d e 1 2 3 4 5 [ ]"'
-      + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
+      + ' data-task-id="' + escapeHtml(card.taskId) + '" data-card-column="' + escapeHtml(columnId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
       + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" data-tip="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
@@ -2352,10 +2379,12 @@ ${getUndoScript()}
   function renderTaskBoard(board, isVisible) {
     taskBoardMoves = {};
     const shown = board.columns.reduce(function (all, column) {
-      return all.concat(isVisible ? column.cards.filter(isVisible) : column.cards);
+      return all.concat((isVisible ? column.cards.filter(isVisible) : column.cards).map(function (card) {
+        return boardCardKey(column.id, card.taskId);
+      }));
     }, []);
-    if (!shown.some(function (card) { return card.taskId === taskBoardTabStop; })) {
-      taskBoardTabStop = shown.length ? shown[0].taskId : undefined;
+    if (shown.indexOf(taskBoardTabStop) < 0) {
+      taskBoardTabStop = shown.length ? shown[0] : undefined;
     }
     // Grouped by status with almost no statuses written, the board is one
     // tall column and four near-empty ones. Say so, and offer the grouping
@@ -2402,6 +2431,8 @@ ${getUndoScript()}
    * once; the host's next state confirms it or puts it back.
    */
   let taskBoardDragId;
+  /** The column the dragged card was in. */
+  let taskBoardDragColumn;
   /** The card that is the board's one Tab stop, kept across redraws. */
   let taskBoardTabStop;
   /** Until when a card just completed stays on screen before the redraw. */
@@ -2444,8 +2475,9 @@ ${getUndoScript()}
       }
     }
     function moveCard(card, column, said) {
+      const from = card.dataset.cardColumn;
       applyMove(card, column);
-      post({ type: 'moveTask', taskId: card.dataset.taskId, column: column });
+      post({ type: 'moveTask', taskId: card.dataset.taskId, column: column, from: from });
       announce(said);
     }
     /** A column's header counted again from the cards it holds now. */
@@ -2477,6 +2509,9 @@ ${getUndoScript()}
         const empty = cards && cards.querySelector('.board-empty');
         if (empty) empty.remove();
         if (cards) cards.prepend(card);
+        // It is this column's card now, for its key and its focus.
+        card.setAttribute('data-card-column', columnId);
+        taskBoardTabStop = cardKeyOf(card);
         recountColumn(from);
         recountColumn(to);
       }
@@ -2491,7 +2526,7 @@ ${getUndoScript()}
       if (!card) return;
       document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach(function (other) { other.setAttribute('tabindex', '-1'); });
       card.setAttribute('tabindex', '0');
-      taskBoardTabStop = card.dataset.taskId;
+      taskBoardTabStop = cardKeyOf(card);
       card.focus();
       if (card.scrollIntoView) card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
@@ -2556,7 +2591,7 @@ ${getUndoScript()}
     }
 
     function openCardMenu(card, opener) {
-      const groups = taskBoardMoves[card.dataset.taskId];
+      const groups = taskBoardMoves[cardKeyOf(card)];
       if (!groups) return false;
       openActionMenu(opener, groups, function (value) {
         if (value === 'pick-date') {
@@ -2574,8 +2609,9 @@ ${getUndoScript()}
           announce(taskTitleOf(card) + ': ' + (group.label || 'It') + ' is already ' + chosen.label + '.');
           return;
         }
+        const from = card.dataset.cardColumn;
         applyMove(card, value);
-        post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
+        post({ type: 'moveTask', taskId: card.dataset.taskId, column: value, from: from });
         announce(taskTitleOf(card) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
       });
       return true;
@@ -2585,6 +2621,20 @@ ${getUndoScript()}
       const group = event.target.closest('[data-action="set-board-group"]');
       if (group) {
         post({ type: 'setBoardGroup', groupBy: group.dataset.group });
+        return;
+      }
+      const namespaceButton = event.target.closest('[data-action="pick-board-namespace"]');
+      if (namespaceButton) {
+        const choices = taskBoardNamespaces.filter(function (namespace) { return namespace.name !== taskBoardNamespace; });
+        if (!choices.length) return;
+        openActionMenu(namespaceButton, [{
+          label: 'Group by tag namespace',
+          items: choices.map(function (namespace) {
+            return { value: namespace.name, label: '#' + namespace.name + ' · ' + namespace.openTasks + ' open ' + (namespace.openTasks === 1 ? 'task' : 'tasks') };
+          }),
+        }], function (name) {
+          post({ type: 'setBoardGroup', groupBy: 'tag', namespace: name });
+        });
         return;
       }
       const menuButton = event.target.closest('[data-action="board-menu"]');
@@ -2622,7 +2672,7 @@ ${getUndoScript()}
       if (!card || card.getAttribute('tabindex') === '0') return;
       document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach(function (other) { other.setAttribute('tabindex', '-1'); });
       card.setAttribute('tabindex', '0');
-      taskBoardTabStop = card.dataset.taskId;
+      taskBoardTabStop = cardKeyOf(card);
     });
     document.addEventListener('change', function (event) {
       const card = boardCard(event.target);
@@ -2641,6 +2691,7 @@ ${getUndoScript()}
       const card = boardCard(event.target);
       if (!card) return;
       taskBoardDragId = card.dataset.taskId;
+      taskBoardDragColumn = card.dataset.cardColumn;
       card.classList.add('dragging');
       // The columns that will not take the card say so while it is held.
       const board = card.closest('.task-board');
@@ -2654,6 +2705,7 @@ ${getUndoScript()}
       document.querySelectorAll('.task-board.is-dragging-card').forEach(function (board) { board.classList.remove('is-dragging-card'); });
       clearDropTargets();
       taskBoardDragId = undefined;
+      taskBoardDragColumn = undefined;
     });
     document.addEventListener('dragover', function (event) {
       const column = dropColumn(event);
@@ -2673,10 +2725,15 @@ ${getUndoScript()}
       const column = dropColumn(event);
       if (!column) return;
       event.preventDefault();
-      const card = document.querySelector('.task-board .board-card[data-task-id="' + CSS.escape(taskBoardDragId) + '"]');
+      // The card dragged, not another copy of its task in another column.
+      const card = Array.prototype.find.call(
+        document.querySelectorAll('.task-board .board-card[data-task-id="' + CSS.escape(taskBoardDragId) + '"]'),
+        function (candidate) { return taskBoardDragColumn === undefined || candidate.dataset.cardColumn === taskBoardDragColumn; },
+      );
       if (card && card.closest('.board-column') !== column) {
+        const from = card.dataset.cardColumn;
         applyMove(card, column.dataset.columnId);
-        post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId });
+        post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId, from: from });
         const title = column.querySelector('.board-column-title span');
         announce('Moved ' + taskTitleOf(card) + ' to ' + (title ? title.textContent : 'the column') + '.');
       }

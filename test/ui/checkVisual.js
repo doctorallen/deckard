@@ -80,8 +80,9 @@ try {
       const rendered = new Map(renderPagesForTheme(theme, { zen }));
       for (const surface of createSurfaces(zen)) {
         const only = process.env.VISUAL_ONLY;
-        if (only && only !== `${label}:${surface.page}` && only !== surface.page && only !== label) continue;
-        const name = `${label}-${surface.page}`;
+        const surfaceName = surface.name || surface.page;
+        if (only && only !== `${label}:${surfaceName}` && only !== surfaceName && only !== label) continue;
+        const name = `${label}-${surfaceName}`;
         seen.add(`${name}.png`);
         const file = path.join(dir, `${name}.html`);
         writeFileSync(file, buildPage(rendered.get(surface.page), surface));
@@ -92,19 +93,19 @@ try {
           drawn = screenshot(file, surface.viewport, shot);
         } catch (error) {
           failed += 1;
-          console.log(`  FAIL ${label.padEnd(14)} ${surface.page.padEnd(13)} ${error.message}`);
+          console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${error.message}`);
           continue;
         }
         if (updating || !existsSync(baseline)) {
           writeFileSync(baseline, readFileSync(shot));
           recorded += 1;
-          console.log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surface.page}`);
+          console.log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surfaceName}`);
           continue;
         }
         const expected = PNG.sync.read(readFileSync(baseline));
         if (expected.width !== drawn.width || expected.height !== drawn.height) {
           failed += 1;
-          console.log(`  FAIL ${label.padEnd(14)} ${surface.page.padEnd(13)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
+          console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
           continue;
         }
         const diff = new PNG({ width: drawn.width, height: drawn.height });
@@ -115,9 +116,9 @@ try {
           failed += 1;
           const diffFile = path.join(dir, `${name}.diff.png`);
           writeFileSync(diffFile, PNG.sync.write(diff));
-          console.log(`  FAIL ${label.padEnd(14)} ${surface.page.padEnd(13)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
+          console.log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
         } else {
-          console.log(`  ok   ${label.padEnd(14)} ${surface.page.padEnd(13)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
+          console.log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
         }
       }
     }

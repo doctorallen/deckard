@@ -460,7 +460,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         // A different grouping is a different board, so every column goes
         // back to its short form.
         this.shownColumns = new Set();
-        await this.preferences.setTaskBoardGroup(message.groupBy);
+        await this.preferences.setTaskBoardGroup(message.groupBy, message.namespace);
         return;
       case 'showColumnRest':
         this.shownColumns.add(message.columnId);
@@ -547,7 +547,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       case 'moveTask': {
         const task = index.tasks.get(message.taskId);
         this.writeIndexAt = index.updatedAt;
-        if (!task || !(await moveTaskToColumn(task, message.column, { index }))) {
+        if (!task || !(await moveTaskToColumn(task, message.column, { index, from: message.from }))) {
           this.writeIndexAt = undefined;
           // The card moved at once on the page; say it did not, then put it back.
           void this.panel?.webview.postMessage({ type: 'moveRefused', taskId: message.taskId });
