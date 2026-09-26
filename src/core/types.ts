@@ -867,6 +867,30 @@ export interface DeckardStatsSnapshot {
   lookalikeTags: TagMergeCandidate[];
   /** How many such pairs there are, listed or not. */
   lookalikeTagCount: number;
+  /** Names links write that open no note, most linked first. */
+  missingLinkTargets: StatsMissingLink[];
+  /** How many such names there are, listed or not. */
+  missingLinkTargetCount: number;
+}
+
+/** A name links write that no note carries, as Stats lists it. */
+export interface StatsMissingLink {
+  name: string;
+  /** How many links write it. */
+  count: number;
+  /** The first three notes the links are in, by title. */
+  sources: string[];
+  /** How many notes the links are in. */
+  sourceCount: number;
+  /** Whether the name can be a file name, so Create can make its note. */
+  creatable: boolean;
+}
+
+/** Stats' Create and Create all: notes for links that open none. */
+export interface CreateMissingNotesMessage {
+  type: 'createMissingNotes';
+  /** The names to create; empty means every creatable one. */
+  names: string[];
 }
 
 /** Messages from the Stats page, which only opens what it lists. */
@@ -887,7 +911,8 @@ export type StatsMessage =
   | OpenSourceMessage
   | OpenSearchMessage
   | ReindexWorkspaceMessage
-  | MergeTagsMessage;
+  | MergeTagsMessage
+  | CreateMissingNotesMessage;
 
 /** Messages from the sidebar calendar. The host finds each note itself. */
 export type CalendarMessage =

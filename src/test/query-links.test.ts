@@ -6,7 +6,7 @@ import { formatQuery } from '../core/query/queryFormat';
 import { parseQuery } from '../core/query/queryParser';
 import { QueryConditionNode } from '../core/query/queryTypes';
 import { WorkspaceIndex } from '../core/types';
-import { getBacklinkIndex } from '../core/workspace/backlinks';
+import { findMissingLinkTargets, getBacklinkIndex } from '../core/workspace/backlinks';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 
 function condition(text: string): QueryConditionNode {
@@ -205,5 +205,27 @@ suite('Searching daily notes', () => {
 
   test('says is:daily and is:periodic when is: is misspelled', () => {
     assert.match(errorOf('is:dialy'), /unassigned, daily, or periodic — not "dialy"\.$/);
+  });
+});
+
+suite('Links that open no note', () => {
+  test('groups the names no note carries by case, most linked first', () => {
+    const files = new Map(
+      Object.entries({
+        'notes/Atlas.md': '# Atlas\n',
+        'notes/A.md': '# A\n[[Q4 offsite]] and [[q4 OFFSITE]] and [[Budget]]\n',
+        'notes/B.md': '# B\n[[Q4 offsite]] [[Atlas]] [[Budget]]\n',
+        'notes/Twin/Same.md': '# Same\n',
+        'notes/Other/Same.md': '# Same\n[[Same]]\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    const missing = findMissingLinkTargets(buildWorkspaceIndex(files));
+    assert.deepStrictEqual(
+      missing.map((target) => [target.name, target.count, target.sourcePaths]),
+      [
+        ['Q4 offsite', 3, ['notes/A.md', 'notes/B.md']],
+        ['Budget', 2, ['notes/A.md', 'notes/B.md']],
+      ],
+    );
   });
 });

@@ -12,6 +12,7 @@ import {
   reportFailure,
   reportStale,
 } from './notify';
+import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
 
 export async function extractHeadingCommand(
   indexer: WorkspaceIndexer,
@@ -58,22 +59,7 @@ export function findTaggedHeadingAtLine(
     )[0];
 }
 
-export function getExtractedNoteFileName(name: string): string | undefined {
-  const trimmedName = name.trim();
-  const baseName = trimmedName.replace(/\.md$/i, '').trim();
-
-  if (
-    !baseName ||
-    baseName === '.' ||
-    baseName === '..' ||
-    /[/\\\u0000-\u001f\u007f<>:"|?*]/.test(baseName) ||
-    /[. ]$/.test(baseName)
-  ) {
-    return undefined;
-  }
-
-  return `${baseName}.md`;
-}
+export { getExtractedNoteFileName };
 
 export function validateExtractedNoteName(name: string): string | undefined {
   return getExtractedNoteFileName(name)

@@ -60,10 +60,11 @@ function createGlobalState() {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 /** Opens Stats with one viewed tag, entity, and note entry. */
-async function openStats() {
+async function openStats(files = []) {
   vscode._test.createdPanels.length = 0;
   opened.length = 0;
   const index = createIndex();
+  files.forEach((file) => index.files.set(file.filePath, file));
   const updates = new vscode.EventEmitter();
   const indexer = {
     ready: Promise.resolve(),
@@ -167,6 +168,29 @@ test('a note nothing links to is listed, and opens without counting a view', asy
   });
   assert.deepStrictEqual(opened, ['/notes/lonely.md']);
   assert.deepStrictEqual(preferences.value.sectionAccessCounts, before, 'no entry view is counted');
+});
+
+test('links that open no note are listed, open their search, and can be created', async () => {
+  const { parseMarkdown } = require('../../out/core/markdown/parser.js');
+  // Backlinks are read once per index, so the note is there from the start.
+  const standup = parseMarkdown('/notes/standup.md', '# Standup\nPlan the [[Q4 offsite]] and [[q4 offsite]] soon, and [[Bad: name]].');
+  const { view } = await openStats([standup]);
+
+  const rows = view.findAll('[data-missing-index]');
+  assert.deepStrictEqual(rows.map((row) => row.querySelector('.label').textContent), ['Q4 offsite', 'Bad: name']);
+  assert.strictEqual(rows[0].querySelector('.detail').textContent, '2 links from standup');
+  assert.strictEqual(rows[1].querySelector('.detail').textContent, '1 link from standup · cannot be a file name');
+  assert.ok(!rows[1].querySelector('[data-action="create-missing-note"]'), 'no Create for a name that cannot be a file');
+
+  view.click(rows[0].querySelector('.label'));
+  view.click(rows[0].querySelector('[data-action="create-missing-note"]'));
+  view.click(view.find('[data-action="create-all-missing-notes"]'));
+  await settle();
+  assert.deepStrictEqual(view.posted.slice(-3), [
+    { type: 'openSearch', query: 'link = [[Q4 offsite]]' },
+    { type: 'createMissingNotes', names: ['Q4 offsite'] },
+    { type: 'createMissingNotes', names: [] },
+  ]);
 });
 
 test('a hidden Stats page skips updates and catches up when shown', async () => {

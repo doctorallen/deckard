@@ -71,7 +71,12 @@ import {
   parseDatePhrase,
   resolveDatePeriod,
 } from '../../core/markdown/dates';
-import { getBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
+import {
+  findMissingLinkTargets,
+  getBacklinkIndex,
+  noteTitle,
+} from '../../core/workspace/backlinks';
+import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
@@ -882,6 +887,27 @@ export function createDeckardStatsSnapshot(
     ),
     ...findOrphanNotes(index),
     ...findLookalikeTags(index),
+    ...listMissingLinkTargets(index),
+  };
+}
+
+/** How many of the names that open no note the Stats page lists. */
+const MISSING_LINK_LIMIT = 50;
+
+/** The names links write that open no note, most linked first. */
+function listMissingLinkTargets(
+  index: WorkspaceIndex,
+): Pick<DeckardStatsSnapshot, 'missingLinkTargets' | 'missingLinkTargetCount'> {
+  const missing = findMissingLinkTargets(index);
+  return {
+    missingLinkTargetCount: missing.length,
+    missingLinkTargets: missing.slice(0, MISSING_LINK_LIMIT).map((target) => ({
+      name: target.name,
+      count: target.count,
+      sources: target.sourcePaths.slice(0, 3).map((filePath) => noteTitle(filePath)),
+      sourceCount: target.sourcePaths.length,
+      creatable: getExtractedNoteFileName(target.name) !== undefined,
+    })),
   };
 }
 

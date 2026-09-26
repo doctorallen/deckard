@@ -173,6 +173,7 @@ export async function createMissingNotes(
   indexer: Pick<LinkHealthSource, 'getNotesFolderUri'>,
   documentUri: vscode.Uri,
   names: readonly string[],
+  options: { report?: boolean } = {},
 ): Promise<number> {
   const folder =
     vscode.workspace.getWorkspaceFolder(documentUri) ??
@@ -193,10 +194,17 @@ export async function createMissingNotes(
       created += 1;
     }
   }
+  if (options.report !== false) {
+    reportCreatedNotes(created);
+  }
+  return created;
+}
+
+/** Says how many notes were made for links that named none. */
+export function reportCreatedNotes(created: number): void {
   void vscode.window.showInformationMessage(
     `Created ${created} ${created === 1 ? 'note' : 'notes'} for links that named no note.`,
   );
-  return created;
 }
 
 async function exists(uri: vscode.Uri): Promise<boolean> {

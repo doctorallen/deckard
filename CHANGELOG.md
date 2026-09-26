@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Stats: Links that open no note.** Stats lists every name a `[[link]]`
+  writes that no note carries, most linked first, saying how many links
+  and from which notes. A row opens the search for those links; **Create**
+  makes the note, and **Create all** makes every one after asking.
+
 - **A tag's page counts plain mentions.** A tag's page says *12 entries
   mention "atlas" without the tag.* when its name, three letters or more,
   is written as a plain word elsewhere; **Show them** searches for those

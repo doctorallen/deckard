@@ -5,7 +5,10 @@ import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
-import { openResultAt } from '../commands/navigation';
+import { openResultAt, resolveSourceUri } from '../commands/navigation';
+import { createMissingNotes, reportCreatedNotes } from '../commands/linkHealth';
+import { getExtractedNoteFileName } from '../../core/markdown/noteNames';
+import { findMissingLinkTargets } from '../../core/workspace/backlinks';
 import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
@@ -152,6 +155,11 @@ export class StatsPanel implements vscode.Disposable {
       return;
     }
 
+    if (message.type === 'createMissingNotes') {
+      await this.createMissingNotes(message.names);
+      return;
+    }
+
     const section = [...index.sections.values()].find(
       (candidate) =>
         candidate.filePath === message.filePath &&
@@ -167,6 +175,58 @@ export class StatsPanel implements vscode.Disposable {
     if (index.files.has(message.filePath)) {
       await openResultAt(message.filePath, message.line, message);
     }
+  }
+
+  /**
+   * Makes the notes links name and no note carries. The names are read
+   * again from the index as it is now, so only a name still missing and
+   * able to be a file name is made; each goes in the notes folder of the
+   * workspace folder its first link is in. Creating every one is confirmed
+   * first.
+   */
+  private async createMissingNotes(requested: readonly string[]): Promise<void> {
+    const wanted = new Set(requested.map((name) => name.toLocaleLowerCase()));
+    const missing = findMissingLinkTargets(this.indexer.getSnapshot()).filter(
+      (target) =>
+        getExtractedNoteFileName(target.name) !== undefined &&
+        (wanted.size === 0 || wanted.has(target.key)),
+    );
+    if (missing.length === 0) {
+      return;
+    }
+    if (wanted.size === 0) {
+      const create = 'Create';
+      const choice = await vscode.window.showWarningMessage(
+        `Create ${missing.length} ${missing.length === 1 ? 'note' : 'notes'} for links that open no note?`,
+        {
+          modal: true,
+          detail: 'Each is an empty note named as the links write it, in the notes folder.',
+        },
+        create,
+      );
+      if (choice !== create) {
+        return;
+      }
+    }
+    const byFolder = new Map<string, { uri: vscode.Uri; names: string[] }>();
+    for (const target of missing) {
+      const uri = await resolveSourceUri(target.sourcePaths[0]);
+      if (!uri) {
+        continue;
+      }
+      const folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.toString() ?? '';
+      const group = byFolder.get(folder) ?? { uri, names: [] };
+      group.names.push(target.name);
+      byFolder.set(folder, group);
+    }
+    if (byFolder.size === 0) {
+      return;
+    }
+    let created = 0;
+    for (const group of byFolder.values()) {
+      created += await createMissingNotes(this.indexer, group.uri, group.names, { report: false });
+    }
+    reportCreatedNotes(created);
   }
 
   private disposePanelListeners(): void {

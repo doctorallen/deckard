@@ -332,6 +332,9 @@ export function parseSearchPageMessage(
   }
 }
 
+/** The most names one Create all may carry. */
+const MAX_MISSING_NOTE_NAMES = 500;
+
 /** Upper bound on query text accepted from the webview. */
 /**
  * What a page may send as the words being typed. A draft is a handful of
@@ -699,6 +702,14 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
     case 'reindexWorkspace':
       return Object.keys(value).length === 1
         ? { type: 'reindexWorkspace' }
+        : undefined;
+    case 'createMissingNotes':
+      return Array.isArray(value.names) &&
+        value.names.length <= MAX_MISSING_NOTE_NAMES &&
+        value.names.every(
+          (name) => typeof name === 'string' && name.length > 0 && name.length <= 500,
+        )
+        ? { type: 'createMissingNotes', names: value.names as string[] }
         : undefined;
     default:
       return undefined;

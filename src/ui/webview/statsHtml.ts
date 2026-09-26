@@ -41,6 +41,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .pair-tag { padding: 2px 6px; font-size: var(--text-sm); }
 .pair-arrow { color: var(--muted); }
+.view-panel h2.with-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); white-space: nowrap; }
 @media (max-width: 600px) { main { padding: 16px; } }
 
@@ -95,9 +96,42 @@ ${getComponentScript()}
       return '<li><div class="row stat-row"><div><div class="label pair">' + source + '<span class="pair-arrow" aria-hidden="true">&rarr;</span>' + target + '</div><div class="detail">' + escapeHtml(pair.detail) + '</div></div>' + merge + '</div></li>';
     }).join('') + '</ol>';
   }
+  /** The notes a missing name's links are in, in words. */
+  function describeSources(target) {
+    const names = target.sources.slice();
+    const more = target.sourceCount - names.length;
+    if (more > 0) names.push(more + ' more ' + (more === 1 ? 'note' : 'notes'));
+    const list = names.length <= 1
+      ? names.join('')
+      : names.length === 2
+        ? names[0] + ' and ' + names[1]
+        : names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+    return target.count + ' ' + (target.count === 1 ? 'link' : 'links') + ' from ' + list;
+  }
+  /**
+   * Names links write that no note carries. A row opens the search for the
+   * links; Create makes the note, and Create all makes every one.
+   */
+  function missingLinkList() {
+    const targets = state.missingLinkTargets || [];
+    if (!targets.length) return '<p class="empty">Every link opens a note.</p>';
+    return '<ol class="list">' + targets.map(function (target, index) {
+      const create = target.creatable
+        ? '<button type="button" class="merge" data-action="create-missing-note" data-index="' + index + '" aria-label="Create ' + escapeHtml(target.name) + '" data-tip="Create an empty note named ' + escapeHtml(target.name) + ' in the notes folder">Create</button>'
+        : '';
+      const detail = describeSources(target) + (target.creatable ? '' : ' · cannot be a file name');
+      return '<li><div class="row stat-row" role="button" tabindex="0" data-missing-index="' + index + '" data-tip="Search for the links to it"><div><div class="label">' + escapeHtml(target.name) + '</div><div class="detail">' + escapeHtml(detail) + '</div></div>' + create + '</div></li>';
+    }).join('') + '</ol>';
+  }
   // A row posts the message the host projected for it, so the page never
   // decides what a tag or a line opens.
   function openRow(row) {
+    const missing = row.getAttribute('data-missing-index');
+    if (missing !== null && missing !== undefined) {
+      const target = state && (state.missingLinkTargets || [])[Number(missing)];
+      if (target) vscode.postMessage({ type: 'openSearch', query: 'link = [[' + target.name + ']]' });
+      return;
+    }
     const items = state && state[row.getAttribute('data-list')];
     const item = items && items[Number(row.getAttribute('data-index'))];
     if (item && item.open) vscode.postMessage(item.open);
@@ -118,6 +152,15 @@ ${getComponentScript()}
     if (action && action.dataset.action === 'open-lookalike') {
       const pair = state && state.lookalikeTags[Number(action.dataset.index)];
       if (pair) vscode.postMessage({ type: 'openTag', tagKey: action.dataset.side === 'target' ? pair.targetKey : pair.sourceKey });
+      return;
+    }
+    if (action && action.dataset.action === 'create-missing-note') {
+      const target = state && (state.missingLinkTargets || [])[Number(action.dataset.index)];
+      if (target) vscode.postMessage({ type: 'createMissingNotes', names: [target.name] });
+      return;
+    }
+    if (action && action.dataset.action === 'create-all-missing-notes') {
+      vscode.postMessage({ type: 'createMissingNotes', names: [] });
       return;
     }
     if (action && action.dataset.action === 'merge-lookalike') {
@@ -165,6 +208,7 @@ ${getComponentScript()}
     ].join('');
     const unlisted = state.orphanNoteCount - state.orphanNotes.length;
     const unlistedPairs = state.lookalikeTagCount - state.lookalikeTags.length;
+    const unlistedMissing = (state.missingLinkTargetCount || 0) - (state.missingLinkTargets || []).length;
     // A note the index does not have looks, from a search, like a note that
     // was never written. Say so here, with why, where a reader will look.
     const unreadable = state.unreadable || [];
@@ -173,7 +217,8 @@ ${getComponentScript()}
           return '<li><div class="row stat-row" role="button" tabindex="0" data-tip="Open this note" data-list="unreadable" data-index="' + index + '"><div><div class="label">' + escapeHtml(note.filePath) + '</div><div class="detail">' + escapeHtml(note.reason) + '</div></div></div></li>';
         }).join('') + '</ol></article></section>'
       : '';
-    const orphans = unread + '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article></section>';
+    const orphans = unread + '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article>'
+      + '<article class="view-panel"><h2 class="with-action"><span>Links that open no note</span>' + ((state.missingLinkTargets || []).some(function (target) { return target.creatable; }) ? '<button type="button" class="merge" data-action="create-all-missing-notes" data-tip="Create a note for every name links write that no note carries">Create all</button>' : '') + '</h2>' + missingLinkList() + (unlistedMissing > 0 ? '<p class="empty">And ' + unlistedMissing + ' more.</p>' : '') + '</article></section>';
     document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section><section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
   }
   window.addEventListener('message', function (event) {

@@ -245,3 +245,40 @@ export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
   });
   return new BacklinkIndex(occurrences);
 }
+
+/** A name links write that no note carries. */
+export interface MissingLinkTarget {
+  /** The name as the first link found writes it. */
+  name: string;
+  /** Lowercased, as names are matched. */
+  key: string;
+  /** How many links write it. */
+  count: number;
+  /** The notes the links are in, each once, in the order found. */
+  sourcePaths: string[];
+}
+
+/**
+ * Every name a link writes that opens no note, most linked first. A name
+ * two notes share is not missing: it opens a choice, which the editor
+ * warns about where it is written.
+ */
+export function findMissingLinkTargets(index: WorkspaceIndex): MissingLinkTarget[] {
+  const titles = createNoteTitleMap(index);
+  const missing = new Map<string, MissingLinkTarget>();
+  getBacklinkIndex(index).occurrences.forEach((occurrence) => {
+    if (!occurrence.note || findWikiTargetPaths(titles, occurrence.note, occurrence.sourcePath).length > 0) {
+      return;
+    }
+    const key = occurrence.note.toLocaleLowerCase();
+    const found = missing.get(key) ?? { name: occurrence.note, key, count: 0, sourcePaths: [] };
+    found.count += 1;
+    if (!found.sourcePaths.includes(occurrence.sourcePath)) {
+      found.sourcePaths.push(occurrence.sourcePath);
+    }
+    missing.set(key, found);
+  });
+  return [...missing.values()].sort(
+    (left, right) => right.count - left.count || left.name.localeCompare(right.name),
+  );
+}
