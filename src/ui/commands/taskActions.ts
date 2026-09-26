@@ -2,11 +2,11 @@ import * as vscode from 'vscode';
 
 import { getTaskLineId } from '../../core/markdown/parser';
 import {
-  createNextOccurrence,
   formatIsoDate,
   parseTaskMetadata,
   setTaskLineCompletion,
   TaskMetadataFormat,
+  writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { Task } from '../../core/types';
 import { openSourceAt, resolveSourceUri } from './navigation';
@@ -262,28 +262,59 @@ export async function toggleTask(
         return replacement;
       }
 
-      const nextOccurrence = createNextOccurrence(
-        line,
+      const completion = writeCompletion(
+        replacement,
         task.checkboxColumn,
         now,
+        eol,
       );
-      if (nextOccurrence !== undefined) {
-        startedNext = describeNextOccurrence(nextOccurrence);
-        return `${nextOccurrence}${eol}${replacement}`;
+      if (completion.next !== undefined) {
+        startedNext = describeNextOccurrence(completion.next);
       }
-      if (task.recurrence) {
+      if (completion.unreadRule !== undefined) {
         void vscode.window.showWarningMessage(
-          `Deckard completed the task but could not read its repeat rule "${task.recurrence}", so it did not add the next occurrence.`,
+          `Deckard completed the task but could not read its repeat rule "${completion.unreadRule}", so it did not add the next occurrence.`,
         );
       }
-      return replacement;
+      return completion.text;
     },
     description,
   );
 }
 
+/** What one completion says, and whether it is worth a warning. */
+export interface CompletionMessage {
+  text: string;
+  severity: 'info' | 'warning';
+}
+
+/**
+ * The one sentence a completion says, wherever the task was completed: the
+ * next occurrence it started, or the repeat rule it could not read.
+ */
+export function describeCompletion(
+  title: string,
+  next?: string,
+  unreadRule?: string,
+): CompletionMessage {
+  const quoted = quoteTitle(title);
+  if (next !== undefined) {
+    return {
+      text: `Completed ${quoted}, and started the next one${describeNextOccurrence(next)}.`,
+      severity: 'info',
+    };
+  }
+  if (unreadRule !== undefined) {
+    return {
+      text: `Completed ${quoted}. Deckard could not read its repeat rule "${unreadRule}", so no next one was added.`,
+      severity: 'warning',
+    };
+  }
+  return { text: `Completed ${quoted}.`, severity: 'info' };
+}
+
 /** When the occurrence a completion started is next wanted, if it says. */
-function describeNextOccurrence(line: string): string {
+export function describeNextOccurrence(line: string): string {
   const { metadata } = parseTaskMetadata(line);
   const when = metadata.due ?? metadata.scheduled ?? metadata.start;
   return when ? `, ${metadata.due ? 'due' : 'scheduled'} ${when}` : '';
@@ -291,7 +322,11 @@ function describeNextOccurrence(line: string): string {
 
 /** A task's title, short enough to sit in a notification. */
 export function quoteTaskTitle(task: Task): string {
-  const title = task.title.trim();
+  return quoteTitle(task.title);
+}
+
+function quoteTitle(text: string): string {
+  const title = text.trim();
   return `"${title.length > 60 ? `${title.slice(0, 57)}…` : title}"`;
 }
 

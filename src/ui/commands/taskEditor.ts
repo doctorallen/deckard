@@ -14,14 +14,16 @@ import {
   TaskDraft,
 } from '../../core/markdown/taskDraft';
 import {
+  CompletionWrite,
   formatIsoDate,
   parseRecurrence,
   TaskDateField,
   TaskMetadataFormat,
+  writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { readTaskMetadataFormat } from './taskActions';
+import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 
 /**
  * Editing a whole task at once: its words, its dates, its priority, its
@@ -151,7 +153,13 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
  */
 export async function editTaskDraft(
   initial: TaskDraft,
-  options: { title: string; index?: TaskEditorIndex; now?: number } = {
+  options: {
+    title: string;
+    index?: TaskEditorIndex;
+    now?: number;
+    /** `deckard.tasks.addDoneDate`: whether completing writes a ✅ date. */
+    addDoneDate?: boolean;
+  } = {
     title: 'Edit task',
   },
 ): Promise<TaskDraft | undefined> {
@@ -199,15 +207,40 @@ function pickField(
  * The draft a field's new value makes. These are what the editor actually
  * does to a task; the prompts around them only collect the words.
  */
-export function completeDraft(draft: TaskDraft, now: number): TaskDraft {
+export function completeDraft(
+  draft: TaskDraft,
+  now: number,
+  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. */
+  addDoneDate = true,
+): TaskDraft {
   const completed = !draft.completed;
   // Completing here writes the done date a checkbox would have written, and
   // reopening takes it away again, so both agree with the rest of Deckard.
   return {
     ...draft,
     completed,
-    ...(completed ? { done: draft.done ?? formatIsoDate(now) } : { done: undefined }),
+    ...(completed
+      ? { done: draft.done ?? (addDoneDate ? formatIsoDate(now) : undefined) }
+      : { done: undefined }),
   };
+}
+
+/**
+ * The lines an edited task is written as. Completing a repeating task starts
+ * its next occurrence on the line above, as a checkbox does; reopening one,
+ * or editing one already done, writes the one line.
+ */
+export function writeEditedTask(
+  before: TaskDraft,
+  edited: TaskDraft,
+  now: number,
+  eol: string,
+): CompletionWrite {
+  const line = formatTaskDraft(edited);
+  if (before.completed || !edited.completed) {
+    return { text: line };
+  }
+  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol);
 }
 
 /** A date field's new value, or nothing when the words are not a day. */
@@ -239,7 +272,7 @@ export function setDraftDependencies(
 async function readField(
   draft: TaskDraft,
   field: DraftField | undefined,
-  options: { index?: TaskEditorIndex; now?: number },
+  options: { index?: TaskEditorIndex; now?: number; addDoneDate?: boolean },
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
   switch (field) {
@@ -253,7 +286,7 @@ async function readField(
       return written === undefined ? undefined : { ...draft, description: written.trim() };
     }
     case 'status':
-      return completeDraft(draft, now);
+      return completeDraft(draft, now, options.addDoneDate ?? true);
     case 'due':
     case 'scheduled':
     case 'start':
@@ -468,25 +501,29 @@ export async function editTaskCommand(
 
   const line = editor.document.lineAt(editor.selection.active.line);
   const existing = isTaskLine(line.text);
-  const draft = parseTaskDraft(
-    line.text,
-    readTaskMetadataFormat(
-      vscode.workspace.getConfiguration('deckard', editor.document.uri),
-    ),
+  const configuration = vscode.workspace.getConfiguration(
+    'deckard',
+    editor.document.uri,
   );
+  const draft = parseTaskDraft(line.text, readTaskMetadataFormat(configuration));
   const edited = await editTaskDraft(draft, {
     title: existing ? 'Edit task' : 'Add task',
     ...(index ? { index } : {}),
     now,
+    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
   });
   if (!edited) {
     return undefined;
   }
 
-  const written = formatTaskDraft(edited);
+  const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+  const completion = writeEditedTask(draft, edited, now, eol);
+  const written = completion.text;
   if (written === line.text) {
     return written;
   }
+  // One edit writes the next occurrence and the completed line together, so
+  // one undo takes both back.
   const applied = await editor.edit((builder) =>
     builder.replace(line.range, written),
   );
@@ -496,15 +533,31 @@ export async function editTaskCommand(
     );
     return undefined;
   }
-  // The caret goes to the end of the description, where writing continues.
+  // The caret goes to the end of the description, where writing continues:
+  // on the completed line, which a next occurrence pushed down by one.
   const caret = new vscode.Position(
-    line.lineNumber,
+    line.lineNumber + (completion.next === undefined ? 0 : 1),
     Math.min(
-      written.length,
+      formatTaskDraft(edited).length,
       edited.prefix.length + edited.description.length,
     ),
   );
   editor.selection = new vscode.Selection(caret, caret);
+  if (completion.next !== undefined || completion.unreadRule !== undefined) {
+    const said = describeCompletion(
+      edited.description,
+      completion.next,
+      completion.unreadRule,
+    );
+    // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
+    // a next one started is said in passing; a rule that could not be read
+    // is worth stopping for.
+    if (said.severity === 'warning') {
+      void vscode.window.showWarningMessage(said.text);
+    } else {
+      vscode.window.setStatusBarMessage(said.text, 5000);
+    }
+  }
   return written;
 }
 

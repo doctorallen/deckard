@@ -10,6 +10,7 @@ import {
   setTaskDate,
   setTaskLineCompletion,
   setTaskPriority,
+  writeCompletion,
 } from '../core/markdown/taskMetadata';
 
 const at = (year: number, month: number, day: number): number =>
@@ -146,6 +147,27 @@ suite('Obsidian Tasks metadata', () => {
     assert.strictEqual(
       createNextOccurrence('- [ ] Odd 🔁 every full moon', 3, today),
       undefined,
+    );
+  });
+
+  test('a completion writes the next occurrence above the completed line', () => {
+    const today = at(2026, 9, 13);
+    const weekly = '- [x] Review 📅 2026-09-10 🔁 every week ✅ 2026-09-13';
+    assert.deepStrictEqual(writeCompletion(weekly, 3, today, '\n'), {
+      text: `- [ ] Review 📅 2026-09-17 🔁 every week\n${weekly}`,
+      next: '- [ ] Review 📅 2026-09-17 🔁 every week',
+    });
+    assert.strictEqual(
+      writeCompletion(weekly, 3, today, '\r\n').text,
+      `- [ ] Review 📅 2026-09-17 🔁 every week\r\n${weekly}`,
+      'in the line ending the note uses',
+    );
+    assert.deepStrictEqual(writeCompletion('- [x] Plain task', 3, today, '\n'), {
+      text: '- [x] Plain task',
+    });
+    assert.deepStrictEqual(
+      writeCompletion('- [x] Odd 🔁 every blue moon', 3, today, '\n'),
+      { text: '- [x] Odd 🔁 every blue moon', unreadRule: 'every blue moon' },
     );
   });
 

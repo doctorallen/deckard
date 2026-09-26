@@ -18,6 +18,7 @@ import {
   setDraftDate,
   setDraftDependencies,
   TaskEditorActions,
+  writeEditedTask,
 } from '../ui/commands/taskEditor';
 
 /** A Monday morning, so a weekday answer is easy to read. */
@@ -80,6 +81,33 @@ suite('Task editor', () => {
       already.done,
       '2026-09-18',
       'a done date already written is the one it keeps',
+    );
+  });
+
+  test('marking a repeating task done writes its next occurrence above it', () => {
+    const before = parseTaskDraft('- [ ] Water the plants 🔁 every week 📅 2026-09-21');
+    const done = completeDraft(before, now);
+    const written = writeEditedTask(before, done, now, '\n');
+    assert.strictEqual(
+      written.text,
+      '- [ ] Water the plants 🔁 every week 📅 2026-09-28\n- [x] Water the plants 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
+    );
+    assert.strictEqual(written.next, '- [ ] Water the plants 🔁 every week 📅 2026-09-28');
+
+    // Reopening writes the one line, and so does editing a task already done.
+    const reopened = writeEditedTask(done, completeDraft(done, now), now, '\n');
+    assert.strictEqual(reopened.text, '- [ ] Water the plants 🔁 every week 📅 2026-09-21');
+    assert.strictEqual(
+      writeEditedTask(done, { ...done, description: 'Water the ferns' }, now, '\n').next,
+      undefined,
+    );
+  });
+
+  test('completing writes no done date when the setting is off', () => {
+    const before = parseTaskDraft('- [ ] Ship it');
+    assert.strictEqual(
+      writeEditedTask(before, completeDraft(before, now, false), now, '\n').text,
+      '- [x] Ship it',
     );
   });
 

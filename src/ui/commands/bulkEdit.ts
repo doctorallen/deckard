@@ -6,10 +6,10 @@ import {
   getPersonMarker,
 } from '../../core/markdown/parser';
 import {
-  createNextOccurrence,
   formatIsoDate,
   setTaskDate,
   setTaskLineCompletion,
+  writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
@@ -225,8 +225,7 @@ function rewrite(
   }
   // A repeating task is replaced by its next occurrence here too, so a bulk
   // completion leaves the same notes behind as one checkbox would.
-  const next = createNextOccurrence(line, task.checkboxColumn, now);
-  return next === undefined ? completed : `${next}${options.eol}${completed}`;
+  return writeCompletion(completed, task.checkboxColumn, now, options.eol).text;
 }
 
 function firstLine(content: string): string {

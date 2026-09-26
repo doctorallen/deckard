@@ -439,6 +439,39 @@ export function createNextOccurrence(
   return prefix + next.trimEnd();
 }
 
+/** What completing a task writes in place of its line. */
+export interface CompletionWrite {
+  /** The lines to write in place of the task: the next occurrence, if any, then the completed line. */
+  text: string;
+  /** The next occurrence's line, when one was started. */
+  next?: string;
+  /** The 🔁 rule as written, when there is one Deckard could not read. */
+  unreadRule?: string;
+}
+
+/**
+ * What a completed task line becomes, wherever it was completed: a repeating
+ * task gets its next occurrence on the line above, where Tasks puts it.
+ *
+ * Every way of completing a task comes through here, so a checkbox, the
+ * board, bulk edit, the task editor, and the assistant all leave the same
+ * lines behind. `completedLine` is the line already marked done.
+ */
+export function writeCompletion(
+  completedLine: string,
+  checkboxColumn: number,
+  now: number,
+  eol: string,
+): CompletionWrite {
+  const next = createNextOccurrence(completedLine, checkboxColumn, now);
+  if (next !== undefined) {
+    return { text: `${next}${eol}${completedLine}`, next };
+  }
+  const [, text] = splitTaskLine(completedLine, checkboxColumn, ' ');
+  const rule = parseTaskMetadata(text).metadata.recurrence;
+  return rule ? { text: completedLine, unreadRule: rule } : { text: completedLine };
+}
+
 export interface RecurrenceRule {
   /** "when done" rules count from the day the task is completed. */
   whenDone: boolean;

@@ -5,12 +5,16 @@ import {
   parseTaskDraft,
   TaskDraft,
 } from '../../core/markdown/taskDraft';
-import { formatIsoDate, TaskMetadataFormat } from '../../core/markdown/taskMetadata';
+import {
+  CompletionWrite,
+  formatIsoDate,
+  TaskMetadataFormat,
+} from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
 import { formatCaptureLine, getCaptureInsertion } from './capture';
 import { ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
-import { completeDraft } from './taskEditor';
+import { completeDraft, writeEditedTask } from './taskEditor';
 import { readTaskMetadataFormat } from './taskActions';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
@@ -112,15 +116,20 @@ export function addedTaskLine(text: string): string {
 /**
  * A task line with the requested changes made, and nothing else touched:
  * the draft keeps every field it does not name, in the format the line
- * already uses.
+ * already uses. Completing a repeating task starts its next occurrence on
+ * the line above, as a checkbox does.
  */
 export function changeTaskLine(
   line: string,
   changes: Omit<ChangeTaskInput, 'note' | 'line'>,
   now: number,
   fallbackFormat: TaskMetadataFormat = 'emoji',
-): string {
-  let draft: TaskDraft = parseTaskDraft(line, fallbackFormat);
+  eol = '\n',
+  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. */
+  addDoneDate = true,
+): CompletionWrite {
+  const before: TaskDraft = parseTaskDraft(line, fallbackFormat);
+  let draft = before;
   if (changes.title !== undefined) {
     draft = { ...draft, description: changes.title };
   }
@@ -134,9 +143,9 @@ export function changeTaskLine(
     draft = { ...draft, assignee: changes.assignee ?? undefined };
   }
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
-    draft = completeDraft(draft, now);
+    draft = completeDraft(draft, now, addDoneDate);
   }
-  return formatTaskDraft(draft);
+  return writeEditedTask(before, draft, now, eol);
 }
 
 /** One line saying what changed, for the preview's label and the answer. */
@@ -218,12 +227,16 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
     return { text: `Line ${task.lineNumber} of ${task.filePath} is no longer the task the index knows there; it may have been edited or moved. Ask deckard_query again.`, isError: true };
   }
   const { note: _note, line: _line, ...changes } = input;
-  const replacement = changeTaskLine(
+  const configuration = vscode.workspace.getConfiguration('deckard', uri);
+  const completion = changeTaskLine(
     current.text,
     changes,
     now,
-    readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard')),
+    readTaskMetadataFormat(configuration),
+    document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+    configuration.get<boolean>('tasks.addDoneDate', true),
   );
+  const replacement = completion.text;
   if (replacement === current.text) {
     return { text: 'The task already reads that way; nothing to change.' };
   }
@@ -237,8 +250,12 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
   if (!written.applied) {
     return { text: 'The user declined the change in the preview. Nothing was written.', isError: true };
   }
+  const repeat =
+    completion.next !== undefined
+      ? `\nIt repeats, so the next one was added above it: ${completion.next}`
+      : '';
   return {
-    text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}\nThe user can take it back with Deckard: Undo Last Change.`,
+    text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}${repeat}\nThe user can take it back with Deckard: Undo Last Change.`,
   };
 }
 

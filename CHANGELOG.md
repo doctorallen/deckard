@@ -21,6 +21,11 @@
   arrived three times, and the daily note's Carry in lens counted it three
   times. Only the newest copy is carried now.
 
+- **Finishing a repeating task in the task editor, or from the assistant,
+  starts the next one**, as a checkbox does. Both wrote the completed line
+  and nothing else, so the task never came back. Both now honor
+  `deckard.tasks.addDoneDate` too.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
