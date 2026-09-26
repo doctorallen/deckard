@@ -5,6 +5,7 @@ import {
   DashboardTask,
   Entity,
   SearchPageEntity,
+  SearchPreview,
   ParsedFile,
   PersistedPreferences,
   ResultPaging,
@@ -326,8 +327,17 @@ export function createSearchPageSnapshot(
     options.pageSize ??
     (options.paged === false ? undefined : preferences.searchPageSize);
   const notePaging = createPaging(ranked.length, pageSize, options.notePage);
+  // The words a card's three lines are drawn around: those searched for,
+  // and those being typed.
+  const snippetWords = [...new Set([...getTextWords(drafted.node), ...preview])]
+    .map((word) => word.toLowerCase())
+    .filter((word) => word.length >= 2);
   const sections = takePage(ranked, notePaging).map((key) =>
-    key.section ? cardFor(key.section) : createFileOverviewCard(key.file as ParsedFile),
+    withPreview(
+      key.section ? cardFor(key.section) : createFileOverviewCard(key.file as ParsedFile),
+      preferences.searchPreview,
+      snippetWords,
+    ),
   );
   const tasks = sortTasks(
     [...results.tasks],
@@ -413,6 +423,7 @@ export function createSearchPageSnapshot(
     },
     pageSizes: SEARCH_PAGE_SIZES,
     renderMode: preferences.renderMode,
+    preview: preferences.searchPreview,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,
     noteColumns: preferences.dashboardNoteColumns,
@@ -506,6 +517,81 @@ export function describeAssociation(association: TagAssociation): string {
     return heading ? heading.charAt(0).toUpperCase() + heading.slice(1) : '';
   }
   return `Written together ${times(association.coOccurrenceCount)}${heading ? `; ${heading}` : ''}`;
+}
+
+/** A card's body lines, past which it is cut to three with Show all. */
+const PREVIEW_LINES = 3;
+/** Characters past which a short body still wraps beyond three lines. */
+const PREVIEW_CHARACTERS = 280;
+
+/**
+ * A card as the Preview row draws it: whether it runs past three lines, and,
+ * when the searched words sit below them, the paragraph they are in.
+ */
+function withPreview(
+  card: TagOverviewCard,
+  preview: SearchPreview,
+  words: readonly string[],
+): TagOverviewCard {
+  const lines = card.rawContent.split(/\r?\n/);
+  const start = preview === 'lines' && words.length > 0 ? findSnippetStart(lines, words) : undefined;
+  const snippet =
+    start === undefined
+      ? undefined
+      : {
+          rawContent: lines.slice(start).join('\n'),
+          renderedHtml: renderMarkdown(lines.slice(start).join('\n')),
+          line: card.startLine + 1 + start,
+        };
+  const long =
+    lines.length > PREVIEW_LINES ||
+    card.rawContent.length > PREVIEW_CHARACTERS ||
+    snippet !== undefined;
+  return { ...card, ...(snippet ? { snippet } : {}), ...(long ? { long } : {}) };
+}
+
+/**
+ * The line a card's snippet starts on: the start of the paragraph holding
+ * the first line with a searched word, or the fence around it when it is in
+ * code. Nothing when that line is already among the first three.
+ */
+export function findSnippetStart(
+  lines: readonly string[],
+  words: readonly string[],
+): number | undefined {
+  let fence: { marker: string; size: number; start: number } | undefined;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (marker && !fence) {
+      fence = { marker: marker[1][0], size: marker[1].length, start: index };
+      continue;
+    }
+    if (
+      marker &&
+      fence &&
+      marker[1][0] === fence.marker &&
+      marker[1].length >= fence.size &&
+      /^ {0,3}(`{3,}|~{3,})\s*$/.test(line)
+    ) {
+      fence = undefined;
+      continue;
+    }
+    const lower = line.toLowerCase();
+    if (!words.some((word) => lower.includes(word))) {
+      continue;
+    }
+    let start = index;
+    if (fence) {
+      start = fence.start;
+    } else {
+      for (let step = 0; step < 2 && start > 0 && lines[start - 1].trim(); step += 1) {
+        start -= 1;
+      }
+    }
+    return start < PREVIEW_LINES ? undefined : start;
+  }
+  return undefined;
 }
 
 /**

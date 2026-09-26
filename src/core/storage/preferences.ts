@@ -7,26 +7,27 @@ import {
   TaskColumnId,
 } from '../../ui/state/resultTable';
 import {
-  PersistedPreferences,
-  PinnedNote,
-  DEFAULT_SEARCH_PAGE_SIZE,
-  SearchPageSize,
-  SEARCH_PAGE_SIZES,
-  TagOverviewLayout,
-  RelatedNotesSortMode,
-  RenderMode,
-  SavedFilter,
-  TagOverviewSortMode,
-  TagSortMode,
-  TaskSortMode,
   DashboardColumnCount,
   DashboardMode,
   DashboardSearchField,
   DashboardViewState,
   DashboardWidgetConfig,
   DashboardWidgetKind,
+  DEFAULT_SEARCH_PAGE_SIZE,
+  PersistedPreferences,
+  PinnedNote,
+  RelatedNotesSortMode,
+  RenderMode,
+  SavedFilter,
+  SEARCH_PAGE_SIZES,
+  SearchPageSize,
+  SearchPreview,
+  TagOverviewLayout,
+  TagOverviewSortMode,
+  TagSortMode,
   TaskBoardGroupBy,
   TaskLayout,
+  TaskSortMode,
 } from '../types';
 
 const preferencesKey = 'deckard.preferences';
@@ -123,6 +124,7 @@ const defaultPreferences: PersistedPreferences = {
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: DEFAULT_SEARCH_PAGE_SIZE,
+  searchPreview: 'lines',
   relatedNotesSortMode: 'tags',
   sectionAccessCounts: {},
   savedFilters: [],
@@ -566,6 +568,11 @@ export class PreferencesStore implements vscode.Disposable {
     searchPageSize: SearchPageSize,
   ): Promise<void> {
     await this.update({ searchPageSize });
+  }
+
+  /** Selects how much of each result a search page shows. */
+  public async setSearchPreview(searchPreview: SearchPreview): Promise<void> {
+    await this.update({ searchPreview });
   }
 
   /**
@@ -1098,6 +1105,10 @@ function normalizePreferences(
     searchPageSize: isSearchPageSize(searchPageSize)
       ? searchPageSize
       : DEFAULT_SEARCH_PAGE_SIZE,
+    searchPreview:
+      value?.searchPreview === 'none' || value?.searchPreview === 'full'
+        ? value.searchPreview
+        : 'lines',
     relatedNotesSortMode:
       relatedNotesSortMode === 'newest' ||
       relatedNotesSortMode === 'oldest' ||

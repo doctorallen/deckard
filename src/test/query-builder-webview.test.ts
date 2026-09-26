@@ -700,6 +700,7 @@ function createState(
     tasks: [],
     taskCounts: { all: 0, active: 0, completed: 0 },
     renderMode: 'markdown',
+    preview: 'lines',
     sortMode: 'alphabetical',
     layout: 'tabs',
     tagTitleDisplayMode: 'inline',

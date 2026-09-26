@@ -258,6 +258,10 @@ export function parseSearchPageMessage(
       return isRenderMode(value.mode)
         ? { type: 'setRenderMode', mode: value.mode }
         : undefined;
+    case 'setSearchPreview':
+      return value.preview === 'none' || value.preview === 'lines' || value.preview === 'full'
+        ? { type: 'setSearchPreview', preview: value.preview }
+        : undefined;
     case 'setTagOverviewSort':
       return isTagOverviewSortMode(value.mode)
         ? { type: 'setTagOverviewSort', mode: value.mode }

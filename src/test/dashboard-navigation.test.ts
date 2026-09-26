@@ -30,6 +30,7 @@ const defaultPreferences: PersistedPreferences = {
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
   renderMode: 'markdown',
+  searchPreview: 'lines',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: 30,

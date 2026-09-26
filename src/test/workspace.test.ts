@@ -39,6 +39,7 @@ const defaultPreferences = {
   taskBoardGroup: 'status' as const,
   taskBoardTaskFilter: 'active' as const,
   renderMode: 'markdown' as const,
+  searchPreview: 'lines' as const,
   tagOverviewSortMode: 'alphabetical' as const,
   tagOverviewLayout: 'tabs' as const,
   relatedNotesSortMode: 'tags' as const,

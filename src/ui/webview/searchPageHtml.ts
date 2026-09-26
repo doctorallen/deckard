@@ -121,6 +121,15 @@ body:not(.zen) main .card .source, body:not(.zen) main .card:hover .source, body
   color: var(--muted); font: var(--text-xs)/16px var(--font-mono); white-space: nowrap; text-overflow: ellipsis;
 }
 body:not(.zen) main .card:hover::after, body:not(.zen) main .card:focus-within::after { display: none; }
+/* Three lines of each result, or of the paragraph its words are in, and
+   Show all for the rest. The clamp is Chromium's; the height is the guard. */
+.card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.card-body.is-clamped > .rendered { max-height: 4.65em; }
+.card-snippet-lead { margin-top: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.card-snippet-lead + .rendered, .card-snippet-lead + .markdown { margin-top: var(--space-1); }
+/* A text button: words that open the rest, drawn as words. */
+.card-more.card-more { display: inline-block; min-height: 0; margin: var(--space-2) 0 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-xs) var(--font-mono); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
+.card-more.card-more:hover, .card-more.card-more:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
 body:not(.zen) main .card:hover, body:not(.zen) main .card:focus-within { border-bottom-left-radius: var(--corner-bl, 0); border-bottom-right-radius: var(--corner-br, 0); }
 ${getPageTailCss()}
 </style>
@@ -261,12 +270,45 @@ ${getQueryEditorScript()}
     return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" data-tip="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
   }
 
-  function renderCard(section) {
+  /** Cards opened with Show all, by id, until the search changes. */
+  let openedCards = new Set();
+  let openedFor;
+
+  /** A body as the Format row draws it. */
+  function drawBody(rawContent, renderedHtml) {
+    if (!rawContent) return '';
+    return state.renderMode === 'html' ? '<div class="rendered">' + renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(rawContent) + '</pre>';
+  }
+
+  /**
+   * A card's body as the Preview row asks: nothing, three lines with Show
+   * all, or the whole of it. On a search of words, the three lines are the
+   * paragraph the first word is in, when it sits further down.
+   */
+  function renderCardBody(section, position) {
+    const preview = state.preview || 'lines';
+    if (preview === 'none') return '';
+    const opened = openedCards.has(section.id);
+    const clamped = preview === 'lines' && !opened;
+    const snippet = clamped && section.snippet;
+    const body = snippet
+      ? '<div class="card-snippet-lead"><span aria-hidden="true">…</span><span class="visually-hidden">From further down the entry:</span></div>' + drawBody(section.snippet.rawContent, section.snippet.renderedHtml)
+      : drawBody(section.rawContent, section.renderedHtml);
+    if (!body) return '';
+    const id = 'card-body-' + position;
+    const title = String(section.heading || '').trim();
+    const more = preview === 'lines' && section.long
+      ? '<button type="button" class="card-more" data-action="toggle-card-body" data-card-id="' + escapeHtml(section.id) + '" aria-expanded="' + opened + '" aria-controls="' + id + '" aria-label="' + escapeHtml((opened ? 'Show less of ' : 'Show all of ') + title) + '">' + (opened ? 'Show less' : 'Show all') + '</button>'
+      : '';
+    return '<div class="card-body' + (clamped ? ' is-clamped' : '') + '" id="' + id + '">' + body + '</div>' + more;
+  }
+
+  function renderCard(section, position) {
     const fileName = section.filePath.split('/').pop() || section.filePath;
     // Where the entry sits in its note, under the file and line, as the
     // Related Notes sidebar shows it.
     const pathHtml = renderHeadingPath(section.headingPath, fileName, section.heading);
-    const content = section.rawContent ? (state.renderMode === 'html' ? '<div class="rendered">' + section.renderedHtml + '</div>' : '<pre class="markdown">' + escapeHtml(section.rawContent) + '</pre>') : '';
+    const content = renderCardBody(section, position);
     const titleHtml = state.tagTitleDisplayMode === 'inline'
       ? renderInlineTitle(section.heading, section.titleTags)
       : escapeHtml(section.heading);
@@ -391,7 +433,7 @@ ${getQueryEditorScript()}
       return '<p class="empty-action"><button data-action="show-other-results" data-tab="' + other + '">Show ' + otherCount + ' matching ' + escapeHtml(noun) + '</button></p>';
     };
     const cards = state.sections.length
-      ? state.sections.map(renderCard).join('')
+      ? state.sections.map(function (section, position) { return renderCard(section, position); }).join('')
       : '<div class="empty">' + (state.tag && !drafting ? 'No sections currently carry this tag.' : hasText ? 'No notes match this search.' : 'No notes yet.') + otherResults('notes') + '</div>';
     const tasks = state.tasks.length
       ? '<div class="task-list">' + state.tasks.map(renderTask).join('') + '</div>'
@@ -413,12 +455,14 @@ ${getQueryEditorScript()}
         { id: 'tasks', label: 'Tasks', count: tasksCount },
       ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + resultPanelAttributes('notes') + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + resultPanelAttributes('tasks') + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
     const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" data-tip="Tabs: switch between Notes and Tasks">${layoutTabsIcon}</button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" data-tip="Side by side: Notes 60%, Tasks 40%">${layoutSplitIcon}</button></div>';
+    const previewControls = renderViewOptionChoices('set-preview', [['none', 'None'], ['lines', '3 lines'], ['full', 'Full']], state.preview || 'lines', 'Result preview');
     const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" data-tip="Source: show the original Markdown">${sourceIcon}</button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" data-tip="Rendered: show formatted Markdown">${renderedIcon}</button></div>';
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select>${sortIcon}</span></label>';
     const viewOptions = renderViewOptions([
       { label: 'Sort', html: sortControl.replace('>Sort:<span', '><span') },
       { label: 'Layout', html: layoutControls },
       { label: 'Format', html: formatControls },
+      { label: 'Preview', html: previewControls },
       { label: 'Note columns', html: columnChoices('notes', state.noteColumns) },
       { label: 'Task columns', html: columnChoices('tasks', state.taskColumns) },
       renderZenOption(),
@@ -441,6 +485,13 @@ ${getQueryEditorScript()}
       : '';
     document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
+    // A clamped body that fits its three lines has nothing more to show.
+    document.querySelectorAll('.card-body.is-clamped').forEach(function (body) {
+      const inner = body.lastElementChild;
+      if (body.querySelector('.card-snippet-lead') || !inner || !(inner.clientHeight > 0) || inner.scrollHeight > inner.clientHeight + 1) return;
+      const more = body.nextElementSibling;
+      if (more && more.classList.contains('card-more')) more.remove();
+    });
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
     announce(notesCount + (notesCount === 1 ? ' note' : ' notes') + ' and ' + tasksCount + (tasksCount === 1 ? ' task' : ' tasks') + ' match this search.');
@@ -502,6 +553,14 @@ ${getQueryEditorScript()}
       const action = target.dataset.action;
       if (action === 'set-mode') vscode.postMessage({ type: 'setRenderMode', mode: target.dataset.mode });
       if (action === 'set-layout') vscode.postMessage({ type: 'setTagOverviewLayout', layout: target.dataset.layout });
+      if (action === 'set-preview') vscode.postMessage({ type: 'setSearchPreview', preview: target.dataset.value });
+      if (action === 'toggle-card-body') {
+        const id = target.dataset.cardId;
+        if (openedCards.has(id)) openedCards.delete(id);
+        else openedCards.add(id);
+        renderKeepingPlace(render);
+        return;
+      }
       if (action === 'edit-results') vscode.postMessage({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'export-results') vscode.postMessage({ type: 'exportResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' });
       if (action === 'set-columns') {
@@ -583,6 +642,13 @@ ${getQueryEditorScript()}
     if (event.data && event.data.type === 'state') {
       const first = !state;
       state = event.data.data;
+      // Cards opened with Show all stay open through a save, and close when
+      // the search changes.
+      const searched = state.query && state.query.text || '';
+      if (searched !== openedFor) {
+        openedFor = searched;
+        openedCards = new Set();
+      }
       editor.receive();
       renderKeepingPlace(render);
       if (first) restoreScroll(typeof vscode.getState === 'function' ? vscode.getState() : undefined);

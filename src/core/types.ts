@@ -101,6 +101,8 @@ export interface DashboardWidgetConfig {
 export type TagTitleDisplayMode = 'inline' | 'separate';
 
 export type RenderMode = 'markdown' | 'html';
+/** How much of each result a search page shows: none, three lines, or all. */
+export type SearchPreview = 'none' | 'lines' | 'full';
 
 export type BuiltInEntityKind =
   | 'person'
@@ -357,6 +359,8 @@ export interface PersistedPreferences {
   tagOverviewLayout: TagOverviewLayout;
   /** How many notes, and how many tasks, a search page shows at a time. */
   searchPageSize: SearchPageSize;
+  /** How much of each result a search page shows. */
+  searchPreview: SearchPreview;
   relatedNotesSortMode: RelatedNotesSortMode;
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
@@ -620,6 +624,8 @@ export interface SearchPageSnapshot {
     completed: number;
   };
   renderMode: RenderMode;
+  /** How much of each result the page shows. */
+  preview: SearchPreview;
   sortMode: TagOverviewSortMode;
   layout: TagOverviewLayout;
   /** The page sizes the reader can choose between. */
@@ -673,6 +679,14 @@ export interface TagOverviewCard {
   accessCount: number;
   /** The headings down to this entry, top down, tags stripped. */
   headingPath?: string[];
+  /**
+   * The body from the paragraph holding the first searched word, when that
+   * word sits below the three lines a card shows. `line` is its first line
+   * in the note.
+   */
+  snippet?: { rawContent: string; renderedHtml: string; line: number };
+  /** Whether the body runs past three lines, so a card offers Show all. */
+  long?: boolean;
 }
 
 export interface HeadingTagSpan extends TagReference {
@@ -1316,6 +1330,11 @@ export interface SetTagOverviewLayoutMessage {
   layout: TagOverviewLayout;
 }
 
+export interface SetSearchPreviewMessage {
+  type: 'setSearchPreview';
+  preview: SearchPreview;
+}
+
 export interface SetRenderModeMessage {
   type: 'setRenderMode';
   mode: RenderMode;
@@ -1429,6 +1448,7 @@ export type SearchPageMessage =
   | OpenSourceMessage
   | ToggleTaskMessage
   | SetRenderModeMessage
+  | SetSearchPreviewMessage
   | OpenTagMessage
   | RenameTagMessage
   | SetTagOverviewSortMessage

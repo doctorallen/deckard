@@ -85,6 +85,46 @@ suite('Search page behavior', () => {
     return open(notes, '#project/atlas', options);
   };
 
+  test('shows three lines of a result, and Show all opens the rest', () => {
+    const long = ['Line one.', 'Line two.', 'Line three.', 'Line four.', 'Line five.'].join('\n');
+    const { page, snapshot } = open({ 'notes/a.md': `# Long #work\n${long}` }, '#work');
+    const body = page.find('.card .card-body');
+    assert.ok(body.classList.contains('is-clamped'), 'three lines by default');
+    const more = page.find('.card [data-action="toggle-card-body"]');
+    assert.strictEqual(more.textContent, 'Show all');
+    assert.strictEqual(more.getAttribute('aria-expanded'), 'false');
+    assert.strictEqual(more.getAttribute('aria-controls'), body.id);
+    page.click('.card [data-action="toggle-card-body"]');
+    assert.ok(!page.find('.card .card-body').classList.contains('is-clamped'), 'opened');
+    assert.strictEqual(page.text('.card [data-action="toggle-card-body"]'), 'Show less');
+    assert.strictEqual(page.find('.card [data-action="toggle-card-body"]').getAttribute('aria-expanded'), 'true');
+    page.send(snapshot);
+    assert.ok(!page.find('.card .card-body').classList.contains('is-clamped'), 'a redraw keeps it open');
+    assert.strictEqual(page.lastPosted('openSource'), undefined, 'Show all does not open the note');
+  });
+
+  test('a result whose words are further down shows their paragraph, led by an ellipsis', () => {
+    const body = ['Intro one.', 'Intro two.', 'Intro three.', '', 'The vendor review is late.'].join('\n');
+    const { page } = open({ 'notes/a.md': `# Entry #work\n${body}` }, 'vendor');
+    assert.ok(page.find('.card .card-snippet-lead'), 'the lead says it is from further down');
+    assert.match(page.text('.card .card-body') ?? '', /vendor review/);
+    assert.doesNotMatch(page.text('.card .card-body') ?? '', /Intro one/);
+    page.click('.card [data-action="toggle-card-body"]');
+    assert.match(page.text('.card .card-body') ?? '', /Intro one/, 'Show all shows the whole entry');
+  });
+
+  test('the gear\'s Preview shows no body, or all of it', () => {
+    const long = ['One.', 'Two.', 'Three.', 'Four.'].join('\n');
+    const { page, snapshot } = open({ 'notes/a.md': `# Long #work\n${long}` }, '#work');
+    page.click('[data-action="set-preview"][data-value="none"]');
+    assert.deepStrictEqual(page.lastPosted('setSearchPreview'), { type: 'setSearchPreview', preview: 'none' });
+    page.send({ ...snapshot, preview: 'none' });
+    assert.strictEqual(page.findAll('.card .card-body').length, 0);
+    page.send({ ...snapshot, preview: 'full' });
+    assert.ok(!page.find('.card .card-body').classList.contains('is-clamped'));
+    assert.strictEqual(page.findAll('.card [data-action="toggle-card-body"]').length, 0);
+  });
+
   test('draws the notes and tasks a search found', () => {
     const { page } = open(
       {

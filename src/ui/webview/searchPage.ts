@@ -371,7 +371,11 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         sections:
           snapshot.renderMode === 'html'
             ? snapshot.sections
-            : snapshot.sections.map((card) => ({ ...card, renderedHtml: '' })),
+            : snapshot.sections.map((card) => ({
+                ...card,
+                renderedHtml: '',
+                ...(card.snippet ? { snippet: { ...card.snippet, renderedHtml: '' } } : {}),
+              })),
       },
     });
     this.activeSearch.notifyChanged(this);
@@ -641,6 +645,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         return;
       case 'setTagOverviewLayout':
         await this.preferences.setTagOverviewLayout(message.layout);
+        return;
+      case 'setSearchPreview':
+        await this.preferences.setSearchPreview(message.preview);
         return;
       case 'setSearchColumns':
         await this.preferences.setDashboardColumns(

@@ -12,6 +12,7 @@ import {
   sortTasks,
   sortTagOverviewCards,
   sortTags,
+  findSnippetStart,
 } from '../ui/state/dashboardState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import {
@@ -55,6 +56,7 @@ const defaultPreferences: PersistedPreferences = {
   taskBoardLayout: 'board',
   taskBoardGroup: 'status',
   renderMode: 'markdown',
+  searchPreview: 'lines',
   tagOverviewSortMode: 'alphabetical',
   tagOverviewLayout: 'tabs',
   searchPageSize: 30,
@@ -329,6 +331,29 @@ suite('Dashboard state', () => {
         .tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
+  });
+
+  test('a card shows the paragraph its searched words are in, when they are below its three lines', () => {
+    const lines = ['First line.', 'Second line.', 'Third line.', '', 'A paragraph', 'that runs on', 'and names the vendor here.'];
+    assert.strictEqual(findSnippetStart(lines, ['vendor']), 4, 'the paragraph, not the line');
+    assert.strictEqual(findSnippetStart(lines, ['second']), undefined, 'already in the first three');
+    assert.strictEqual(findSnippetStart(['a', 'b', 'c', 'd', '```', 'code', 'the vendor call', '```'], ['vendor']), 4, 'a fence starts at its fence');
+    assert.strictEqual(findSnippetStart(lines, ['absent']), undefined);
+
+    const body = ['Intro one.', 'Intro two.', 'Intro three.', '', 'More text.', '', 'The vendor review is late.'].join('\n');
+    const index = createFileIndex([parseMarkdown('notes/a.md', `# Entry #work\n${body}`)]);
+    const lines3 = createSearchPageSnapshot(index, defaultPreferences, 'vendor');
+    assert.match(lines3.sections[0].snippet?.rawContent ?? '', /^The vendor review/);
+    assert.strictEqual(lines3.sections[0].long, true);
+    const drafted = createSearchPageSnapshot(index, defaultPreferences, '#work', { previewWords: ['vendor'] });
+    assert.ok(drafted.sections[0].snippet, 'the words being typed count');
+    const full = createSearchPageSnapshot(index, { ...defaultPreferences, searchPreview: 'full' }, 'vendor');
+    assert.strictEqual(full.sections[0].snippet, undefined, 'Full shows everything, so no snippet');
+    assert.strictEqual(full.preview, 'full');
+    const short = createSearchPageSnapshot(createFileIndex([parseMarkdown('notes/b.md', '# Short #work\nOne line.')]), defaultPreferences, '#work');
+    assert.strictEqual(short.sections[0].long, undefined, 'a short body offers no Show all');
+    const wide = createSearchPageSnapshot(createFileIndex([parseMarkdown('notes/c.md', `# Wide #work\n${'word '.repeat(60)}`)]), defaultPreferences, '#work');
+    assert.strictEqual(wide.sections[0].long, true, 'one long line wraps past three');
   });
 
   test('a search page sorts every match by its key and draws only the page it shows', () => {

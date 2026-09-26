@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **Search results you can scan.** A result shows three lines of its entry,
+  or, on a search of words, the paragraph the words are in when they sit
+  further down; **Show all** opens the rest. The gear's new **Preview** row
+  chooses None, 3 lines, or Full.
+
 - **Search pages start rendered.** A result shows its Markdown drawn, not
   its source. **Everyone is switched to Rendered once**, since a saved
   preference held Source whether or not it was chosen; choosing Source in
