@@ -226,7 +226,7 @@ suite('Task editor', () => {
         new vscode.Range(line, 0, line, 0);
       assert.deepStrictEqual(
         actions.provideCodeActions(document, at(0)).map((action) => action.title),
-        ['Edit task…'],
+        ['Edit task…', 'Break into steps…'],
       );
       assert.deepStrictEqual(actions.provideCodeActions(document, at(1)), []);
     } finally {

@@ -1988,6 +1988,12 @@ export interface EditTaskMessage {
   taskId: string;
 }
 
+/** The board's s key and its menu's Break into steps…: ask for the steps. */
+export interface BreakIntoStepsMessage {
+  type: 'breakIntoSteps';
+  taskId: string;
+}
+
 /** A column's + Add task: capture a task already in that column. */
 export interface AddTaskToColumnMessage {
   type: 'addTaskToColumn';
@@ -1998,6 +2004,7 @@ export type TaskBoardMessage =
   | PickTaskDateMessage
   | MoveTaskToMessage
   | EditTaskMessage
+  | BreakIntoStepsMessage
   | AddTaskToColumnMessage
   | ExportResultsMessage
   | SetZenModeMessage

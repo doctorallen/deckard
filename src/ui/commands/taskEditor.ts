@@ -637,6 +637,14 @@ export class TaskEditorActions implements vscode.Disposable {
       command: 'deckard.editTask',
       title: 'Edit task…',
     };
-    return [action];
+    const steps = new vscode.CodeAction(
+      'Break into steps…',
+      vscode.CodeActionKind.Refactor,
+    );
+    steps.command = {
+      command: 'deckard.breakIntoSteps',
+      title: 'Break into steps…',
+    };
+    return [action, steps];
   }
 }

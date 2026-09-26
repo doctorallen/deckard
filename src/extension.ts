@@ -35,6 +35,7 @@ import {
   TaskEditorActions,
   TaskLineContext,
 } from './ui/commands/taskEditor';
+import { breakIntoStepsCommand } from './ui/commands/taskSteps';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
@@ -729,6 +730,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         }
       },
     ),
+    vscode.commands.registerCommand(
+      'deckard.agenda.breakIntoSteps',
+      async (node?: AgendaNode) => {
+        const [task] = agenda.tasksFor(node);
+        if (task) {
+          await breakIntoStepsCommand(indexer, task);
+        }
+      },
+    ),
   );
   void syncOutlineFollowCursorContext();
   void syncZenModeContext();
@@ -986,6 +996,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.addTask', () =>
       editTaskCommand(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.breakIntoSteps', () =>
+      breakIntoStepsCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.toggleTaskDone', () =>
       toggleTaskDoneCommand(indexer),

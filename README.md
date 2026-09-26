@@ -24,6 +24,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Task board](#task-board) | Your open tasks as a Kanban board by status, priority, due date, person, or any tag namespace, where dragging a card rewrites the task in its note, or as a ranked list. |
 | [Task metadata](#task-metadata) | Due, scheduled, and start dates, priorities, repeat rules, dependencies, and a 👤 field for who a task is for, written in either Obsidian Tasks format. |
 | [Task editor](#editing-a-whole-task) | One command builds or edits a whole task — dates in plain words, priority, repeat rule, what it waits for — and writes the line. |
+| [Steps](#breaking-a-task-into-steps) | Break a task into steps written under it. |
 | [AI assistants](#ai-assistants) | Assistants in VS Code, such as Copilot in agent mode, can search your notes and tasks with Deckard queries and list your tags. |
 | [Editor assistance](#editor-assistance) | Clickable tags, completion after `#`, `@`, and `/`, backlink and task counts above headings, and previews when hovering links and tags. |
 | [Tag renaming](#commands) | Renames a tag everywhere it is written without touching ordinary prose or fenced code. |
@@ -134,6 +135,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
 | **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Edits the task on the cursor's line, field by field; see [Editing a whole task](#editing-a-whole-task). |
 | **Deckard: Add Task** | The same editor, under the name it goes by when the cursor is not on a task: the same shortcut writes a new one where you are. |
+| **Deckard: Break into Steps…** | Writes steps under the task on the cursor's line, one for each you type; see [Breaking a task into steps](#breaking-a-task-into-steps). |
 | **Deckard: Toggle Task Done** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> elsewhere. Completes the tasks under every cursor and selection, or reopens them when all are done already, writing the ✅ date and the next occurrence of a repeating task. One Undo takes it back. |
 | **Deckard: Capture** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> elsewhere. Adds a task to today's note without leaving the current editor, completing tags as you type. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
@@ -343,6 +345,21 @@ Dates are written the way people write them — `friday`, `oct 3`, `next week`, 
 - The editor works on the line in the editor, not on the index, so an unsaved note edits like any other.
 - It is also on the lightbulb: put the cursor in a task line and **Edit task…** is offered as a refactoring.
 
+### Breaking a task into steps
+
+A checkbox indented under a task is one of its **steps**:
+
+```markdown
+- [ ] Plan the offsite 📅 2026-10-09
+  - [x] Book the venue
+  - [ ] Draft the email
+  - [ ] Send the invite
+```
+
+**Deckard: Break into Steps…** writes them for you. It is on the lightbulb beside **Edit task…**, in the palette and the editor's **Deckard** submenu while the cursor is on a task, on a task's right-click menu in the Tasks view, and on a Task board card's **⋯** menu, where **s** does the same. Type a step and press Enter, as many as you need; the list shows the steps already written so none is typed twice, and a new step can be moved up, removed, or chosen to change its words. **Write** puts them under the task as `- [ ]` lines — after anything already under it, indented as the note already nests its lists, with the task's own bullet — in one change that the message's **Undo** and **Deckard: Undo Last Change** both take back. Escape writes nothing.
+
+A step follows its list's indentation: a heading, a code block, or an unindented paragraph ends the list, a blank line does not, and a checkbox under a plain bullet is a task of its own. `is:step` finds steps, and `has:steps` the tasks that have them.
+
 ### Typing metadata
 
 Type `/` after a space in a task to pick metadata instead of typing it:
@@ -381,7 +398,7 @@ A search reads these too, but a week or a month there is the whole span: `due = 
 ## Editor assistance
 
 - **The title bar** of a note carries Deckard's button, which opens **Deckard: Note Actions…**, and a daily note's also carries **‹** and **›**, which open the daily notes before and after. They stay put when the first line scrolls away, and show whether or not CodeLens is on. Right-click the title bar to hide any of them.
-- **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
+- **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, Break into Steps…, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
 - **Colors from your theme.** In any Markdown file, a `[[link]]`'s brackets, name, and alias, an embed's `!`, a task's dates (`📅 2026-10-02`, `[due:: 2026-10-02]`), its repeat rule, its priority, Dataview keys, and a trailing `^block-id` take the colors your theme gives links, numbers, strings, keywords, and variables. Code, front matter, and tags are left alone. To change one, add a rule to `editor.tokenColorCustomizations`, for example `{ "textMateRules": [{ "scope": "constant.numeric.date.deckard", "settings": { "foreground": "#7aa2f7" } }] }`; the scopes end in `.deckard`, such as `constant.numeric.date.due.deckard`, `string.other.repeat.deckard`, and `meta.link.wiki.deckard`.
 - **Task lines read as sentences.** A task's dates, priority, repeat rule, ids, and person are drawn fainter than its words, and so is a `^block-id` on any line (`deckard.editor.dimTaskMetadata`). An open task that is overdue has its due date in the overdue color and says **overdue 5 days** at the end of its line; one due today says **due today**, and one more than 30 days overdue (`deckard.tasks.needsNewDateAfterDays`) says **needs a new date** in a quiet color instead (`deckard.editor.taskDueHints`). Both colors can be changed in `workbench.colorCustomizations` as `deckard.overdueForeground` and `deckard.taskHintForeground`.
 - **A repeat rule Deckard cannot read is marked** on an open task, with a warning that completing it would not start the next one. The lightbulb offers up to three rules it can read, such as `every tuesday` for `every tuesdya` or `every week` for `weekly`, and changes only the rule. `deckard.editor.repeatDiagnostics` turns this off.
@@ -560,7 +577,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Drag a task onto another** to rank it there, which writes nothing to your notes — it is the same rank the [Task board's](#task-board) list uses.
 - **Drag a task onto a group** to make it belong to that group, written into the task through the same checked edit the board's drops make: a **priority**, a **status**, **Today** for a due date, a **tag** in the namespace, replacing the one it was dragged from, or a **person**, which rewrites who the task is for and leaves anyone else named on the line as a mention. **Nobody named** takes the name off. **Overdue**, **Later**, and **Needs a new date** cover a range of days rather than one, so they name no edit and say so. A tag the task inherits cannot be taken away by dragging, and Deckard says which heading or front matter gave it.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
-- **Right-click a task** to make it due today, tomorrow, or next Monday, or on a date typed [in plain words](#dates-in-plain-words), or to open it in the task editor, which the pencil beside it does too. Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
+- **Right-click a task** to make it due today, tomorrow, or next Monday, or on a date typed [in plain words](#dates-in-plain-words), to open it in the task editor, which the pencil beside it does too, or to [break it into steps](#breaking-a-task-into-steps). Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
 - **Reschedule All…** on a group dates every task in it at once, and the calendar button beside **Overdue** does the same for what is overdue. `Deckard: Reschedule Overdue Tasks…` does it from the palette. Each day it offers says how full it already is — *Fri 2026-09-25 · 3 due · 1 scheduled* — and for several tasks it offers two more:
   - **Spread over the next 5 days** gives them the next five weekdays, from today or from Monday on a weekend, oldest due first, so 17 tasks are 4, 4, 3, 3, and 3.
   - **3 for today, the rest next week**, for four or more, keeps the three most important today and moves the rest to next Monday.
@@ -602,7 +619,7 @@ Run `Deckard: Open Task Board`, or select the board icon in the title bar of Rel
 - **List** shows the same tasks as rows, with **Sort: Rank/Created/Updated**. In Rank, drag a row or right-click it to move it to the top or bottom; date sorting uses the source file's timestamps. The grouping switch sits under the search box while the board is shown, and the sort while the list is. Both show exactly what the search found: the page has no separate All/Open/Done filter, because the search box says the same thing for both.
 - **Status columns** in the gear lists the status columns in order. Drag a column's row to reorder it, or right-click it to move it first or last; add one, remove one with its **×**, and set the tag namespace a status is written with. Deckard saves these to `deckard.board.statuses` and `deckard.board.statusNamespace`, in the workspace's settings when it already sets them and in your user settings otherwise.
 - Select a card to open its line, or one of its tags to open that tag's overview. Only a status written on the task line counts, not one inherited from a heading, because moving the card could not change it.
-- **From the keyboard**, the board is one Tab stop. The arrow keys move between cards and columns, and a focused card answers single keys: **x** completes it, **t** and **m** make it due today or tomorrow, **d** asks for a date in plain words, **1** to **5** set its priority and **0** clears it, **[** and **]** move it to the column on either side, **e** opens it in the task editor, and **Enter** opens its line. **?** lists them. What a key did is said to a screen reader, and a completed card stays a moment, struck through, before it leaves.
+- **From the keyboard**, the board is one Tab stop. The arrow keys move between cards and columns, and a focused card answers single keys: **x** completes it, **t** and **m** make it due today or tomorrow, **d** asks for a date in plain words, **1** to **5** set its priority and **0** clears it, **[** and **]** move it to the column on either side, **e** opens it in the task editor, **s** [breaks it into steps](#breaking-a-task-into-steps), and **Enter** opens its line. **?** lists them. What a key did is said to a screen reader, and a completed card stays a moment, struck through, before it leaves.
 - A column of more than 100 cards shows its first 100 and **Show N more** for the rest; Done shows its 20 most recent. A column opened this way stays open until the grouping or the search changes.
 - **+ Add task** at the foot of a column that takes a drop captures a task straight into it, in today's note, already written with that column's status, priority, date, or person. A column that will not take a drop says so while a card is dragged, and each card's **⋯** menu offers **Due on a date…** for any day.
 - In **List** under Rank, and anywhere else rows are ranked, **Move up** and **Move down** are in a row's right-click menu, and **Alt+↑** and **Alt+↓** move a focused row one place.

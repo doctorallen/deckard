@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { moveTasks } from '../commands/moveTo';
+import { breakIntoStepsCommand } from '../commands/taskSteps';
 import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
@@ -577,6 +578,13 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         const task = index.tasks.get(message.taskId);
         if (task && (await openTask(task))) {
           await vscode.commands.executeCommand('deckard.editTask');
+        }
+        return;
+      }
+      case 'breakIntoSteps': {
+        const task = index.tasks.get(message.taskId);
+        if (task) {
+          await breakIntoStepsCommand(this.indexer, task);
         }
         return;
       }

@@ -221,6 +221,28 @@ test('a card\'s menu has a Note group with Move to…, which asks the host', asy
   }
 });
 
+test('a card breaks into steps from its menu and from s, which ask the host', async () => {
+  const { view, panel } = await openBoard();
+  const card = view.find('.board-card[data-task-id="audit"]');
+  assert.ok(card.getAttribute('aria-keyshortcuts').split(' ').includes('s'), 's is one of the card\'s keys');
+  view.click(card.querySelector('[data-action="board-menu"]'));
+  const steps = view.find('#action-menu [data-menu-value="break-steps"]');
+  assert.ok(steps, 'Break into steps… is in the menu');
+  assert.ok(steps.textContent.includes('Break into steps…'));
+  const deliver = panel._onWebviewMessage;
+  panel._onWebviewMessage = () => undefined;
+  try {
+    view.click(steps);
+    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'breakIntoSteps', taskId: 'audit' });
+    view.keydown(card, 's');
+    assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'breakIntoSteps', taskId: 'audit' });
+    view.keydown(card, '?');
+    assert.ok(view.find('.key-sheet').textContent.includes('Break it into steps'), 'the key sheet lists s');
+  } finally {
+    panel._onWebviewMessage = deliver;
+  }
+});
+
 test('a column that takes a card takes a new task, and a menu offers any date', async () => {
   const { view } = await openBoard();
   const add = view.find('[data-action="board-add-task"]');

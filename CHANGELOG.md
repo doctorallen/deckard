@@ -12,9 +12,13 @@
 
 ### Added
 
-- **Steps.** A checkbox indented under a task is now one of its steps:
-  `is:step` finds steps, and `has:steps` / `no:steps` find tasks with and
-  without them.
+- **Break a task into steps.** **Break into Steps…** — on the lightbulb,
+  in the palette and the editor's Deckard submenu, on the Tasks view's
+  right-click menu, and on a board card's ⋯ menu or its **s** key — writes
+  `- [ ]` steps under a task, one per line typed, shown beside the steps
+  already written, in one change Undo takes back. A checkbox indented under
+  a task is now one of its steps: `is:step` finds steps, and `has:steps` /
+  `no:steps` find tasks with and without them.
 
 - **Parked notes.** A note, folder, or tag can be parked: still indexed and
   searchable, with `is:parked` and last in Find and on search pages, but

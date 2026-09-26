@@ -305,6 +305,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.breakIntoSteps",
+        "title": "Break into Steps…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.addTask",
         "title": "Add Task",
         "category": "Deckard"
@@ -607,6 +612,11 @@
         "icon": "$(edit)"
       },
       {
+        "command": "deckard.agenda.breakIntoSteps",
+        "title": "Break into Steps…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.agenda.dueToday",
         "title": "Due Today",
         "category": "Deckard"
@@ -723,6 +733,10 @@
           "when": "editorLangId == markdown && deckard.onTaskLine"
         },
         {
+          "command": "deckard.breakIntoSteps",
+          "when": "editorLangId == markdown && deckard.onTaskLine"
+        },
+        {
           "command": "deckard.addTask",
           "when": "editorLangId == markdown && !deckard.onTaskLine"
         },
@@ -804,6 +818,10 @@
         },
         {
           "command": "deckard.agenda.editTask",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.breakIntoSteps",
           "when": "false"
         },
         {
@@ -925,9 +943,14 @@
           "group": "1_task@2"
         },
         {
+          "command": "deckard.breakIntoSteps",
+          "when": "deckard.onTaskLine",
+          "group": "1_task@3"
+        },
+        {
           "command": "deckard.addTask",
           "when": "!deckard.onTaskLine",
-          "group": "1_task@3"
+          "group": "1_task@4"
         },
         {
           "command": "deckard.renameHeading",
@@ -1166,9 +1189,14 @@
           "group": "2_edit@1"
         },
         {
-          "command": "deckard.agenda.moveTo",
+          "command": "deckard.agenda.breakIntoSteps",
           "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
           "group": "2_edit@2"
+        },
+        {
+          "command": "deckard.agenda.moveTo",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "2_edit@3"
         },
         {
           "command": "deckard.agenda.reschedule",

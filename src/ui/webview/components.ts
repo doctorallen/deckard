@@ -2300,6 +2300,7 @@ ${getUndoScript()}
       group('Priority', priorityOptions),
       group('Due', dueOptions),
       group('This board', others),
+      group('Steps', [{ value: 'break-steps', label: card.steps ? 'Add steps…' : 'Break into steps…', key: 's' }]),
       group('Done', done ? [done] : []),
       group('Note', [{ value: 'move-to', label: 'Move to…' }]),
     ];
@@ -2343,7 +2344,7 @@ ${getUndoScript()}
     // keys move between cards, and a card's checkbox and menu are keys of
     // their own, so neither is a Tab stop either.
     const tabStop = boardCardKey(columnId, card.taskId) === taskBoardTabStop ? '0' : '-1';
-    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="' + tabStop + '" aria-label="' + escapeHtml(cardName) + '" aria-keyshortcuts="x t m d e 1 2 3 4 5 [ ]"'
+    return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="' + tabStop + '" aria-label="' + escapeHtml(cardName) + '" aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-card-column="' + escapeHtml(columnId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
       + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" data-tip="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
@@ -2587,6 +2588,10 @@ ${getUndoScript()}
         post({ type: 'editTask', taskId: card.dataset.taskId });
         return true;
       }
+      if (key === 's') {
+        post({ type: 'breakIntoSteps', taskId: card.dataset.taskId });
+        return true;
+      }
       return false;
     }
 
@@ -2600,6 +2605,10 @@ ${getUndoScript()}
         }
         if (value === 'move-to') {
           post({ type: 'moveTaskTo', taskId: card.dataset.taskId });
+          return;
+        }
+        if (value === 'break-steps') {
+          post({ type: 'breakIntoSteps', taskId: card.dataset.taskId });
           return;
         }
         // Said as the menu said it: "Draft spec: Priority, High."

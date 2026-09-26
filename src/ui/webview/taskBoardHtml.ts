@@ -501,6 +501,7 @@ ${getQueryEditorScript()}
       ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
       ['[ ]', 'Move it to the column on the left or right'],
       ['e', 'Edit the whole task'],
+      ['s', 'Break it into steps'],
     ];
     const list = [
       ['Alt+↑, Alt+↓', 'Move a ranked task up or down'],

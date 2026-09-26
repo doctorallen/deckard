@@ -115,26 +115,12 @@ export async function updateTaskLine(
   let applied = false;
   try {
     const document = await vscode.workspace.openTextDocument(uri);
-    // A line past the end of the note is a line that changed too.
-    if (
-      task.lineNumber < 1 ||
-      task.lineNumber > document.lineCount ||
-      document.lineAt(task.lineNumber - 1).text !== task.sourceLineText
-    ) {
+    const sourceLine = readIndexedTaskLine(document, task);
+    if (!sourceLine) {
       void reportStale([uri]);
       return false;
     }
-
-    const sourceLine = document.lineAt(task.lineNumber - 1);
     const line = sourceLine.text;
-    if (
-      line[task.checkboxColumn] !== task.checkboxValue ||
-      line[task.checkboxColumn - 1] !== '[' ||
-      line[task.checkboxColumn + 1] !== ']'
-    ) {
-      void reportStale([uri]);
-      return false;
-    }
 
     const replacement = transform(line, {
       uri,
@@ -190,6 +176,34 @@ export async function updateTaskLine(
     );
     return false;
   }
+}
+
+/**
+ * A task's line in its note, if it still reads as the index read it: the
+ * same text, with the checkbox where it was. A line past the end of the note
+ * is a line that changed too.
+ */
+export function readIndexedTaskLine(
+  document: vscode.TextDocument,
+  task: Pick<Task, 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'checkboxValue'>,
+): vscode.TextLine | undefined {
+  if (
+    task.lineNumber < 1 ||
+    task.lineNumber > document.lineCount ||
+    document.lineAt(task.lineNumber - 1).text !== task.sourceLineText
+  ) {
+    return undefined;
+  }
+  const sourceLine = document.lineAt(task.lineNumber - 1);
+  const line = sourceLine.text;
+  if (
+    line[task.checkboxColumn] !== task.checkboxValue ||
+    line[task.checkboxColumn - 1] !== '[' ||
+    line[task.checkboxColumn + 1] !== ']'
+  ) {
+    return undefined;
+  }
+  return sourceLine;
 }
 
 /** The task changed in the editor, but the note on disk did not. */
