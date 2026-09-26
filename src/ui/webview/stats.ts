@@ -13,7 +13,7 @@ import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Provides an overview of indexed content and recorded local views. Each
@@ -54,7 +54,7 @@ export class StatsPanel implements vscode.Disposable {
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -65,7 +65,7 @@ export class StatsPanel implements vscode.Disposable {
     }
 
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 

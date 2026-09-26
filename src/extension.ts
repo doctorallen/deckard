@@ -257,7 +257,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const indexer = new WorkspaceIndexer(
     undefined,
     new SearchStore(context.storageUri),
-    { version: String(context.extension.packageJSON.version) },
+    {
+      version: String(context.extension.packageJSON.version),
+      // A developer's parser edits do not change the version, so only an
+      // installed Deckard starts from the notes the cache kept.
+      readCache: context.extensionMode === vscode.ExtensionMode.Production,
+    },
   );
   // Favorites, pins and view counts name what is in a workspace, so they are
   // kept with it. A window with no folder open has no workspace to own them
@@ -568,9 +573,15 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // A heading's id changes when a line above it does; its view count follows
   // it to the new id before anything is pruned.
   let previousIndex = indexer.getSnapshot();
-  context.subscriptions.push(
-    indexer.onDidUpdateView(() => {
-      const index = indexer.getSnapshot();
+  const tidy = (): void => {
+    const index = indexer.getSnapshot();
+    // The cache's notes at a warm start are not checked yet: a note gone
+    // from them may only be unread, so nothing is pruned for it. The prune
+    // after start runs once the check is done.
+    if (indexer.isStale || index === previousIndex) {
+      return;
+    }
+    {
       const moved = carrySectionIds(previousIndex, index);
       previousIndex = index;
       void (async () => {
@@ -585,7 +596,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
           index.files.keys(),
         );
       })();
-    }, { name: 'tidy of derived counts', priority: () => VIEW_PRIORITY.housekeeping }),
+    }
+  };
+  context.subscriptions.push(
+    indexer.onDidUpdateView(tidy, {
+      name: 'tidy of derived counts',
+      priority: () => VIEW_PRIORITY.housekeeping,
+    }),
     new NoteVisits(indexer, preferences),
   );
   context.subscriptions.push(

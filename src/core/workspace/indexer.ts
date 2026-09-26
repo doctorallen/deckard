@@ -10,6 +10,7 @@ import {
 import {
   EntrySearchOptions,
   EntrySearchResult,
+  ScanCounts,
   SearchStore,
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../timing';
@@ -25,6 +26,12 @@ export interface WorkspaceIndexerOptions {
    * version that parsed them, since a new version may parse differently.
    */
   version?: string;
+  /**
+   * Whether a start shows the notes the cache kept before reading any. Off
+   * in the Development and Test extension modes, where the parser can
+   * change without the version changing.
+   */
+  readCache?: boolean;
   /**
    * Runs a view's redraw in a later host turn. `setImmediate` by default; a
    * test passes its own to step through the turns.
@@ -76,6 +83,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
   private viewTurnScheduled = false;
   private readonly schedule: (run: () => void) => void;
   private readonly version: string;
+  private readonly readCache: boolean;
+  private readonly publishedPromise: Promise<void>;
+  private resolvePublished: () => void = () => undefined;
+  /** Whether the index shows the cache's notes, not yet checked against the files. */
+  private staleFromCache = false;
 
   public constructor(
     private readonly scanner = new WorkspaceScanner(),
@@ -84,6 +96,10 @@ export class WorkspaceIndexer implements vscode.Disposable {
   ) {
     this.schedule = options.schedule ?? ((run) => void setImmediate(run));
     this.version = options.version ?? '';
+    this.readCache = options.readCache ?? false;
+    this.publishedPromise = new Promise<void>((resolve) => {
+      this.resolvePublished = resolve;
+    });
     this.disposables.push(this.updateEmitter, this.progressEmitter);
   }
 
@@ -127,8 +143,77 @@ export class WorkspaceIndexer implements vscode.Disposable {
    */
   public start(): Promise<void> {
     this.registerWatchers();
-    this.readyPromise = this.refresh();
+    this.readyPromise = this.startFromCache();
     return this.readyPromise;
+  }
+
+  /**
+   * Resolves once the index first has notes to show: the cache's, on a warm
+   * start, or the first scan's. Surfaces that only display notes wait for
+   * this; anything that writes or answers for the whole workspace waits for
+   * `ready`.
+   */
+  public get published(): Promise<void> {
+    return this.publishedPromise;
+  }
+
+  /**
+   * Whether the index is the notes as the cache kept them, still being
+   * checked against the files. It is replaced within about a second.
+   */
+  public get isStale(): boolean {
+    return this.staleFromCache;
+  }
+
+  /**
+   * A warm start: the notes as they were when VS Code last closed, shown at
+   * once, then checked against the files, rereading only the notes whose
+   * saved time, created time, or size changed. A cold start is a full scan.
+   */
+  private async startFromCache(): Promise<void> {
+    const store = this.searchStore;
+    const fingerprint = this.scanner.getParseFingerprint();
+    if (store && this.readCache) {
+      const cached: ParsedFile[] = [];
+      const found = await measureAsync(
+        'Load notes from cache',
+        () =>
+          store.readParsedNotes(this.cacheFingerprint(fingerprint), (page) =>
+            page.forEach((file) => {
+              // A note excluded, or a folder removed, while VS Code was
+              // closed is no longer a note.
+              const uri = this.scanner.getUri(file.filePath);
+              if (uri && this.scanner.isNotesFile(uri)) {
+                cached.push(file);
+              }
+            }),
+          ),
+        () => `${cached.length} notes`,
+      );
+      if (found && cached.length > 0 && !this.disposed) {
+        this.snapshot = measure(
+          'Build index',
+          () => {
+            this.state = IndexState.build(cached);
+            return this.state.snapshot();
+          },
+          (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+        );
+        this.parsedUnder = fingerprint;
+        this.staleFromCache = true;
+        this.cachedScan = store.readLastScan();
+        this.indexedOnce = true;
+        this.emitUpdate();
+        try {
+          await this.refresh({ reuse: 'cache' });
+        } finally {
+          this.staleFromCache = false;
+          this.cachedScan = undefined;
+        }
+        return;
+      }
+    }
+    await this.refresh();
   }
 
   /**
@@ -144,8 +229,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
 
   /** What the last full scan found, kept out, and read. */
   public getLastScan(): { found: number; templates: number; excluded: number; read: number } {
-    return { ...this.scanner.lastScan };
+    // Until the check at a warm start finishes, the last session's counts.
+    return { ...(this.cachedScan ?? this.scanner.lastScan) };
   }
+
+  private cachedScan: ScanCounts | undefined;
 
   /**
    * Exposes the initial scan as a barrier for commands that need complete data.
@@ -256,10 +344,11 @@ export class WorkspaceIndexer implements vscode.Disposable {
    * a rescan after an exclude or folder change costs a stat per note.
    * `reuse: 'none'` rereads and reparses every note: Reindex Workspace.
    */
-  public async refresh(options: { reuse?: 'session' | 'none' } = {}): Promise<void> {
+  public async refresh(options: { reuse?: 'session' | 'cache' | 'none' } = {}): Promise<void> {
     if (this.disposed) {
       return;
     }
+    const checking = options.reuse === 'cache';
     const fingerprint = this.scanner.getParseFingerprint();
     const reusable =
       options.reuse !== 'none' && this.parsedUnder === fingerprint
@@ -269,7 +358,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Window,
-        title: 'Deckard: Indexing workspace',
+        title: checking ? 'Deckard: Checking notes for changes' : 'Deckard: Indexing workspace',
         cancellable: false,
       },
       async (progress) => {
@@ -303,15 +392,38 @@ export class WorkspaceIndexer implements vscode.Disposable {
           return;
         }
 
-        const previous = this.state;
-        this.snapshot = measure(
-          'Build index',
-          () => {
-            this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
-            return this.state.snapshot();
-          },
-          (index) => `${index.files.size} notes, ${index.sections.size} entries`,
-        );
+        let changed = true;
+        if (checking) {
+          // The cache's notes are on screen already: only what differs from
+          // them is applied, and nothing is published if nothing does.
+          const changes = measure(
+            'Check notes for changes',
+            () => this.diffAgainstScan(parsedFiles),
+            (found) =>
+              `${parsedFiles.length} notes, ${found.filter((change) => change.file).length} changed, ${found.filter((change) => !change.file).length} gone`,
+          );
+          changed = changes.length > 0;
+          if (changed) {
+            this.snapshot = measure(
+              'Update index',
+              () => {
+                this.state.apply(changes);
+                return this.state.snapshot();
+              },
+              (index) => `${changes.length} ${changes.length === 1 ? 'note' : 'notes'} changed, ${index.files.size} notes`,
+            );
+          }
+        } else {
+          const previous = this.state;
+          this.snapshot = measure(
+            'Build index',
+            () => {
+              this.state = IndexState.build(parsedFiles, reusable ? previous : undefined);
+              return this.state.snapshot();
+            },
+            (index) => `${index.files.size} notes, ${index.sections.size} entries`,
+          );
+        }
         this.parsedUnder = fingerprint;
         this.unreadable.clear();
         this.scanner.failures.forEach((failure) =>
@@ -331,9 +443,31 @@ export class WorkspaceIndexer implements vscode.Disposable {
         // by its title and tags but not yet by the words inside it.
         this.reportSearchIndexWritten();
         this.indexedOnce = true;
-        this.emitUpdate();
+        this.staleFromCache = false;
+        this.cachedScan = undefined;
+        if (changed) {
+          this.emitUpdate();
+        }
       },
     );
+  }
+
+  /** What a scan found that the index does not hold as it is, in scan order. */
+  private diffAgainstScan(parsedFiles: readonly ParsedFile[]): NoteChange[] {
+    const changes: NoteChange[] = [];
+    const scanned = new Set<string>();
+    parsedFiles.forEach((file) => {
+      scanned.add(file.filePath);
+      if (this.state.files.get(file.filePath) !== file) {
+        changes.push({ filePath: file.filePath, file });
+      }
+    });
+    this.state.files.forEach((_, filePath) => {
+      if (!scanned.has(filePath)) {
+        changes.push({ filePath });
+      }
+    });
+    return changes;
   }
 
   /**
@@ -560,6 +694,7 @@ export class WorkspaceIndexer implements vscode.Disposable {
    * the order again, and each waiting view still runs once.
    */
   private emitUpdate(): void {
+    this.resolvePublished();
     measure('Refresh views after an index update', () =>
       this.updateEmitter.fire(this.getSnapshot()),
     );

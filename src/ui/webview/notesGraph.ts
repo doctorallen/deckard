@@ -30,7 +30,7 @@ import {
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { parseNotesGraphMessage } from './messages';
 import { getNotesGraphHtml } from './notesGraphHtml';
-import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Owns the workspace-wide Notes Graph panel and validates navigation requests
@@ -117,7 +117,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -133,7 +133,7 @@ export class NotesGraphPanel implements vscode.Disposable {
       this.createPanel();
     }
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -144,7 +144,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
 
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 

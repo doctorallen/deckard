@@ -33,7 +33,7 @@ import { parseSidebarMessage } from './messages';
 import { collectNoteLinks, createLinksSearchQuery } from '../state/noteLinks';
 import { linkMentions } from '../commands/unlinkedMentions';
 import { applyWorkspaceWrite } from '../commands/workspaceWrites';
-import { onIndexUpdateInTurn, viewPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -170,7 +170,7 @@ export class SidebarNotesView
     this.renderHtml();
     this.activeSearch.setSidebarVisible(webviewView.visible);
     this.refresh();
-    void this.indexer.ready.then(() => {
+    void whenPublished(this.indexer).then(() => {
       this.indexed = true;
       this.refresh();
     });
@@ -194,7 +194,7 @@ export class SidebarNotesView
     documentUri: vscode.Uri,
     sourceLine: number,
   ): Promise<void> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const filePath = this.indexer.getFilePath(documentUri);
     const file = index.files.get(filePath);
@@ -267,7 +267,7 @@ export class SidebarNotesView
     documentUri: vscode.Uri,
     sourceLine: number,
   ): Promise<EntryRelatedNotesDiagnostic | undefined> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const filePath = this.indexer.getFilePath(documentUri);
     const file = index.files.get(filePath);

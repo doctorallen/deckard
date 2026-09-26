@@ -35,7 +35,7 @@ import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -162,7 +162,7 @@ export class DashboardPanel implements vscode.Disposable {
     }
 
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -202,7 +202,7 @@ export class DashboardPanel implements vscode.Disposable {
    * shows whether the workspace has any notes worth opening it for.
    */
   public async showOnStartup(): Promise<void> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     if (!this.panel && this.indexer.getSnapshot().files.size > 0) {
       await this.show();
     }
@@ -218,7 +218,7 @@ export class DashboardPanel implements vscode.Disposable {
     }
 
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 

@@ -25,6 +25,7 @@ import { buildRowActions, RowActionId, STAYING_ACTIONS } from './quickFindAction
 import { quoteTaskTitle, toggleTask } from './taskActions';
 import { keyLabel } from './quickFindKeys';
 import { shortSelection } from './selectionSeed';
+import { whenPublished } from '../../core/workspace/publishing';
 
 /** Set while Quick Find is open, so Tab completes in it and nowhere else. */
 export const QUICK_FIND_CONTEXT = 'deckard.quickFindOpen';
@@ -195,7 +196,7 @@ export class QuickFind implements vscode.Disposable {
     if (this.indexer.hasIndexed === false) {
       picker.busy = true;
       const progress = this.indexer.onDidProgress(() => this.refresh());
-      void this.indexer.ready.then(() => {
+      void whenPublished(this.indexer).then(() => {
         progress.dispose();
         picker.busy = false;
         if (this.picker === picker) {

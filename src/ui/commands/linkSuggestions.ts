@@ -16,6 +16,7 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
 import { frecencyScore } from '../state/frecency';
 import { scoreTitle } from '../state/quickFindState';
+import { whenPublished } from '../../core/workspace/publishing';
 
 /** How often and how lately each entry was opened, which ranks the notes. */
 interface AccessSource {
@@ -28,6 +29,7 @@ interface AccessSource {
 
 interface IndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   getSnapshot(): WorkspaceIndex;
   /** The document's index key, which `[[#Heading]]` links point into. */
   getFilePath?(uri: vscode.Uri): string;
@@ -100,7 +102,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
       return [];
     }
 
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     // Past a `#^`, the note's own line markers are what can be completed,
     // not another note's name.
@@ -355,7 +357,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
       return [];
     }
 
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     return measureAsync(
       'Wiki links',
       () => this.createDocumentLinks(document),

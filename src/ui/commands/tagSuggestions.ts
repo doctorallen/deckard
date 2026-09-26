@@ -8,9 +8,11 @@ import {
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
+import { whenPublished } from '../../core/workspace/publishing';
 
 interface TagIndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   getSnapshot(): WorkspaceIndex;
   /** Whether a file is one of the notes, not a README in a code folder. */
   isNotesFile?(uri: vscode.Uri): boolean;
@@ -132,7 +134,7 @@ export class TagCompletionProvider implements vscode.Disposable {
       return [];
     }
 
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const query = context.query.toLowerCase();
     return [...this.indexer.getSnapshot().tags.values()]
       .filter((tag) =>

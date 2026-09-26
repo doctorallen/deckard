@@ -297,6 +297,20 @@ export class WorkspaceScanner {
   }
 
   /**
+   * The file an index path names: the inverse of `getFilePath`. Undefined
+   * when no open workspace folder holds it.
+   */
+  public getUri(filePath: string): vscode.Uri | undefined {
+    const folders = this.access.workspaceFolders ?? [];
+    if (folders.length === 1) {
+      return vscode.Uri.joinPath(folders[0].uri, ...filePath.split('/'));
+    }
+    const [name, ...rest] = filePath.split('/');
+    const folder = folders.find((candidate) => candidate.name === name);
+    return folder && rest.length > 0 ? vscode.Uri.joinPath(folder.uri, ...rest) : undefined;
+  }
+
+  /**
    * Resolves the optional configured notes folder without assuming it is non-empty.
    */
   public getNotesFolderUri(

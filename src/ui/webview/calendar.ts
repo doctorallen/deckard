@@ -18,10 +18,11 @@ import { readWeekStart } from '../commands/datePrompt';
 import { createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
-import { onIndexUpdateInTurn, viewPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
 
 interface CalendarIndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   readonly onDidUpdate: vscode.Event<unknown>;
   getSnapshot(): WorkspaceIndex;
 }
@@ -86,7 +87,7 @@ export class CalendarView
       ),
     ];
     this.renderHtml();
-    void this.indexer.ready.then(() => this.refresh());
+    void whenPublished(this.indexer).then(() => this.refresh());
   }
 
   public dispose(): void {

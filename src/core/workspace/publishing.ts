@@ -71,3 +71,16 @@ export function viewPriority(
 ): number {
   return view?.visible ? VIEW_PRIORITY.visible : VIEW_PRIORITY.hidden;
 }
+
+/**
+ * Resolves once the index has something to show: the notes as the cache
+ * last saw them on a warm start, or the first scan. A surface that only
+ * displays notes waits for this; one that writes, or answers for the whole
+ * workspace, waits for `ready`, when the notes have been checked.
+ */
+export function whenPublished(source: {
+  readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
+}): Promise<void> {
+  return source.published ?? source.ready;
+}

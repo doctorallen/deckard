@@ -19,9 +19,11 @@ import {
 import { resolveSourceUri } from './navigation';
 import { getRolloverLookbackDays, getRolloverMode } from './rollover';
 import { LINK_MENTIONS_COMMAND } from './unlinkedMentions';
+import { whenPublished } from '../../core/workspace/publishing';
 
 interface LensIndexSource {
   readonly ready: Promise<void>;
+  readonly published?: Promise<void>;
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
@@ -96,7 +98,7 @@ export class EditorLenses
       }),
       vscode.languages.registerCodeLensProvider({ pattern: '**/*.md' }, this),
     ];
-    void indexer.ready.then(() => {
+    void whenPublished(indexer).then(() => {
       this.isReady = true;
       this.changeEmitter.fire();
     });

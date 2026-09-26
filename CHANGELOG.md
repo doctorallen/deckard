@@ -325,6 +325,13 @@
   a quarter of a second at 5,000 notes, down from over half a second.
   `Deckard: Reindex Workspace` still reads and parses every note.
 
+- **Deckard starts from where it left off.** A workspace Deckard has seen
+  before opens with Home, the board, and the Tasks view drawn at once from
+  the notes as they were when VS Code closed, then Deckard rereads only the
+  notes whose size or saved time changed — under a second to the first
+  display at 5,000 notes, down from nearly three. `Deckard: Reindex
+  Workspace` still rereads everything.
+
 - **The local cache keeps each note as Deckard last read it.** Beside the
   words search uses, the cache now holds each parsed note, which the next
   start can show before reading anything. A new version of Deckard, a

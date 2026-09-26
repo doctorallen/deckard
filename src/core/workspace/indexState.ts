@@ -61,8 +61,6 @@ interface PairPart {
   taskReference: TagReference | undefined;
   /** How many of the note's authoring units hold the pair. */
   units: number;
-  /** The units themselves while the part is being counted. */
-  unitIds?: Set<string>;
 }
 
 /** Everything one note adds to the index. */
@@ -84,6 +82,26 @@ export interface FileContribution {
   tagUnits: Map<string, number>;
   /** How many authoring units it has. */
   unitCount: number;
+}
+
+/**
+ * The entity a tag names, remembered by spelling: working it out normalizes
+ * the tag, and a workspace spells the same few hundred tags tens of
+ * thousands of times.
+ */
+const entityKinds = new Map<string, EntityKind | null>();
+
+function entityKindOf(key: string, label: string): EntityKind | undefined {
+  const spelling = `${key}\u0000${label}`;
+  let kind = entityKinds.get(spelling);
+  if (kind === undefined) {
+    if (entityKinds.size >= 20000) {
+      entityKinds.clear();
+    }
+    kind = getEntityKind({ key, label }) ?? null;
+    entityKinds.set(spelling, kind);
+  }
+  return kind ?? undefined;
 }
 
 /** Works out one note's contribution. Pure: it reads only the note. */
@@ -124,7 +142,7 @@ export function computeContribution(file: ParsedFile): FileContribution {
         type: 'section',
         reference: section.id,
         updatedAt: section.updatedAt,
-        entityKind: getEntityKind({ key, label }),
+        entityKind: entityKindOf(key, label),
       });
     });
   });
@@ -137,7 +155,7 @@ export function computeContribution(file: ParsedFile): FileContribution {
         type: 'task',
         reference: task.id,
         updatedAt: task.updatedAt,
-        entityKind: getEntityKind({ key, label }),
+        entityKind: entityKindOf(key, label),
       });
     });
   });
@@ -155,7 +173,7 @@ export function computeContribution(file: ParsedFile): FileContribution {
       type: 'file',
       reference: file.filePath,
       updatedAt: file.updatedAt,
-      entityKind: getEntityKind({ key: reference.key, label: reference.label }),
+      entityKind: entityKindOf(reference.key, reference.label),
     });
   });
 
@@ -182,6 +200,8 @@ function computeAssociationParts(
   const pairs = new Map<string, Map<string, PairPart>>();
   const units = new Set<string>();
   const tagUnits = new Map<string, number>();
+  /** Each part's units while they are counted, kept off the part itself. */
+  const partUnits = new Map<PairPart, Set<string>>();
   const sections = new Map(file.sections.map((section) => [section.id, section]));
   let sequence = 0;
 
@@ -190,9 +210,13 @@ function computeAssociationParts(
       return;
     }
     units.add(unitId);
-    new Set(tags.map((tag) => tag.key)).forEach((key) =>
-      tagUnits.set(key, (tagUnits.get(key) ?? 0) + 1),
-    );
+    const seen = new Set<string>();
+    for (const tag of tags) {
+      if (!seen.has(tag.key)) {
+        seen.add(tag.key);
+        tagUnits.set(tag.key, (tagUnits.get(tag.key) ?? 0) + 1);
+      }
+    }
   };
   const evidence = (
     tag: TagReference,
@@ -223,9 +247,9 @@ function computeAssociationParts(
         taskFirst: -1,
         taskReference: undefined,
         units: 0,
-        unitIds: new Set(),
       };
       byAssociated.set(associatedTag.key, part);
+      partUnits.set(part, new Set());
     }
     if (source.taskId === undefined) {
       if (part.sectionFirst < 0) {
@@ -251,7 +275,7 @@ function computeAssociationParts(
         part.taskIds.push(source.taskId);
       }
     }
-    part.unitIds?.add(source.unitId);
+    partUnits.get(part)?.add(source.unitId);
     sequence += 1;
   };
   const group = (
@@ -306,12 +330,9 @@ function computeAssociationParts(
     });
   });
 
-  pairs.forEach((byAssociated) =>
-    byAssociated.forEach((part) => {
-      part.units = part.unitIds?.size ?? 0;
-      delete part.unitIds;
-    }),
-  );
+  partUnits.forEach((unitIds, part) => {
+    part.units = unitIds.size;
+  });
   return { pairs, tagUnits, unitCount: units.size };
 }
 

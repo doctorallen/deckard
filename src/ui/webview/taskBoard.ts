@@ -31,7 +31,7 @@ import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Shows tasks as a Kanban board or as a list, narrowed by the search box
@@ -138,7 +138,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       this.createPanel();
     }
     this.panel?.reveal(vscode.ViewColumn.Active);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 
@@ -178,7 +178,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       }
     }
     this.attachPanel(panel);
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     this.refresh();
   }
 

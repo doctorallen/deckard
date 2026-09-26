@@ -125,6 +125,9 @@ async function bench(size) {
   const cold = await startIndexer(folder, storage);
   row('Start, cold: first display', ms(cold.firstPublish));
   row('Start, cold: fresh', ms(cold.ready));
+  // Saves are timed once the first build's cache is written, as in a session
+  // that has settled.
+  await cold.store?.whenIdle();
 
   const saves = [];
   const updates = [];
@@ -188,7 +191,7 @@ async function startIndexer(folder, storage) {
     },
   };
   const store = SearchStore ? await openStore(storage) : undefined;
-  const indexer = new WorkspaceIndexer(new WorkspaceScanner(access), store, { mode: 'production', version: 'bench' });
+  const indexer = new WorkspaceIndexer(new WorkspaceScanner(access), store, { readCache: true, version: 'bench' });
   let publishes = 0;
   let firstPublish;
   const started = performance.now();

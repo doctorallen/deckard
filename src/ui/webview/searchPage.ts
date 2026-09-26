@@ -41,7 +41,7 @@ import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
 import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 import { followIndexing } from './indexingProgress';
-import { onIndexUpdateInTurn, panelPriority } from '../../core/workspace/publishing';
+import { onIndexUpdateInTurn, panelPriority, whenPublished } from '../../core/workspace/publishing';
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is
@@ -96,7 +96,7 @@ export class SearchPanels implements vscode.Disposable {
     // got; the tag is looked up once there is an index to look in.
     if (this.indexer.hasIndexed === false) {
       const early = this.openWhileIndexing(tagKey);
-      await this.indexer.ready;
+      await whenPublished(this.indexer);
       const found = resolveIndexedTagKey(this.indexer.getSnapshot().tags, tagKey);
       if (found === tagKey) {
         this.settle(early);
@@ -128,7 +128,7 @@ export class SearchPanels implements vscode.Disposable {
   public async showQuery(queryText: string): Promise<void> {
     if (this.indexer.hasIndexed === false) {
       const early = this.openWhileIndexing(queryText.trim());
-      await this.indexer.ready;
+      await whenPublished(this.indexer);
       this.settle(early);
       return;
     }
@@ -155,7 +155,7 @@ export class SearchPanels implements vscode.Disposable {
     webviewPanel: vscode.WebviewPanel,
     state: unknown,
   ): Promise<void> {
-    await this.indexer.ready;
+    await whenPublished(this.indexer);
     const index = this.indexer.getSnapshot();
     const saved = readSerializedSearch(index, state);
     if (saved === undefined) {
