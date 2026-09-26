@@ -507,6 +507,8 @@ Every total but Files opens what it counts: **Notes**, **Tasks**, and **Open tas
 
 **Most viewed** lists the tags, namespaced entities, and note entries you open most, from Deckard's local access counters. These counters are collected when you open a tag's page or select a note entry on a search page, and are stored only in VS Code preferences. A list with nothing in it folds into one line naming what has no views yet. Select a most-viewed tag or canonical tag to open its page, or a note entry to open its note at that line.
 
+**How often tags are used** draws six bars — used once, twice, 3–5, 6–10, 11–25, and 26 or more times — each saying how many tags it holds, such as **Used once: 41 tags**. **Used once** unfolds those tags, the likeliest typos and one-offs, each with the tag it looks like and **Merge**, or **Merge into…**, which asks for the tag to keep. Any other bar offers its tags to open.
+
 If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
 
 ### Tags that look alike

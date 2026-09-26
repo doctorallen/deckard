@@ -32,6 +32,8 @@ import {
   WorkspaceIndex,
   DeckardStatsSnapshot,
   StatsTrend,
+  StatsTagUsage,
+  TagMergeCandidate,
   UnreadableNote,
   TaskGlance,
 } from '../../core/types';
@@ -856,6 +858,9 @@ export function createDeckardStatsSnapshot(
   unreadable: readonly UnreadableNote[] = [],
   now = Date.now(),
 ): DeckardStatsSnapshot {
+  // Every pair, once: Stats lists the clearest, and a tag used once is
+  // offered its lookalike from the same list.
+  const lookalikes = findTagMergeCandidates(index, Number.MAX_SAFE_INTEGER);
   return {
     trends: createStatsTrends(index, now),
     updatedAt: index.updatedAt,
@@ -916,7 +921,8 @@ export function createDeckardStatsSnapshot(
       },
     ),
     ...findOrphanNotes(index),
-    ...findLookalikeTags(index),
+    ...findLookalikeTags(lookalikes),
+    tagUsage: createTagUsage(index, lookalikes.candidates),
     ...listMissingLinkTargets(index),
     ...countParked(index),
   };
@@ -1038,13 +1044,60 @@ const LOOKALIKE_TAG_LIMIT = 12;
 
 /** Tags that look like two spellings of one idea, the clearest pairs first. */
 function findLookalikeTags(
-  index: WorkspaceIndex,
+  { candidates, total }: { candidates: TagMergeCandidate[]; total: number },
 ): Pick<DeckardStatsSnapshot, 'lookalikeTags' | 'lookalikeTagCount'> {
-  const { candidates, total } = findTagMergeCandidates(
-    index,
-    LOOKALIKE_TAG_LIMIT,
-  );
-  return { lookalikeTags: candidates, lookalikeTagCount: total };
+  return { lookalikeTags: candidates.slice(0, LOOKALIKE_TAG_LIMIT), lookalikeTagCount: total };
+}
+
+/** The bands of how often a tag is used: once, twice, 3–5, 6–10, 11–25, 26 or more. */
+const TAG_USE_BANDS: readonly { label: string; min: number; max?: number }[] = [
+  { label: 'Used once', min: 1, max: 1 },
+  { label: 'Used twice', min: 2, max: 2 },
+  { label: 'Used 3–5 times', min: 3, max: 5 },
+  { label: 'Used 6–10 times', min: 6, max: 10 },
+  { label: 'Used 11–25 times', min: 11, max: 25 },
+  { label: 'Used 26 or more times', min: 26 },
+];
+/** How many of the tags used once Stats lists. */
+const USED_ONCE_LIMIT = 100;
+
+/**
+ * How many tags are used how often, by the entries that carry them, and
+ * the tags used once — the likeliest typos and one-offs — each with the tag
+ * it looks like when there is one, so it can be merged there.
+ */
+export function createTagUsage(
+  index: WorkspaceIndex,
+  candidates: readonly TagMergeCandidate[] = findTagMergeCandidates(index, Number.MAX_SAFE_INTEGER).candidates,
+): StatsTagUsage {
+  const bands = TAG_USE_BANDS.map((band) => ({ ...band, count: 0 }));
+  const once: TagInfo[] = [];
+  index.tags.forEach((tag) => {
+    if (tag.count < 1) {
+      return;
+    }
+    const band = bands.find((candidate) => tag.count >= candidate.min && (candidate.max === undefined || tag.count <= candidate.max));
+    if (band) {
+      band.count += 1;
+    }
+    if (tag.count === 1) {
+      once.push(tag);
+    }
+  });
+  const lookalike = new Map<string, { key: string; label: string }>();
+  candidates.forEach((candidate) => {
+    if (!lookalike.has(candidate.sourceKey)) {
+      lookalike.set(candidate.sourceKey, { key: candidate.targetKey, label: candidate.targetLabel });
+    }
+  });
+  const usedOnce = once
+    .sort((left, right) => baseCollator.compare(left.label, right.label))
+    .slice(0, USED_ONCE_LIMIT)
+    .map((tag) => {
+      const like = lookalike.get(tag.key);
+      return like ? { key: tag.key, label: tag.label, lookalike: like } : { key: tag.key, label: tag.label };
+    });
+  return { bands, usedOnce, usedOnceCount: once.length };
 }
 
 /** How many of the notes nothing links to the Stats page names. */

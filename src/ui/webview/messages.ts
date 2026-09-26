@@ -767,9 +767,28 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
       return Object.keys(value).length === 1
         ? { type: 'reindexWorkspace' }
         : undefined;
-    case 'openTagList':
-      return typeof value.namespaced === 'boolean'
-        ? { type: 'openTagList', namespaced: value.namespaced }
+    case 'openTagList': {
+      if (typeof value.namespaced !== 'boolean') {
+        return undefined;
+      }
+      const isCount = (count: unknown): count is number =>
+        typeof count === 'number' && Number.isInteger(count) && count >= 1;
+      if (value.min !== undefined && !isCount(value.min)) {
+        return undefined;
+      }
+      if (value.max !== undefined && (!isCount(value.max) || !isCount(value.min) || value.max < value.min)) {
+        return undefined;
+      }
+      return {
+        type: 'openTagList',
+        namespaced: value.namespaced,
+        ...(isCount(value.min) ? { min: value.min } : {}),
+        ...(isCount(value.max) ? { max: value.max } : {}),
+      };
+    }
+    case 'mergeTagInto':
+      return typeof value.sourceKey === 'string' && value.sourceKey.length > 0 && value.sourceKey.length <= 500
+        ? { type: 'mergeTagInto', sourceKey: value.sourceKey }
         : undefined;
     case 'openNotesGraph':
       return value.onlyWrittenLinks === true

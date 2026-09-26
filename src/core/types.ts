@@ -936,6 +936,33 @@ export interface DeckardStatsSnapshot {
   missingLinkTargetCount: number;
   /** How the Notes, Tasks, and Open tasks totals moved over twelve weeks. */
   trends: { notes: StatsTrend; tasks: StatsTrend; openTasks: StatsTrend };
+  /** How many tags are used how often, and the tags used once. */
+  tagUsage: StatsTagUsage;
+}
+
+/** Tags by how many entries carry them, in six bands. */
+export interface StatsTagUsage {
+  bands: StatsTagBand[];
+  /** The tags on one entry, by label, with a lookalike when one is found. */
+  usedOnce: StatsUsedOnceTag[];
+  /** How many tags are used once, listed or not. */
+  usedOnceCount: number;
+}
+
+export interface StatsTagBand {
+  label: string;
+  min: number;
+  /** Absent for the last band, which has no upper end. */
+  max?: number;
+  /** How many tags fall in the band. */
+  count: number;
+}
+
+export interface StatsUsedOnceTag {
+  key: string;
+  label: string;
+  /** The tag it looks like, which a merge would keep. */
+  lookalike?: { key: string; label: string };
 }
 
 /**
@@ -980,10 +1007,21 @@ export interface MergeTagsMessage {
   targetKey: string;
 }
 
-/** Stats' Tags and Namespaced tags totals: choose one to open. */
+/**
+ * Stats' Tags and Namespaced tags totals, and its tag-use bars: choose a
+ * tag to open, among those used from `min` to `max` times when given.
+ */
 export interface OpenTagListMessage {
   type: 'openTagList';
   namespaced: boolean;
+  min?: number;
+  max?: number;
+}
+
+/** Stats' Merge into…: merge a tag into one the reader chooses. */
+export interface MergeTagIntoMessage {
+  type: 'mergeTagInto';
+  sourceKey: string;
 }
 
 /** Stats' Wiki links total: the graph, drawing only the links written. */
@@ -994,6 +1032,7 @@ export interface OpenStatsNotesGraphMessage {
 
 export type StatsMessage =
   | OpenTagListMessage
+  | MergeTagIntoMessage
   | OpenStatsNotesGraphMessage
   | OpenTagMessage
   | OpenSourceMessage

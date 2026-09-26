@@ -6,7 +6,7 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { parseQuery } from '../core/query/queryParser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createDeckardStatsSnapshot, createStatsTrends } from '../ui/state/dashboardState';
+import { createDeckardStatsSnapshot, createStatsTrends, createTagUsage } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { listStatsTags } from '../ui/webview/stats';
@@ -312,5 +312,94 @@ suite('Stats: twelve weeks under each total', () => {
     } finally {
       page.dispose();
     }
+  });
+});
+
+suite('Stats: how often tags are used', () => {
+  const notes = () => {
+    const lines: string[] = [];
+    const use = (tag: string, times: number) => {
+      for (let i = 0; i < times; i += 1) {
+        lines.push(`# ${tag.slice(1)} ${i} ${tag}`);
+      }
+    };
+    use('#once', 1);
+    use('#twice', 2);
+    use('#four', 4);
+    use('#seven', 7);
+    use('#thirty', 30);
+    use('#project/atlas', 3);
+    use('#project/atlass', 1);
+    return buildWorkspaceIndex(new Map([['notes/tags.md', parseMarkdown('notes/tags.md', lines.join('\n'))]]));
+  };
+  const preferences = () =>
+    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+
+  test('counts tags in six bands, and lists those used once with their lookalikes', () => {
+    const usage = createTagUsage(notes());
+    assert.deepStrictEqual(usage.bands.map((band) => [band.label, band.count]), [
+      ['Used once', 2],
+      ['Used twice', 1],
+      ['Used 3–5 times', 2],
+      ['Used 6–10 times', 1],
+      ['Used 11–25 times', 0],
+      ['Used 26 or more times', 1],
+    ]);
+    assert.deepStrictEqual(usage.usedOnce, [
+      { key: '#once', label: '#once' },
+      { key: '#project/atlass', label: '#project/atlass', lookalike: { key: '#project/atlas', label: '#project/atlas' } },
+    ]);
+    assert.strictEqual(usage.usedOnceCount, 2);
+  });
+
+  test('each bar says its count and opens its tags; Used once unfolds them to merge', () => {
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(notes(), preferences()));
+    try {
+      const bands = page.findAll('.tag-use-band');
+      assert.deepStrictEqual(bands.map((band) => band.textContent), [
+        'Used once: 2 tags',
+        'Used twice: 1 tag',
+        'Used 3–5 times: 2 tags',
+        'Used 6–10 times: 1 tag',
+        'Used 11–25 times: 0 tags',
+        'Used 26 or more times: 1 tag',
+      ]);
+      assert.strictEqual(bands[4].tagName, 'DIV', 'an empty band is not a button');
+      assert.strictEqual((page.find('.tag-use-band[data-band="5"] .tag-use-bar') as HTMLElement).style.height, '50%', 'a bar is as tall as its share of the tallest');
+
+      page.click('[data-band="2"]');
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: false, min: 3, max: 5 });
+      page.click('[data-band="5"]');
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: false, min: 26 });
+
+      assert.strictEqual(page.findAll('#used-once-list').length, 0, 'folded to begin with');
+      page.click('[data-action="toggle-used-once"]');
+      assert.strictEqual(page.find('[data-action="toggle-used-once"]').getAttribute('aria-expanded'), 'true');
+      const rows = page.findAll('#used-once-list li');
+      assert.strictEqual(rows.length, 2);
+      assert.match(rows[1].textContent ?? '', /#project\/atlass.*#project\/atlas/);
+      page.click('#used-once-list [data-action="merge-used-once"]');
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'mergeTags', sourceKey: '#project/atlass', targetKey: '#project/atlas' });
+      page.click('#used-once-list [data-action="merge-used-once-into"]');
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'mergeTagInto', sourceKey: '#once' });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('accepts a band and a merge into, and nothing malformed', () => {
+    assert.deepStrictEqual(parseStatsMessage({ type: 'openTagList', namespaced: false, min: 3, max: 5 }), { type: 'openTagList', namespaced: false, min: 3, max: 5 });
+    assert.deepStrictEqual(parseStatsMessage({ type: 'mergeTagInto', sourceKey: '#once' }), { type: 'mergeTagInto', sourceKey: '#once' });
+    for (const message of [
+      { type: 'openTagList', namespaced: false, min: 0 },
+      { type: 'openTagList', namespaced: false, min: 5, max: 3 },
+      { type: 'openTagList', namespaced: false, max: 3 },
+      { type: 'mergeTagInto', sourceKey: '' },
+    ]) {
+      assert.strictEqual(parseStatsMessage(message), undefined, JSON.stringify(message));
+    }
+    const index = notes();
+    assert.deepStrictEqual(listStatsTags(index, false, { min: 3, max: 5 }).map((row) => row.label), ['#four', '#project/atlas']);
   });
 });

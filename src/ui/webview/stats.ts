@@ -159,7 +159,7 @@ export class StatsPanel implements vscode.Disposable {
 
     // The Tags totals open a tag, chosen from the tags they count.
     if (message.type === 'openTagList') {
-      const tagKey = await pickStatsTag(index, message.namespaced);
+      const tagKey = await pickStatsTag(index, message.namespaced, vscode.window, message);
       if (tagKey) {
         await this.onOpenTag(tagKey);
       }
@@ -171,6 +171,16 @@ export class StatsPanel implements vscode.Disposable {
       await vscode.commands.executeCommand('deckard.showNotesGraph', {
         onlyWrittenLinks: true,
       });
+      return;
+    }
+
+    // A tag used once with no lookalike is merged into one the reader
+    // chooses, by the command that asks for it.
+    if (message.type === 'mergeTagInto') {
+      const sourceKey = resolveIndexedTagKey(index.tags, message.sourceKey);
+      if (sourceKey) {
+        await vscode.commands.executeCommand('deckard.mergeTag', sourceKey);
+      }
       return;
     }
 
@@ -299,10 +309,12 @@ export async function pickStatsTag(
   index: WorkspaceIndex,
   namespaced: boolean,
   window: Pick<typeof vscode.window, 'showQuickPick'> = vscode.window,
+  band: { min?: number; max?: number } = {},
 ): Promise<string | undefined> {
-  const items = listStatsTags(index, namespaced);
+  const items = listStatsTags(index, namespaced, band);
+  const banded = band.min !== undefined;
   const choice = await window.showQuickPick(items, {
-    title: namespaced ? 'Namespaced tags' : 'Tags',
+    title: banded ? describeBand(band) : namespaced ? 'Namespaced tags' : 'Tags',
     placeHolder: namespaced ? 'Choose a namespaced tag to open' : 'Choose a tag to open',
     matchOnDescription: true,
   });
@@ -313,15 +325,26 @@ export async function pickStatsTag(
 export function listStatsTags(
   index: WorkspaceIndex,
   namespaced: boolean,
+  band: { min?: number; max?: number } = {},
 ): (vscode.QuickPickItem & { tagKey: string })[] {
   const rows = namespaced
     ? [...index.entities.values()].map((entity) => ({ key: entity.key, label: entity.label, count: entity.count }))
     : [...index.tags.values()].map((tag) => ({ key: tag.key, label: tag.label, count: tag.count }));
   return rows
+    .filter((row) => (band.min === undefined || row.count >= band.min) && (band.max === undefined || row.count <= band.max))
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
     .map((row) => ({
       label: row.label,
       description: `${row.count} ${row.count === 1 ? 'entry' : 'entries'}`,
       tagKey: row.key,
     }));
+}
+
+/** A band of tag use, as a title: "Tags used 3–5 times". */
+function describeBand(band: { min?: number; max?: number }): string {
+  const { min = 1, max } = band;
+  if (max === min) {
+    return min === 1 ? 'Tags used once' : min === 2 ? 'Tags used twice' : `Tags used ${min} times`;
+  }
+  return max === undefined ? `Tags used ${min} or more times` : `Tags used ${min}–${max} times`;
 }

@@ -40,6 +40,18 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .view-panel > p.detail { margin: 0; padding: 10px 12px 0; }
 .attention-clear, .views-empty { margin: 8px 0 0; color: var(--muted); font-size: var(--text-sm); }
 .orphan-list:not(.show-all) .is-more { display: none; }
+/* How often tags are used: six bars in one hue, each labeled with its count. */
+.tag-use { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+@media (max-width: 600px) { .tag-use { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tag-use-band { display: grid; grid-template-rows: 80px auto; gap: 6px; min-width: 0; padding: 8px; border: 2px solid var(--line); background: var(--panel); color: var(--text); font: inherit; text-align: left; }
+button.tag-use-band { cursor: pointer; }
+button.tag-use-band:hover, button.tag-use-band:focus-visible, button.tag-use-band[aria-expanded="true"] { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.tag-use-track { display: flex; align-items: flex-end; height: 80px; }
+.tag-use-bar { display: block; width: 100%; min-height: 2px; background: var(--cyan); }
+.tag-use-words { font-size: var(--text-xs); overflow-wrap: anywhere; }
+.used-once { margin-top: 12px; }
+.used-once .pair { align-items: center; }
+@media (forced-colors: active) { .tag-use-bar { background: CanvasText; } }
 .show-more { margin: 0 12px 12px; min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .list { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
 .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
@@ -74,6 +86,8 @@ ${loadingHtml('Loading statistics…')}
   /** Notes nothing links to shows ten, then the rest of what was sent on request. */
   const ORPHANS_SHOWN = 10;
   let showAllOrphans = false;
+  /** Whether the tags used once are listed under their bar. */
+  let showUsedOnce = false;
 ${getComponentScript()}
   /**
    * One number. Given a search, it becomes a button that opens the notes and
@@ -182,6 +196,32 @@ ${getComponentScript()}
       vscode.postMessage({ type: 'openTagList', namespaced: action.dataset.namespaced === 'true' });
       return;
     }
+    if (action && action.dataset.action === 'toggle-used-once') {
+      showUsedOnce = !showUsedOnce;
+      renderKeepingPlace(render);
+      return;
+    }
+    if (action && action.dataset.action === 'open-tag-band') {
+      const band = state && state.tagUsage.bands[Number(action.dataset.band)];
+      if (band) {
+        const message = { type: 'openTagList', namespaced: false, min: band.min };
+        if (band.max !== undefined) message.max = band.max;
+        vscode.postMessage(message);
+      }
+      return;
+    }
+    if (action && (action.dataset.action === 'open-used-once' || action.dataset.action === 'merge-used-once' || action.dataset.action === 'merge-used-once-into')) {
+      const tag = state && state.tagUsage.usedOnce[Number(action.dataset.index)];
+      if (!tag) return;
+      if (action.dataset.action === 'open-used-once') {
+        vscode.postMessage({ type: 'openTag', tagKey: action.dataset.side === 'target' && tag.lookalike ? tag.lookalike.key : tag.key });
+      } else if (action.dataset.action === 'merge-used-once' && tag.lookalike) {
+        vscode.postMessage({ type: 'mergeTags', sourceKey: tag.key, targetKey: tag.lookalike.key });
+      } else {
+        vscode.postMessage({ type: 'mergeTagInto', sourceKey: tag.key });
+      }
+      return;
+    }
     if (action && action.dataset.action === 'open-graph') {
       vscode.postMessage({ type: 'openNotesGraph', onlyWrittenLinks: true });
       return;
@@ -265,7 +305,48 @@ ${getComponentScript()}
     document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button></p></header>'
       + attentionSection()
       + '<section class="metrics stats-section" aria-label="Index statistics">' + metrics + '</section>' + parkedLine()
-      + viewsSection();
+      + viewsSection()
+      + tagUseSection();
+    // A style attribute is refused by the page's policy; the bars' heights
+    // are set through the DOM instead.
+    document.querySelectorAll('.tag-use-bar[data-height]').forEach(function (bar) {
+      bar.style.height = bar.getAttribute('data-height') + '%';
+    });
+  }
+  /**
+   * How many tags are used once, twice, and so on, as six bars, each saying
+   * its count. Used once unfolds its tags, each with the tag it looks like
+   * and Merge, or Merge into…; any other bar offers its tags to open.
+   */
+  function tagUseSection() {
+    const usage = state.tagUsage;
+    if (!usage || !usage.bands.some(function (band) { return band.count > 0; })) return '';
+    const most = Math.max.apply(null, usage.bands.map(function (band) { return band.count; }).concat([1]));
+    const bars = usage.bands.map(function (band, index) {
+      const words = band.label + ': ' + band.count + (band.count === 1 ? ' tag' : ' tags');
+      const inner = '<span class="tag-use-track" aria-hidden="true"><span class="tag-use-bar" data-height="' + Math.round((band.count / most) * 100) + '"></span></span><span class="tag-use-words">' + escapeHtml(words) + '</span>';
+      if (!band.count) return '<div class="tag-use-band">' + inner + '</div>';
+      const once = band.min === 1 && band.max === 1;
+      return once
+        ? '<button type="button" class="tag-use-band" data-action="toggle-used-once" aria-expanded="' + showUsedOnce + '" aria-controls="used-once-list" data-tip="List the tags used once, to merge the ones that repeat another">' + inner + '</button>'
+        : '<button type="button" class="tag-use-band" data-action="open-tag-band" data-band="' + index + '" data-tip="Choose one of these tags to open">' + inner + '</button>';
+    }).join('');
+    return '<section class="stats-section" aria-labelledby="tag-use-heading"><h2 id="tag-use-heading">How often tags are used</h2><div class="tag-use">' + bars + '</div>' + usedOnceList() + '</section>';
+  }
+  function usedOnceList() {
+    const usage = state.tagUsage;
+    if (!showUsedOnce || !usage.usedOnce.length) return '';
+    const unlisted = usage.usedOnceCount - usage.usedOnce.length;
+    return '<article class="view-panel used-once" id="used-once-list"><h3>Tags used once (' + usage.usedOnceCount + ')</h3><ol class="list">' + usage.usedOnce.map(function (tag, index) {
+      const open = '<button type="button" class="tag-open pair-tag" data-action="open-used-once" data-index="' + index + '" data-tip="Open this tag in a search page">' + renderTagLabel(tag.label) + '</button>';
+      const like = tag.lookalike
+        ? '<span class="pair-arrow" aria-hidden="true">&rarr;</span><button type="button" class="tag-open pair-tag" data-action="open-used-once" data-index="' + index + '" data-side="target" data-tip="Open this tag in a search page">' + renderTagLabel(tag.lookalike.label) + '</button>'
+        : '';
+      const merge = tag.lookalike
+        ? '<button type="button" class="merge" data-action="merge-used-once" data-index="' + index + '" aria-label="Merge ' + escapeHtml(tag.label) + ' into ' + escapeHtml(tag.lookalike.label) + '" data-tip="Merge ' + escapeHtml(tag.label) + ' into ' + escapeHtml(tag.lookalike.label) + '">Merge</button>'
+        : '<button type="button" class="merge" data-action="merge-used-once-into" data-index="' + index + '" aria-label="Merge ' + escapeHtml(tag.label) + ' into another tag" data-tip="Choose a tag to merge ' + escapeHtml(tag.label) + ' into">Merge into…</button>';
+      return '<li><div class="row stat-row"><div class="label pair">' + open + like + '</div>' + merge + '</div></li>';
+    }).join('') + '</ol>' + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article>';
   }
   /** A panel's heading, with how many it holds. */
   function panelHeading(title, count, id, action) {

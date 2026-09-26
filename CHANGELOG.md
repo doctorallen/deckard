@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Stats shows how often each tag is used, and merges the tags used
+  once.** Six bars count the tags used once, twice, 3–5, 6–10, 11–25, and
+  26 or more times. **Used once** unfolds those tags, each with the tag it
+  looks like and **Merge**, or **Merge into…**; any other bar offers its
+  tags to open.
+
 - **A related tag in Refine says how many of the results carry it.** Its
   rail fills by that share, its tip leads with **In 6 of 13 results.**,
   and a screen reader hears "in 6 of 13 results" rather than a strength
