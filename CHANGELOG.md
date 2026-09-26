@@ -7,6 +7,10 @@
 - **The search page's format buttons show their own mode.** Source shows
   `<>` and Rendered shows the eye; they were swapped.
 
+- **A query block's Open in search lens names the page it opens.** Its
+  tooltip said the Dashboard's Search tab, which no longer exists; it now
+  says a search page.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

@@ -116,7 +116,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       label(describeQueryBlockCounts(snapshot)),
       new vscode.CodeLens(range, {
         title: 'Open in search',
-        tooltip: 'Open this query on the Dashboard’s Search tab',
+        tooltip: 'Open this query on a search page',
         command: 'deckard.searchNotes',
         arguments: [snapshot.query],
       }),

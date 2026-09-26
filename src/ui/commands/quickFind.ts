@@ -18,7 +18,7 @@ export const QUICK_FIND_CONTEXT = 'deckard.quickFindOpen';
 export interface QuickFindActions {
   openTag(tagKey: string): Promise<void>;
   openSavedFilter(filterId: string): Promise<void>;
-  /** Opens the Dashboard's Search tab on a search. */
+  /** Opens a search page on a search. */
   showSearch(query: string): Promise<void>;
 }
 
