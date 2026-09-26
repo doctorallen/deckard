@@ -956,6 +956,12 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.quickFind.complete', () =>
       quickFind.complete(),
     ),
+    vscode.commands.registerCommand('deckard.quickFind.openBeside', () =>
+      quickFind.openBeside(),
+    ),
+    vscode.commands.registerCommand('deckard.quickFind.insertLink', () =>
+      quickFind.insertLinkFromActive(),
+    ),
     vscode.commands.registerCommand(
       'deckard.searchNotes',
       (requestedQuery?: unknown) =>

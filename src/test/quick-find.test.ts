@@ -13,7 +13,7 @@ import {
   fuzzyScore,
   QuickFindResults,
 } from '../ui/state/quickFindState';
-import { findDailyNoteRow, isNoteName, toPickItems } from '../ui/commands/quickFind';
+import { findDailyNoteRow, isNoteName, keyLabel, toPickItems } from '../ui/commands/quickFind';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -227,6 +227,15 @@ suite('Quick Find', () => {
     } finally {
       finder.dispose();
     }
+  });
+
+  test('writes a key the way VS Code writes it on each platform', () => {
+    assert.strictEqual(keyLabel('cmd+enter', 'darwin'), '⌘Enter');
+    assert.strictEqual(keyLabel('alt+enter', 'darwin'), '⌥Enter');
+    assert.strictEqual(keyLabel('cmd+.', 'darwin'), '⌘.');
+    assert.strictEqual(keyLabel('cmd+enter', 'linux'), 'Ctrl+Enter');
+    assert.strictEqual(keyLabel('alt+enter', 'win32'), 'Alt+Enter');
+    assert.strictEqual(keyLabel('cmd+.', 'win32'), 'Ctrl+.');
   });
 
   test('scores characters that start words and follow each other highest', () => {

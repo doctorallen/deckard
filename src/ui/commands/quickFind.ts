@@ -77,6 +77,29 @@ export function findDailyNoteRow(
   };
 }
 
+/**
+ * A key as VS Code writes it on this platform: `⌘Enter` and `⌥Enter` on
+ * macOS, `Ctrl+Enter` and `Alt+Enter` elsewhere.
+ */
+export function keyLabel(key: string, platform: NodeJS.Platform = process.platform): string {
+  const mac = platform === 'darwin';
+  return key
+    .split('+')
+    .map((part) => {
+      switch (part) {
+        case 'cmd':
+          return mac ? '⌘' : 'Ctrl+';
+        case 'alt':
+          return mac ? '⌥' : 'Alt+';
+        case 'enter':
+          return 'Enter';
+        default:
+          return part;
+      }
+    })
+    .join('');
+}
+
 const ADD_TO_SEARCH: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('add'),
   tooltip: 'Add to the search (Tab)',
@@ -87,11 +110,11 @@ const SAVE_AS_VIEW: vscode.QuickInputButton = {
 };
 const OPEN_BESIDE: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('split-horizontal'),
-  tooltip: 'Open to the side',
+  tooltip: `Open to the side (${keyLabel('cmd+enter')})`,
 };
 const INSERT_LINK: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('link'),
-  tooltip: 'Insert a link to it at the cursor',
+  tooltip: `Insert a link to it at the cursor (${keyLabel('alt+enter')})`,
 };
 const SHOW_ALL: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon('list-flat'),
@@ -180,9 +203,43 @@ export class QuickFind implements vscode.Disposable {
     this.refresh();
   }
 
+  /**
+   * Cmd+Enter: opens the highlighted note or task beside the editor and
+   * keeps Find open for the next. Any other row does what Enter does.
+   */
+  public async openBeside(): Promise<void> {
+    const item = this.picker?.activeItems[0]?.item;
+    if (!item || (item.kind !== 'note' && item.kind !== 'task') || !item.filePath || !item.line) {
+      await this.accept();
+      return;
+    }
+    await this.openResultBeside(item);
+  }
+
+  /** Alt+Enter: links the highlighted note, or a task's heading, at the cursor. */
+  public async insertLinkFromActive(): Promise<void> {
+    const item = this.picker?.activeItems[0]?.item;
+    if (!item || (item.kind !== 'note' && item.kind !== 'task') || !item.filePath) {
+      return;
+    }
+    this.picker?.hide();
+    await this.insertLink(item.filePath, item.sectionId);
+  }
+
   public dispose(): void {
     this.picker?.dispose();
     this.picker = undefined;
+  }
+
+  /** Opens a result beside the editor without taking focus from Find. */
+  private async openResultBeside(item: QuickFindItem): Promise<void> {
+    if (!item.filePath || !item.line) {
+      return;
+    }
+    await openSourceAt(item.filePath, item.line, undefined, true, false, true);
+    if (item.kind === 'note' && item.sectionId) {
+      await this.preferences.recordSectionAccess(item.sectionId);
+    }
   }
 
   private scheduleRefresh(): void {
@@ -281,7 +338,7 @@ export class QuickFind implements vscode.Disposable {
       await this.actions.openSavedFilter(item.savedFilterId);
     } else if (item.filePath && item.line) {
       await openSourceAt(item.filePath, item.line);
-      if (item.sectionId) {
+      if (item.kind === 'note' && item.sectionId) {
         await this.preferences.recordSectionAccess(item.sectionId);
       }
     }
@@ -330,10 +387,7 @@ export class QuickFind implements vscode.Disposable {
     }
     if (event.button === OPEN_BESIDE && item.filePath && item.line) {
       // The list stays open, so the next result can be opened beside too.
-      await openSourceAt(item.filePath, item.line, undefined, true);
-      if (item.sectionId) {
-        await this.preferences.recordSectionAccess(item.sectionId);
-      }
+      await this.openResultBeside(item);
       return;
     }
     if (event.button === INSERT_LINK && item.filePath) {

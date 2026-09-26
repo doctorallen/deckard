@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Keys inside Find.** <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>
+  elsewhere) opens the highlighted result beside the editor and keeps Find
+  open for the next; <kbd>Alt</kbd>+<kbd>Enter</kbd> inserts a link to it
+  where the cursor was. Each row button's tooltip names its key.
+
 - **Find starts with your pinned notes.** With nothing typed, Find lists
   your pinned notes first, then the five notes you opened last, then five
   recent searches, your saved searches, and your tags.
@@ -399,6 +404,10 @@
   cut until its three Highlights are written.
 
 ### Fixed
+
+- **Opening a Find result to the side keeps Find open.** It moved focus
+  into the editor, so Find closed whenever the editor won the race; it now
+  leaves focus in Find.
 
 - **Saving a search says search, and places are called by their names.**
   Find, the search pages, and the Task Board all title the box **Save

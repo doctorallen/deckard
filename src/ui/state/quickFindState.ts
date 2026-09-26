@@ -52,6 +52,8 @@ export interface QuickFindItem {
   completed?: boolean;
   /** A note pinned to Home, listed first in an empty Find. */
   pinned?: boolean;
+  /** A task row's task. */
+  taskId?: string;
   /** The query a recent search or saved view stands for. */
   query?: string;
   savedFilterId?: string;
@@ -697,6 +699,9 @@ function createTaskItem(
     detail: facts.length ? facts.join(' · ') : undefined,
     filePath: task.filePath,
     line: task.lineNumber,
+    // The heading the task is under, which a link to it names.
+    ...(section ? { sectionId: section.id } : {}),
+    taskId: task.id,
     completed: task.completed,
   };
 }

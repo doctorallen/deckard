@@ -72,6 +72,8 @@ suite('Extension Test Suite', () => {
         'deckard.insertQueryBlock',
         'deckard.searchWorkspace',
         'deckard.quickFind.complete',
+        'deckard.quickFind.openBeside',
+        'deckard.quickFind.insertLink',
         'deckard.searchNotes',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',

@@ -64,6 +64,8 @@ export async function openSourceAt(
   beside = false,
   /** Open as a preview tab, which the next preview replaces. */
   preview = false,
+  /** Leave focus where it is, so a Quick Pick that opened it stays open. */
+  preserveFocus = false,
 ): Promise<vscode.TextEditor | undefined> {
   const uri = await resolveSourceUri(filePath, workspaceFolders);
   if (!uri) {
@@ -80,6 +82,7 @@ export async function openSourceAt(
     const editor = await vscode.window.showTextDocument(document, {
       preview,
       ...(beside ? { viewColumn: vscode.ViewColumn.Beside } : {}),
+      ...(preserveFocus ? { preserveFocus } : {}),
     });
     revealLine(editor, line);
     return editor;
