@@ -2103,6 +2103,12 @@
             ],
             "description": "Statuses that put a task on hold: is:available leaves out a task whose #status/… tag is one of these. Write them without the namespace, as in deckard.board.statuses.",
             "order": 13
+          },
+          "deckard.tasks.suggestSteps": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Offers **Suggest steps** in Break into Steps… when a VS Code language model, such as GitHub Copilot, is installed. Only the task's words are sent, to that model, and only when you choose it. Turn off to never offer it.",
+            "order": 14
           }
         },
         "order": 4

@@ -40,7 +40,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
 | [Stats](#stats) | Index totals, the notes nothing links to, tags that look like one idea spelled twice, and your most-viewed tags, entities, and notes. |
 | [Themes](#themes) | Eight visual styles for Deckard's pages, from the plain default, Corpo, to Replicant, LCARS, and Synthwave. |
-| [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine. |
+| [Local-first](#source-safety-and-persistence) | Your Markdown stays the source of truth, and the index never leaves your machine; a task's words go to a language model only when you choose Suggest steps. |
 
 ## Requirements
 
@@ -356,7 +356,7 @@ A checkbox indented under a task is one of its **steps**:
   - [ ] Send the invite
 ```
 
-**Deckard: Break into Steps…** writes them for you. It is on the lightbulb beside **Edit task…**, in the palette and the editor's **Deckard** submenu while the cursor is on a task, on a task's right-click menu in the Tasks view, and on a Task board card's **⋯** menu, where **s** does the same. Type a step and press Enter, as many as you need; the list shows the steps already written so none is typed twice, and a new step can be moved up, removed, or chosen to change its words. **Write** puts them under the task as `- [ ]` lines — after anything already under it, indented as the note already nests its lists, with the task's own bullet — in one change that the message's **Undo** and **Deckard: Undo Last Change** both take back. Escape writes nothing.
+**Deckard: Break into Steps…** writes them for you. It is on the lightbulb beside **Edit task…**, in the palette and the editor's **Deckard** submenu while the cursor is on a task, on a task's right-click menu in the Tasks view, and on a Task board card's **⋯** menu, where **s** does the same. Type a step and press Enter, as many as you need; the list shows the steps already written so none is typed twice, and a new step can be moved up, removed, or chosen to change its words. **Write** puts them under the task as `- [ ]` lines — after anything already under it, indented as the note already nests its lists, with the task's own bullet — in one change that the message's **Undo** and **Deckard: Undo Last Change** both take back. Escape writes nothing. With a VS Code language model installed, **Suggest steps** asks it for a list to edit first; see [Suggest steps](#suggest-steps).
 
 A step follows its list's indentation: a heading, a code block, or an unindented paragraph ends the list, a blank line does not, and a checkbox under a plain bullet is a task of its own. `is:step` finds steps, and `has:steps` the tasks that have them.
 
@@ -952,9 +952,13 @@ A query returns at most 25 notes and 25 tasks unless the assistant asks for more
 
 Any assistant that uses VS Code's language model tools can call them; in GitHub Copilot's agent mode they appear in the tools picker. An assistant that connects to tools only through MCP servers, rather than through VS Code, cannot see them.
 
-Deckard itself sends nothing anywhere: the tools read the local index, and what they return goes to the assistant that asked, which may send it to its own model service. So the first time an assistant calls one of the tools in a session, VS Code asks you to allow it, saying that your notes will go to the assistant; later calls in that session go ahead. Set `deckard.assistantTools` to `false` to hide both tools. Each call is timed in [Deckard's log](#limitations-and-troubleshooting).
+For these tools Deckard itself sends nothing anywhere: they read the local index, and what they return goes to the assistant that asked, which may send it to its own model service. So the first time an assistant calls one of the tools in a session, VS Code asks you to allow it, saying that your notes will go to the assistant; later calls in that session go ahead. Set `deckard.assistantTools` to `false` to hide both tools. Each call is timed in [Deckard's log](#limitations-and-troubleshooting).
 
 **Writing, guarded.** `deckard_add_task` adds a task to today's note, or to a note the assistant names; `deckard_change_task` completes, reopens, retitles, dates, prioritizes, or hands over one existing task, named by its note and line as `deckard_query` reports them. An assistant asks before either runs, every time, and nothing is written until you approve the exact line in the same refactor preview Deckard's own multi-note writes use — whatever `deckard.previewWorkspaceWrites` says. A change is refused if the line is no longer the task the index knows there, so an assistant working from a stale answer cannot rewrite whatever is on that line now. `Deckard: Undo Last Change` takes a write back afterwards, as it does any write. So "add a task for Dana due Friday" is an assistant asking, you looking at one line, and saying yes.
+
+### Suggest steps
+
+**Break into Steps…** can ask a language model for a task's steps. When a VS Code language model is installed — GitHub Copilot's, or another extension's — the list offers **Suggest steps**, naming the model it would ask. Finding out whether a model is installed sends nothing: VS Code lists them locally. Choosing it sends one request to that model, holding the task's words and nothing else — no heading, no other line of the note, no other task — the first time behind VS Code's own consent dialog. The steps it suggests join the list marked *suggested*, to remove, reorder, change, or add to; nothing is written until you choose **Write**, and Escape or closing the list cancels the request. If the model refuses, fails, or takes more than 30 seconds, the list stays open with what you typed and says why; the details go to Deckard's log. Set `deckard.tasks.suggestSteps` to `false` never to offer it. This is the only place Deckard itself sends anything to a model.
 
 ### Claude Code and other MCP clients
 
@@ -1113,6 +1117,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.assigneeFromPersonTag": false,
 	"deckard.tasks.metadataSuggestions": true,
+	"deckard.tasks.suggestSteps": true,
 	"deckard.me": "",
 	"deckard.statusBar": true,
 	"deckard.taskReminderTime": "",
@@ -1186,6 +1191,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.assigneeFromPersonTag` | `false` | Read the first person named in a task's words as the person it is for, as Deckard did before the `👤` field; see [Who a task is for](#who-a-task-is-for). |
 | `deckard.board.limits` | `{}` | Work-in-progress limits for board columns, by status, such as `{ "doing": 3 }`, or by column id, such as `{ "priority:high": 5 }`. An over-limit column says so; a drop is never refused. |
 | `deckard.tasks.onHoldStatuses` | `["waiting", "someday"]` | Statuses that put a task on hold, which `is:available` leaves out. Written without the namespace, as in `deckard.board.statuses`. |
+| `deckard.tasks.suggestSteps` | `true` | Offers **Suggest steps** in Break into Steps… when a VS Code language model, such as GitHub Copilot, is installed. Only the task's words are sent, to that model, and only when you choose it. `false` never offers it. See [Suggest steps](#suggest-steps). |
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](#who-a-task-is-for). |
 | `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to the Tasks view's folded **Needs a new date** group and leaves the status bar's count and warning color. `0` keeps every overdue task in Overdue. |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](#status-bar-and-reminders). |
@@ -1224,7 +1230,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 
 Markdown files remain the source of truth. Deckard changes note content only when you use a task checkbox, explicitly extract a tagged heading, rename a note, tag, or heading, carry unfinished tasks forward, write a review into a periodic note, [edit a search's results](#editing-a-searchs-results), or approve an entity tag from `Deckard: Link Current Heading to Entity`. A rename or merge that reaches more than one note is [shown before it is written](#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back. Before applying a task edit, Deckard compares the complete source line and checkbox value with the indexed version. Completing a task also adds its ✅ date, and completing a repeating task inserts its next occurrence on the line above; both happen in that same checked edit. Before an extraction, Deckard verifies the source section is unchanged, then removes it only after the new note is created.
 
-Deckard stores a workspace-scoped SQLite cache locally: the words of each saved note for fast search, and each note as it was last read, so the next start does not read every note again. A new version of Deckard, a change to a parsing setting, or a new time zone rebuilds it. It does not send note content to an AI model or external service. Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
+Deckard stores a workspace-scoped SQLite cache locally: the words of each saved note for fast search, and each note as it was last read, so the next start does not read every note again. A new version of Deckard, a change to a parsing setting, or a new time zone rebuilds it. It does not send note content to an AI model or external service; the one exception is a task's own words, sent only when you choose [Suggest steps](#suggest-steps). Favorites, sorting choices, custom display order, access counts, and source/rendered view preference are stored separately in VS Code and do not add metadata to your notes.
 
 Deckard never deletes a favorite, a pin, or a saved search on its own. If a tag or note it pointed at is gone, the item stays until you run **Deckard: Tidy Favorites, Pins, and Saved Searches**, which lists what points nowhere and asks before removing it. Only what Deckard derived for itself — view counts, access order, when a tag was first seen — is cleaned up automatically, and only against this workspace's own index.
 

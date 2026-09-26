@@ -10,6 +10,8 @@ import { toggleTask } from '../ui/commands/taskActions';
 import { toggleTaskLines } from '../ui/commands/toggleTaskDone';
 import {
   addTaskSteps,
+  buildSuggestPrompt,
+  createLanguageModelSuggester,
   describeSuggestFailure,
   readWrittenSteps,
   StepList,
@@ -111,6 +113,15 @@ suite('Break into Steps', () => {
       describeSuggestFailure('GPT-4o', new Error('offline')),
       'GPT-4o could not suggest steps (offline). Type the steps instead.',
     );
+  });
+
+  test('asks a model with the task’s words alone, and offers nothing without one', async () => {
+    assert.strictEqual(
+      buildSuggestPrompt('Plan the offsite'),
+      'Break this task into small, concrete steps one person can do one at a time, in order. Reply with 3 to 7 steps, one per line, each under 80 characters, with no numbering, bullets, or other text.\n\nTask: Plan the offsite',
+    );
+    // The test host runs with extensions off, so no model is installed.
+    assert.strictEqual(await createLanguageModelSuggester().model(), undefined);
   });
 
   test('reads the steps already written under a task', () => {

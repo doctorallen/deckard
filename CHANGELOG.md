@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Suggest steps.** When a VS Code language model, such as GitHub
+  Copilot, is installed, Break into Steps… offers **Suggest steps**: only
+  the task's words are sent, only when chosen, and the steps are shown to
+  remove, reorder, or change before anything is written.
+  `deckard.tasks.suggestSteps` turns it off.
+
 - **Break a task into steps.** **Break into Steps…** — on the lightbulb,
   in the palette and the editor's Deckard submenu, on the Tasks view's
   right-click menu, and on a board card's ⋯ menu or its **s** key — writes

@@ -6,9 +6,11 @@ import {
   findStepFamily,
   formatStepLines,
   isCheckedTaskLine,
+  parseSuggestedSteps,
   planStepInsertion,
   splitTypedSteps,
 } from '../../core/markdown/taskSteps';
+import { measureAsync, reportError } from '../../core/timing';
 import { Task } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveSourceUri } from './navigation';
@@ -331,6 +333,83 @@ export async function pickSteps(
   });
 }
 
+/** The one message Suggest steps sends: the task's words, and nothing else. */
+export function buildSuggestPrompt(title: string): string {
+  return [
+    'Break this task into small, concrete steps one person can do one at a time, in order. Reply with 3 to 7 steps, one per line, each under 80 characters, with no numbering, bullets, or other text.',
+    '',
+    `Task: ${title}`,
+  ].join('\n');
+}
+
+/** What VS Code's consent dialog says Deckard wants a model for. */
+export const SUGGEST_JUSTIFICATION = 'Deckard sends the words of the task you chose, to suggest steps for it.';
+
+/** How long a suggestion may take before it is given up on. */
+const SUGGEST_TIMEOUT_MS = 30_000;
+
+/** A vendor's name as people know it. */
+function vendorName(vendor: string): string {
+  return vendor === 'copilot' ? 'GitHub Copilot' : vendor;
+}
+
+/**
+ * Suggest steps through VS Code's Language Model API. Nothing is sent to
+ * find a model: `selectChatModels` lists the ones installed. A request is
+ * made only when Suggest steps is chosen, and carries the task's words alone.
+ */
+export function createLanguageModelSuggester(): StepSuggester {
+  let chosen: vscode.LanguageModelChat | undefined;
+  return {
+    async model() {
+      chosen = undefined;
+      const enabled = vscode.workspace
+        .getConfiguration('deckard')
+        .get<boolean>('tasks.suggestSteps', true);
+      if (!enabled || !vscode.lm?.selectChatModels) {
+        return undefined;
+      }
+      const models = await vscode.lm.selectChatModels();
+      chosen = models.find((model) => model.vendor === 'copilot') ?? models[0];
+      return chosen ? { label: chosen.name, vendor: vendorName(chosen.vendor) } : undefined;
+    },
+    async suggest(title, token) {
+      const model = chosen;
+      if (!model) {
+        throw new Error('no model is installed');
+      }
+      const source = new vscode.CancellationTokenSource();
+      const cancelled = token.onCancellationRequested(() => source.cancel());
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        source.cancel();
+      }, SUGGEST_TIMEOUT_MS);
+      try {
+        return await measureAsync(`Suggest steps with ${model.name}`, async () => {
+          const response = await model.sendRequest(
+            [vscode.LanguageModelChatMessage.User(buildSuggestPrompt(title))],
+            { justification: SUGGEST_JUSTIFICATION },
+            source.token,
+          );
+          let reply = '';
+          for await (const part of response.text) {
+            reply += part;
+          }
+          return parseSuggestedSteps(reply);
+        });
+      } catch (error) {
+        reportError(`Suggest steps with ${model.name} failed`, error);
+        throw timedOut ? new Error('it took longer than 30 seconds') : error;
+      } finally {
+        clearTimeout(timer);
+        cancelled.dispose();
+        source.dispose();
+      }
+    },
+  };
+}
+
 /** Why Suggest steps gave nothing, in words to show beside the list. */
 export function describeSuggestFailure(model: string, error: unknown): string {
   const code = (error as { code?: unknown } | undefined)?.code;
@@ -443,7 +522,7 @@ function readCursorTask(indexer: WorkspaceIndexer): { target: StepTarget; lines:
 export async function breakIntoStepsCommand(
   indexer: WorkspaceIndexer,
   task?: Task,
-  suggester?: StepSuggester,
+  suggester: StepSuggester | undefined = createLanguageModelSuggester(),
 ): Promise<boolean> {
   let target: StepTarget;
   let lines: string[];
