@@ -122,14 +122,16 @@ function createSurfaces(zen) {
     // Zen folds each card's file and line away and reveals it on hover, so a
     // hovered result is the one row that grows. The search page is where that
     // reveal sits inside a .card-header rather than at the end of the row.
-    ...(zen ? [{
+    // Without zen it is drawn too, so its cards' tags, their three lines, and
+    // the hub line are measured in every theme.
+    {
       page: 'searchPage',
       viewport: [900, 900],
       snapshot: () => createSearchPageSnapshot(index, preferences.value, '#project/atlas'),
       scrollers: ['html'],
       clippers: [],
       hovered: ['.card'],
-    }] : []),
+    },
   ];
 }
 
@@ -197,6 +199,16 @@ function probeScript(surface) {
   disabled.forEach((el) => { el.style.transition = 'none'; });
   const disabledAtRest = disabled.map(look);
   runs[0].disabledCount = disabled.length;
+  // A result cut to three lines is no taller than three of its lines.
+  runs[0].clampOver = [...document.querySelectorAll('.card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown')]
+    .filter((el) => {
+      const style = getComputedStyle(el);
+      const line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.55;
+      const content = el.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      return content > 3 * line + 2;
+    })
+    .slice(0, 4)
+    .map((el) => name(el) + ' ' + el.clientHeight + 'px');
   // A tag keeps to one line and stays inside the entry it is written in.
   runs[0].tagsBroken = [...document.querySelectorAll('.tag-open .tag-label, .inline-tag .tag-label')]
     .filter((label) => {
@@ -379,6 +391,9 @@ try {
           if (box.scrollW > box.clientW) {
             problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
           }
+        }
+        for (const over of run.clampOver || []) {
+          problems.push(`a result cut to three lines is taller than three: ${over}`);
         }
         for (const broken of run.tagsBroken || []) {
           problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
