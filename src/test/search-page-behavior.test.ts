@@ -7,6 +7,7 @@ import { PreferencesStore } from '../core/storage/preferences';
 import { SearchPageSize, SearchPageSnapshot } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createSearchPageSnapshot } from '../ui/state/dashboardState';
+import { renderedIcon, sourceIcon } from '../ui/webview/icons';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
@@ -323,6 +324,19 @@ suite('Search page behavior', () => {
       section: 'notes',
       columns: 3,
     });
+  });
+
+  test('each format button carries the icon of its own mode', () => {
+    const { page } = open(NOTES, '#project/atlas');
+
+    // Parsed by the same document, so both sides are serialized alike.
+    const drawn = (icon: string): string => {
+      const holder = page.find('body').ownerDocument.createElement('div');
+      holder.innerHTML = icon;
+      return holder.innerHTML;
+    };
+    assert.strictEqual(page.find('[data-mode="markdown"]').innerHTML, drawn(sourceIcon));
+    assert.strictEqual(page.find('[data-mode="html"]').innerHTML, drawn(renderedIcon));
   });
 
   test('marks the control a reader is already using', () => {

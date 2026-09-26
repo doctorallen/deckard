@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The search page's format buttons show their own mode.** Source shows
+  `<>` and Rendered shows the eye; they were swapped.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
