@@ -10,6 +10,12 @@ import {
 } from '../../core/markdown/taskMetadata';
 import { Task } from '../../core/types';
 import { openSourceAt, resolveSourceUri } from './navigation';
+import {
+  describeRejectedEdit,
+  noteName,
+  openNoteAction,
+  reportFailure,
+} from './notify';
 
 /**
  * Carries a task's place in the rank order from the line it was to the line
@@ -76,19 +82,31 @@ export async function updateTaskLine(
 ): Promise<boolean> {
   const uri = await resolveSourceUri(task.filePath);
   if (!uri) {
+    void vscode.window.showWarningMessage(
+      `Deckard could not find ${task.filePath}. It may have been moved or deleted since Deckard last read it.`,
+    );
     return false;
   }
 
+  // Once VS Code has taken the edit, a failure is only a failure to save.
+  let applied = false;
   try {
     const document = await vscode.workspace.openTextDocument(uri);
-    if (task.lineNumber < 1 || task.lineNumber > document.lineCount) {
+    // A line past the end of the note is a line that changed too.
+    if (
+      task.lineNumber < 1 ||
+      task.lineNumber > document.lineCount ||
+      document.lineAt(task.lineNumber - 1).text !== task.sourceLineText
+    ) {
+      void vscode.window.showWarningMessage(
+        'Deckard could not update this task because the source line changed.',
+      );
       return false;
     }
 
     const sourceLine = document.lineAt(task.lineNumber - 1);
     const line = sourceLine.text;
     if (
-      line !== task.sourceLineText ||
       line[task.checkboxColumn] !== task.checkboxValue ||
       line[task.checkboxColumn - 1] !== '[' ||
       line[task.checkboxColumn + 1] !== ']'
@@ -109,16 +127,20 @@ export async function updateTaskLine(
 
     const edit = new vscode.WorkspaceEdit();
     edit.replace(uri, sourceLine.range, replacement);
-    const applied = await vscode.workspace.applyEdit(edit);
-    if (!applied) {
+    if (!(await vscode.workspace.applyEdit(edit))) {
+      void reportFailure(describeRejectedEdit(noteName(uri)));
       return false;
     }
+    applied = true;
 
     const updatedDocument =
       vscode.workspace.textDocuments.find(
         (openDocument) => openDocument.uri.toString() === uri.toString(),
       ) ?? (await vscode.workspace.openTextDocument(uri));
-    await updatedDocument.save();
+    if (!(await updatedDocument.save())) {
+      void reportFailure(describeUnsavedTaskEdit(uri));
+      return false;
+    }
     carryRank(task.filePath, task.lineNumber, task.id, replacement);
     const described =
       typeof description === 'function' ? description() : description;
@@ -138,11 +160,25 @@ export async function updateTaskLine(
     }
     return true;
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not update this task: ${String(error)}`,
+    void reportFailure(
+      applied
+        ? { ...describeUnsavedTaskEdit(uri), error }
+        : {
+            outcome: `Deckard could not update the task in ${noteName(uri)}, so nothing was written.`,
+            error,
+          },
     );
     return false;
   }
+}
+
+/** The task changed in the editor, but the note on disk did not. */
+function describeUnsavedTaskEdit(uri: vscode.Uri) {
+  return {
+    outcome: `Deckard changed the task in ${noteName(uri)} but could not save the note.`,
+    fix: 'Save it to keep the change.',
+    action: openNoteAction(uri),
+  };
 }
 
 /**

@@ -82,6 +82,11 @@
   is now kept, and the message says the heading is in both and what to do.
   The raw error goes to the log, with Open Log beside the message.
 
+- **A task change that did nothing says so.** Checking a task whose line was
+  now past the end of its note, or whose edit VS Code refused, did nothing
+  and said nothing. Each now has a message, and a change made in the editor
+  but not saved says to save the note, with Open Note.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
