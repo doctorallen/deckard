@@ -40,6 +40,7 @@ import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
 import { TaskLineDecorations } from './ui/commands/taskLineDecorations';
 import { RepeatRuleHealth } from './ui/commands/repeatRuleHealth';
+import { WordCountStatusBar } from './ui/views/wordCountStatusBar';
 import {
   excludeFolderCommand,
   ExcludedFoldersContext,
@@ -356,6 +357,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     new TaskLineDecorations((uri) => indexer.isNotesFile(uri)),
     // A repeat rule Deckard cannot read is marked before the task is done.
     new RepeatRuleHealth((uri) => indexer.isNotesFile(uri)),
+    // The words in the note, or the selection, beside the task count.
+    new WordCountStatusBar((uri) => indexer.isNotesFile(uri)),
   );
   void vscode.commands.executeCommand(
     'setContext',

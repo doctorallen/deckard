@@ -12,6 +12,10 @@
 
 ### Added
 
+- **A word count.** While a note is in the editor, the status bar reads
+  **412 words · 2 min**, or **38 of 412 words** for a selection, leaving
+  out front matter, code, link addresses, and task metadata.
+
 - **A repeat rule Deckard cannot read is marked.** An open task's 🔁 rule
   that Deckard cannot read gets a warning before it is completed, and quick
   fixes to the nearest rules it can: `every tuesdya` becomes `every
