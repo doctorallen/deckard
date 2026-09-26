@@ -12,6 +12,13 @@
 
 ### Added
 
+- **A tag's page says how else it is written.** Under the hub, a tag's page
+  names up to three spellings that look like it, from the same pass as
+  Stats' Tags that look alike: *Also written as #proj/atlas (6 entries).*
+  **Include in search** searches both; **Merge** runs the usual confirmed,
+  previewed, undoable merge, and a page whose tag was merged away follows
+  the one kept.
+
 - **A tag's page lists what links to its hub note.** On a tag with a hub
   note, the page also lists every entry and task that links to the hub
   without carrying the tag, each marked *Links the hub note*, and says

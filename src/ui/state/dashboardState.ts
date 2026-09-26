@@ -77,7 +77,7 @@ import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { buildSearchFacets, SearchFacetValue } from './searchFacets';
 import { createPinForLine, pinKey } from './pinnedNotes';
-import { findTagMergeCandidates } from './tagHygiene';
+import { findTagLookalikes, findTagMergeCandidates } from './tagHygiene';
 
 /**
  * Projects one consistent dashboard model from the index and UI-only state.
@@ -383,14 +383,11 @@ export function createSearchPageSnapshot(
                 ),
               }
             : {}),
-          ...(hubFile
-            ? {
-                tagPage: {
-                  hubLinkCount: viaHub.size,
-                  ...(page.hubTitle ? { hubTitle: page.hubTitle } : {}),
-                },
-              }
-            : {}),
+          tagPage: {
+            lookalikes: findTagLookalikes(index, focusTag.key),
+            hubLinkCount: viaHub.size,
+            ...(page.hubTitle ? { hubTitle: page.hubTitle } : {}),
+          },
         }
       : {}),
     query: createQueryViewState(

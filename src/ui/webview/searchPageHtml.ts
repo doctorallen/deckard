@@ -18,6 +18,7 @@ import {
   loadingHtml,
   zenBodyAttribute,
 } from './components';
+import { ENABLED } from './selectors';
 
 /**
  * Builds a search page: the search box, the tag or entity a one-tag search is
@@ -106,6 +107,8 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 /* A tag's page's quiet lines under its hub, and what they mark on cards. */
 .tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
 .tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.tag-note-tag { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: var(--text-sm) var(--font-mono); cursor: pointer; }
+.tag-note-tag:hover${ENABLED} { color: var(--hover-fg); text-decoration: underline; }
 .tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
 .card-via { margin-left: 6px; color: var(--muted); font-size: var(--text-xs); font-style: italic; }
 .stale-results { margin: 16px 0 0; border-left: 3px solid var(--warning-orange); background: var(--panel); padding: 8px 12px; color: var(--muted); font-size: var(--text-sm); }
@@ -285,6 +288,12 @@ ${getQueryEditorScript()}
     if (!state.tag || !state.tagPage) return '';
     const notes = [];
     const page = state.tagPage;
+    (page.lookalikes || []).forEach(function (other) {
+      const labelOf = function (key) { return key === other.key ? other.label : state.tag.label; };
+      notes.push('<p class="tag-note">Also written as <button type="button" class="tag-note-tag" data-action="open-tag" data-tag-key="' + escapeHtml(other.key) + '" data-tip="Open ' + escapeHtml(other.label) + '">' + escapeHtml(other.label) + '</button> (' + other.count + ' ' + (other.count === 1 ? 'entry' : 'entries') + '). '
+        + '<button type="button" class="tag-note-action" data-action="include-lookalike" data-tag-key="' + escapeHtml(other.key) + '" data-tip="Search for both spellings">Include in search</button> '
+        + '<button type="button" class="tag-note-action" data-action="merge-lookalike" data-source-key="' + escapeHtml(other.sourceKey) + '" data-target-key="' + escapeHtml(other.targetKey) + '" data-tip="' + escapeHtml('Merge ' + labelOf(other.sourceKey) + ' into ' + labelOf(other.targetKey) + ', after showing what changes') + '">Merge</button></p>');
+    });
     if (page.hubLinkCount > 0 && page.hubTitle) {
       notes.push('<p class="tag-note">Also listing ' + page.hubLinkCount + ' ' + (page.hubLinkCount === 1 ? 'entry that links' : 'entries that link') + ' to ' + escapeHtml(page.hubTitle) + ' without the tag. <button type="button" class="tag-note-action" data-action="exclude-hub-links" data-tip="List only the entries that carry the tag">Leave them out</button></p>');
     }
@@ -620,6 +629,8 @@ ${getQueryEditorScript()}
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
       if (action === 'exclude-hub-links') vscode.postMessage({ type: 'excludeHubLinks' });
+      if (action === 'include-lookalike' && state.tag) vscode.postMessage({ type: 'setOverviewQuery', query: state.tag.key + ' OR ' + target.dataset.tagKey });
+      if (action === 'merge-lookalike') vscode.postMessage({ type: 'mergeTags', sourceKey: target.dataset.sourceKey, targetKey: target.dataset.targetKey });
       if (action === 'open-source') vscode.postMessage(openSourceMessage(target, event));
       if (action === 'open-tag') vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       return;

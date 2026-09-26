@@ -674,6 +674,15 @@ export interface SearchPageSnapshot {
 
 /** The quiet lines under a tag's page's hub. */
 export interface SearchPageTagNotes {
+  /** Other spellings of the tag, most confusable first, at most three. */
+  lookalikes: Array<{
+    key: string;
+    label: string;
+    count: number;
+    /** The merge Stats offers: the rarer spelling into the more used. */
+    sourceKey: string;
+    targetKey: string;
+  }>;
   /** Entries listed because they link to a hub note without the tag. */
   hubLinkCount: number;
   /** The hub note they link to, by title. */
@@ -1563,7 +1572,8 @@ export type SearchPageMessage =
   | PreviewSearchMessage
   | EditResultsMessage
   | CreateHubNoteMessage
-  | ExcludeHubLinksMessage;
+  | ExcludeHubLinksMessage
+  | MergeTagsMessage;
 
 export type SidebarMessage =
   | LinkMentionMessage

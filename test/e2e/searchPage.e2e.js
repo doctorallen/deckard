@@ -216,6 +216,35 @@ test('a tag\'s page lists what links its hub note, each saying so, and can leave
   vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
 });
 
+test('a tag\'s page says how else the tag is written, with Include in search and Merge', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/a.md', '## One #project/atlas\nFirst.'),
+    note('notes/b.md', '## Two #project/atlas\nSecond.'),
+    note('notes/c.md', '## Three #proj/atlas\nThird.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view, panel } = await openOverview('#project/atlas', { index });
+  const line = view.find('.tag-note');
+  assert.ok(line.textContent.startsWith('Also written as #proj/atlas (1 entry).'), line.textContent);
+  assert.strictEqual(view.find('.tag-note-tag').getAttribute('data-tag-key'), '#proj/atlas');
+  const merge = view.find('[data-action="merge-lookalike"]');
+  assert.strictEqual(merge.getAttribute('data-tip'), 'Merge #proj/atlas into #project/atlas, after showing what changes');
+
+  // Merge is the confirmed merge the tag list runs; what the page asks
+  // for is checked here, without the modal.
+  const deliver = panel._onWebviewMessage;
+  const posted = [];
+  panel._onWebviewMessage = (message) => posted.push(message);
+  view.click(merge);
+  assert.deepStrictEqual(posted, [{ type: 'mergeTags', sourceKey: '#proj/atlas', targetKey: '#project/atlas' }]);
+  panel._onWebviewMessage = deliver;
+
+  view.click(view.find('[data-action="include-lookalike"]'));
+  await settle();
+  assert.strictEqual(box(view), '#project/atlas OR #proj/atlas');
+});
+
 test('anything more than the one tag is a search, shown by its box alone', async () => {
   const { view, panel } = await openOverview();
   search(view, '@ren-kade');

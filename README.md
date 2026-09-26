@@ -469,6 +469,8 @@ If a note in the workspace could not be read — a permissions error, an encodin
 
 Stats lists pairs of tags that look like one idea spelled twice, clearest first, each pointing from the rarer spelling to the one your notes already use. **Merge** on a row merges them through the usual [merge](#merging-tags): the same confirmation, the same preview, and the same [Undo](#previewing-and-undoing-a-write). Select either tag to open its search page and read the entries first.
 
+A tag's own page says the same, under its hub: *Also written as #proj/atlas (6 entries).* for up to three other spellings, with **Include in search**, which searches both, and **Merge**, which runs the same merge and, when this page's tag is the one merged away, reopens on the tag kept.
+
 | A pair reads | Because |
 | --- | --- |
 | `@ren-kade → #person/ren-kade` | the same name written two ways |

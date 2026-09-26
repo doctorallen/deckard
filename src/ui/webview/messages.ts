@@ -298,6 +298,16 @@ export function parseSearchPageMessage(
       return isRenameTagMessage(value)
         ? { type: 'renameTag', tagKey: value.tagKey as string }
         : undefined;
+    case 'mergeTags':
+      return typeof value.sourceKey === 'string' &&
+        value.sourceKey.length > 0 &&
+        value.sourceKey.length <= 500 &&
+        typeof value.targetKey === 'string' &&
+        value.targetKey.length > 0 &&
+        value.targetKey.length <= 500 &&
+        value.sourceKey !== value.targetKey
+        ? { type: 'mergeTags', sourceKey: value.sourceKey, targetKey: value.targetKey }
+        : undefined;
     case 'saveTagOverviewFilter':
     case 'createHubNote':
     case 'excludeHubLinks':

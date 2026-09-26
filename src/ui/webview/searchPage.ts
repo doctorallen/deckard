@@ -34,7 +34,7 @@ import { formatQueryBlock } from '../state/queryBlockState';
 import { setPinned } from '../commands/pinNote';
 import { createHubNote } from '../commands/hubNote';
 import { openResultAt, ResultOpening } from '../commands/navigation';
-import { renameIndexedTag } from '../commands/renameTag';
+import { mergeIndexedTag, renameIndexedTag } from '../commands/renameTag';
 import { toggleTask } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseSearchPageMessage } from './messages';
@@ -737,6 +737,21 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       case 'saveTagOverviewFilter':
         await this.saveSearch();
         return;
+      case 'mergeTags': {
+        // The merge the tag list and Stats run: confirmed, previewed, and
+        // undoable. A page whose tag was merged away follows the one kept.
+        const pageTag = this.currentSnapshot().tag?.key;
+        const kept = await mergeIndexedTag(
+          this.indexer,
+          message.sourceKey,
+          this.preferences,
+          message.targetKey,
+        );
+        if (kept && pageTag && pageTag !== kept.key) {
+          await this.host.openTag(kept.key);
+        }
+        return;
+      }
       case 'excludeHubLinks':
         // A preference about every tag's page, so it is the user's.
         await vscode.workspace
