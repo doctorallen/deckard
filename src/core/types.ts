@@ -934,6 +934,17 @@ export interface DeckardStatsSnapshot {
   missingLinkTargets: StatsMissingLink[];
   /** How many such names there are, listed or not. */
   missingLinkTargetCount: number;
+  /** How the Notes, Tasks, and Open tasks totals moved over twelve weeks. */
+  trends: { notes: StatsTrend; tasks: StatsTrend; openTasks: StatsTrend };
+}
+
+/**
+ * A total as it stood 84, 77, … 7, and 0 days ago: thirteen points, the
+ * last the total now. `change` is the last point less the one before.
+ */
+export interface StatsTrend {
+  points: number[];
+  change: number;
 }
 
 /** A name links write that no note carries, as Stats lists it. */

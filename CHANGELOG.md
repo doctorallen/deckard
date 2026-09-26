@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Stats shows how notes, tasks, and open tasks moved over twelve weeks.**
+  A line under each of those totals draws a point for each rolling seven
+  days, the latest marked, and says **+9 in the last 7 days**; hover a
+  point for its value. The weeks are rebuilt from the dates notes were
+  written and tasks were done.
+
 - **Stats leads with what needs attention, and every total opens what it
   counts.** Notes Deckard could not read, links that open no note, tags that
   look alike, and notes nothing links to come first, each with its count,

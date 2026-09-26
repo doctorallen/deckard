@@ -31,6 +31,7 @@ import {
   TaskSortMode,
   WorkspaceIndex,
   DeckardStatsSnapshot,
+  StatsTrend,
   UnreadableNote,
   TaskGlance,
 } from '../../core/types';
@@ -847,8 +848,10 @@ export function createDeckardStatsSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   unreadable: readonly UnreadableNote[] = [],
+  now = Date.now(),
 ): DeckardStatsSnapshot {
   return {
+    trends: createStatsTrends(index, now),
     updatedAt: index.updatedAt,
     unreadable: unreadable.map((note) => ({
       ...note,
@@ -910,6 +913,74 @@ export function createDeckardStatsSnapshot(
     ...findLookalikeTags(index),
     ...listMissingLinkTargets(index),
     ...countParked(index),
+  };
+}
+
+const TREND_WEEK = 7 * 24 * 60 * 60 * 1000;
+/** Twelve rolling seven-day spans: thirteen points, the last one now. */
+const TREND_POINTS = 13;
+
+/**
+ * How the Notes, Tasks, and Open tasks totals stood at the end of each of
+ * the last twelve rolling weeks, ending now, rebuilt from today's notes: an
+ * entry counts from its note's date, a task is open from then until its ✅
+ * date, or its note's last change when it has none. Deleted notes are gone
+ * from past weeks too, and an entry added to an old note counts from that
+ * note's date. One pass over the entries; each adds where it starts, and a
+ * done task takes itself away where it ends.
+ */
+export function createStatsTrends(
+  index: WorkspaceIndex,
+  now = Date.now(),
+): DeckardStatsSnapshot['trends'] {
+  const last = TREND_POINTS - 1;
+  /** The first point at which something dated `at` exists; undated, always. */
+  const firstPoint = (at: number | undefined): number => {
+    if (at === undefined || !Number.isFinite(at)) {
+      return 0;
+    }
+    if (at > now) {
+      return last;
+    }
+    return Math.max(0, last - Math.floor((now - at) / TREND_WEEK));
+  };
+  const notes = new Array<number>(TREND_POINTS + 1).fill(0);
+  const tasks = new Array<number>(TREND_POINTS + 1).fill(0);
+  const open = new Array<number>(TREND_POINTS + 1).fill(0);
+  index.sections.forEach((section) => {
+    notes[firstPoint(section.createdAt)] += 1;
+  });
+  index.tasks.forEach((task) => {
+    const start = firstPoint(task.createdAt);
+    tasks[start] += 1;
+    if (!task.completed) {
+      open[start] += 1;
+      return;
+    }
+    const doneAt = task.doneAt ?? task.updatedAt ?? index.files.get(task.filePath)?.updatedAt;
+    if (doneAt === undefined) {
+      // Done, and no date says when: it is counted open in no past week.
+      return;
+    }
+    const end = Math.max(start, doneAt > now ? last : Math.max(0, last - Math.floor((now - doneAt) / TREND_WEEK)));
+    open[start] += 1;
+    open[end] -= 1;
+  });
+  const levels = (starts: number[], total: number): StatsTrend => {
+    const points: number[] = [];
+    let running = 0;
+    for (let point = 0; point < TREND_POINTS; point += 1) {
+      running += starts[point];
+      points.push(running);
+    }
+    // The last point is the total on the tile, so the two always agree.
+    points[last] = total;
+    return { points, change: points[last] - points[last - 1] };
+  };
+  return {
+    notes: levels(notes, index.sections.size),
+    tasks: levels(tasks, index.tasks.size),
+    openTasks: levels(open, [...index.tasks.values()].filter((task) => !task.completed).length),
   };
 }
 

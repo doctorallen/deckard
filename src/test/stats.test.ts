@@ -6,7 +6,7 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { parseQuery } from '../core/query/queryParser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
+import { createDeckardStatsSnapshot, createStatsTrends } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { listStatsTags } from '../ui/webview/stats';
@@ -257,5 +257,60 @@ suite('Stats: what needs attention, first', () => {
       ['#topic', '1 entry'],
     ]);
     assert.deepStrictEqual(listStatsTags(index, true).map((row) => row.tagKey), ['#project/atlas']);
+  });
+});
+
+suite('Stats: twelve weeks under each total', () => {
+  const now = new Date(2026, 8, 21, 12).getTime();
+  const DAY = 24 * 60 * 60 * 1000;
+  const day = (time: number) => {
+    const date = new Date(time);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const index = () => buildWorkspaceIndex(new Map([
+    ['notes/a.md', parseMarkdown('notes/a.md', `# A\n- [ ] open one\n- [x] done one ✅ ${day(now - 10 * DAY)}`, { createdAt: now - 23 * DAY, updatedAt: now - 23 * DAY })],
+    ['notes/b.md', parseMarkdown('notes/b.md', '# B\n- [x] done undated', { createdAt: now - 2 * DAY, updatedAt: now - DAY })],
+    ['notes/c.md', parseMarkdown('notes/c.md', '# C', { createdAt: now + 3 * DAY, updatedAt: now + 3 * DAY })],
+    ['notes/d.md', parseMarkdown('notes/d.md', '# D')],
+  ]));
+  const preferences = () =>
+    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+
+  test('rebuilds each total week by week from the dates notes were written', () => {
+    const trends = createStatsTrends(index(), now);
+    // A note from three weeks and two days ago counts from three weeks ago;
+    // an undated one throughout; one dated ahead counts from now.
+    assert.deepStrictEqual(trends.notes, { points: [1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 4], change: 2 });
+    assert.deepStrictEqual(trends.tasks, { points: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 3], change: 1 });
+    // Done ten days ago by its ✅ date, it was open two weeks and three weeks
+    // ago; done with no date, it is open in no past week.
+    assert.deepStrictEqual(trends.openTasks, { points: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 1, 1], change: 0 });
+    const snapshot = createDeckardStatsSnapshot(index(), preferences(), [], now);
+    assert.strictEqual(snapshot.trends.notes.points[12], snapshot.sectionCount, 'the last point is the tile');
+    assert.strictEqual(snapshot.trends.openTasks.points[12], snapshot.activeTaskCount);
+  });
+
+  test('says how each total moved in the last seven days, and draws its line', () => {
+    const snapshot = createDeckardStatsSnapshot(index(), preferences(), [], now);
+    snapshot.trends.tasks = { points: [...snapshot.trends.tasks.points.slice(0, 11), 4, 3], change: -1 };
+    const page = openWebviewPage(getStatsHtml(webview), snapshot);
+    try {
+      const tile = (label: string) => page.findAll('.metric').find((element) => element.querySelector('.metric-label')?.textContent === label) as HTMLElement;
+      assert.strictEqual(tile('Notes').querySelector('.metric-change')?.textContent, '+2 in the last 7 days');
+      assert.strictEqual(tile('Tasks').querySelector('.metric-change')?.textContent, '−1 in the last 7 days');
+      assert.strictEqual(tile('Open tasks').querySelector('.metric-change')?.textContent, 'No change in the last 7 days');
+      assert.strictEqual(tile('Notes').getAttribute('aria-label'), 'Notes, 4, +2 in the last 7 days. Open a search for every note');
+      assert.strictEqual(tile('Files').querySelector('.sparkline'), null, 'Files has no line');
+      const line = tile('Notes').querySelector('svg.sparkline');
+      assert.strictEqual(line?.getAttribute('aria-hidden'), 'true');
+      const titles = [...(line?.querySelectorAll('title') ?? [])].map((title) => title.textContent);
+      assert.strictEqual(titles.length, 13);
+      assert.strictEqual(titles[0], '12 weeks ago: 1');
+      assert.strictEqual(titles[11], '1 week ago: 2');
+      assert.strictEqual(titles[12], 'Now: 4');
+    } finally {
+      page.dispose();
+    }
   });
 });

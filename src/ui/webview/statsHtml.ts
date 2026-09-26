@@ -92,8 +92,13 @@ ${getComponentScript()}
    * One tile. A tile that opens what it counts is a button: a search, a tag
    * to choose, the graph, or the list further down the page.
    */
-  function metric(label, value, query, hint) {
-    return renderMetric(label, value, query, hint);
+  function metric(label, value, query, hint, trend) {
+    return renderMetric(label, value, query, hint, undefined, trend);
+  }
+  /** A total's twelve weeks, with what its line counts by, for its tip. */
+  function trendOf(name, noun) {
+    const trend = state.trends && state.trends[name];
+    return trend ? { points: trend.points, change: trend.change, note: 'The line counts ' + noun + ' by the date each note was written, over the last 12 weeks.' } : undefined;
   }
   function actionMetric(label, value, action, hint, attributes) {
     if (!value) return renderMetric(label, value);
@@ -249,9 +254,9 @@ ${getComponentScript()}
       : 'Not indexed yet';
     const metrics = [
       metric('Files', state.fileCount),
-      metric('Notes', state.sectionCount, 'is:note', 'Open a search for every note'),
-      metric('Tasks', state.taskCount, 'is:task', 'Open a search for every task'),
-      metric('Open tasks', state.activeTaskCount, 'is:open', 'Open a search for every open task'),
+      metric('Notes', state.sectionCount, 'is:note', 'Open a search for every note', trendOf('notes', 'notes')),
+      metric('Tasks', state.taskCount, 'is:task', 'Open a search for every task', trendOf('tasks', 'tasks')),
+      metric('Open tasks', state.activeTaskCount, 'is:open', 'Open a search for every open task', trendOf('openTasks', 'open tasks')),
       actionMetric('Tags', state.tagCount, 'open-tag-list', 'Choose a tag to open', ' data-namespaced="false"'),
       actionMetric('Namespaced tags', state.entityCount, 'open-tag-list', 'Choose a namespaced tag to open', ' data-namespaced="true"'),
       actionMetric('Wiki links', state.wikiLinkCount, 'open-graph', 'Open the Notes Graph showing only the links you wrote'),

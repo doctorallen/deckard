@@ -540,6 +540,18 @@ export function getSurfaceCss(): string {
 .metric-open:hover, .metric-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .metric-label { display: block; color: var(--muted); font-size: var(--text-xs); }
 .metric-value { display: block; margin-top: var(--space-1); color: var(--green); font-size: 22px; }
+/* How a total moved: a line of its last twelve weeks, the latest point in
+   the accent, and the change in words. Muted, not green or red: a rise in
+   open tasks is not good news. */
+.sparkline { display: block; width: 100%; height: 20px; margin-top: var(--space-1); overflow: visible; }
+.sparkline .sparkline-line { fill: none; stroke: var(--muted); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.sparkline .sparkline-end { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sparkline .sparkline-hit { fill: transparent; }
+.metric-change { display: block; color: var(--muted); font-size: var(--text-xs); }
+@media (forced-colors: active) {
+  .sparkline .sparkline-line { stroke: CanvasText; }
+  .sparkline .sparkline-end { stroke: Highlight; }
+}
 
 /* A page still waiting for what it shows: muted words in the page's flow,
    not the dashed box an empty result is drawn in. Revealed after 400 ms by a
@@ -2216,11 +2228,47 @@ ${getUndoScript()}
    * a button that opens the search the figure counts. code is the theme's
    * decorative caption, such as TSK.OVR // 01.
    */
-  function renderMetric(label, value, query, hint, code) {
+  function renderMetric(label, value, query, hint, code, trend) {
     const codeAttribute = code ? ' data-code="' + escapeHtml(code) + '"' : '';
-    const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>';
-    if (!query) return '<article class="metric"' + codeAttribute + '>' + body + '</article>';
-    return '<button type="button" class="metric metric-open"' + codeAttribute + ' data-action="open-search" data-query="' + escapeHtml(query) + '" data-tip="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '">' + body + '</button>';
+    const change = trend ? describeChange(trend.change) : '';
+    const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>'
+      + (trend ? renderSparkline(trend.points) + '<span class="metric-change">' + escapeHtml(change) + '</span>' : '');
+    const said = label + ', ' + value + (change ? ', ' + change : '');
+    if (!query) return '<article class="metric"' + codeAttribute + (trend ? ' aria-label="' + escapeHtml(said) + '"' : '') + '>' + body + '</article>';
+    const tip = hint + (trend && trend.note ? '. ' + trend.note : '');
+    return '<button type="button" class="metric metric-open"' + codeAttribute + ' data-action="open-search" data-query="' + escapeHtml(query) + '" data-tip="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(said + '. ' + hint) + '">' + body + '</button>';
+  }
+
+  /**
+   * A total's last twelve weeks as a line: min to max top to bottom, a flat
+   * run as a midline, the latest point marked. Each point names itself on
+   * hover ("3 weeks ago: 402") through a thin strip under it. Hidden from
+   * assistive technology: the tile says the change in words.
+   */
+  function renderSparkline(points) {
+    if (!points || points.length < 2) return '';
+    const width = (points.length - 1) * 10;
+    const low = Math.min.apply(null, points);
+    const high = Math.max.apply(null, points);
+    const y = function (value) { return high === low ? 10 : 18 - ((value - low) / (high - low)) * 16; };
+    const coordinates = points.map(function (value, index) { return (index * 10) + ',' + y(value).toFixed(1); });
+    const last = points.length - 1;
+    const hits = points.map(function (value, index) {
+      const ago = last - index;
+      const when = ago === 0 ? 'Now' : ago === 1 ? '1 week ago' : ago + ' weeks ago';
+      return '<rect class="sparkline-hit" x="' + (index * 10 - 4) + '" y="0" width="8" height="20"><title>' + when + ': ' + value + '</title></rect>';
+    }).join('');
+    const endY = y(points[last]).toFixed(1);
+    return '<svg class="sparkline" viewBox="0 0 ' + width + ' 20" preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+      + '<polyline class="sparkline-line" points="' + coordinates.join(' ') + '"/>'
+      + '<line class="sparkline-end" x1="' + width + '" y1="' + endY + '" x2="' + width + '" y2="' + endY + '"/>'
+      + hits + '</svg>';
+  }
+
+  /** "+9 in the last 7 days", "−3 in the last 7 days", or no change. */
+  function describeChange(change) {
+    if (!change) return 'No change in the last 7 days';
+    return (change > 0 ? '+' + change : '\u2212' + Math.abs(change)) + ' in the last 7 days';
   }
 
   /** The Status, Priority, and Due date switch above a task board. */
