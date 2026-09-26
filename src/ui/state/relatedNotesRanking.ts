@@ -34,6 +34,7 @@ import {
   getNoteTitle,
   getTitleTags,
 } from './dashboardState';
+import { createSectionExcerpt } from './entryExcerpt';
 import {
   createLexicalModel,
   getCachedLexicalTerms,
@@ -283,8 +284,10 @@ export function rankRelatedNotes(
       headingPath: string[];
       dailyDate?: string;
       parked?: boolean;
+      section?: Section;
     }> = matchingSections.map((section) => ({
       parked: isParkedSection(index, section.id),
+      section,
       sectionId: section.id,
       title: getNoteTitle(section.heading, tagTitleDisplayMode),
       sourceLine: section.startLine,
@@ -442,8 +445,17 @@ export function rankRelatedNotes(
           0,
           relevanceScore - Math.round(specificityPenalty * 100),
         );
+        const excerpt = reference.section
+          ? createSectionExcerpt(
+              reference.section,
+              file.sections,
+              reference.title,
+              lexicalEvidence.terms.slice(0, 3).map((term) => term.term),
+            )
+          : undefined;
         return {
           ...(reference.parked ? { parked: true as const } : {}),
+          ...(excerpt ? { excerpt } : {}),
           sectionId: reference.sectionId,
           filePath,
           title: reference.title,

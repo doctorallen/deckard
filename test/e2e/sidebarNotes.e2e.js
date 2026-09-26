@@ -310,6 +310,24 @@ test('Linked from groups its lines by note, newest first, and unfolds a line ont
   }
 });
 
+test('the gear sets Preview: None takes the excerpts away, and 2 lines brings them back', async () => {
+  const { view, close } = await openSidebar(4);
+  try {
+    await settle();
+    assert.strictEqual(view.findAll('.note-excerpt').length, 3, 'one line of each result by default');
+    assert.strictEqual(view.find('.note-excerpt').textContent, 'Body 1.');
+    view.click(view.find('[data-action="set-preview-lines"][data-value="0"]'));
+    await settle();
+    assert.strictEqual(view.findAll('.note-excerpt').length, 0);
+    view.click(view.find('[data-action="set-preview-lines"][data-value="2"]'));
+    await settle();
+    assert.strictEqual(view.findAll('.note-excerpt').length, 3);
+    assert.strictEqual(view.document.getElementById('app').dataset.previewLines, '2');
+  } finally {
+    close();
+  }
+});
+
 test('Hide daily notes leaves a daily note out of Linked from, and says so', async () => {
   const note = (filePath, content, updatedAt) =>
     parseMarkdown(filePath, content, { createdAt: 1, updatedAt }, {});
@@ -330,13 +348,14 @@ test('Hide daily notes leaves a daily note out of Linked from, and says so', asy
   host.posted.forEach((message) => host._deliver(message));
   try {
     await settle();
-    const toggle = () => view.find('[data-action="set-hide-daily"]');
-    assert.strictEqual(toggle().getAttribute('aria-pressed'), 'false');
+    // The gear's Daily notes row: Show or Hide.
+    const choice = (value) => view.find(`[data-action="set-hide-daily"][data-value="${value}"]`);
+    assert.strictEqual(choice('hide').getAttribute('aria-pressed'), 'false');
     assert.strictEqual(view.findAll('.link-group').length, 2);
-    view.click(toggle());
+    view.click(choice('hide'));
     await settle();
     assert.strictEqual(preferences.value.hideDailyNotes, true);
-    assert.strictEqual(toggle().getAttribute('aria-pressed'), 'true');
+    assert.strictEqual(choice('hide').getAttribute('aria-pressed'), 'true');
     assert.deepStrictEqual(view.findAll('.link-group-open').map((button) => button.textContent), ['budget']);
     assert.deepStrictEqual(view.findAll('.note-list [data-file-path]').map((card) => card.getAttribute('data-file-path')), ['notes/budget.md']);
     assert.ok(view.find('.links-hiding').textContent.startsWith('Hiding 1 daily note.'));

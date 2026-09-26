@@ -1691,11 +1691,14 @@ export function getComponentScript(): string {
    * Marks the searched words where they appear in the results, so a reader
    * can tell at a glance why each one was found (Hearst, Search User
    * Interfaces, ch. 5). Only text is marked, never a tag or a control.
+   * options.wordStart marks a word only where one starts, so "route" marks
+   * "routes" but "art" does not mark "start".
    */
-  function markWords(root, words) {
+  function markWords(root, words, options) {
     const wanted = (words || []).map(function (word) { return String(word).toLowerCase(); }).filter(function (word) { return word.length >= 2; });
     if (!wanted.length || !root || !document.createTreeWalker) return;
-    const pattern = new RegExp('(' + wanted.map(function (word) { return word.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&'); }).join('|') + ')', 'gi');
+    const wordStart = Boolean(options && options.wordStart);
+    const pattern = new RegExp((wordStart ? '(?<![\\\\p{L}\\\\p{N}])' : '') + '(' + wanted.map(function (word) { return word.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&'); }).join('|') + ')', wordStart ? 'giu' : 'gi');
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const found = [];
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {

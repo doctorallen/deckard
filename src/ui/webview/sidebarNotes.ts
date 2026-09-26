@@ -459,13 +459,15 @@ export class SidebarNotesView
     // What links here is about the whole note, whichever entry is selected.
     const indexedFile = selectedFilePath ? index.files.get(selectedFilePath) : undefined;
     const hideDailyNotes = this.preferences.value.hideDailyNotes === true;
+    const previewLines = this.preferences.value.relatedNotesPreviewLines ?? 1;
     return indexedFile
       ? {
           ...snapshot,
           hideDailyNotes,
+          previewLines,
           links: collectNoteLinks(index, indexedFile, { hideDailyNotes }),
         }
-      : { ...snapshot, hideDailyNotes };
+      : { ...snapshot, hideDailyNotes, previewLines };
   }
 
   private getTagTitleDisplayMode(): TagTitleDisplayMode {
@@ -679,6 +681,12 @@ export class SidebarNotesView
 
     if (message.type === 'setHideDailyNotes') {
       await this.preferences.setHideDailyNotes(message.hide);
+      this.refresh();
+      return;
+    }
+
+    if (message.type === 'setRelatedNotesPreviewLines') {
+      await this.preferences.setRelatedNotesPreviewLines(message.lines);
       this.refresh();
       return;
     }

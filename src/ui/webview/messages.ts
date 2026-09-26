@@ -502,6 +502,12 @@ export function parseSidebarMessage(
   if (value.type === 'openLinksSearch') {
     return { type: 'openLinksSearch' };
   }
+  if (
+    value.type === 'setRelatedNotesPreviewLines' &&
+    (value.lines === 0 || value.lines === 1 || value.lines === 2)
+  ) {
+    return { type: 'setRelatedNotesPreviewLines', lines: value.lines };
+  }
   if (value.type === 'setHideDailyNotes' && typeof value.hide === 'boolean') {
     return { type: 'setHideDailyNotes', hide: value.hide };
   }

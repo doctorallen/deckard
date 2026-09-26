@@ -402,6 +402,8 @@ export interface PersistedPreferences {
   relatedNotesSortMode: RelatedNotesSortMode;
   /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
   hideDailyNotes?: true;
+  /** Lines of excerpt on a Related Notes card, when not the default 1. */
+  relatedNotesPreviewLines?: 0 | 2;
   /** The results chosen in Find for what was typed, which it offers first. */
   findChoices?: FindChoice[];
   /** The headings Capture and Move to… went under last, newest first. */
@@ -795,6 +797,12 @@ export interface HeadingTagSpan extends TagReference {
 export interface RankedNote {
   /** Parked: listed only beside a parked note, after the rest. */
   parked?: true;
+  /**
+   * The first lines of what a section says, up to 240 characters, from where
+   * it shares a word with the note being read. Not on a task or an inline
+   * tagged line, whose title is its whole text.
+   */
+  excerpt?: string;
   sectionId?: string;
   filePath: string;
   title: string;
@@ -1038,6 +1046,12 @@ export interface SetHideDailyNotesMessage {
   hide: boolean;
 }
 
+/** Related Notes' gear: how many lines of each result's excerpt to show. */
+export interface SetRelatedNotesPreviewLinesMessage {
+  type: 'setRelatedNotesPreviewLines';
+  lines: 0 | 1 | 2;
+}
+
 /** Related Notes' Open as search: every entry that links to the note. */
 export interface OpenLinksSearchMessage {
   type: 'openLinksSearch';
@@ -1074,6 +1088,8 @@ export interface SidebarNotesSnapshot {
   relatedNotesSortMode?: RelatedNotesSortMode;
   /** Whether daily notes are left out of the list and of Linked from. */
   hideDailyNotes?: boolean;
+  /** How many lines of each result's excerpt the cards show, 0 for none. */
+  previewLines?: 0 | 1 | 2;
   tagTitleDisplayMode: TagTitleDisplayMode;
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
@@ -1726,6 +1742,7 @@ export type SidebarMessage =
   | LinkMentionMessage
   | OpenLinksSearchMessage
   | SetHideDailyNotesMessage
+  | SetRelatedNotesPreviewLinesMessage
   | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage

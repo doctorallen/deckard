@@ -103,9 +103,14 @@ body .note:hover { transform: none; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
-.related-notes-controls { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin-top: 10px; }
-.related-notes-sort-control { position: relative; display: block; flex: 1 1 120px; min-width: 0; }
-.hide-daily-toggle { flex: 0 0 auto; min-height: 30px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.related-notes-controls { display: flex; align-items: stretch; gap: 6px; margin-top: 10px; }
+.related-notes-sort-control { position: relative; display: block; flex: 1 1 auto; min-width: 0; }
+/* The gear's menu opens under it, inside a sidebar only as wide as the pane. */
+.related-notes-controls .view-options-menu { min-width: 0; width: max-content; max-width: calc(100vw - 24px); }
+/* A result's first lines, clamped to the Preview the gear sets. */
+main { --preview-lines: 1; }
+main[data-preview-lines="2"] { --preview-lines: 2; }
+.note-excerpt { display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: var(--preview-lines); overflow-wrap: anywhere; }
 select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
 .related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
 /* The sort control takes the shared control hover, border and all: its own
@@ -353,6 +358,11 @@ ${getComponentScript()}
     ]);
   }
 
+  /** How many lines of each excerpt to show: 0, 1, or 2. */
+  function previewLines() {
+    return state.previewLines === 0 || state.previewLines === 2 ? state.previewLines : 1;
+  }
+
   /** Render explicit empty states so the sidebar explains why no notes appear. */
   /** Which of the Links groups are open, kept across redraws. */
   const linksOpen = { linked: true, mentions: false };
@@ -499,13 +509,18 @@ ${getComponentScript()}
         // the sidebar sits beside the note being written in. The button
         // stays out of the way until the card is under the pointer.
         const insertLink = '<button type="button" class="insert-link" data-action="insert-link" aria-label="Insert a link to ' + escapeHtml(note.title) + ' at the cursor" data-tip="Write a [[link]] to this entry at the cursor">${linkIcon}</button>';
+        // The words the card shares with the note, marked in its excerpt.
+        const terms = (evidence.lexicalTerms || []).slice(0, 5).map(function (term) { return term.term; });
+        const excerpt = note.excerpt && previewLines() > 0
+          ? '<p class="note-excerpt">' + escapeHtml(note.excerpt) + '</p>'
+          : '';
         return renderNoteCard(
           '',
-          'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"',
+          'data-file-path="' + escapeHtml(note.filePath) + '" data-line="' + note.sourceLine + '"' + (terms.length ? ' data-terms="' + escapeHtml(terms.join(' ')) + '"' : ''),
           titleHtml,
           '<div class="note-actions">' + insertLink + relevance + '</div>',
           '<div class="source">' + escapeHtml(formatSourceLocation(fileName, note.sourceLine)) + '</div>',
-          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
+          (pathHtml ? '<div class="source heading-path">' + pathHtml + '</div>' : '') + excerpt + (relevanceReasons.length ? '<div class="relevance-reason">' + escapeHtml(relevanceReasons[0]) + '</div>' : '') + '<div class="tag-list" aria-label="Matching tags">' + tags + '</div>'
         );
       }).join('') + '</div>' + showMore;
     }
@@ -539,7 +554,10 @@ ${getComponentScript()}
         : '');
     const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
       ? '<div class="related-notes-controls"><span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
-        + '<button type="button" class="hide-daily-toggle toolbar-toggle' + (state.hideDailyNotes ? ' active' : '') + '" data-action="set-hide-daily" aria-pressed="' + (state.hideDailyNotes ? 'true' : 'false') + '" data-tip="Leave out daily, weekly, and monthly notes, which link to everything written that day">Hide daily notes</button></div>'
+        + renderViewOptions([
+          { label: 'Preview', html: renderViewOptionChoices('set-preview-lines', [[0, 'None', 'No preview'], [1, '1 line', 'One line'], [2, '2 lines', 'Two lines']], previewLines(), 'Preview lines') },
+          { label: 'Daily notes', html: renderViewOptionChoices('set-hide-daily', [['show', 'Show', 'Show daily notes'], ['hide', 'Hide', 'Hide daily, weekly, and monthly notes, which link to everything written that day']], state.hideDailyNotes ? 'hide' : 'show', 'Daily notes') },
+        ]) + '</div>'
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
@@ -549,9 +567,17 @@ ${getComponentScript()}
     // The page's shortcuts are the view's own title-bar actions, as every
     // other sidebar view's are; the page starts with what it is about.
     const links = state.state === 'graph' || state.state === 'refine' ? '' : renderLinks(state.links);
-    document.getElementById('app').innerHTML = context + sectionLabel + content + links;
+    const app = document.getElementById('app');
+    app.dataset.previewLines = String(previewLines());
+    app.innerHTML = context + sectionLabel + content + links;
+    // The shared words, marked where each excerpt says them.
+    app.querySelectorAll('.note[data-terms]').forEach(function (card) {
+      const excerpt = card.querySelector('.note-excerpt');
+      if (excerpt) markWords(excerpt, card.dataset.terms.split(' '), { wordStart: true });
+    });
   }
 
+  installViewOptions();
   document.addEventListener('toggle', function (event) {
     if (event.target.classList && event.target.classList.contains('active-file')) {
       contextOpen = event.target.open;
@@ -587,7 +613,12 @@ ${getComponentScript()}
     }
     const hideDaily = event.target.closest('[data-action="set-hide-daily"]');
     if (hideDaily) {
-      vscode.postMessage({ type: 'setHideDailyNotes', hide: hideDaily.getAttribute('aria-pressed') !== 'true' });
+      vscode.postMessage({ type: 'setHideDailyNotes', hide: hideDaily.dataset.value === 'hide' });
+      return;
+    }
+    const preview = event.target.closest('[data-action="set-preview-lines"]');
+    if (preview) {
+      vscode.postMessage({ type: 'setRelatedNotesPreviewLines', lines: Number(preview.dataset.value) });
       return;
     }
     if (event.target.closest('[data-action="open-links-search"]')) {

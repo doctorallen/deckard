@@ -681,6 +681,11 @@ export class PreferencesStore implements vscode.Disposable {
     await this.update({ hideDailyNotes: hide ? true : undefined });
   }
 
+  /** How many lines of each Related Notes result's excerpt to show: 0, 1, or 2. */
+  public async setRelatedNotesPreviewLines(lines: 0 | 1 | 2): Promise<void> {
+    await this.update({ relatedNotesPreviewLines: lines === 1 ? undefined : lines });
+  }
+
   /**
    * Increments section usage counts for the overview's access sort.
    */
@@ -1259,6 +1264,9 @@ function normalizePreferences(
         ? relatedNotesSortMode
         : 'tags',
     ...(value?.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
+    ...(value?.relatedNotesPreviewLines === 0 || value?.relatedNotesPreviewLines === 2
+      ? { relatedNotesPreviewLines: value.relatedNotesPreviewLines }
+      : {}),
     sectionAccessCounts: normalizeAccessCounts(value?.sectionAccessCounts),
     savedFilters: normalizeSavedFilters(value?.savedFilters),
     taskBoardLayout:

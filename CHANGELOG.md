@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Related Notes previews each result.** A card shows the first line of
+  what the entry says, starting where it shares a word with your note,
+  with those words marked. The sidebar's new gear sets Preview to None, 1
+  line, or 2 lines, and holds **Hide daily notes** as its Daily notes row.
+
 - **Suggest steps.** When a VS Code language model, such as GitHub
   Copilot, is installed, Break into Steps… offers **Suggest steps**: only
   the task's words are sent, only when chosen, and the steps are shown to

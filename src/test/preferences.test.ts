@@ -69,6 +69,17 @@ suite('Preferences store', () => {
     assert.strictEqual(store.value.hideDailyNotes, undefined);
   });
 
+  test('remembers how many lines Related Notes previews, 1 unless told otherwise', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    assert.strictEqual(store.value.relatedNotesPreviewLines ?? 1, 1);
+    await store.setRelatedNotesPreviewLines(2);
+    assert.strictEqual(store.value.relatedNotesPreviewLines, 2);
+    await store.setRelatedNotesPreviewLines(0);
+    assert.strictEqual(store.value.relatedNotesPreviewLines, 0);
+    await store.setRelatedNotesPreviewLines(1);
+    assert.strictEqual(store.value.relatedNotesPreviewLines, undefined);
+  });
+
   test('keeps what Find learned, at most 200, and forgets a choice whose note is gone', async () => {
     const store = new PreferencesStore(new MemoryMemento());
     await store.recordFindChoice('  Vendor   Contract ', 'note:["a.md","Next",0]', 5);

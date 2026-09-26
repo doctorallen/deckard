@@ -68,6 +68,44 @@ suite('Related Notes behavior', () => {
     assert.match(page.text('.source') ?? '', /^atlas \/ line 12$/);
   });
 
+  test('previews a section\'s first line, marking the shared words at a word start only', () => {
+    const page = open({
+      notes: [
+        note({
+          excerpt: 'The northern route starts at the depot, and the art of it is routes.',
+          relevanceEvidence: {
+            directTagWeight: 1, associationWeight: 0, normalizedAssociationWeight: 0, appliedAssociationWeight: 0,
+            entryLinkWeight: 0, fileLinkWeight: 0, lexicalWeight: 0.2, recencyWeight: 0, specificityPenalty: 0,
+            lexicalTerms: [{ term: 'route', contribution: 1 }, { term: 'art', contribution: 0.5 }],
+          },
+        }),
+      ],
+    });
+    assert.match(page.text('.note-excerpt') ?? '', /^The northern route starts/);
+    assert.deepStrictEqual(
+      page.findAll('.note-excerpt mark').map((mark) => mark.textContent),
+      ['route', 'art', 'route'],
+      '"route" marks "routes", and "art" is not marked inside "starts"',
+    );
+    assert.strictEqual(page.findAll('.note-title mark').length, 0, 'the title is never marked');
+    assert.strictEqual(page.find('main')?.getAttribute('data-preview-lines'), '1');
+  });
+
+  test('the gear sets how many lines to preview, and None draws no excerpt', () => {
+    const page = open({ notes: [note({ excerpt: 'What it says.' })], previewLines: 0, relatedNotesSortMode: 'tags' });
+    assert.strictEqual(page.findAll('.note-excerpt').length, 0);
+    const choices = page.findAll('[data-action="set-preview-lines"]');
+    assert.deepStrictEqual(choices.map((choice) => [choice.textContent, choice.getAttribute('aria-pressed')]), [
+      ['None', 'true'],
+      ['1 line', 'false'],
+      ['2 lines', 'false'],
+    ]);
+    page.click('[data-action="set-preview-lines"][data-value="2"]');
+    assert.deepStrictEqual(page.lastPosted('setRelatedNotesPreviewLines'), { type: 'setRelatedNotesPreviewLines', lines: 2 });
+    page.click('[data-action="set-hide-daily"][data-value="hide"]');
+    assert.deepStrictEqual(page.lastPosted('setHideDailyNotes'), { type: 'setHideDailyNotes', hide: true });
+  });
+
   test('opens a result at its line, and beside the note when asked', () => {
     const page = open({ notes: [note()] });
 
