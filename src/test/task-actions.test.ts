@@ -39,7 +39,7 @@ suite('Task line edits', () => {
         false,
       );
       assert.deepStrictEqual(messages.said, [
-        'Deckard could not update this task because the source line changed.',
+        `${path.basename(uri.fsPath)} changed after Deckard last read it, so nothing was written.`,
       ]);
     } finally {
       messages.restore();

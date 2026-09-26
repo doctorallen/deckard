@@ -262,9 +262,10 @@ suite('Dashboard behavior', () => {
     const { page, snapshot } = open();
 
     assert.ok((snapshot.widgets?.length ?? 0) > 0, 'Home starts with widgets');
+    // Try next, with nothing to suggest, draws nothing at all.
     assert.strictEqual(
       page.findAll('.home-widget').length,
-      snapshot.widgets?.length,
+      snapshot.widgets?.filter((widget) => widget.kind !== 'tryNext' || widget.tryNext).length,
     );
   });
 

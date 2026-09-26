@@ -71,7 +71,7 @@ suite('Help page', () => {
     );
     try {
       assert.deepStrictEqual(
-        page.findAll('#whats-new h3').map((heading) => heading.firstChild?.textContent),
+        page.findAll('#whats-new h3').map((heading) => heading.firstChild?.textContent?.trim()),
         ['1.27.0 · 2026-10-09', '1.26.0 · 2026-10-08', '1.25.0 · 2026-10-07', '1.24.0 · 2026-10-06', '1.23.0 · 2026-10-05'],
       );
       assert.strictEqual(page.findAll('#whats-new .whats-new-chip').length, 2, 'New only after 1.25.0');

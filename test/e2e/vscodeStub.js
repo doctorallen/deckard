@@ -150,7 +150,7 @@ function createWebviewView() {
   return view;
 }
 
-const shown = { info: [], warning: [] };
+const shown = { info: [], warning: [], error: [] };
 let informationResponse;
 let inputBoxResponse;
 
@@ -201,6 +201,11 @@ module.exports = {
     },
     showWarningMessage: (message) => {
       shown.warning.push(message);
+      return Promise.resolve(undefined);
+    },
+    // Failures go through reportFailure, which says them as errors.
+    showErrorMessage: (message) => {
+      shown.error.push(message);
       return Promise.resolve(undefined);
     },
     showInputBox: () => Promise.resolve(inputBoxResponse),
