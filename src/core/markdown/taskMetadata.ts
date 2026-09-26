@@ -683,6 +683,108 @@ export function parseRecurrence(text: string): RecurrenceRule | undefined {
   return undefined;
 }
 
+/** Whole-word spellings of a rule, as other apps and people write them. */
+const RULE_SYNONYMS: Readonly<Record<string, string>> = {
+  daily: 'every day',
+  weekly: 'every week',
+  monthly: 'every month',
+  yearly: 'every year',
+  annually: 'every year',
+  biweekly: 'every 2 weeks',
+  fortnightly: 'every 2 weeks',
+  'every fortnight': 'every 2 weeks',
+  quarterly: 'every 3 months',
+  weekdays: 'every weekday',
+  weekends: 'every week on saturday, sunday',
+};
+
+/** The words a repeat rule is written in. */
+const RULE_WORDS: readonly string[] = [
+  'every', 'other', 'day', 'days', 'week', 'weeks', 'month', 'months', 'year', 'years',
+  'quarter', 'quarters', 'weekday', 'weekend', 'on', 'the', 'last',
+  'first', 'second', 'third', 'fourth', 'fifth', '1st', '2nd', '3rd', '4th', '5th',
+  'when', 'done', ...WEEKDAY_NAMES,
+];
+
+/** Edits between two short words, stopping once past `limit`. */
+function wordDistance(left: string, right: string, limit: number): number {
+  if (Math.abs(left.length - right.length) > limit) {
+    return limit + 1;
+  }
+  let previous = Array.from({ length: right.length + 1 }, (_, at) => at);
+  for (let row = 1; row <= left.length; row += 1) {
+    const current = [row];
+    for (let column = 1; column <= right.length; column += 1) {
+      current[column] = Math.min(
+        previous[column] + 1,
+        current[column - 1] + 1,
+        previous[column - 1] + (left[row - 1] === right[column - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[right.length];
+}
+
+/** A word outside the rule's vocabulary, as the nearest word inside it. */
+function correctRuleWord(word: string): string[] {
+  if (/^\d+(?:st|nd|rd|th)?$/.test(word) || RULE_WORDS.includes(word)) {
+    return [word];
+  }
+  const limit = word.length <= 4 ? 1 : 2;
+  const scored = RULE_WORDS.map((candidate) => ({ candidate, distance: wordDistance(word, candidate, limit) }))
+    .filter((entry) => entry.distance <= limit)
+    .sort((left, right) => left.distance - right.distance);
+  const best = scored[0]?.distance;
+  return scored.filter((entry) => entry.distance === best).map((entry) => entry.candidate);
+}
+
+/**
+ * The rules Deckard can read that are nearest to one it cannot, best first
+ * and at most three: a synonym such as `weekly`, the same rule with `every`
+ * in front, or its misspelled words corrected. A `when done` is kept.
+ */
+export function suggestRecurrence(text: string): string[] {
+  const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!normalized || parseRecurrence(normalized)) {
+    return [];
+  }
+  const whenDone = / when done$/.test(normalized);
+  const body = whenDone ? normalized.slice(0, -' when done'.length) : normalized;
+  const tail = whenDone ? ' when done' : '';
+  const candidates: string[] = [];
+  const synonym = RULE_SYNONYMS[body];
+  if (synonym) {
+    candidates.push(synonym);
+  }
+  const bodies = body.startsWith('every ') || body === 'every' ? [body] : [body, `every ${body}`];
+  for (const candidate of bodies) {
+    candidates.push(candidate);
+    // Each misspelled word, as each of its nearest words.
+    let spellings: string[][] = [[]];
+    for (const word of candidate.split(/(,? )/)) {
+      const options = /^,? $/.test(word) ? [word] : correctRuleWord(word);
+      if (options.length === 0) {
+        spellings = [];
+        break;
+      }
+      spellings = spellings.flatMap((prefix) => options.map((option) => [...prefix, option])).slice(0, 12);
+    }
+    candidates.push(...spellings.map((words) => words.join('')));
+  }
+  const seen = new Set<string>();
+  return candidates
+    .map((candidate) => `${candidate}${tail}`)
+    .filter((candidate) => {
+      if (seen.has(candidate) || !parseRecurrence(candidate)) {
+        return false;
+      }
+      seen.add(candidate);
+      return true;
+    })
+    .slice(0, 3);
+}
+
 /** Weekday names as a rule lists them, `tuesday, friday`, as day numbers. */
 function readWeekdays(list: string | undefined): number[] | undefined {
   const days = list?.split(/, and |, | and |,/).map((name) => WEEKDAY_NAMES.indexOf(name.trim()));

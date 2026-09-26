@@ -17,6 +17,7 @@ import {
   CompletionWrite,
   formatIsoDate,
   parseRecurrence,
+  suggestRecurrence,
   TaskDateField,
   TaskMetadataFormat,
   writeCompletion,
@@ -322,8 +323,11 @@ async function readField(
       }
       const rule = written === 'Never' ? '' : written.trim();
       if (rule && !parseRecurrence(rule)) {
+        const [nearest] = suggestRecurrence(rule);
         void vscode.window.showWarningMessage(
-          `Deckard cannot read "${rule}" as a repeat rule, so it would not write the next occurrence. The task keeps the rule it had.`,
+          `Deckard cannot read "${rule}" as a repeat rule, so it would not write the next occurrence. The task keeps the rule it had.${
+            nearest ? ` Try "${nearest}".` : ''
+          }`,
         );
         return undefined;
       }

@@ -1634,6 +1634,13 @@
             "scope": "resource",
             "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\". Zen mode hides these.",
             "order": 12
+          },
+          "deckard.editor.repeatDiagnostics": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "Mark a 🔁 repeat rule Deckard cannot read, since completing that task would not start the next one, and offer the nearest rule it can read.",
+            "order": 13
           }
         },
         "order": 2

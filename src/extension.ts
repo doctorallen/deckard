@@ -39,6 +39,7 @@ import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
 import { TaskLineDecorations } from './ui/commands/taskLineDecorations';
+import { RepeatRuleHealth } from './ui/commands/repeatRuleHealth';
 import {
   excludeFolderCommand,
   ExcludedFoldersContext,
@@ -353,6 +354,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     new ActiveNoteContext(indexer),
     // A task's metadata steps back, and an overdue task says so on its line.
     new TaskLineDecorations((uri) => indexer.isNotesFile(uri)),
+    // A repeat rule Deckard cannot read is marked before the task is done.
+    new RepeatRuleHealth((uri) => indexer.isNotesFile(uri)),
   );
   void vscode.commands.executeCommand(
     'setContext',

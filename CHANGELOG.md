@@ -12,6 +12,12 @@
 
 ### Added
 
+- **A repeat rule Deckard cannot read is marked.** An open task's 🔁 rule
+  that Deckard cannot read gets a warning before it is completed, and quick
+  fixes to the nearest rules it can: `every tuesdya` becomes `every
+  tuesday`, `weekly` becomes `every week`. The task editor's warning
+  suggests the same. `deckard.editor.repeatDiagnostics` turns it off.
+
 - **More repeat rules.** `every other week`, `every other Tuesday`,
   `every 2 weeks on Monday, Thursday`, `every month on the second Tuesday`,
   and `every month on the last Friday`, as Obsidian Tasks reads them, and
