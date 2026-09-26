@@ -49,6 +49,17 @@ class DelayedFirstWriteMemento extends MemoryMemento {
 }
 
 suite('Preferences store', () => {
+  test('a saved search\'s widget is added to Home once', async () => {
+    const store = new PreferencesStore(new MemoryMemento());
+    const saved = await store.saveSavedQueryFilter('Open work', 'is:open');
+    assert.ok(saved);
+    assert.strictEqual(await store.addSavedSearchWidget(saved.id), 'added');
+    const widget = store.value.dashboardWidgets[store.value.dashboardWidgets.length - 1];
+    assert.deepStrictEqual({ kind: widget.kind, width: widget.width, count: widget.count, filterId: widget.filterId }, { kind: 'savedQuery', width: 'half', count: 5, filterId: saved.id });
+    assert.strictEqual(await store.addSavedSearchWidget(saved.id), 'present');
+    assert.strictEqual(await store.addSavedSearchWidget('nope'), 'missing');
+  });
+
   test('search pages start rendered, and Source sticks once it is chosen', async () => {
     assert.strictEqual(new PreferencesStore(new MemoryMemento()).value.renderMode, 'html', 'a new install is rendered');
 

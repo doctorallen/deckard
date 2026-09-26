@@ -103,7 +103,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
   font: var(--text-xs)/16px var(--font-mono);
   overflow-wrap: anywhere;
 }
-.saved-filter-remove { min-height: 26px; text-transform: none; }
+.saved-filter-remove, .saved-filter-show { min-height: 26px; text-transform: none; }
+.saved-filter-actions { display: inline-flex; gap: var(--space-1); }
 .entity-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--slate-border); background: var(--panel-bg); padding: 8px; cursor: pointer; }
 .entity-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .entity-kind { color: var(--muted); font: var(--text-xs) var(--font-mono); }
@@ -616,7 +617,12 @@ ${getQueryEditorScript()}
     // The criteria are the row's own child, not wrapped with the name: the
     // frame they open in is inherited, and a wrapper has none to give.
     return '<div class="row saved-filter-row" tabindex="0" data-saved-filter-id="' + escapeHtml(filter.id) + '"><div class="saved-filter-name">' + escapeHtml(filter.name) + '</div>'
-      + (removable ? '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button>' : '<span></span>')
+      + (removable
+        ? '<span class="saved-filter-actions">'
+          // A search Home does not list yet offers to list it there.
+          + (filter.onHome ? '' : '<button type="button" class="saved-filter-show" data-action="add-saved-search-widget" data-saved-filter-id="' + escapeHtml(filter.id) + '" data-tip="Add a widget to Home that lists what this search finds" aria-label="Show the results of ' + escapeHtml(filter.name) + ' on Home">Show results</button>')
+          + '<button class="saved-filter-remove" data-action="remove-saved-filter" data-saved-filter-id="' + escapeHtml(filter.id) + '" aria-label="Remove saved search ' + escapeHtml(filter.name) + '">Remove</button></span>'
+        : '<span></span>')
       + '<div class="saved-filter-tags">' + detail + '</div></div>';
   }
 
@@ -1175,6 +1181,7 @@ ${getQueryEditorScript()}
       if (action === 'open-search-page') send({ type: 'openSearch', query: '' });
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
+      if (action === 'add-saved-search-widget') send({ type: 'addSavedSearchWidget', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
       if (action === 'open-source') send(openSourceMessage(target, event));

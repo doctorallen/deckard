@@ -411,6 +411,8 @@ export interface DashboardSavedFilter {
   id: string;
   name: string;
   tags: TagReference[];
+  /** Whether Home already has a widget listing what it finds. */
+  onHome?: boolean;
   /** Present when reopening this view should restore an advanced query. */
   query?: string;
   /** Set when the search reopens on the Task Board. */
@@ -1244,6 +1246,11 @@ export interface RemoveSavedFilterMessage {
   filterId: string;
 }
 
+export interface AddSavedSearchWidgetMessage {
+  type: 'addSavedSearchWidget';
+  filterId: string;
+}
+
 export interface SaveTagOverviewFilterMessage {
   type: 'saveTagOverviewFilter';
 }
@@ -1426,6 +1433,7 @@ export type DashboardMessage =
   | OpenTagMessage
   | RenameTagMessage
   | OpenSavedFilterMessage
+  | AddSavedSearchWidgetMessage
   | RemoveSavedFilterMessage
   | RecordRecentQueryMessage
   | SetDashboardWidgetsMessage

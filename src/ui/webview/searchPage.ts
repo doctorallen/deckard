@@ -38,6 +38,7 @@ import { toggleTask } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseSearchPageMessage } from './messages';
 import { getSearchPageHtml } from './searchPageHtml';
+import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 
 /**
  * Opens search pages: one editor tab per search, which a tag's overview is
@@ -838,9 +839,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       ? await this.preferences.saveSavedFilter(name, tagKeys)
       : await this.preferences.saveSavedQueryFilter(name, text);
     if (saved) {
-      void vscode.window.showInformationMessage(
-        `Saved the search "${saved.name}".`,
-      );
+      void offerSavedSearchOnHome(this.preferences, saved);
     }
   }
 }

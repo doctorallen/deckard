@@ -220,6 +220,8 @@ test('saves its search as a view that reopens on the Task Board', async () => {
   assert.strictEqual(save().getAttribute('aria-disabled'), null);
 
   vscode._test.setInputBoxResponse('Atlas board');
+  vscode._test.setInformationResponse('Show Results on Home');
+  vscode._test.executedCommands.length = 0;
   view.click(save());
   await delay(10);
   vscode._test.setInputBoxResponse(undefined);
@@ -228,6 +230,11 @@ test('saves its search as a view that reopens on the Task Board', async () => {
     { name: saved.name, query: saved.query, page: saved.page },
     { name: 'Atlas board', query: '#project/atlas is:open', page: 'taskBoard' },
   );
+  assert.ok(vscode._test.shown.info.includes('Saved the search "Atlas board".'));
+  // Show Results on Home adds its widget and opens Home on Home.
+  assert.ok(preferences.value.dashboardWidgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === saved.id));
+  assert.strictEqual(preferences.value.dashboardViewState.mode, 'home');
+  assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.showDashboard'));
 
   // The Dashboard reopens it on the board, not on a search page.
   const opened = [];

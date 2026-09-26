@@ -226,6 +226,21 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
   assert.strictEqual(view.find('h1').textContent, 'Dashboard: Tags', 'All tags goes to the Tags tab');
 });
 
+test('a saved search offers to show its results on Home, once', async () => {
+  const { view, preferences } = await openDashboard(createIndex(), async (store) => {
+    await store.saveSavedQueryFilter('Open work', 'is:open');
+  });
+  const savedId = preferences.value.savedFilters[0].id;
+  const show = () => view.find(`[data-action="add-saved-search-widget"][data-saved-filter-id="${savedId}"]`);
+  assert.ok(show(), 'its row offers Show results');
+  assert.strictEqual(show().getAttribute('aria-label'), 'Show the results of Open work on Home');
+  view.click(show());
+  await delay(20);
+  const widgets = preferences.value.dashboardWidgets.filter((widget) => widget.kind === 'savedQuery');
+  assert.deepStrictEqual(widgets.map((widget) => [widget.filterId, widget.width, widget.count]), [[savedId, 'half', 5]]);
+  assert.strictEqual(show(), null, 'and no longer offers it');
+});
+
 test('customizing Home removes, resizes, adds, reorders, and resets widgets', async () => {
   const { view, preferences, lastState } = await openDashboard(createIndex(), async (store) => {
     await store.saveSavedQueryFilter('Open work', 'is:open');

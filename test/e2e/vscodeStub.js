@@ -151,6 +151,7 @@ function createWebviewView() {
 }
 
 const shown = { info: [], warning: [] };
+let informationResponse;
 let inputBoxResponse;
 
 // Settings a test sets or the extension writes, by their full name.
@@ -193,7 +194,10 @@ module.exports = {
     createWebviewPanel,
     showInformationMessage: (message) => {
       shown.info.push(message);
-      return Promise.resolve(undefined);
+      // A test says which button the reader picks, once.
+      const response = informationResponse;
+      informationResponse = undefined;
+      return Promise.resolve(response);
     },
     showWarningMessage: (message) => {
       shown.warning.push(message);
@@ -254,6 +258,9 @@ module.exports = {
     },
     setInputBoxResponse: (value) => {
       inputBoxResponse = value;
+    },
+    setInformationResponse: (value) => {
+      informationResponse = value;
     },
   },
 };

@@ -487,6 +487,31 @@ export class PreferencesStore implements vscode.Disposable {
     });
   }
 
+  /**
+   * Adds a Home widget listing what a saved search finds, unless Home
+   * already has one for it. Says which, or that there is no such search.
+   */
+  public async addSavedSearchWidget(filterId: string): Promise<'added' | 'present' | 'missing'> {
+    if (!this.preferences.savedFilters.some((filter) => filter.id === filterId)) {
+      return 'missing';
+    }
+    const widgets = this.preferences.dashboardWidgets;
+    if (widgets.some((widget) => widget.kind === 'savedQuery' && widget.filterId === filterId)) {
+      return 'present';
+    }
+    await this.setDashboardWidgets([
+      ...widgets,
+      {
+        id: `savedQuery-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        kind: 'savedQuery',
+        width: 'half',
+        count: 5,
+        filterId,
+      },
+    ]);
+    return 'added';
+  }
+
   public async resetDashboardWidgets(): Promise<void> {
     await this.update({ dashboardWidgets: cloneWidgets(DEFAULT_DASHBOARD_WIDGETS) });
   }

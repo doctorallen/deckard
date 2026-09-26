@@ -99,6 +99,7 @@ export function parseDashboardMessage(
         : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
+    case 'addSavedSearchWidget':
       return isSavedFilterMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;

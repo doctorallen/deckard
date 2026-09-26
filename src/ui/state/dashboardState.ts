@@ -157,6 +157,13 @@ export function createDashboardSavedFilters(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
 ): DashboardSavedFilter[] {
+  // A search Home already lists does not offer to be listed again.
+  const onHome = new Set(
+    preferences.dashboardWidgets
+      .filter((widget) => widget.kind === 'savedQuery' && widget.filterId)
+      .map((widget) => widget.filterId as string),
+  );
+  const home = (id: string): { onHome?: boolean } => (onHome.has(id) ? { onHome: true } : {});
   return preferences.savedFilters.flatMap((filter) => {
     if (filter.query) {
       return [
@@ -166,6 +173,7 @@ export function createDashboardSavedFilters(
           tags: resolveQueryTags(index, parseQuery(filter.query)),
           query: filter.query,
           ...(filter.page ? { page: filter.page } : {}),
+          ...home(filter.id),
         },
       ];
     }
@@ -173,7 +181,7 @@ export function createDashboardSavedFilters(
       .map((tagKey) => index.tags.get(tagKey))
       .filter((tag): tag is TagInfo => tag !== undefined)
       .map((tag) => ({ key: tag.key, label: tag.label }));
-    return tags.length >= 2 ? [{ id: filter.id, name: filter.name, tags }] : [];
+    return tags.length >= 2 ? [{ id: filter.id, name: filter.name, tags, ...home(filter.id) }] : [];
   });
 }
 

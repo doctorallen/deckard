@@ -510,6 +510,9 @@ export class DashboardPanel implements vscode.Disposable {
       case 'openSavedFilter':
         await this.openSavedFilter(message.filterId);
         return;
+      case 'addSavedSearchWidget':
+        await this.preferences.addSavedSearchWidget(message.filterId);
+        return;
       case 'removeSavedFilter': {
         // Removing a saved search also removes any Home widget bound to it,
         // and nothing could bring either back, so it asks first.

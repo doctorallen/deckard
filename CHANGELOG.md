@@ -10,6 +10,10 @@
 
 ### Added
 
+- **A saved search can show its results on Home.** Saving a search offers
+  **Show Results on Home**, which adds a widget listing what it finds, and
+  **Open Home**; a saved search's row on Home offers **Show results** until
+  Home lists it.
 - **A search becomes a live query block.** **Export** on a search page or
   the Task Board offers **Copy as live query block** first, which copies the
   search, with its sort or table columns, as a `deckard` fence that stays up

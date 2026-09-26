@@ -28,6 +28,7 @@ import { createTaskBoard } from '../state/taskBoardState';
 import { ActiveSearch, SearchSource } from './activeSearch';
 import { parseTaskBoardMessage } from './messages';
 import { getTaskBoardHtml } from './taskBoardHtml';
+import { offerSavedSearchOnHome } from '../commands/savedSearchHome';
 
 /**
  * Shows tasks as a Kanban board or as a list, narrowed by the search box
@@ -385,9 +386,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       'taskBoard',
     );
     if (saved) {
-      void vscode.window.showInformationMessage(
-        `Saved the search "${saved.name}".`,
-      );
+      void offerSavedSearchOnHome(this.preferences, saved);
     }
   }
 
