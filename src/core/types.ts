@@ -938,6 +938,17 @@ export interface DeckardStatsSnapshot {
   trends: { notes: StatsTrend; tasks: StatsTrend; openTasks: StatsTrend };
   /** How many tags are used how often, and the tags used once. */
   tagUsage: StatsTagUsage;
+  /** How often the most-used tags are written on the same entry. */
+  tagPairs: StatsTagPairs;
+}
+
+/**
+ * The most-used tags, [key, label, entries], and for each two of them, i
+ * before j, `pairs[i][j]`: how many notes and tasks carry both.
+ */
+export interface StatsTagPairs {
+  tags: [string, string, number][];
+  pairs: number[][];
 }
 
 /** Tags by how many entries carry them, in six bands. */

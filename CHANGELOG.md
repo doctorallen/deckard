@@ -12,6 +12,11 @@
 
 ### Added
 
+- **Stats shows which tags are written together.** Your twelve most-used
+  tags form a triangle whose cells count the notes and tasks carrying both,
+  each opening the search for the pair; **Show as a table** lists the pairs
+  by count.
+
 - **Stats shows how often each tag is used, and merges the tags used
   once.** Six bars count the tags used once, twice, 3–5, 6–10, 11–25, and
   26 or more times. **Used once** unfolds those tags, each with the tag it

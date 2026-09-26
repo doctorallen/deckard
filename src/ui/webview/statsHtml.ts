@@ -52,6 +52,27 @@ button.tag-use-band:hover, button.tag-use-band:focus-visible, button.tag-use-ban
 .used-once { margin-top: 12px; }
 .used-once .pair { align-items: center; }
 @media (forced-colors: active) { .tag-use-bar { background: CanvasText; } }
+/* Tags written together: an upper triangle of the most-used tags. A cell's
+   shade is a swatch beside its count, never behind it, so the count reads at
+   full contrast in every theme; five opacity steps of one hue. */
+.pairs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pairs-toggle { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
+.pair-grid { margin-top: 12px; border-collapse: collapse; font-size: var(--text-xs); }
+.pair-grid th { padding: 4px 6px; color: var(--muted); font-weight: 400; text-align: right; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.pair-grid thead th { height: 120px; vertical-align: bottom; text-align: left; }
+.pair-grid thead th span.pair-col { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 116px; overflow: hidden; text-overflow: ellipsis; }
+.pair-grid td { padding: 1px; }
+.pair-cell { display: inline-flex; align-items: center; gap: 4px; width: 100%; min-width: 44px; min-height: 26px; padding: 2px 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.pair-cell:hover, .pair-cell:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.pair-swatch { flex: none; width: 12px; height: 12px; background: var(--cyan); }
+.pair-swatch.step-1 { opacity: .1; } .pair-swatch.step-2 { opacity: .25; } .pair-swatch.step-3 { opacity: .45; } .pair-swatch.step-4 { opacity: .7; } .pair-swatch.step-5 { opacity: 1; }
+.pair-empty { display: inline-block; min-width: 44px; }
+.pair-list { margin-top: 12px; }
+.pair-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 10px 12px; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.tag-pairs:not(.as-table) .pair-list { display: none; }
+.tag-pairs.as-table .pair-grid { display: none; }
+@media (max-width: 600px) { .tag-pairs .pair-grid, .tag-pairs .pairs-toggle { display: none; } .tag-pairs .pair-list { display: block; } }
+@media (forced-colors: active) { .pair-swatch { background: CanvasText; } }
 .show-more { margin: 0 12px 12px; min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .list { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
 .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
@@ -88,6 +109,8 @@ ${loadingHtml('Loading statistics…')}
   let showAllOrphans = false;
   /** Whether the tags used once are listed under their bar. */
   let showUsedOnce = false;
+  /** Whether Tags written together is a list rather than a grid. */
+  let pairsAsTable = false;
 ${getComponentScript()}
   /**
    * One number. Given a search, it becomes a button that opens the notes and
@@ -196,6 +219,18 @@ ${getComponentScript()}
       vscode.postMessage({ type: 'openTagList', namespaced: action.dataset.namespaced === 'true' });
       return;
     }
+    if (action && action.dataset.action === 'open-pair') {
+      const tags = state && state.tagPairs.tags;
+      const left = tags && tags[Number(action.dataset.row)];
+      const right = tags && tags[Number(action.dataset.column)];
+      if (left && right) vscode.postMessage({ type: 'openSearch', query: left[0] + ' ' + right[0] });
+      return;
+    }
+    if (action && action.dataset.action === 'toggle-pairs-table') {
+      pairsAsTable = !pairsAsTable;
+      renderKeepingPlace(render);
+      return;
+    }
     if (action && action.dataset.action === 'toggle-used-once') {
       showUsedOnce = !showUsedOnce;
       renderKeepingPlace(render);
@@ -268,6 +303,11 @@ ${getComponentScript()}
     if (row) openRow(row);
   });
   document.addEventListener('keydown', function (event) {
+    const pairCell = event.target && event.target.closest ? event.target.closest('.pair-grid .pair-cell') : null;
+    if (pairCell && movePairFocus(pairCell, event.key)) {
+      event.preventDefault();
+      return;
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     const row = findRow(event);
     if (!row) return;
@@ -306,12 +346,14 @@ ${getComponentScript()}
       + attentionSection()
       + '<section class="metrics stats-section" aria-label="Index statistics">' + metrics + '</section>' + parkedLine()
       + viewsSection()
-      + tagUseSection();
+      + tagUseSection()
+      + tagPairsSection();
     // A style attribute is refused by the page's policy; the bars' heights
     // are set through the DOM instead.
     document.querySelectorAll('.tag-use-bar[data-height]').forEach(function (bar) {
       bar.style.height = bar.getAttribute('data-height') + '%';
     });
+    settlePairFocus();
   }
   /**
    * How many tags are used once, twice, and so on, as six bars, each saying
@@ -332,6 +374,79 @@ ${getComponentScript()}
         : '<button type="button" class="tag-use-band" data-action="open-tag-band" data-band="' + index + '" data-tip="Choose one of these tags to open">' + inner + '</button>';
     }).join('');
     return '<section class="stats-section" aria-labelledby="tag-use-heading"><h2 id="tag-use-heading">How often tags are used</h2><div class="tag-use">' + bars + '</div>' + usedOnceList() + '</section>';
+  }
+  /**
+   * Tags written together: the most-used tags, each pair's count of notes
+   * and tasks carrying both, as an upper triangle of cells, or, for a
+   * screen reader or a narrow panel, as a list by count. A cell opens the
+   * search for both tags.
+   */
+  function tagPairsSection() {
+    const data = state.tagPairs;
+    if (!data || data.tags.length < 2) return '';
+    const tags = data.tags;
+    const list = [];
+    let most = 0;
+    tags.forEach(function (_, row) {
+      tags.forEach(function (__, column) {
+        if (column <= row) return;
+        const count = data.pairs[row][column];
+        if (count > 0) list.push({ row: row, column: column, count: count });
+        most = Math.max(most, count);
+      });
+    });
+    if (!list.length) return '';
+    const describe = function (row, column, count) {
+      return tags[row][1] + ' and ' + tags[column][1] + ': ' + count + (count === 1 ? ' entry' : ' entries');
+    };
+    const cell = function (row, column) {
+      const count = data.pairs[row][column];
+      if (!count) return '<td><span class="pair-empty"></span></td>';
+      const step = Math.max(1, Math.ceil((count / most) * 5));
+      return '<td><button type="button" class="pair-cell" data-action="open-pair" data-row="' + row + '" data-column="' + column + '" tabindex="-1" aria-label="' + escapeHtml(describe(row, column, count)) + '. Open a search for both" data-tip="' + escapeHtml(describe(row, column, count)) + '"><span class="pair-swatch step-' + step + '" aria-hidden="true"></span>' + count + '</button></td>';
+    };
+    const head = '<thead><tr><td></td>' + tags.slice(1).map(function (tag) {
+      return '<th scope="col" title="' + escapeHtml(tag[1]) + '"><span class="pair-col">' + renderTagLabel(tag[1]) + '</span></th>';
+    }).join('') + '</tr></thead>';
+    const body = '<tbody>' + tags.slice(0, -1).map(function (tag, row) {
+      let cells = '';
+      for (let column = 1; column < tags.length; column += 1) {
+        cells += column <= row ? '<td></td>' : cell(row, column);
+      }
+      return '<tr><th scope="row" title="' + escapeHtml(tag[1]) + '">' + renderTagLabel(tag[1]) + '</th>' + cells + '</tr>';
+    }).join('') + '</tbody>';
+    list.sort(function (left, right) { return right.count - left.count || left.row - right.row || left.column - right.column; });
+    const rows = '<ol class="list pair-list">' + list.map(function (pair) {
+      return '<li><button type="button" class="row pair-row" data-action="open-pair" data-row="' + pair.row + '" data-column="' + pair.column + '" data-tip="Open a search for both tags"><span class="label pair">' + renderTagLabel(tags[pair.row][1]) + ' and ' + renderTagLabel(tags[pair.column][1]) + '</span><strong class="count">' + pair.count + '</strong></button></li>';
+    }).join('') + '</ol>';
+    return '<section class="stats-section tag-pairs' + (pairsAsTable ? ' as-table' : '') + '" aria-labelledby="pairs-heading"><div class="pairs-head"><h2 id="pairs-heading">Tags written together</h2><button type="button" class="pairs-toggle" data-action="toggle-pairs-table" aria-pressed="' + pairsAsTable + '" data-tip="List the pairs by how often they are written together">Show as a table</button></div>'
+      + '<table class="pair-grid" role="grid" aria-labelledby="pairs-heading">' + head + body + '</table>' + rows + '</section>';
+  }
+  /** The first pair cell is the grid's one tab stop; arrows move from it. */
+  function settlePairFocus() {
+    const cells = document.querySelectorAll('.pair-grid .pair-cell');
+    if (!cells.length) return;
+    const current = document.querySelector('.pair-grid .pair-cell[tabindex="0"]');
+    if (!current) cells[0].setAttribute('tabindex', '0');
+  }
+  function movePairFocus(from, key) {
+    const row = Number(from.dataset.row);
+    const column = Number(from.dataset.column);
+    const cells = Array.prototype.slice.call(document.querySelectorAll('.pair-grid .pair-cell'));
+    const at = function (r, c) { return cells.find(function (cell) { return Number(cell.dataset.row) === r && Number(cell.dataset.column) === c; }); };
+    const step = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[key];
+    if (!step) return false;
+    const size = state.tagPairs.tags.length;
+    for (let r = row + step[0], c = column + step[1]; r >= 0 && c >= 0 && r < size && c < size; r += step[0], c += step[1]) {
+      const next = at(r, c);
+      if (next) {
+        cells.forEach(function (cell) { cell.setAttribute('tabindex', '-1'); });
+        next.setAttribute('tabindex', '0');
+        next.focus();
+        return true;
+      }
+    }
+    return true;
   }
   function usedOnceList() {
     const usage = state.tagUsage;

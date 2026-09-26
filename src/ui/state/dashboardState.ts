@@ -33,6 +33,7 @@ import {
   DeckardStatsSnapshot,
   StatsTrend,
   StatsTagUsage,
+  StatsTagPairs,
   TagMergeCandidate,
   UnreadableNote,
   TaskGlance,
@@ -923,6 +924,7 @@ export function createDeckardStatsSnapshot(
     ...findOrphanNotes(index),
     ...findLookalikeTags(lookalikes),
     tagUsage: createTagUsage(index, lookalikes.candidates),
+    tagPairs: createTagPairs(index, TAG_PAIR_TAGS),
     ...listMissingLinkTargets(index),
     ...countParked(index),
   };
@@ -1047,6 +1049,42 @@ function findLookalikeTags(
   { candidates, total }: { candidates: TagMergeCandidate[]; total: number },
 ): Pick<DeckardStatsSnapshot, 'lookalikeTags' | 'lookalikeTagCount'> {
   return { lookalikeTags: candidates.slice(0, LOOKALIKE_TAG_LIMIT), lookalikeTagCount: total };
+}
+
+/** How many of the most-used tags Tags written together pairs. */
+const TAG_PAIR_TAGS = 12;
+
+/**
+ * How often the `limit` most-used tags are written on the same note or
+ * task, as a search for both would find them: a tag a heading carries is
+ * on the entries under it. Only those tags are counted, so twelve tags are
+ * sixty-six pairs, whatever the workspace holds.
+ */
+export function createTagPairs(index: WorkspaceIndex, limit = TAG_PAIR_TAGS): StatsTagPairs {
+  const tags = [...index.tags.values()]
+    .filter((tag) => tag.count > 0)
+    .sort((left, right) => right.count - left.count || baseCollator.compare(left.label, right.label))
+    .slice(0, limit);
+  const pairs = tags.map(() => tags.map(() => 0));
+  const count = (has: (key: string) => boolean): void => {
+    const carried: number[] = [];
+    tags.forEach((tag, position) => {
+      if (has(tag.key)) {
+        carried.push(position);
+      }
+    });
+    for (let left = 0; left < carried.length; left += 1) {
+      for (let right = left + 1; right < carried.length; right += 1) {
+        pairs[carried[left]][carried[right]] += 1;
+      }
+    }
+  };
+  index.sections.forEach((section) => count((key) => sectionIncludesTag(index, section, key)));
+  index.tasks.forEach((task) => count((key) => taskIncludesTag(index, task, key)));
+  return {
+    tags: tags.map((tag): [string, string, number] => [tag.key, tag.label, tag.count]),
+    pairs,
+  };
 }
 
 /** The bands of how often a tag is used: once, twice, 3–5, 6–10, 11–25, 26 or more. */

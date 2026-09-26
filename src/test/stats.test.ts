@@ -6,7 +6,7 @@ import { parseMarkdown } from '../core/markdown/parser';
 import { parseQuery } from '../core/query/queryParser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createDeckardStatsSnapshot, createStatsTrends, createTagUsage } from '../ui/state/dashboardState';
+import { createDeckardStatsSnapshot, createStatsTrends, createTagPairs, createTagUsage } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { listStatsTags } from '../ui/webview/stats';
@@ -401,5 +401,64 @@ suite('Stats: how often tags are used', () => {
     }
     const index = notes();
     assert.deepStrictEqual(listStatsTags(index, false, { min: 3, max: 5 }).map((row) => row.label), ['#four', '#project/atlas']);
+  });
+});
+
+suite('Stats: tags written together', () => {
+  const index = () => buildWorkspaceIndex(new Map([
+    ['notes/a.md', parseMarkdown('notes/a.md', [
+      '# Atlas #project/atlas #design',
+      '## Review #vendor',
+      '- [ ] Call #design',
+      '# Relay #project/relay #vendor',
+      '# Both #project/atlas #vendor',
+      '# Alone #design',
+    ].join('\n'))],
+  ]));
+  const preferences = () =>
+    new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never).value;
+  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+
+  test('counts the entries carrying each two of the most-used tags', () => {
+    const { tags, pairs } = createTagPairs(index(), 12);
+    const at = (a: string, b: string) => {
+      const left = tags.findIndex((tag) => tag[0] === a);
+      const right = tags.findIndex((tag) => tag[0] === b);
+      return pairs[Math.min(left, right)][Math.max(left, right)];
+    };
+    // Atlas carries both; Review and the task under it inherit Atlas's tags.
+    assert.strictEqual(at('#project/atlas', '#design'), 3);
+    assert.strictEqual(at('#project/atlas', '#vendor'), 3, 'Review, its task, and Both');
+    assert.strictEqual(at('#design', '#vendor'), 2, 'Review and its task');
+    assert.strictEqual(at('#project/relay', '#design'), 0);
+    assert.strictEqual(createTagPairs(index(), 2).tags.length, 2, 'only the most-used');
+  });
+
+  test('a cell opens the search for both, and the pairs can be read as a list', () => {
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    try {
+      const cells = page.findAll('.pair-grid .pair-cell');
+      assert.ok(cells.length > 0);
+      assert.strictEqual(page.findAll('.pair-grid .pair-cell[tabindex="0"]').length, 1, 'one tab stop');
+      const first = cells[0] as HTMLElement;
+      first.click();
+      const posted = page.posted.at(-1) as { type: string; query: string };
+      assert.strictEqual(posted.type, 'openSearch');
+      assert.match(posted.query, /^#\S+ #\S+$/);
+      assert.match(first.getAttribute('aria-label') ?? '', / and .*: \d+ (entry|entries)\. Open a search for both$/);
+
+      first.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      assert.strictEqual(page.document.activeElement?.classList.contains('pair-cell'), true, 'arrows move between cells');
+
+      const toggle = page.find('[data-action="toggle-pairs-table"]');
+      assert.strictEqual(toggle.getAttribute('aria-pressed'), 'false');
+      page.click('[data-action="toggle-pairs-table"]');
+      assert.ok(page.find('.tag-pairs').classList.contains('as-table'));
+      const counts = page.findAll('.pair-list .count').map((count) => Number(count.textContent));
+      assert.deepStrictEqual(counts, [...counts].sort((a, b) => b - a), 'most written together first');
+      assert.strictEqual(counts[0], 3);
+    } finally {
+      page.dispose();
+    }
   });
 });

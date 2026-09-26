@@ -509,6 +509,8 @@ Every total but Files opens what it counts: **Notes**, **Tasks**, and **Open tas
 
 **How often tags are used** draws six bars — used once, twice, 3–5, 6–10, 11–25, and 26 or more times — each saying how many tags it holds, such as **Used once: 41 tags**. **Used once** unfolds those tags, the likeliest typos and one-offs, each with the tag it looks like and **Merge**, or **Merge into…**, which asks for the tag to keep. Any other bar offers its tags to open.
 
+**Tags written together** pairs your twelve most-used tags in a triangle: each cell counts the notes and tasks carrying both, as a search for both finds them, with a swatch shaded by how often, and opens that search (`#project/atlas #design`). The arrow keys move between cells. **Show as a table** lists the same pairs by count instead, which is also what a narrow panel shows.
+
 If a note in the workspace could not be read — a permissions error, an encoding Deckard cannot decode — it is not in the index, and no search finds it. Deckard says so the moment it happens, once per note, and Stats lists every such note with the reason, so a search that comes back short does not just look like a bad search. Select one to open it; fix the cause, then reindex.
 
 ### Tags that look alike
