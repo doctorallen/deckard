@@ -38,6 +38,7 @@ import { newNoteFromTemplate } from './ui/commands/templates';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
 import { ActiveNoteContext } from './ui/commands/activeNoteContext';
 import { noteActionsCommand } from './ui/commands/noteActions';
+import { TaskLineDecorations } from './ui/commands/taskLineDecorations';
 import {
   excludeFolderCommand,
   ExcludedFoldersContext,
@@ -348,7 +349,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const activePinContext = new ActivePinContext(indexer, preferences);
   // The title bar offers Deckard's button on a note, and the arrows between
   // days on a daily note.
-  context.subscriptions.push(new ActiveNoteContext(indexer));
+  context.subscriptions.push(
+    new ActiveNoteContext(indexer),
+    // A task's metadata steps back, and an overdue task says so on its line.
+    new TaskLineDecorations((uri) => indexer.isNotesFile(uri)),
+  );
   void vscode.commands.executeCommand(
     'setContext',
     'deckard.canUndo',

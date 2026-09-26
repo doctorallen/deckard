@@ -252,6 +252,75 @@ export function parseTaskMetadata(text: string): {
   };
 }
 
+/** What a piece of a task line's metadata is. */
+export type TaskMetadataSpanField = TaskMetadataField | 'onCompletion' | 'blockId';
+
+/** One piece of a task line's metadata, where it is written and what it says. */
+export interface TaskMetadataSpan {
+  /** Offsets into the text given, from the marker to the end of its value. */
+  start: number;
+  end: number;
+  field: TaskMetadataSpanField;
+  /** The value as written: a date, a rule, a name, or a priority. */
+  value: string;
+}
+
+/**
+ * Where each piece of metadata is written on a task's text, read by the same
+ * patterns and in the same order as `parseTaskMetadata`, so a piece it reads
+ * first is never read again inside another: cutting every span out leaves
+ * the title. A trailing `^block-id` is a span too.
+ */
+export function findTaskMetadataSpans(text: string): TaskMetadataSpan[] {
+  const spans: TaskMetadataSpan[] = [];
+  let masked = text;
+  const take = (
+    pattern: RegExp,
+    read: (match: RegExpMatchArray) => { field: TaskMetadataSpanField; value: string } | undefined,
+  ): void => {
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+    const found: TaskMetadataSpan[] = [];
+    for (const match of masked.matchAll(new RegExp(pattern.source, flags))) {
+      const piece = read(match);
+      if (!piece) {
+        continue;
+      }
+      let start = match.index ?? 0;
+      let end = start + match[0].length;
+      while (start < end && (masked[start] === ' ' || masked[start] === '\t')) {
+        start += 1;
+      }
+      while (end > start && (masked[end - 1] === ' ' || masked[end - 1] === '\t')) {
+        end -= 1;
+      }
+      found.push({ start, end, ...piece });
+    }
+    for (const span of found) {
+      masked = masked.slice(0, span.start) + ' '.repeat(span.end - span.start) + masked.slice(span.end);
+    }
+    spans.push(...found);
+  };
+
+  take(DATAVIEW_FIELD_PATTERN, (match) => {
+    const field = DATAVIEW_FIELDS.get((match[1] ?? match[3] ?? '').toLowerCase());
+    return field ? { field, value: (match[2] ?? match[4] ?? '').trim() } : undefined;
+  });
+  for (const field of DATE_FIELDS) {
+    take(datePatterns(field)[0], (match) => ({ field, value: match[1] }));
+  }
+  take(PRIORITY_PATTERN, (match) => ({
+    field: 'priority',
+    value: PRIORITY_MARKERS.get(match[0].replace('\uFE0F', '')) ?? '',
+  }));
+  take(RECURRENCE_PATTERN, (match) => ({ field: 'repeat', value: match[1].trim() }));
+  take(ID_PATTERN, (match) => ({ field: 'id', value: match[1] }));
+  take(DEPENDS_ON_PATTERN, (match) => ({ field: 'dependsOn', value: match[1] }));
+  take(ON_COMPLETION_PATTERN, (match) => ({ field: 'onCompletion', value: match[0] }));
+  take(ASSIGNEE_PATTERN, (match) => ({ field: 'assignee', value: match[1] }));
+  take(BLOCK_ID_PATTERN, (match) => ({ field: 'blockId', value: match[1] }));
+  return spans.sort((left, right) => left.start - right.start);
+}
+
 /**
  * Writes one field in the given format, such as `📅 2026-09-20` or
  * `[due:: 2026-09-20]`. An emoji priority is its marker alone.

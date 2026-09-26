@@ -48,6 +48,26 @@
           "highContrast": "contrastBorder",
           "highContrastLight": "contrastBorder"
         }
+      },
+      {
+        "id": "deckard.overdueForeground",
+        "description": "Color of an overdue task's due date in the editor, and of the \"overdue 5 days\" hint after its line.",
+        "defaults": {
+          "dark": "errorForeground",
+          "light": "errorForeground",
+          "highContrast": "errorForeground",
+          "highContrastLight": "errorForeground"
+        }
+      },
+      {
+        "id": "deckard.taskHintForeground",
+        "description": "Color of the hints after a task's line in the editor, such as \"due today\" and \"needs a new date\".",
+        "defaults": {
+          "dark": "descriptionForeground",
+          "light": "descriptionForeground",
+          "highContrast": "descriptionForeground",
+          "highContrastLight": "descriptionForeground"
+        }
       }
     ],
     "grammars": [
@@ -1600,6 +1620,20 @@
             "default": true,
             "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
             "order": 10
+          },
+          "deckard.editor.dimTaskMetadata": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "Draw a task's dates, priority, repeat rule, ids, and person, and a line's ^block id, fainter than its words, so the sentence reads first. An overdue date is never dimmed.",
+            "order": 11
+          },
+          "deckard.editor.taskDueHints": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\". Zen mode hides these.",
+            "order": 12
           }
         },
         "order": 2

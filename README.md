@@ -74,7 +74,7 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colors; 
 
 **What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's figures are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
 
-**In the editor**, zen also drops the reference counts above headings, the lens that offers to link a note's unlinked mentions, and the band behind the section being edited. Link problems, task dependencies, daily-note arrows, and hover previews stay.
+**In the editor**, zen also drops the reference counts above headings, the lens that offers to link a note's unlinked mentions, and the band behind the section being edited. It hides the **overdue 5 days** hints after task lines too, and keeps their metadata dimmed. Link problems, task dependencies, daily-note arrows, and hover previews stay.
 
 **What it does not change.** Every button, filter, tab, count, checkbox, and tag stays exactly where it was — zen hides ornament and folds provenance, and removes no functionality. The folded text is moved off-screen rather than out of the page, so a screen reader still announces it and find-in-page still finds it. A task's due date, priority, and overdue marker never fold: they are the point of a task row. Nor does a search that Deckard could not parse stop saying so.
 
@@ -376,6 +376,7 @@ A search reads these too, but a week or a month there is the whole span: `due = 
 - **The title bar** of a note carries Deckard's button, which opens **Deckard: Note Actions…**, and a daily note's also carries **‹** and **›**, which open the daily notes before and after. They stay put when the first line scrolls away, and show whether or not CodeLens is on. Right-click the title bar to hide any of them.
 - **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
 - **Colors from your theme.** In any Markdown file, a `[[link]]`'s brackets, name, and alias, an embed's `!`, a task's dates (`📅 2026-10-02`, `[due:: 2026-10-02]`), its repeat rule, its priority, Dataview keys, and a trailing `^block-id` take the colors your theme gives links, numbers, strings, keywords, and variables. Code, front matter, and tags are left alone. To change one, add a rule to `editor.tokenColorCustomizations`, for example `{ "textMateRules": [{ "scope": "constant.numeric.date.deckard", "settings": { "foreground": "#7aa2f7" } }] }`; the scopes end in `.deckard`, such as `constant.numeric.date.due.deckard`, `string.other.repeat.deckard`, and `meta.link.wiki.deckard`.
+- **Task lines read as sentences.** A task's dates, priority, repeat rule, ids, and person are drawn fainter than its words, and so is a `^block-id` on any line (`deckard.editor.dimTaskMetadata`). An open task that is overdue has its due date in the overdue color and says **overdue 5 days** at the end of its line; one due today says **due today**, and one more than 30 days overdue (`deckard.tasks.needsNewDateAfterDays`) says **needs a new date** in a quiet color instead (`deckard.editor.taskDueHints`). Both colors can be changed in `workbench.colorCustomizations` as `deckard.overdueForeground` and `deckard.taskHintForeground`.
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its page, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
 - Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).
@@ -1055,6 +1056,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.linkProblems": true,
 	"deckard.editor.embedProblems": true,
 	"deckard.editor.unlinkedMentions": true,
+	"deckard.editor.dimTaskMetadata": true,
+	"deckard.editor.taskDueHints": true,
 	"deckard.updateLinksOnRename": true,
 	"deckard.previewWorkspaceWrites": "severalNotes",
 	"deckard.assistantTools": true,
@@ -1121,6 +1124,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.linkProblems` | `true` | Shows how many of a note's `[[Wiki links]]` open no note on its first line, with an action that creates the missing notes. |
 | `deckard.editor.embedProblems` | `true` | Says above an `![[embed]]` the preview cannot draw which heading or `^marker` it is missing. |
 | `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, the other notes that name it without a link, with an action that links them. |
+| `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An open task's overdue date is never dimmed; it takes the `deckard.overdueForeground` color. |
+| `deckard.editor.taskDueHints` | `true` | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. Zen mode hides these. |
 | `deckard.updateLinksOnRename` | `true` | Rewrites every `[[Wiki link]]` that named a note by its old title when the note is renamed, in the same step as the rename. See [Renaming notes and headings](#renaming-notes-and-headings). |
 | `deckard.moveTo.leaveBehind` | `link` | What Move to… leaves where the lines were: a task becomes `- [>] … → [[where it went]]` and anything else a `[[link]]`; `nothing` takes the lines out. |
 | `deckard.previewWorkspaceWrites` | `severalNotes` | When a write reaches more than one note, shows it in VS Code's refactor preview first. `always` shows every write, `never` applies them straight away. See [Previewing and undoing a write](#previewing-and-undoing-a-write). |

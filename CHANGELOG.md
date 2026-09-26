@@ -12,6 +12,13 @@
 
 ### Added
 
+- **Task metadata steps back; overdue speaks up.** In a note, a task's
+  dates, priority, repeat rule, ids, and person are drawn fainter than its
+  words, and an open task says **overdue 5 days**, **due today**, or
+  **needs a new date** at the end of its line, its overdue date in the
+  overdue color. `deckard.editor.dimTaskMetadata` and
+  `deckard.editor.taskDueHints` turn them off; zen hides the hints.
+
 - **`[[links]]` and task dates colored by your theme.** In any Markdown
   file, a link's name and alias, an embed's `!`, a task's dates, repeat
   rule, and priority, Dataview keys, and a `^block-id` take your theme's
