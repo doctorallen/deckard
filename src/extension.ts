@@ -97,7 +97,12 @@ import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import { tidyPreferences } from './ui/commands/tidyPreferences';
 import { checkSetup } from './ui/commands/checkSetup';
-import { createSampleWorkspace, showSampleReadmeOnce } from './ui/commands/sampleWorkspace';
+import {
+  createSampleWorkspace,
+  SAMPLE_FOLDER_NAME,
+  showSampleReadmeOnce,
+} from './ui/commands/sampleWorkspace';
+import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from './ui/commands/firstIndex';
 import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
 import {
   exportPreferences,
@@ -142,12 +147,13 @@ export interface DeckardExports {
  * decorations, and completion all observe the same index and preference store.
  */
 /** A first index this large is offered deckard.exclude, once. */
-const LARGE_WORKSPACE_NOTES = 3000;
 const EXCLUDE_HINT_SHOWN = 'deckard.excludeHintShown';
 
 export function activate(context: vscode.ExtensionContext): DeckardExports {
   // Read before anything below stores a value: whether Deckard has run here
-  // before, which tells an update from a new install.
+  // before, which tells an update from a new install, and whether it has run
+  // in this workspace, which decides the first index's summary.
+  const newWorkspace = context.workspaceState.keys().length === 0;
   const ranBefore =
     context.globalState.keys().length > 0 || context.workspaceState.keys().length > 0;
   const whatsNew = new WhatsNew({
@@ -274,12 +280,25 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
-  // A very large first index is worth one word about leaving folders out,
-  // said once, and only when nothing is left out yet.
+  // A workspace's first index says what it read, once; a very large one is
+  // worth one word about leaving folders out, said once, and only when
+  // nothing is left out yet.
   void indexer.ready.then(async () => {
     const notes = indexer.getSnapshot().files.size;
     const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
+    const sample = vscode.Uri.joinPath(context.globalStorageUri, SAMPLE_FOLDER_NAME).toString();
+    const summarized = await summarizeFirstIndex(
+      context,
+      indexer.getSnapshot(),
+      {
+        newToDeckard: newWorkspace,
+        hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
+        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.toString() === sample),
+      },
+      { excludeHintShownKey: EXCLUDE_HINT_SHOWN, excludeIsEmpty: Object.keys(exclude ?? {}).length === 0 },
+    );
     if (
+      summarized ||
       notes < LARGE_WORKSPACE_NOTES ||
       Object.keys(exclude ?? {}).length > 0 ||
       context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)

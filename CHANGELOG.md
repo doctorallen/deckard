@@ -11,6 +11,12 @@
 
 ### Added
 
+- **A first index says what it read.** The first scan of a workspace
+  finished in silence; it now says, once, *Deckard read 412 notes: 1,204
+  open tasks (17 overdue) and 185 tags.*, with **Open Dashboard** and **Get
+  Started**. A workspace of 3,000 notes or more hears in the same message how
+  to leave folders out, rather than in a second one.
+
 - **The walkthrough covers tasks and themes.** It had four steps and never
   mentioned tasks; it now has six: open a note, tag it, **Capture a task**,
   see the workspace, find anything, and **Make it yours** with Choose Theme…
