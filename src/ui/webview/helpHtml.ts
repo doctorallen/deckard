@@ -555,6 +555,7 @@ updated: 2026-09-20
         <tr><td>✅ 2026-09-23</td><td><code>[completion:: 2026-09-23]</code></td><td>Written when the task is completed</td></tr>
         <tr><td>🆔 a1 / ⛔ b2</td><td><code>[id:: a1]</code></td><td>This task’s name, and what it waits for</td></tr>
       </tbody></table></div>
+      <p>A repeat rule reads as Obsidian Tasks writes it — <code>every week</code>, <code>every Monday</code>, <code>every month on the 15th</code> — and also <code>every other week</code>, <code>every 2 weeks on Monday, Thursday</code>, <code>every month on the second Tuesday</code>, and Deckard’s own <code>every quarter</code> and <code>every weekend</code>, any of them ending in <code>when done</code>.</p>
       <p>A date written in a task’s sentence, such as <em>by Friday</em>, is read as a due date when the note is a daily note, but Deckard will not rewrite it: there is no marker it could safely change.</p>
     </section>
 

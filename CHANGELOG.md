@@ -12,6 +12,11 @@
 
 ### Added
 
+- **More repeat rules.** `every other week`, `every other Tuesday`,
+  `every 2 weeks on Monday, Thursday`, `every month on the second Tuesday`,
+  and `every month on the last Friday`, as Obsidian Tasks reads them, and
+  Deckard's own `every quarter` and `every weekend`.
+
 - **Task metadata steps back; overdue speaks up.** In a note, a task's
   dates, priority, repeat rule, ids, and person are drawn fainter than its
   words, and an open task says **overdue 5 days**, **due today**, or

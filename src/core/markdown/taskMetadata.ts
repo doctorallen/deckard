@@ -559,12 +559,32 @@ const WEEKDAY_NAMES = [
   'saturday',
 ];
 
+/** The nth weekday of a month, as a rule names it. */
+const ORDINALS: Readonly<Record<string, number | 'last'>> = {
+  first: 1,
+  '1st': 1,
+  second: 2,
+  '2nd': 2,
+  third: 3,
+  '3rd': 3,
+  fourth: 4,
+  '4th': 4,
+  fifth: 5,
+  '5th': 5,
+  last: 'last',
+};
+
 /**
- * Reads the repeat rules Tasks writes most often:
+ * Reads the repeat rules Tasks writes, and a few more:
  *
  * - `every day`, `every 3 weeks`, `every month`, `every 2 years`
+ * - `every other day`, `every other week`, and so on: the same as `every 2`
  * - `every weekday`, `every Monday`, `every week on Tuesday, Friday`
+ * - `every 2 weeks on Monday, Thursday`, `every other Tuesday`
  * - `every month on the 15th`, `every month on the last`
+ * - `every month on the second Tuesday`, `every month on the last Friday`
+ * - `every quarter`, `every 2 quarters`, and `every weekend`, which are
+ *   Deckard's own and not Obsidian Tasks'
  *
  * Any of them can end in `when done`. Anything else returns undefined rather
  * than a guess, so Deckard never writes a wrong next date.
@@ -572,9 +592,47 @@ const WEEKDAY_NAMES = [
 export function parseRecurrence(text: string): RecurrenceRule | undefined {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
   const whenDone = normalized.endsWith(' when done');
-  const rule = whenDone
+  const rule = (whenDone
     ? normalized.slice(0, -' when done'.length)
-    : normalized;
+    : normalized
+  ).replace(/^every other /, 'every 2 ');
+
+  const quarters = /^every (?:(\d+) )?quarters?$/.exec(rule);
+  if (quarters) {
+    const count = Number(quarters[1] ?? '1');
+    return count < 1 ? undefined : { whenDone, next: (from) => addMonths(from, 3 * count) };
+  }
+
+  if (rule === 'every weekend') {
+    return {
+      whenDone,
+      next: (from) => nextDayWhere(from, (weekday) => weekday === 0 || weekday === 6),
+    };
+  }
+
+  const nthWeekday = new RegExp(
+    `^every (?:(\\d+) )?months? on the (${Object.keys(ORDINALS).join('|')}) (${WEEKDAY_NAMES.join('|')})$`,
+  ).exec(rule);
+  if (nthWeekday) {
+    const count = Number(nthWeekday[1] ?? '1');
+    const nth = ORDINALS[nthWeekday[2]];
+    const weekday = WEEKDAY_NAMES.indexOf(nthWeekday[3]);
+    return count < 1
+      ? undefined
+      : { whenDone, next: (from) => nextNthWeekday(from, count, weekday, nth) };
+  }
+
+  // Every N weeks on some days: the days of this week still to come, then
+  // those of the week N weeks on, with weeks starting on Monday as Tasks
+  // counts them.
+  const everyWeeks = /^every (\d+) (?:weeks? on )?(.+)$/.exec(rule);
+  if (everyWeeks) {
+    const count = Number(everyWeeks[1]);
+    const days = readWeekdays(everyWeeks[2]);
+    if (days && count >= 1) {
+      return { whenDone, next: (from) => nextWeekdayEveryNWeeks(from, days, count) };
+    }
+  }
 
   const interval = /^every (?:(\d+) )?(day|week|month|year)s?$/.exec(rule);
   if (interval) {
@@ -614,11 +672,8 @@ export function parseRecurrence(text: string): RecurrenceRule | undefined {
     return { whenDone, next: (from) => nextMonthDay(from, count, day) };
   }
 
-  const weekdays = /^every (?:week on )?(.+)$/
-    .exec(rule)?.[1]
-    .split(/, and |, | and /)
-    .map((name) => WEEKDAY_NAMES.indexOf(name));
-  if (weekdays && weekdays.length > 0 && weekdays.every((day) => day >= 0)) {
+  const weekdays = readWeekdays(/^every (?:week on )?(.+)$/.exec(rule)?.[1]);
+  if (weekdays) {
     return {
       whenDone,
       next: (from) => nextDayWhere(from, (weekday) => weekdays.includes(weekday)),
@@ -626,6 +681,60 @@ export function parseRecurrence(text: string): RecurrenceRule | undefined {
   }
 
   return undefined;
+}
+
+/** Weekday names as a rule lists them, `tuesday, friday`, as day numbers. */
+function readWeekdays(list: string | undefined): number[] | undefined {
+  const days = list?.split(/, and |, | and |,/).map((name) => WEEKDAY_NAMES.indexOf(name.trim()));
+  return days && days.length > 0 && days.every((day) => day >= 0) ? days : undefined;
+}
+
+/** The Monday a day's week starts on, as Tasks counts weeks. */
+function mondayOf(timestamp: number): number {
+  const weekday = new Date(timestamp).getDay();
+  return addDays(startOfDay(timestamp), -((weekday + 6) % 7));
+}
+
+/**
+ * The next of some weekdays, every N weeks: a day later this week comes
+ * first, and a day in a later week moves N - 1 more weeks on.
+ */
+function nextWeekdayEveryNWeeks(from: number, weekdays: readonly number[], weeks: number): number {
+  const next = nextDayWhere(from, (weekday) => weekdays.includes(weekday));
+  return weeks > 1 && mondayOf(next) !== mondayOf(from) ? addDays(next, 7 * (weeks - 1)) : next;
+}
+
+/** The nth weekday of a month, or its last; undefined when it has no fifth. */
+function nthWeekdayOfMonth(
+  year: number,
+  month: number,
+  weekday: number,
+  nth: number | 'last',
+): number | undefined {
+  if (nth === 'last') {
+    const last = new Date(year, month + 1, 0);
+    return addDays(last.getTime(), -((last.getDay() - weekday + 7) % 7));
+  }
+  const first = new Date(year, month, 1);
+  const day = 1 + ((weekday - first.getDay() + 7) % 7) + 7 * (nth - 1);
+  const date = new Date(year, month, day);
+  return date.getMonth() === ((month % 12) + 12) % 12 ? date.getTime() : undefined;
+}
+
+/**
+ * The first such weekday after `from`, in its month or every N months on. A
+ * month without a fifth one is skipped, as Tasks skips it.
+ */
+function nextNthWeekday(from: number, months: number, weekday: number, nth: number | 'last'): number {
+  const start = new Date(from);
+  for (let step = 0; step < 120; step += 1) {
+    const month = new Date(start.getFullYear(), start.getMonth() + step * months, 1);
+    const candidate = nthWeekdayOfMonth(month.getFullYear(), month.getMonth(), weekday, nth);
+    if (candidate !== undefined && candidate > from) {
+      return candidate;
+    }
+  }
+  return addMonths(from, months);
 }
 
 /** Reads a `YYYY-MM-DD` date as local midnight, rejecting impossible dates. */
