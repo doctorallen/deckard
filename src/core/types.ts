@@ -286,6 +286,24 @@ export interface TagInfo {
   hubFilePaths?: string[];
 }
 
+/** The tag a search page is about, as the page draws it. */
+export interface SearchPageTag {
+  key: string;
+  label: string;
+  count: number;
+  isFavorite: boolean;
+  hubFilePaths?: string[];
+}
+
+/** The entity a search page is about, as the page draws it. */
+export interface SearchPageEntity {
+  key: string;
+  label: string;
+  kind: EntityKind;
+  name: string;
+  count: number;
+}
+
 export interface TagAssociation {
   associatedTag: TagReference;
   sectionIds: string[];
@@ -560,8 +578,8 @@ export interface SearchPageSnapshot {
   /** Whether the page has a search to go back to, and one to go forward to. */
   history?: { back: boolean; forward: boolean };
   /** The tag the page is about, when the search is that one tag. */
-  tag?: TagInfo;
-  entity?: Entity;
+  tag?: SearchPageTag;
+  entity?: SearchPageEntity;
   /** The note that describes the tag. */
   hub?: TagOverviewHub;
   /** The search box's state, and the facets that could narrow it. */

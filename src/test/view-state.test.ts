@@ -20,6 +20,7 @@ import {
   sortRelatedNotes,
 } from '../ui/state/relatedNotesRanking';
 import { createEntryScope } from '../ui/webview/sidebarNotes';
+import * as rendering from '../ui/webview/rendering';
 import {
   ParsedFile,
   Entity,
@@ -328,6 +329,67 @@ suite('Dashboard state', () => {
         .tasks?.map((item) => item.task.title),
       ['third', 'first'],
     );
+  });
+
+  test('a search page sorts every match by its key and draws only the page it shows', () => {
+    const files = Array.from({ length: 40 }, (_, number) =>
+      parseMarkdown(
+        `notes/n${String(number).padStart(2, '0')}.md`,
+        `# Note ${(number * 7) % 40} #work\n\nBody about the plan, entry ${number}.`,
+        { createdAt: number * 3, updatedAt: (number * 11) % 40 },
+      ),
+    );
+    const index = createFileIndex(files);
+    for (const tagOverviewSortMode of ['alphabetical', 'created', 'updated', 'access'] as const) {
+      const preferences = {
+        ...defaultPreferences,
+        tagOverviewSortMode,
+        searchPageSize: 30 as const,
+        sectionAccessCounts: Object.fromEntries(files.map((file, number) => [file.sections[0].id, number % 5])),
+      };
+      for (const query of ['', 'plan', '#work']) {
+        const whole = createSearchPageSnapshot(index, preferences, query, { paged: false });
+        const pages = [1, 2].flatMap((notePage) =>
+          createSearchPageSnapshot(index, preferences, query, { notePage }).sections,
+        );
+        assert.deepStrictEqual(
+          pages.map((card) => card.id),
+          whole.sections.map((card) => card.id),
+          `${tagOverviewSortMode} ${JSON.stringify(query)}: the pages are the whole order, in order`,
+        );
+        assert.strictEqual(whole.notePaging.total, pages.length);
+      }
+    }
+  });
+
+  test('an empty search of a large workspace renders the page it shows, not every note', () => {
+    const files = Array.from({ length: 300 }, (_, number) =>
+      parseMarkdown(`notes/fresh-${number}.md`, `# Fresh ${number}\n\nBody ${number}.\n\n## More ${number}\n\nText.`),
+    );
+    const index = createFileIndex(files);
+    const original = rendering.renderMarkdown;
+    let calls = 0;
+    (rendering as { renderMarkdown: typeof original }).renderMarkdown = (text: string) => {
+      calls += 1;
+      return original(text);
+    };
+    try {
+      const page = createSearchPageSnapshot(index, { ...defaultPreferences, searchPageSize: 30 }, '');
+      assert.strictEqual(page.notePaging.total, 600);
+      assert.ok(calls > 0 && calls <= 31, `rendered ${calls} bodies for a page of 30`);
+    } finally {
+      (rendering as { renderMarkdown: typeof original }).renderMarkdown = original;
+    }
+  });
+
+  test('a search page carries the tag and entity as it draws them, not their entries', () => {
+    const index = createFileIndex([
+      parseMarkdown('notes/a.md', '# A #project/atlas\n\nBody.'),
+      parseMarkdown('notes/b.md', '# B #project/atlas\n\nBody.'),
+    ]);
+    const page = createSearchPageSnapshot(index, defaultPreferences, '#project/atlas');
+    assert.deepStrictEqual(Object.keys(page.tag ?? {}).sort(), ['count', 'isFavorite', 'key', 'label']);
+    assert.deepStrictEqual(Object.keys(page.entity ?? {}).sort(), ['count', 'key', 'kind', 'label', 'name']);
   });
 
   test('sorts a search page\'s notes and lays them out in their columns', () => {

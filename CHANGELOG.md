@@ -77,6 +77,12 @@
 
 ### Changed
 
+- **A search page draws only the page it shows.** Every match is sorted
+  and counted as before, but only the thirty on screen are rendered, so an
+  empty search of 5,000 entries takes 29 ms instead of 348, and a search of
+  words 41 ms instead of 279. A Home widget for a saved search draws only
+  its own few entries.
+
 - **Removing a Home widget or a board column can be undone.** While
   customizing Home, removing a widget says **Removed Tasks view.** with
   **Undo** for 8 seconds, which puts it back where it was, and removing a

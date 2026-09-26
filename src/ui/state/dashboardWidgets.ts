@@ -302,16 +302,15 @@ function createWidget(
         tagTitleDisplayMode: options.tagTitleDisplayMode,
         now: options.now,
         // A widget takes its own few entries off the top of the whole
-        // result, so it is not the reader's page size that decides what it
-        // has to choose from.
-        paged: false,
+        // result, so its own count, not the reader's page size, is the page.
+        pageSize: count,
       });
       return {
         ...widget,
         title: filter.name,
         savedQuery: query,
         ...(filter.page ? { savedPage: filter.page } : {}),
-        noteTotal: page.sections.length,
+        noteTotal: page.notePaging?.total ?? page.sections.length,
         notes: page.sections.slice(0, count).map((card) => {
           const fileName = getFileName(card.filePath) ?? card.filePath;
           return {

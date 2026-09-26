@@ -4,6 +4,7 @@ import {
   DashboardNote,
   DashboardTask,
   Entity,
+  SearchPageEntity,
   ParsedFile,
   PersistedPreferences,
   ResultPaging,
@@ -207,6 +208,11 @@ export interface SearchPageOptions {
    * chose, which is kept in their preferences.
    */
   paged?: boolean;
+  /**
+   * A page size of the caller's own, such as a Home widget's count, in place
+   * of the reader's; it outranks `paged`.
+   */
+  pageSize?: number;
   /** Which page of each list to carry, 1-based and clamped. */
   notePage?: number;
   taskPage?: number;
@@ -280,33 +286,42 @@ export function createSearchPageSnapshot(
         ),
       index.sections,
     );
+  // Every match is sorted and counted by a key, which costs nothing to
+  // build; only the page being shown is drawn. Rendering, the heading path,
+  // and the pin lookup ran for every match before, so an empty search of a
+  // large workspace rendered every entry to show thirty.
+  const sectionKey = (section: Section): NoteKey =>
+    createSectionKey(section, preferences.sectionAccessCounts, tagTitleDisplayMode);
   const plainTerms = getPlainTextTerms(drafted.node);
-  const cards = plainTerms
+  const keys = plainTerms
     ? [
-        ...[...index.sections.values()].map(cardFor),
-        ...listFrontmatterOnlyFiles(index).map(createFileOverviewCard),
-      ].filter((card) => matchesNoteWords(card, plainTerms))
+        ...[...index.sections.values()].map(sectionKey),
+        ...listFrontmatterOnlyFiles(index).map(createFileKey),
+      ].filter((key) => matchesNoteWords(key, plainTerms))
     : [
         ...results.sections
           .filter((section) => section.filePath !== hubFile?.filePath)
-          .map(cardFor),
+          .map(sectionKey),
         ...results.files
           .filter((file) => file.filePath !== hubFile?.filePath)
-          .map(createFileOverviewCard),
+          .map(createFileKey),
       ];
-  const ranked = cards.sort((left, right) =>
+  const ranked = keys.sort((left, right) =>
     compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
   );
-  const pageSize = options.paged === false ? undefined : preferences.searchPageSize;
+  const pageSize =
+    options.pageSize ??
+    (options.paged === false ? undefined : preferences.searchPageSize);
   const notePaging = createPaging(ranked.length, pageSize, options.notePage);
-  const sections = takePage(ranked, notePaging);
+  const sections = takePage(ranked, notePaging).map((key) =>
+    key.section ? cardFor(key.section) : createFileOverviewCard(key.file as ParsedFile),
+  );
   const tasks = sortTasks(
     [...results.tasks],
     preferences.taskOrder,
     preferences.taskSortMode,
   );
-  const shownTasks = tasks.map((task) => createDashboardTask(task, index.sections));
-  const taskPaging = createPaging(shownTasks.length, pageSize, options.taskPage);
+  const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
   const related =
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
@@ -322,21 +337,25 @@ export function createSearchPageSnapshot(
   // satisfies the rest of the search, so the correction is run before it is
   // offered. A second dead end would help nobody.
   const suggestion =
-    corrected !== undefined && findsSomething(index, corrected, cardFor)
+    corrected !== undefined && findsSomething(index, corrected, sectionKey)
       ? corrected
       : undefined;
 
   return {
     ...(focusTag
       ? {
+          // What the page draws of the tag and its entity; their lists of
+          // entries ran to thousands of ids a page never reads.
           tag: {
-            ...focusTag,
-            sectionIds: [...focusTag.sectionIds],
-            taskIds: [...focusTag.taskIds],
-            filePaths: [...focusTag.filePaths],
+            key: focusTag.key,
+            label: focusTag.label,
+            count: focusTag.count,
             isFavorite: preferences.favoriteTags.includes(focusTag.key),
+            ...(focusTag.hubFilePaths?.length ? { hubFilePaths: [...focusTag.hubFilePaths] } : {}),
           },
-          entity: index.entities.get(focusTag.key),
+          ...(index.entities.get(focusTag.key)
+            ? { entity: slimEntity(index.entities.get(focusTag.key) as Entity) }
+            : {}),
           ...(hubFile
             ? {
                 hub: createTagOverviewHub(
@@ -372,7 +391,7 @@ export function createSearchPageSnapshot(
         : findMatchingSavedQueryName(preferences.savedFilters, parsed),
     sections,
     notePaging,
-    tasks: takePage(shownTasks, taskPaging),
+    tasks: takePage(tasks, taskPaging).map((task) => createDashboardTask(task, index.sections)),
     taskPaging,
     taskCounts: {
       all: tasks.length,
@@ -477,18 +496,87 @@ export function describeAssociation(association: TagAssociation): string {
 }
 
 /**
- * Whether a note card has every word in its title, file name, body, or tags.
+ * A note as a search sorts, counts, and matches it, before it is drawn: an
+ * entry or a front-matter-only file, with what the sort orders by.
  */
-function matchesNoteWords(card: TagOverviewCard, words: readonly string[]): boolean {
-  const text = [
-    card.heading,
-    getFileName(card.filePath) ?? card.filePath,
-    card.rawContent,
-    ...card.tags.map((tag) => tag.label),
-  ]
-    .join(' ')
-    .toLowerCase();
+interface NoteKey {
+  section?: Section;
+  file?: ParsedFile;
+  heading: string;
+  filePath: string;
+  startLine: number;
+  createdAt?: number;
+  updatedAt?: number;
+  accessCount: number;
+}
+
+function createSectionKey(
+  section: Section,
+  sectionAccessCounts: Record<string, number>,
+  tagTitleDisplayMode: TagTitleDisplayMode,
+): NoteKey {
+  return {
+    section,
+    heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    filePath: section.filePath,
+    startLine: section.startLine,
+    createdAt: section.createdAt,
+    updatedAt: section.updatedAt,
+    accessCount: sectionAccessCounts[section.id] ?? 0,
+  };
+}
+
+function createFileKey(file: ParsedFile): NoteKey {
+  return {
+    file,
+    heading: getFileName(file.filePath) ?? file.filePath,
+    filePath: file.filePath,
+    startLine: 1,
+    createdAt: file.createdAt,
+    updatedAt: file.updatedAt,
+    accessCount: 0,
+  };
+}
+
+/** What a search's plain words are matched against, once per entry. */
+const noteWordText = new WeakMap<Section | ParsedFile, string>();
+
+/**
+ * Whether a note has every word in its title, file name, body, or tags, the
+ * same places the page matches words while they are typed.
+ */
+function matchesNoteWords(key: NoteKey, words: readonly string[]): boolean {
+  const owner = (key.section ?? key.file) as Section | ParsedFile;
+  let body = noteWordText.get(owner);
+  if (body === undefined) {
+    body = (
+      key.section
+        ? [
+            getSectionBody(key.section.rawContent),
+            ...key.section.tags.map((tag) => key.section?.tagLabels[tag] ?? `#${tag}`),
+          ]
+        : [
+            getFrontmatterBody((key.file as ParsedFile).content),
+            ...(key.file as ParsedFile).frontmatterTags.map((tag) => tag.label),
+          ]
+    )
+      .join(' ')
+      .toLowerCase();
+    noteWordText.set(owner, body);
+  }
+  const text = `${key.heading} ${getFileName(key.filePath) ?? key.filePath} ${body}`.toLowerCase();
   return words.every((word) => text.includes(word.toLowerCase()));
+}
+
+/** An entity as a search page draws it: its name, kind, and count. */
+function slimEntity(entity: Entity): SearchPageEntity {
+  return {
+    key: entity.key,
+    label: entity.label,
+    kind: entity.kind,
+    name: entity.name,
+    count: entity.count,
+  };
 }
 
 /**
@@ -1215,7 +1303,7 @@ function takePage<T>(entries: T[], paging: ResultPaging): T[] {
 function findsSomething(
   index: WorkspaceIndex,
   text: string,
-  cardFor: (section: Section) => TagOverviewCard,
+  sectionKey: (section: Section) => NoteKey,
 ): boolean {
   const parsed = parseQuery(text);
   if (!parsed.node) {
@@ -1231,10 +1319,10 @@ function findsSomething(
   }
   return (
     [...index.sections.values()].some((section) =>
-      matchesNoteWords(cardFor(section), plainTerms),
+      matchesNoteWords(sectionKey(section), plainTerms),
     ) ||
     listFrontmatterOnlyFiles(index).some((file) =>
-      matchesNoteWords(createFileOverviewCard(file), plainTerms),
+      matchesNoteWords(createFileKey(file), plainTerms),
     )
   );
 }
@@ -1280,9 +1368,15 @@ export function getInlineSource(section: Section): string {
 const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
 const defaultCollator = new Intl.Collator();
 
+/** What the note order reads, whether of a key or a drawn card. */
+type SortableNote = Pick<
+  TagOverviewCard,
+  'heading' | 'filePath' | 'startLine' | 'createdAt' | 'updatedAt' | 'accessCount'
+>;
+
 function compareTagOverviewCards(
-  left: TagOverviewCard,
-  right: TagOverviewCard,
+  left: SortableNote,
+  right: SortableNote,
   sortMode: TagOverviewSortMode,
 ): number {
   if (sortMode === 'created') {
