@@ -12,6 +12,14 @@
 
 ### Added
 
+- **The Notes Graph names its groups where they sit.** Zoomed out, each
+  group is labeled over a faint disc after the tags its notes carry more
+  than the rest of the workspace does, so a tag on every note names nothing.
+  Click a name, or choose it from the new **Group** list under Filters, to
+  pick that group out; **Clear tag filters** is now **Clear filters** and
+  lets the group go too. The status line counts groups, and names eight
+  hubs at rest rather than twelve, placed so no two labels overlap.
+
 - **A graph node says what it is joined by.** Its tooltip counts wiki
   links, headings, and tags (`atlas.md:12 · 4 wiki links · 2 headings · 7
   tags`), and a tag says how many notes and tasks carry it. A node is sized

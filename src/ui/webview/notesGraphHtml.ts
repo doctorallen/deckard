@@ -66,6 +66,9 @@ input[type='checkbox'] { accent-color: var(--amber-bright); }
 .graph-search, .tag-search { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 6px 8px; font: var(--text-xs) var(--font-mono); }
 input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .graph-search:focus, .tag-search:focus { border-color: var(--cyan-bright); }
+.graph-select { width: 100%; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 5px 6px; font: var(--text-xs) var(--font-mono); }
+.graph-select:focus { border-color: var(--cyan-bright); }
+.control-row[hidden] { display: none; }
 .tag-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; border: 1px solid var(--slate-border); background: var(--panel-deep); padding: 4px; }
 .tag-list .toggle-row { padding: 2px 4px; font-size: var(--text-xs); }
 .tag-list .toggle-row:hover { background: var(--panel-raised); }
@@ -134,7 +137,8 @@ ${getPageTailCss()}
       <label class="toggle-row"><input type="checkbox" id="show-parked" data-tip="Show parked notes, tasks, and tags. They are hidden unless this is on."> Show parked</label>
       <input class="tag-search" id="tag-search" type="search" placeholder="Filter tag list…" aria-label="Filter tag checklist" data-tip="Narrow the tag checklist without changing the graph.">
       <div class="tag-list" id="tag-list" role="group" aria-label="Tag filters"></div>
-      <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove all selected tag filters.">Clear tag filters</button>
+      <div class="control-row" id="group-row" hidden><label for="group-filter">Group</label><select class="graph-select" id="group-filter" data-tip="Pick out one group: the others dim, and the view frames it. A click on a group's name does the same."><option value="">All groups</option></select></div>
+      <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove the tag filters and the group picked out.">Clear filters</button>
     </div>
   </details>
   <details class="control-group">
@@ -168,7 +172,8 @@ ${getPageTailCss()}
   <details class="control-group">
     <summary>Relationships</summary>
     <div class="control-body">
-      <p class="relationship-note">The graph uses prevalence-aware visual communities: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
+      <p class="relationship-note">The graph uses prevalence-aware groups: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
+      <p class="relationship-note">Each group is named after the tags its notes carry more than the rest of the workspace does.</p>
       <p class="relationship-note">Links per note controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
       <p class="relationship-note">Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p>
     </div>
@@ -218,6 +223,7 @@ ${getUndoScript()}
     return /^\\d/.test(size) ? size : fallback;
   }
   var labelFontSize = tokenFontSize('--text-xs', '11px');
+  var groupFontSize = tokenFontSize('--text-sm', '12px');
   function themeColor(name, fallback) {
     var value = rootStyles.getPropertyValue(name).trim();
     return value || fallback;
@@ -243,7 +249,8 @@ ${getUndoScript()}
     edge: systemColor('GrayText'),
     edgeHighlight: systemColor('Highlight'),
     label: systemColor('CanvasText'),
-    halo: systemColor('Highlight')
+    halo: systemColor('Highlight'),
+    group: systemColor('GrayText')
   } : {
     background: themeColor('--bg-dark', '#050608'),
     note: themeColor('--cyan-bright', '#5FE1F0'),
@@ -252,7 +259,8 @@ ${getUndoScript()}
     edge: themeColor('--muted', '#7D8792'),
     edgeHighlight: themeColor('--amber-bright', '#FFB000'),
     label: themeColor('--text', '#D9E0E4'),
-    halo: themeColor('--favorite-red', '#E05232')
+    halo: themeColor('--favorite-red', '#E05232'),
+    group: themeColor('--line-strong', '#3A4450')
   };
 
   // ---- persisted webview-local settings -------------------------------
@@ -264,6 +272,7 @@ ${getUndoScript()}
     showParked: false,
     onlyWrittenLinks: false,
     selectedTags: [],
+    group: '',
     search: '',
     nodeSize: 1,
     linkThickness: 1,
@@ -301,7 +310,19 @@ ${getUndoScript()}
   var px, py, vx, vy;           // Float32Array simulation state
   var degrees;                  // per-node visible edge counts
   /** How many of the best-connected notes on screen are named at rest. */
-  var HUB_LABELS_AT_REST = 12;
+  var HUB_LABELS_AT_REST = 8;
+  /** How many groups are named at rest, largest first. */
+  var GROUP_LABELS_AT_REST = 16;
+  /** A community is named once it holds this many notes and tasks. */
+  var GROUP_MINIMUM_SIZE = 4;
+  var groups = [];              // community index -> {key, name, size} or null
+  var namedGroupCount = 0;
+  var groupKeyIndex = {};       // group key -> community index
+  var groupMatch = null;        // Uint8Array by node index, or null for all
+  var groupNotice = '';
+  var groupCenters = [];        // community index -> {x, y, r} from the last frame
+  var labelRects = [];          // group labels drawn in the last frame, for clicks
+  var tagLabelByKey = {};
   var primaryTag;               // note/task index -> strongest cluster anchor
   var primaryClusterSize;       // tag index -> assigned note/task count
   var communityId;              // node index -> visual community index
@@ -330,6 +351,7 @@ ${getUndoScript()}
   var pointerId = -1;
   var pointerDownAt = null;
   var pointerMoved = false;
+  var pointerLabel = '';
   var needsDraw = true;
   var frameQueued = false;
   var matchSet = null;          // null = everything matches the search
@@ -540,6 +562,14 @@ ${getUndoScript()}
     communitySizes = communityData.sizes;
     communityEdges = communityData.edges;
     communityCount = communitySizes.length;
+    nameGroups();
+    if (settings.group && groupKeyIndex[settings.group] === undefined) {
+      settings.group = '';
+      groupNotice = 'Group no longer there — showing all';
+      persist();
+    } else {
+      groupNotice = '';
+    }
     communityAnchorX = new Float32Array(communityCount);
     communityAnchorY = new Float32Array(communityCount);
     communityVx = new Float32Array(communityCount);
@@ -649,6 +679,8 @@ ${getUndoScript()}
 
     recomputeSearchMatches();
     recomputeTagMatches();
+    recomputeGroupMatch();
+    renderGroupList();
     setHoverIndex(findNodeIndex(externalHoverNodeId));
     hideTooltip();
     var restoredSelection = selectedId !== null &&
@@ -694,6 +726,101 @@ ${getUndoScript()}
         if (selected[node.tagKeys[t]]) { tagMatchSet[index] = true; return; }
       }
     });
+  }
+
+  /**
+   * Names each group after the tags its notes and tasks carry more than the
+   * rest of the graph does: a tag scores its count in the group, squared,
+   * over its count anywhere, so a tag on every note names nothing. A second
+   * tag joins the name when it scores half the first. A group with no tags
+   * is named after its best-connected note. Once per rebuild, not a frame.
+   */
+  function nameGroups() {
+    groups = [];
+    groupKeyIndex = {};
+    namedGroupCount = 0;
+    var carried = {};
+    var inGroup = [];
+    var best = [];
+    for (var c = 0; c < communityCount; c += 1) {
+      groups.push(null);
+      inGroup.push({});
+      best.push(-1);
+    }
+    for (var i = 0; i < nodes.length; i += 1) {
+      if (nodes[i].kind === 'tag') { continue; }
+      var community = communityId[i];
+      var keys = nodes[i].tagKeys || [];
+      for (var t = 0; t < keys.length; t += 1) {
+        carried[keys[t]] = (carried[keys[t]] || 0) + 1;
+        if (community >= 0) {
+          inGroup[community][keys[t]] = (inGroup[community][keys[t]] || 0) + 1;
+        }
+      }
+      if (community >= 0 && (best[community] < 0 || nodeDegree(i) > nodeDegree(best[community]))) {
+        best[community] = i;
+      }
+    }
+    for (var g = 0; g < communityCount; g += 1) {
+      if (communitySizes[g] < GROUP_MINIMUM_SIZE || best[g] < 0) { continue; }
+      var counts = inGroup[g];
+      var scored = Object.keys(counts).map(function (key) {
+        return { key: key, score: counts[key] * counts[key] / carried[key] };
+      }).sort(function (left, right) {
+        return right.score - left.score || left.key.localeCompare(right.key);
+      });
+      var key;
+      var name;
+      if (scored.length) {
+        key = scored[0].key;
+        name = tagName(scored[0].key);
+        if (scored[1] && scored[1].score >= scored[0].score / 2) {
+          name += ' · ' + tagName(scored[1].key);
+        }
+      } else {
+        key = nodes[best[g]].id;
+        name = 'around ' + nodes[best[g]].title;
+      }
+      if (groupKeyIndex[key] !== undefined) { key += '@' + nodes[best[g]].id; }
+      if (name.length > 28) { name = name.slice(0, 27) + '…'; }
+      groups[g] = { key: key, name: name, size: communitySizes[g] };
+      groupKeyIndex[key] = g;
+      namedGroupCount += 1;
+    }
+  }
+
+  /** A tag as a group's name says it: its label, without the #. */
+  function tagName(key) {
+    var label = tagLabelByKey[key] || key;
+    return label.charAt(0) === '#' ? label.slice(1) : label;
+  }
+
+  function recomputeGroupMatch() {
+    var community = settings.group ? groupKeyIndex[settings.group] : undefined;
+    if (community === undefined) { groupMatch = null; return; }
+    groupMatch = new Uint8Array(nodes.length);
+    for (var i = 0; i < nodes.length; i += 1) {
+      if (communityId[i] === community) { groupMatch[i] = 1; }
+    }
+  }
+
+  /** Picks one group out, or every group back with an empty key. */
+  function setGroup(key) {
+    settings.group = groupKeyIndex[key] !== undefined ? key : '';
+    groupNotice = '';
+    persist();
+    recomputeGroupMatch();
+    renderGroupList();
+    updateStatus();
+    if (groupMatch) {
+      var members = [];
+      for (var i = 0; i < nodes.length; i += 1) {
+        if (groupMatch[i] && nodes[i].kind !== 'tag') { members.push(i); }
+      }
+      fitToView(members);
+    } else {
+      scheduleFrame();
+    }
   }
 
   // Build visual communities without changing the indexed graph. Primary tag
@@ -1110,6 +1237,7 @@ ${getUndoScript()}
     }
     if (matchSet && !matchSet[index]) { return true; }
     if (tagMatchSet && !tagMatchSet[index]) { return true; }
+    if (groupMatch && !groupMatch[index]) { return true; }
     if (selectedIndex >= 0) {
       return index !== selectedIndex && !selectedNeighbors[index];
     }
@@ -1476,7 +1604,50 @@ ${getUndoScript()}
 
     var hovering = hoverIndex >= 0;
     var focusIndex = hovering ? hoverIndex : selectedIndex;
-    var dimmingActive = focusIndex >= 0 || matchSet !== null || tagMatchSet !== null;
+    var dimmingActive = focusIndex >= 0 || matchSet !== null || tagMatchSet !== null || groupMatch !== null;
+
+    // Groups, at rest: a faint disc under each named group, fading out as
+    // the zoom nears the point where every node is named. One pass to find
+    // each group's center and spread, one path, one fill, one stroke.
+    var restFade = k < settings.labelThreshold
+      ? Math.min(1, (settings.labelThreshold - k) / 0.4)
+      : 0;
+    var showGroups = namedGroupCount >= 2 && restFade > 0;
+    groupCenters = [];
+    if (showGroups) {
+      var sumX = new Float64Array(communityCount);
+      var sumY = new Float64Array(communityCount);
+      var sumSquares = new Float64Array(communityCount);
+      var members = new Uint32Array(communityCount);
+      for (var m = 0; m < nodes.length; m += 1) {
+        var memberGroup = communityId[m];
+        if (memberGroup < 0 || !groups[memberGroup] || nodes[m].kind === 'tag') { continue; }
+        sumX[memberGroup] += px[m];
+        sumY[memberGroup] += py[m];
+        sumSquares[memberGroup] += px[m] * px[m] + py[m] * py[m];
+        members[memberGroup] += 1;
+      }
+      ctx.beginPath();
+      for (var g = 0; g < communityCount; g += 1) {
+        if (!groups[g] || !members[g]) { continue; }
+        var centerX = sumX[g] / members[g];
+        var centerY = sumY[g] / members[g];
+        var spread = Math.max(0, sumSquares[g] / members[g] - centerX * centerX - centerY * centerY);
+        var discRadius = Math.max(12, 1.5 * Math.sqrt(spread));
+        groupCenters[g] = { x: centerX, y: centerY, r: discRadius };
+        ctx.moveTo(centerX + discRadius, centerY);
+        ctx.arc(centerX, centerY, discRadius, 0, 6.2832);
+      }
+      if (!forcedColors) {
+        ctx.fillStyle = colors.group;
+        ctx.globalAlpha = 0.07 * restFade;
+        ctx.fill();
+      }
+      ctx.strokeStyle = colors.group;
+      ctx.globalAlpha = 0.22 * restFade;
+      ctx.lineWidth = 1 / k;
+      ctx.stroke();
+    }
 
     // Edges: one batched path per kind, each with its own dash pattern, and
     // one more, solid, for a selected node's links, so they read as a
@@ -1572,9 +1743,58 @@ ${getUndoScript()}
     // are, so an overview reads as places rather than as density alone.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
-    if (k < settings.labelThreshold) {
+    var monoFont = rootStyles.getPropertyValue('--font-mono') || 'monospace';
+    // Placed labels, so no two overlap: group names first, then hubs.
+    var placed = [];
+    function overlaps(rect) {
+      for (var r = 0; r < placed.length; r += 1) {
+        var other = placed[r];
+        if (rect.x0 < other.x1 && rect.x1 > other.x0 && rect.y0 < other.y1 && rect.y1 > other.y0) {
+          return true;
+        }
+      }
+      return false;
+    }
+    labelRects = [];
+    if (showGroups) {
+      var groupPixels = parseFloat(groupFontSize) || 12;
+      ctx.font = '700 ' + groupFontSize + ' ' + monoFont;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = colors.background;
       ctx.fillStyle = colors.label;
-      ctx.font = labelFontSize + ' ' + (rootStyles.getPropertyValue('--font-mono') || 'monospace');
+      ctx.globalAlpha = restFade;
+      var order = [];
+      for (var og = 0; og < communityCount; og += 1) {
+        if (groups[og] && groupCenters[og]) { order.push(og); }
+      }
+      order.sort(function (left, right) { return groups[right].size - groups[left].size || left - right; });
+      var named = 0;
+      for (var o = 0; o < order.length && named < GROUP_LABELS_AT_REST; o += 1) {
+        var group = groups[order[o]];
+        var center = groupCenters[order[o]];
+        var gx = center.x * k + camera.x;
+        var gy = center.y * k + camera.y;
+        if (gx < -40 || gx > width + 40 || gy < -20 || gy > height + 20) { continue; }
+        var textWidth = ctx.measureText(group.name).width;
+        var rect = { x0: gx - textWidth / 2 - 3, y0: gy - groupPixels / 2 - 3, x1: gx + textWidth / 2 + 3, y1: gy + groupPixels / 2 + 3, key: group.key };
+        if (overlaps(rect)) { continue; }
+        placed.push(rect);
+        labelRects.push(rect);
+        ctx.strokeText(group.name, gx, gy);
+        ctx.fillText(group.name, gx, gy);
+        named += 1;
+      }
+      ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 1;
+    }
+    if (k < settings.labelThreshold) {
+      var labelPixels = parseFloat(labelFontSize) || 11;
+      ctx.fillStyle = colors.label;
+      ctx.font = labelFontSize + ' ' + monoFont;
       ctx.textAlign = 'center';
       var hubs = [];
       for (var h = 0; h < nodes.length; h += 1) {
@@ -1584,13 +1804,19 @@ ${getUndoScript()}
       }
       hubs.sort(function (a, b) { return nodeDegree(b) - nodeDegree(a); });
       ctx.globalAlpha = 0.85;
-      for (var u = 0; u < Math.min(hubs.length, HUB_LABELS_AT_REST); u += 1) {
+      var hubsNamed = 0;
+      for (var u = 0; u < hubs.length && hubsNamed < HUB_LABELS_AT_REST; u += 1) {
         var hub = hubs[u];
         var hx = px[hub] * k + camera.x;
-        var hy = py[hub] * k + camera.y;
+        var hy = py[hub] * k + camera.y + nodeRadius(hub) * k + 11;
         var hubTitle = nodes[hub].title;
         if (hubTitle.length > 28) { hubTitle = hubTitle.slice(0, 27) + '…'; }
-        ctx.fillText(hubTitle, hx, hy + nodeRadius(hub) * k + 11);
+        var hubWidth = ctx.measureText(hubTitle).width;
+        var hubRect = { x0: hx - hubWidth / 2, y0: hy - labelPixels, x1: hx + hubWidth / 2, y1: hy + 3 };
+        if (overlaps(hubRect)) { continue; }
+        placed.push(hubRect);
+        ctx.fillText(hubTitle, hx, hy);
+        hubsNamed += 1;
       }
       ctx.globalAlpha = 1;
     }
@@ -1632,9 +1858,9 @@ ${getUndoScript()}
       return edge.drawn && isRendered(edge.a) && isRendered(edge.b);
     }).length;
     var matchCount = matchSet ? Object.keys(matchSet).length : -1;
-    var searchNote = matchCount >= 0
+    var searchNote = (groupNotice ? groupNotice + ' · ' : '') + (matchCount >= 0
       ? matchCount + (matchCount === 1 ? ' match' : ' matches') + ' · '
-      : '';
+      : '');
     updateLegend();
     if (settings.onlyWrittenLinks) {
       var linked = {};
@@ -1656,7 +1882,7 @@ ${getUndoScript()}
     statusCounts.textContent = searchNote + snapshot.totalNoteCount + ' notes · ' +
       snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount + ' of ' +
       indexed + ' links drawn · ' +
-      communityCount + ' communities';
+      communityCount + (communityCount === 1 ? ' group' : ' groups');
   }
 
   /** The legend names "Through a daily note" only while such lines exist. */
@@ -1757,10 +1983,13 @@ ${getUndoScript()}
     scheduleFrame();
   }
 
-  function fitToView() {
+  /** Frames the whole graph, or only the nodes at the indices given. */
+  function fitToView(indices) {
     if (nodes.length === 0) { return; }
+    var subset = Array.isArray(indices) && indices.length ? indices : null;
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (var i = 0; i < nodes.length; i += 1) {
+    for (var f = 0; f < (subset ? subset.length : nodes.length); f += 1) {
+      var i = subset ? subset[f] : f;
       if (px[i] < minX) { minX = px[i]; }
       if (px[i] > maxX) { maxX = px[i]; }
       if (py[i] < minY) { minY = py[i]; }
@@ -1792,8 +2021,11 @@ ${getUndoScript()}
     pointerId = event.pointerId;
     pointerDownAt = { x: event.clientX, y: event.clientY };
     pointerMoved = false;
+    // A group's name is tested before the nodes under it: a click on it
+    // picks the group out, and a drag from it pans.
+    pointerLabel = groupLabelAt(event.clientX, event.clientY);
     var world = toWorld(event.clientX, event.clientY);
-    var hit = nodeAt(world.x, world.y);
+    var hit = pointerLabel ? -1 : nodeAt(world.x, world.y);
     if (hit >= 0) {
       dragIndex = hit;
       vx[hit] = 0; vy[hit] = 0;
@@ -1838,10 +2070,23 @@ ${getUndoScript()}
     }
   });
 
+  function groupLabelAt(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    var x = clientX - rect.left;
+    var y = clientY - rect.top;
+    for (var r = 0; r < labelRects.length; r += 1) {
+      var label = labelRects[r];
+      if (x >= label.x0 && x <= label.x1 && y >= label.y0 && y <= label.y1) { return label.key; }
+    }
+    return '';
+  }
+
   function endPointer(event) {
     if (pointerId !== event.pointerId) { return; }
     var wasDrag = dragIndex;
     var clicked = !pointerMoved;
+    var label = pointerLabel;
+    pointerLabel = '';
     dragIndex = -1;
     panning = false;
     pointerId = -1;
@@ -1853,6 +2098,10 @@ ${getUndoScript()}
     if (wasDrag >= 0 && !clicked) { reheat(0.3); persist(); return; }
     persist();
     if (!clicked) { return; }
+    if (label) {
+      setGroup(settings.group === label ? '' : label);
+      return;
+    }
     if (wasDrag >= 0) {
       // Cmd/Ctrl+click opens the source, and Alt+click opens it beside the
       // graph; a plain click selects the node and surfaces direct graph
@@ -2109,6 +2358,7 @@ ${getUndoScript()}
       showSliderValue(input, settings[definition[1]], definition[2]);
     });
     searchInput.value = settings.search;
+    groupSelect.value = settings.group || '';
   }
 
   function resetGraphSettings() {
@@ -2324,7 +2574,32 @@ ${getUndoScript()}
     persist();
     recomputeTagMatches();
     renderTagList();
-    scheduleFrame();
+    setGroup('');
+  });
+
+  var groupRow = document.getElementById('group-row');
+  var groupSelect = document.getElementById('group-filter');
+  /** The Group list: every named group, largest first, keeping the pick. */
+  function renderGroupList() {
+    var order = [];
+    groups.forEach(function (group, community) { if (group) { order.push(community); } });
+    order.sort(function (left, right) { return groups[right].size - groups[left].size || left - right; });
+    groupSelect.textContent = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'All groups';
+    groupSelect.appendChild(all);
+    order.forEach(function (community) {
+      var option = document.createElement('option');
+      option.value = groups[community].key;
+      option.textContent = groups[community].name + ' (' + groups[community].size + ')';
+      groupSelect.appendChild(option);
+    });
+    groupSelect.value = settings.group || '';
+    groupRow.hidden = namedGroupCount < 2;
+  }
+  groupSelect.addEventListener('change', function () {
+    setGroup(groupSelect.value);
   });
 
   document.getElementById('zoom-in').addEventListener('click', function () {
@@ -2333,7 +2608,7 @@ ${getUndoScript()}
   document.getElementById('zoom-out').addEventListener('click', function () {
     zoomAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 1 / 1.3);
   });
-  document.getElementById('zoom-fit').addEventListener('click', fitToView);
+  document.getElementById('zoom-fit').addEventListener('click', function () { fitToView(); });
 
   window.addEventListener('resize', resizeCanvas);
 
@@ -2341,6 +2616,8 @@ ${getUndoScript()}
     var message = event.data;
     if (message && message.type === 'state' && message.data) {
       snapshot = message.data;
+      tagLabelByKey = {};
+      (snapshot.tags || []).forEach(function (entry) { tagLabelByKey[entry[0]] = entry[1]; });
       // Edge ids are left out of the message; each is its two ends.
       snapshot.edges.forEach(function (edge) {
         if (!edge.id) { edge.id = edge.source + '::' + edge.target; }

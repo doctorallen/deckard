@@ -410,4 +410,86 @@ suite('Notes Graph behavior', () => {
       assert.ok(before.includes((2 + Math.sqrt(13)) * 1), 'sized by the indexed degree');
     });
   });
+
+  suite('groups', () => {
+    const openCanvas = (): WebviewPage => {
+      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      return page;
+    };
+    /** Notes in groups, each note carrying the group's tag and #common, linked in a ring. */
+    const grouped = (sizes: Record<string, number>) => {
+      const nodes: GraphNode[] = [];
+      const edges: GraphEdge[] = [];
+      const tags = new Set<string>(['#common']);
+      Object.entries(sizes).forEach(([name, size]) => {
+        tags.add(`#${name}`);
+        for (let i = 0; i < size; i += 1) {
+          nodes.push(note(`${name}${i}`, { tagKeys: ['#common', `#${name}`], degree: 4 }));
+          edges.push({ source: `section:${name}${i}`, target: `section:${name}${(i + 1) % size}`, weight: 2, types: ['wiki-link'] });
+          edges.push({ source: `section:${name}${i}`, target: `tag:#${name}`, weight: 1, types: ['tag-membership'] });
+          edges.push({ source: `section:${name}${i}`, target: 'tag:#common', weight: 1, types: ['tag-membership'] });
+        }
+      });
+      tags.forEach((key) => nodes.push({ id: `tag:${key}`, kind: 'tag', title: key, tagKeys: [], degree: 1 }));
+      return graphState(nodes, edges);
+    };
+    /** Frames the graph, then zooms out to where groups are named. */
+    const atRest = (page: WebviewPage): void => {
+      settle(page);
+      for (let step = 0; step < 20 && parseInt(page.text('#zoom-readout') ?? '0', 10) > 90; step += 1) {
+        page.click('#zoom-out');
+        page.flushFrames(1);
+      }
+      page.flushFrames(1);
+    };
+    const labels = (page: WebviewPage) => lastFrame(page).filter((call) => call.op === 'strokeText');
+
+    test('each group is named where it sits, after the tags that set it apart', () => {
+      const page = openCanvas();
+      page.send(grouped({ atlas: 5, relay: 4, design: 4 }));
+      atRest(page);
+      const names = labels(page).map((call) => call.args[0]).sort();
+      assert.deepStrictEqual(names, ['atlas', 'design', 'relay'], 'named by the distinctive tag, not #common');
+      assert.match(page.text('#status-counts') ?? '', / 3 groups$/);
+    });
+
+    test('a click on a name picks the group out; the list says it; a rebuild without it lets go', () => {
+      const page = openCanvas();
+      page.send(grouped({ atlas: 5, relay: 4, design: 4 }));
+      atRest(page);
+      const atlas = labels(page).find((call) => call.args[0] === 'atlas');
+      assert.ok(atlas);
+      const [, x, y] = atlas.args as [string, number, number];
+      const canvas = page.find('#graph');
+      canvas.dispatchEvent(new page.window.MouseEvent('pointerdown', { clientX: x, clientY: y, button: 0, bubbles: true }));
+      canvas.dispatchEvent(new page.window.MouseEvent('pointerup', { clientX: x, clientY: y, button: 0, bubbles: true }));
+      const select = page.find('#group-filter') as HTMLSelectElement;
+      assert.strictEqual(select.value, '#atlas');
+      page.flushFrames(1);
+      // The view frames the group, and only its five notes are drawn bright.
+      const bright = lastFrame(page).filter((call) => call.op === 'arc' && call.globalAlpha === 1).length;
+      assert.strictEqual(bright, 5, 'the other two groups dim');
+      assert.strictEqual((page.savedState() as { group: string }).group, '#atlas', 'kept');
+
+      page.send(grouped({ relay: 4, design: 4 }));
+      assert.strictEqual(select.value, '');
+      assert.match(page.text('#status-counts') ?? '', /^Group no longer there — showing all · /);
+    });
+
+    test('the Group list offers every named group by size, and picks one from the keyboard', () => {
+      const page = openCanvas();
+      page.send(grouped({ relay: 4, atlas: 6, design: 5 }));
+      const select = page.find('#group-filter') as HTMLSelectElement;
+      assert.strictEqual((page.find('#group-row') as HTMLElement).hidden, false);
+      assert.deepStrictEqual([...select.options].map((option) => option.textContent), ['All groups', 'atlas (6)', 'design (5)', 'relay (4)']);
+      select.value = '#design';
+      select.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      assert.strictEqual((page.savedState() as { group: string }).group, '#design');
+      page.click('#clear-tags');
+      assert.strictEqual(select.value, '', 'Clear filters lets the group go too');
+
+      page.send(grouped({ relay: 4 }));
+      assert.strictEqual((page.find('#group-row') as HTMLElement).hidden, true, 'one group is no choice');
+    });
+  });
 });

@@ -46,7 +46,7 @@ suite('Webview contracts', () => {
     // test can call them. Lifting them into a module of their own is what
     // turns these checks into tests of the algorithm.
     assert.strictEqual(
-      html.includes('The graph uses prevalence-aware visual communities'),
+      html.includes('The graph uses prevalence-aware groups'),
       true,
     );
     assert.strictEqual(
