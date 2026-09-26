@@ -52,6 +52,15 @@ import {
   ExcludedFoldersContext,
   includeFolderCommand,
 } from './ui/commands/excludeFolders';
+import {
+  ParkingContext,
+  parkFolders,
+  parkNotes,
+  parkTag,
+  unparkFolders,
+  unparkNotes,
+  unparkTag,
+} from './ui/commands/parking';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -1022,6 +1031,39 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       includeFolderCommand(indexer, folder instanceof vscode.Uri ? folder : undefined),
     ),
     new ExcludedFoldersContext(),
+    vscode.commands.registerCommand('deckard.parkNote', (uri?: unknown, uris?: unknown) =>
+      parkNotes(indexer, uri, uris),
+    ),
+    vscode.commands.registerCommand('deckard.unparkNote', (uri?: unknown, uris?: unknown) =>
+      unparkNotes(indexer, uri, uris),
+    ),
+    vscode.commands.registerCommand('deckard.parkFolder', (uri?: unknown, uris?: unknown) =>
+      parkFolders(indexer, uri, uris),
+    ),
+    vscode.commands.registerCommand('deckard.unparkFolder', (uri?: unknown, uris?: unknown) =>
+      unparkFolders(indexer, uri, uris),
+    ),
+    vscode.commands.registerCommand('deckard.parkTag', async (tag?: unknown) => {
+      const outlineNode = asOutlineNode(tag);
+      const key = outlineNode
+        ? await pickOutlineTag(outlineNode, 'Choose a tag to park')
+        : getCommandTagArgument(tag);
+      if (outlineNode && !key) {
+        return;
+      }
+      await parkTag(indexer, key);
+    }),
+    vscode.commands.registerCommand('deckard.unparkTag', async (tag?: unknown) => {
+      const outlineNode = asOutlineNode(tag);
+      const key = outlineNode
+        ? await pickOutlineTag(outlineNode, 'Choose a tag to unpark')
+        : getCommandTagArgument(tag);
+      if (outlineNode && !key) {
+        return;
+      }
+      await unparkTag(indexer, key);
+    }),
+    new ParkingContext(indexer),
     vscode.commands.registerCommand('deckard.copyMcpSetup', () =>
       mcpServer.copySetup(),
     ),

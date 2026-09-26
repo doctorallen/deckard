@@ -288,6 +288,9 @@ ${getQueryEditorScript()}
     if (!state.tag || !state.tagPage) return '';
     const notes = [];
     const page = state.tagPage;
+    if (parkedTagKeys.has(String(state.tag.key).toLowerCase())) {
+      notes.push('<p class="tag-note"><strong>Parked.</strong> Its notes and tasks are left out of the Tasks view, the Task board, and Related Notes. <button type="button" class="tag-note-action" data-action="unpark-tag" data-tag-key="' + escapeHtml(state.tag.key) + '" data-tip="Take ' + escapeHtml(state.tag.label) + ' out of the parked tags">Unpark</button></p>');
+    }
     (page.lookalikes || []).forEach(function (other) {
       const labelOf = function (key) { return key === other.key ? other.label : state.tag.label; };
       notes.push('<p class="tag-note">Also written as <button type="button" class="tag-note-tag" data-action="open-tag" data-tag-key="' + escapeHtml(other.key) + '" data-tip="Open ' + escapeHtml(other.label) + '">' + escapeHtml(other.label) + '</button> (' + other.count + ' ' + (other.count === 1 ? 'entry' : 'entries') + '). '
@@ -394,11 +397,16 @@ ${getQueryEditorScript()}
       filePath: card.dataset.filePath,
       line: Number(card.dataset.line),
       pinned: card.dataset.pinned === 'true',
+      parked: card.dataset.parked === 'true',
     };
     openContextMenu(event, [
       {
         action: 'pin-note',
         label: cardContext.pinned ? 'Unpin from Home' : 'Pin to Home',
+      },
+      {
+        action: 'park-note',
+        label: cardContext.parked ? 'Unpark note' : 'Park note',
       },
     ]);
   }
@@ -584,8 +592,14 @@ ${getQueryEditorScript()}
       if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
         vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
       }
+      if ((contextAction.dataset.contextAction === 'park-tag' || contextAction.dataset.contextAction === 'unpark-tag') && tagKey) {
+        vscode.postMessage({ type: contextAction.dataset.contextAction === 'park-tag' ? 'parkTag' : 'unparkTag', tagKey: tagKey });
+      }
       if (contextAction.dataset.contextAction === 'pin-note' && card) {
         vscode.postMessage({ type: card.pinned ? 'unpinNote' : 'pinNote', filePath: card.filePath, line: card.line });
+      }
+      if (contextAction.dataset.contextAction === 'park-note' && card) {
+        vscode.postMessage({ type: card.parked ? 'unparkNote' : 'parkNote', filePath: card.filePath });
       }
       return;
     }
@@ -632,6 +646,7 @@ ${getQueryEditorScript()}
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
       if (action === 'exclude-hub-links') vscode.postMessage({ type: 'excludeHubLinks' });
+      if (action === 'unpark-tag' && target.dataset.tagKey) vscode.postMessage({ type: 'unparkTag', tagKey: target.dataset.tagKey });
       if (action === 'show-mentions' && state.tagPage && state.tagPage.mention) vscode.postMessage({ type: 'setOverviewQuery', query: state.tagPage.mention.query });
       if (action === 'include-lookalike' && state.tag) vscode.postMessage({ type: 'setOverviewQuery', query: state.tag.key + ' OR ' + target.dataset.tagKey });
       if (action === 'merge-lookalike') vscode.postMessage({ type: 'mergeTags', sourceKey: target.dataset.sourceKey, targetKey: target.dataset.targetKey });
@@ -691,6 +706,7 @@ ${getQueryEditorScript()}
     if (event.data && event.data.type === 'state') {
       const first = !state;
       state = event.data.data;
+      setParkedTags(state.parkedTags);
       // Cards opened with Show all stay open through a save, and close when
       // the search changes.
       const searched = state.query && state.query.text || '';

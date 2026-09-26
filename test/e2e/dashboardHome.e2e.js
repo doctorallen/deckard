@@ -616,7 +616,7 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   view.fire('contextmenu', row('#beta'));
   assert.deepStrictEqual(
     view.findAll('#rank-context-menu button').map((button) => button.textContent),
-    ['Rename tag', 'Move up', 'Move down', 'Move to top', 'Move to bottom'],
+    ['Rename tag', 'Park tag', 'Move up', 'Move down', 'Move to top', 'Move to bottom'],
   );
   view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
   assert.deepStrictEqual(sent('reorderTags')[1].tagKeys.slice(-1), ['#beta']);
@@ -624,6 +624,10 @@ test('ranked tags move by drag or from their menu, which also renames', async ()
   view.fire('contextmenu', row('#gamma'));
   view.click(view.find('#rank-context-menu [data-context-action="rename-tag"]'));
   assert.deepStrictEqual(sent('renameTag'), [{ type: 'renameTag', tagKey: '#gamma' }]);
+
+  view.fire('contextmenu', row('#gamma'));
+  view.click(view.find('#rank-context-menu [data-context-action="park-tag"]'));
+  assert.deepStrictEqual(sent('parkTag'), [{ type: 'parkTag', tagKey: '#gamma' }]);
 });
 
 test('typing a tag search keeps focus and text through a host update', async () => {

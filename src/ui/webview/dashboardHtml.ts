@@ -560,13 +560,14 @@ ${getQueryEditorScript()}
       else if (kind === 'entity') rankEntity(key, reorder);
       else rankTag(key, reorder);
     },
-    menuActions: function (kind) {
+    menuActions: function (kind, key) {
       return kind === 'tag'
-        ? [renderMenuItem('rename-tag', 'Rename tag')]
+        ? [renderMenuItem('rename-tag', 'Rename tag'), renderMenuItem('park-tag', parkedTagKeys.has(String(key).toLowerCase()) ? 'Unpark tag' : 'Park tag')]
         : [];
     },
     onMenuAction: function (action, kind, key) {
       if (action === 'rename-tag') send({ type: 'renameTag', tagKey: key });
+      if (action === 'park-tag') send({ type: parkedTagKeys.has(String(key).toLowerCase()) ? 'unparkTag' : 'parkTag', tagKey: key });
     },
   });
 
@@ -1340,6 +1341,7 @@ ${getQueryEditorScript()}
     }
     if (event.data && event.data.type === 'state') {
       const incomingState = event.data.data;
+      setParkedTags(incomingState.parkedTags);
       tagColumns = incomingState.tagColumns ?? tagColumns ?? 2;
       if (incomingState.viewState) {
         dashboardMode = incomingState.viewState.mode === 'browse' ? 'browse' : 'home';

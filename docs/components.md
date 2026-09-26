@@ -597,7 +597,8 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderTaskTitle(html, tags)` | Decorate tags inside already-rendered Markdown without re-escaping it. |
 | `formatEntityTitle(kind, name)` | `project` + `skybridge-signal` → `Project: Skybridge Signal`. |
 | `taskFilterIcon(filter)` | The `all` / `active` / `completed` icons. |
-| `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. Every context menu, this one and a page's own, opens on a `contextmenu` event, and the shared script raises that event on the focused tag, card, or row for the menu key, Shift+F10, and Alt+Enter, so no menu needs its own keyboard path. |
+| `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. The menu offers **Rename tag** and **Park tag**, or **Unpark tag** on a tag `setParkedTags` lists. Every context menu, this one and a page's own, opens on a `contextmenu` event, and the shared script raises that event on the focused tag, card, or row for the menu key, Shift+F10, and Alt+Enter, so no menu needs its own keyboard path. |
+| `setParkedTags(keys)` | Called from a page's state handler with the host's `parkedTags` (the tags `deckard.parked.tags` lists), so a tag's menu, and a parked tag's own page, offer Unpark rather than Park. `parkedTagKeys` holds them. |
 | `renderLoading(label, immediate)` | A `.loading` line; `immediate` skips the 400 ms wait. |
 | `renderIconButton(options)` | An icon-only `.icon-button`: `label` is its accessible name and, unless `tip` is given, its tip; `key` becomes `data-tip-key`; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`. Never emits `title`. |
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |

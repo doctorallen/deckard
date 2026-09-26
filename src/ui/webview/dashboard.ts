@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+
+import { listedParkedTags } from '../../core/workspace/parked';
 import { setPinned } from '../commands/pinNote';
 import { readWeekStart } from '../commands/datePrompt';
 import { TryNextSuggestion } from '../state/tryNext';
@@ -456,7 +458,10 @@ export class DashboardPanel implements vscode.Disposable {
           }
         : {}),
     };
-    void this.panel.webview.postMessage({ type: 'state', data });
+    void this.panel.webview.postMessage({
+      type: 'state',
+      data: { ...data, parkedTags: listedParkedTags(this.indexer) },
+    });
   }
 
   /**
@@ -598,6 +603,10 @@ export class DashboardPanel implements vscode.Disposable {
         }
         return;
       }
+      case 'parkTag':
+      case 'unparkTag':
+        await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
+        return;
       case 'openSavedFilter':
         await this.openSavedFilter(message.filterId);
         return;

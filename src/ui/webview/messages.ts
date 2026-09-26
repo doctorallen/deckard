@@ -99,6 +99,11 @@ export function parseDashboardMessage(
       return isRenameTagMessage(value)
         ? (value as unknown as DashboardMessage)
         : undefined;
+    case 'parkTag':
+    case 'unparkTag':
+      return isRenameTagMessage(value) && Object.keys(value).length === 2
+        ? { type: value.type, tagKey: value.tagKey as string }
+        : undefined;
     case 'openSavedFilter':
     case 'removeSavedFilter':
     case 'addSavedSearchWidget':
@@ -298,6 +303,19 @@ export function parseSearchPageMessage(
       return isRenameTagMessage(value)
         ? { type: 'renameTag', tagKey: value.tagKey as string }
         : undefined;
+    case 'parkTag':
+    case 'unparkTag':
+      return isRenameTagMessage(value) && Object.keys(value).length === 2
+        ? { type: value.type, tagKey: value.tagKey as string }
+        : undefined;
+    case 'parkNote':
+    case 'unparkNote':
+      return typeof value.filePath === 'string' &&
+        value.filePath.length > 0 &&
+        value.filePath.length <= 4096 &&
+        Object.keys(value).length === 2
+        ? { type: value.type, filePath: value.filePath }
+        : undefined;
     case 'mergeTags':
       return typeof value.sourceKey === 'string' &&
         value.sourceKey.length > 0 &&
@@ -496,6 +514,13 @@ export function parseSidebarMessage(
   }
   if (value.type === 'renameTag' && isRenameTagMessage(value)) {
     return value as unknown as SidebarMessage;
+  }
+  if (
+    (value.type === 'parkTag' || value.type === 'unparkTag') &&
+    isRenameTagMessage(value) &&
+    Object.keys(value).length === 2
+  ) {
+    return { type: value.type, tagKey: value.tagKey as string };
   }
   if (
     value.type === 'refineActiveSearch' &&

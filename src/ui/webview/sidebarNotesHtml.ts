@@ -614,6 +614,9 @@ ${getComponentScript()}
       if (contextAction.dataset.contextAction === 'rename-tag' && tagKey) {
         vscode.postMessage({ type: 'renameTag', tagKey: tagKey });
       }
+      if ((contextAction.dataset.contextAction === 'park-tag' || contextAction.dataset.contextAction === 'unpark-tag') && tagKey) {
+        vscode.postMessage({ type: contextAction.dataset.contextAction === 'park-tag' ? 'parkTag' : 'unparkTag', tagKey: tagKey });
+      }
       return;
     }
     if (tagContextMenu && !event.target.closest('#tag-context-menu')) {
@@ -764,6 +767,7 @@ ${getComponentScript()}
     if (event.data && event.data.type === 'state') {
       console.log('[Deckard Related Notes] Received state:', event.data.data.state);
       state = event.data.data;
+      setParkedTags(state.parkedTags);
       renderKeepingPlace(render);
     }
   });

@@ -9,6 +9,11 @@ import {
   getPersonMarker,
   isBuiltInEntityKind,
 } from '../../core/markdown/parser';
+import {
+  getFrontmatterBounds,
+  splitValues,
+  unquote,
+} from '../../core/markdown/frontmatterTags';
 import { TagReference } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
@@ -145,15 +150,6 @@ export function moveInlineTagsToFrontmatterContent(
   return [...normalizedFrontmatter, ...lines.slice(bodyStart)].join('\n');
 }
 
-function getFrontmatterBounds(
-  lines: string[],
-): { end: number } | undefined {
-  if (lines[0]?.trim() !== '---') {
-    return undefined;
-  }
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  return end >= 0 ? { end } : undefined;
-}
 
 function collectFrontmatterValues(
   lines: string[],
@@ -279,21 +275,4 @@ function addFrontmatterValue(
     groupValues.push(normalized);
     values.set(group, groupValues);
   }
-}
-
-function splitValues(value: string): string[] {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return [];
-  }
-  return (trimmed.startsWith('[') && trimmed.endsWith(']')
-    ? trimmed.slice(1, -1).split(',')
-    : [trimmed]
-  )
-    .map((item) => unquote(item.trim()))
-    .filter(Boolean);
-}
-
-function unquote(value: string): string {
-  return value.replace(/^['"]|['"]$/g, '');
 }

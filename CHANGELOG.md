@@ -12,28 +12,15 @@
 
 ### Added
 
-- **Parked notes, found with `is:parked`.** `deckard.parked.folders` and
-  `deckard.parked.tags` (`#parked` by default) park a folder, a note, a
-  heading, or a task: it stays indexed and searchable, and `is:parked`
-  finds it.
-
-- **Parked tasks leave the lists of things to do.** The Tasks view, the
-  status bar and reminder, the Task board, Home's task widgets, the
-  calendar, rollover, a review's still-open list, and Gone quiet leave
-  parked tasks out, unless the list's own search says `is:parked`. The
-  board's Refine offers **Parked** with how many it left out.
-
-- **Searches keep parked notes, last.** Search pages, Home's saved-search
-  widget, Find, and `[[` completion still list a parked note or task, after
-  every other, marked **Parked**. Refine offers **Parked** and **Not
-  parked** when the results mix them, and its Tags leave out a tag only
-  parked notes carry.
-
-- **Parked notes stay out of the way.** Related Notes leaves them out
-  unless the note you are in is parked; Linked from keeps them, last. The
-  Notes Graph hides them until **Show parked** is on, tag completion leaves
-  out a tag only parked notes carry, Stats does not call a parked note
-  unlinked and says how much is parked, and Check My Setup counts them.
+- **Parked notes.** A note, folder, or tag can be parked: still indexed and
+  searchable, with `is:parked` and last in Find and on search pages, but
+  left out of the Tasks view, the status bar, the Task board, rollover, the
+  calendar, Related Notes, the Notes Graph, and tag completion. **Park
+  Note** writes `#parked` into the note's front matter; **Park Folder** and
+  **Park Tag** add to `deckard.parked.folders` and `deckard.parked.tags`.
+  Each is in the Explorer, the editor tab, and a tag's menu, with Unpark
+  beside it. Until now the only way to set notes aside was
+  `deckard.exclude`, which hid them from search too.
 
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds

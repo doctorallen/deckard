@@ -164,6 +164,12 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.newNoteFromTemplateHere': 'The same, in the folder right-clicked in the Explorer.',
   'deckard.excludeFromIndex': 'Leaves the folder right-clicked in the Explorer out of the index.',
   'deckard.includeInIndex': 'Brings a folder left out by name back into the index.',
+  'deckard.parkNote': 'Parks this note: still searchable, left out of the lists of things to do.',
+  'deckard.unparkNote': 'Takes the parked tag out of this note.',
+  'deckard.parkFolder': 'Parks a folder and every note in it.',
+  'deckard.unparkFolder': 'Takes a folder out of the parked folders.',
+  'deckard.parkTag': 'Parks everything a tag finds.',
+  'deckard.unparkTag': 'Takes a tag out of the parked tags.',
   'deckard.copyMcpSetup': 'Copies the command that adds Deckard to Claude Code.',
   'deckard.resetMcpToken': 'Makes a new token, so old setups stop working.',
   'deckard.moveTo': 'Moves this line, task, or selection under another heading, leaving a link.',
@@ -532,6 +538,9 @@ updated: 2026-09-20
         <tr><td><code>marked</code></td><td>part of the heading above it, unless it carries a <code>^marker</code></td><td>the heading, or the marked line itself</td></tr>
       </tbody></table></div>
       <p>A tag written in prose is never copied onto the heading: it stays where it was written, and the heading answers for it because it contains that line. Tasks are outside all of this — a task is its own entry under every setting. Changing the setting reindexes by itself and writes nothing to your notes.</p>
+      <div class="cards">
+        <div class="card"><h3>Parking</h3><p>A note, heading, or task is parked when it is in a parked folder, or when a search for a parked tag would find it. It stays searchable with <code>is:parked</code>, and is left out of the Tasks view, the Task board, the calendar, rollover, Related Notes, the Notes Graph, and tag completion. <code>Deckard: Park Note</code> writes <code>parked</code> into a note's front matter; <code>Deckard: Park Folder…</code> and <code>Deckard: Park Tag…</code> add to <code>deckard.parked.folders</code> and <code>deckard.parked.tags</code>. To keep someday tasks out of the Tasks view, park <code>status/someday</code>.</p></div>
+      </div>
     </section>
 
     <section id="tasks">

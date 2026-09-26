@@ -267,15 +267,25 @@ export class WorkspaceIndexer implements vscode.Disposable {
    */
   private withParking(index: WorkspaceIndex): WorkspaceIndex {
     // A stand-in scanner in a test may not read settings at all.
-    this.parkedRules ??=
-      typeof this.scanner.getParkedRules === 'function'
-        ? this.scanner.getParkedRules()
-        : NO_PARKED_RULES;
-    index.parked = computeParked(index, this.parkedRules);
+    index.parked = computeParked(index, this.getParkedRules());
     return index;
   }
 
   private parkedRules: ParkedRules | undefined;
+
+  /** What `deckard.parked` parks now, as the index reads it. */
+  public getParkedRules(): ParkedRules {
+    this.parkedRules ??=
+      typeof this.scanner.getParkedRules === 'function'
+        ? this.scanner.getParkedRules()
+        : NO_PARKED_RULES;
+    return this.parkedRules;
+  }
+
+  /** The file an index path names, when a workspace folder holds it. */
+  public getUri(filePath: string): vscode.Uri | undefined {
+    return this.scanner.getUri(filePath);
+  }
 
   /**
    * Looks up a task from the latest derived index for source-safe actions.

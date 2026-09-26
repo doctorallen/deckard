@@ -268,3 +268,11 @@ export function mentionsParked(node: QueryNode | undefined): boolean {
       return node.children.some(mentionsParked);
   }
 }
+
+/**
+ * The tags `deckard.parked.tags` lists, as a page's tag menu offers to
+ * unpark them. An indexer without parking, as in a test, lists none.
+ */
+export function listedParkedTags(indexer: { getParkedRules?(): ParkedRules }): string[] {
+  return typeof indexer.getParkedRules === 'function' ? [...indexer.getParkedRules().tags] : [];
+}

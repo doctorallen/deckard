@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+
+import { listedParkedTags } from '../../core/workspace/parked';
 import { onDidChangePageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
@@ -352,7 +354,10 @@ export class SidebarNotesView
       `Sending Related Notes state: ${currentSnapshot.state}${currentSnapshot.refine ? ` (search ${currentSnapshot.refine.title})` : currentSnapshot.activeFileName ? ` (Markdown ${currentSnapshot.activeFileName})` : ''}, ${currentSnapshot.notes.length} note entries.`,
     );
     void this.view.webview
-      .postMessage({ type: 'state', data: currentSnapshot })
+      .postMessage({
+        type: 'state',
+        data: { ...currentSnapshot, parkedTags: listedParkedTags(this.indexer) },
+      })
       .then(
         (delivered) =>
           this.log(
@@ -635,6 +640,10 @@ export class SidebarNotesView
       if (tagKey) {
         await this.onOpenTag(tagKey);
       }
+      return;
+    }
+    if (message.type === 'parkTag' || message.type === 'unparkTag') {
+      await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
       return;
     }
     if (message.type === 'renameTag') {

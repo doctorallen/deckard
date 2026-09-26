@@ -39,19 +39,30 @@ suite('Extension Test Suite', () => {
         '3_move@1 deckard.moveTo',
         '4_pin@1 deckard.pinNote',
         '4_pin@2 deckard.unpinNote',
+        '4_pin@3 deckard.parkNote',
+        '4_pin@4 deckard.unparkNote',
       ],
     );
     // A folder in the Explorer can take a note, or leave Deckard and come back.
+    // A note there can be parked, or unparked.
     assert.deepStrictEqual(menus['explorer/context'], [
-      { submenu: 'deckard.explorer.context', when: 'explorerResourceIsFolder', group: 'z_deckard@1' },
+      { submenu: 'deckard.explorer.context', when: 'explorerResourceIsFolder || resourceExtname == .md', group: 'z_deckard@1' },
     ]);
     assert.deepStrictEqual(
       menus['deckard.explorer.context'].map((entry) => [entry.command, entry.when]),
       [
-        ['deckard.newNoteFromTemplateHere', undefined],
-        ['deckard.excludeFromIndex', 'resourcePath not in deckard.excludedFolders'],
-        ['deckard.includeInIndex', 'resourcePath in deckard.excludedFolders'],
+        ['deckard.newNoteFromTemplateHere', 'explorerResourceIsFolder'],
+        ['deckard.excludeFromIndex', 'explorerResourceIsFolder && resourcePath not in deckard.excludedFolders'],
+        ['deckard.includeInIndex', 'explorerResourceIsFolder && resourcePath in deckard.excludedFolders'],
+        ['deckard.parkNote', 'resourceExtname == .md && !(resourcePath in deckard.parkedNotes)'],
+        ['deckard.unparkNote', 'resourceExtname == .md && resourcePath in deckard.parkedNotes'],
+        ['deckard.parkFolder', 'explorerResourceIsFolder && !(resourcePath in deckard.parkedFolders)'],
+        ['deckard.unparkFolder', 'explorerResourceIsFolder && resourcePath in deckard.parkedFolders'],
       ],
+    );
+    assert.deepStrictEqual(
+      menus['editor/title/context'].map((entry) => entry.command),
+      ['deckard.parkNote', 'deckard.unparkNote'],
     );
     assert.deepStrictEqual(
       menus['file/newFile'].map((entry) => entry.command),
@@ -133,6 +144,12 @@ suite('Extension Test Suite', () => {
         'deckard.newNoteFromTemplateHere',
         'deckard.excludeFromIndex',
         'deckard.includeInIndex',
+        'deckard.parkNote',
+        'deckard.unparkNote',
+        'deckard.parkFolder',
+        'deckard.unparkFolder',
+        'deckard.parkTag',
+        'deckard.unparkTag',
         'deckard.copyMcpSetup',
         'deckard.resetMcpToken',
         'deckard.moveTo',

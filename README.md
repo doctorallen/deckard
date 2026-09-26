@@ -116,6 +116,9 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope, reading and parsing every note again. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in — the heading and what is written under it — to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
+| **Deckard: Park Note** | [Parks](#parking-notes) the note in the editor, or the notes chosen in the Explorer, by writing `parked` into its front matter's tags. **Deckard: Unpark Note** takes it out again. |
+| **Deckard: Park Folder…** | Parks a folder and every note in it, by adding it to `deckard.parked.folders`; also on a folder's **Deckard** menu in the Explorer. **Deckard: Unpark Folder…** takes it out again. |
+| **Deckard: Park Tag…** | Parks everything a tag finds, by adding it to `deckard.parked.tags`; also on a tag's menu on Deckard's pages and in the Outline. **Deckard: Unpark Tag…** takes it out again. |
 | **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists the favorites, pins, and tag-set searches that point at nothing in this workspace any more, and removes them only if you say so. Deckard never removes one of these on its own. |
 | **Deckard: Export Favorites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file you choose. |
 | **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers with it. |
@@ -824,7 +827,7 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
 | `is:daily` | Anything written in a daily note — one named for a day, such as `2026-09-25.md`, or with a day in its top heading — tasks included. `is:journal` is the same. |
 | `is:periodic` | The same, and weekly and monthly notes too. `is:dated` is the same. |
-| `is:parked` | Notes, entries, and tasks that are parked: in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
+| `is:parked` | Notes, entries, and tasks that are [parked](#parking-notes): in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
 
 Put `-` in front of a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as you wrote it when it saves or formats a query.
 
@@ -856,6 +859,22 @@ A note's created date is its `created:` or `date:` front matter. Without either,
 Operators are `=` for is, `!=` for is not, `~` for contains, `!~` for does not contain, and `>`, `>=`, `<`, `<=` for dates and priorities. A window such as `7d` is compared by its far end: `updated > 7d` means updated within the last seven days, and `due < 7d` means due within the next seven days, overdue tasks included. `:` is accepted everywhere `=` is, so queries written with `tag:#atlas` keep working, but Deckard writes `=` when it formats a query back. A comparison can follow the operator, so `updated:>2026-01-01` and `updated > 2026-01-01` mean the same thing. Every operator has an opposite, so any single condition can be negated without `NOT`; `NOT` is for negating a whole parenthesized group.
 
 While a search page is the active editor, the Related Notes sidebar shows that search's **Refine** options in place of related notes, headed by the search's own title, and returns to related notes when a Markdown note is active again. A search naming exactly one tag keeps that tag's association suggestions.
+
+## Parking notes
+
+A note, heading, or task is **parked** when it is in a parked folder, or when a search for a parked tag would find it. A parked note stays indexed and searchable, and is left out of the lists of things to do. It is the way to set aside a finished project or an archive without losing it from search, which `deckard.exclude` would.
+
+- **Park Note** writes `tags: [parked]` into the note's front matter; **Unpark Note** takes it out. Both are in the palette, the editor tab's menu, the editor's **Deckard** submenu, a note's **Deckard** menu in the Explorer, and a search card's menu, with Undo. A note stays where it is.
+- **Park Folder…** adds a folder to `deckard.parked.folders`, from the palette or a folder's **Deckard** menu in the Explorer. To file by folder, park an archive folder once and drag notes into it: moving a note keeps its links.
+- **Park Tag…** adds a tag to `deckard.parked.tags`, from the palette, a tag's menu on Deckard's pages, or the Outline. A tag parks everything a search for it finds — its notes, the headings it is on and everything under them, and its tasks — and its sub-tags: `project/old` parks `#project/old/phase-1`. A parked tag's own page says **Parked** with **Unpark**.
+
+| Left out | Kept, listed last and marked **Parked** |
+| --- | --- |
+| The Tasks view, its badge, the status bar and reminder, the Task board, Home's task widgets, the calendar, rollover, a review's still-open list, Gone quiet, Related Notes, the Notes Graph (until **Show parked**), tag completion, and Stats' unlinked notes | Search pages, Home's saved-search widget, Find, `[[` completion, Linked from, query blocks, and the AI tools |
+
+A list of things to do shows parked tasks only when its own search mentions `is:parked`: set `deckard.agenda.query` to `is:parked`, or search the board for `is:open is:parked`. `is:parked` finds everything parked, and `-is:parked` everything else. A status that should leave the Tasks view entirely, such as `someday`, can be parked by adding `status/someday` to `deckard.parked.tags`.
+
+**Park or exclude?** Exclude files that are not notes at all, such as build output; an excluded note is not read, and no search finds it. Park notes you are done with. `deckard.exclude` wins when both match.
 
 ## Query blocks
 
@@ -1181,6 +1200,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 - **Opened while the workspace is first indexed:** Find, search pages, Home, the Task board, and Stats open at once and say how far the scan has got, such as *Indexing this workspace: 412 of 3,760 notes read…*; what you typed in Find is kept, and the results take the line's place when the index is ready.
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
+- **A task is missing from the Tasks view:** it may be parked. Search `is:parked` to see what is.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
 - **A heading is missing from the Outline:** the Outline shows ATX headings only, so an underlined `Title`/`===` heading does not appear. Headings inside fenced code blocks are excluded on purpose.
 - **Content in a code block appears ignored:** this is intentional. Fenced code is excluded from indexing, tag links, and completion.

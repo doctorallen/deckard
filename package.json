@@ -355,6 +355,36 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.parkNote",
+        "title": "Park Note",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.unparkNote",
+        "title": "Unpark Note",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.parkFolder",
+        "title": "Park Folder…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.unparkFolder",
+        "title": "Unpark Folder…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.parkTag",
+        "title": "Park Tag…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.unparkTag",
+        "title": "Unpark Tag…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.copyMcpSetup",
         "title": "Copy MCP Server Setup",
         "category": "Deckard"
@@ -805,6 +835,30 @@
         {
           "command": "deckard.includeInIndex",
           "when": "false"
+        },
+        {
+          "command": "deckard.parkNote",
+          "when": "workspaceFolderCount > 0 && editorLangId == markdown && !deckard.activeNoteParked"
+        },
+        {
+          "command": "deckard.unparkNote",
+          "when": "workspaceFolderCount > 0 && editorLangId == markdown && deckard.activeNoteParked"
+        },
+        {
+          "command": "deckard.parkFolder",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "deckard.unparkFolder",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "deckard.parkTag",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "deckard.unparkTag",
+          "when": "workspaceFolderCount > 0"
         }
       ],
       "editor/title": [
@@ -882,29 +936,60 @@
           "command": "deckard.unpinNote",
           "when": "deckard.activeNotePinned",
           "group": "4_pin@2"
+        },
+        {
+          "command": "deckard.parkNote",
+          "when": "!deckard.activeNoteParked",
+          "group": "4_pin@3"
+        },
+        {
+          "command": "deckard.unparkNote",
+          "when": "deckard.activeNoteParked",
+          "group": "4_pin@4"
         }
       ],
       "explorer/context": [
         {
           "submenu": "deckard.explorer.context",
-          "when": "explorerResourceIsFolder",
+          "when": "explorerResourceIsFolder || resourceExtname == .md",
           "group": "z_deckard@1"
         }
       ],
       "deckard.explorer.context": [
         {
           "command": "deckard.newNoteFromTemplateHere",
-          "group": "1_new@1"
+          "group": "1_new@1",
+          "when": "explorerResourceIsFolder"
         },
         {
           "command": "deckard.excludeFromIndex",
-          "when": "resourcePath not in deckard.excludedFolders",
+          "when": "explorerResourceIsFolder && resourcePath not in deckard.excludedFolders",
           "group": "2_index@1"
         },
         {
           "command": "deckard.includeInIndex",
-          "when": "resourcePath in deckard.excludedFolders",
+          "when": "explorerResourceIsFolder && resourcePath in deckard.excludedFolders",
           "group": "2_index@2"
+        },
+        {
+          "command": "deckard.parkNote",
+          "when": "resourceExtname == .md && !(resourcePath in deckard.parkedNotes)",
+          "group": "3_park@1"
+        },
+        {
+          "command": "deckard.unparkNote",
+          "when": "resourceExtname == .md && resourcePath in deckard.parkedNotes",
+          "group": "3_park@2"
+        },
+        {
+          "command": "deckard.parkFolder",
+          "when": "explorerResourceIsFolder && !(resourcePath in deckard.parkedFolders)",
+          "group": "3_park@3"
+        },
+        {
+          "command": "deckard.unparkFolder",
+          "when": "explorerResourceIsFolder && resourcePath in deckard.parkedFolders",
+          "group": "3_park@4"
         }
       ],
       "file/newFile": [
@@ -1008,6 +1093,11 @@
           "group": "deckard@3"
         },
         {
+          "command": "deckard.parkTag",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@4"
+        },
+        {
           "command": "deckard.focusSection",
           "when": "view == deckard.outline",
           "group": "inline"
@@ -1061,6 +1151,18 @@
           "command": "deckard.agenda.reschedule",
           "when": "view == deckard.agenda && viewItem =~ /^deckardAgendaGroup/",
           "group": "1_due@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "deckard.parkNote",
+          "when": "resourceLangId == markdown && workspaceFolderCount > 0 && !(resourcePath in deckard.parkedNotes)",
+          "group": "z_deckard@1"
+        },
+        {
+          "command": "deckard.unparkNote",
+          "when": "resourceLangId == markdown && resourcePath in deckard.parkedNotes",
+          "group": "z_deckard@2"
         }
       ]
     },
@@ -1756,7 +1858,9 @@
             "scope": "resource",
             "default": true,
             "description": "Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link. Shared wording never makes a note related on its own. Turn off to rank by tags and links alone.",
-            "tags": ["advanced"],
+            "tags": [
+              "advanced"
+            ],
             "order": 1
           },
           "deckard.relatedNotesAssociationMinimumSupport": {
@@ -1766,7 +1870,9 @@
             "maximum": 20,
             "default": 1,
             "description": "How many headings, tagged lines, or tasks must write two tags together before Related Notes treats the tags as associated. 1 counts an association written once.",
-            "tags": ["advanced"],
+            "tags": [
+              "advanced"
+            ],
             "order": 2
           },
           "deckard.relatedNotesRecencyHalfLifeDays": {
@@ -1776,7 +1882,9 @@
             "maximum": 3650,
             "default": 0,
             "description": "Give recently written notes a small lift in Related Notes: a note this many days old gets half the lift of one written today. 0 turns it off. A daily note's date or a front-matter date is used before the file's.",
-            "tags": ["advanced"],
+            "tags": [
+              "advanced"
+            ],
             "order": 3
           }
         },

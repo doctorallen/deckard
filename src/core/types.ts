@@ -1434,6 +1434,18 @@ export interface RenameTagMessage {
   tagKey: string;
 }
 
+/** Park Tag or Unpark Tag, from a tag's menu or a tag's page. */
+export interface ParkTagMessage {
+  type: 'parkTag' | 'unparkTag';
+  tagKey: string;
+}
+
+/** Park Note or Unpark Note, from a search card's menu. */
+export interface ParkNoteMessage {
+  type: 'parkNote' | 'unparkNote';
+  filePath: string;
+}
+
 export interface OpenSavedFilterMessage {
   type: 'openSavedFilter';
   filterId: string;
@@ -1636,6 +1648,7 @@ export type DashboardMessage =
   | ReorderEntitiesMessage
   | OpenTagMessage
   | RenameTagMessage
+  | ParkTagMessage
   | OpenSavedFilterMessage
   | AddSavedSearchWidgetMessage
   | RemoveSavedFilterMessage
@@ -1666,6 +1679,8 @@ export type SearchPageMessage =
   | SetSearchPreviewMessage
   | OpenTagMessage
   | RenameTagMessage
+  | ParkTagMessage
+  | ParkNoteMessage
   | SetTagOverviewSortMessage
   | SetTagOverviewLayoutMessage
   | SetSearchColumnsMessage
@@ -1690,6 +1705,7 @@ export type SidebarMessage =
   | OpenSourceMessage
   | OpenTagMessage
   | RenameTagMessage
+  | ParkTagMessage
   | OpenDashboardMessage
   | OpenNotesGraphMessage
   | OpenTaskBoardMessage

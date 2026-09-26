@@ -1982,12 +1982,27 @@ ${getUndoScript()}
     tagContextMenu.querySelector('button').focus();
   }
 
+  /** The tags deckard.parked.tags lists, which the menu offers to unpark. */
+  let parkedTagKeys = new Set();
+
+  /** Called from each page's state handler with the host's parkedTags. */
+  function setParkedTags(keys) {
+    parkedTagKeys = new Set((keys || []).map(function (key) { return String(key).toLowerCase(); }));
+  }
+
+  /** The tag menu's park row: Park tag, or Unpark tag on a listed one. */
+  function parkTagMenuItem(tagKey) {
+    return parkedTagKeys.has(String(tagKey).toLowerCase())
+      ? { action: 'unpark-tag', label: 'Unpark tag' }
+      : { action: 'park-tag', label: 'Park tag' };
+  }
+
   function openTagContextMenu(event, target) {
     const tagKey = target.dataset.tagKey;
     if (!tagKey) return;
     // Opening closes whatever was open, which lets go of the tag it was
     // about, so this menu's tag is remembered after that and not before.
-    openContextMenu(event, [{ action: 'rename-tag', label: 'Rename tag' }]);
+    openContextMenu(event, [{ action: 'rename-tag', label: 'Rename tag' }, parkTagMenuItem(tagKey)]);
     tagContextKey = tagKey;
   }
 

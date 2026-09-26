@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+
+import { listedParkedTags } from '../../core/workspace/parked';
 import { describeMissingTag, reportFailure } from '../commands/notify';
 import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
@@ -449,6 +451,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       type: 'state',
       data: {
         ...snapshot,
+        parkedTags: listedParkedTags(this.indexer),
         // The Markdown view shows each note's source, which the page's
         // search also reads, so only the HTML view is sent each note rendered.
         sections:
@@ -790,6 +793,18 @@ class SearchPanel implements SearchSource, vscode.Disposable {
         );
         if (tagKey) {
           await this.host.openTag(tagKey);
+        }
+        return;
+      }
+      case 'parkTag':
+      case 'unparkTag':
+        await vscode.commands.executeCommand(`deckard.${message.type}`, message.tagKey);
+        return;
+      case 'parkNote':
+      case 'unparkNote': {
+        const uri = this.indexer.getUri?.(message.filePath);
+        if (uri) {
+          await vscode.commands.executeCommand(`deckard.${message.type}`, uri);
         }
         return;
       }
