@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { MessageAction, noteName, reportFailure } from './notify';
 
 import { readCaptureText } from '../../core/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
@@ -111,9 +112,11 @@ export async function capture(
   }
   const uri = await resolveSourceUri(chosen.filePath);
   if (!uri) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not find ${chosen.filePath}.`,
-    );
+    void reportFailure({
+      outcome: `Deckard could not find ${chosen.filePath}, so the task was not added.`,
+      fix: 'It may have been moved or deleted.',
+      action: copyTaskAction(line),
+    });
     return;
   }
   // The note may have changed since it was indexed, so the heading is found
@@ -127,16 +130,17 @@ export async function capture(
     indexer.parse(uri, document.getText()).sections,
   );
   if (!section) {
-    void vscode.window.showWarningMessage(
-      `The heading "${chosen.heading}" is no longer in ${chosen.filePath}.`,
-    );
+    void reportFailure({
+      outcome: `The heading "${chosen.heading}" is no longer in ${chosen.filePath}, so the task was not added.`,
+      action: copyTaskAction(line),
+    });
     return;
   }
   const taskLine = await appendCapture(uri, line, section);
   if (taskLine !== undefined) {
     await drafts?.clear();
   }
-  announce(uri, taskLine);
+  announce(uri, taskLine, line);
 }
 
 /**
@@ -307,7 +311,7 @@ export async function captureToToday(
   }
   const uri = await ensureDailyNote(folder);
   const taskLine = await appendCapture(uri, line);
-  announce(uri, taskLine);
+  announce(uri, taskLine, line);
   return taskLine !== undefined;
 }
 
@@ -471,9 +475,12 @@ async function pickHeading(
 }
 
 /** Says where the task went, with a way to open it there. */
-function announce(uri: vscode.Uri, taskLine: number | undefined): void {
+function announce(uri: vscode.Uri, taskLine: number | undefined, line: string): void {
   if (taskLine === undefined) {
-    void vscode.window.showWarningMessage('Deckard could not add the capture.');
+    void reportFailure({
+      outcome: `Deckard could not add the task to ${noteName(uri)}, so nothing was written.`,
+      action: copyTaskAction(line),
+    });
     return;
   }
   const name = uri.path.split('/').pop() ?? uri.path;
@@ -488,4 +495,12 @@ function announce(uri: vscode.Uri, taskLine: number | undefined): void {
         });
       }
     });
+}
+
+/** Copy Task: keeps what was typed, on the clipboard, when it could not be added. */
+function copyTaskAction(line: string): MessageAction {
+  return {
+    title: 'Copy Task',
+    run: () => vscode.env.clipboard.writeText(line.trim()),
+  };
 }

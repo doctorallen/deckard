@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { reportNeedsFolder } from './notify';
 
 import {
   findDailyNoteDate,
@@ -387,9 +388,7 @@ export async function chooseWorkspaceFolder(): Promise<
 > {
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (folders.length === 0) {
-    void vscode.window.showWarningMessage(
-      'Open a workspace before creating a Deckard daily note.',
-    );
+    void reportNeedsFolder();
     return undefined;
   }
   if (folders.length === 1) {

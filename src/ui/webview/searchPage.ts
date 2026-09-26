@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { describeMissingTag, reportFailure } from '../commands/notify';
 import { affectsPageChrome } from './components';
 import { setZenMode } from './zenMode';
 
@@ -98,7 +99,7 @@ export class SearchPanels implements vscode.Disposable {
       }
       early.dispose();
       if (!found) {
-        void vscode.window.showWarningMessage(`Deckard could not find the tag: ${tagKey}`);
+        void reportFailure({ outcome: describeMissingTag(tagKey) });
         return;
       }
       await this.showQuery(found);
@@ -109,9 +110,7 @@ export class SearchPanels implements vscode.Disposable {
       tagKey,
     );
     if (!canonicalTagKey) {
-      void vscode.window.showWarningMessage(
-        `Deckard could not find the tag: ${tagKey}`,
-      );
+      void reportFailure({ outcome: describeMissingTag(tagKey) });
       return;
     }
     await this.showQuery(canonicalTagKey);

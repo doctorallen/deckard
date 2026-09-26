@@ -103,8 +103,8 @@ export async function insertWikiLink(
 ): Promise<boolean> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
-    void vscode.window.showWarningMessage(
-      'Open the Markdown note you want the link written in, then insert it.',
+    void vscode.window.showInformationMessage(
+      'Open the note you want the link written in, then insert it.',
     );
     return false;
   }

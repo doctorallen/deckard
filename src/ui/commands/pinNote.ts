@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { reportFailure } from './notify';
 
 import { pinKey } from '../../core/storage/preferences';
 import { PinnedNote, WorkspaceIndex } from '../../core/types';
@@ -47,9 +48,10 @@ export async function setPinned(
 ): Promise<PinnedNote | undefined> {
   const pin = createPinForLine(index, target.filePath, target.line);
   if (!pin) {
-    void vscode.window.showInformationMessage(
-      'Deckard has not indexed that note yet, so it cannot be pinned.',
-    );
+    void reportFailure({
+      outcome: 'Deckard has not read that note yet, so it was not pinned.',
+      fix: 'Save the note, then pin it again.',
+    });
     return undefined;
   }
   const name = resolvePin(index, pin)?.title ?? pin.filePath;

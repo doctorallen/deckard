@@ -263,6 +263,14 @@
 
 ### Fixed
 
+- **A message's weight follows one rule.** An error means nothing was
+  written; a warning means it was written with a caveat; a message that only
+  asks for a note or a folder to be open is information, and one that needs
+  a folder offers **Open Folder…**. Capture keeps the words it could not add
+  with **Copy Task**; a note that already exists offers **Open Note**; a
+  heading rename that needs the note saved offers **Save and Rename**; a
+  drag onto several tasks in the Tasks view says its refusals once.
+
 - **A note that changed underneath is said one way, with the note to open.**
   Nine messages said a note had changed since Deckard read it in seven
   different ways, some as warnings; each now says *atlas.md changed after

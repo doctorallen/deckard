@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { chooseTargetFolder, formatLocalDate } from './dailyNote';
 import { getExtractedNoteFileName } from './extractHeading';
-import { openSettingAction, settingLabel } from './notify';
+import { openNoteAction, openSettingAction, reportFailure, settingLabel } from './notify';
 
 /** A placeholder: `{ask:Question}`, or a variable such as `{date}`. */
 const PLACEHOLDER = /\{(?:ask:([^{}]*)|([a-z]+))\}/g;
@@ -147,13 +147,11 @@ export async function newNoteFromTemplate(
   const notesUri = indexer.getNotesFolderUri(folder);
   const noteUri = vscode.Uri.joinPath(notesUri, fileName);
   if (await exists(noteUri)) {
-    const choice = await vscode.window.showWarningMessage(
-      `${fileName} already exists.`,
-      'Open',
-    );
-    if (choice === 'Open') {
-      await vscode.window.showTextDocument(noteUri, { preview: false });
-    }
+    void reportFailure({
+      outcome: `${fileName} already exists, so Deckard did not create it.`,
+      fix: 'Choose another title.',
+      action: openNoteAction(noteUri),
+    });
     return undefined;
   }
   const content = fillTemplate(

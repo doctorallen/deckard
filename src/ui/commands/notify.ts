@@ -139,3 +139,19 @@ export function reindexAction(): MessageAction {
     run: () => vscode.commands.executeCommand('deckard.reindexWorkspace'),
   };
 }
+
+/** A tag asked for by key that no note has, or has any more. */
+export function describeMissingTag(key: string): string {
+  return `Deckard found no tag ${key.startsWith('#') ? key : `#${key}`} in your notes. It may have been renamed or merged.`;
+}
+
+/** What a command that creates notes says when no folder is open. */
+export const NEEDS_FOLDER = 'Open a folder first: Deckard creates notes inside it.';
+
+/** Says a folder is needed, with Open Folder…, which shows the dialog. */
+export async function reportNeedsFolder(): Promise<void> {
+  const choice = await vscode.window.showInformationMessage(NEEDS_FOLDER, 'Open Folder…');
+  if (choice === 'Open Folder…') {
+    await vscode.commands.executeCommand('vscode.openFolder');
+  }
+}

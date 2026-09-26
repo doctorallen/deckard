@@ -172,5 +172,24 @@ suite('Naming', () => {
       }
       assert.deepStrictEqual(offenders, [], 'say the "Exclude" setting, with Open Setting, as settingLabel names it');
     });
+
+    test('a message that wrote nothing is an error, and a changed note is said one way', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const body of callBodies(source, /show(?:Information|Warning)Message/)) {
+          if (/could not/.test(body) && /nothing was written/.test(body)) {
+            offenders.push(`${name}: ${body.trim().slice(0, 80)}`);
+          }
+        }
+        if (!name.endsWith('notify.ts')) {
+          for (const literal of literals(source)) {
+            if (/changed after Deckard last read (it|them), so nothing was written/.test(literal)) {
+              offenders.push(`${name}: ${literal.slice(0, 80)} (use describeStale)`);
+            }
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, []);
+    });
   });
 });

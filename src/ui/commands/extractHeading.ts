@@ -78,7 +78,7 @@ export function getExtractedNoteFileName(name: string): string | undefined {
 export function validateExtractedNoteName(name: string): string | undefined {
   return getExtractedNoteFileName(name)
     ? undefined
-    : 'Enter one note name without a path or special filename characters.';
+    : 'Use a name that can be a file name, without / \\ : * ? " < > or |.';
 }
 
 export async function extractHeadingNote(
@@ -103,9 +103,11 @@ export async function extractHeadingNote(
 
   try {
     await vscode.workspace.fs.stat(noteUri);
-    void vscode.window.showWarningMessage(
-      `Deckard did not extract the heading because ${fileName} already exists.`,
-    );
+    void reportFailure({
+      outcome: `${fileName} already exists, so Deckard did not extract the heading.`,
+      fix: 'Choose another name.',
+      action: openNoteAction(noteUri),
+    });
     return undefined;
   } catch {
     await vscode.workspace.fs.writeFile(
@@ -194,7 +196,7 @@ async function chooseTaggedHeading(
 
   if (choices.length === 0) {
     void vscode.window.showInformationMessage(
-      'Deckard could not find any tagged headings to extract.',
+      'No heading in your notes has a tag, so there is nothing to extract.',
     );
     return undefined;
   }

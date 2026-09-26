@@ -18,7 +18,7 @@ import {
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
-import { reindexAction, reportFailure, reportStale } from './notify';
+import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
 interface RenameTagOptions {
@@ -329,7 +329,7 @@ async function rewriteTag(
   const targetKey = resolveIndexedTagKey(index.tags, replacement.key);
   if (replacement.key === sourceTag.key || targetKey === sourceTag.key) {
     void vscode.window.showInformationMessage(
-      `${sourceTag.label} already uses that tag identity.`,
+      `${sourceTag.label} is already written that way.`,
     );
     return undefined;
   }
@@ -350,9 +350,9 @@ async function rewriteTag(
     return undefined;
   }
   if (plan.occurrenceCount === 0) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not find any current source occurrences of ${sourceTag.label}.`,
-    );
+    void reportFailure({
+      outcome: `Deckard could not find ${sourceTag.label} in any note as the notes are now, so nothing was written.`,
+    });
     return undefined;
   }
 
@@ -384,9 +384,10 @@ async function rewriteTag(
     },
   });
   if (!written.applied) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not ${verb} ${sourceTag.label}. VS Code rejected the source edit.`,
-    );
+    void reportFailure({
+      outcome: `VS Code did not accept the change to ${plan.files.length === 1 ? noteName(plan.files[0].document.uri) : `${plan.files.length} notes`}, so nothing was written.`,
+      fix: describeRejectedEdit('').fix,
+    });
     return undefined;
   }
   if (written.notes.length === 0) {
@@ -463,9 +464,7 @@ async function chooseIndexedTag(
     if (requestedTag) {
       return requestedTag;
     }
-    void vscode.window.showWarningMessage(
-      `Deckard could not find the tag: ${requestedTagKey}`,
-    );
+    void reportFailure({ outcome: describeMissingTag(requestedTagKey) });
     return undefined;
   }
 
@@ -539,7 +538,7 @@ async function chooseReplacementTag(
         options.personMarker,
       )
         ? undefined
-        : 'Enter exactly one valid tag, such as #project/new-name or a bare new name.',
+        : 'Write one tag, such as #project/new-name, or a new name in the same namespace.',
   }).then((value) =>
     value === undefined
       ? undefined

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { reportFailure, reportNeedsFolder } from './notify';
 
 import { findFencedLines } from '../../core/markdown/parser';
 import { measure } from '../../core/timing';
@@ -126,16 +127,14 @@ export async function createLinkedNote(
     vscode.workspace.getWorkspaceFolder(documentUri) ??
     vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    void vscode.window.showWarningMessage(
-      'Open a workspace folder to create notes.',
-    );
+    void reportNeedsFolder();
     return undefined;
   }
   const noteUri = await createNoteNamed(indexer.getNotesFolderUri(folder), name);
   if (!noteUri) {
-    void vscode.window.showWarningMessage(
-      `"${name}" cannot be a file name, so Deckard cannot create the note.`,
-    );
+    void reportFailure({
+      outcome: `"${name}" cannot be a file name, so Deckard did not create the note.`,
+    });
     return undefined;
   }
   await vscode.window.showTextDocument(noteUri, { preview: false });
@@ -179,9 +178,7 @@ export async function createMissingNotes(
     vscode.workspace.getWorkspaceFolder(documentUri) ??
     vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    void vscode.window.showWarningMessage(
-      'Open a workspace folder to create notes.',
-    );
+    void reportNeedsFolder();
     return 0;
   }
   const notesFolderUri = indexer.getNotesFolderUri(folder);

@@ -365,17 +365,22 @@ export class AgendaTreeProvider
     const columnId = groupColumnId(target.group.id, target.groupBy);
     if (!columnId) {
       void vscode.window.showInformationMessage(
-        `Deckard cannot write "${target.group.label}" on a task: it is not one edit. Drag it on the Task board, or edit the task.`,
+        `"${target.group.label}" is not one change to a task line, so Deckard wrote nothing. Drag the task on the Task Board instead, or edit the task.`,
       );
       return;
     }
     const options = readBoardOptions();
+    // A refusal explains a rule, so it is said once, after the moves that
+    // could be made, rather than once for every task it held back.
+    const refused: string[] = [];
+    let moved = 0;
     for (const task of tasks) {
       const move = resolveTaskMove(task, columnId, options);
       if (move.kind === 'refused') {
-        void vscode.window.showWarningMessage(move.reason);
+        refused.push(move.reason);
         continue;
       }
+      moved += 1;
       if (move.kind === 'unchanged') {
         continue;
       }
@@ -384,6 +389,15 @@ export class AgendaTreeProvider
         continue;
       }
       await updateTaskLine(task, (line) => move.edit(line), move.label);
+    }
+    if (refused.length > 0) {
+      void (moved === 0
+        ? vscode.window.showInformationMessage(refused[0])
+        : vscode.window.showWarningMessage(
+            `Moved ${moved} ${moved === 1 ? 'task' : 'tasks'}. ${refused.length} ${
+              refused.length === 1 ? 'was' : 'were'
+            } left as ${refused.length === 1 ? 'it is' : 'they are'}: ${refused[0]}`,
+          ));
     }
     this.refresh();
   }

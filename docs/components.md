@@ -711,6 +711,36 @@ offer lapses after 8 seconds or at the next removal. Both come from
 `getUndoScript()`, which the component script includes and the Notes Graph
 takes on its own.
 
+### Messages
+
+A notification's weight says what happened, and `src/test/naming.test.ts`
+holds what it can read of the rule.
+
+| Severity | When |
+| --- | --- |
+| **Error** | What was asked did not happen: nothing was written or opened, or only part of it was written. |
+| **Warning** | It was written, with a caveat, or some of it was skipped. |
+| **Information** | It is done, nothing needed doing, or there is nothing to do it to yet (open a note first). A refusal that explains a rule, such as a board column that cannot take a card, is Information too. |
+
+A failure says what did not happen and why, in the reader's words, then what
+to do, with at most one button for it. The raw error goes to Deckard's log,
+and the message offers **Open Log**. A setting is named as the Settings
+editor shows it, in quotes, with **Open Setting**. A message's buttons are
+Title Case, as VS Code's own are, and say Open rather than Show. No
+contractions.
+
+The helpers are in `src/ui/commands/notify.ts`:
+
+| Function | Purpose |
+| --- | --- |
+| `reportFailure({ outcome, fix?, error?, severity?, action? })` | Shows a failure (Error unless `severity: 'warning'`), logs `error`, and adds **Open Log** when there is one. `describeFailure` is its pure half. |
+| `reportStale(uris)` / `describeStale(names)` | The one sentence for a note that changed underneath: *atlas.md changed after Deckard last read it, so nothing was written.*, with **Open Note** for one note. |
+| `describeRejectedEdit(name)` | VS Code refused an edit: *VS Code did not accept the change to atlas.md, so nothing was written.* and what to check. |
+| `describeMissingTag(key)` | A tag asked for that no note has. |
+| `reportNeedsFolder()` / `NEEDS_FOLDER` | Information, with **Open Folder…**, for a command that creates notes with no folder open. |
+| `settingLabel(key)` / `openSettingAction(key)` | A setting as the Settings editor labels it (`mcpServer.port` → *MCP Server: Port*), and the button that opens it. |
+| `openNoteAction(uri)`, `reindexAction()`, `noteName(uri)` | The Open Note and Reindex buttons, and a note as a message names it. |
+
 ## Verifying a change
 
 ```

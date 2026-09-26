@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import {
   EntityNamespaceAliases,
@@ -34,8 +35,8 @@ const frontmatterGroups: FrontmatterTagGroup[] = [
 export async function moveInlineTagsToFrontmatter(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
-    void vscode.window.showWarningMessage(
-      'Open a Markdown note before moving tags to front matter.',
+    void vscode.window.showInformationMessage(
+      'Open a note to move its tags into front matter.',
     );
     return;
   }
@@ -67,9 +68,7 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
     editBuilder.replace(replacementRange, content);
   });
   if (!applied) {
-    void vscode.window.showWarningMessage(
-      'Deckard could not move the note tags into front matter.',
-    );
+    void reportFailure(describeRejectedEdit(noteName(document.uri)));
     return;
   }
 

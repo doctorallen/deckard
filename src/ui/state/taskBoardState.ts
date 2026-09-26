@@ -537,7 +537,7 @@ export function resolveTaskMove(
       };
     }
     default:
-      return refuse('Deckard does not know that column.');
+      return refuse('That column no longer exists on the board. Refresh the board and try again.');
   }
 }
 

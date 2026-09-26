@@ -14,6 +14,7 @@ import {
   describeRejectedEdit,
   noteName,
   openNoteAction,
+  reindexAction,
   reportFailure,
   reportStale,
 } from './notify';
@@ -84,9 +85,11 @@ export async function updateTaskLine(
 ): Promise<boolean> {
   const uri = await resolveSourceUri(task.filePath);
   if (!uri) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not find ${task.filePath}. It may have been moved or deleted since Deckard last read it.`,
-    );
+    void reportFailure({
+      outcome: `Deckard could not find ${task.filePath}, so nothing was written.`,
+      fix: 'It may have been moved or deleted since Deckard last read it.',
+      action: reindexAction(),
+    });
     return false;
   }
 

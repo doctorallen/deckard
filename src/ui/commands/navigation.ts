@@ -2,7 +2,7 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
-import { reportFailure } from './notify';
+import { reindexAction, reportFailure } from './notify';
 
 /**
  * Resolves a stored source key across absolute paths, URI schemes, and roots.
@@ -67,9 +67,11 @@ export async function openSourceAt(
 ): Promise<vscode.TextEditor | undefined> {
   const uri = await resolveSourceUri(filePath, workspaceFolders);
   if (!uri) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not resolve source file: ${filePath}`,
-    );
+    void reportFailure({
+      outcome: `Deckard could not find ${filePath}.`,
+      fix: 'It may have been moved or deleted since Deckard last read it.',
+      action: reindexAction(),
+    });
     return undefined;
   }
 

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { describeRejectedEdit, noteName, reportFailure } from './notify';
 
 import {
   extractTags,
@@ -357,7 +358,7 @@ async function readField(
       const person = readPerson(chosen);
       if (!person) {
         void vscode.window.showWarningMessage(
-          `Deckard cannot read "${chosen.trim()}" as a person.`,
+          `Deckard cannot read "${chosen.trim()}" as a person. The task keeps the person it had.`,
         );
         return draft;
       }
@@ -478,7 +479,7 @@ export async function editTaskCommand(
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
     void vscode.window.showInformationMessage(
-      'Open a Markdown note to write a task.',
+      'Open a note to write a task in it.',
     );
     return undefined;
   }
@@ -512,9 +513,7 @@ export async function editTaskCommand(
     builder.replace(line.range, written),
   );
   if (!applied) {
-    void vscode.window.showErrorMessage(
-      'Deckard could not write the task. VS Code rejected the edit.',
-    );
+    void reportFailure(describeRejectedEdit(noteName(editor.document.uri)));
     return undefined;
   }
   // The caret goes to the end of the description, where writing continues:

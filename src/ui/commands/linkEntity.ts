@@ -21,24 +21,22 @@ interface EntityKindChoice extends vscode.QuickPickItem {
 /**
  * Lets the user explicitly attach the current heading to a canonical entity.
  */
+const HEADING_FIRST = 'Put the cursor on a heading in a note to tag it with a person or project.';
+
 export async function linkCurrentHeading(
   indexer: WorkspaceIndexer,
 ): Promise<void> {
   await indexer.ready;
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
-    void vscode.window.showWarningMessage(
-      'Open a Markdown heading before linking it to an entity.',
-    );
+    void vscode.window.showInformationMessage(HEADING_FIRST);
     return;
   }
 
   const line = editor.document.lineAt(editor.selection.active.line);
   const heading = line.text.match(/^ {0,3}#{1,6}[ \t]+(.+?)\s*$/);
   if (!heading) {
-    void vscode.window.showWarningMessage(
-      'Place the cursor on a Markdown heading before linking it to an entity.',
-    );
+    void vscode.window.showInformationMessage(HEADING_FIRST);
     return;
   }
 
@@ -84,7 +82,7 @@ export async function linkCurrentHeading(
     )
   ) {
     void vscode.window.showInformationMessage(
-      `${entity.label} is already linked to this heading.`,
+      `The heading is already tagged ${entity.label}.`,
     );
     return;
   }

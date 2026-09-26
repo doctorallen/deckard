@@ -25,7 +25,7 @@ import {
 } from '../state/relatedNotesRanking';
 import { createWikiLink, insertWikiLink } from '../commands/insertLink';
 import { openSourceAt, resolveSourceUri } from '../commands/navigation';
-import { reportStale } from '../commands/notify';
+import { reportFailure, reportStale } from '../commands/notify';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
@@ -198,9 +198,10 @@ export class SidebarNotesView
         ? findTaggedEntry(file, savedLine)
         : undefined;
     if (!file || savedLine === undefined || !entry) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not find that tagged entry in the saved note. Save the file and try again.',
-      );
+      void reportFailure({
+        outcome: 'Deckard could not find that entry in the note as it is now.',
+        fix: 'Save the note so Deckard reads it again, then try again.',
+      });
       return;
     }
 
