@@ -40,6 +40,9 @@
 - A copied export is said in the status bar, and a saved one offers to open.
 - A task, the status bar count, and a calendar day say which, not only how many.
 - A first run offers its next step, indexing says how far it has got, and settings link to each other.
+- **Done today.** The Tasks view ends with a folded Done today group of
+  what was finished today; unchecking one reopens it. The status bar's hover
+  and Home's Tasks view widget say how many.
 - **Open Daily Note for Date…** opens the note for any day named in plain
   words, such as `last friday` or `oct 3`, creating it from the template when
   there is none. Find offers the same row when what you type is a day.

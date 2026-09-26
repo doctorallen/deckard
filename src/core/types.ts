@@ -494,6 +494,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   agenda?: DashboardWidgetAgendaGroup[];
   /** Open tasks past `needsNewDateAfterDays`, which the agenda leaves out. */
   needsNewDate?: number;
+  /** Tasks completed today, said under the Tasks view widget's list. */
+  doneToday?: number;
   /** The search that lists them, scoped by `deckard.agenda.query`. */
   needsNewDateQuery?: string;
   stats?: Array<{ label: string; value: number }>;

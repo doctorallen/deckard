@@ -34,6 +34,28 @@ suite('Agenda', () => {
     );
   });
 
+  test('ends with what was done today, when asked, whatever the grouping', () => {
+    const index = createIndex([
+      createTask({ id: 'open', dueAt: at(9, 13) }),
+      createTask({ id: 'done-today', completed: true, doneAt: at(9, 13), lineNumber: 2 }),
+      createTask({ id: 'done-later-line', completed: true, doneAt: at(9, 13), lineNumber: 5 }),
+      createTask({ id: 'done-yesterday', completed: true, doneAt: at(9, 12) }),
+      createTask({ id: 'done-undated', completed: true }),
+    ]);
+    const ids = (groups: ReturnType<typeof createAgenda>) =>
+      groups.map((group) => [group.id, group.entries.map((entry) => entry.task.id)]);
+    assert.deepStrictEqual(ids(createAgenda(index, now, { upcomingDays: 7, doneToday: true })), [
+      ['today', ['open']],
+      ['donetoday', ['done-later-line', 'done-today']],
+    ]);
+    assert.deepStrictEqual(
+      ids(createAgenda(index, now, { upcomingDays: 7, doneToday: true, groupBy: 'priority' })).pop(),
+      ['donetoday', ['done-later-line', 'done-today']],
+    );
+    assert.deepStrictEqual(ids(createAgenda(index, now, { upcomingDays: 7 })), [['today', ['open']]]);
+    assert.strictEqual(groupColumnId('donetoday', 'due'), 'done', 'a task dropped there is completed');
+  });
+
   test('the Tasks view draws five overdue tasks, then Show N more, and acts on all', async () => {
     const tasks = Array.from({ length: 17 }, (_, day) =>
       createTask({ id: `late-${day}`, dueAt: at(9, 12) - day * 24 * 60 * 60 * 1000 }),

@@ -19,6 +19,8 @@ export interface DueTaskCounts {
   today: number;
   /** Open tasks past `needsNewDateAfterDays`, which the count leaves out. */
   needsNewDate?: number;
+  /** Tasks completed today, which the hover says and the bar does not. */
+  doneToday?: number;
 }
 
 export function countDueTasks(
@@ -30,13 +32,15 @@ export function countDueTasks(
   const groups = createAgenda(index, now, {
     tasks: selectAgendaTasks(index, query).tasks,
     upcomingDays: 1,
+    doneToday: true,
   });
-  const count = (id: 'overdue' | 'today' | 'needsdate'): number =>
+  const count = (id: 'overdue' | 'today' | 'needsdate' | 'donetoday'): number =>
     groups.find((group) => group.id === id)?.entries.length ?? 0;
   return {
     overdue: count('overdue'),
     today: count('today'),
     needsNewDate: count('needsdate'),
+    doneToday: count('donetoday'),
   };
 }
 
@@ -289,6 +293,9 @@ export class TaskStatusBar implements vscode.Disposable {
     const needsDate = describeNeedsNewDate(counts.needsNewDate);
     if (needsDate) {
       tooltip.appendMarkdown(`\n\n${needsDate}`);
+    }
+    if (counts.doneToday) {
+      tooltip.appendMarkdown(`\n\n${counts.doneToday} done today.`);
     }
     tooltip.appendMarkdown('\n\nSelect to open Tasks.');
     return tooltip;

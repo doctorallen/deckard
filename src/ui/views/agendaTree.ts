@@ -59,10 +59,11 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   later: new vscode.ThemeIcon('history'),
   nodate: new vscode.ThemeIcon('inbox'),
   needsdate: new vscode.ThemeIcon('history'),
+  donetoday: new vscode.ThemeIcon('pass'),
 };
 
 /** The groups that start folded: what can wait, out of the way of what cannot. */
-const FOLDED_GROUPS: ReadonlySet<string> = new Set(['later', 'nodate', 'needsdate']);
+const FOLDED_GROUPS: ReadonlySet<string> = new Set(['later', 'nodate', 'needsdate', 'donetoday']);
 
 /**
  * The icon a group takes when the Agenda is grouped by something else. A
@@ -211,6 +212,7 @@ export class AgendaTreeProvider
       groupBy,
       statusNamespace: getStatusNamespace(),
       taskOrder: this.preferences?.value.taskOrder ?? [],
+      doneToday: true,
     });
     // The badge counts what is overdue or due today however the Agenda is
     // grouped, since that is what it is a badge for.
@@ -223,7 +225,7 @@ export class AgendaTreeProvider
     this.setStatus(
       selected.error
         ? `deckard.agenda.query does not parse — ${selected.error} Showing every open task.`
-        : groups.length === 0
+        : groups.every((group) => group.id === 'donetoday')
           ? query
             ? 'No open task matches deckard.agenda.query.'
             : 'No open tasks.'
@@ -401,14 +403,16 @@ export class AgendaTreeProvider
   ): Promise<void> {
     let failed = false;
     for (const [node, state] of event.items) {
-      if (
-        node.kind !== 'task' ||
-        state !== vscode.TreeItemCheckboxState.Checked
-      ) {
+      if (node.kind !== 'task') {
+        continue;
+      }
+      // An open task's box completes it; a box under Done today reopens it.
+      const complete = state === vscode.TreeItemCheckboxState.Checked;
+      if (complete === node.entry.task.completed) {
         continue;
       }
       const task = this.indexer.getTask(node.entry.task.id) ?? node.entry.task;
-      if (!(await toggleTask(task, true))) {
+      if (!(await toggleTask(task, complete))) {
         failed = true;
       }
     }
@@ -470,7 +474,9 @@ function createGroupItem(
       ? 'deckardAgendaGroup.overdue'
       : group.id === 'needsdate'
         ? 'deckardAgendaGroup.needsDate'
-        : 'deckardAgendaGroup';
+        : group.id === 'donetoday'
+          ? 'deckardAgendaDoneGroup'
+          : 'deckardAgendaGroup';
   return item;
 }
 
@@ -500,11 +506,15 @@ function createTaskItem(
   item.id = `agenda:task:${entry.task.id}`;
   item.description = entry.details.join(' · ');
   item.tooltip = createTaskTooltip(entry);
+  const done = entry.task.completed;
   item.checkboxState = {
-    state: vscode.TreeItemCheckboxState.Unchecked,
-    tooltip: 'Complete this task',
+    state: done
+      ? vscode.TreeItemCheckboxState.Checked
+      : vscode.TreeItemCheckboxState.Unchecked,
+    tooltip: done ? 'Reopen this task' : 'Complete this task',
   };
-  item.contextValue = 'deckardAgendaTask';
+  // A done task has no dates to set, so it has no date menus.
+  item.contextValue = done ? 'deckardAgendaDoneTask' : 'deckardAgendaTask';
   if (uri) {
     const position = new vscode.Position(
       Math.max(entry.task.lineNumber - 1, 0),
@@ -576,6 +586,10 @@ export function groupColumnId(
   groupId: string,
   groupBy: AgendaGroupBy,
 ): string | undefined {
+  // Dropped on Done today, a task is done: the board's Done column.
+  if (groupId === 'donetoday') {
+    return 'done';
+  }
   if (groupBy === 'priority') {
     const priority = groupId.slice('priority:'.length);
     return `priority:${priority === 'none' ? '' : priority}`;

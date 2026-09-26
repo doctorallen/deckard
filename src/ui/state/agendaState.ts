@@ -23,6 +23,7 @@ import { stripTrailingTags } from './queryBlockState';
  * - **Upcoming**: due, scheduled, or starting within the next few days.
  * - **Later**: dated, but past that horizon.
  * - **No date**: carrying no due, scheduled, or start date at all.
+ * - **Done today**, when asked for: the tasks completed today.
  * - **Needs a new date**: due more than `needsNewDateAfterDays` ago. A task
  *   a month past its date is not going to be done that day; it waits here,
  *   folded, rather than piling up in Overdue.
@@ -106,6 +107,11 @@ export interface AgendaOptions {
    * would have had anyway.
    */
   taskOrder?: readonly string[];
+  /**
+   * Adds a last group, Done today, of the tasks completed today, so the
+   * list shows what was finished and not only what is left.
+   */
+  doneToday?: boolean;
 }
 
 /**
@@ -187,6 +193,7 @@ export function createAgenda(
     statusNamespace = 'status',
     taskOrder = [],
   } = options;
+  const listed = [...tasks];
   const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
   const byRank =
     (fallback: (left: AgendaEntry, right: AgendaEntry) => number) =>
@@ -207,7 +214,7 @@ export function createAgenda(
   const groups = new Map<AgendaGroupId, AgendaEntry[]>(
     GROUP_ORDER.map((id) => [id, []]),
   );
-  for (const task of tasks) {
+  for (const task of listed) {
     if (task.completed) {
       continue;
     }
@@ -235,18 +242,53 @@ export function createAgenda(
       ),
     ),
   })).filter((group) => group.entries.length > 0);
+  const done = options.doneToday
+    ? createDoneToday(listed, index, today, tomorrow, openDependencyIds)
+    : [];
   if (groupBy === 'due') {
-    return byDue;
+    return [...byDue, ...done];
   }
   // The Agenda holds the same tasks whichever way it is grouped. Only the
   // axis changes.
   const entries = byDue.flatMap((group) => group.entries);
   const order = byRank(compareByDate);
-  return groupBy === 'priority'
-    ? groupByPriority(entries, order)
-    : groupBy === 'status'
-      ? groupByStatus(entries, statusNamespace, order)
-      : groupByAssignee(entries, index, order);
+  return [
+    ...(groupBy === 'priority'
+      ? groupByPriority(entries, order)
+      : groupBy === 'status'
+        ? groupByStatus(entries, statusNamespace, order)
+        : groupByAssignee(entries, index, order)),
+    ...done,
+  ];
+}
+
+/**
+ * The tasks completed today, by their ✅ date, the latest line first. A task
+ * completed with `deckard.tasks.addDoneDate` off carries no date, and cannot
+ * be counted.
+ */
+function createDoneToday(
+  tasks: readonly Task[],
+  index: WorkspaceIndex,
+  today: number,
+  tomorrow: number,
+  openDependencyIds: ReadonlySet<string>,
+): AgendaGroup[] {
+  const entries = tasks
+    .filter(
+      (task) =>
+        task.completed &&
+        task.doneAt !== undefined &&
+        task.doneAt >= today &&
+        task.doneAt < tomorrow,
+    )
+    .map((task) =>
+      createEntry(task, index, { group: 'donetoday', at: task.doneAt as number, reason: 'done today' }, openDependencyIds),
+    )
+    .sort((left, right) => compareSource(right, left));
+  return entries.length > 0
+    ? [{ id: 'donetoday', label: 'Done today', entries }]
+    : [];
 }
 
 /** Every priority that any entry carries, strongest first. */

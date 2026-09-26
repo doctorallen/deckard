@@ -406,7 +406,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 |---|---|---|
 | **Search** | The [search box](#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
 | **Tasks** | The first tasks a search finds, `is:open` unless you set another, ranked as on the Task board | The Task board, on that search |
-| **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them, with a line under them saying how many need a new date, which opens them | The Tasks view |
+| **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them, with a line under them saying how many were done today and how many need a new date, which opens them | The Tasks view |
 | **Favorite tags** | The tags you favorited, with what searching for each finds | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
 | **Saved searches** | Your saved searches, each removable | Where each was saved |
@@ -514,6 +514,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
 - **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. `deckard.agenda.upcomingDays` sets how far that reaches.
 - **Later** holds the dated tasks past that, by the date each waits for, and **No date** the open tasks carrying no due, scheduled, or start date at all, most important first. Both start folded, out of the way of what cannot wait.
+- **Done today** holds what you finished today, by its ✅ date, folded at the end, so the list shows what was done and not only what is left. Unchecking a task there reopens it, and a task dropped on it is completed. A task completed with `deckard.tasks.addDoneDate` off has no date to count by.
 - **Needs a new date** holds the open tasks more than 30 days past their due date, each saying when it *was due*. A task a month late is not going to be done today, so it leaves Overdue, the badge, and the status bar's count, and waits here, folded, for a new date: the calendar button beside it, or **Reschedule All…**, dates them. `deckard.tasks.needsNewDateAfterDays` sets how many days; `0` keeps every overdue task in Overdue. `is:overdue` still finds them all.
 - **What the view lists** is every open task, or the open tasks a search finds: set `deckard.agenda.query` to any [query](#query-language), such as `is:mine` for your own, `#project/atlas` for one project's, or `has:due OR has:scheduled OR has:start` to leave undated tasks out. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list, so the view, the widget, and the number agree. A query that does not parse hides nothing and says so at the top of the view. The search icon in the view's title opens its search on the [Task board](#task-board), where it can be tried and changed with the results in view; the board's **Tasks view** button then keeps it. The view's title line shows the search it lists.
 - **Group by** in the view's title chooses what its groups are: **Due status** (the three above), **Priority**, **Status**, or **Person**. The tasks are the same whichever you pick — the open ones `deckard.agenda.query` finds, or every open one — so grouping changes the axis rather than the list. `deckard.agenda.groupBy` keeps the choice.
@@ -538,7 +539,7 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
 - `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, in one window, at the first minute on or after that time; if VS Code was closed or asleep then, when it next opens that day. It comes with **Open Tasks** beside it, **Reschedule Overdue…** when something is, and **Turn Off Reminders**, which clears the setting where it was set. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
-- Hovering the count lists the first few overdue tasks by name, and says how many tasks [need a new date](#tasks-view).
+- Hovering the count lists the first few overdue tasks by name, says how many tasks [need a new date](#tasks-view), and how many were done today.
 - A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue is left out of the count, its warning color, and the reminder: it is in the Tasks view's **Needs a new date**, not today's work. A day whose only dated tasks need a new date leaves the bar hidden.
 
 ## Task board

@@ -46,12 +46,19 @@ suite('Task status bar', () => {
       overdue: 1,
       today: 1,
       needsNewDate: 0,
+      doneToday: 0,
     });
     assert.deepStrictEqual(countDueTasks(indexOf({}), now), {
       overdue: 0,
       today: 0,
       needsNewDate: 0,
+      doneToday: 0,
     });
+    assert.strictEqual(
+      countDueTasks(indexOf({ 'notes/Done.md': '- [x] Filed it ✅ 2026-09-19' }), now).doneToday,
+      1,
+      'what was finished today',
+    );
   });
 
   test('leaves a task more than 30 days overdue out of the count, and names it apart', () => {
@@ -62,7 +69,7 @@ suite('Task status bar', () => {
         '- [ ] Renew the lease 📅 2026-06-12',
       ].join('\n'),
     });
-    assert.deepStrictEqual(countDueTasks(old, now), { overdue: 1, today: 0, needsNewDate: 2 });
+    assert.deepStrictEqual(countDueTasks(old, now), { overdue: 1, today: 0, needsNewDate: 2, doneToday: 0 });
     assert.strictEqual(describeDueTasks(countDueTasks(old, now)), '1 overdue');
     assert.strictEqual(describeNeedsNewDate(2), '2 tasks need a new date.');
     assert.strictEqual(describeNeedsNewDate(1), '1 task needs a new date.');

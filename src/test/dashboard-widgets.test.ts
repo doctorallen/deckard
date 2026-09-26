@@ -102,6 +102,17 @@ suite('Dashboard Home widgets', () => {
     assert.strictEqual(agenda.needsNewDate, 1);
     assert.strictEqual(agenda.needsNewDateQuery, 'is:needs-date');
     assert.strictEqual(agenda.total, 1);
+    assert.strictEqual(agenda.doneToday, undefined);
+    const doneIndex = buildWorkspaceIndex(
+      new Map(
+        [parseMarkdown('notes/done.md', '- [x] Filed it ✅ 2026-09-16\n- [ ] Next 📅 2026-09-16')].map(
+          (file) => [file.filePath, file],
+        ),
+      ),
+    );
+    const [done] = widgets([{ id: 'a', kind: 'agenda', width: 'half', count: 5 }], doneIndex);
+    assert.strictEqual(done.doneToday, 1);
+    assert.deepStrictEqual(done.agenda?.map((group) => group.id), ['today'], 'not a group of the list');
   });
 
   test('groups the agenda, and names favorite and frequent tags', () => {
