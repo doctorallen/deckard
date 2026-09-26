@@ -294,6 +294,35 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('a removed widget can be put back where it was, for a moment', () => {
+    const { page } = open({
+      dashboardWidgets: [
+        { id: 'a', kind: 'topTags', width: 'full', count: 3 },
+        { id: 'b', kind: 'topTags', width: 'half', count: 5 },
+      ],
+    });
+    page.click('[data-action="customize-home"]');
+    page.click('[data-action="remove-widget"][data-widget-id="a"]');
+    const removed = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ id: string }>;
+    assert.deepStrictEqual(removed.map((widget) => widget.id), ['b']);
+    assert.match(page.text('.home-edit-bar .undo-notice') ?? '', /^Removed .+\. Undo$/);
+    assert.strictEqual(page.document.activeElement, page.find('[data-action="undo-remove-widget"]'), 'focus is on Undo');
+    page.click('[data-action="undo-remove-widget"]');
+    const back = page.lastPosted('setDashboardWidgets')?.widgets as Array<Record<string, unknown>>;
+    assert.deepStrictEqual(back.map((widget) => widget.id), ['a', 'b'], 'back at its place');
+    assert.deepStrictEqual(back[0], { id: 'a', kind: 'topTags', width: 'full', count: 3 }, 'with its width and options');
+    assert.strictEqual(page.findAll('.undo-notice').length, 0);
+  });
+
+  test('Reset widgets asks first, and commits with the heavier button after Keep them', () => {
+    const { page } = open();
+    page.click('[data-action="customize-home"]');
+    page.click('[data-action="reset-widgets"]');
+    const buttons = page.findAll('.home-reset-confirm button');
+    assert.deepStrictEqual(buttons.map((button) => button.getAttribute('data-action')), ['cancel-reset-widgets', 'confirm-reset-widgets']);
+    assert.ok(buttons[1].classList.contains('danger'));
+  });
+
   test('turns paging on for a widget', () => {
     const { page } = open({
       dashboardWidgets: [{ id: 'p', kind: 'topTags', width: 'full', count: 3 }],

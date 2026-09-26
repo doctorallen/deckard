@@ -636,8 +636,7 @@ Buttons, menu items, and command titles follow one table, and
 - **Undo, briefly.** A control that discards the reader's arrangement offers
   Undo inline for 8 seconds, in a `role="status"` span beside it, with the
   focus moved to Undo so Enter takes it back; any later change to the page's
-  controls withdraws the offer. The Notes Graph's Reset graph is the first to
-  do this; Piece 9g makes it a shared primitive.
+  controls withdraws the offer. See **Destructive actions**.
 - **Focus survives a redraw.** A page that redraws from new state does it
   through `renderKeepingPlace(render)`, which finds the focused control again
   by its `data-*` keys (`PLACE_KEYS`: task, tag, widget, column, status,
@@ -656,6 +655,31 @@ Buttons, menu items, and command titles follow one table, and
   interpolated into a template literal, so `\\s` is what reaches the browser
   as `\s`. This is not theoretical — it has silently broken regexes before,
   and the compiler cannot see it.
+
+### Destructive actions
+
+**Undo what can be undone; confirm only what cannot.** An action whose
+result can be put back acts at once and offers **Undo** inline for 8
+seconds. An action that cannot be put back asks first, and the button that
+commits it is `button.danger`: neutral, with a heavier edge and weight, since
+red means overdue and nothing else. A danger button is never the only or the
+first button in its row, and it is never filled at rest.
+
+| Action | What happens |
+| --- | --- |
+| Remove saved search (Home) | VS Code's own modal asks first: the saved search and its widget are gone for good. |
+| Reset widgets (Home, customizing) | Asks inline: **Keep them**, then **Reset widgets** as `button.danger`. |
+| Remove widget × (Home, customizing) | Acts at once; the edit bar says **Removed Tasks view.** with **Undo**, which puts it back at its place with its width and options. Leaving customizing withdraws it. |
+| Remove status column × (board gear) | Acts at once, with **Removed the review column.** and **Undo**. |
+| Reset graph | Acts at once, with **Graph reset.** and **Undo**. |
+
+`renderUndoNotice(message, action, buttonClass)` draws the `.undo-notice`
+line; `createUndoNotice(render)` keeps one offer at a time: `show(message,
+action, payload)` redraws and moves focus to Undo, `take()` hands back the
+payload and withdraws it, `clear()` withdraws it, and `html()` draws it. The
+offer lapses after 8 seconds or at the next removal. Both come from
+`getUndoScript()`, which the component script includes and the Notes Graph
+takes on its own.
 
 ## Verifying a change
 

@@ -215,6 +215,19 @@ suite('Component primitives', () => {
     });
   });
 
+  suite('removals (9g)', () => {
+    test('a removed status column can be put back for a moment', () => {
+      const board = openBoard();
+      board.click('[data-action="remove-status"][data-index="0"]');
+      assert.deepStrictEqual(board.lastPosted('setBoardStatuses'), { type: 'setBoardStatuses', statuses: ['doing'] });
+      assert.match(board.text('.undo-notice') ?? '', /^Removed the todo column\. Undo$/);
+      assert.strictEqual(board.document.activeElement, board.find('[data-action="undo-remove-status"]'), 'focus is on Undo');
+      board.click('[data-action="undo-remove-status"]');
+      assert.deepStrictEqual(board.lastPosted('setBoardStatuses'), { type: 'setBoardStatuses', statuses: ['todo', 'doing'] });
+      assert.strictEqual(board.findAll('.undo-notice').length, 0);
+    });
+  });
+
   suite('tips (9d)', () => {
     test('a keyboard focus shows the tip at once, with its key, and Escape hides it', () => {
       const search = openSearch('#project/atlas', { history: { back: true, forward: false } });

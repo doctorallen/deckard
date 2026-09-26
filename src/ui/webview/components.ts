@@ -226,6 +226,12 @@ button:focus-visible, select:focus-visible, input:focus-visible {
    tip says why (data-tip-disabled); both look the same, and neither lights
    up under the pointer (the ENABLED guard on every hover rule). */
 button:disabled, button[aria-disabled="true"] { opacity: .5; cursor: default; }
+/* The one button that commits what cannot be put back. Neutral, with a
+   heavier edge: red means overdue and nothing else. Never the only or the
+   first button in its row, and never filled at rest. */
+button.danger { border-width: calc(var(--edge) + 1px); border-color: var(--text); font-weight: 650; }
+/* Put back in place, beside what was removed, for 8 seconds. */
+.undo-notice { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* The status node every page announces through. Off-screen, never hidden
    with display:none, which would stop it being announced at all. */
@@ -1245,6 +1251,63 @@ export function getTipScript(): string {
 }
 
 /**
+ * Undo, briefly: what a removal that can be put back offers instead of
+ * asking first. On its own so the Notes Graph, which does not take the whole
+ * component script, can take it too; getComponentScript() includes it.
+ */
+export function getUndoScript(): string {
+  return `
+  /**
+   * "Removed Tasks view. Undo": a status line with its Undo button, which
+   * posts nothing itself; its data-action is the page's to handle.
+   */
+  function renderUndoNotice(message, action, buttonClass) {
+    const escape = function (value) {
+      return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+    return '<span class="undo-notice" role="status">' + escape(message) + ' <button type="button"' + (buttonClass ? ' class="' + escape(buttonClass) + '"' : '') + ' data-action="' + escape(action) + '">Undo</button></span>';
+  }
+
+  /**
+   * One offer of Undo at a time, withdrawn after 8 seconds or by the next
+   * removal. show(message, action, payload) makes the offer and redraws;
+   * take() hands back its payload and withdraws it; html() draws it.
+   */
+  function createUndoNotice(render) {
+    let current;
+    let timer;
+    return {
+      show: function (message, action, payload) {
+        clearTimeout(timer);
+        current = { message: message, action: action, payload: payload };
+        timer = setTimeout(function () {
+          current = undefined;
+          render();
+        }, 8000);
+        render();
+        // Enter takes it back: focus moves to Undo.
+        const button = document.querySelector('.undo-notice [data-action="' + action + '"]');
+        if (button) button.focus();
+      },
+      take: function () {
+        clearTimeout(timer);
+        const payload = current ? current.payload : undefined;
+        current = undefined;
+        return payload;
+      },
+      clear: function () {
+        clearTimeout(timer);
+        current = undefined;
+      },
+      html: function () {
+        return current ? renderUndoNotice(current.message, current.action) : '';
+      },
+    };
+  }
+`;
+}
+
+/**
  * Helpers every page script needs.
  *
  * This is inserted inside each page's own `<script>`, so the functions are
@@ -1715,6 +1778,7 @@ export function getComponentScript(): string {
 
 
 ${getTipScript()}
+${getUndoScript()}
   /**
    * An icon-only button: its label is its accessible name and its tip, and
    * it never carries title. options: { action, label, icon, tip, key,

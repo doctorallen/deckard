@@ -194,6 +194,7 @@ ${getQueryEditorScript()}
       + '<span>Status tag</span>'
       + '<form class="board-settings-row" data-form="status-namespace"><span class="board-settings-prefix">#</span><input type="text" data-action="namespace-draft" value="' + escapeHtml(namespace) + '" aria-label="Status tag namespace" autocomplete="off" spellcheck="false"><span class="board-settings-prefix">/doing</span><button type="submit">Save</button></form>'
       + (settingsError ? '<p class="board-settings-error" role="alert">' + escapeHtml(settingsError) + '</p>' : '')
+      + statusUndo.html()
       + '</div>';
   }
 
@@ -304,6 +305,9 @@ ${getQueryEditorScript()}
     post({ type: 'setTableColumns', columns: next });
   }
 
+  /** Undo for a status column removed from the gear. */
+  const statusUndo = createUndoNotice(function () { renderKeepingPlace(render); });
+
   /** Sends a new list of status columns, or says why it cannot be used. */
   function setStatuses(statuses) {
     settingsError = '';
@@ -371,8 +375,21 @@ ${getQueryEditorScript()}
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
         const statuses = state.settings.statuses.slice();
-        statuses.splice(Number(target.dataset.index), 1);
+        const index = Number(target.dataset.index);
+        const removed = statuses.splice(index, 1)[0];
         setStatuses(statuses);
+        if (removed !== undefined) statusUndo.show('Removed the ' + removed + ' column.', 'undo-remove-status', { status: removed, index: index, after: statuses });
+      }
+      if (action === 'undo-remove-status') {
+        const undone = statusUndo.take();
+        if (undone) {
+          // The columns as last sent, if the host has not answered yet.
+          const current = state.settings.statuses.indexOf(undone.status) >= 0 ? undone.after : state.settings.statuses;
+          const statuses = current.slice();
+          statuses.splice(Math.min(undone.index, statuses.length), 0, undone.status);
+          setStatuses(statuses);
+        }
+        render();
       }
       return;
     }

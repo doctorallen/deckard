@@ -77,6 +77,13 @@
 
 ### Changed
 
+- **Removing a Home widget or a board column can be undone.** While
+  customizing Home, removing a widget says **Removed Tasks view.** with
+  **Undo** for 8 seconds, which puts it back where it was, and removing a
+  status column from the board's gear does the same. **Reset widgets**, which
+  cannot be undone, still asks first, and its button now comes after
+  **Keep them** with a heavier edge.
+
 - **Loading waits before it speaks.** A page that loads quickly shows
   nothing in the meantime; one that does not says *Loading search…* after
   0.4 s, in a line rather than an empty box, and tells a screen reader it is

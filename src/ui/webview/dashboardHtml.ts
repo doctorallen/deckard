@@ -429,6 +429,8 @@ ${getQueryEditorScript()}
 
   function setEditingHome(editing) {
     editingHome = editing;
+    // Leaving customizing withdraws a pending Undo with the bar it sat in.
+    if (!editing) widgetUndo.clear();
     openWidgetOptions = undefined;
     saveDashboardViewState();
     render();
@@ -480,6 +482,9 @@ ${getQueryEditorScript()}
   function widgetConfig() {
     return (state.widgetConfig || []).map(function (widget) { return Object.assign({}, widget); });
   }
+
+  /** Undo for a widget removed while customizing. */
+  const widgetUndo = createUndoNotice(function () { renderKeepingPlace(render); });
 
   /** Save Home's widgets. The host answers with what each shows. */
   function sendWidgets(widgets) {
@@ -932,8 +937,8 @@ ${getQueryEditorScript()}
     if (!state.widgets) return renderLoading('Loading Home…');
     const widgets = state.widgets;
     const bar = editingHome
-      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + renderAddWidget() + '' + (confirmingReset
-        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="confirm-reset-widgets">Reset widgets</button><button type="button" data-action="cancel-reset-widgets">Keep them</button></span>'
+      ? '<div class="home-edit-bar" role="status"><span>Customizing Home. Drag a widget to move it, or right-click it to move it first or last.</span><div class="home-edit-actions">' + widgetUndo.html() + renderAddWidget() + '' + (confirmingReset
+        ? '<span class="home-reset-confirm">Reset discards the widgets you arranged. <button type="button" data-action="cancel-reset-widgets">Keep them</button><button type="button" class="danger" data-action="confirm-reset-widgets">Reset widgets</button></span>'
         : '<button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets</button>') + '<button type="button" class="active" data-action="finish-customizing">Finish</button></div></div>'
       // A resting Home says it can be arranged, until it has been, or the
       // reader closes the line: a fixed line of instruction is read the first
@@ -1113,7 +1118,24 @@ ${getQueryEditorScript()}
         return;
       }
       if (action === 'remove-widget') {
-        sendWidgets(widgetConfig().filter(function (widget) { return widget.id !== target.dataset.widgetId; }));
+        // Removed at once, with Undo for 8 seconds: it goes back where it
+        // was, with its width and its options.
+        const widgets = widgetConfig();
+        const index = widgets.findIndex(function (widget) { return widget.id === target.dataset.widgetId; });
+        if (index < 0) return;
+        const removed = widgets[index];
+        const shown = (state.widgets || []).find(function (widget) { return widget.id === removed.id; });
+        sendWidgets(widgets.filter(function (widget) { return widget.id !== removed.id; }));
+        widgetUndo.show('Removed ' + ((shown && shown.title) || 'the widget') + '.', 'undo-remove-widget', { widget: removed, index: index });
+        return;
+      }
+      if (action === 'undo-remove-widget') {
+        const undone = widgetUndo.take();
+        if (!undone) return;
+        const widgets = widgetConfig();
+        widgets.splice(Math.min(undone.index, widgets.length), 0, undone.widget);
+        sendWidgets(widgets);
+        render();
         return;
       }
       if (action === 'set-widget-width') {

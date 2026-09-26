@@ -5,6 +5,7 @@ import {
   createNonce,
   getBaseCss,
   getTipScript,
+  getUndoScript,
   getPageTailCss,
   zenBodyAttribute,
 } from './components';
@@ -174,6 +175,7 @@ ${getPageTailCss()}
   'use strict';
   var vscode = acquireVsCodeApi();
 ${getTipScript()}
+${getUndoScript()}
   var canvas = document.getElementById('graph');
   var ctx = canvas.getContext('2d');
   var tooltip = document.getElementById('tooltip');
@@ -1982,7 +1984,7 @@ ${getTipScript()}
   function showResetUndo(previous) {
     window.clearTimeout(resetUndoTimer);
     resetSnapshot = previous;
-    resetUndo.innerHTML = 'Graph reset. <button type="button" class="reset-graph-settings" data-action="undo-graph-reset">Undo</button>';
+    resetUndo.innerHTML = renderUndoNotice('Graph reset.', 'undo-graph-reset', 'reset-graph-settings');
     resetUndo.querySelector('button').focus();
     resetUndoTimer = window.setTimeout(clearResetUndo, 8000);
   }
