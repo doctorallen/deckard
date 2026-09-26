@@ -106,6 +106,14 @@
 
 ### Changed
 
+- **The sample workspace is dated the day it is made.** Its tasks were due
+  in August and September, so a sample made later was all overdue. It is
+  now nine notes, yesterday's and today's among them, with one task overdue,
+  two due today, one due later this week, and three with a status for the
+  Task board. It opens without a folder dialog, from Deckard's own storage,
+  shows its README once the window has reloaded, and carries a
+  `.vscode/settings.json` so your own settings cannot make it look empty.
+
 - **The Notes Graph's link sliders say what they do.** *Connection
   density* is **Links per note**, from **Fewer** to **More**, and a screen
   reader hears a word rather than 0.30. *Tag prevalence bias*, *Secondary

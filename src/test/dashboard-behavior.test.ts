@@ -461,6 +461,13 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('an empty workspace is offered today\'s note and the nine-note sample', () => {
+    const { page, snapshot } = open();
+    page.send({ ...snapshot, totalNoteCount: 0 });
+    assert.match(page.text('.home-start p') ?? '', /nine notes already written/);
+    assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
+  });
+
   test('after an update, says so in the hint line first', () => {
     const { page, snapshot } = open();
     page.send({ ...snapshot, whatsNew: { version: '1.23' } });

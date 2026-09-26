@@ -1,7 +1,7 @@
 ---
 describes: project/argent-protocol
 status: consented rollout
-opened: 2026-09-02
+opened: {{date-23}}
 decoded-by: "#person/leena-sato"
 reviews: "#person/rhea-sol"
 ---

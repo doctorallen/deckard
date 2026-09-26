@@ -1,4 +1,4 @@
-# 2026-08-05
+# {{date-5}}
 
 ## Rainshadow Mesh survey #project/rainshadow-mesh
 The mesh hides high-output bodies beneath monsoon advertisements, and Kenji mapped three exits where the false heat becomes visible for less than a second. We need a capture plan that protects commuters instead of chasing a signal through crowded platforms.

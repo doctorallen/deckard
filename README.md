@@ -82,7 +82,7 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colors; 
 
 ## Get started
 
-The fastest way to see what Deckard does is to let it show you: `Deckard: Create a Sample Workspace` copies seven small notes — three daily notes, two project hubs, a person, a team — into a folder you choose and offers to open it. They are written the way Deckard reads them, and the README beside them says what each one shows and what to try first. Delete the folder when you are done; nothing else refers to it.
+The fastest way to see what Deckard does is to let it show you: `Deckard: Create a Sample Workspace` writes nine small notes — five daily notes, the last two yesterday's and today's, two project hubs, a person, a team — and opens them, in this window when no folder is open and otherwise in a new one or this one, as you choose. They are dated from the day you make them, so one task is overdue, two are due today, and one is due later this week, and three tasks already have a status for the Task board. The sample is kept in VS Code's storage for Deckard, with a `.vscode/settings.json` of its own so your settings cannot hide its notes; its README opens once the window has reloaded, and says what each note shows and what to try first. Running the command again offers to replace it with a fresh copy dated from that day.
 
 
 1. Open a folder or workspace in VS Code.
@@ -118,7 +118,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers with it. |
 | **Deckard: Restore Favorites, Pins, and Searches from a Copy** | Offers the copies Deckard keeps on its own, newest first, and restores the one you pick after asking. |
 | **Deckard: Check My Setup** | Writes up, as a Markdown document, what your settings resolve to in this workspace, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone — with what to do about each thing that is off. |
-| **Deckard: Create a Sample Workspace** | Copies seven small notes, written the way Deckard reads them, into a `deckard-sample` folder inside a folder you choose, and offers to open it. Its README says what each note shows and what to try first. |
+| **Deckard: Create a Sample Workspace** | Writes nine small notes, dated from today and written the way Deckard reads them, into Deckard's own storage and opens them, showing their README once the window reloads. Run again, it offers to replace them with a fresh copy. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Daily Note for Date…** | Opens the daily note for a day named in plain words, such as `last friday` or `oct 3`, creating it from the template when there is none. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |

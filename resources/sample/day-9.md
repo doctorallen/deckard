@@ -1,10 +1,10 @@
-# 2026-08-01
+# {{date-9}}
 
 ## Wardens check-in #team/wardens
 Mara Vale closed the Ashen Mirror sweep at 06:40 after finding the decoy chassis in a freezer rail car. Ivo Chen has a buyer’s voiceprint, but I kept the warrant narrow: we are hunting an unlicensed advanced android, not every frightened dockworker who saw it.
 
 - [x] Move Mara’s night observations into the case ledger.
-- [ ] Review the shell-camera sequence with Ivo before tomorrow’s dispatch.
+- [x] Pull the shell-camera frames for Ivo before tomorrow’s dispatch.
 Mara will retain the original frame order and Ivo will annotate only reproducible artifacts, so the ledger distinguishes observation from inference before the morning command review.
 
 ### Mara Vale #person/mara-vle

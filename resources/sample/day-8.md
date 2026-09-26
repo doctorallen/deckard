@@ -1,4 +1,4 @@
-# 2026-08-02
+# {{date-8}}
 
 ## Ghostline requirements #project/ghostline-relay
 The relay tracker must distinguish a licensed service android from a fleeing military-grade model without turning every streetlight into a checkpoint. Ren Kade proposed passive range pings and a civilian opt-out corridor; I accepted both as non-negotiable requirements.
@@ -8,13 +8,13 @@ The relay tracker must distinguish a licensed service android from a fleeing mil
 - [ ] Require the receiver to classify only authorized #feature/capability-classes, never civilian identity.
 - [x] Prohibit storage of raw commuter identifiers, faces, audio, or device serials.
 - [ ] Publish a civilian #feature/opt-out-corridor before each field comparison.
-- [ ] Set a documented minimum confidence threshold for a #feature/range-ping alert. ⏫ 📅 2026-09-12
+- [ ] Set a documented minimum confidence threshold for a #feature/range-ping alert. ⏫ 📅 {{date-2}}
 - [ ] Measure false positives at school entrances, clinics, and crowded platforms.
 - [x] Make manual observation—not the receiver—the sole basis for any field decision.
 - [ ] Encrypt the approved test logs and restrict them to #person/ren-kade and counsel.
 - [ ] Delete trial identifiers at the end of each run and retain aggregate error metrics only.
 - [ ] Add a physical disable control and an activation-window audit to every receiver.
-- [ ] Obtain #person/pritchard-vale’s privacy review before expanding beyond the pilot route. 🛫 2026-09-21 📅 2026-10-01
+- [ ] Obtain #person/pritchard-vale’s privacy review before expanding beyond the pilot route. 🛫 {{date-4}} 📅 {{date+3}}
 Ren will publish the test route and report detection performance alongside privacy impact, allowing the procurement file to show operational limits without quietly becoming a location archive.
 
 ## Wardens check-in #team/wardens

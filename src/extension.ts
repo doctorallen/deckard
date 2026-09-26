@@ -97,7 +97,7 @@ import { SearchPanels } from './ui/webview/searchPage';
 import { setZenMode, syncZenModeContext } from './ui/webview/zenMode';
 import { tidyPreferences } from './ui/commands/tidyPreferences';
 import { checkSetup } from './ui/commands/checkSetup';
-import { createSampleWorkspace } from './ui/commands/sampleWorkspace';
+import { createSampleWorkspace, showSampleReadmeOnce } from './ui/commands/sampleWorkspace';
 import { PreferenceSnapshots } from './core/storage/preferenceSnapshots';
 import {
   exportPreferences,
@@ -162,6 +162,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   });
   context.subscriptions.push(whatsNew);
   void whatsNew.onActivate();
+  // A sample opened from Create a Sample Workspace shows its README once.
+  void showSampleReadmeOnce(context);
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
   const log = vscode.window.createOutputChannel('Deckard', { log: true });
@@ -694,7 +696,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       checkSetup(indexer),
     ),
     vscode.commands.registerCommand('deckard.createSampleWorkspace', () =>
-      createSampleWorkspace(context.extensionUri),
+      createSampleWorkspace(context),
     ),
   );
   context.subscriptions.push(
