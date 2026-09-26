@@ -12,6 +12,10 @@
 
 ### Added
 
+- **Capture remembers its headings.** Capture Under a Heading lists the
+  five headings it went under last first, the last one highlighted so Enter
+  repeats it, then every heading from the notes you open most.
+
 - **Find offers to capture what it could not find.** When no entry has
   every word, and what was typed is only words, tags, and people, Find adds
   **Capture “…” to today's note**, showing the line Capture would write,
@@ -217,6 +221,10 @@
   there is none. Find offers the same row when what you type is a day.
 
 ### Changed
+
+- **A capture under a heading goes above its sub-headings.** It went to the
+  end of the heading's last sub-heading; it now goes under the heading's
+  own lines.
 
 - **Rename Tag says what will happen.** The box starts from the old tag
   with its name selected, and says as you type whether the new name merges

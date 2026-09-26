@@ -968,6 +968,8 @@ Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today'
 
 The words at the end of a capture are read as a task manager's quick add reads them, in any order: a day (`today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, `next week`, `end of month`, `oct 3`, or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, `the weekend`, a date, or a numeric date such as `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), and a repeat rule (`every week`, `daily`). `Call Ren friday p2` is written as `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the line it will write is shown under what you type before it is saved. The **Keep the words as written** button in the capture box reads nothing from them. **Add as a note line**, under the task, writes a plain `- …` list item instead, for an idea that is not a to-do. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
 
+The heading list starts with **Recent**, the five headings Capture and Move to… went under last, with the last one highlighted so Enter repeats it; then every heading, from the notes you open most. Under a heading, a capture goes under the heading's own lines, above any heading nested in it.
+
 A capture goes after the last list item already there, or after a blank line below the last text. A note open in an editor keeps its unsaved changes, and the note is saved.
 
 ## Templates

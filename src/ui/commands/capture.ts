@@ -5,6 +5,9 @@ import { readCaptureText } from '../../core/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
 import { getPersonMarker } from '../../core/markdown/parser';
 import { Section, TagInfo } from '../../core/types';
+import { PreferencesStore } from '../../core/storage/preferences';
+import { createPinForLine } from '../state/pinnedNotes';
+import { pickDestination } from './destinationPicker';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { resolveSourceUri } from './navigation';
@@ -86,6 +89,7 @@ export async function capture(
   indexer: WorkspaceIndexer,
   initialTarget: CaptureTarget = 'today',
   drafts?: CaptureDrafts,
+  preferences?: PreferencesStore,
 ): Promise<void> {
   await indexer.ready;
   const answer = await askForCapture(
@@ -106,10 +110,18 @@ export async function capture(
     return;
   }
 
-  const chosen = await pickHeading(indexer);
-  if (!chosen) {
+  const destination = await pickDestination(
+    indexer.getSnapshot(),
+    preferences,
+    {
+      title: 'Deckard: Capture Under a Heading',
+      placeholder: 'Choose the heading to add it under',
+    },
+  );
+  if (destination?.kind !== 'heading') {
     return;
   }
+  const chosen = destination.section;
   const uri = await resolveSourceUri(chosen.filePath);
   if (!uri) {
     void reportFailure({
@@ -136,9 +148,17 @@ export async function capture(
     });
     return;
   }
-  const taskLine = await appendCapture(uri, line, section);
+  // Under the heading's own lines, above any heading nested in it.
+  const taskLine = await appendCapture(uri, line, {
+    startLine: section.startLine,
+    endLine: section.bodyEndLine,
+  });
   if (taskLine !== undefined) {
     await drafts?.clear();
+    const pin = createPinForLine(indexer.getSnapshot(), chosen.filePath, chosen.startLine);
+    if (pin?.heading) {
+      await preferences?.recordRecentHeading(pin);
+    }
   }
   announce(uri, taskLine, line);
 }
@@ -448,38 +468,6 @@ function askForCapture(
     update();
     picker.show();
   });
-}
-
-/** Lists every heading in the notes, the most recently updated notes first. */
-async function pickHeading(
-  indexer: WorkspaceIndexer,
-): Promise<Section | undefined> {
-  const files = [...indexer.getSnapshot().files.values()].sort(
-    (left, right) =>
-      (right.updatedAt ?? 0) - (left.updatedAt ?? 0) ||
-      labelCollator.compare(left.filePath, right.filePath),
-  );
-  const items = files.flatMap((file) =>
-    file.sections
-      .filter((section) => !section.isInline)
-      .map((section) => ({
-        label: section.heading,
-        description: file.filePath,
-        section,
-      })),
-  );
-  if (items.length === 0) {
-    void vscode.window.showInformationMessage(
-      'There are no headings in your notes yet.',
-    );
-    return undefined;
-  }
-  const picked = await vscode.window.showQuickPick(items, {
-    title: 'Deckard: Capture Under a Heading',
-    placeHolder: 'Choose the heading to add the task under',
-    matchOnDescription: true,
-  });
-  return picked?.section;
 }
 
 /** Says where the task went, with a way to open it there. */

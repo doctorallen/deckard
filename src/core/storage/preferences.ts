@@ -71,6 +71,7 @@ const workspacePreferenceKeys = [
   'savedFilters',
   'recentQueries',
   'findChoices',
+  'recentHeadings',
   'tagFirstSeen',
   'pinnedNotes',
   'dashboardWidgets',
@@ -403,6 +404,16 @@ export class PreferencesStore implements vscode.Disposable {
       ...choices.filter((choice) => choice !== existing),
     ];
     await this.update({ findChoices: next.slice(0, FIND_CHOICE_LIMIT) }, true);
+  }
+
+  /** Remembers a heading Capture or Move to… went under, newest first. */
+  public async recordRecentHeading(pin: PinnedNote): Promise<void> {
+    const key = pinKey(pin);
+    const recentHeadings = [
+      pin,
+      ...(this.preferences.recentHeadings ?? []).filter((each) => pinKey(each) !== key),
+    ].slice(0, RECENT_HEADING_LIMIT);
+    await this.update({ recentHeadings }, true);
   }
 
   /** Takes one search off the recent list. */
@@ -997,8 +1008,12 @@ export class PreferencesStore implements vscode.Disposable {
       }
       return choice.key.startsWith('tag:') ? validTags.has(choice.key.slice(4)) : true;
     });
+    const recentHeadings = this.preferences.recentHeadings?.filter(
+      (pin) => validFilePathSet?.has(pin.filePath) ?? true,
+    );
     const changes: Partial<PersistedPreferences> = {
       ...(findChoices ? { findChoices } : {}),
+      ...(recentHeadings ? { recentHeadings } : {}),
       tagAccessOrder: this.preferences.tagAccessOrder.filter((tagKey) =>
         validTags.has(tagKey),
       ),
@@ -1274,8 +1289,14 @@ function normalizePreferences(
     ...(Array.isArray(value?.findChoices) && value.findChoices.length > 0
       ? { findChoices: normalizeFindChoices(value.findChoices) }
       : {}),
+    ...(Array.isArray(value?.recentHeadings) && value.recentHeadings.length > 0
+      ? { recentHeadings: normalizePinnedNotes(value.recentHeadings).slice(0, RECENT_HEADING_LIMIT) }
+      : {}),
   };
 }
+
+/** How many headings Capture and Move to… remember. */
+export const RECENT_HEADING_LIMIT = 5;
 
 /** The most Find choices kept; the least recently chosen goes first. */
 export const FIND_CHOICE_LIMIT = 200;
@@ -1701,6 +1722,7 @@ function clonePreferences(value: PersistedPreferences): PersistedPreferences {
     recentQueries: [...(value.recentQueries ?? [])],
     dashboardWidgets: cloneWidgets(value.dashboardWidgets),
     ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
+    ...(value.recentHeadings ? { recentHeadings: value.recentHeadings.map((pin) => ({ ...pin })) } : {}),
   };
 }
 

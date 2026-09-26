@@ -16,6 +16,8 @@ import {
   getCaptureInsertion,
   getTagSuggestions,
 } from '../ui/commands/capture';
+import { buildDestinationItems } from '../ui/commands/destinationPicker';
+import { buildWorkspaceIndex } from '../core/workspace/indexer';
 
 /** The content once an insertion is made, as the editor would make it. */
 function applyInsertion(content: string, insertion: CaptureInsertion): string {
@@ -128,6 +130,42 @@ suite('Quick capture', () => {
       content: '# Day\n## Calls\n\n- [ ] New\n## Later\n',
       taskLine: 3,
     });
+  });
+
+  test('adds under a heading\'s own lines, above a heading nested in it', () => {
+    const content = '# Day\n## Next\n- [ ] One\n### Later\n- [ ] Deep\n';
+    const next = parseMarkdown('day.md', content).sections.find((entry) => entry.heading === 'Next')!;
+    const insertion = getCaptureInsertion(content, '- [ ] New', {
+      startLine: next.startLine,
+      endLine: next.bodyEndLine,
+    });
+    assert.strictEqual(
+      applyInsertion(content, insertion),
+      '# Day\n## Next\n- [ ] One\n- [ ] New\n### Later\n- [ ] Deep\n',
+    );
+  });
+
+  test('offers the headings used last first, the last one leading, and skips one that is gone', () => {
+    const files = new Map(
+      Object.entries({
+        'a.md': '# A\n## Next\nText.\n',
+        'b.md': '# B\n## Calls\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    const index = buildWorkspaceIndex(files);
+    const items = buildDestinationItems(index, {
+      recentHeadings: [
+        { filePath: 'b.md', heading: 'Calls', headingLevel: 2, occurrence: 0 },
+        { filePath: 'a.md', heading: 'Gone', headingLevel: 2, occurrence: 0 },
+        { filePath: 'a.md', heading: 'Next', headingLevel: 2, occurrence: 0 },
+      ],
+    });
+    const labels = items.map((item) => item.label);
+    assert.deepStrictEqual(labels.slice(0, 3), ['Recent', 'Calls', 'Next']);
+    assert.strictEqual(labels[3], 'All headings');
+    assert.ok(!labels.slice(4).includes('Calls'), 'a recent heading is listed once');
+    const withMore = buildDestinationItems(index, {}, { newNote: true, today: { fileName: '2026-09-26.md' } });
+    assert.deepStrictEqual(withMore.slice(0, 3).map((item) => item.label), ['$(new-file) New note…', '$(calendar) Today’s note', 'Headings']);
   });
 
   test('finds the chosen heading again in the note as it is now', () => {

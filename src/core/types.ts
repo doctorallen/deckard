@@ -367,6 +367,8 @@ export interface PersistedPreferences {
   hideDailyNotes?: true;
   /** The results chosen in Find for what was typed, which it offers first. */
   findChoices?: FindChoice[];
+  /** The headings Capture and Move to… went under last, newest first. */
+  recentHeadings?: PinnedNote[];
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];
   /** When each tag was last opened, in epoch milliseconds, for frecency. */

@@ -865,7 +865,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       editTaskCommand(indexer),
     ),
     vscode.commands.registerCommand('deckard.capture', () =>
-      capture(indexer, 'today', captureDrafts),
+      capture(indexer, 'today', captureDrafts, preferences),
     ),
     // The hover on a tagged entry passes the line it was shown on, so it
     // pins that entry rather than wherever the cursor happens to be.
@@ -897,7 +897,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
         ),
     ),
     vscode.commands.registerCommand('deckard.captureUnderHeading', () =>
-      capture(indexer, 'heading', captureDrafts),
+      capture(indexer, 'heading', captureDrafts, preferences),
     ),
     vscode.commands.registerCommand('deckard.newNoteFromTemplate', () =>
       newNoteFromTemplate(indexer),
