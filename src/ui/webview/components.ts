@@ -359,6 +359,15 @@ export function getTagCss(): string {
 /* The namespace is told from the name by color, not by fading it: at 62%
    it fell under 3:1 on every dark ground. */
 .tag-namespace { color: var(--muted); }
+/* One line, always. A tag or chip too long for its place keeps to one line
+   and shortens, the namespace first down to about #p…/, then the value; the
+   whole tag is its tip (data-tip-overflow) and its accessible name. This is
+   geometry only, so any look a view gives its tags composes with it. */
+.tag-open, .inline-tag, .query-chip, .query-facet-value { max-width: 100%; min-width: 0; }
+.tag-label { display: inline-flex; max-width: 100%; min-width: 0; vertical-align: bottom; white-space: nowrap; }
+.tag-label > .tag-namespace { display: inline-flex; flex: 0 1000 auto; min-width: 3ch; }
+.tag-namespace-text, .tag-label > .tag-value, .query-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-label > .tag-value { flex: 0 1 auto; }
 /* How much a tag weighs, as a rail of three steps: Related Notes' active
    tags, and related tags in Refine. Empty steps are faint so filled ones read. */
 .tag-weight-rail { display: inline-flex; flex: 0 0 auto; width: 4px; height: 11px; flex-direction: column; justify-content: space-between; pointer-events: none; }
@@ -1551,14 +1560,16 @@ export function getComponentScript(): string {
         : '<tspan class="tag-value">' + escapeHtml(value) + '</tspan>';
     }
     return match
-      ? '<span class="tag-label"><span class="tag-namespace">' + escapeHtml(match[1]) + '</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
+      // The slash sits outside the part that shortens, so a namespace cut
+      // short still reads as one: #pro…/atlas.
+      ? '<span class="tag-label"><span class="tag-namespace"><span class="tag-namespace-text">' + escapeHtml(match[1].slice(0, -1)) + '</span>/</span><span class="tag-value">' + escapeHtml(match[2]) + '</span></span>'
       : '<span class="tag-label"><span class="tag-value">' + escapeHtml(value) + '</span></span>';
   }
 
   /** Render a tag as a control that opens its overview. */
   function renderTagButton(tag, className) {
     return '<button class="tag-open ' + (className || '') + '" data-action="open-tag" data-tag-key="'
-      + escapeHtml(tag.key) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
+      + escapeHtml(tag.key) + '" data-tip-overflow="' + escapeHtml(tag.label) + '" aria-label="Open ' + escapeHtml(tag.label) + ' overview">'
       + renderTagLabel(tag.label) + '</button>';
   }
 
@@ -2881,7 +2892,7 @@ export function getQueryEditorCss(): string {
 .query-bar-shell input.query-input[type="text"], .query-bar-shell input.query-input[type="text"]:focus { flex: 1 1 120px; min-width: 120px; min-height: 24px; border: 0; background: transparent; padding: 2px 3px; box-shadow: none; outline: 2px solid transparent; }
 /* Every chip looks the same, whatever its term; only a left-out tag is red. */
 .query-bar-shell .query-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; max-width: 100%; margin: 0; border: 1px solid color-mix(in srgb, var(--cyan) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); padding: 1px 4px 1px 8px; font: var(--text-xs) var(--font-mono); text-align: left; text-transform: none; letter-spacing: normal; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
-.query-chip-label { min-width: 0; overflow-wrap: anywhere; }
+.query-chip-label { max-width: 28ch; }
 .query-bar-shell .query-chip.is-negated { border-style: dashed; border-color: var(--muted); background: transparent; color: var(--text); text-decoration: line-through; text-decoration-color: var(--muted); }
 /* A group of the search: its own chips inside a frame, with the group's
    remove at the end, so what the builder nests the box shows nested. The
@@ -3237,7 +3248,7 @@ export function getQueryEditorScript(): string {
       const pieces = scanQuery(term.text);
       const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
       const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) ? ' is-negated' : '');
-      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" data-tip="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
+      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" data-tip="Remove ' + escapeHtml(label) + '" data-tip-overflow="' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
     }
 
     /**
@@ -3398,7 +3409,7 @@ export function getQueryEditorScript(): string {
       const title = describeFacetValue(value);
       const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
       const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
-      return '<button class="query-facet-value" data-action="facet"' + shared + ' data-tip="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+      return '<button class="query-facet-value" data-action="facet"' + shared + ' data-tip="' + escapeHtml(title) + '" data-tip-overflow="' + escapeHtml(name) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
     }
 
     /** How many of each kind of result the applied search matches. */

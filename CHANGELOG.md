@@ -77,6 +77,10 @@
 
 ### Changed
 
+- **A long tag stays on one line.** A tag, a search term, or a Refine value
+  too long for its place shortens, the namespace first, instead of breaking
+  after its slash; the whole tag shows as its tip when it is cut short.
+
 - **A card's menu says what is chosen, and its keys.** The Task board
   card's ⋯ menu checks the task's status, priority, and due date instead of
   leaving the current one out, shows the key that makes each change, such

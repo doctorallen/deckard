@@ -197,6 +197,16 @@ function probeScript(surface) {
   disabled.forEach((el) => { el.style.transition = 'none'; });
   const disabledAtRest = disabled.map(look);
   runs[0].disabledCount = disabled.length;
+  // A tag keeps to one line and stays inside the entry it is written in.
+  runs[0].tagsBroken = [...document.querySelectorAll('.tag-open .tag-label, .inline-tag .tag-label')]
+    .filter((label) => {
+      const entry = label.closest('.note, .card, .board-card, .task-row');
+      const lines = label.getClientRects().length;
+      const past = entry ? label.getBoundingClientRect().right - entry.getBoundingClientRect().right : 0;
+      return lines > 1 || past > 0.5;
+    })
+    .slice(0, 4)
+    .map((label) => label.textContent + ' (' + label.getClientRects().length + ' lines)');
   let target = null;
   let hoverTarget = '';
   for (const sel of ${JSON.stringify(surface.hovered)}) {
@@ -369,6 +379,9 @@ try {
           if (box.scrollW > box.clientW) {
             problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
           }
+        }
+        for (const broken of run.tagsBroken || []) {
+          problems.push(`a tag breaks over lines or out of its entry: ${broken}`);
         }
         for (const lit of run.disabledLit || []) {
           problems.push(`a control that cannot act lights up under the pointer: ${lit}`);

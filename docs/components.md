@@ -274,6 +274,21 @@ the tag-association view switch.
 | `.tag-namespace` | The dimmed `#namespace/` prefix. Emitted by `renderTagLabel`. |
 | `.tag-context-menu` | The right-click menu, positioned by `openTagContextMenu`. A `.popover`. |
 
+**One line, always.** A tag or chip that is too long for its place keeps to
+one line and shortens, the namespace first, down to about `#p…/`, then the
+value: `#topic/replicants` in a 220px sidebar card reads whole or as
+`#to…/replicants`, never split over two lines. `renderTagLabel` writes
+`.tag-label > .tag-namespace > .tag-namespace-text + "/"` then `.tag-value`,
+so the slash survives the cut and `.tag-namespace` still reads `#topic/`.
+The rule is geometry only (`white-space`, `overflow`, `flex`, `max-width`),
+so any look a view gives its tags composes with it; a view's own tag style
+must keep the structure and must not set `white-space`. A tag button, a
+query chip (at most `28ch`), and a Refine value carry
+`data-tip-overflow` with the whole text, which the tip shows only when the
+text is cut short. The Dashboard's Tags rows are rows, not tokens, and keep
+wrapping. The layout suite fails a tag that breaks over lines or out of its
+entry.
+
 ---
 
 ## Popovers and menus

@@ -149,6 +149,31 @@ suite('Component primitives', () => {
     });
   });
 
+  suite('long tags (9c)', () => {
+    test('a namespaced tag keeps its slash outside the part that shortens', () => {
+      const search = openSearch();
+      const tag = search.find('.card [data-tag-key="#topic/replicants"]');
+      assert.strictEqual(tag.getAttribute('data-tip-overflow'), '#topic/replicants');
+      assert.strictEqual(tag.querySelector('.tag-namespace')?.textContent, '#topic/');
+      assert.strictEqual(tag.querySelector('.tag-namespace-text')?.textContent, '#topic');
+      assert.strictEqual(tag.querySelector('.tag-value')?.textContent, 'replicants');
+    });
+
+    test('the whole tag is the tip only when it is cut short', () => {
+      const search = openSearch();
+      const tag = search.find('.card [data-tag-key="#topic/replicants"]') as HTMLElement;
+      const value = tag.querySelector('.tag-value') as HTMLElement;
+      Object.defineProperty(value, 'clientWidth', { configurable: true, value: 60 });
+      Object.defineProperty(value, 'scrollWidth', { configurable: true, value: 60 });
+      keyFocus(search, '.card [data-tag-key="#topic/replicants"]');
+      assert.ok(!tip(search) || tip(search)?.hidden, 'a tag that fits has no tip');
+      tag.blur();
+      Object.defineProperty(value, 'scrollWidth', { configurable: true, value: 90 });
+      keyFocus(search, '.card [data-tag-key="#topic/replicants"]');
+      assert.strictEqual(tip(search)?.textContent, '#topic/replicants');
+    });
+  });
+
   suite('tips (9d)', () => {
     test('a keyboard focus shows the tip at once, with its key, and Escape hides it', () => {
       const search = openSearch('#project/atlas', { history: { back: true, forward: false } });

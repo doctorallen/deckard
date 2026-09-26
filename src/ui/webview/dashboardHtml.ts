@@ -113,6 +113,9 @@ button:focus-visible, select:focus-visible, input:focus-visible, .tag-row.is-dra
 .tag-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 8px; }
 .tag-main { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .tag-name { overflow-wrap: anywhere; color: var(--cyan-bright); }
+/* A tag row is a row, not a token: its name wraps rather than shortening. */
+.tag-name .tag-label, .tag-name .tag-label > .tag-namespace { display: inline; white-space: normal; }
+.tag-name .tag-namespace-text, .tag-name .tag-label > .tag-value { overflow: visible; white-space: normal; }
 .tag-count { color: var(--muted); font-family: var(--font-mono); }
 .tag-actions { display: flex; align-items: center; gap: 5px; }
 .tag-actions button { min-height: 26px; padding-inline: 7px; }

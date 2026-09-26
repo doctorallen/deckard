@@ -143,6 +143,7 @@ class Element {
     const copy = new Element(this.tagName, { ...this.attributes });
     copy.ownerDocument = this.ownerDocument;
     copy.text = this.text;
+    copy.tail = this.tail;
     if (deep) {
       this.children.forEach((child) => copy.appendChild(child.cloneNode(true)));
     }
@@ -159,7 +160,7 @@ class Element {
   }
 
   get textContent() {
-    return this.text + this.children.map((child) => child.textContent).join('');
+    return this.text + this.children.map((child) => child.textContent + (child.tail ?? '')).join('');
   }
 
   set textContent(value) {
@@ -283,7 +284,11 @@ function parseFragment(html, parent, ownerDocument) {
     if (textRun !== undefined) {
       const current = stack[stack.length - 1];
       if (current) {
-        current.text += decodeEntities(textRun);
+        // Text after a child belongs after it, as `#project` then `/` in a
+        // tag's namespace, rather than before every child.
+        const last = current.children[current.children.length - 1];
+        if (last) last.tail = (last.tail ?? '') + decodeEntities(textRun);
+        else current.text += decodeEntities(textRun);
       }
       continue;
     }

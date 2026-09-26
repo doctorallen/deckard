@@ -146,9 +146,7 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
    tag's smaller size. */
 .active-tag-list .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
 .active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
-.active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The note's own tags are few, so a long one wraps from the left in full. */
-.active-tag-open > .tag-label { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; }
 .refine-open-tag { display: inline-grid; flex: 0 0 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 2px; }
 .refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .refine-open-tag:hover, .refine-open-tag:focus-visible { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
