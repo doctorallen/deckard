@@ -14,6 +14,10 @@ Five researchers worked independently, each on one kind of source:
 | D | Research and standards | WCAG 2.2, the ARIA Authoring Practices, Hearst, Pirolli and Card, Teevan, Bergman and Whittaker, Jones; plus a contrast measurement of every theme |
 | E | Users' own words | The most-upvoted issues on Foam, Dendron, Obsidian Tasks, Dataview, and Kanban; the Obsidian forum; Hacker News. Reddit and Marketplace reviews could not be fetched. |
 
+**Status, 2026-09-25: implemented on `dev`,** one commit per piece, each
+verified by all four suites and the visual check. What was left out or done
+differently is listed under [As built](#as-built) at the end.
+
 Each finding was checked against the source and names a file and line. The
 claims the plan rests on most were checked again before writing: the
 command titles, the Tasks view's unused `contextValue`s, capture writing
@@ -430,3 +434,28 @@ UI polish, so they belong in `improvements.md` rather than this plan:
 - W3C: [WCAG 2.2](https://www.w3.org/TR/WCAG22/) (1.4.3, 1.4.11, 1.4.13, 2.4.3, 2.4.7, 2.5.7, 4.1.2, 4.1.3); [ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/) (combobox, grid, keyboard interface). Microsoft Edge, *Styling for Windows high contrast with new standards for forced colors*, 2020.
 - Hearst, M. *Search User Interfaces*. 2009, ch. 5. Pirolli, P. and Card, S. *Information foraging*. Psychological Review, 1999. Teevan, J., Adar, E., Jones, R. and Potts, M. *Information re-retrieval*. SIGIR 2007. Teevan, J. *The Re:Search Engine*. UIST 2007. Bergman, O. et al. *Improving personal information management by integrating it*. ACM TOIS 26(4), 2008. Jones, W. *Keeping Found Things Found*. 2007. Elavsky, F., Nadolskis, L. and Moritz, D. *Data Navigator*. IEEE VIS 2023.
 - Users: [Kanban #4](https://github.com/community-archive/obsidian-kanban/issues/4), [#85](https://github.com/community-archive/obsidian-kanban/issues/85), [#237](https://github.com/community-archive/obsidian-kanban/issues/237); [Tasks #2855](https://github.com/obsidian-tasks-group/obsidian-tasks/issues/2855), [#2856](https://github.com/obsidian-tasks-group/obsidian-tasks/issues/2856), [#3307](https://github.com/obsidian-tasks-group/obsidian-tasks/issues/3307); [Dataview #42](https://github.com/blacksmithgu/obsidian-dataview/issues/42); [Foam #749](https://github.com/foambubble/foam/issues/749), [#1251](https://github.com/foambubble/foam/issues/1251); [Dendron #1978](https://github.com/dendronhq/dendron/issues/1978); Obsidian forum threads on [graph view](https://forum.obsidian.md/t/how-do-you-use-the-graph-view/2785) and [local graph filtering](https://forum.obsidian.md/t/improved-filtering-of-local-graph/35937).
+
+## As built
+
+- **1c** added a second contrast check, `test/ui/checkRenderedContrast.js`,
+  run by `test:layout`: it lays the pages out in headless Chrome and measures
+  every piece of text and every field's edge against what is behind it. It
+  found the faded tag namespaces and the field edges; each theme now names a
+  `--control-line`. Corpo keeps VS Code's own input edge, which the check
+  exempts.
+- **2a**: the Tasks view menu has the dates and Edit Task; Show on Task
+  Board and Copy Link were left out, since a task has no stable address to
+  show or copy.
+- **2b**: the task tooltip has no links to act on the task; right-click does
+  that. The status bar lists overdue tasks by name without links.
+- **2c**: the optional time prefix on a note line was not added.
+- **3**: multi-select on the board, the drop line between cards, and the
+  in-page Undo toast, listed as later, were not built.
+- **4c**: pages remember their scroll position; results are not held in
+  stable positions across index updates.
+- **5c**: the links sit under the related notes rather than in a separate
+  mode.
+- **6**: "keyword links" in the zen item turned out to be a Related Notes
+  ranking setting, not an editor feature, so zen leaves it alone.
+- **Also fixed:** the zen switch wrote only to user settings, so a
+  workspace that set `deckard.zenMode` kept zen on whatever the switch said.
