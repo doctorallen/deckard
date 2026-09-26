@@ -57,8 +57,10 @@ export function listExcludedFolders(
       continue;
     }
     for (const [key, value] of Object.entries(exclude)) {
-      const unescaped = readExcludeKey(key.trim().replace(/\/+$/, ''));
-      if (value === true && unescaped !== '' && !/[*?[\]{}]/.test(unescaped)) {
+      const written = key.trim().replace(/\/+$/, '');
+      const unescaped = readExcludeKey(written);
+      // A glob character not escaped makes the key a pattern, not one folder.
+      if (value === true && unescaped !== '' && !/(^|[^\\])[*?[\]{}]/.test(written)) {
         listed.push(join(root, unescaped));
       }
     }

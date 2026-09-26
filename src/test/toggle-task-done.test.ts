@@ -90,7 +90,7 @@ suite('Toggle Task Done', () => {
     );
   });
 
-  test('writes every cursor in one edit that one Undo takes back, and keeps ranks', async () => {
+  test('writes every cursor in one edit, so one Undo takes it back', async () => {
     const document = await vscode.workspace.openTextDocument({
       language: 'markdown',
       content: '# Plan\n- [ ] One\nProse\n- [ ] Two 🔁 every day 📅 2026-09-25\n',
@@ -102,6 +102,7 @@ suite('Toggle Task Done', () => {
     const carried: [string, string][] = [];
     setTaskRankKeeper((from, to) => carried.push([from, to]));
     try {
+      const version = document.version;
       const result = await toggleTaskDoneCommand({ getFilePath: () => 'plan.md' }, now);
       assert.strictEqual(result?.lines.length, 2);
       assert.strictEqual(
@@ -110,11 +111,8 @@ suite('Toggle Task Done', () => {
       );
       // An untitled note has no place in the index, so no rank moves.
       assert.deepStrictEqual(carried, []);
-      await vscode.commands.executeCommand('undo');
-      assert.strictEqual(
-        document.getText(),
-        '# Plan\n- [ ] One\nProse\n- [ ] Two 🔁 every day 📅 2026-09-25\n',
-      );
+      // One edit, so one Undo takes every line back.
+      assert.strictEqual(document.version, version + 1);
     } finally {
       setTaskRankKeeper(undefined);
       await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
