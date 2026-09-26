@@ -75,6 +75,13 @@
   from every view. Ids are now twice as wide. Task order and view counts
   kept under the old ids are carried over to the new ones.
 
+- **Extract Heading no longer deletes the new note when the old one is left
+  half-written.** When the old note could be neither saved nor put back,
+  Deckard deleted the new note, leaving the heading only in a file whose
+  open editor showed the link, so saving that editor lost it. The new note
+  is now kept, and the message says the heading is in both and what to do.
+  The raw error goes to the log, with Open Log beside the message.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

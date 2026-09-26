@@ -5,6 +5,12 @@ import { Section } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { resolveSourceUri } from './navigation';
+import {
+  describeRejectedEdit,
+  noteName,
+  openNoteAction,
+  reportFailure,
+} from './notify';
 
 export async function extractHeadingCommand(
   indexer: WorkspaceIndexer,
@@ -79,6 +85,8 @@ export async function extractHeadingNote(
   sourceUri: vscode.Uri,
   notesFolderUri: vscode.Uri,
   name: string,
+  /** Swaps the section for its link; stood in for by tests of the failures. */
+  replace: typeof replaceSectionWithLink = replaceSectionWithLink,
 ): Promise<vscode.Uri | undefined> {
   if (section.isInline || section.tags.length === 0) {
     return undefined;
@@ -107,10 +115,19 @@ export async function extractHeadingNote(
 
   // Wiki links resolve against the file name, so the link names the new file.
   const link = `[[${fileName.slice(0, -'.md'.length)}]]`;
-  if (!(await replaceSectionWithLink(sourceUri, section, link))) {
+  const replaced = await replace(sourceUri, section, link, noteUri);
+  if (replaced === 'unchanged') {
+    // The source is as it was, so the new note is the only trace; it goes.
     try {
       await vscode.workspace.fs.delete(noteUri, { useTrash: false });
     } catch {}
+    return undefined;
+  }
+  if (replaced === 'half') {
+    // The source's editor holds the link while its file on disk still holds
+    // the heading. Deleting the new note would leave the heading nowhere but
+    // that file, and saving the editor would then lose it; so it is kept, and
+    // the heading is in both until the reader decides.
     return undefined;
   }
 
@@ -214,6 +231,26 @@ function getSuggestedNoteName(heading: string): string {
 }
 
 /**
+ * What became of the source note: the link is in and saved; nothing changed
+ * (the edit was refused, or rolled back); or the link is in its editor but
+ * could not be saved or taken back, so the heading is still in its file.
+ */
+export type ReplaceOutcome = 'replaced' | 'unchanged' | 'half';
+
+/** What went wrong while taking the heading out of its note. */
+export function describeExtractFailure(
+  outcome: Exclude<ReplaceOutcome, 'replaced'>,
+  stage: 'save' | 'remove',
+  source: string,
+  created: string,
+): string {
+  const failed = stage === 'save' ? `could not save ${source}` : `could not remove the heading from ${source}`;
+  return outcome === 'unchanged'
+    ? `Deckard ${failed}, so the heading was not extracted and nothing was written.`
+    : `Deckard wrote ${created} but ${failed}, so the heading is in both notes. ${source} is open with the link in its place: save it to finish, or undo the change in it and delete ${created}.`;
+}
+
+/**
  * Replaces the extracted section with a link to its new note, keeping the
  * line breaks that separated the section from whatever follows it.
  */
@@ -221,10 +258,22 @@ async function replaceSectionWithLink(
   sourceUri: vscode.Uri,
   section: Section,
   link: string,
-): Promise<boolean> {
+  noteUri: vscode.Uri,
+): Promise<ReplaceOutcome> {
   let sourceEditApplied = false;
   let linkRange: vscode.Range | undefined;
   let replacedText: string | undefined;
+
+  /** Says what went wrong, and what became of the source note. */
+  const fail = (restored: boolean, stage: 'save' | 'remove', error?: unknown): ReplaceOutcome => {
+    const outcome = restored ? 'unchanged' : 'half';
+    void reportFailure({
+      outcome: describeExtractFailure(outcome, stage, noteName(sourceUri), noteName(noteUri)),
+      ...(error === undefined ? {} : { error }),
+      ...(outcome === 'half' ? { action: openNoteAction(sourceUri) } : {}),
+    });
+    return outcome;
+  };
 
   const restoreSource = async (): Promise<boolean> => {
     if (!sourceEditApplied || !linkRange || replacedText === undefined) {
@@ -248,7 +297,10 @@ async function replaceSectionWithLink(
       section.endLine < section.startLine ||
       section.endLine > document.lineCount
     ) {
-      return false;
+      void vscode.window.showWarningMessage(
+        'Deckard could not extract this heading because the source section changed.',
+      );
+      return 'unchanged';
     }
 
     const start = new vscode.Position(section.startLine - 1, 0);
@@ -264,7 +316,7 @@ async function replaceSectionWithLink(
       void vscode.window.showWarningMessage(
         'Deckard could not extract this heading because the source section changed.',
       );
-      return false;
+      return 'unchanged';
     }
 
     const replacedRange = new vscode.Range(
@@ -279,7 +331,8 @@ async function replaceSectionWithLink(
     const edit = new vscode.WorkspaceEdit();
     edit.replace(sourceUri, replacedRange, replacement);
     if (!(await vscode.workspace.applyEdit(edit))) {
-      return false;
+      void reportFailure(describeRejectedEdit(noteName(sourceUri)));
+      return 'unchanged';
     }
     sourceEditApplied = true;
     linkRange = new vscode.Range(start, getEndPosition(start, replacement));
@@ -292,33 +345,14 @@ async function replaceSectionWithLink(
     try {
       saved = await updatedDocument.save();
     } catch (error) {
-      const restored = await restoreSource();
-      void vscode.window.showErrorMessage(
-        restored
-          ? `Deckard could not save the source note after extracting the heading: ${String(error)}`
-          : `Deckard could not save the source note after extracting the heading: ${String(error)} The source edit could not be rolled back.`,
-      );
-      return false;
+      return fail(await restoreSource(), 'save', error);
     }
     if (saved) {
-      return true;
+      return 'replaced';
     }
-
-    const restored = await restoreSource();
-    void vscode.window.showErrorMessage(
-      restored
-        ? 'Deckard could not save the source note after extracting the heading.'
-        : 'Deckard could not save the source note after extracting the heading. The source edit could not be rolled back.',
-    );
-    return false;
+    return fail(await restoreSource(), 'save');
   } catch (error) {
-    const restored = await restoreSource();
-    void vscode.window.showErrorMessage(
-      restored
-        ? `Deckard could not remove the extracted heading: ${String(error)}`
-        : `Deckard could not remove the extracted heading: ${String(error)} The source edit could not be rolled back.`,
-    );
-    return false;
+    return fail(await restoreSource(), 'remove', error);
   }
 }
 
