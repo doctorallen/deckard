@@ -380,6 +380,30 @@ mark { padding: 0 1px; background: color-mix(in srgb, var(--amber) 30%, transpar
 }
 
 /**
+ * An icon-only button for HTML the host builds, the twin of the page
+ * script's renderIconButton: its label is its name and its tip, and it never
+ * carries title, which no keyboard ever saw.
+ */
+export function iconButtonHtml(options: {
+  id?: string;
+  action?: string;
+  label: string;
+  icon: string;
+  tip?: string;
+  key?: string;
+  className?: string;
+}): string {
+  const escape = (value: string): string =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return `<button type="button" class="icon-button${options.className ? ` ${options.className}` : ''}"`
+    + (options.id ? ` id="${escape(options.id)}"` : '')
+    + (options.action ? ` data-action="${escape(options.action)}"` : '')
+    + ` aria-label="${escape(options.label)}" data-tip="${escape(options.tip ?? options.label)}"`
+    + (options.key ? ` data-tip-key="${escape(options.key)}"` : '')
+    + `>${options.icon}</button>`;
+}
+
+/**
  * Everything that floats over a page: menus, the gear's menu, completions,
  * and tips. One look, one stacking order, and one menu row, so the tag menu,
  * the card menu, the rank menu, and the gear read as one family. Each keeps
@@ -416,7 +440,11 @@ export function getPopoverCss(): string {
 .menu-check { flex: 0 0 16px; display: inline-grid; place-items: center; }
 .menu-check svg { width: 14px; height: 14px; }
 .menu-key { margin-left: auto; padding-left: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
-button.menu-item:hover .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }`;
+button.menu-item:hover .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }
+/* The one tip every page shares (data-tip), placed by the page script. A
+   facet value's tip runs to several lines, so its line breaks are kept. */
+#deckard-tip { position: fixed; white-space: pre-line; }
+#deckard-tip kbd { margin-left: var(--space-1); font-family: var(--font-mono); }`;
 }
 
 /**
@@ -1442,6 +1470,184 @@ export function getComponentScript(): string {
 
 
   /**
+   * Tips: the longer explanation a control carries, shown on keyboard focus
+   * as well as under the pointer. A native title never shows on focus, so a
+   * keyboard reader never saw one; and it could not be dismissed or hovered.
+   *
+   *   data-tip           what the control does
+   *   data-tip-key       the key that does the same, drawn as <kbd>
+   *   data-tip-disabled  why it cannot act, used while aria-disabled="true"
+   *   data-tip-overflow  the whole of a tag or chip, shown only when cut short
+   *
+   * A keyboard focus shows the tip at once; the pointer after 400 ms, or at
+   * once within 300 ms of another tip closing, so a run along a toolbar does
+   * not wait at every button. Touch never shows one. Escape hides it, and is
+   * taken only while a tip shows, so it does not also close a menu behind it.
+   */
+  const TIP_SELECTOR = '[data-tip], [data-tip-overflow], [data-tip-disabled]';
+  let tipElement;
+  let tipTarget;
+  let tipShowTimer;
+  let tipHideTimer;
+  let tipLastHidden = 0;
+  let keyboardModality = false;
+
+  /** Whether a tag's or a chip's text is cut short where it is drawn. */
+  function isTruncated(element) {
+    return Array.prototype.some.call(element.querySelectorAll('.tag-namespace-text, .tag-value, .query-chip-label'), function (part) {
+      return part.scrollWidth > part.clientWidth;
+    });
+  }
+
+  /** What a tip says for an element now, or nothing. */
+  function tipTextFor(element) {
+    if (!element || !element.getAttribute) return '';
+    const disabled = element.getAttribute('aria-disabled') === 'true' ? element.getAttribute('data-tip-disabled') : null;
+    if (disabled) return disabled;
+    const tip = element.getAttribute('data-tip') || '';
+    const overflow = element.getAttribute('data-tip-overflow');
+    // A chip's own tip already names its whole term; a tag's tip is the tag.
+    if (overflow && isTruncated(element)) return tip || overflow;
+    return tip;
+  }
+
+  function accessibleNameOf(element) {
+    return String(element.getAttribute('aria-label') || element.textContent || '').trim();
+  }
+
+  function hideTip() {
+    clearTimeout(tipShowTimer);
+    clearTimeout(tipHideTimer);
+    tipShowTimer = undefined;
+    tipHideTimer = undefined;
+    if (!tipTarget) return;
+    const described = String(tipTarget.getAttribute('aria-describedby') || '').split(/\\s+/).filter(function (id) { return id && id !== 'deckard-tip'; });
+    if (described.length) tipTarget.setAttribute('aria-describedby', described.join(' '));
+    else tipTarget.removeAttribute('aria-describedby');
+    tipTarget = undefined;
+    if (tipElement) tipElement.hidden = true;
+    tipLastHidden = Date.now();
+  }
+
+  function showTip(element) {
+    clearTimeout(tipShowTimer);
+    clearTimeout(tipHideTimer);
+    tipShowTimer = undefined;
+    const text = tipTextFor(element);
+    if (!text || !document.contains(element)) {
+      if (tipTarget === element) hideTip();
+      return;
+    }
+    if (tipTarget && tipTarget !== element) hideTip();
+    if (!tipElement) {
+      tipElement = document.createElement('div');
+      tipElement.id = 'deckard-tip';
+      tipElement.className = 'popover is-tip';
+      tipElement.setAttribute('role', 'tooltip');
+      tipElement.hidden = true;
+      document.body.appendChild(tipElement);
+    }
+    const key = element.getAttribute('aria-disabled') === 'true' ? '' : element.getAttribute('data-tip-key');
+    tipElement.innerHTML = escapeHtml(text) + (key ? ' <kbd>' + escapeHtml(key) + '</kbd>' : '');
+    tipElement.hidden = false;
+    tipTarget = element;
+    // The tip is the name already on an icon button; said twice, it is noise.
+    if (text !== accessibleNameOf(element)) {
+      const described = String(element.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
+      if (described.indexOf('deckard-tip') < 0) described.push('deckard-tip');
+      element.setAttribute('aria-describedby', described.join(' '));
+    }
+    const at = element.getBoundingClientRect();
+    const size = tipElement.getBoundingClientRect();
+    const width = window.innerWidth || document.documentElement.clientWidth || 0;
+    const height = window.innerHeight || document.documentElement.clientHeight || 0;
+    let top = at.bottom + 6;
+    if (height && top + size.height > height - 8) top = at.top - 6 - size.height;
+    const left = at.left + at.width / 2 - size.width / 2;
+    tipElement.style.left = Math.max(8, width ? Math.min(left, width - size.width - 8) : left) + 'px';
+    tipElement.style.top = Math.max(8, top) + 'px';
+  }
+
+  function tipOwner(target) {
+    const element = target && target.closest ? target.closest(TIP_SELECTOR) : null;
+    return element && tipTextFor(element) ? element : null;
+  }
+
+  document.addEventListener('keydown', function () { keyboardModality = true; }, true);
+  document.addEventListener('pointerdown', function () {
+    keyboardModality = false;
+    hideTip();
+  }, true);
+  document.addEventListener('mousedown', function () { keyboardModality = false; }, true);
+  // Escape puts the tip away first, and only the tip.
+  window.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape' || !tipTarget) return;
+    event.preventDefault();
+    event.stopPropagation();
+    hideTip();
+  }, true);
+  document.addEventListener('focusin', function (event) {
+    const target = event.target;
+    if (!keyboardModality || !target || !target.matches || !target.matches(TIP_SELECTOR)) return;
+    showTip(target);
+  });
+  document.addEventListener('focusout', function (event) {
+    if (tipTarget && event.target === tipTarget) hideTip();
+  });
+  document.addEventListener('pointerover', function (event) {
+    if (event.pointerType === 'touch') return;
+    if (tipElement && tipElement.contains(event.target)) {
+      clearTimeout(tipHideTimer);
+      return;
+    }
+    const owner = tipOwner(event.target);
+    if (!owner || owner === tipTarget) {
+      if (owner) clearTimeout(tipHideTimer);
+      return;
+    }
+    clearTimeout(tipShowTimer);
+    const warm = Boolean(tipTarget) || Date.now() - tipLastHidden < 300;
+    tipShowTimer = setTimeout(function () { showTip(owner); }, warm ? 0 : 400);
+  });
+  document.addEventListener('pointerout', function (event) {
+    const next = event.relatedTarget;
+    const fromTip = tipElement && tipElement.contains(event.target);
+    const owner = fromTip ? tipTarget : tipOwner(event.target);
+    if (!owner || (next && (owner.contains(next) || (tipElement && tipElement.contains(next))))) return;
+    if (owner !== tipTarget) {
+      clearTimeout(tipShowTimer);
+      return;
+    }
+    clearTimeout(tipHideTimer);
+    tipHideTimer = setTimeout(hideTip, 100);
+  });
+  window.addEventListener('scroll', function () { if (tipTarget) hideTip(); }, true);
+  // A redraw that took the control away takes its tip with it.
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver(function () {
+      if (tipTarget && !document.contains(tipTarget)) hideTip();
+    }).observe(document.body || document.documentElement, { childList: true, subtree: true });
+  }
+
+  /**
+   * An icon-only button: its label is its accessible name and its tip, and
+   * it never carries title. options: { action, label, icon, tip, key,
+   * className, attributes, pressed, disabledReason }.
+   */
+  function renderIconButton(options) {
+    const tip = options.tip || options.label;
+    return '<button type="button" class="icon-button' + (options.className ? ' ' + options.className : '') + '"'
+      + (options.action ? ' data-action="' + escapeHtml(options.action) + '"' : '')
+      + (options.attributes ? ' ' + options.attributes : '')
+      + ' aria-label="' + escapeHtml(options.label) + '" data-tip="' + escapeHtml(tip) + '"'
+      + (options.key ? ' data-tip-key="' + escapeHtml(options.key) + '"' : '')
+      + (options.pressed === undefined ? '' : ' aria-pressed="' + Boolean(options.pressed) + '"')
+      + (options.disabledReason ? ' aria-disabled="true" data-tip-disabled="' + escapeHtml(options.disabledReason) + '"' : '')
+      + '>' + (options.icon || '') + '</button>';
+  }
+
+
+  /**
    * Right-click actions for any element carrying a tag key.
    *
    * Call installTagContextMenu(post) once; it wires the listeners and calls
@@ -1675,7 +1881,7 @@ export function getComponentScript(): string {
     const codeAttribute = code ? ' data-code="' + escapeHtml(code) + '"' : '';
     const body = '<span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong>';
     if (!query) return '<article class="metric"' + codeAttribute + '>' + body + '</article>';
-    return '<button type="button" class="metric metric-open"' + codeAttribute + ' data-action="open-search" data-query="' + escapeHtml(query) + '" title="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '">' + body + '</button>';
+    return '<button type="button" class="metric metric-open"' + codeAttribute + ' data-action="open-search" data-query="' + escapeHtml(query) + '" data-tip="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '">' + body + '</button>';
   }
 
   /** The Status, Priority, and Due date switch above a task board. */
@@ -1770,12 +1976,19 @@ export function getComponentScript(): string {
     const tabStop = card.taskId === taskBoardTabStop ? '0' : '-1';
     return '<article class="task board-card' + (card.completed ? ' completed' : '') + '" draggable="true" tabindex="' + tabStop + '" aria-label="' + escapeHtml(cardName) + '" aria-keyshortcuts="x t m d e 1 2 3 4 5 [ ]"'
       + ' data-task-id="' + escapeHtml(card.taskId) + '" data-file-path="' + escapeHtml(card.filePath) + '" data-line="' + card.line + '">'
-      + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" title="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
+      + '<input type="checkbox" tabindex="-1" data-action="board-toggle-task" aria-label="' + escapeHtml((card.completed ? 'Reopen ' : 'Complete ') + plainTitle) + '" data-tip="' + (card.completed ? 'Reopen' : 'Complete') + ' this task"' + (card.completed ? ' checked' : '') + '>'
       + '<div class="task-summary"><div class="task-title">' + renderTaskTitle(card.renderedTitle, card.titleTags) + '</div>'
       + '<p class="source board-details">' + details + '</p>'
       + '<span class="task-source">' + escapeHtml(formatSourceLocation(String(card.filePath).split('/').pop() || card.filePath, card.line)) + '</span>'
       + (cardPath ? '<span class="task-source heading-path">' + cardPath + '</span>' : '')
-      + '<button type="button" tabindex="-1" class="board-move icon-button" data-action="board-menu" aria-haspopup="menu" aria-expanded="false" title="Change this task" aria-label="' + escapeHtml('Change ' + plainTitle + ': status, priority, or due date') + '">' + ELLIPSIS_ICON + '</button>'
+      + renderIconButton({
+        action: 'board-menu',
+        className: 'board-move',
+        label: 'Change ' + plainTitle + ': status, priority, or due date',
+        tip: 'Change this task',
+        icon: ELLIPSIS_ICON,
+        attributes: 'tabindex="-1" aria-haspopup="menu" aria-expanded="false"',
+      })
       + '</div></article>';
   }
 
@@ -1821,7 +2034,7 @@ export function getComponentScript(): string {
         // A column that takes a drop takes a new task the same way; one that
         // does not says so while a card is dragged, and where to go instead.
         + (column.droppable && column.id !== 'done'
-          ? '<button type="button" class="board-add" data-action="board-add-task" data-column-id="' + escapeHtml(column.id) + '" title="Capture a task straight into ' + escapeHtml(column.label) + '">+ Add task</button>'
+          ? '<button type="button" class="board-add" data-action="board-add-task" data-column-id="' + escapeHtml(column.id) + '" data-tip="Capture a task straight into ' + escapeHtml(column.label) + '">+ Add task</button>'
           : column.droppable ? '' : '<p class="board-refuses">' + (column.id.indexOf('due:') === 0 ? 'A card cannot be dropped on a range of days. Pick its date from its ⋯ menu.' : 'A card cannot be dropped here.') + '</p>')
         + '</section>';
     }).join('') + '</div>';
@@ -2084,16 +2297,18 @@ export function getComponentScript(): string {
    * gets stuck on offered no route to it.
    */
   function renderHelpButton(anchor) {
-    return '<button type="button" class="icon-button help-button" data-action="open-help"'
-      + (anchor ? ' data-help-anchor="' + escapeHtml(anchor) + '"' : '')
-      + ' aria-label="Open Help" title="Open Help">'
-      + '${helpIcon}'
-      + '</button>';
+    return renderIconButton({
+      action: 'open-help',
+      className: 'help-button',
+      label: 'Open Help',
+      icon: '${helpIcon}',
+      attributes: anchor ? 'data-help-anchor="' + escapeHtml(anchor) + '"' : '',
+    });
   }
 
   function renderViewOptions(groups) {
     const wasOpen = Boolean(document.querySelector('.view-options[open]'));
-    return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" title="View options">' + '${settingsIcon}' + '</summary>'
+    return '<details class="view-options"' + (wasOpen ? ' open' : '') + '><summary aria-label="View options" data-tip="View options">' + '${settingsIcon}' + '</summary>'
       + '<div class="view-options-menu popover is-dropdown">' + groups.map(function (group) {
         return '<div class="view-options-group' + (group.stacked ? ' is-stacked' : '') + '"><span>' + escapeHtml(group.label) + '</span>' + group.html + '</div>';
       }).join('') + '</div></details>';
@@ -2848,11 +3063,11 @@ export function getQueryEditorScript(): string {
       return '<section class="query-workspace"' + (hasText ? ' data-has-text' : '') + ' aria-label="' + escapeHtml(label) + '">'
         + '<div class="query-bar-row">'
         + '<span class="query-input-shell query-bar-shell' + (errors.length ? ' invalid' : '') + '" data-query-text="' + escapeHtml(value) + '">' + terms + '<input class="query-input' + (errors.length ? ' invalid' : '') + '" type="text" data-action="query-input" data-suggest-key="query" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-query" aria-label="' + escapeHtml(terms ? label + ': add a term' : label) + '" placeholder="' + escapeHtml(terms ? '' : placeholder()) + '" value="' + escapeHtml(entry) + '"><div class="query-suggestions popover is-dropdown" id="suggestions-query" data-suggestions="query" hidden role="listbox" aria-label="Suggestions"></div></span>'
-        + '<button class="query-apply" data-action="apply-query" title="Run this search">Search</button>'
-        + '<button data-action="clear-query" data-query-clears title="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
+        + '<button class="query-apply" data-action="apply-query" data-tip="Run this search">Search</button>'
+        + '<button data-action="clear-query" data-query-clears data-tip="Clear the search"' + (canClear(value) ? '' : ' disabled') + '>Clear</button>'
         + (options.actions ? options.actions(hasText) : '')
         + '</div>'
-        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" title="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
+        + '<div class="query-status"><button class="query-builder-toggle" data-action="toggle-builder" aria-expanded="' + builderOpen + '" data-tip="Build the search one condition at a time">' + (builderOpen ? 'Hide builder' : 'Builder') + '</button>' + status + (statusControls || '') + '</div>'
         + renderBuilder()
         + '</section>';
     }
@@ -2942,13 +3157,13 @@ export function getQueryEditorScript(): string {
         return '<span class="query-chip-group' + (term.negated ? ' is-negated' : '') + '" role="group" aria-label="' + escapeHtml(label) + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '">'
           + (term.negated ? '<span class="query-chip-join" aria-hidden="true">NOT</span>' : '')
           + renderTermChips(term.items, term.join)
-          + '<button type="button" class="query-chip query-chip-group-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove the group ' + escapeHtml(label) + '" title="Remove the group ' + escapeHtml(label) + '"><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>'
+          + '<button type="button" class="query-chip query-chip-group-remove" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove the group ' + escapeHtml(label) + '" data-tip="Remove the group ' + escapeHtml(label) + '"><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>'
           + '</span>';
       }
       const pieces = scanQuery(term.text);
       const tag = pieces.length === 1 && pieces[0].kind === 'tag' ? pieces[0] : undefined;
       const className = 'query-chip' + (tag ? ' is-tag' : '') + (term.negated || (tag && tag.negated) ? ' is-negated' : '');
-      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" title="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
+      return '<button type="button" class="' + className + '" data-action="remove-term" data-without="' + escapeHtml(term.without) + '" aria-label="Remove ' + escapeHtml(label) + '" data-tip="Remove ' + escapeHtml(label) + '"><span class="query-chip-label">' + renderTermText(label) + '</span><span class="query-chip-remove" aria-hidden="true">&#215;</span></button>';
     }
 
     /**
@@ -3045,10 +3260,10 @@ export function getQueryEditorScript(): string {
       const last = terms.length > 1 ? terms[terms.length - 1] : undefined;
       const label = last ? String(last.label || last.text) : '';
       const drop = last
-        ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" title="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
+        ? '<button data-action="remove-term" data-without="' + escapeHtml(last.without) + '" data-tip="Run this search without its last term">Drop ' + escapeHtml(label) + '</button>'
         : '';
       const clear = canClear(currentText())
-        ? '<button data-action="clear-query" data-query-clears title="Clear the search">Clear</button>'
+        ? '<button data-action="clear-query" data-query-clears data-tip="Clear the search">Clear</button>'
         : '';
       if (!drop && !clear) return '';
       return '<span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">' + drop + clear + '</span>';
@@ -3107,7 +3322,7 @@ export function getQueryEditorScript(): string {
       const title = describeFacetValue(value);
       const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
       const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
-      return '<button class="query-facet-value" data-action="facet"' + shared + ' title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
+      return '<button class="query-facet-value" data-action="facet"' + shared + ' data-tip="' + escapeHtml(title) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
     }
 
     /** How many of each kind of result the applied search matches. */
@@ -3142,7 +3357,7 @@ export function getQueryEditorScript(): string {
         }).join('')
         : '<p class="query-builder-note">This group is empty. Add a condition to start it.</p>';
       const head = '<div class="query-builder-group-head">'
-        + '<button type="button" class="query-builder-not' + (group.negated ? ' active' : '') + '" data-action="builder-toggle-not" data-path="' + at + '" aria-pressed="' + (group.negated ? 'true' : 'false') + '" title="Turn this group around: match what it does not">not</button>'
+        + '<button type="button" class="query-builder-not' + (group.negated ? ' active' : '') + '" data-action="builder-toggle-not" data-path="' + at + '" aria-pressed="' + (group.negated ? 'true' : 'false') + '" data-tip="Turn this group around: match what it does not">not</button>'
         + '<span class="query-builder-head-text">match</span>'
         + '<select data-action="builder-set-join" data-path="' + at + '" aria-label="How this group combines its rows">'
         + '<option value="and"' + (group.join !== 'or' ? ' selected' : '') + '>all of</option>'
@@ -3185,7 +3400,7 @@ export function getQueryEditorScript(): string {
       const operatorTitle = descriptions[row.operator] || 'Operator';
       return '<div class="query-builder-row">' + joiner
         + '<select data-action="builder-set-field"' + position + ' aria-label="Field">' + fields + '</select>'
-        + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" title="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
+        + '<select class="query-builder-operator" data-action="builder-set-operator"' + position + ' aria-label="Operator: ' + escapeHtml(operatorTitle) + '" data-tip="' + escapeHtml(operatorTitle) + '">' + operators + '</select>'
         + '<span class="query-input-shell query-builder-value-shell"><input class="query-builder-value" data-action="builder-set-value" data-suggest-key="' + suggestKey + '" data-field="' + escapeHtml(row.field) + '"' + position + ' value="' + escapeHtml(row.value) + '" placeholder="' + escapeHtml(FIELD_PLACEHOLDERS[row.field] || '') + '" aria-label="Value" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggestions-' + suggestKey + '" autocomplete="off" spellcheck="false"><div class="query-suggestions popover is-dropdown" id="suggestions-' + suggestKey + '" data-suggestions="' + suggestKey + '" hidden role="listbox" aria-label="Suggestions"></div></span>'
         + remove + '</div>';
     }

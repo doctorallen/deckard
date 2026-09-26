@@ -288,6 +288,34 @@ widget colors.
 | `--z-modal` | `40` | The `?` key sheet |
 | `--z-drag` | `50` | The drag ghost, which sat under the menus at 10 |
 
+### Tooltips
+
+A control explains itself with `data-tip`, never `title`: a native title
+never shows on keyboard focus, cannot be hovered, and cannot be dismissed
+(WCAG 1.4.13). The shared script draws one `#deckard-tip`
+(`.popover.is-tip`, `role="tooltip"`) for every page.
+
+| Attribute | What it does |
+| --- | --- |
+| `data-tip` | What the control does. |
+| `data-tip-key` | The key that does the same, drawn after it as `<kbd>`. |
+| `data-tip-disabled` | Why the control cannot act, shown instead while it carries `aria-disabled="true"`. |
+| `data-tip-overflow` | The whole of a tag or chip, shown only when its text is cut short. |
+
+A keyboard focus shows the tip at once (keyboard use is read from the last
+`keydown` against the last `pointerdown`); the pointer after 400 ms, or at
+once within 300 ms of another tip closing, so running along a toolbar does
+not wait at every button. Touch never shows one. The tip can be hovered,
+hides 100 ms after the pointer leaves both, and hides on a press, a scroll,
+and a redraw that removed its control. Escape hides it and is taken only
+while a tip shows, so it does not also close a menu behind it. While it
+shows, the control's `aria-describedby` names `deckard-tip`, unless the tip
+says no more than the control's accessible name.
+
+`renderIconButton({ action, label, icon, tip, key, className, attributes,
+pressed, disabledReason })` draws an icon-only button whose label is its
+name and its tip; `iconButtonHtml()` is its twin for HTML the host builds.
+
 Three things keep numbers of their own, and
 `src/test/components-primitives.test.ts` lists them: the provenance lift
 (`z-index: 1/2`, Decision 5), the sidebar's `.note:hover { z-index: 20 }`,
@@ -457,6 +485,7 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `formatEntityTitle(kind, name)` | `project` + `skybridge-signal` → `Project: Skybridge Signal`. |
 | `taskFilterIcon(filter)` | The `all` / `active` / `completed` icons. |
 | `installTagContextMenu(onAction)` | Wire right-click actions for every `[data-tag-key]` on the page. Calls back with `(action, tagKey)`. Every context menu, this one and a page's own, opens on a `contextmenu` event, and the shared script raises that event on the focused tag, card, or row for the menu key, Shift+F10, and Alt+Enter, so no menu needs its own keyboard path. |
+| `renderIconButton(options)` | An icon-only `.icon-button`: `label` is its accessible name and, unless `tip` is given, its tip; `key` becomes `data-tip-key`; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`. Never emits `title`. |
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
@@ -519,6 +548,7 @@ today, and how many tasks need a new date as a `.text-button` that opens
 | Function | Purpose |
 | --- | --- |
 | `createNonce()` | One nonce per page, gating its inline style and script. |
+| `iconButtonHtml(options)` | `renderIconButton` for static HTML the host builds, such as the Notes Graph's zoom buttons. |
 | `getContentSecurityPolicy(cspSource, nonce, options)` | The shared CSP. `{ images: true }` adds `img-src`, `{ fonts: true }` adds `font-src`. |
 
 ---

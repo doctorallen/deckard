@@ -63,15 +63,62 @@ suite('Component primitives', () => {
     return page;
   };
 
-  const openSearch = (query = '#project/atlas'): WebviewPage => {
+  const openSearch = (query = '#project/atlas', extra: Record<string, unknown> = {}): WebviewPage => {
     const index = buildWorkspaceIndex(new Map([
       ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #topic/replicants\nThe lift is stuck.\n- [ ] Chase it #project/atlas\n')],
     ]));
     store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const snapshot = createSearchPageSnapshot(index, store.value, query, {});
-    page = openWebviewPage(getSearchPageHtml(webview), snapshot);
+    page = openWebviewPage(getSearchPageHtml(webview), { ...snapshot, ...extra });
     return page;
   };
+  const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+  const keyFocus = (target: WebviewPage, selector: string): HTMLElement => {
+    const element = target.find(selector) as HTMLElement;
+    target.document.dispatchEvent(new target.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    element.focus();
+    return element;
+  };
+  const tip = (target: WebviewPage): HTMLElement | null => target.document.getElementById('deckard-tip');
+
+  suite('tips (9d)', () => {
+    test('a keyboard focus shows the tip at once, with its key, and Escape hides it', () => {
+      const search = openSearch('#project/atlas', { history: { back: true, forward: false } });
+      const back = keyFocus(search, '[data-action="history-back"]');
+      const shown = tip(search);
+      assert.ok(shown && !shown.hidden, 'the tip shows');
+      assert.strictEqual(shown?.getAttribute('role'), 'tooltip');
+      assert.ok(shown?.textContent?.startsWith('Back to the search before'));
+      assert.strictEqual(shown?.querySelector('kbd')?.textContent, 'Alt+←');
+      assert.strictEqual(back.getAttribute('title'), null, 'no native title');
+      search.document.dispatchEvent(new search.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      assert.strictEqual(shown?.hidden, true);
+      assert.ok(!String(back.getAttribute('aria-describedby') || '').includes('deckard-tip'));
+    });
+
+    test('a tip that says more than the name describes its control', () => {
+      const search = openSearch();
+      const apply = keyFocus(search, '[data-action="apply-query"]');
+      assert.strictEqual(tip(search)?.textContent, 'Run this search');
+      assert.ok(String(apply.getAttribute('aria-describedby')).includes('deckard-tip'));
+    });
+
+    test('the pointer waits 400 ms, and touch shows nothing', async () => {
+      const search = openSearch();
+      const apply = search.find('[data-action="apply-query"]');
+      apply.dispatchEvent(new search.window.MouseEvent('pointerover', { bubbles: true }));
+      assert.ok(!tip(search) || tip(search)?.hidden, 'not at once');
+      await wait(450);
+      assert.strictEqual(tip(search)?.hidden, false, 'after the pause');
+      apply.dispatchEvent(new search.window.MouseEvent('pointerdown', { bubbles: true }));
+      assert.strictEqual(tip(search)?.hidden, true, 'a press puts it away');
+      const touch = new search.window.MouseEvent('pointerover', { bubbles: true });
+      Object.defineProperty(touch, 'pointerType', { value: 'touch' });
+      search.find('[data-action="toggle-builder"]').dispatchEvent(touch);
+      await wait(450);
+      assert.strictEqual(tip(search)?.hidden, true, 'touch never shows a tip');
+    });
+  });
 
   suite('popovers and menus (9e)', () => {
     test('no sheet stacks by a number of its own, outside the named exceptions', () => {

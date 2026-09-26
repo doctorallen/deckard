@@ -99,9 +99,9 @@ ${getQueryEditorScript()}
     actions: function (hasText) {
       // The Tasks view lists a search of its own; this is where it is edited.
       const listed = !!(state && state.agendaListsThisSearch);
-      return '<button data-action="save-board-search" data-query-needs-text title="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
-        + '<button data-action="use-for-agenda" title="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
-        + '<button data-action="export-tasks" title="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
+      return '<button data-action="save-board-search" data-query-needs-text data-tip="Keep this search, named, on Home; it reopens on the Task Board"' + (hasText ? '' : ' disabled') + '>Save</button>'
+        + '<button data-action="use-for-agenda" data-tip="' + (listed ? 'The Tasks view lists this search' : 'Make the Tasks view list this search') + '"' + (listed ? ' class="active"' : '') + '>Tasks view</button>'
+        + '<button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>';
     },
   });
 
@@ -180,10 +180,10 @@ ${getQueryEditorScript()}
   function renderStatusSettings() {
     const statuses = state.settings.statuses;
     const rows = statuses.map(function (status, index) {
-      return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" title="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">'
+      return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">'
         + '<span class="board-status-grip" aria-hidden="true">&#10303;</span>'
         + '<span class="board-status-name">' + escapeHtml(status) + '</span>'
-        + '<button type="button" data-action="remove-status" data-index="' + index + '" aria-label="Remove ' + escapeHtml(status) + '" title="Remove column">&#215;</button></li>';
+        + '<button type="button" data-action="remove-status" data-index="' + index + '" aria-label="Remove ' + escapeHtml(status) + '" data-tip="Remove column">&#215;</button></li>';
     }).join('');
     const namespace = namespaceDraft === undefined ? state.settings.statusNamespace : namespaceDraft;
     return '<div class="board-settings">'
@@ -256,7 +256,7 @@ ${getQueryEditorScript()}
       const sorted = sort && sort.column === column.id;
       const arrow = sorted ? (sort.direction === 'desc' ? ' ▼' : ' ▲') : '';
       return '<th scope="col"' + (sorted ? ' class="is-sorted" aria-sort="' + (sort.direction === 'desc' ? 'descending' : 'ascending') + '"' : '') + '>'
-        + '<button type="button" data-action="set-table-sort" data-value="' + escapeHtml(column.id) + '" title="Sort by ' + escapeHtml(column.label.toLowerCase()) + '">' + escapeHtml(column.label) + arrow + '</button></th>';
+        + '<button type="button" data-action="set-table-sort" data-value="' + escapeHtml(column.id) + '" data-tip="Sort by ' + escapeHtml(column.label.toLowerCase()) + '">' + escapeHtml(column.label) + arrow + '</button></th>';
     }).join('');
     const rows = table.rows.map(function (row) {
       const cells = row.cells.map(function (cell, at) {
@@ -278,7 +278,7 @@ ${getQueryEditorScript()}
     if (!sort) return '<span class="control-label">Rank order · choose a column to sort by it</span>';
     const column = (state.table.columns.find(function (c) { return c.id === sort.column; }) || {}).label || sort.column;
     return '<span class="control-label">Sorted by ' + escapeHtml(column.toLowerCase()) + (sort.direction === 'desc' ? ', last first' : '') + '</span>'
-      + '<button type="button" data-action="set-table-sort" title="Back to the order you ranked">Sort by rank</button>';
+      + '<button type="button" data-action="set-table-sort" data-tip="Back to the order you ranked">Sort by rank</button>';
   }
 
   /** The gear's list of columns, the title fixed. */
@@ -350,7 +350,7 @@ ${getQueryEditorScript()}
    */
   function renderAvailableToggle() {
     const pressed = !!state.availableOnly;
-    return '<button type="button" class="board-available' + (pressed ? ' active' : '') + '" data-action="toggle-available" aria-pressed="' + pressed + '" title="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">Can start now</button>';
+    return '<button type="button" class="board-available' + (pressed ? ' active' : '') + '" data-action="toggle-available" aria-pressed="' + pressed + '" data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">Can start now</button>';
   }
 
   document.addEventListener('mousedown', function (event) { editor.handleMousedown(event); });

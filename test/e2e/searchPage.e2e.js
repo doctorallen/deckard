@@ -141,7 +141,7 @@ const box = (view) => view.find('.query-bar-shell').getAttribute('data-query-tex
 const typed = (view) => view.find('[data-action="query-input"]').value;
 /** The chips in the box, as their text. */
 const chips = (view) =>
-  view.findAll('.query-bar-shell .query-chip').map((chip) => chip.getAttribute('title').replace(/^Remove /, ''));
+  view.findAll('.query-bar-shell .query-chip').map((chip) => chip.getAttribute('data-tip').replace(/^Remove /, ''));
 /** Removes every chip, one at a time, as a reader would. */
 async function removeChips(view) {
   while (view.find('.query-bar-shell .query-chip')) {

@@ -174,7 +174,7 @@ ${getQueryEditorScript()}
     // in the split layout, where there are no tabs.
     countElsewhere: function () { return Boolean(state && state.layout !== 'split'); },
     actions: function (hasText) {
-      return '<button data-action="save-filter" data-query-needs-text title="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
+      return '<button data-action="save-filter" data-query-needs-text data-tip="Keep this search, named, on Home"' + (hasText ? '' : ' disabled') + '>Save</button>';
     },
   });
 
@@ -238,7 +238,7 @@ ${getQueryEditorScript()}
     if (!state.tag) return '';
     const hub = state.hub;
     if (!hub) {
-      return '<section class="hub hub-empty" aria-label="Hub note"><span>No note describes ' + escapeHtml(state.tag.label) + ' yet.</span><button data-action="create-hub" title="Create a note whose describes: front matter names this tag">Create hub note</button></section>';
+      return '<section class="hub hub-empty" aria-label="Hub note"><span>No note describes ' + escapeHtml(state.tag.label) + ' yet.</span><button data-action="create-hub" data-tip="Create a note whose describes: front matter names this tag">Create hub note</button></section>';
     }
     const properties = hub.properties.length
       ? '<dl class="hub-properties">' + hub.properties.map(function (property) {
@@ -257,7 +257,7 @@ ${getQueryEditorScript()}
       : '';
     // deckard.tagOverview.hubNoteExpanded sets how the hub starts.
     const open = hubOpen === undefined ? hub.expanded !== false : hubOpen;
-    return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" title="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
+    return '<details class="hub"' + (open ? ' open' : '') + '><summary class="hub-header"><span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span><button data-action="open-source" data-file-path="' + escapeHtml(hub.filePath) + '" data-line="1" data-tip="' + escapeHtml(hub.filePath) + '">Open ' + escapeHtml(hub.fileName) + '</button></summary>' + properties + body + others + '</details>';
   }
 
   function renderCard(section) {
@@ -329,13 +329,13 @@ ${getQueryEditorScript()}
   function exportResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Export these tasks' : 'Export these notes';
-    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" title="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">' + (kind === 'tasks' ? 'Export tasks' : 'Export notes') + '</button>';
+    return '<button type="button" class="edit-results" data-action="export-results" data-kind="' + kind + '" data-tip="' + label + ' as a Markdown table, a list, or CSV: copy, or save to a file" aria-label="' + label + '">' + (kind === 'tasks' ? 'Export tasks' : 'Export notes') + '</button>';
   }
 
   function editResultsButton(kind, count) {
     if (!count) return '';
     const label = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
-    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
+    return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" data-tip="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
   }
 
   /**
@@ -346,8 +346,8 @@ ${getQueryEditorScript()}
   function renderHistoryButtons() {
     const history = state.history || {};
     return '<span class="history-buttons" role="group" aria-label="Search history">'
-      + '<button type="button" class="icon-button" data-action="history-back" aria-label="Back to the search before" title="Back (Alt+←)"' + (history.back ? '' : ' disabled') + '>‹</button>'
-      + '<button type="button" class="icon-button" data-action="history-forward" aria-label="Forward to the search after" title="Forward (Alt+→)"' + (history.forward ? '' : ' disabled') + '>›</button>'
+      + renderIconButton({ action: 'history-back', label: 'Back to the search before', key: 'Alt+←', icon: '‹', attributes: history.back ? '' : 'disabled' })
+      + renderIconButton({ action: 'history-forward', label: 'Forward to the search after', key: 'Alt+→', icon: '›', attributes: history.forward ? '' : 'disabled' })
       + '</span>';
   }
 
@@ -411,8 +411,8 @@ ${getQueryEditorScript()}
         { id: 'notes', label: 'Notes', count: notesCount },
         { id: 'tasks', label: 'Tasks', count: tasksCount },
       ], activeTab, 'Search results') + '<div class="overview-tab-panel"' + resultPanelAttributes('notes') + (activeTab === 'notes' ? '' : ' hidden') + '>' + notesPane + '</div><div class="overview-tab-panel"' + resultPanelAttributes('tasks') + (activeTab === 'tasks' ? '' : ' hidden') + '>' + tasksPane + '</div>';
-    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" title="Tabs: switch between Notes and Tasks">${layoutTabsIcon}</button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" title="Side by side: Notes 60%, Tasks 40%">${layoutSplitIcon}</button></div>';
-    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" title="Source: show the original Markdown">${sourceIcon}</button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" title="Rendered: show formatted Markdown">${renderedIcon}</button></div>';
+    const layoutControls = '<div class="segmented toolbar-toggle-group layout-toggle-group" role="group" aria-label="Content layout"><button class="icon-button toolbar-toggle ' + (state.layout === 'tabs' ? 'active' : '') + '" data-action="set-layout" data-layout="tabs" aria-label="Tabs layout" aria-pressed="' + (state.layout === 'tabs') + '" data-tip="Tabs: switch between Notes and Tasks">${layoutTabsIcon}</button><button class="icon-button toolbar-toggle ' + (state.layout === 'split' ? 'active' : '') + '" data-action="set-layout" data-layout="split" aria-label="Side-by-side layout" aria-pressed="' + (state.layout === 'split') + '" data-tip="Side by side: Notes 60%, Tasks 40%">${layoutSplitIcon}</button></div>';
+    const formatControls = '<div class="segmented toolbar-toggle-group" role="group" aria-label="Content format"><button class="icon-button toolbar-toggle ' + (state.renderMode === 'markdown' ? 'active' : '') + '" data-action="set-mode" data-mode="markdown" aria-label="Source view" aria-pressed="' + (state.renderMode === 'markdown') + '" data-tip="Source: show the original Markdown">${sourceIcon}</button><button class="icon-button toolbar-toggle ' + (state.renderMode === 'html' ? 'active' : '') + '" data-action="set-mode" data-mode="html" aria-label="Rendered view" aria-pressed="' + (state.renderMode === 'html') + '" data-tip="Rendered: show formatted Markdown">${renderedIcon}</button></div>';
     const sortControl = '<label class="control-label">Sort:<span class="control-icon"><select data-action="set-sort" aria-label="Sort notes">' + '<option value="alphabetical" ' + (state.sortMode === 'alphabetical' ? 'selected' : '') + '>A-Z</option>' + '<option value="created" ' + (state.sortMode === 'created' ? 'selected' : '') + '>Newest created</option>' + '<option value="updated" ' + (state.sortMode === 'updated' ? 'selected' : '') + '>Recently updated</option>' + '<option value="access" ' + (state.sortMode === 'access' ? 'selected' : '') + '>Most accessed</option>' + '</select>${sortIcon}</span></label>';
     const viewOptions = renderViewOptions([
       { label: 'Sort', html: sortControl.replace('>Sort:<span', '><span') },

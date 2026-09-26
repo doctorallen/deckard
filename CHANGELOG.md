@@ -77,6 +77,12 @@
 
 ### Changed
 
+- **A button's tip shows on keyboard focus, and names its key.** The
+  search page's and the Task board's buttons, the search box, Refine, and
+  the gear explain themselves on focus as well as under the pointer, after a
+  short pause for the pointer; Back and Forward name Alt+← and Alt+→, and
+  Escape puts a tip away.
+
 - **Menus, the gear, and completions look like one family.** The tag menu,
   a board card's menu, the rank menu, the gear's menu, a Home widget's
   options, and search completions share one edge, ground, and shadow, and
