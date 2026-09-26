@@ -8,6 +8,10 @@ import {
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
+import { describeDistance, formatShortDay, parseDatePhrase } from '../../core/markdown/dates';
+import { parseIsoDate } from '../../core/markdown/taskMetadata';
+import { openDailyNoteFor } from './dailyNoteForDate';
+import { readDateOptions } from './datePrompt';
 import { createWikiLink } from './insertLink';
 import { createLinkedNote } from './linkHealth';
 import { openSourceAt } from './navigation';
@@ -30,6 +34,45 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   suggestion?: string;
   /** The row that creates a note by the name typed, when none has it. */
   create?: string;
+  /** The row that opens the daily note for the day typed. */
+  openDate?: string;
+}
+
+/** The row that opens a day's note, when what is typed is a day. */
+export interface DailyNoteRow {
+  date: string;
+  label: string;
+  description: string;
+}
+
+/** A weekday written short, which is as often a word searched for. */
+const SHORT_WEEKDAY = /^(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)$/i;
+
+/**
+ * The daily note row for what is typed, when the whole of it is a day, such
+ * as `friday` or `oct 3`, and could be a note's name. A short weekday alone,
+ * such as `sat`, is left to the search.
+ */
+export function findDailyNoteRow(
+  value: string,
+  now: number = Date.now(),
+  options: Parameters<typeof parseDatePhrase>[2] = {},
+): DailyNoteRow | undefined {
+  const text = value.trim();
+  if (!text || !isNoteName(text) || SHORT_WEEKDAY.test(text)) {
+    return undefined;
+  }
+  const date = parseDatePhrase(text, now, options)?.date;
+  if (!date) {
+    return undefined;
+  }
+  const at = parseIsoDate(date);
+  const distance = at === undefined ? undefined : describeDistance(at, now);
+  return {
+    date,
+    label: `$(calendar) Open daily note for ${formatShortDay(date, now)}`,
+    description: distance ? `${date} · ${distance}` : date,
+  };
 }
 
 const ADD_TO_SEARCH: vscode.QuickInputButton = {
@@ -152,7 +195,11 @@ export class QuickFind implements vscode.Disposable {
       (text) => this.indexer.searchEntries(text, { limit: 200 }),
       { conditions: createQuerySuggestions(index).conditions },
     );
-    picker.items = toPickItems(results, picker.value);
+    picker.items = toPickItems(
+      results,
+      picker.value,
+      findDailyNoteRow(picker.value, Date.now(), readDateOptions()),
+    );
   }
 
   private async accept(): Promise<void> {
@@ -169,6 +216,11 @@ export class QuickFind implements vscode.Disposable {
     }
     if (chosen.showAll) {
       await this.showAll();
+      return;
+    }
+    if (chosen.openDate !== undefined) {
+      picker.hide();
+      await openDailyNoteFor(this.indexer, chosen.openDate);
       return;
     }
     if (chosen.create !== undefined) {
@@ -292,8 +344,19 @@ export class QuickFind implements vscode.Disposable {
 export function toPickItems(
   results: QuickFindResults,
   value: string,
+  dateRow?: DailyNoteRow,
 ): QuickFindPickItem[] {
   const items: QuickFindPickItem[] = [];
+  // A day typed opens that day's note first, rather than making a note
+  // called "friday".
+  if (dateRow) {
+    items.push({
+      label: dateRow.label,
+      description: dateRow.description,
+      alwaysShow: true,
+      openDate: dateRow.date,
+    });
+  }
   const group = (label: string, rows: QuickFindPickItem[]): void => {
     if (rows.length === 0) {
       return;
@@ -346,7 +409,7 @@ export function toPickItems(
   const named = results.notes.some(
     (note) => note.label.trim().toLowerCase() === name.toLowerCase(),
   );
-  if (name && !named && isNoteName(name)) {
+  if (name && !named && !dateRow && isNoteName(name)) {
     items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     items.push({
       label: `$(new-file) Create note “${name}”`,

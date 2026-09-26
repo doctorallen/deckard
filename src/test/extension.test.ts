@@ -45,6 +45,7 @@ suite('Extension Test Suite', () => {
         'deckard.unpinNote',
         'deckard.previousDailyNote',
         'deckard.nextDailyNote',
+        'deckard.openDailyNoteForDate',
         'deckard.openWeeklyNote',
         'deckard.openMonthlyNote',
         'deckard.editTask',

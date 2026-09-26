@@ -1,3 +1,4 @@
+import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
 
 import { setQueryIdentity } from './core/query/queryEvaluator';
@@ -671,6 +672,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   context.subscriptions.push(
     vscode.commands.registerCommand('deckard.createDailyNote', () =>
       createDailyNoteWithRollover(indexer),
+    ),
+    vscode.commands.registerCommand('deckard.openDailyNoteForDate', () =>
+      openDailyNoteForDate(indexer),
     ),
     vscode.commands.registerCommand('deckard.rollTasksForward', () =>
       rollTasksForward(indexer),

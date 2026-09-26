@@ -118,6 +118,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Check My Setup** | Writes up, as a Markdown document, what your settings resolve to in this workspace, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone — with what to do about each thing that is off. |
 | **Deckard: Create a Sample Workspace** | Copies seven small notes, written the way Deckard reads them, into a `deckard-sample` folder inside a folder you choose, and offers to open it. Its README says what each note shows and what to try first. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
+| **Deckard: Open Daily Note for Date…** | Opens the daily note for a day named in plain words, such as `last friday` or `oct 3`, creating it from the template when there is none. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |
 | **Deckard: Open Monthly Note** | Creates or opens this month's note, `month-september-2026.md`, with its review written in. |
@@ -711,6 +712,7 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - With nothing typed, Find offers your recent searches, favorite and recently opened tags, saved searches, and the notes you opened last. A recent search has a button to save it as a view.
 - A note or task found has a button to **open it to the side**, which leaves Find open for the next, and a note has one to **insert a link** to it, at its heading, where the cursor was when Find opened.
 - Words that no note is called, and that read as a name rather than a search, offer **Create note “…”**, which creates it in your notes folder.
+- When what you type is a day, such as `friday`, `oct 3`, or `last friday`, Find offers to open that day's note first, and creates it when there is none, in place of **Create note**. A short weekday alone, such as `fri`, is searched for as a word.
 
 Ties are broken by how often and how recently you opened something, so a note you opened yesterday comes before one you opened often last year. This is kept in VS Code's preferences, beside the access counts, and never in your notes.
 
@@ -865,6 +867,8 @@ The note name is used as a single Markdown filename. Existing notes are never ov
 Run `Deckard: Create Daily Note` from the Command Palette, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the shortcut in Related Notes. Deckard creates a note named with the local date, such as `2026-08-30.md`, in your configured notes folder or workspace root and opens it. If today's note already exists, Deckard opens it without replacing its contents.
 
 `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the one in the editor, skipping days without a note. From any other note they start from today.
+
+`Deckard: Open Daily Note for Date…` opens the note for any day. It lists yesterday, today, tomorrow, and your seven newest daily notes; type a day [in plain words](#dates-in-plain-words), such as `last friday`, `oct 3`, or `2026-10-02`, and it offers that day's note, saying when it will create one from the daily note template. Today's note is created as `Deckard: Create Daily Note` creates it, rollover included. [Find](#find) does the same when all you type is a day.
 
 `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week or this month, **named for the days it holds**: `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, as the [Calendar](#calendar) draws it.
 

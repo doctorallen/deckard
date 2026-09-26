@@ -186,6 +186,12 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.openDailyNoteForDate",
+        "title": "Open Daily Note for Date…",
+        "category": "Deckard",
+        "icon": "$(calendar)"
+      },
+      {
         "command": "deckard.openWeeklyNote",
         "title": "Open Weekly Note",
         "category": "Deckard"

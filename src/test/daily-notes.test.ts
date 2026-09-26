@@ -11,6 +11,7 @@ import {
   isPeriodicNoteName,
   listDailyNotes,
 } from '../ui/commands/dailyNote';
+import { buildDailyNotePicks } from '../ui/commands/dailyNoteForDate';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return {
@@ -133,5 +134,38 @@ suite('Weekly and monthly notes', () => {
     for (const name of ['2026-09-13', 'Atlas', 'week-notes', 'month-of-sundays']) {
       assert.strictEqual(isPeriodicNoteName(name), false, name);
     }
+  });
+
+  test('the daily note picker lists the days around today, then the newest notes', () => {
+    // Friday 2026-09-25, noon.
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const entries = ['2026-09-10', '2026-09-22', '2026-09-24', '2026-09-25', '2026-09-23'].map((date) => ({
+      date,
+      filePath: `notes/${date}.md`,
+    }));
+    const picks = buildDailyNotePicks(entries, '', now);
+    assert.deepStrictEqual(
+      picks.map((pick) => [pick.label, pick.description ?? '']),
+      [
+        ['Yesterday', 'Thursday 2026-09-24 · yesterday'],
+        ['Today', 'Friday 2026-09-25 · today'],
+        ['Tomorrow', 'Saturday 2026-09-26 · tomorrow'],
+        ['Recent daily notes', ''],
+        ['Wed, Sep 23', '2026-09-23 · 2 days ago'],
+        ['Tue, Sep 22', '2026-09-22 · 3 days ago'],
+        ['Thu, Sep 10', '2026-09-10 · 15 days ago'],
+      ],
+    );
+    const typed = buildDailyNotePicks(entries, 'last friday', now);
+    assert.strictEqual(typed[0].label, '$(calendar) Open daily note for Fri, Sep 18');
+    assert.strictEqual(typed[0].description, '2026-09-18 · 7 days ago');
+    assert.strictEqual(typed[0].detail, 'Creates it from the daily note template');
+    assert.strictEqual(typed[0].date, '2026-09-18');
+    const existing = buildDailyNotePicks(entries, '2026-09-22', now);
+    assert.strictEqual(existing[0].detail, undefined, 'an existing note is opened, not created');
+    const nonsense = buildDailyNotePicks(entries, 'the cat', now);
+    assert.deepStrictEqual(nonsense, [
+      { label: '$(info) Enter a date such as friday, in 3 days, or 2026-10-02.' },
+    ]);
   });
 });

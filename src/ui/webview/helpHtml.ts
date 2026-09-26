@@ -44,6 +44,8 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.unpinNote': 'Lets that pin go.',
   'deckard.previousDailyNote': 'The nearest daily note before this one.',
   'deckard.nextDailyNote': 'The nearest daily note after this one.',
+  'deckard.openDailyNoteForDate':
+    'Opens the daily note for a day you name in plain words, creating it when there is none.',
   'deckard.openWeeklyNote': 'This week’s note, with its review written in.',
   'deckard.openMonthlyNote': 'This month’s note, with its review written in.',
   'deckard.writeReview':

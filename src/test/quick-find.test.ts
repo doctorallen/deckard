@@ -13,7 +13,7 @@ import {
   fuzzyScore,
   QuickFindResults,
 } from '../ui/state/quickFindState';
-import { isNoteName } from '../ui/commands/quickFind';
+import { findDailyNoteRow, isNoteName, toPickItems } from '../ui/commands/quickFind';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -203,5 +203,23 @@ suite('Quick Find', () => {
     assert.strictEqual(isNoteName('is:open'), false);
     assert.strictEqual(isNoteName('atlas OR harbor'), false);
     assert.strictEqual(isNoteName('"exact words"'), false);
+  });
+
+  test('a day typed opens that day\'s note, in place of creating a note by its name', () => {
+    // Friday 2026-09-25, noon.
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const empty: QuickFindResults = createFinder({}).find('friday');
+    const row = findDailyNoteRow('friday', now);
+    assert.deepStrictEqual(row, {
+      date: '2026-10-02',
+      label: '$(calendar) Open daily note for Fri, Oct 2',
+      description: '2026-10-02 · in 7 days',
+    });
+    const items = toPickItems(empty, 'friday', row);
+    assert.strictEqual(items[0].label, '$(calendar) Open daily note for Fri, Oct 2');
+    assert.ok(!items.some((item) => item.label.includes('Create note')), 'no note called friday');
+    assert.strictEqual(findDailyNoteRow('Atlas plan', now), undefined);
+    assert.strictEqual(findDailyNoteRow('fri', now), undefined, 'a short weekday is searched as a word');
+    assert.strictEqual(findDailyNoteRow('#project/atlas', now), undefined);
   });
 });
