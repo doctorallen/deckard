@@ -18,8 +18,10 @@
   `- [ ]` steps under a task, one per line typed, shown beside the steps
   already written, in one change Undo takes back. The task then says
   "2 of 5 steps · next: Draft the email" on its card and row, and opens to
-  its steps in the Tasks view. A checkbox indented under a task is now one
-  of its steps: `is:step` finds steps, and `has:steps` / `no:steps` find
+  its steps in the Tasks view. Completing its last open step offers
+  **Complete Task**, and completing a task with open steps offers
+  **Complete Steps**; neither happens unless chosen. A checkbox indented
+  under a task is now one of its steps: `is:step` finds steps, and `has:steps` / `no:steps` find
   tasks with and without them.
 
 

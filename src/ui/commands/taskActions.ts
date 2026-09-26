@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 
-import { getTaskLineId } from '../../core/markdown/parser';
+import { getTaskLineId, parseMarkdown } from '../../core/markdown/parser';
+import {
+  findCheckboxColumn,
+  findStepFamily,
+  isCheckedTaskLine,
+} from '../../core/markdown/taskSteps';
 import {
   formatIsoDate,
   parseTaskMetadata,
@@ -19,6 +24,7 @@ import {
   reportStale,
 } from './notify';
 import { noteOwnWrite } from '../../core/workspace/ownWrites';
+import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
 
 /**
  * Carries a task's place in the rank order from the line it was to the line
@@ -80,6 +86,10 @@ export interface TaskLineContext {
   uri: vscode.Uri;
   /** The document's line ending, for an edit that adds a line. */
   eol: string;
+  /** The note's lines as they are before the edit. */
+  lines: readonly string[];
+  /** The task's own line among them, 0-based. */
+  lineIndex: number;
 }
 
 /**
@@ -125,6 +135,8 @@ export async function updateTaskLine(
     const replacement = transform(line, {
       uri,
       eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
+      lines: document.getText().split(/\r?\n/),
+      lineIndex: task.lineNumber - 1,
     });
     if (replacement === line) {
       return true;
@@ -232,13 +244,18 @@ function offerUndo(
 ): void {
   // A warning when part of what was asked could not be done, such as a
   // repeat rule Deckard could not read; the edit is still offered back.
+  // A next step, such as completing the task whose last step this was,
+  // is offered before Undo, and is never taken for the reader.
+  const choices = description.action ? [description.action.label, 'Undo'] : ['Undo'];
   void (
     description.severity === 'warning'
-      ? vscode.window.showWarningMessage(description.text, 'Undo')
-      : vscode.window.showInformationMessage(description.text, 'Undo')
+      ? vscode.window.showWarningMessage(description.text, ...choices)
+      : vscode.window.showInformationMessage(description.text, ...choices)
   ).then((choice) => {
       if (choice === 'Undo') {
         void revertTaskLine(uri, lineNumber, replacement, original, filePath);
+      } else if (choice !== undefined && choice === description.action?.label) {
+        void description.action.run();
       }
     });
 }
@@ -317,13 +334,15 @@ export async function toggleTask(
   // A rule that could not be read is said in the same message, beside Undo.
   let startedNext: string | undefined;
   let unreadRule: string | undefined;
+  // What the note says about the task's steps, read as the edit is made.
+  let family: CompletionFamily | undefined;
   const description = (): string | CompletionMessage =>
     completed
-      ? describeCompletion(task.title, startedNext, unreadRule)
+      ? describeStepsCompletion(task, describeCompletion(task.title, startedNext, unreadRule), family)
       : `Reopened ${quoteTaskTitle(task)}.`;
   return updateTaskLine(
     task,
-    (line, { uri, eol }) => {
+    (line, { uri, eol, lines, lineIndex }) => {
       const now = Date.now();
       const configuration = vscode.workspace.getConfiguration('deckard', uri);
       const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
@@ -346,16 +365,176 @@ export async function toggleTask(
       );
       startedNext = completion.next;
       unreadRule = completion.unreadRule;
+      family = readCompletionFamily(uri, task.filePath, lines, lineIndex, completion.text);
       return completion.text;
     },
     description,
   );
 }
 
+/**
+ * What completing a task means for its steps, read from the note as it was
+ * before the edit: the task whose last open step this was, or how many of
+ * its own steps are still open.
+ */
+interface CompletionFamily {
+  uri: vscode.Uri;
+  filePath: string;
+  /** The task this was the last open step of: its line, 0-based, and words. */
+  lastStepOf?: { line: number; title: string };
+  /** The task's own open steps. */
+  openSteps: number;
+  /** The completed task's line once the edit is written, 0-based. */
+  writtenLine: number;
+}
+
+function readCompletionFamily(
+  uri: vscode.Uri,
+  filePath: string,
+  lines: readonly string[],
+  lineIndex: number,
+  written: string,
+): CompletionFamily {
+  const family = findStepFamily(lines, lineIndex);
+  const openSteps = family.steps.filter((line) => !isCheckedTaskLine(lines[line])).length;
+  let lastStepOf: CompletionFamily['lastStepOf'];
+  if (family.parent !== undefined && !isCheckedTaskLine(lines[family.parent])) {
+    const stillOpen = findStepFamily(lines, family.parent).steps.filter(
+      (line) => line !== lineIndex && !isCheckedTaskLine(lines[line]),
+    );
+    if (stillOpen.length === 0) {
+      lastStepOf = { line: family.parent, title: readTaskWords(lines[family.parent]) };
+    }
+  }
+  return {
+    uri,
+    filePath,
+    openSteps,
+    // A next occurrence written above moves the completed line down.
+    writtenLine: lineIndex + written.split(/\r?\n/).length - 1,
+    ...(lastStepOf ? { lastStepOf } : {}),
+  };
+}
+
+/** A task line's words, its metadata left out. */
+function readTaskWords(line: string): string {
+  const words = line.slice(findCheckboxColumn(line) + 2).trim();
+  return parseTaskMetadata(words).title || words;
+}
+
+/**
+ * A completion's message, with what it offers next: finishing the task
+ * whose last step this was, or finishing the steps a task still has open.
+ * Neither is done for the reader.
+ */
+export function describeStepsCompletion(
+  task: Pick<Task, 'title'>,
+  said: CompletionMessage,
+  family: CompletionFamily | undefined,
+): CompletionMessage {
+  if (!family) {
+    return said;
+  }
+  const plain = said.text === `Completed ${quoteTitle(task.title)}.`;
+  if (family.lastStepOf) {
+    const parent = quoteTitle(family.lastStepOf.title);
+    const { line } = family.lastStepOf;
+    return {
+      ...said,
+      text: plain
+        ? `Completed ${quoteTitle(task.title)}, the last open step of ${parent}.`
+        : `${said.text} It was the last open step of ${parent}.`,
+      action: { label: 'Complete Task', run: () => completeTaskAtLine(family.uri, family.filePath, line) },
+    };
+  }
+  if (family.openSteps > 0) {
+    const count = family.openSteps;
+    return {
+      ...said,
+      text: `${said.text} ${count} of its steps ${count === 1 ? 'is' : 'are'} still open.`,
+      action: {
+        label: 'Complete Steps',
+        run: () => completeOpenSteps(family.uri, family.writtenLine, task.title),
+      },
+    };
+  }
+  return said;
+}
+
+/** Completes the task written on a line, through the usual completion. */
+async function completeTaskAtLine(uri: vscode.Uri, filePath: string, line: number): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const task = parseMarkdown(filePath, document.getText()).tasks.find(
+    (candidate) => candidate.lineNumber === line + 1,
+  );
+  if (!task || task.completed) {
+    void reportStale([uri]);
+    return;
+  }
+  await toggleTask(task, true);
+}
+
+/**
+ * Completes the open steps written directly under a task, in one change
+ * that Undo takes back.
+ */
+async function completeOpenSteps(
+  uri: vscode.Uri,
+  taskLine: number,
+  title: string,
+): Promise<void> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const lines = document.getText().split(/\r?\n/);
+  const open = findStepFamily(lines, taskLine).steps.filter((line) => !isCheckedTaskLine(lines[line]));
+  if (open.length === 0) {
+    void reportStale([uri]);
+    return;
+  }
+  const configuration = vscode.workspace.getConfiguration('deckard', uri);
+  const doneDate = configuration.get<boolean>('tasks.addDoneDate', true)
+    ? formatIsoDate(Date.now())
+    : undefined;
+  const format = readTaskMetadataFormat(configuration);
+  const edit = new vscode.WorkspaceEdit();
+  open.forEach((line) => {
+    const text = lines[line];
+    edit.replace(
+      uri,
+      document.lineAt(line).range,
+      setTaskLineCompletion(text, findCheckboxColumn(text), true, doneDate, format),
+    );
+  });
+  const steps = `${open.length} ${open.length === 1 ? 'step' : 'steps'}`;
+  const result = await applyWorkspaceWrite(edit, {
+    label: `completing ${steps} of ${quoteTitle(title)}`,
+  });
+  if (!result.applied) {
+    void reportFailure(describeRejectedEdit(noteName(uri)));
+    return;
+  }
+  const mine = workspaceWrites.lastWrite;
+  void vscode.window
+    .showInformationMessage(`Completed ${steps} of ${quoteTitle(title)}.`, 'Undo')
+    .then(async (choice) => {
+      if (choice !== 'Undo') {
+        return;
+      }
+      if (workspaceWrites.lastWrite !== mine) {
+        void vscode.window.showInformationMessage(
+          'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
+        );
+        return;
+      }
+      reportUndo(await workspaceWrites.undo(), `Reopened the ${steps}.`);
+    });
+}
+
 /** What one completion says, and whether it is worth a warning. */
 export interface CompletionMessage {
   text: string;
   severity: 'info' | 'warning';
+  /** What the message offers to do next, beside Undo. */
+  action?: { label: string; run: () => Promise<void> };
 }
 
 /**

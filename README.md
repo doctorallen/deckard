@@ -362,6 +362,8 @@ A step follows its list's indentation: a heading, a code block, or an unindented
 
 A task with steps says how far along it is — **2 of 5 steps · next: Draft the email** — on its board card, in task rows on search pages and Home, and in the Tasks view, where it opens to its steps, each with its own checkbox and menu. On the Task board and in the Tasks view a step rides on its task rather than being listed on its own, so five steps are not five cards; a step with its own date, priority, person, or tag stays listed, since it would otherwise leave Today or someone's column, and a step whose task is done or not in the list is listed as any task is. Search pages list what they find: `-is:step` leaves steps out.
 
+Completing a step from a checkbox — on the board, in the Tasks view, on a search page, on Home, or in Find — when it is the task's last open one says so and offers **Complete Task**; completing a task whose steps are still open says how many and offers **Complete Steps**, which checks them in one change with its own **Undo**. Neither happens unless you choose it. Toggle Task Done, bulk edits, and the assistant complete exactly what they are given.
+
 ### Typing metadata
 
 Type `/` after a space in a task to pick metadata instead of typing it:

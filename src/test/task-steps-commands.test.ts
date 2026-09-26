@@ -5,6 +5,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
+import { formatIsoDate } from '../core/markdown/taskMetadata';
+import { toggleTask } from '../ui/commands/taskActions';
 import {
   addTaskSteps,
   describeSuggestFailure,
@@ -165,6 +167,93 @@ suite('Break into Steps', () => {
       const written = await withMessages(() => addTaskSteps(task, ['One']));
       assert.strictEqual(written, false);
       assert.strictEqual(await readNote(uri), '- [ ] Plan the offsite\n');
+    } finally {
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+});
+
+suite('Completing steps', () => {
+  const today = formatIsoDate(Date.now());
+
+  test('the last open step offers to complete its task, and does only when asked', async () => {
+    const content = '- [ ] Plan the offsite\n  - [x] Book the venue\n  - [ ] Draft the email\n';
+    const { uri, root } = await createNote('last.md', content);
+    try {
+      const step = parseMarkdown(uri.fsPath, content).tasks[2];
+      const shown = await withMessages(async (messages) => {
+        assert.strictEqual(await toggleTask(step, true), true);
+        await settle();
+        return messages;
+      });
+      assert.deepStrictEqual(shown[0], [
+        'Completed "Draft the email", the last open step of "Plan the offsite".',
+        'Complete Task',
+        'Undo',
+      ]);
+      assert.strictEqual(
+        await readNote(uri),
+        `- [ ] Plan the offsite\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`,
+        'nothing is completed for the reader',
+      );
+
+      const again = await readNote(uri);
+      const reopened = parseMarkdown(uri.fsPath, again).tasks[2];
+      await withMessages(() => toggleTask(reopened, false));
+      const fresh = parseMarkdown(uri.fsPath, await readNote(uri)).tasks[2];
+      await withMessages(async () => {
+        await toggleTask(fresh, true);
+        await settle();
+        await settle();
+      }, 'Complete Task');
+      assert.strictEqual(
+        await readNote(uri),
+        `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue\n  - [x] Draft the email ✅ ${today}\n`,
+      );
+    } finally {
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('a task with open steps offers to complete them, in one change', async () => {
+    const content = '- [ ] Plan the offsite\n  - [ ] Book the venue\n  - [x] Pay\n  - [ ] Draft the email\n- [ ] Next\n';
+    const { uri, root } = await createNote('open.md', content);
+    try {
+      const [task] = parseMarkdown(uri.fsPath, content).tasks;
+      const shown = await withMessages(async (messages) => {
+        await toggleTask(task, true);
+        // The steps are written after the choice, and said once written.
+        for (let tries = 0; tries < 40 && !messages.some((message) => String(message[0]).startsWith('Completed 2 steps')); tries += 1) {
+          await settle();
+        }
+        return messages;
+      }, 'Complete Steps');
+      assert.deepStrictEqual(shown[0], [
+        'Completed "Plan the offsite". 2 of its steps are still open.',
+        'Complete Steps',
+        'Undo',
+      ]);
+      assert.strictEqual(
+        await readNote(uri),
+        `- [x] Plan the offsite ✅ ${today}\n  - [x] Book the venue ✅ ${today}\n  - [x] Pay\n  - [x] Draft the email ✅ ${today}\n- [ ] Next\n`,
+      );
+      assert.strictEqual(workspaceWrites.lastWrite?.label, 'completing 2 steps of "Plan the offsite"');
+      assert.ok(shown.some((message) => message[0] === 'Completed 2 steps of "Plan the offsite".'));
+    } finally {
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('a task without steps says what it always did', async () => {
+    const content = '- [ ] Alone\n';
+    const { uri, root } = await createNote('alone.md', content);
+    try {
+      const [task] = parseMarkdown(uri.fsPath, content).tasks;
+      const shown = await withMessages(async (messages) => {
+        await toggleTask(task, true);
+        return messages;
+      });
+      assert.deepStrictEqual(shown[0], ['Completed "Alone".', 'Undo']);
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
