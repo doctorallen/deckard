@@ -7,6 +7,7 @@ import {
   parseMarkdown,
 } from '../../core/markdown/parser';
 import { measure } from '../../core/timing';
+import { ParsedFile } from '../../core/types';
 import { createPinHoverUri } from './pinNote';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 
@@ -44,17 +45,45 @@ export class EditorTagDecorations implements vscode.Disposable {
       cursor: 'pointer',
       textDecoration: 'none',
     });
-  private readonly noteDecorationType =
+  /**
+   * Every tagged entry's "Show related notes / Pin to Home" hover. It draws
+   * nothing, so the hover is on every entry while the band is on one.
+   */
+  private readonly entryHoverType =
+    vscode.window.createTextEditorDecorationType({});
+  /**
+   * The band behind the tagged section or task the cursor is in, in colors a
+   * theme or `workbench.colorCustomizations` can set.
+   */
+  private readonly sectionBandType =
     vscode.window.createTextEditorDecorationType({
       isWholeLine: true,
-      backgroundColor: 'rgba(255, 255, 255, 0.025)',
+      backgroundColor: new vscode.ThemeColor('deckard.sectionHighlightBackground'),
       border: '0 0 0 1px solid',
-      borderColor: 'rgba(255, 255, 255, 0.18)',
+      borderColor: new vscode.ThemeColor('deckard.sectionHighlightBorder'),
     });
+  /** Each note's tagged entries, parsed once per version of the document. */
+  private readonly entryCache = new Map<
+    string,
+    { version: number; entries: EditorEntry[] }
+  >();
+  /** The editor the band is drawn in, and the entry it is behind. */
+  private band: { editor: vscode.TextEditor; key: string } | undefined;
 
   public constructor() {
     this.disposables.push(this.decorationType);
-    this.disposables.push(this.noteDecorationType);
+    this.disposables.push(this.entryHoverType);
+    this.disposables.push(this.sectionBandType);
+    this.disposables.push(
+      vscode.window.onDidChangeTextEditorSelection((event) => {
+        if (event.textEditor === vscode.window.activeTextEditor) {
+          this.drawBand(event.textEditor);
+        }
+      }),
+      vscode.workspace.onDidCloseTextDocument((document) => {
+        this.entryCache.delete(document.uri.toString());
+      }),
+    );
     this.disposables.push(
       vscode.languages.registerDocumentLinkProvider(
         markdownDocumentSelector,
@@ -66,6 +95,8 @@ export class EditorTagDecorations implements vscode.Disposable {
     );
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) => {
+        // Focus in a webview leaves no active editor; the band stays where
+        // it was, so a glance back finds the section still marked.
         if (editor) {
           this.updateEditor(editor);
         }
@@ -187,7 +218,8 @@ export class EditorTagDecorations implements vscode.Disposable {
   private updateEditor(editor: vscode.TextEditor): void {
     if (!isMarkdownDocument(editor.document)) {
       editor.setDecorations(this.decorationType, []);
-      editor.setDecorations(this.noteDecorationType, []);
+      editor.setDecorations(this.entryHoverType, []);
+      this.clearBand(editor);
       return;
     }
 
@@ -222,60 +254,94 @@ export class EditorTagDecorations implements vscode.Disposable {
     // Section highlighting needs the whole note parsed, so that parse is
     // skipped entirely when highlighting is off.
     if (!this.shouldHighlightNoteSections(editor.document)) {
-      editor.setDecorations(this.noteDecorationType, []);
+      editor.setDecorations(this.entryHoverType, []);
+      this.clearBand(editor);
       return;
     }
 
-    const parsed = parseMarkdown('', content, undefined, {
-      parseInlineTags,
-      entityNamespaceAliases,
-      personMarker,
-    });
-    const entries: EditorEntry[] = [];
-    parsed.sections
-      .filter(
-        (section) =>
-          (section.headingTags?.length ?? 0) > 0 ||
-          (section.isInline && (section.associationTagGroups?.length ?? 0) > 0),
-      )
-      .forEach((section) =>
-        entries.push({
-          startLine: section.startLine,
-          endLine: section.endLine,
-          title: section.heading,
-        }),
-      );
-    parsed.tasks
-      .filter((task) => (task.associationTagGroups?.length ?? 0) > 0)
-      .forEach((task) =>
-        entries.push({
-          startLine: task.lineNumber,
-          endLine: task.lineNumber,
-          title: task.title,
-        }),
-      );
-
+    const entries = this.readEntries(editor.document);
     editor.setDecorations(
-      this.noteDecorationType,
-      entries.map((entry) => {
-        const endLine = Math.min(entry.endLine, editor.document.lineCount) - 1;
-        return {
-          range: new vscode.Range(
-            entry.startLine - 1,
-            0,
-            endLine,
-            editor.document.lineAt(endLine).text.length,
-          ),
-          hoverMessage: createEntryRelatedNotesHoverMessage(
-            entry.title,
-            editor.document.uri.toString(),
-            entry.startLine,
-            undefined,
-            this.isPinned(editor.document.uri.fsPath, entry.startLine),
-          ),
-        };
+      this.entryHoverType,
+      entries.map((entry) => ({
+        range: this.entryRange(editor, entry),
+        hoverMessage: createEntryRelatedNotesHoverMessage(
+          entry.title,
+          editor.document.uri.toString(),
+          entry.startLine,
+          undefined,
+          this.isPinned(editor.document.uri.fsPath, entry.startLine),
+        ),
+      })),
+    );
+    if (editor === vscode.window.activeTextEditor) {
+      this.drawBand(editor, true);
+    }
+  }
+
+  /** The note's tagged entries, parsed again only when the note changed. */
+  private readEntries(document: vscode.TextDocument): EditorEntry[] {
+    const key = document.uri.toString();
+    const cached = this.entryCache.get(key);
+    if (cached && cached.version === document.version) {
+      return cached.entries;
+    }
+    const entries = collectTaggedEntries(
+      parseMarkdown('', document.getText(), undefined, {
+        parseInlineTags: this.parseInlineTags(document),
+        entityNamespaceAliases: this.entityNamespaceAliases(document),
+        personMarker: this.personMarker(document),
       }),
     );
+    this.entryCache.set(key, { version: document.version, entries });
+    return entries;
+  }
+
+  private entryRange(editor: vscode.TextEditor, entry: EditorEntry): vscode.Range {
+    const endLine = Math.min(entry.endLine, editor.document.lineCount) - 1;
+    return new vscode.Range(
+      entry.startLine - 1,
+      0,
+      endLine,
+      editor.document.lineAt(endLine).text.length,
+    );
+  }
+
+  /**
+   * Draws the band behind the innermost tagged entry holding the cursor, in
+   * the active editor only, and takes it out of the editor it was in before.
+   * Nothing is redrawn while the cursor stays inside the same entry.
+   */
+  private drawBand(editor: vscode.TextEditor, force = false): void {
+    if (this.band && this.band.editor !== editor) {
+      this.clearBand(this.band.editor);
+    }
+    if (
+      !isMarkdownDocument(editor.document) ||
+      !this.shouldHighlightNoteSections(editor.document)
+    ) {
+      this.clearBand(editor);
+      return;
+    }
+    const entry = findBandEntry(
+      this.readEntries(editor.document),
+      editor.selection.active.line + 1,
+    );
+    const key = entry ? `${entry.startLine}:${entry.endLine}` : '';
+    if (!force && this.band?.editor === editor && this.band.key === key) {
+      return;
+    }
+    editor.setDecorations(
+      this.sectionBandType,
+      entry ? [this.entryRange(editor, entry)] : [],
+    );
+    this.band = { editor, key };
+  }
+
+  private clearBand(editor: vscode.TextEditor): void {
+    editor.setDecorations(this.sectionBandType, []);
+    if (this.band?.editor === editor) {
+      this.band = undefined;
+    }
   }
 
   /**
@@ -318,10 +384,66 @@ const markdownDocumentSelector: vscode.DocumentSelector = [
   { pattern: '**/*.md' },
 ];
 
-interface EditorEntry {
+/** A tagged section or task in the editor: what the band and hover cover. */
+export interface EditorEntry {
   startLine: number;
   endLine: number;
   title: string;
+}
+
+/**
+ * The entries a note's hovers and band cover: sections with heading tags,
+ * tagged inline blocks, and tagged tasks.
+ */
+export function collectTaggedEntries(
+  parsed: Pick<ParsedFile, 'sections' | 'tasks'>,
+): EditorEntry[] {
+  const entries: EditorEntry[] = [];
+  parsed.sections
+    .filter(
+      (section) =>
+        (section.headingTags?.length ?? 0) > 0 ||
+        (section.isInline && (section.associationTagGroups?.length ?? 0) > 0),
+    )
+    .forEach((section) =>
+      entries.push({
+        startLine: section.startLine,
+        endLine: section.endLine,
+        title: section.heading,
+      }),
+    );
+  parsed.tasks
+    .filter((task) => (task.associationTagGroups?.length ?? 0) > 0)
+    .forEach((task) =>
+      entries.push({
+        startLine: task.lineNumber,
+        endLine: task.lineNumber,
+        title: task.title,
+      }),
+    );
+  return entries;
+}
+
+/**
+ * The innermost entry holding a line (1-based): the one with the smallest
+ * span, and of two alike, the one that starts later.
+ */
+export function findBandEntry(
+  entries: readonly EditorEntry[],
+  line: number,
+): EditorEntry | undefined {
+  let best: EditorEntry | undefined;
+  for (const entry of entries) {
+    if (line < entry.startLine || line > entry.endLine) {
+      continue;
+    }
+    const span = entry.endLine - entry.startLine;
+    const bestSpan = best ? best.endLine - best.startLine : Infinity;
+    if (!best || span < bestSpan || (span === bestSpan && entry.startLine > best.startLine)) {
+      best = entry;
+    }
+  }
+  return best;
 }
 
 /**

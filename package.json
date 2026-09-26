@@ -28,6 +28,28 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "colors": [
+      {
+        "id": "deckard.sectionHighlightBackground",
+        "description": "Background behind the tagged section or task the cursor is in, in Markdown notes.",
+        "defaults": {
+          "dark": "#ffffff08",
+          "light": "#0000000a",
+          "highContrast": "#00000000",
+          "highContrastLight": "#00000000"
+        }
+      },
+      {
+        "id": "deckard.sectionHighlightBorder",
+        "description": "Left edge of the tagged section or task the cursor is in, in Markdown notes.",
+        "defaults": {
+          "dark": "#ffffff2e",
+          "light": "#00000029",
+          "highContrast": "contrastBorder",
+          "highContrastLight": "contrastBorder"
+        }
+      }
+    ],
     "walkthroughs": [
       {
         "id": "deckard.gettingStarted",
@@ -1073,7 +1095,7 @@
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Highlight indexed tagged note sections in Markdown editors.",
+            "markdownDescription": "Highlight the tagged section or task the cursor is in, in Markdown notes. Its colors are `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder`.",
             "order": 0
           },
           "deckard.editor.referenceCounts": {

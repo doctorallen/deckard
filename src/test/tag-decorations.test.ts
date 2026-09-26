@@ -1,10 +1,15 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { parseMarkdown } from '../core/markdown/parser';
 import {
+  collectTaggedEntries,
   createEntryRelatedNotesHoverMessage,
   EditorTagDecorations,
+  findBandEntry,
   createTagRenameHoverMessage,
   isMarkdownDocument,
 } from '../ui/commands/tagDecorations';
@@ -83,6 +88,44 @@ suite('Tag decorations', () => {
       );
     } finally {
       decorations.dispose();
+    }
+  });
+
+  test('bands the innermost tagged entry the cursor is in, and nothing outside one', () => {
+    const entries = collectTaggedEntries(
+      parseMarkdown(
+        'notes/atlas.md',
+        [
+          '# Atlas #project/atlas', // 1
+          'Why it matters.', // 2
+          '- [ ] Call Ren #risk/vendor', // 3
+          '- [ ] Book the room', // 4
+          '', // 5
+          '# Untagged', // 6
+          'Nothing here.', // 7
+        ].join('\n'),
+      ),
+    );
+    assert.deepStrictEqual(
+      entries.map((entry) => [entry.startLine, entry.endLine]),
+      [[1, 5], [3, 3], [4, 4]],
+      'the tagged section and its tasks, which carry its tag, not the untagged section',
+    );
+    assert.strictEqual(findBandEntry(entries, 3)?.title.trim(), 'Call Ren #risk/vendor');
+    assert.strictEqual(findBandEntry(entries, 2)?.startLine, 1, 'the section around the line');
+    assert.strictEqual(findBandEntry(entries, 7), undefined);
+  });
+
+  test('contributes the band colors for every kind of theme', () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'),
+    ) as { contributes: { colors: { id: string; defaults: Record<string, string> }[] } };
+    for (const id of ['deckard.sectionHighlightBackground', 'deckard.sectionHighlightBorder']) {
+      const color = manifest.contributes.colors.find((candidate) => candidate.id === id);
+      assert.ok(color, id);
+      for (const kind of ['dark', 'light', 'highContrast', 'highContrastLight']) {
+        assert.ok(color.defaults[kind], `${id} ${kind}`);
+      }
     }
   });
 

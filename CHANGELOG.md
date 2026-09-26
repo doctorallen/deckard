@@ -32,6 +32,12 @@
   edit, the task editor, and the assistant say it too; before, they said
   nothing.
 
+- **The section band shows on light themes, and only behind the section the
+  cursor is in.** It was a white tint behind every tagged section at once,
+  invisible on a light theme. Its colors are now the theme colors
+  `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder`.
+  Every tagged entry keeps its Show related notes and Pin to Home hover.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
