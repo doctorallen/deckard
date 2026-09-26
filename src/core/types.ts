@@ -333,7 +333,7 @@ export interface WorkspaceIndex {
   tags: Map<string, TagInfo>;
   entities: Map<string, Entity>;
   /** Tag key -> weighted co-occurrence and heading-proximity associations. */
-  tagAssociations?: Map<string, TagAssociation[]>;
+  tagAssociations?: ReadonlyMap<string, TagAssociation[]>;
   updatedAt: number;
 }
 
