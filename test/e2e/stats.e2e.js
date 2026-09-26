@@ -174,7 +174,7 @@ test('links that open no note are listed, open their search, and can be created'
   const { parseMarkdown } = require('../../out/core/markdown/parser.js');
   // Backlinks are read once per index, so the note is there from the start.
   const standup = parseMarkdown('/notes/standup.md', '# Standup\nPlan the [[Q4 offsite]] and [[q4 offsite]] soon, and [[Bad: name]].');
-  const { view } = await openStats([standup]);
+  const { view, panel } = await openStats([standup]);
 
   const rows = view.findAll('[data-missing-index]');
   assert.deepStrictEqual(rows.map((row) => row.querySelector('.label').textContent), ['Q4 offsite', 'Bad: name']);
@@ -182,6 +182,8 @@ test('links that open no note are listed, open their search, and can be created'
   assert.strictEqual(rows[1].querySelector('.detail').textContent, '1 link from standup · cannot be a file name');
   assert.ok(!rows[1].querySelector('[data-action="create-missing-note"]'), 'no Create for a name that cannot be a file');
 
+  // What the page asks for is checked here; the host's writes need a folder.
+  panel._onWebviewMessage = () => undefined;
   view.click(rows[0].querySelector('.label'));
   view.click(rows[0].querySelector('[data-action="create-missing-note"]'));
   view.click(view.find('[data-action="create-all-missing-notes"]'));
