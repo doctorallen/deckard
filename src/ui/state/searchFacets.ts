@@ -148,12 +148,12 @@ export function buildSearchFacets(
   facets.push(
     facet('updated', 'Updated', [
       {
-        label: 'This week',
+        label: 'Last 7 days',
         clause: 'updated >= 7d',
         count: noteTimes.filter((time) => time !== undefined && time >= weekStart).length,
       },
       {
-        label: 'This month',
+        label: '1–4 weeks ago',
         clause: '(updated < 7d AND updated >= 30d)',
         count: noteTimes.filter(
           (time) => time !== undefined && time < weekStart && time >= monthStart,

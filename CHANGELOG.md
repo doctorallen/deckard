@@ -11,6 +11,11 @@
   tooltip said the Dashboard's Search tab, which no longer exists; it now
   says a search page.
 
+- **Refine's Updated counts say which days they cover**: Last 7 days,
+  1–4 weeks ago, and Older. "This week" and "This month" read as calendar
+  spans, but the counts were rolling ones, so a note from last Saturday
+  could sit under This week on a Wednesday.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

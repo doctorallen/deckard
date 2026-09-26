@@ -183,13 +183,36 @@ suite('Refining a search', () => {
     assert.deepStrictEqual(values('due'), [['Overdue', 1], ['Next 7 days', 1], ['No date', 1]]);
     // The tag the query names is not offered again.
     assert.deepStrictEqual(values('tags'), [['#home', 1], ['#urgent', 1]]);
-    assert.deepStrictEqual(values('updated'), [['This week', 1], ['Older', 1]]);
+    assert.deepStrictEqual(values('updated'), [['Last 7 days', 1], ['Older', 1]]);
     // Everything is under notes/, so the split is one level down.
     assert.deepStrictEqual(values('folder'), [['notes/work', 4], ['notes/home', 1]]);
     assert.strictEqual(
       facets.find((facet) => facet.id === 'folder')?.values[0].clause,
       'in:notes/work',
     );
+  });
+
+  test("names the Updated spans by the days they hold, a week ago in the second", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const files = [
+      parseMarkdown('notes/today.md', '# Today #project/atlas', { updatedAt: now }),
+      parseMarkdown('notes/week.md', '# A week ago #project/atlas', {
+        updatedAt: now - 7 * day,
+      }),
+      parseMarkdown('notes/old.md', '# Old #project/atlas', { updatedAt: now - 45 * day }),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const query = '#project/atlas';
+    const results = evaluateQuery(index, parseQuery(query).node);
+    const updated = buildSearchFacets(index, results, query, { now })
+      .find((facet) => facet.id === 'updated')
+      ?.values.map((value) => [value.label, value.count]);
+    assert.deepStrictEqual(updated, [
+      ['Last 7 days', 1],
+      ['1–4 weeks ago', 1],
+      ['Older', 1],
+    ]);
   });
 
   test('does not offer a facet value the query already has', () => {
