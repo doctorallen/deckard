@@ -101,4 +101,38 @@ suite('Notes Graph behavior', () => {
 
     assert.strictEqual(density.value, started, 'Reset restores the control');
   });
+
+  test('a reset can be undone for a few seconds, until another control moves', () => {
+    const page = open();
+
+    const density = page.find('#link-density') as HTMLInputElement;
+    const started = density.value;
+    const moved = String(Number(started) === 1 ? 2 : 1);
+    density.value = moved;
+    density.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+
+    page.click('#reset-graph-settings');
+    assert.strictEqual(density.value, started);
+    const undo = page.find('[data-action="undo-graph-reset"]');
+    assert.strictEqual(undo.textContent, 'Undo');
+    assert.strictEqual(page.document.activeElement, undo, 'the focus is on Undo');
+
+    page.click('[data-action="undo-graph-reset"]');
+    assert.strictEqual(density.value, moved, 'Undo puts the slider back');
+    assert.strictEqual(
+      (page.savedState() as { linkDensity: number }).linkDensity,
+      Number(moved),
+      'and keeps it',
+    );
+    assert.strictEqual(page.text('#graph-reset-undo'), 'Graph settings restored.');
+
+    page.click('#reset-graph-settings');
+    density.value = moved;
+    density.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+    assert.strictEqual(
+      page.document.querySelector('[data-action="undo-graph-reset"]'),
+      null,
+      'a later change takes the offer away',
+    );
+  });
 });

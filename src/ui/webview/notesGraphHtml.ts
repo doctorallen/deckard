@@ -76,6 +76,8 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .zoom-readout { display: inline-grid; place-items: center; min-width: 58px; margin-left: -1px; border-block: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .reset-graph-settings { min-height: 30px; border: 1px solid var(--slate-border); background: var(--panel-raised); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .reset-graph-settings:hover, .reset-graph-settings:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
+.graph-reset-undo { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.graph-reset-undo:empty { display: none; }
 .status-line { position: absolute; z-index: 2; left: 12px; bottom: 10px; display: flex; gap: 12px; color: var(--muted); font: var(--text-xs) var(--font-mono); pointer-events: none; }
 .status-line .sim-note { color: var(--amber-bright); }
 .graph-legend { display: flex; align-items: center; gap: 5px; }
@@ -160,7 +162,8 @@ ${getPageTailCss()}
     <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in the graph.">${zoomInIcon}</button>
     <button type="button" id="zoom-fit" aria-label="Fit graph to view" title="Fit the full graph in the current view.">Fit graph</button>
   </div>
-  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph.">Reset graph</button>
+  <button class="reset-graph-settings" id="reset-graph-settings" type="button" title="Restore all graph controls and filters, clear node momentum, and reframe the graph. Undo is offered for a few seconds.">Reset graph</button>
+  <span class="graph-reset-undo" id="graph-reset-undo" role="status" aria-live="polite"></span>
 </div>
 <div class="status-line"><span id="graph-legend" class="graph-legend"><span class="legend-swatch legend-note"></span>Notes<span class="legend-swatch legend-task"></span>Tasks<span class="legend-swatch legend-tag"></span>Tags</span><span id="status-counts"></span><span class="sim-note" id="sim-note" hidden>Simulating…</span></div>
 <div class="tooltip" id="tooltip" aria-hidden="true"></div>
@@ -1899,12 +1902,8 @@ ${getPageTailCss()}
   bindToggle('show-orphans', 'showOrphans', true);
   bindToggle('show-all-links', 'showAllLinks', true);
 
-  function resetGraphSettings() {
-    Object.keys(defaults).forEach(function (key) {
-      settings[key] = Array.isArray(defaults[key])
-        ? defaults[key].slice()
-        : defaults[key];
-    });
+  /** Puts every control in step with settings, after a reset or an undo. */
+  function applySettingsToControls() {
     ['show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'show-all-links']
       .forEach(function (id) {
         var key = id.replace(/-([a-z])/g, function (_, letter) {
@@ -1932,6 +1931,21 @@ ${getPageTailCss()}
         Number(settings[definition[1]]).toFixed(definition[2]);
     });
     searchInput.value = settings.search;
+  }
+
+  function resetGraphSettings() {
+    // What the reader had arranged, so the reset can be taken back.
+    var previous = {
+      settings: JSON.parse(JSON.stringify(settings)),
+      camera: { x: camera.x, y: camera.y, k: camera.k },
+      tagSearch: tagSearchInput.value
+    };
+    Object.keys(defaults).forEach(function (key) {
+      settings[key] = Array.isArray(defaults[key])
+        ? defaults[key].slice()
+        : defaults[key];
+    });
+    applySettingsToControls();
     tagSearchInput.value = '';
     window.clearTimeout(searchTimer);
     camera = { x: 0, y: 0, k: 1 };
@@ -1944,11 +1958,65 @@ ${getPageTailCss()}
       vy.fill(0);
     }
     reheat(1);
+    showResetUndo(previous);
   }
   document.getElementById('reset-graph-settings').addEventListener(
     'click',
     resetGraphSettings
   );
+
+  // ---- undoing a reset -------------------------------------------------
+  // A reset discards an arrangement that may have taken a while, so Undo
+  // is offered beside it for a few seconds, with the focus on it.
+  var resetUndo = document.getElementById('graph-reset-undo');
+  var resetSnapshot = null;
+  var resetUndoTimer = 0;
+  function clearResetUndo() {
+    window.clearTimeout(resetUndoTimer);
+    resetSnapshot = null;
+    resetUndo.textContent = '';
+  }
+  function showResetUndo(previous) {
+    window.clearTimeout(resetUndoTimer);
+    resetSnapshot = previous;
+    resetUndo.innerHTML = 'Graph reset. <button type="button" class="reset-graph-settings" data-action="undo-graph-reset">Undo</button>';
+    resetUndo.querySelector('button').focus();
+    resetUndoTimer = window.setTimeout(clearResetUndo, 8000);
+  }
+  function undoGraphReset() {
+    var previous = resetSnapshot;
+    if (!previous) { return; }
+    clearResetUndo();
+    Object.keys(defaults).forEach(function (key) {
+      settings[key] = previous.settings[key];
+    });
+    applySettingsToControls();
+    tagSearchInput.value = previous.tagSearch;
+    camera = { x: previous.camera.x, y: previous.camera.y, k: previous.camera.k };
+    hasFramed = true;
+    persist();
+    renderTagList();
+    rebuildView(true);
+    reheat(1);
+    resetUndo.textContent = 'Graph settings restored.';
+    resetUndoTimer = window.setTimeout(clearResetUndo, 3000);
+  }
+  resetUndo.addEventListener('click', function (event) {
+    if (event.target.closest && event.target.closest('[data-action="undo-graph-reset"]')) {
+      undoGraphReset();
+    }
+  });
+  // Any later change makes the snapshot stale, so the offer goes.
+  function dismissResetUndo(event) {
+    if (resetSnapshot && !resetUndo.contains(event.target)) {
+      clearResetUndo();
+    }
+  }
+  document.addEventListener('input', dismissResetUndo, true);
+  document.addEventListener('change', dismissResetUndo, true);
+  ['zoom-in', 'zoom-out', 'zoom-fit'].forEach(function (id) {
+    document.getElementById(id).addEventListener('click', dismissResetUndo);
+  });
 
   function bindSlider(id, key, decimals, onChange) {
     var element = document.getElementById(id);

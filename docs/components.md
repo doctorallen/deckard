@@ -492,6 +492,11 @@ Buttons, menu items, and command titles follow one table, and
 | A command that will ask a question ends with an ellipsis, in the palette and on a menu alike. | Open a Tag's Search Page… | Open the Tag's Search Page… |
 | One name per place. | Tasks view (the sidebar view and the Home widget that mirrors it); search page (a tag's page too) | Agenda; tag overview; tag search |
 
+- **Undo, briefly.** A control that discards the reader's arrangement offers
+  Undo inline for 8 seconds, in a `role="status"` span beside it, with the
+  focus moved to Undo so Enter takes it back; any later change to the page's
+  controls withdraws the offer. The Notes Graph's Reset graph is the first to
+  do this; Piece 9g makes it a shared primitive.
 - **Escape everything from the host.** Snapshot values are data, not markup.
 - **Post intent, do not mutate.** A control carries `data-action` and posts a
   message; the host decides and sends new state back. Pages re-render from

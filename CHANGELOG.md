@@ -64,6 +64,10 @@
   yet written come back the next time the same command opens, and the title
   says so.
 
+- **Reset graph can be undone.** It discarded every slider, filter, and the
+  camera at once; **Undo** now sits beside it for eight seconds, with the
+  focus on it.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
