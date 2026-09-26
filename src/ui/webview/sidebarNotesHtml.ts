@@ -259,7 +259,11 @@ ${getComponentScript()}
     const help = describeRefineValue(value);
     if (facet.id === 'related' || facet.id === 'tags') {
       const hasStrength = typeof value.strength === 'number';
-      const strengthText = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
+      const strengthText = !hasStrength
+        ? ''
+        : typeof value.total === 'number'
+          ? ', in ' + value.count + ' of ' + value.total + ' results'
+          : ', related ' + getWeightLevel(value.strength) + ' of 3';
       // The row narrows the search by the tag; the icon beside it opens the
       // tag's own page in a new tab.
       return '<div class="refine-value"><button type="button" class="tag-open refine-value-open" data-action="refine"' + narrow + ' data-tip="' + escapeHtml(help) + '" aria-label="Add ' + escapeHtml(value.label + strengthText) + ' to the search, ' + value.count + '. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR.">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + renderTagLabel(value.label) + '<span class="refine-count">' + value.count + '</span></button>'

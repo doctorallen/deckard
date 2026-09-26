@@ -290,10 +290,12 @@ export interface QueryFacetValue {
   /** The query text that narrows to this value. */
   clause: string;
   /**
-   * How strongly a related tag is associated with the search's tags, from 0
-   * to 1, relative to the strongest one listed.
+   * How much of the results a related tag is on, from 0 to 1: its count
+   * over `total`. The rail fills by it.
    */
   strength?: number;
+  /** How many results there are, when `strength` is a share of them. */
+  total?: number;
   /** Why the value is offered, such as how often two tags are written together. */
   detail?: string;
 }

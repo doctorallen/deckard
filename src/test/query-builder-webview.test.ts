@@ -515,6 +515,11 @@ suite('Tag overview query builder', () => {
     assert.match(view.html(), /class="tag-weight-rail"/, 'a related tag shows its strength');
     assert.match(view.html(), /related 2 of 3/);
 
+    // Given the results it is a share of, the chip says so.
+    const shared = [{ ...facets[0], values: [{ ...facets[0].values[0], count: 6, total: 13, strength: 6 / 13 }] }];
+    view.send(createState('#project/atlas', { facets: shared }));
+    assert.match(view.html(), /in 6 of 13 results/);
+
     view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
     assert.doesNotMatch(view.html(), /data-clause="#team\/harbor"/);
     assert.match(view.html(), /In the Related Notes sidebar\./);

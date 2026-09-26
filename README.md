@@ -692,7 +692,7 @@ Each result also carries a link button, beside its score, which writes a `[[Note
 
 ### Refine a search from the sidebar
 
-While a [search page](#search-pages) or the Task board is the active editor, Related Notes shows that search's [Refine](#refine) options instead of related notes, so the page keeps its height for its results. It lists only the ways the results could be narrowed; the page keeps its search, terms, and counts, and terms are removed in its search box. Related tags are listed strongest first, each with a three-step rail, as Related Notes draws a tag's weight, showing its strength beside the strongest; hover one to see how often the tags were written together or shared a heading.
+While a [search page](#search-pages) or the Task board is the active editor, Related Notes shows that search's [Refine](#refine) options instead of related notes, so the page keeps its height for its results. It lists only the ways the results could be narrowed; the page keeps its search, terms, and counts, and terms are removed in its search box. Related tags are listed by how many results carry them, each with a three-step rail, as Related Notes draws a tag's weight, filled by its share of the results; hover one to read **In 6 of 13 results.** and how often the tags were written together or shared a heading.
 
 - Select a value to add it to the search.
 - <kbd>Alt</kbd>-select it to leave those results out instead.
@@ -709,7 +709,7 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 
 - **One tag is its overview.** A search of exactly one tag shows the tag, or the entity it names, as the page's title, and the [hub note](#hub-notes) that describes it above its entries. The hub's own entries are not listed again below it.
 - **Anything more is a search.** Add another tag, words, or a condition such as `is:open`, and the page becomes an ordinary search: its [search box](#the-search-box) and **Builder** show everything it is filtering by, and the title says **Search**. **Clear** returns the page to the tag it opened with.
-- **Refine** narrows the results, five values of each kind at first, with **+N more** for the rest. On a page of one tag, or of several tags joined by AND, it offers related **Tags** first, strongest first, with a three-step rail for each one's strength; select one to add it to the search.
+- **Refine** narrows the results, five values of each kind at first, with **+N more** for the rest. On a page of one tag, or of several tags joined by AND, it offers related **Tags** first, those on the most results first, with a three-step rail filled by the share of the results each is on; select one to add it to the search.
 - Notes and Tasks are two tabs, or side by side. The Tasks list shows every task the search found — the search is the filter, so `is:open` or `is:done` in the box narrows it — with checkboxes that update the original Markdown task.
 - Sort notes alphabetically, by creation date, by update date, or by most accessed, on the line under the search box.
 - A tag on a result, a task row, a board card, or in Related Notes is written as quiet monospace text that opens its page; the editor keeps its tags in a box.
@@ -840,7 +840,7 @@ Under the search box, **Refine** counts what the results could still be narrowed
 - <kbd>Shift</kbd>-select it to add it with **OR**, widening the value chosen before it so either matches — open *or* done tasks, say.
 - Hovering a value says which of the three a click, Alt-click, and Shift-click writes, in the words of the query itself. From the keyboard, <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd>, and <kbd>Shift</kbd>+<kbd>Enter</kbd> on a focused value do the same.
 
-Every value adds ordinary query text, so a refined search can be saved, copied into a query block, or edited in the builder. A search of one tag, or of several tags joined by AND, lists related **Tags** instead of counting the tags the results carry, since associations are ranked better than a count can be: strongest first, with a three-step rail showing each one's strength beside the strongest, and kept even when every result carries them, since they still say how the tags relate. While the Related Notes sidebar is open beside the page, Refine is [shown there](#refine-a-search-from-the-sidebar).
+Every value adds ordinary query text, so a refined search can be saved, copied into a query block, or edited in the builder. A search of one tag, or of several tags joined by AND, lists related **Tags** instead of counting the tags the results carry, since associations are ranked better than a count can be: those on the most results first, with a three-step rail filled by the share of the results each is on (its tip and screen reader label say **in 6 of 13 results**), and kept even when every result carries them, since they still say how the tags relate. While the Related Notes sidebar is open beside the page, Refine is [shown there](#refine-a-search-from-the-sidebar).
 
 ### Query language
 

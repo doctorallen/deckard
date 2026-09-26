@@ -3876,6 +3876,13 @@ export function getQueryEditorScript(): string {
      * query it writes. A reader is choosing between AND, OR and NOT, so the
      * tooltip names them rather than describing them.
      */
+    /** A related tag's share of the results, as its chip says it aloud. */
+    function describeShare(value) {
+      return typeof value.total === 'number'
+        ? ', in ' + value.count + ' of ' + value.total + ' results'
+        : ', related ' + getWeightLevel(value.strength) + ' of 3';
+    }
+
     function describeFacetValue(value) {
       const clause = value.clause || '';
       return [
@@ -3900,7 +3907,7 @@ export function getQueryEditorScript(): string {
       const hasStrength = typeof value.strength === 'number';
       const name = value.label;
       const title = describeFacetValue(value);
-      const strength = hasStrength ? ', related ' + getWeightLevel(value.strength) + ' of 3' : '';
+      const strength = hasStrength ? describeShare(value) : '';
       const shared = ' data-facet-id="' + escapeHtml(facet.id) + '" data-clause="' + escapeHtml(value.clause) + '"';
       return '<button class="query-facet-value" data-action="facet"' + shared + ' data-tip="' + escapeHtml(title) + '" data-tip-overflow="' + escapeHtml(name) + '" aria-label="' + escapeHtml(facet.label + ': ' + name + strength + ', ' + value.count + '. Enter adds AND ' + value.clause + ', Alt-Enter adds AND NOT, Shift-Enter adds OR.') + '">' + (hasStrength ? renderWeightRail(getWeightLevel(value.strength)) : '') + (isTag ? renderTagLabel(name) : escapeHtml(name)) + '<span class="query-facet-count">' + value.count + '</span></button>';
     }

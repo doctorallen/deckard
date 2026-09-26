@@ -358,10 +358,12 @@ suite('Refining a search', () => {
       related.values.map((value) => [value.clause, value.count]),
       [['#team/harbor', 2], ['#risk/privacy', 1]],
     );
-    assert.strictEqual(related.values[0].strength, 1);
-    for (const value of related.values) {
-      assert.ok((value.strength ?? -1) >= 0 && (value.strength ?? 2) <= 1, 'strength is a share of the strongest');
-    }
+    // The rail is part of the whole: the share of the results a tag is on.
+    assert.deepStrictEqual(
+      related.values.map((value) => [value.strength, value.total]),
+      [[2 / 3, 3], [1 / 3, 3]],
+    );
+    assert.match(related.values[0].detail ?? '', /^In 2 of 3 results\. Written together/);
     assert.strictEqual(page.query.facets.some((facet) => facet.id === 'tags'), false);
 
     const narrowed = createSearchPageSnapshot(

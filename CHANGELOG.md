@@ -12,6 +12,12 @@
 
 ### Added
 
+- **A related tag in Refine says how many of the results carry it.** Its
+  rail fills by that share, its tip leads with **In 6 of 13 results.**,
+  and a screen reader hears "in 6 of 13 results" rather than a strength
+  measured against the strongest tag listed. Related tags are sorted by how
+  many results carry them, on search pages and in the sidebar's Refine.
+
 - **Stats shows how notes, tasks, and open tasks moved over twelve weeks.**
   A line under each of those totals draws a point for each rolling seven
   days, the latest marked, and says **+9 in the last 7 days**; hover a

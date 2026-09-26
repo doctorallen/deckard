@@ -622,8 +622,10 @@ export function resolveQueryTagIntersection(
 
 /**
  * The tags associated with every one of a search's tags, as Refine offers
- * them: each keeps as many results as carry it, and its strength is its
- * association relative to the strongest listed.
+ * them: each keeps as many results as carry it, and its strength is that
+ * share of the results — part of a whole, "in 6 of 13 results", which a
+ * reader can check, where a weight relative to the strongest listed could
+ * not be. Most results first, then the stronger association.
  */
 function createRelatedFacetValues(
   index: WorkspaceIndex,
@@ -635,35 +637,39 @@ function createRelatedFacetValues(
       ? index.tagAssociations?.get(tagKeys[0]) ?? []
       : getSharedTagAssociations(index, [...tagKeys])
   ).filter((association) => !tagKeys.includes(association.associatedTag.key));
-  const strongest = Math.max(
-    0,
-    ...associations.map((association) => association.normalizedWeight),
-  );
+  const total =
+    results.sections.length + results.tasks.length + results.files.length;
   return associations
     .map((association) => {
       const tagKey = association.associatedTag.key;
+      const count =
+        results.sections.filter((section) =>
+          sectionIncludesTag(index, section, tagKey),
+        ).length +
+        results.tasks.filter((task) => taskIncludesTag(index, task, tagKey))
+          .length +
+        results.files.filter((file) => fileIncludesTag(index, file, tagKey))
+          .length;
+      const why = describeAssociation(association);
       return {
-        label: index.tags.get(tagKey)?.label ?? association.associatedTag.label,
-        clause: tagKey,
-        count:
-          results.sections.filter((section) =>
-            sectionIncludesTag(index, section, tagKey),
-          ).length +
-          results.tasks.filter((task) => taskIncludesTag(index, task, tagKey))
-            .length +
-          results.files.filter((file) => fileIncludesTag(index, file, tagKey))
-            .length,
-        strength:
-          strongest > 0 ? association.normalizedWeight / strongest : 0,
-        detail: describeAssociation(association),
+        value: {
+          label: index.tags.get(tagKey)?.label ?? association.associatedTag.label,
+          clause: tagKey,
+          count,
+          strength: total > 0 ? count / total : 0,
+          total,
+          detail: `In ${count} of ${total} results.${why ? ` ${why}` : ''}`,
+        },
+        weight: association.normalizedWeight,
       };
     })
     .sort(
       (left, right) =>
-        right.strength - left.strength ||
-        right.count - left.count ||
-        baseCollator.compare(left.label, right.label),
-    );
+        right.value.count - left.value.count ||
+        right.weight - left.weight ||
+        baseCollator.compare(left.value.label, right.value.label),
+    )
+    .map((entry) => entry.value);
 }
 
 /**
