@@ -802,7 +802,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       outline.setTagFilter(undefined),
     ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
-      pickAgendaGrouping(),
+      pickAgendaGrouping(indexer.getSnapshot()),
     ),
     // The board is the search editor: the view's search opens there to be
     // tried and changed, and its Tasks view button keeps it.

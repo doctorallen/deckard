@@ -1962,17 +1962,26 @@
               "due",
               "priority",
               "status",
-              "assignee"
+              "assignee",
+              "tag"
             ],
             "enumDescriptions": [
               "Overdue, Today, and Upcoming.",
               "Highest to lowest, with the tasks carrying no priority between.",
               "The #status/… tag written on each task.",
-              "Who each task is for: the first person named on its line."
+              "Who each task is for: the first person named on its line.",
+              "The tags in one namespace, such as #project/… or #context/…: deckard.agenda.groupNamespace says which."
             ],
             "default": "due",
             "description": "What the Tasks view's groups are. The group control in its title sets the same thing.",
             "order": 7
+          },
+          "deckard.agenda.groupNamespace": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+            "default": "project",
+            "markdownDescription": "The tag namespace the Tasks view groups by when `#deckard.agenda.groupBy#` is `tag`, so `context` gives a group each to `#context/phone`, `#context/computer`, and the rest. A tag a task inherits from a heading or its note's front matter counts.",
+            "order": 8
           },
           "deckard.agenda.upcomingDays": {
             "type": "number",
@@ -1980,13 +1989,13 @@
             "maximum": 90,
             "default": 7,
             "description": "How many days ahead the Tasks view's Upcoming group looks for due, scheduled, and start dates.",
-            "order": 8
+            "order": 9
           },
           "deckard.agenda.query": {
             "type": "string",
             "default": "",
             "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, is:available for what can be started now, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
-            "order": 9
+            "order": 10
           },
           "deckard.board.limits": {
             "type": "object",
@@ -1996,7 +2005,7 @@
             },
             "default": {},
             "description": "Work-in-progress limits for board columns, by status, such as { \"doing\": 3 }, or by column, such as { \"priority:high\": 5 }. A column over its limit shows its count against it, 5 / 3, with a neutral outline. A drop is never refused.",
-            "order": 10
+            "order": 11
           },
           "deckard.board.statuses": {
             "type": "array",
@@ -2010,14 +2019,14 @@
               "waiting"
             ],
             "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them.",
-            "order": 10
+            "order": 11
           },
           "deckard.board.statusNamespace": {
             "type": "string",
             "default": "status",
             "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
             "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing.",
-            "order": 11
+            "order": 12
           },
           "deckard.tasks.onHoldStatuses": {
             "type": "array",
@@ -2030,7 +2039,7 @@
               "someday"
             ],
             "description": "Statuses that put a task on hold: is:available leaves out a task whose #status/… tag is one of these. Write them without the namespace, as in deckard.board.statuses.",
-            "order": 12
+            "order": 13
           }
         },
         "order": 4

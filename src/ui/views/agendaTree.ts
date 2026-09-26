@@ -9,6 +9,7 @@ import {
   updateTaskLine,
 } from '../commands/taskActions';
 import { mergeOrder } from '../state/dashboardState';
+import { describeNamespaceValues, isNamespaceName, listTaskNamespaces } from '../state/tagGrouping';
 import {
   resolveTaskMove,
   TaskBoardOptions,
@@ -39,7 +40,13 @@ interface AgendaPreferences {
 
 export type AgendaNode =
   | { kind: 'group'; group: AgendaGroup; groupBy: AgendaGroupBy }
-  | { kind: 'task'; entry: AgendaEntry; uri: vscode.Uri | undefined }
+  | {
+      kind: 'task';
+      entry: AgendaEntry;
+      uri: vscode.Uri | undefined;
+      /** The group it is drawn in: a task with two tags is in two groups. */
+      groupId?: string;
+    }
   /** The row under a long group that shows the rest of it. */
   | { kind: 'more'; groupId: string; hidden: number };
 
@@ -77,6 +84,7 @@ const GROUPING_ICONS: Readonly<
   priority: undefined,
   status: new vscode.ThemeIcon('circle-outline'),
   assignee: new vscode.ThemeIcon('person'),
+  tag: new vscode.ThemeIcon('tag'),
 };
 
 /**
@@ -93,7 +101,7 @@ const GROUPING_ICONS: Readonly<
  * focus, because what counts as today moves at midnight.
  */
 /** What a dragged task carries: the ids being moved, in the order drawn. */
-const AGENDA_TASK_MIME = 'application/vnd.code.tree.deckard.agenda';
+export const AGENDA_TASK_MIME = 'application/vnd.code.tree.deckard.agenda';
 
 export class AgendaTreeProvider
   implements
@@ -165,7 +173,7 @@ export class AgendaTreeProvider
     }
     return node.kind === 'group'
       ? createGroupItem(node.group, node.groupBy)
-      : createTaskItem(node.entry, node.uri);
+      : createTaskItem(node.entry, node.uri, node.groupId);
   }
 
   /** Shows every task in a group that was cut short, until the window closes. */
@@ -191,6 +199,7 @@ export class AgendaTreeProvider
           kind: 'task' as const,
           entry,
           uri: await resolveSourceUri(entry.task.filePath),
+          groupId: group.id,
         })),
       );
       return cut
@@ -211,6 +220,7 @@ export class AgendaTreeProvider
       upcomingDays: days,
       groupBy,
       statusNamespace: getStatusNamespace(),
+      groupNamespace: getAgendaGroupNamespace(),
       taskOrder: this.preferences?.value.taskOrder ?? [],
       doneToday: true,
       upcomingByDay: true,
@@ -288,11 +298,13 @@ export class AgendaTreeProvider
     source: readonly AgendaNode[],
     data: vscode.DataTransfer,
   ): void {
-    const taskIds = source
-      .filter((node) => node.kind === 'task')
-      .map((node) => (node as { entry: AgendaEntry }).entry.task.id);
-    if (taskIds.length > 0) {
-      data.set(AGENDA_TASK_MIME, new vscode.DataTransferItem(taskIds));
+    // Each task goes with the group it was dragged from, which a move
+    // between tags needs: the tag to replace is the one it came from.
+    const dragged: DraggedTask[] = source.flatMap((node) =>
+      node.kind === 'task' ? [{ taskId: node.entry.task.id, groupId: node.groupId }] : [],
+    );
+    if (dragged.length > 0) {
+      data.set(AGENDA_TASK_MIME, new vscode.DataTransferItem(dragged));
     }
   }
 
@@ -309,11 +321,13 @@ export class AgendaTreeProvider
     target: AgendaNode | undefined,
     data: vscode.DataTransfer,
   ): Promise<void> {
-    const dragged = data.get(AGENDA_TASK_MIME)?.value as string[] | undefined;
-    if (!target || !dragged?.length) {
+    const value = data.get(AGENDA_TASK_MIME)?.value as unknown;
+    const dragged = readDraggedTasks(value);
+    if (!target || dragged.length === 0) {
       return;
     }
-    const tasks = dragged
+    const from = new Map(dragged.map((item) => [item.taskId, item.groupId]));
+    const tasks = [...new Set(dragged.map((item) => item.taskId))]
       .map((taskId) => this.indexer.getTask(taskId))
       .filter((task): task is Task => task !== undefined);
     if (tasks.length === 0) {
@@ -326,7 +340,7 @@ export class AgendaTreeProvider
       await this.rankBefore(tasks, target.entry.task.id);
       return;
     }
-    await this.moveToGroup(tasks, target);
+    await this.moveToGroup(tasks, target, from);
   }
 
   /** Puts the dragged tasks in front of the one they were dropped on. */
@@ -337,9 +351,10 @@ export class AgendaTreeProvider
     if (!this.preferences || !this.index) {
       return;
     }
-    const drawnIds = this.drawn.flatMap((group) =>
-      group.entries.map((entry) => entry.task.id),
-    );
+    // A task drawn in two groups is ranked once.
+    const drawnIds = [
+      ...new Set(this.drawn.flatMap((group) => group.entries.map((entry) => entry.task.id))),
+    ];
     const moving = new Set(tasks.map((task) => task.id));
     if (moving.has(targetId)) {
       return;
@@ -361,6 +376,7 @@ export class AgendaTreeProvider
   private async moveToGroup(
     tasks: readonly Task[],
     target: { group: AgendaGroup; groupBy: AgendaGroupBy },
+    from: ReadonlyMap<string, string | undefined> = new Map(),
   ): Promise<void> {
     const columnId = groupColumnId(target.group.id, target.groupBy);
     if (!columnId) {
@@ -375,7 +391,11 @@ export class AgendaTreeProvider
     const refused: string[] = [];
     let moved = 0;
     for (const task of tasks) {
-      const move = resolveTaskMove(task, columnId, options, { index: this.index });
+      const source = from.get(task.id);
+      const move = resolveTaskMove(task, columnId, options, {
+        index: this.index,
+        from: source ? groupColumnId(source, target.groupBy) : undefined,
+      });
       if (move.kind === 'refused') {
         refused.push(move.reason);
         continue;
@@ -488,6 +508,12 @@ function createGroupItem(
   );
   item.id = `agenda:${group.id}`;
   item.description = String(group.entries.length);
+  if (groupBy === 'tag' && group.id.startsWith('tag:')) {
+    const tag = `#${group.id.slice('tag:'.length)}`;
+    item.tooltip = tag.endsWith('/')
+      ? `Open tasks with no ${tag}… tag.`
+      : `Tasks tagged ${tag} on their line, a heading above them, or their note's front matter. Drag a task here to tag it.`;
+  }
   item.iconPath =
     GROUP_ICONS[group.id.startsWith('upcoming:') ? 'upcoming' : group.id] ??
     GROUPING_ICONS[groupBy];
@@ -522,12 +548,15 @@ function createMoreItem(node: { groupId: string; hidden: number }): vscode.TreeI
 function createTaskItem(
   entry: AgendaEntry,
   uri: vscode.Uri | undefined,
+  groupId?: string,
 ): vscode.TreeItem {
   const item = new vscode.TreeItem(
     entry.title,
     vscode.TreeItemCollapsibleState.None,
   );
-  item.id = `agenda:task:${entry.task.id}`;
+  // The group is part of the id: a task with two tags is drawn twice, and
+  // VS Code refuses two items with one id.
+  item.id = groupId ? `agenda:task:${groupId}:${entry.task.id}` : `agenda:task:${entry.task.id}`;
   item.description = entry.details.join(' · ');
   item.tooltip = createTaskTooltip(entry);
   const done = entry.task.completed;
@@ -570,18 +599,42 @@ export function getAgendaGrouping(): AgendaGroupBy {
  * Asks how to group the Agenda, and keeps the answer where the setting is,
  * so the panel and the settings say the same thing.
  */
-export async function pickAgendaGrouping(): Promise<AgendaGroupBy | undefined> {
+export async function pickAgendaGrouping(
+  index?: WorkspaceIndex,
+): Promise<AgendaGroupBy | undefined> {
   const current = getAgendaGrouping();
+  const namespace = getAgendaGroupNamespace();
   const chosen = await vscode.window.showQuickPick(
     AGENDA_GROUPINGS.map((grouping) => ({
       label: grouping.label,
-      description: grouping.id === current ? 'Current' : undefined,
+      description:
+        grouping.id === current
+          ? grouping.id === 'tag'
+            ? `Current: #${namespace}`
+            : 'Current'
+          : undefined,
       detail: grouping.detail,
       id: grouping.id,
     })),
     { title: 'Group tasks by', placeHolder: 'Choose what the groups are' },
   );
-  if (!chosen || chosen.id === current) {
+  if (!chosen) {
+    return undefined;
+  }
+  if (chosen.id === 'tag') {
+    const picked = index ? await pickTagNamespace(index, current === 'tag' ? namespace : undefined) : undefined;
+    if (!picked) {
+      return undefined;
+    }
+    const target = vscode.ConfigurationTarget.Global;
+    if (!(await writeSetting('agenda.groupNamespace', picked, target))) {
+      return undefined;
+    }
+    return current === 'tag' || (await writeSetting('agenda.groupBy', 'tag', target))
+      ? 'tag'
+      : undefined;
+  }
+  if (chosen.id === current) {
     return undefined;
   }
   const written = await writeSetting(
@@ -590,6 +643,64 @@ export async function pickAgendaGrouping(): Promise<AgendaGroupBy | undefined> {
     vscode.ConfigurationTarget.Global,
   );
   return written ? chosen.id : undefined;
+}
+
+/** The namespace the Tasks view groups by, from `deckard.agenda.groupNamespace`. */
+export function getAgendaGroupNamespace(): string {
+  const value = vscode.workspace
+    .getConfiguration('deckard')
+    .get<string>('agenda.groupNamespace', 'project');
+  return isNamespaceName(value) ? value.toLowerCase() : 'project';
+}
+
+/** Asks which namespace to group by, busiest first; nothing when none is in use. */
+export async function pickTagNamespace(
+  index: WorkspaceIndex,
+  current?: string,
+): Promise<string | undefined> {
+  const namespaces = listTaskNamespaces(index, [getStatusNamespace()]);
+  if (namespaces.length === 0) {
+    void vscode.window.showInformationMessage(
+      'No open task carries a namespaced tag, such as #context/phone, yet. Write one on a task, or on the heading above it, to group by it.',
+    );
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(
+    namespaces.map((namespace) => ({
+      label: `#${namespace.name}`,
+      description: `${namespace.openTasks} open ${namespace.openTasks === 1 ? 'task' : 'tasks'}${namespace.name === current ? ' · Current' : ''}`,
+      detail: describeNamespaceValues(namespace.values),
+      name: namespace.name,
+    })),
+    {
+      title: 'Group tasks by tag namespace',
+      placeHolder: 'Choose the namespace whose tags are the groups',
+    },
+  );
+  return picked?.name;
+}
+
+/** A dragged task and the group it was drawn in. */
+interface DraggedTask {
+  taskId: string;
+  groupId?: string;
+}
+
+/** What a drag carries: tasks with their groups, or task ids alone. */
+function readDraggedTasks(value: unknown): DraggedTask[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item): DraggedTask[] => {
+    if (typeof item === 'string') {
+      return [{ taskId: item }];
+    }
+    if (item && typeof item === 'object' && typeof (item as DraggedTask).taskId === 'string') {
+      const groupId = (item as DraggedTask).groupId;
+      return [{ taskId: (item as DraggedTask).taskId, ...(typeof groupId === 'string' ? { groupId } : {}) }];
+    }
+    return [];
+  });
 }
 
 function getStatusNamespace(): string {
@@ -624,6 +735,10 @@ export function groupColumnId(
   if (groupBy === 'assignee') {
     // The group's id is the person's tag key, which is what the field holds.
     return `assignee:${groupId === 'none' ? '' : groupId}`;
+  }
+  if (groupBy === 'tag') {
+    // A tag group's id is already the board's column for it.
+    return groupId.startsWith('tag:') ? groupId : undefined;
   }
   if (groupBy === 'due') {
     // A day of Upcoming is one date, so a task dropped on it is due then.

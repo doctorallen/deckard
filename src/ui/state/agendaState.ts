@@ -1,3 +1,4 @@
+import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import {
   addDays,
@@ -37,7 +38,7 @@ import { stripTrailingTags } from './queryBlockState';
 export type AgendaGroupId = string;
 
 /** What the Agenda's groups are: when a task is wanted, or what it carries. */
-export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee';
+export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
 
 /** The ways the Agenda can be grouped, in the order the picker offers them. */
 export const AGENDA_GROUPINGS: readonly {
@@ -53,6 +54,11 @@ export const AGENDA_GROUPINGS: readonly {
   { id: 'priority', label: 'Priority', detail: 'Highest to lowest' },
   { id: 'status', label: 'Status', detail: 'The #status/… tag on each task' },
   { id: 'assignee', label: 'Person', detail: 'Who each task is for' },
+  {
+    id: 'tag',
+    label: 'Tag namespace…',
+    detail: 'Your own tags, such as #project/… or #context/…, counting the ones a task inherits',
+  },
 ];
 
 export interface AgendaEntry {
@@ -102,6 +108,8 @@ export interface AgendaOptions {
   upcomingDays: number;
   groupBy?: AgendaGroupBy;
   statusNamespace?: string;
+  /** The namespace whose tags are the groups when `groupBy` is `tag`. */
+  groupNamespace?: string;
   /**
    * The order a reader dragged their tasks into, from preferences. A task
    * they placed leads its group; the rest follow in the order the group
@@ -273,7 +281,9 @@ export function createAgenda(
       ? groupByPriority(entries, order)
       : groupBy === 'status'
         ? groupByStatus(entries, statusNamespace, order)
-        : groupByAssignee(entries, index, order)),
+        : groupBy === 'tag'
+          ? groupByTag(entries, index, options.groupNamespace ?? 'project', order)
+          : groupByAssignee(entries, index, order)),
     ...done,
   ];
 }
@@ -373,6 +383,58 @@ function groupByStatus(
     (status) => (status ? capitalize(status.replace(/[-_]+/g, ' ')) : 'No status'),
     order,
   );
+}
+
+/**
+ * The tags of one namespace, busiest first, with the tasks carrying none
+ * last. A tag counts whether it is on the task's line, a heading above it, or
+ * its note's front matter; a task with two is in both groups, and says
+ * "also in" the other. Group ids are the board's columns: `tag:context/phone`,
+ * and `tag:context/` for none.
+ */
+export function groupByTag(
+  entries: readonly AgendaEntry[],
+  index: WorkspaceIndex,
+  namespace: string,
+  order: (left: AgendaEntry, right: AgendaEntry) => number,
+): AgendaGroup[] {
+  const name = namespace.toLowerCase();
+  const held = new Map<string, { label: string; entries: AgendaEntry[] }>();
+  const none: AgendaEntry[] = [];
+  entries.forEach((entry) => {
+    const values = readNamespaceValues(index, entry.task, name);
+    if (values.length === 0) {
+      none.push(entry);
+      return;
+    }
+    const labels = values.map((value) =>
+      formatNamespaceValue(labelValue(index.tags.get(value.key)?.label ?? value.label)),
+    );
+    values.forEach((value, at) => {
+      const others = labels.filter((_, other) => other !== at);
+      const group = held.get(value.value) ?? { label: labels[at], entries: [] };
+      group.entries.push(
+        others.length > 0
+          ? { ...entry, details: [...entry.details, `also in ${others.join(', ')}`] }
+          : entry,
+      );
+      held.set(value.value, group);
+    });
+  });
+  const groups = [...held.entries()]
+    .sort(
+      (left, right) =>
+        right[1].entries.length - left[1].entries.length ||
+        left[1].label.localeCompare(right[1].label),
+    )
+    .map(([value, group]) => ({
+      id: `tag:${name}/${value}`,
+      label: group.label,
+      entries: [...group.entries].sort(order),
+    }));
+  return none.length > 0
+    ? [...groups, { id: `tag:${name}/`, label: noValueLabel(name), entries: [...none].sort(order) }]
+    : groups;
 }
 
 /** Who each task is for, busiest first, with the unnamed ones last. */
