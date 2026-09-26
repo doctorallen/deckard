@@ -1,3 +1,4 @@
+import { isParkedTask } from '../../core/workspace/parked';
 import * as vscode from 'vscode';
 
 import { markMigrated } from '../../core/markdown/taskMetadata';
@@ -95,7 +96,10 @@ export function planRollover(
   }
   const byPath = new Map(notes.map((note) => [note.filePath, note.date]));
   const open = [...index.tasks.values()]
-    .filter((task) => !task.completed && byPath.has(task.filePath))
+    // A parked task stays where it is.
+    .filter(
+      (task) => !task.completed && byPath.has(task.filePath) && !isParkedTask(index, task.id),
+    )
     .sort(
       (left, right) =>
         (byPath.get(left.filePath) ?? '').localeCompare(

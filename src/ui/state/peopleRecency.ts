@@ -1,5 +1,11 @@
 import { isPersonTag } from '../../core/markdown/parser';
 import { TagInfo, WorkspaceIndex } from '../../core/types';
+import {
+  isParkedFile,
+  isParkedOnlyTag,
+  isParkedSection,
+  isParkedTask,
+} from '../../core/workspace/parked';
 
 /**
  * When each person, or any tag of a namespace, was last written about, and
@@ -33,7 +39,7 @@ export interface PersonRecency {
 export function listPeopleRecency(index: WorkspaceIndex): PersonRecency[] {
   const openTasksByTag = new Map<string, number>();
   index.tasks.forEach((task) => {
-    if (task.completed) {
+    if (task.completed || isParkedTask(index, task.id)) {
       return;
     }
     task.tags.filter(isPersonTag).forEach((key) => {
@@ -42,7 +48,8 @@ export function listPeopleRecency(index: WorkspaceIndex): PersonRecency[] {
   });
 
   return [...index.tags.values()]
-    .filter((tag) => isPersonTag(tag.key))
+    // A person written about only in parked notes is not listed.
+    .filter((tag) => isPersonTag(tag.key) && !isParkedOnlyTag(index, tag.key))
     .map((tag) => ({
       tag,
       lastWrittenAt: lastWritten(index, tag),
@@ -75,18 +82,20 @@ export function listQuietPeople(
     );
 }
 
-/** The newest date among the notes that carry a tag. */
+/** The newest date among the notes that carry a tag, where it is not parked. */
 function lastWritten(index: WorkspaceIndex, tag: TagInfo): number {
-  const paths = new Set<string>(tag.filePaths);
+  const paths = new Set<string>(
+    tag.filePaths.filter((filePath) => !isParkedFile(index, filePath)),
+  );
   tag.sectionIds.forEach((id) => {
     const section = index.sections.get(id);
-    if (section) {
+    if (section && !isParkedSection(index, id)) {
       paths.add(section.filePath);
     }
   });
   tag.taskIds.forEach((id) => {
     const task = index.tasks.get(id);
-    if (task) {
+    if (task && !isParkedTask(index, id)) {
       paths.add(task.filePath);
     }
   });
@@ -129,7 +138,7 @@ export function listQuietTags(
   const namespace = options.namespace?.trim() || 'person';
   const openTasksByTag = new Map<string, number>();
   index.tasks.forEach((task) => {
-    if (task.completed) {
+    if (task.completed || isParkedTask(index, task.id)) {
       return;
     }
     const keys = new Set(task.tags);
@@ -148,7 +157,7 @@ export function listQuietTags(
   });
   const cutoff = now - Math.max(1, days) * 24 * 60 * 60 * 1000;
   return [...index.tags.values()]
-    .filter((tag) => isInNamespace(tag.key, namespace))
+    .filter((tag) => isInNamespace(tag.key, namespace) && !isParkedOnlyTag(index, tag.key))
     .map((tag) => ({
       tag,
       lastWrittenAt: lastWritten(index, tag),

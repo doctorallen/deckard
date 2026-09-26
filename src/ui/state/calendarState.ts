@@ -1,3 +1,4 @@
+import { isParkedTask } from '../../core/workspace/parked';
 import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
 import { Weekday } from '../../core/markdown/dates';
@@ -113,7 +114,7 @@ export function createCalendar(
   const dueCounts = new Map<string, number>();
   const dueTitles = new Map<string, string[]>();
   for (const task of index.tasks.values()) {
-    if (!task.completed && task.dueAt !== undefined) {
+    if (!task.completed && task.dueAt !== undefined && !isParkedTask(index, task.id)) {
       const date = formatLocalDate(new Date(task.dueAt));
       dueCounts.set(date, (dueCounts.get(date) ?? 0) + 1);
       const titles = dueTitles.get(date) ?? [];

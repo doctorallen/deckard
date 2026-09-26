@@ -1,3 +1,4 @@
+import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
 import { needsNewDate } from '../../core/taskPolicy';
 import {
@@ -143,7 +144,7 @@ export function createTaskBoard(
   options: TaskBoardOptions,
   tagTitleDisplayMode: TagTitleDisplayMode = 'inline',
 ): TaskBoardSnapshot {
-  const tasks = selectTasks(index, search.query);
+  const { tasks, parkedLeftOut } = selectTasks(index, search.query);
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
 
@@ -166,6 +167,7 @@ export function createTaskBoard(
               index,
               { sections: [], files: [], tasks },
               search.query,
+              { parkedLeftOut },
             )
           : [],
       },
@@ -584,11 +586,26 @@ export function readTaskStatus(
     ?.slice(prefix.length);
 }
 
-function selectTasks(index: WorkspaceIndex, query: string): Task[] {
+/**
+ * The tasks the board's search finds, less the parked ones unless the search
+ * asks about them, and how many open parked tasks that left out.
+ */
+function selectTasks(
+  index: WorkspaceIndex,
+  query: string,
+): { tasks: Task[]; parkedLeftOut: number } {
   const parsed = query.trim() ? parseQuery(query) : undefined;
-  return parsed?.node
+  const found = parsed?.node
     ? evaluateQuery(index, parsed.node).tasks
     : [...index.tasks.values()];
+  if (mentionsParked(parsed?.node) || !index.parked || index.parked.tasks.size === 0) {
+    return { tasks: found, parkedLeftOut: 0 };
+  }
+  const tasks = withoutParked(found, index);
+  const parkedLeftOut = found.filter(
+    (task) => !task.completed && index.parked?.tasks.has(task.id),
+  ).length;
+  return { tasks, parkedLeftOut };
 }
 
 function createStatusColumns(

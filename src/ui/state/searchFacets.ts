@@ -42,6 +42,11 @@ export interface FacetOptions {
    */
   related?: SearchFacetValue[];
   now?: number;
+  /**
+   * Open parked tasks a list of things to do left out that its search
+   * otherwise finds, offered as one value that asks for them.
+   */
+  parkedLeftOut?: number;
 }
 
 const TAG_VALUE_LIMIT = 10;
@@ -59,7 +64,7 @@ export function buildSearchFacets(
   const now = options.now ?? Date.now();
   const total = source.sections.length + source.files.length + source.tasks.length;
   if (total === 0) {
-    return [];
+    return parkedFacet(options.parkedLeftOut);
   }
   const facet = (
     id: SearchFacet['id'],
@@ -183,7 +188,27 @@ export function buildSearchFacets(
 
   facets.push(facet('folder', 'Folder', countFolders(source), FOLDER_VALUE_LIMIT));
 
+  facets.push(...parkedFacet(options.parkedLeftOut));
+
   return facets.filter((candidate) => candidate.values.length > 0);
+}
+
+/**
+ * The open parked tasks a list of things to do left out, as one value that
+ * asks for them. What was left out is not among the results, so it is
+ * offered whatever its count against them.
+ */
+function parkedFacet(parkedLeftOut = 0): SearchFacet[] {
+  return parkedLeftOut > 0
+    ? [
+        {
+          id: 'parked',
+          label: 'Parked',
+          values: [{ label: 'Parked', clause: 'is:parked', count: parkedLeftOut }],
+          applied: [],
+        },
+      ]
+    : [];
 }
 
 /**

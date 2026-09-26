@@ -1,3 +1,4 @@
+import { mentionsParked, withoutParked } from '../../core/workspace/parked';
 import {
   addDays,
   formatIsoDate,
@@ -141,18 +142,21 @@ export function selectAgendaTasks(
   index: WorkspaceIndex,
   query: string,
 ): { tasks: Task[]; error?: string } {
+  // A list of things to do leaves parked tasks out, unless its own search
+  // asks about them.
   const text = query.trim();
   if (!text) {
-    return { tasks: [...index.tasks.values()] };
+    return { tasks: withoutParked([...index.tasks.values()], index) };
   }
   const parsed = parseQuery(text);
   if (!parsed.node) {
     return {
-      tasks: [...index.tasks.values()],
+      tasks: withoutParked([...index.tasks.values()], index),
       error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
     };
   }
-  return { tasks: evaluateQuery(index, parsed.node).tasks };
+  const tasks = evaluateQuery(index, parsed.node).tasks;
+  return { tasks: mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index) };
 }
 
 /**

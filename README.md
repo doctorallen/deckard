@@ -535,7 +535,7 @@ Headings written in the underlined `Title`/`===` style are not shown, matching h
 
 ## Tasks view
 
-Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by when they are wanted. Like the Outline, it can be dragged into either sidebar.
+Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by when they are wanted. Like the Outline, it can be dragged into either sidebar. Parked tasks are not listed, and not counted in the badge or the status bar, unless `deckard.agenda.query` says `is:parked`.
 
 ![Deckard's Tasks view grouping open tasks into Overdue, Today, and Upcoming beside a note with dated tasks.](docs/images/agenda.png)
 
@@ -579,7 +579,7 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu — the card moves at once, and the board says so if the note could not be written — which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The menu's **Note** group has **Move to…**, which moves the task and its steps under another heading. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
+Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu — the card moves at once, and the board says so if the note could not be written — which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The menu's **Note** group has **Move to…**, which moves the task and its steps under another heading. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns. Parked tasks are left off the board unless its search says `is:parked`; Refine's **Parked** value, with how many were left out, adds it.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 

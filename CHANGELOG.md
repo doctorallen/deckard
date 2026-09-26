@@ -17,6 +17,12 @@
   heading, or a task: it stays indexed and searchable, and `is:parked`
   finds it.
 
+- **Parked tasks leave the lists of things to do.** The Tasks view, the
+  status bar and reminder, the Task board, Home's task widgets, the
+  calendar, rollover, a review's still-open list, and Gone quiet leave
+  parked tasks out, unless the list's own search says `is:parked`. The
+  board's Refine offers **Parked** with how many it left out.
+
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds
   the rest of the note away; **Unfold All Sections** brings it back.

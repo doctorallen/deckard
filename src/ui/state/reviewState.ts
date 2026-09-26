@@ -1,3 +1,4 @@
+import { isParkedTask } from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
 import { formatIsoDate } from '../../core/markdown/taskMetadata';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -118,7 +119,10 @@ export function summarizeReview(
   const slipped = [...index.tasks.values()]
     .filter(
       (task) =>
-        !task.completed && task.dueAt !== undefined && task.dueAt < range.end,
+        !task.completed &&
+        task.dueAt !== undefined &&
+        task.dueAt < range.end &&
+        !isParkedTask(index, task.id),
     )
     .sort(
       (left, right) =>
@@ -157,7 +161,7 @@ export function summarizeReview(
   const next = options.next;
   const comingUp = next
     ? [...index.tasks.values()]
-        .filter((task) => !task.completed)
+        .filter((task) => !task.completed && !isParkedTask(index, task.id))
         .flatMap((task) => {
           const dates = (
             [

@@ -1,3 +1,4 @@
+import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
 import {
   countTagMatches,
@@ -156,10 +157,12 @@ function createWidget(
           error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
         };
       }
+      // A list of things to do: parked tasks stay out unless it asks for them.
+      const found = parsed.node
+        ? evaluateQuery(index, parsed.node).tasks
+        : [...index.tasks.values()];
       const tasks = sortTasks(
-        parsed.node
-          ? evaluateQuery(index, parsed.node).tasks
-          : [...index.tasks.values()],
+        mentionsParked(parsed.node) ? found : withoutParked(found, index),
         preferences.taskOrder,
         preferences.taskSortMode,
       );
@@ -345,7 +348,7 @@ function createWidget(
     case 'staleTasks': {
       // A task is as old as the note it is in, as the note dates itself.
       const cutoff = options.now - (config.days ?? 30) * DAY;
-      const stale = [...index.tasks.values()]
+      const stale = withoutParked([...index.tasks.values()], index)
         .flatMap((task) => {
           const updatedAt =
             index.files.get(task.filePath)?.updatedAt ?? task.updatedAt;
@@ -412,7 +415,9 @@ function createWidget(
       const tags = [...index.tags.values()]
         .filter(
           (tag) =>
-            !tag.hubFilePaths?.length && tag.count >= HUB_SUGGESTION_MINIMUM,
+            !tag.hubFilePaths?.length &&
+            tag.count >= HUB_SUGGESTION_MINIMUM &&
+            !isParkedOnlyTag(index, tag.key),
         )
         .sort(
           (left, right) =>
