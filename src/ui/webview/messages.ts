@@ -503,6 +503,14 @@ export function parseSidebarMessage(
     return { type: 'openLinksSearch' };
   }
   if (
+    value.type === 'addSuggestedTag' &&
+    typeof value.tagKey === 'string' &&
+    value.tagKey.length > 0 &&
+    Object.keys(value).length === 2
+  ) {
+    return { type: 'addSuggestedTag', tagKey: value.tagKey };
+  }
+  if (
     value.type === 'setRelatedNotesPreviewLines' &&
     (value.lines === 0 || value.lines === 1 || value.lines === 2)
   ) {

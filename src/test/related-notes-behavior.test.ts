@@ -130,6 +130,11 @@ suite('Related Notes behavior', () => {
     assert.match(page.find('.suggested-tag .tag-open').getAttribute('data-tip') ?? '', /^On 3 of the similar entries below\./);
     page.click('.suggested-tag [data-action="open-tag"]');
     assert.deepStrictEqual(page.lastPosted('openTag'), { type: 'openTag', tagKey: '#risk/vendor' });
+    const add = page.find('.suggested-tag [data-action="add-suggested-tag"]');
+    assert.strictEqual(add.textContent, 'Add');
+    assert.strictEqual(add.getAttribute('aria-label'), 'Add #risk/vendor to this note');
+    page.click('.suggested-tag [data-action="add-suggested-tag"]');
+    assert.deepStrictEqual(page.lastPosted('addSuggestedTag'), { type: 'addSuggestedTag', tagKey: '#risk/vendor' });
   });
 
   test('a note with no tags says why nothing is listed', () => {

@@ -1048,6 +1048,12 @@ export interface SetHideDailyNotesMessage {
   hide: boolean;
 }
 
+/** A tag offered to an untagged note: write it where the cursor is. */
+export interface AddSuggestedTagMessage {
+  type: 'addSuggestedTag';
+  tagKey: string;
+}
+
 /** Related Notes' gear: how many lines of each result's excerpt to show. */
 export interface SetRelatedNotesPreviewLinesMessage {
   type: 'setRelatedNotesPreviewLines';
@@ -1758,6 +1764,7 @@ export type SidebarMessage =
   | OpenLinksSearchMessage
   | SetHideDailyNotesMessage
   | SetRelatedNotesPreviewLinesMessage
+  | AddSuggestedTagMessage
   | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage

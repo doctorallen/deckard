@@ -27,7 +27,10 @@ import {
 } from '../state/relatedNotesRanking';
 import { createWikiLink, insertWikiLink } from '../commands/insertLink';
 import { openSourceAt, resolveSourceUri } from '../commands/navigation';
-import { reportFailure, reportStale } from '../commands/notify';
+import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../commands/notify';
+import { appendTagToLine } from '../commands/bulkEdit';
+import { findTagTarget } from '../../core/markdown/tagTarget';
+import { getEntityNamespaceAliases, getPersonMarker } from '../../core/markdown/parser';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
@@ -689,6 +692,11 @@ export class SidebarNotesView
       return;
     }
 
+    if (message.type === 'addSuggestedTag') {
+      await this.addSuggestedTag(message.tagKey);
+      return;
+    }
+
     if (message.type === 'setRelatedNotesPreviewLines') {
       await this.preferences.setRelatedNotesPreviewLines(message.lines);
       this.refresh();
@@ -795,6 +803,80 @@ export class SidebarNotesView
       label: `a link to ${mention.name} in ${mention.title}`,
     });
     await this.indexer.refresh();
+  }
+
+  /**
+   * Writes a tag the similar notes use onto the untagged note, on the
+   * heading or line where the cursor is, found from the note as it is now.
+   * The tag must still be one the sidebar offers. One write, which the
+   * message's Undo and Undo Last Change both take back.
+   */
+  private async addSuggestedTag(tagKey: string): Promise<void> {
+    const snapshot = this.createSnapshot();
+    const tag = snapshot.similar?.tags.find((candidate) => candidate.key === tagKey);
+    const filePath = this.getSelectedFilePath();
+    if (!tag || !filePath) {
+      return;
+    }
+    const editor = vscode.window.activeTextEditor;
+    if (
+      !editor ||
+      !isMarkdownDocument(editor.document) ||
+      this.indexer.getFilePath(editor.document.uri) !== filePath
+    ) {
+      void vscode.window.showInformationMessage(
+        'Open the note in an editor, and put the cursor where the tag should go.',
+      );
+      return;
+    }
+    const document = editor.document;
+    const lines = document.getText().split(/\r?\n/);
+    const target = findTagTarget(lines, editor.selection.active.line + 1);
+    if (!target) {
+      void vscode.window.showInformationMessage('Write a heading or a line first, then add the tag to it.');
+      return;
+    }
+    const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
+    const before = lines[target.line - 1];
+    const after = appendTagToLine(before, tag.label, {
+      entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
+      personMarker: getPersonMarker(configuration.get<unknown>('personMarker', '@')),
+    });
+    if (after === before) {
+      void vscode.window.showInformationMessage(`This line already has ${tag.label}.`);
+      return;
+    }
+    const where = target.kind === 'heading' ? `"${target.label}"` : target.label;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(document.uri, document.lineAt(target.line - 1).range, after);
+    const written = await applyWorkspaceWrite(edit, {
+      label: `${tag.label} on ${where}`,
+      preview: 'never',
+    });
+    if (!written.applied) {
+      void reportFailure(describeRejectedEdit(noteName(document.uri)));
+      return;
+    }
+    await this.indexer.refresh();
+    const uri = document.uri;
+    void vscode.window
+      .showInformationMessage(`Added ${tag.label} to ${where}.`, 'Undo')
+      .then(async (choice) => {
+        if (choice !== 'Undo') {
+          return;
+        }
+        const now = await vscode.workspace.openTextDocument(uri);
+        if (target.line > now.lineCount || now.lineAt(target.line - 1).text !== after) {
+          void vscode.window.showWarningMessage(
+            `Line ${target.line} changed after the tag was added, so Deckard left it as it is.`,
+          );
+          return;
+        }
+        const undo = new vscode.WorkspaceEdit();
+        undo.replace(uri, now.lineAt(target.line - 1).range, before);
+        await applyWorkspaceWrite(undo, { label: `taking ${tag.label} off ${where}`, preview: 'never' });
+        await this.indexer.refresh();
+      });
   }
 
   /**

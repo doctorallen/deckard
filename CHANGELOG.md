@@ -14,8 +14,9 @@
 
 - **A note with no tags still finds its neighbors.** Related Notes lists up
   to ten entries with similar wording, marked weak and kept apart from
-  related notes, and the tags those entries use. For a note with tags,
-  wording alone still never makes a note related.
+  related notes, and the tags those entries use, each with **Add**, which
+  writes it on the heading or line under the cursor, with Undo. For a note
+  with tags, wording alone still never makes a note related.
 
 - **Related Notes previews each result.** A card shows the first line of
   what the entry says, starting where it shares a word with your note,

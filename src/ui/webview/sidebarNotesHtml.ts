@@ -113,6 +113,7 @@ main[data-preview-lines="2"] { --preview-lines: 2; }
 .suggested-tags { display: grid; gap: 4px; margin: 10px 0; }
 .suggested-tag { display: flex; align-items: stretch; gap: 6px; min-width: 0; }
 .suggested-tag .tag-open { flex: 1 1 auto; min-width: 0; }
+.suggested-tag-add { flex: 0 0 auto; min-height: 30px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .similar-hint { margin: 0 0 6px; color: var(--muted); font-size: var(--text-xs); }
 .note-excerpt { display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: var(--preview-lines); overflow-wrap: anywhere; }
 select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
@@ -166,8 +167,8 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
    Refine: its rail, its name, and its count. The theme's own .tag-open layout
    is set aside here, and the text matches the other Refine rows rather than a
    tag's smaller size. */
-.active-tag-list .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
-.active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
+.active-tag-list .tag-open.active-tag-open, .suggested-tag .tag-open.active-tag-open, .refine-value .tag-open.refine-value-open { width: 100%; display: flex; flex: 1 1 auto; min-width: 0; min-height: 24px; align-items: center; gap: 6px; margin: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 8px; font-size: inherit; text-align: left; transform: none; }
+.active-tag-list .tag-open.active-tag-open:hover, .active-tag-list .tag-open.active-tag-open:focus-visible, .suggested-tag .tag-open.active-tag-open:hover, .suggested-tag .tag-open.active-tag-open:focus-visible, .refine-value .tag-open.refine-value-open:hover, .refine-value .tag-open.refine-value-open:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); transform: none; }
 .active-tag-open > .tag-label, .refine-value-open > .tag-label { flex: 1 1 auto; }
 .refine-open-tag { display: inline-grid; flex: 0 0 24px; min-height: 24px; place-items: center; border: 1px solid var(--line); background: var(--panel); color: var(--muted); padding: 2px; }
 .refine-open-tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -521,7 +522,8 @@ ${getComponentScript()}
       ? '<section class="suggested-tags" aria-label="Tags used by similar notes"><span class="section-label">Tags used by similar notes</span>'
         + similar.tags.map(function (tag) {
           const tip = 'On ' + tag.entryCount + ' of the similar entries below. Add writes it on the heading or line where the cursor is.';
-          return '<div class="suggested-tag"><button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" data-tip="' + escapeHtml(tip) + '">' + renderTagLabel(tag.label) + '<span class="refine-count">' + tag.entryCount + '</span></button></div>';
+          return '<div class="suggested-tag"><button type="button" class="tag-open active-tag-open" data-action="open-tag" data-tag-key="' + escapeHtml(tag.key) + '" data-tip="' + escapeHtml(tip) + '">' + renderTagLabel(tag.label) + '<span class="refine-count">' + tag.entryCount + '</span></button>'
+            + '<button type="button" class="suggested-tag-add" data-action="add-suggested-tag" data-suggested-tag="' + escapeHtml(tag.key) + '" aria-label="Add ' + escapeHtml(tag.label) + ' to this note" data-tip="Write ' + escapeHtml(tag.label) + ' on the heading or line where the cursor is">Add</button></div>';
         }).join('') + '</section>'
       : '';
     const notes = similar.notes.length
@@ -651,6 +653,11 @@ ${getComponentScript()}
     const hideDaily = event.target.closest('[data-action="set-hide-daily"]');
     if (hideDaily) {
       vscode.postMessage({ type: 'setHideDailyNotes', hide: hideDaily.dataset.value === 'hide' });
+      return;
+    }
+    const add = event.target.closest('[data-action="add-suggested-tag"]');
+    if (add) {
+      vscode.postMessage({ type: 'addSuggestedTag', tagKey: add.dataset.suggestedTag });
       return;
     }
     const preview = event.target.closest('[data-action="set-preview-lines"]');
