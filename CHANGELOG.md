@@ -77,6 +77,10 @@
 
 ### Changed
 
+- **The Dashboard sends a tag's name and count, not its entries.** At
+  5,000 entries and 471 tags its snapshot drops from 1,674 KB to 75 KB, and
+  Home no longer builds the hidden Tags tab on every redraw.
+
 - **A search page draws only the page it shows.** Every match is sorted
   and counted as before, but only the thirty on screen are rendered, so an
   empty search of 5,000 entries takes 29 ms instead of 348, and a search of

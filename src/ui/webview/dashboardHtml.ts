@@ -1003,7 +1003,9 @@ ${getQueryEditorScript()}
     };
     const favoriteTags = filteredTags.filter(function (tag) { return tag.isFavorite; });
     const otherTags = filteredTags.filter(function (tag) { return !tag.isFavorite; });
-    const tagContent = filteredTags.length
+    // The Tags tab is drawn only while it is open: Home redraws on every
+    // save, and a row per tag was built each time for a panel kept hidden.
+    const tagContent = dashboardMode !== 'browse' ? '' : filteredTags.length
       ? (favoriteTags.length
         ? '<div class="tag-group" data-tag-group="favorites"><h3>Favorites <span class="tag-count">(' + favoriteTags.length + ')</span></h3><div class="tag-list">' + favoriteTags.map(renderTag).join('') + '</div></div>'
         : '') + (otherTags.length ? '<div class="tag-group" data-tag-group="other"><h3>Other tags <span class="tag-count">(' + otherTags.length + ')</span></h3><div class="tag-list">' + otherTags.map(renderTag).join('') + '</div></div>' : '')

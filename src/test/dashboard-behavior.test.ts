@@ -294,6 +294,27 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('sends each tag\'s name and count, and draws the Tags tab only when it is open', () => {
+    const { page, snapshot } = open();
+    assert.deepStrictEqual(Object.keys(snapshot.tags[0]).sort(), ['count', 'isFavorite', 'key', 'label']);
+    assert.deepStrictEqual(Object.keys(snapshot.entities[0] ?? { count: 0, isFavorite: false, key: '', kind: '', label: '' }).sort(), ['count', 'isFavorite', 'key', 'kind', 'label']);
+    assert.strictEqual(page.findAll('.tag-row').length, 0, 'Home builds no tag rows');
+    page.click('[data-action="set-dashboard-mode"][data-dashboard-mode="browse"]');
+    assert.ok(page.findAll('.tag-row').length > 0, 'the Tags tab draws them when opened');
+  });
+
+  test('a large workspace\'s Dashboard snapshot stays small', () => {
+    const notes: Record<string, string> = {};
+    for (let file = 0; file < 40; file += 1) {
+      notes[`notes/n${file}.md`] = Array.from({ length: 50 }, (_, tag) => `## E${tag} #t${file}-${tag} #shared`).join('\n');
+    }
+    const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
+    store = new PreferencesStore(new MemoryMemento());
+    const size = JSON.stringify(createDashboardSnapshot(index, store.value)).length;
+    assert.ok(index.tags.size >= 2000, `${index.tags.size} tags`);
+    assert.ok(size < 300 * 1024, `${Math.round(size / 1024)} KB`);
+  });
+
   test('a removed widget can be put back where it was, for a moment', () => {
     const { page } = open({
       dashboardWidgets: [

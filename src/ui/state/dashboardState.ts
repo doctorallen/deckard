@@ -90,8 +90,21 @@ export function createDashboardSnapshot(
 ): DashboardSnapshot {
   return {
     taskGlance: createTaskGlance(index, options.agendaQuery ?? '', options.now ?? Date.now()),
-    tags: sortTags(index.tags.values(), preferences),
-    entities: sortEntities(index.entities.values(), preferences),
+    // The page reads a tag's name, count, and heart; the entry lists each
+    // one carried ran to megabytes in a large workspace and were never read.
+    tags: sortTags(index.tags.values(), preferences).map((tag) => ({
+      key: tag.key,
+      label: tag.label,
+      count: tag.count,
+      isFavorite: tag.isFavorite,
+    })),
+    entities: sortEntities(index.entities.values(), preferences).map((entity) => ({
+      key: entity.key,
+      label: entity.label,
+      kind: entity.kind,
+      count: entity.count,
+      isFavorite: entity.isFavorite,
+    })),
     totalSectionCount: index.sections.size,
     totalNoteCount: index.sections.size + listFrontmatterOnlyFiles(index).length,
     totalTaskCount: index.tasks.size,

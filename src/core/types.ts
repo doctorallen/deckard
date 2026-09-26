@@ -434,9 +434,26 @@ export interface DashboardNote extends TagOverviewCard {
   fileName: string;
 }
 
+/** A tag as the Dashboard draws it: its name, count, and heart. */
+export interface DashboardTag {
+  key: string;
+  label: string;
+  count: number;
+  isFavorite: boolean;
+}
+
+/** An entity as the Dashboard ranks it. */
+export interface DashboardEntity {
+  key: string;
+  label: string;
+  kind: EntityKind;
+  count: number;
+  isFavorite: boolean;
+}
+
 export interface DashboardSnapshot {
-  tags: TagInfo[];
-  entities: Entity[];
+  tags: DashboardTag[];
+  entities: DashboardEntity[];
   totalSectionCount: number;
   totalNoteCount: number;
   totalTaskCount: number;
