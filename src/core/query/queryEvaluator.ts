@@ -1,6 +1,7 @@
 import { getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
 import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
 import { addDays, startOfDay, TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
+import { isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
   Section,
@@ -383,6 +384,35 @@ function getDependencyState(index: WorkspaceIndex): DependencyState {
   return state;
 }
 
+/**
+ * The daily notes, and the daily, weekly, and monthly notes, of an index, by
+ * path: what `is:daily` and `is:periodic` ask of any entry, task, or note.
+ */
+interface PeriodicState {
+  daily: Set<string>;
+  periodic: Set<string>;
+}
+
+const periodicStates = new WeakMap<WorkspaceIndex, PeriodicState>();
+
+function getPeriodicState(index: WorkspaceIndex): PeriodicState {
+  const cached = periodicStates.get(index);
+  if (cached) {
+    return cached;
+  }
+  const state: PeriodicState = { daily: new Set(), periodic: new Set() };
+  index.files.forEach((file, filePath) => {
+    if (isDailyNoteFile(file)) {
+      state.daily.add(filePath);
+    }
+    if (isPeriodicNoteFile(file)) {
+      state.periodic.add(filePath);
+    }
+  });
+  periodicStates.set(index, state);
+  return state;
+}
+
 function buildTagMembership(index: WorkspaceIndex): TagMembership {
   const membership: TagMembership = {
     sections: new Map(),
@@ -549,6 +579,11 @@ function matchesCondition(
     case 'task':
       return applyNegation(condition, matchesTaskState(condition.value, unit));
     case 'is':
+      if (condition.value === 'daily' || condition.value === 'periodic') {
+        const periodic = getPeriodicState(context.index);
+        const notes = condition.value === 'daily' ? periodic.daily : periodic.periodic;
+        return applyNegation(condition, notes.has(unit.filePath));
+      }
       return applyNegation(condition, matchesIs(condition.value, unit));
     case 'has':
       return matchesHas(condition, unit);

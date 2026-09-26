@@ -581,6 +581,7 @@ updated: 2026-09-20
         <tr><td><code>is:assigned</code>, <code>is:unassigned</code></td><td>Tasks that name a person, and tasks that name nobody.</td></tr>
         <tr><td><code>has:due</code>, <code>no:due</code></td><td>With or without a date. <code>scheduled</code>, <code>start</code>, <code>done</code>, <code>priority</code>, <code>id</code>, and <code>dependsOn</code> work the same way.</td></tr>
         <tr><td><code>in:notes/work</code></td><td>A folder and everything inside it; <code>*</code> and <code>?</code> are wildcards.</td></tr>
+        <tr><td><code>is:daily</code>, <code>is:periodic</code></td><td>Written in a daily note, or in a daily, weekly, or monthly note: entries and tasks alike.</td></tr>
       </tbody></table></div>
       <div class="table-scroll"><table><caption>Fields</caption><thead><tr><th>Field</th><th>Matches</th><th>Example</th></tr></thead><tbody>
         <tr><td><code>tag</code></td><td>A tag, including inherited and front-matter tags. <code>*</code> and <code>?</code> are wildcards.</td><td><code>tag = #risk/*</code></td></tr>

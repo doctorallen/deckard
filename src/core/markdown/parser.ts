@@ -1486,6 +1486,32 @@ export function isPeriodicNotePath(filePath: string): boolean {
   );
 }
 
+/**
+ * Whether a note is a daily note: named for a day, as `2026-09-25.md` is, or
+ * with a day in its top heading. Every place that tells a daily note from
+ * any other asks this.
+ */
+export function isDailyNoteFile(file: Pick<ParsedFile, 'filePath' | 'sections'>): boolean {
+  return findFileDailyNoteDate(file) !== undefined;
+}
+
+/** The day a daily note is for, read as `isDailyNoteFile` reads it. */
+export function findFileDailyNoteDate(
+  file: Pick<ParsedFile, 'filePath' | 'sections'>,
+): string | undefined {
+  return findDailyNoteDate(
+    file.filePath,
+    file.sections
+      .filter((section) => section.headingLevel === 1 && !section.isInline)
+      .map((section) => section.heading),
+  );
+}
+
+/** Whether a note is a daily, weekly, or monthly note. */
+export function isPeriodicNoteFile(file: Pick<ParsedFile, 'filePath' | 'sections'>): boolean {
+  return isPeriodicNotePath(file.filePath) || isDailyNoteFile(file);
+}
+
 export function findDailyNoteDate(
   filePath: string,
   topLevelHeadings: readonly string[],

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 
-import { findDailyNoteDate, isPeriodicNotePath } from '../../core/markdown/parser';
+import {
+  findDailyNoteDate,
+  isPeriodicNoteFile,
+  isPeriodicNotePath,
+} from '../../core/markdown/parser';
 import { onDidChangePageChrome } from './components';
 
 import {
@@ -8,6 +12,7 @@ import {
   NotesGraphNode,
   NotesGraphSnapshot,
   SidebarGraphContext,
+  WorkspaceIndex,
 } from '../../core/types';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -384,7 +389,9 @@ export class NotesGraphPanel implements vscode.Disposable {
         workspace,
         findNoteNodeIds(workspace, this.focusPath),
         this.scope.depth,
-        this.scope.skipPeriodic ? isPeriodicNode : undefined,
+        this.scope.skipPeriodic
+          ? (node: NotesGraphNode) => isPeriodicNode(node, this.indexer.getSnapshot())
+          : undefined,
       ),
       focus,
     };
@@ -445,12 +452,12 @@ export function openingScope(
  * A daily, weekly, or monthly note's own entries, which a local graph passes
  * through rather than draws. The tasks written in them are still drawn.
  */
-function isPeriodicNode(node: NotesGraphNode): boolean {
-  return (
-    node.kind !== 'task' &&
-    node.kind !== 'tag' &&
-    node.filePath !== undefined &&
-    (isPeriodicNotePath(node.filePath) ||
-      findDailyNoteDate(node.filePath, []) !== undefined)
-  );
+function isPeriodicNode(node: NotesGraphNode, index: WorkspaceIndex): boolean {
+  if (node.kind === 'task' || node.kind === 'tag' || node.filePath === undefined) {
+    return false;
+  }
+  const file = index.files.get(node.filePath);
+  return file
+    ? isPeriodicNoteFile(file)
+    : isPeriodicNotePath(node.filePath) || findDailyNoteDate(node.filePath, []) !== undefined;
 }

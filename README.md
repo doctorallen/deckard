@@ -794,6 +794,8 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | `is:assigned`, `is:unassigned` | Tasks that name a person, and tasks that name nobody. |
 | `has:due`, `no:due` | Tasks with, or without, a due date. `scheduled`, `start`, `done`, `priority`, `id`, and `dependsOn` work the same way. |
 | `in:notes/work` | Everything in a folder and the folders inside it. `*` and `?` are wildcards. |
+| `is:daily` | Anything written in a daily note — one named for a day, such as `2026-09-25.md`, or with a day in its top heading — tasks included. `is:journal` is the same. |
+| `is:periodic` | The same, and weekly and monthly notes too. `is:dated` is the same. |
 
 Put `-` in front of a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as you wrote it when it saves or formats a query.
 

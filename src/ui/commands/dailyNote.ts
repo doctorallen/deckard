@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { reportNeedsFolder } from './notify';
 
 import {
-  findDailyNoteDate,
+  findFileDailyNoteDate,
   isPeriodicNotePath,
 } from '../../core/markdown/parser';
 import { WorkspaceIndex } from '../../core/types';
@@ -24,12 +24,7 @@ export interface DailyNoteEntry {
 export function listDailyNotes(index: WorkspaceIndex): DailyNoteEntry[] {
   return [...index.files.values()]
     .flatMap((file) => {
-      const date = findDailyNoteDate(
-        file.filePath,
-        file.sections
-          .filter((section) => section.headingLevel === 1)
-          .map((section) => section.heading),
-      );
+      const date = findFileDailyNoteDate(file);
       return date ? [{ date, filePath: file.filePath }] : [];
     })
     .sort(

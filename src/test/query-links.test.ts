@@ -157,3 +157,53 @@ suite('Searching by link', () => {
     });
   });
 });
+
+suite('Searching daily notes', () => {
+  function createDays(): WorkspaceIndex {
+    const files = new Map(
+      Object.entries({
+        'notes/2026-09-25.md': '# Friday\n- [ ] Call Ren\nA thought #idea\n',
+        'notes/Journal.md': '# 2026-09-24 Thursday\nWrote this.\n',
+        'notes/week-2026-09-20-2026-09-26.md': '# Week\nA review.\n',
+        'notes/2026-W39.md': '# Old week\nOlder.\n',
+        'notes/Atlas.md': '# Atlas\n- [ ] Plan it\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    return buildWorkspaceIndex(files);
+  }
+
+  const paths = (index: WorkspaceIndex, query: string): string[] => {
+    const results = evaluateQuery(index, parseQuery(query).node);
+    return [
+      ...new Set([
+        ...results.sections.map((section) => section.filePath),
+        ...results.tasks.map((task) => task.filePath),
+      ]),
+    ].sort();
+  };
+
+  test('is:daily finds what was written in a daily note, tasks included', () => {
+    const index = createDays();
+    assert.deepStrictEqual(paths(index, 'is:daily'), ['notes/2026-09-25.md', 'notes/Journal.md']);
+    assert.deepStrictEqual(paths(index, 'is:journal'), paths(index, 'is:daily'));
+    const tasks = evaluateQuery(index, parseQuery('is:daily is:open').node).tasks;
+    assert.deepStrictEqual(tasks.map((task) => task.title), ['Call Ren']);
+    assert.ok(!paths(index, '-is:daily').includes('notes/2026-09-25.md'));
+  });
+
+  test('is:periodic adds weekly and monthly notes', () => {
+    const index = createDays();
+    assert.deepStrictEqual(paths(index, 'is:periodic'), [
+      'notes/2026-09-25.md',
+      'notes/2026-W39.md',
+      'notes/Journal.md',
+      'notes/week-2026-09-20-2026-09-26.md',
+    ]);
+    assert.deepStrictEqual(paths(index, 'is:dated'), paths(index, 'is:periodic'));
+    assert.deepStrictEqual(paths(index, '-is:periodic'), ['notes/Atlas.md']);
+  });
+
+  test('says is:daily and is:periodic when is: is misspelled', () => {
+    assert.match(errorOf('is:dialy'), /unassigned, daily, or periodic — not "dialy"\.$/);
+  });
+});

@@ -28,8 +28,7 @@ import {
   TaskGlance,
 } from '../../core/types';
 import {
-  findDailyNoteDate,
-  isPeriodicNotePath,
+  isPeriodicNoteFile,
   isPersonTag,
   stripTags,
 } from '../../core/markdown/parser';
@@ -785,14 +784,7 @@ function findOrphanNotes(
   const orphans = [...index.files.values()]
     .filter(
       (file) =>
-        backlinks.toNote(file.filePath).length === 0 &&
-        !isPeriodicNotePath(file.filePath) &&
-        !findDailyNoteDate(
-          file.filePath,
-          file.sections
-            .filter((section) => section.headingLevel === 1)
-            .map((section) => section.heading),
-        ),
+        backlinks.toNote(file.filePath).length === 0 && !isPeriodicNoteFile(file),
     )
     .map((file) => ({ filePath: file.filePath, title: noteTitle(file.filePath) }))
     .sort(
@@ -1894,6 +1886,8 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person the "Me" setting names' },
   { value: 'is:assigned', label: 'is:assigned', detail: 'Tasks that name a person' },
   { value: 'is:unassigned', label: 'is:unassigned', detail: 'Tasks that name nobody' },
+  { value: 'is:daily', label: 'is:daily', detail: 'Written in a daily note' },
+  { value: 'is:periodic', label: 'is:periodic', detail: 'Written in a daily, weekly, or monthly note' },
 ];
 
 const HAS_SUGGESTIONS = [
@@ -1930,7 +1924,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, or is:unassigned';
+      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, or is:periodic';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':

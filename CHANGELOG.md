@@ -12,6 +12,13 @@
 
 ### Added
 
+- **Search: `is:daily` and `is:periodic`.** `is:daily` finds what was
+  written in daily notes, tasks included, and `-is:daily` leaves it out;
+  `is:periodic` adds weekly and monthly notes. Both are in the builder's
+  `is` values. Every place that tells a daily note from another now reads
+  it one way, so a note with a day in its top heading counts on the Notes
+  Graph's **Pass through daily notes** as it does elsewhere.
+
 - **`[[` completes a note, and Refine narrows by links.** Typing `[[` in a
   search box or a new builder row lists your notes, most linked first, each
   saying *Linked from 12 notes* or which note it is an alias of. Refine

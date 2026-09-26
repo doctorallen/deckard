@@ -34,7 +34,7 @@ export const QUERY_SYNTAX_GUIDE = [
   'done = 7d matches tasks completed in the last seven days.',
   'priority takes highest, high, medium, none, low, or lowest, as in priority >= high.',
   'kind = project matches an entity namespace; file and path accept * and ? wildcards; created and updated take dates, a weekday such as friday (the last one), this-week, last-month, a month such as 2026-08, or windows such as 30d.',
-  'Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:today (what the Tasks view lists under Today), is:needs-date (open and more than 30 days past due), is:task, is:note, is:blocked (open and waiting for an open task), is:blocking (open and an open task waits for it), is:waiting (open and marked #status/waiting or assigned to someone else), is:available (open, not blocked, started, and not on hold); has:due and no:due (also scheduled, start, done, priority, id, dependsOn); in:folder matches a folder and everything in it. Put - before one to negate it.',
+  'Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:today (what the Tasks view lists under Today), is:needs-date (open and more than 30 days past due), is:task, is:note, is:blocked (open and waiting for an open task), is:blocking (open and an open task waits for it), is:waiting (open and marked #status/waiting or assigned to someone else), is:available (open, not blocked, started, and not on hold), is:daily (written in a daily note), is:periodic (a daily, weekly, or monthly note); has:due and no:due (also scheduled, start, done, priority, id, dependsOn); in:folder matches a folder and everything in it. Put - before one to negate it.',
   'Operators are = != ~ !~ > >= < <=.',
 ].join(' ');
 
