@@ -74,6 +74,7 @@ suite('Extension Test Suite', () => {
         'deckard.quickFind.complete',
         'deckard.quickFind.openBeside',
         'deckard.quickFind.insertLink',
+        'deckard.quickFind.actions',
         'deckard.searchNotes',
         'deckard.linkCurrentHeading',
         'deckard.moveTagsToFrontmatter',

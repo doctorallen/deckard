@@ -289,6 +289,7 @@ export async function pickReschedule(
   subject: string,
   tasks: readonly Task[] = [],
   load?: (date: string) => DayLoad,
+  options: { title?: string } = {},
 ): Promise<RescheduleChoice | null> {
   const now = Date.now();
   const open = tasks.filter((task) => !task.completed);
@@ -328,8 +329,8 @@ export async function pickReschedule(
     { label: 'No due date', choice: { kind: 'one', date: undefined } },
   );
   const chosen = await vscode.window.showQuickPick(items, {
-    title: `Reschedule ${subject}`,
-    placeHolder: 'When they are due',
+    title: options.title ?? `Reschedule ${subject}`,
+    placeHolder: tasks.length === 1 ? 'When it is due' : 'When they are due',
   });
   if (!chosen) {
     return null;

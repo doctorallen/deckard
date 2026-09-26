@@ -385,6 +385,16 @@ export class PreferencesStore implements vscode.Disposable {
   /**
    * Keeps a search at the front of the recent list, without duplicates.
    */
+  /** Takes one search off the recent list. */
+  public async removeRecentQuery(query: string): Promise<void> {
+    const recentQueries = (this.preferences.recentQueries ?? []).filter(
+      (existing) => existing !== query.trim(),
+    );
+    if (recentQueries.length !== (this.preferences.recentQueries ?? []).length) {
+      await this.update({ recentQueries });
+    }
+  }
+
   public async recordRecentQuery(query: string): Promise<void> {
     const normalized = query.trim();
     if (!normalized) {

@@ -339,6 +339,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.quickFind.actions",
+        "title": "List Actions in Find",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.searchNotes",
         "title": "Search Notes and Tasks",
         "category": "Deckard"
@@ -544,6 +549,10 @@
         },
         {
           "command": "deckard.quickFind.insertLink",
+          "when": "false"
+        },
+        {
+          "command": "deckard.quickFind.actions",
           "when": "false"
         },
         {
@@ -791,6 +800,12 @@
       {
         "command": "deckard.quickFind.insertLink",
         "key": "alt+enter",
+        "when": "inQuickOpen && deckard.quickFindOpen"
+      },
+      {
+        "command": "deckard.quickFind.actions",
+        "key": "ctrl+.",
+        "mac": "cmd+.",
         "when": "inQuickOpen && deckard.quickFindOpen"
       }
     ],

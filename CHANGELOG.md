@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Find acts without leaving.** A task in Find has **Complete** (or
+  **Reopen**) and **Set due**; Find stays open and redraws the row in place.
+  <kbd>Cmd</kbd>+<kbd>.</kbd> lists everything a row can do, from copying a
+  link to renaming a tag or forgetting a recent search, and Escape returns
+  to Find with its search.
+
 - **Keys inside Find.** <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>
   elsewhere) opens the highlighted result beside the editor and keeps Find
   open for the next; <kbd>Alt</kbd>+<kbd>Enter</kbd> inserts a link to it
