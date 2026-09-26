@@ -45,6 +45,8 @@ export class HelpPanel implements vscode.Disposable {
       'Deckard Help',
       vscode.ViewColumn.Active,
       {
+        // The page's own script marks the section being read in the rail.
+        enableScripts: true,
         enableFindWidget: true,
         retainContextWhenHidden: true,
       },
@@ -54,6 +56,9 @@ export class HelpPanel implements vscode.Disposable {
 
   private attachPanel(panel: vscode.WebviewPanel): void {
     this.panel = panel;
+    // A panel restored after a reload keeps the options it was made with,
+    // which before 1.23 had no scripts.
+    panel.webview.options = { ...panel.webview.options, enableScripts: true };
     panel.iconPath = vscode.Uri.joinPath(
       this.extensionUri,
       'resources',

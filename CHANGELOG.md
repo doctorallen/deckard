@@ -102,6 +102,9 @@
   and PageDown. The focus now stays on its day, and a step into another
   month lands on the day it stepped to.
 
+- **Help marks the section being read.** Its panel was created without
+  scripts, so the navigation rail's marker had never run in VS Code.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
