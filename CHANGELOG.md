@@ -105,6 +105,10 @@
 - **Help marks the section being read.** Its panel was created without
   scripts, so the navigation rail's marker had never run in VS Code.
 
+- **Changing Related Notes' Sort re-sorts the list at once.** The new order
+  was saved but not drawn until the next save or cursor move, and a redraw
+  in between put the select back to the old order.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

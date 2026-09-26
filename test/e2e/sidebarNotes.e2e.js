@@ -12,13 +12,14 @@ const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
 
 /** `count` notes, each a heading tagged #project/atlas. */
-function createIndex(count) {
+function createIndex(count, { dated = false } = {}) {
   const files = Array.from({ length: count }, (_, number) => {
     const filePath = `notes/note-${String(number).padStart(3, '0')}.md`;
     return parseMarkdown(
       filePath,
       `# Note ${number} #project/atlas\nBody ${number}.`,
-      { createdAt: 1, updatedAt: 2 },
+      // Dated, each note is newer than the one before it.
+      dated ? { createdAt: 1 + number, updatedAt: 2 + number } : { createdAt: 1, updatedAt: 2 },
       {},
     );
   });
@@ -40,8 +41,8 @@ function createGlobalState() {
  * Opens the sidebar beside the first note, which every other note shares a
  * tag with, and mounts the sidebar's own page against the real host.
  */
-async function openSidebar(noteCount) {
-  const index = createIndex(noteCount);
+async function openSidebar(noteCount, options) {
+  const index = createIndex(noteCount, options);
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
@@ -152,6 +153,25 @@ test('a long list shows 50 results and a Show more button', async () => {
     view.click(showMore());
     assert.strictEqual(cards(), 120);
     assert.ok(!showMore(), 'every result is shown, so the button is gone');
+  } finally {
+    close();
+  }
+});
+
+test('changing Sort re-orders the list at once', async () => {
+  const { view, close } = await openSidebar(6, { dated: true });
+  try {
+    const first = () => view.find('.note-list [data-file-path]').getAttribute('data-file-path');
+    view.change(view.find('[data-action="set-related-notes-sort"]'), 'newest');
+    await settle();
+    assert.strictEqual(first(), 'notes/note-005.md', 'the newest note leads');
+    assert.ok(
+      'selected' in view.find('.related-notes-sort option[value="newest"]').attributes,
+      'and the select says so',
+    );
+    view.change(view.find('[data-action="set-related-notes-sort"]'), 'oldest');
+    await settle();
+    assert.strictEqual(first(), 'notes/note-001.md', 'the oldest leads');
   } finally {
     close();
   }

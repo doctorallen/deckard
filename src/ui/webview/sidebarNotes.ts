@@ -610,6 +610,9 @@ export class SidebarNotesView
     }
     if (message.type === 'setRelatedNotesSort') {
       await this.preferences.setRelatedNotesSortMode(message.mode);
+      // The view does not follow every preference write, so it redraws here:
+      // the list in its new order, and the select saying so.
+      this.refresh();
       return;
     }
     if (message.type === 'openTag') {
