@@ -1347,6 +1347,16 @@
             "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, is:available for what can be started now, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
             "order": 9
           },
+          "deckard.board.limits": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "default": {},
+            "description": "Work-in-progress limits for board columns, by status, such as { \"doing\": 3 }, or by column, such as { \"priority:high\": 5 }. A column over its limit shows its count against it, 5 / 3, with a neutral outline. A drop is never refused.",
+            "order": 10
+          },
           "deckard.board.statuses": {
             "type": "array",
             "items": {

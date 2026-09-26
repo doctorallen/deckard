@@ -52,6 +52,12 @@
   offer **Spread over the next 5 days** and **3 for today, the rest next
   week**, each one previewed, undoable write. A move of several tasks ends
   by saying how full the day now is.
+- **A board column counts its overdue cards, keeps red for the worst, and
+  takes a limit.** A column's header reads **40 · 38 overdue**; when most of
+  a column is overdue, only the longest-overdue third keep the red and the
+  rest say *overdue* muted beside a red dot. `deckard.board.limits` sets
+  work-in-progress limits, such as `{ "doing": 3 }`: the header reads
+  **5 / 3** and the column gets a neutral outline. A drop is never refused.
 - **Done today.** The Tasks view ends with a folded Done today group of
   what was finished today; unchecking one reopens it. The status bar's hover
   and Home's Tasks view widget say how many.

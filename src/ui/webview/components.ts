@@ -557,6 +557,12 @@ export function getTaskBoardCss(): string {
    after this sheet and which took the color off "overdue 20 days". */
 .task .board-details .overdue { color: var(--danger); }
 .task .board-details .stale { color: var(--muted); }
+/* Most of a column overdue: the worst third keep the red, the rest say
+   "overdue" muted beside a small red dot, so the word still says it. */
+.task .board-details .overdue.quiet { color: var(--muted); }
+.task .board-details .overdue.quiet::before { content: ""; display: inline-block; width: 0; height: 0; margin-right: 4px; border: 3px solid var(--danger); border-radius: 50%; vertical-align: middle; }
+/* Over its work-in-progress limit: a neutral dashed outline, never red. */
+.board-column.over-limit { outline: var(--edge) dashed var(--line-strong); outline-offset: -1px; }
 .board-column[data-column-id="due:needsdate"] .board-column-title { color: var(--muted); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
@@ -1705,6 +1711,7 @@ export function getComponentScript(): string {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
+      const quiet = overdue && card.overdueTone === 'quiet';
       const stale = card.stale && detail.indexOf('was due') === 0;
       // The host words priority as "high priority"; the card draws the badge
       // the task rows draw, so it is told from the due date beside it.
@@ -1715,7 +1722,7 @@ export function getComponentScript(): string {
       const text = escapeHtml(detail).replace(/\\d{4}-\\d{2}-\\d{2}/g, function (date) {
         return '<span class="board-date">' + date + '</span>';
       });
-      return '<span' + (overdue ? ' class="overdue"' : stale ? ' class="stale"' : '') + '>' + text + '</span>';
+      return '<span' + (quiet ? ' class="overdue quiet"' : overdue ? ' class="overdue"' : stale ? ' class="stale"' : '') + '>' + text + '</span>';
     }).join('');
     const plainTitle = String(card.title || '');
     // The file and line, then the headings above, fold under the card as
@@ -1762,13 +1769,22 @@ export function getComponentScript(): string {
     return hint + '<div class="board task-board" aria-label="Task board">' + board.columns.map(function (column) {
       const cards = isVisible ? column.cards.filter(isVisible) : column.cards;
       const count = cards.length + column.hiddenCount;
+      // Counted from the cards shown, so typed words that hide cards recount
+      // the overdue ones too. Done and Overdue itself need no such count.
+      const overdueCount = column.id === 'done' || column.id === 'due:overdue'
+        ? 0
+        : cards.filter(function (card) { return card.overdue && !card.completed; }).length;
+      const limit = column.limit;
+      const overLimit = limit !== undefined && count > limit;
+      const countText = String(count) + (limit !== undefined ? ' / ' + limit : '') + (overdueCount ? ' · ' + overdueCount + ' overdue' : '');
+      const columnName = column.label + ', ' + count + (count === 1 ? ' task' : ' tasks') + (limit !== undefined ? ', limit ' + limit : '') + (overdueCount ? ', ' + overdueCount + ' overdue' : '');
       const body = cards.length
         ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns, board.settings); }).join('')
         : '<p class="board-empty">' + (column.droppable ? 'Drop a task here' : 'No tasks') + '</p>';
-      return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + '"'
+      return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + (overLimit ? ' over-limit' : '') + '"'
         + ' data-column-id="' + escapeHtml(column.id) + '" data-droppable="' + column.droppable + '"'
-        + ' aria-label="' + escapeHtml(column.label + ', ' + count + (count === 1 ? ' task' : ' tasks')) + '">'
-        + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + count + '</span></h2>'
+        + ' aria-label="' + escapeHtml(columnName) + '">'
+        + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + escapeHtml(countText) + '</span></h2>'
         + '<div class="board-cards">' + body + '</div>'
         + (column.hiddenCount ? '<p class="board-more"><button data-action="show-column-rest" data-column-id="' + escapeHtml(column.id) + '">Show ' + column.hiddenCount + ' more</button></p>' : '')
         // A column that takes a drop takes a new task the same way; one that

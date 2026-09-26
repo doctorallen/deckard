@@ -438,6 +438,36 @@ suite('Task board', () => {
     );
   });
 
+  test('a mostly overdue column keeps red for its worst third, and takes a limit', () => {
+    const doing = Array.from({ length: 8 }, (_, number) =>
+      createTask(`d${number}`, `- [ ] Task ${number} #status/doing`, {
+        // Six overdue, the oldest first; two not dated.
+        dueAt: number < 6 ? at(9, 1 + number) : undefined,
+        associationTagGroups: [[{ key: '#status/doing', label: '#status/doing' } as TagReference]],
+      }),
+    );
+    const index = createIndex();
+    doing.forEach((task) => index.tasks.set(task.id, task));
+    const layout = layoutTaskBoard(index, doing, 'status', { ...options, limits: { doing: 3, 'status:todo': 2 } });
+    const column = layout.columns.find((each) => each.id === 'status:doing');
+    assert.strictEqual(column?.overdueCount, 6);
+    assert.strictEqual(column?.limit, 3, 'a limit by status');
+    assert.strictEqual(layout.columns.find((each) => each.id === 'status:todo')?.limit, 2, 'or by column');
+    const tones = Object.fromEntries(column!.cards.map((card) => [card.taskId, card.overdueTone ?? '']));
+    assert.deepStrictEqual(tones, { d0: 'full', d1: 'full', d2: 'quiet', d3: 'quiet', d4: 'quiet', d5: 'quiet', d6: '', d7: '' });
+
+    // At half or less, every overdue card keeps the red.
+    const half = layoutTaskBoard(index, doing.slice(4), 'status', options);
+    const halfColumn = half.columns.find((each) => each.id === 'status:doing');
+    assert.ok(halfColumn?.cards.filter((card) => card.overdue).every((card) => card.overdueTone === 'full'));
+
+    // The Overdue column is all overdue by definition, so it is left alone.
+    const due = layoutTaskBoard(index, doing, 'due', options);
+    const overdue = due.columns.find((each) => each.id === 'due:overdue');
+    assert.strictEqual(overdue?.overdueCount, 0);
+    assert.ok(overdue?.cards.every((card) => card.overdueTone === undefined));
+  });
+
   test('turns a drop into an edit of the task line', () => {
     const index = createIndex();
     const task = (id: string): Task => index.tasks.get(id) as Task;

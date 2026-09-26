@@ -280,7 +280,9 @@ without their cards.
 
 | Piece | What it is |
 | --- | --- |
-| `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. |
+| `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. `.board-count` reads `40 / 3 · 38 overdue`: the cards shown, the column's limit when `deckard.board.limits` sets one, and how many are overdue, counted from the cards the page shows. |
+| `.board-column.over-limit` | Over its limit: a neutral dashed `--line-strong` outline, never red, since a limit is a note and not an error. |
+| `.overdue.quiet` | An overdue card's date when most of its column is overdue and it is not in the longest-overdue third (`card.overdueTone`): `--muted` text after a 6px `--danger` dot, drawn as a border so it is not a background behind the text, the word still "overdue". |
 | `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
 | `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
 | `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |

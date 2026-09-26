@@ -73,6 +73,11 @@ export interface TaskBoardOptions {
   format: TaskMetadataFormat;
   /** Most completed tasks shown in Done. */
   doneLimit?: number;
+  /**
+   * Work-in-progress limits, by status (`doing`) or by whole column id
+   * (`priority:high`), from `deckard.board.limits`. A drop is never refused.
+   */
+  limits?: Readonly<Record<string, number>>;
 }
 
 /** What dropping a task on a column means for its line. */
@@ -292,13 +297,20 @@ export function layoutTaskBoard(
           : createDueColumns(open, options.now);
 
   const columns: TaskBoardColumn[] = [
-    ...drafts.map((draft) => ({
-      id: draft.id,
-      label: draft.label,
-      droppable: draft.droppable,
-      cards: draft.tasks.sort(compareOpen).map(toCard),
-      hiddenCount: 0,
-    })),
+    ...drafts.map((draft) => {
+      const cards = draft.tasks.sort(compareOpen).map(toCard);
+      const limit = findLimit(draft.id, options.limits);
+      return {
+        id: draft.id,
+        label: draft.label,
+        droppable: draft.droppable,
+        cards: draft.id === 'due:overdue' ? cards : toneOverdue(cards, draft.tasks),
+        hiddenCount: 0,
+        overdueCount:
+          draft.id === 'due:overdue' ? 0 : cards.filter((card) => card.overdue).length,
+        ...(limit !== undefined ? { limit } : {}),
+      };
+    }),
     {
       id: 'done',
       label: 'Done',
@@ -314,6 +326,49 @@ export function layoutTaskBoard(
     taskCount: tasks.length,
     ...describeStatusCoverage(groupBy, columns, open.length),
   };
+}
+
+/** A column's limit: by its whole id, or by the status it holds. */
+function findLimit(
+  columnId: string,
+  limits: Readonly<Record<string, number>> | undefined,
+): number | undefined {
+  if (!limits) {
+    return undefined;
+  }
+  const value = columnId.slice(columnId.indexOf(':') + 1);
+  const limit =
+    limits[columnId] ??
+    (columnId.startsWith('status:') && value ? limits[value] ?? limits[value.toLowerCase()] : undefined);
+  return typeof limit === 'number' && Number.isInteger(limit) && limit >= 1 ? limit : undefined;
+}
+
+/**
+ * Forty red "overdue" cards in one column say nothing any one of them does
+ * not. When more than half a column's open cards are overdue, the worst
+ * third, the longest overdue, keep the red; the rest say "overdue" in muted
+ * text beside a red dot, so the state is still in words.
+ */
+function toneOverdue(cards: TaskBoardCard[], tasks: readonly Task[]): TaskBoardCard[] {
+  const open = cards.filter((card) => !card.completed);
+  const overdue = cards
+    .map((card, order) => ({ card, order, dueAt: tasks[order]?.dueAt ?? 0 }))
+    .filter((entry) => entry.card.overdue);
+  if (overdue.length === 0) {
+    return cards;
+  }
+  if (overdue.length * 2 <= open.length) {
+    return cards.map((card) => (card.overdue ? { ...card, overdueTone: 'full' as const } : card));
+  }
+  const loud = new Set(
+    [...overdue]
+      .sort((left, right) => left.dueAt - right.dueAt || left.order - right.order)
+      .slice(0, Math.ceil(overdue.length / 3))
+      .map((entry) => entry.card.taskId),
+  );
+  return cards.map((card) =>
+    card.overdue ? { ...card, overdueTone: loud.has(card.taskId) ? ('full' as const) : ('quiet' as const) } : card,
+  );
 }
 
 /** Below this share of open tasks with a status, the board says so. */

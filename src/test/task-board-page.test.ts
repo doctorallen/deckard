@@ -36,6 +36,23 @@ suite('Task Board page', () => {
     return { page, taskId: board.columns[0].cards[0].taskId };
   };
 
+  test('a column header counts its cards against its limit, and its overdue ones', () => {
+    const lines = Array.from({ length: 5 }, (_, number) => `- [ ] Task ${number} #status/doing 📅 2026-09-0${number + 1}`);
+    const index = buildWorkspaceIndex(
+      new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', `# Atlas\n${lines.join('\n')}\n- [ ] Fresh #status/doing\n`)]]),
+    );
+    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, { query: '' }, { ...options, limits: { doing: 3 } }, 'inline');
+    page = openWebviewPage(getTaskBoardHtml(webview), board);
+    const column = page.find('.board-column[data-column-id="status:doing"]');
+    assert.strictEqual(column.querySelector('.board-count')?.textContent, '6 / 3 · 5 overdue');
+    assert.ok(column.classList.contains('over-limit'));
+    assert.strictEqual(column.getAttribute('aria-label'), 'Doing, 6 tasks, limit 3, 5 overdue');
+    const quiet = page.findAll('.board-details .overdue.quiet');
+    assert.strictEqual(quiet.length, 3, 'the worst third, two of five, keep the red');
+    assert.ok(quiet.every((span) => /^overdue/.test(span.textContent ?? '')), 'still says overdue in words');
+  });
+
   test('a card\'s menu is a button that opens its moves, and a choice moves the card', () => {
     const { page, taskId } = open();
     const button = page.find('.board-card [data-action="board-menu"]');

@@ -1431,6 +1431,12 @@ export interface TaskBoardCard {
   overdue: boolean;
   /** Past `needsNewDateAfterDays`: its date reads `was due …`, muted. */
   stale?: boolean;
+  /**
+   * How loudly an overdue card says so: `full` in red, or `quiet`, muted
+   * with a red dot, once most of a column is overdue and only the worst
+   * third keeps the red.
+   */
+  overdueTone?: 'full' | 'quiet';
   /** The headings above the task, top down, tags stripped. */
   headingPath: string[];
 }
@@ -1444,6 +1450,10 @@ export interface TaskBoardColumn {
   cards: TaskBoardCard[];
   /** Completed tasks left out of a long Done column. */
   hiddenCount: number;
+  /** Open cards in the column that are overdue; 0 for Done and Overdue. */
+  overdueCount?: number;
+  /** The column's work-in-progress limit, from `deckard.board.limits`. */
+  limit?: number;
 }
 
 /** A task board's columns, whichever page chose its tasks. */

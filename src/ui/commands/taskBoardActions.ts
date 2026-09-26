@@ -46,6 +46,7 @@ export function readTaskBoardOptions(): TaskBoardOptions {
       )
       .map((status) => status.toLowerCase()),
     format: readTaskMetadataFormat(configuration),
+    limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
   };
 }
 
@@ -126,4 +127,17 @@ export async function captureIntoColumn(columnId: string): Promise<boolean> {
     line = move.edit(line);
   }
   return captureToToday(text, line);
+}
+
+/** `deckard.board.limits`, keeping only whole numbers of one or more. */
+export function readBoardLimits(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [string, number] =>
+        typeof entry[1] === 'number' && Number.isInteger(entry[1]) && entry[1] >= 1,
+    ),
+  );
 }
