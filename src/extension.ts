@@ -36,6 +36,8 @@ import {
 } from './ui/commands/taskEditor';
 import { newNoteFromTemplate } from './ui/commands/templates';
 import { toggleTaskDoneCommand } from './ui/commands/toggleTaskDone';
+import { ActiveNoteContext } from './ui/commands/activeNoteContext';
+import { noteActionsCommand } from './ui/commands/noteActions';
 import { extractHeadingCommand } from './ui/commands/extractHeading';
 import { moveTasks, moveToCommand, MoveToActions } from './ui/commands/moveTo';
 import { EntityHeadingSuggestions } from './ui/commands/entitySuggestions';
@@ -339,6 +341,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
   // Change only while there is a change to take back.
   const activePinContext = new ActivePinContext(indexer, preferences);
+  // The title bar offers Deckard's button on a note, and the arrows between
+  // days on a daily note.
+  context.subscriptions.push(new ActiveNoteContext(indexer));
   void vscode.commands.executeCommand(
     'setContext',
     'deckard.canUndo',
@@ -800,6 +805,17 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     }),
     vscode.commands.registerCommand('deckard.showNotesGraph', () =>
       notesGraph.show(),
+    ),
+    vscode.commands.registerCommand('deckard.showNotesGraphAroundNote', async () => {
+      const uri = vscode.window.activeTextEditor?.document.uri;
+      if (!uri || !indexer.isNotesFile(uri)) {
+        void vscode.window.showInformationMessage('Open a note to draw the graph around it.');
+        return;
+      }
+      await notesGraph.showAround(indexer.getFilePath(uri));
+    }),
+    vscode.commands.registerCommand('deckard.noteActions', () =>
+      noteActionsCommand({ index: indexer, preferences }),
     ),
     vscode.commands.registerCommand('deckard.showTaskBoard', async () => {
       await taskBoard.show();

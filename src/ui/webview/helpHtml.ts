@@ -39,7 +39,7 @@ export interface HelpCommand {
 }
 
 /** A palette `when` that needs a note in the editor to act on. */
-const EDITOR_CONTEXT = /\beditorLangId\b|\beditorTextFocus\b|\bdeckard\.onTaskLine\b/;
+const EDITOR_CONTEXT = /\beditorLangId\b|\beditorTextFocus\b|\bdeckard\.onTaskLine\b|\bdeckard\.isNote\b/;
 
 /**
  * Every Deckard command by its title, with whether Help may run it: a
@@ -129,6 +129,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.showDashboard': 'What is overdue, due today, and open, Home, and every tag.',
   'deckard.showNotesGraph':
     'The whole workspace as a map, or one note’s neighborhood.',
+  'deckard.showNotesGraphAroundNote': 'The graph around the note in the editor, one hop out.',
   'deckard.showTaskBoard': 'Tasks as columns, or as a ranked list.',
   'deckard.showStats':
     'Index totals, notes nothing links to, and tags that look alike.',
@@ -143,6 +144,8 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.unpinNote': 'Lets that pin go.',
   'deckard.previousDailyNote': 'The nearest daily note before this one.',
   'deckard.nextDailyNote': 'The nearest daily note after this one.',
+  'deckard.noteActions':
+    'Lists what can be done with this note from where the cursor is: the Deckard button in a note’s title bar.',
   'deckard.openDailyNoteForDate':
     'Opens the daily note for a day you name in plain words, creating it when there is none.',
   'deckard.openWeeklyNote': 'This week’s note, with its review written in.',
@@ -487,6 +490,7 @@ ${getPageTailCss()}
         <div class="card"><h3>Favorites and order</h3><p>The heart <span class="favorite-heart" aria-hidden="true"></span> on a tag keeps it at the top of the Dashboard’s tag list. Favorites always appear before the rest, whatever the sort; a custom sort is dragged, or moved with <strong>Move to top</strong> and <strong>Move to bottom</strong> on a tag’s context menu. Every context menu opens from the keyboard too, with Shift+F10, the menu key, or Alt+Enter on the focused row or tag.</p></div>
         <div class="card"><h3>On cards</h3><p>On search results, task rows, board cards, and Related Notes a tag is quiet monospace text that opens its page, or its menu with Shift+F10; the editor keeps its box.</p></div>
         <div class="card"><h3>In the editor</h3><p>Tags are clickable, hovering one says how many notes and tasks use it and lists its most recent entries, and a heading shows how many entries share its tags. <code>deckard.editor.hoverPreviews</code> and <code>deckard.editor.referenceCounts</code> turn those off.</p></div>
+        <div class="card"><h3>The editor</h3><p>A note’s title bar carries Deckard’s button, which opens <code>Deckard: Note Actions…</code>: what can be done from where the cursor is. A daily note’s title bar also steps to the day before and after. Right-click the title bar to hide either.</p></div>
       </div>
     </section>
 

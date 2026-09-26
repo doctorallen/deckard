@@ -100,6 +100,22 @@ export class NotesGraphPanel implements vscode.Disposable {
     this.refresh();
   }
 
+  /**
+   * Opens the graph around one note, one hop out, from that note's own
+   * menu. It is not the reader choosing a scope, so the graph's next plain
+   * opening keeps its own default.
+   */
+  public async showAround(filePath: string): Promise<void> {
+    this.focusPath = filePath;
+    this.scope = aroundNoteScope(this.scope);
+    if (!this.panel) {
+      this.createPanel();
+    }
+    this.panel?.reveal(vscode.ViewColumn.Active);
+    await this.indexer.ready;
+    this.refresh();
+  }
+
   public async restore(panel: vscode.WebviewPanel): Promise<void> {
     if (this.panel) {
       panel.dispose();
@@ -430,6 +446,13 @@ export class NotesGraphPanel implements vscode.Disposable {
 /** A note's title: its file name without the extension. */
 function getNoteTitle(filePath: string): string {
   return (filePath.split('/').pop() ?? filePath).replace(/\.md$/i, '');
+}
+
+/** The scope of a graph drawn around one note: that note, one hop out. */
+export function aroundNoteScope<Scope extends { local: boolean; depth: number }>(
+  current: Scope,
+): Scope {
+  return { ...current, local: true, depth: 1 };
 }
 
 /**

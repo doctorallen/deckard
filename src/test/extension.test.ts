@@ -5,6 +5,26 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 suite('Extension Test Suite', () => {
+  test('puts Deckard in a note\'s title bar, and the days beside a daily note', () => {
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === 'deckard-notes',
+    );
+    assert.ok(extension);
+    const menus: Record<string, Array<{ command?: string; submenu?: string; when?: string; group?: string }>> =
+      extension.packageJSON.contributes.menus;
+    const title = (command: string) =>
+      menus['editor/title'].filter((entry) => entry.command === command).map((entry) => [entry.when, entry.group]);
+    assert.deepStrictEqual(title('deckard.previousDailyNote'), [
+      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@10'],
+    ]);
+    assert.deepStrictEqual(title('deckard.nextDailyNote'), [
+      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@11'],
+    ]);
+    assert.deepStrictEqual(title('deckard.noteActions'), [
+      ['resourceLangId == markdown && deckard.isNote', 'navigation@12'],
+    ]);
+  });
+
   test('contributes the Deckard commands and settings', () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
@@ -42,6 +62,7 @@ suite('Extension Test Suite', () => {
       [
         'deckard.showDashboard',
         'deckard.showNotesGraph',
+        'deckard.showNotesGraphAroundNote',
         'deckard.showTaskBoard',
         'deckard.showStats',
         'deckard.showHelp',
@@ -57,6 +78,7 @@ suite('Extension Test Suite', () => {
         'deckard.openDailyNoteForDate',
         'deckard.openWeeklyNote',
         'deckard.openMonthlyNote',
+        'deckard.noteActions',
         'deckard.editTask',
         'deckard.addTask',
         'deckard.toggleTaskDone',

@@ -12,7 +12,7 @@ import {
   SidebarNotesSnapshot,
 } from '../core/types';
 import { createNotesGraphSnapshot } from '../ui/state/notesGraphState';
-import { NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
+import { aroundNoteScope, NotesGraphPanel, openingScope } from '../ui/webview/notesGraph';
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 
 const defaultPreferences: PersistedPreferences = {
@@ -111,6 +111,35 @@ suite('Notes graph navigation', () => {
           (connection) => connection.node.kind === 'tag',
         ),
       );
+    } finally {
+      graph.dispose();
+    }
+  });
+
+  test('opens around one note from its menu without choosing a scope for later', () => {
+    assert.deepStrictEqual(
+      aroundNoteScope({ local: false, depth: 3, skipPeriodic: true }),
+      { local: true, depth: 1, skipPeriodic: true },
+    );
+    const graph = new NotesGraphPanel(
+      createIndexer(buildWorkspaceIndex(new Map())),
+      vscode.Uri.file(process.cwd()),
+      () => undefined,
+    );
+    try {
+      const controller = graph as unknown as {
+        scopeChosen: boolean;
+        createPanel(): void;
+        refresh(): void;
+      };
+      // No webview in this test: only the state showAround leaves behind.
+      controller.createPanel = () => undefined;
+      controller.refresh = () => undefined;
+      void graph.showAround('notes/atlas.md');
+      const state = graph as unknown as { scope: { local: boolean; depth: number }; focusPath: string };
+      assert.strictEqual(state.focusPath, 'notes/atlas.md');
+      assert.deepStrictEqual([state.scope.local, state.scope.depth], [true, 1]);
+      assert.strictEqual(controller.scopeChosen, false);
     } finally {
       graph.dispose();
     }

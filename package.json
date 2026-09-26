@@ -173,6 +173,12 @@
         "icon": "$(type-hierarchy)"
       },
       {
+        "command": "deckard.showNotesGraphAroundNote",
+        "title": "Open Notes Graph Around This Note",
+        "category": "Deckard",
+        "icon": "$(type-hierarchy)"
+      },
+      {
         "command": "deckard.showTaskBoard",
         "title": "Open Task Board",
         "category": "Deckard",
@@ -230,12 +236,14 @@
       {
         "command": "deckard.previousDailyNote",
         "title": "Open Previous Daily Note",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": "$(chevron-left)"
       },
       {
         "command": "deckard.nextDailyNote",
         "title": "Open Next Daily Note",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": "$(chevron-right)"
       },
       {
         "command": "deckard.openDailyNoteForDate",
@@ -252,6 +260,15 @@
         "command": "deckard.openMonthlyNote",
         "title": "Open Monthly Note",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.noteActions",
+        "title": "Note Actions…",
+        "category": "Deckard",
+        "icon": {
+          "light": "resources/editor/deckard-light.svg",
+          "dark": "resources/editor/deckard-dark.svg"
+        }
       },
       {
         "command": "deckard.editTask",
@@ -544,6 +561,14 @@
           "when": "editorLangId == markdown"
         },
         {
+          "command": "deckard.noteActions",
+          "when": "editorLangId == markdown && deckard.isNote"
+        },
+        {
+          "command": "deckard.showNotesGraphAroundNote",
+          "when": "editorLangId == markdown && deckard.isNote"
+        },
+        {
           "command": "deckard.outline.revealSection",
           "when": "false"
         },
@@ -674,6 +699,23 @@
         {
           "command": "deckard.agenda.showMore",
           "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "deckard.previousDailyNote",
+          "when": "resourceLangId == markdown && deckard.isDailyNote",
+          "group": "navigation@10"
+        },
+        {
+          "command": "deckard.nextDailyNote",
+          "when": "resourceLangId == markdown && deckard.isDailyNote",
+          "group": "navigation@11"
+        },
+        {
+          "command": "deckard.noteActions",
+          "when": "resourceLangId == markdown && deckard.isNote",
+          "group": "navigation@12"
         }
       ],
       "view/title": [

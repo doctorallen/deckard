@@ -105,6 +105,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | --- | --- |
 | **Deckard: Open Dashboard** | Opens workspace totals, Home, and tags. |
 | **Deckard: Open Notes Graph** | Opens an interactive force-directed map of every note, task, and tag connection. |
+| **Deckard: Open Notes Graph Around This Note** | Opens the Notes Graph around the note in the editor, one hop out, without changing the scope the graph opens with next time. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, or the person each task is for. |
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
@@ -124,6 +125,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Daily Note for Date…** | Opens the daily note for a day named in plain words, such as `last friday` or `oct 3`, creating it from the template when there is none. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
+| **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists what can be done from where the cursor is — complete, edit, or add a task, open Related Notes or the Notes Graph around the note, move the line, and pin the note to Home. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](#writing-a-review) written in. |
 | **Deckard: Open Monthly Note** | Creates or opens this month's note, `month-september-2026.md`, with its review written in. |
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
@@ -371,6 +373,7 @@ A search reads these too, but a week or a month there is the whole span: `due = 
 
 ## Editor assistance
 
+- **The title bar** of a note carries Deckard's button, which opens **Deckard: Note Actions…**, and a daily note's also carries **‹** and **›**, which open the daily notes before and after. They stay put when the first line scrolls away, and show whether or not CodeLens is on. Right-click the title bar to hide any of them.
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its page, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
 - Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).

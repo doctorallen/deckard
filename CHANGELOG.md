@@ -12,6 +12,13 @@
 
 ### Added
 
+- **A Deckard button in a note's title bar.** It opens `Deckard: Note
+  Actions…`, which lists what can be done from where the cursor is: toggle,
+  edit, or add a task, open Related Notes or `Deckard: Open Notes Graph
+  Around This Note`, move the line, and pin the note. A daily note's title
+  bar also has **‹** and **›** to the days before and after, which stay put
+  as the note scrolls.
+
 - **Toggle Task Done from the keyboard.** `Deckard: Toggle Task Done`,
   <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd>
   (<kbd>Ctrl</kbd> elsewhere), completes the tasks under every cursor and
