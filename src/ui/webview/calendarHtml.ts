@@ -30,6 +30,8 @@ export function getCalendarHtml(webview: vscode.Webview): string {
 <style nonce="${nonce}">${getBaseCss()}
 /* The calendar fits a narrow sidebar rather than a reading column. */
 main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber); }
+/* A sidebar is dragged narrower than a page's 280px floor, as Related Notes allows. */
+body { min-width: 220px; }
 .calendar-header { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
@@ -44,7 +46,9 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 /* Every day is the same three rows, whether or not it has anything to mark,
    so a note or a due count never moves the date it belongs to. */
 .day { display: grid; grid-template-rows: 15px 7px 11px; justify-items: center; align-content: start; padding: 3px 0; border: 1px solid transparent; background: none; color: var(--text); font: var(--text-sm) var(--font-mono); text-align: center; }
-.day.outside { opacity: 0.45; }
+/* A neighbor month's day, told apart in the muted ink rather than faded,
+   which took it below a readable contrast. */
+.day.outside { color: var(--muted); }
 .day.today { border-color: var(--amber); }
 .day-number { line-height: 15px; }
 .note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
@@ -65,9 +69,9 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .day-note { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
 .day-note svg { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.2; }
 .day-note-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-note-action { flex: none; color: var(--muted); font-size: var(--text-xs); }
-.day-note-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.day-note-row .day-note-label { color: var(--muted); }
+.day-note-action { flex: none; font-size: var(--text-xs); }
+.day-note-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.day-note-line .day-note-label { color: var(--muted); }
 .day-panel .empty { margin-top: var(--space-2); }
 .day-group { margin-top: var(--space-3); }
 .day-group > h3, .day-group > summary { margin: 0 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -76,12 +80,15 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
    button, the words cut short rather than pushing the button off. */
 .day-panel .task-row { grid-template-columns: 20px minmax(0, 1fr) auto; padding: var(--space-2); clip-path: none; }
 .day-panel .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-move { align-self: center; padding: 0 var(--space-2); font-size: var(--text-xs); white-space: nowrap; }
+.day-move { align-self: center; min-height: 0; padding: 2px var(--space-1); font-size: var(--text-xs); letter-spacing: normal; white-space: nowrap; }
 .day-more { margin-top: var(--space-1); }
-.day-notes { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.day-notes { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.day-notes > li { min-width: 0; }
+.day-panel, .day-group, .day-group .task-list { min-width: 0; }
+.day-group .task-list { grid-template-columns: minmax(0, 1fr); }
 .day-created { display: flex; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
 .day-created-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-created-folder { flex: none; max-width: 45%; overflow: hidden; color: var(--muted); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.day-created-folder { flex: none; max-width: 45%; overflow: hidden; font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
 ${getPageTailCss()}
 </style>
 </head>
@@ -215,7 +222,7 @@ ${getComponentScript()}
     const title = day.title + (day.relative ? ' · ' + day.relative : '');
     const note = day.notePath
       ? '<button type="button" class="day-note" data-action="open-note" data-file-path="' + escapeHtml(day.notePath) + '" aria-label="Open the daily note for ' + escapeHtml(day.date) + '">' + '${calendarIcon}' + '<span class="day-note-label">Daily note</span><span class="day-note-action">Open</span></button>'
-      : '<div class="day-note-row"><span class="day-note-label">No daily note yet</span><button type="button" data-action="create-day" data-date="' + escapeHtml(day.date) + '" aria-label="Create the daily note for ' + escapeHtml(day.date) + '">Create</button></div>';
+      : '<div class="day-note-line"><span class="day-note-label">No daily note yet</span><button type="button" data-action="create-day" data-date="' + escapeHtml(day.date) + '" aria-label="Create the daily note for ' + escapeHtml(day.date) + '">Create</button></div>';
     return '<section class="day-panel" aria-labelledby="day-title"><h2 id="day-title">' + escapeHtml(title) + '</h2>' + note + renderDayLists(day) + '</section>';
   }
 
