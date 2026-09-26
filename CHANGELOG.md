@@ -86,6 +86,11 @@
 
 ### Changed
 
+- **A long board column shows 100 cards, and the rest on request.** A
+  column of hundreds drew every card; it now draws the first 100 with
+  **Show N more**, as Done already did with its 20, and a card off screen is
+  not laid out until it is scrolled to.
+
 - **Find and search pages open while the workspace is indexing.** They
   opened only once the first scan finished; now Find opens at once, busy,
   keeps what is typed, and shows *Indexing this workspace: 412 of 3,760

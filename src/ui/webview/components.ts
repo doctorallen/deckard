@@ -689,6 +689,11 @@ export function getTaskBoardCss(): string {
    it, so the reader sees which one they ticked. */
 .board-card.is-completing { opacity: .5; transition: opacity 800ms ease; }
 .board-card.is-completing .task-title { text-decoration: line-through; }
+/* A card off screen is not laid out or painted until it is scrolled to. A
+   hovered or focused card is left out: content-visibility implies paint
+   containment, which would clip the file-and-line it carries down over the
+   card below. */
+.task-board .board-card:not(:hover):not(:focus-within):not(.dragging) { content-visibility: auto; contain-intrinsic-size: auto 72px; }
 /* Moved on the page, not yet written: drawn back until the next state. */
 .board-card.is-pending { opacity: .7; }`;
 }

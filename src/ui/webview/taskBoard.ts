@@ -265,10 +265,11 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   }
 
   /**
-   * Whether the Done column is showing every completed task. It holds the
-   * most recent handful otherwise, and the column says how many are left.
+   * The columns showing every card after "Show N more". An open column
+   * draws its first hundred otherwise, and Done its most recent handful,
+   * and each says how many are left.
    */
-  private showEveryDoneTask = false;
+  private shownColumns = new Set<string>();
 
   private createSnapshot(): TaskBoardSnapshot {
     const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
@@ -283,9 +284,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         { query: this.query, invalidQuery: this.invalidQuery },
         {
           ...readTaskBoardOptions(),
-          ...(this.showEveryDoneTask
-            ? { doneLimit: Number.MAX_SAFE_INTEGER }
-            : {}),
+          shownColumns: this.shownColumns,
         },
         tagTitleDisplayMode,
       ),
@@ -352,6 +351,10 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     if (query && !parseQuery(query).node) {
       this.invalidQuery = query;
       return false;
+    }
+    if (query !== this.query) {
+      // A new search is a new board; its columns start short again.
+      this.shownColumns = new Set();
     }
     this.query = query;
     return true;
@@ -449,13 +452,13 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         return;
       }
       case 'setBoardGroup':
-        // A different grouping is a different board, so the Done column goes
+        // A different grouping is a different board, so every column goes
         // back to its short form.
-        this.showEveryDoneTask = false;
+        this.shownColumns = new Set();
         await this.preferences.setTaskBoardGroup(message.groupBy);
         return;
       case 'showColumnRest':
-        this.showEveryDoneTask = true;
+        this.shownColumns.add(message.columnId);
         this.refresh();
         return;
       case 'setTaskLayout':

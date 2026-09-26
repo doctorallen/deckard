@@ -73,6 +73,10 @@ export interface TaskBoardOptions {
   format: TaskMetadataFormat;
   /** Most completed tasks shown in Done. */
   doneLimit?: number;
+  /** Most cards an open column draws before "Show N more"; 100 by default. */
+  columnLimit?: number;
+  /** Columns shown whole after "Show N more", Done included, by id. */
+  shownColumns?: ReadonlySet<string>;
   /**
    * Work-in-progress limits, by status (`doing`) or by whole column id
    * (`priority:high`), from `deckard.board.limits`. A drop is never refused.
@@ -111,6 +115,7 @@ const PRIORITY_COLUMNS: ReadonlyArray<[TaskPriority | '', string]> = [
   ['lowest', 'Lowest'],
 ];
 const DEFAULT_DONE_LIMIT = 20;
+const DEFAULT_COLUMN_LIMIT = 100;
 
 /**
  * True for a status that can be written as the value of a tag.
@@ -271,7 +276,9 @@ export function layoutTaskBoard(
 ): TaskBoardLayout {
   const open = tasks.filter((task) => !task.completed);
   const done = tasks.filter((task) => task.completed).sort(compareDone);
-  const doneLimit = options.doneLimit ?? DEFAULT_DONE_LIMIT;
+  const shown = options.shownColumns;
+  const doneLimit = shown?.has('done') ? Number.MAX_SAFE_INTEGER : options.doneLimit ?? DEFAULT_DONE_LIMIT;
+  const columnLimit = options.columnLimit ?? DEFAULT_COLUMN_LIMIT;
   const openDependencyIds = new Set(
     [...index.tasks.values()]
       .filter((task) => !task.completed && task.dependencyId)
@@ -298,14 +305,18 @@ export function layoutTaskBoard(
 
   const columns: TaskBoardColumn[] = [
     ...drafts.map((draft) => {
-      const cards = draft.tasks.sort(compareOpen).map(toCard);
+      // A column of hundreds draws its first hundred, and the rest on
+      // request: building thousands of cards made the whole board slow.
+      const sorted = draft.tasks.sort(compareOpen);
+      const drawn = shown?.has(draft.id) ? sorted : sorted.slice(0, columnLimit);
+      const cards = drawn.map(toCard);
       const limit = findLimit(draft.id, options.limits);
       return {
         id: draft.id,
         label: draft.label,
         droppable: draft.droppable,
-        cards: draft.id === 'due:overdue' ? cards : toneOverdue(cards, draft.tasks),
-        hiddenCount: 0,
+        cards: draft.id === 'due:overdue' ? cards : toneOverdue(cards, drawn),
+        hiddenCount: sorted.length - drawn.length,
         overdueCount:
           draft.id === 'due:overdue' ? 0 : cards.filter((card) => card.overdue).length,
         ...(limit !== undefined ? { limit } : {}),

@@ -174,6 +174,20 @@ suite('Task Board page', () => {
     assert.match(page.text('#live-status') ?? '', /Send the proposal was not moved\./);
   });
 
+  test('a long column offers the rest of its cards', () => {
+    const lines = Array.from({ length: 120 }, (_, number) => `- [ ] Task ${number} #status/doing`);
+    const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', lines.join('\n'))]]));
+    store = new PreferencesStore({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard(index, { ...store.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, { query: '' }, options, 'inline');
+    page = openWebviewPage(getTaskBoardHtml(webview), board);
+    const column = page.find('.board-column[data-column-id="status:doing"]');
+    assert.strictEqual(column.querySelectorAll('.board-card').length, 100);
+    assert.strictEqual(column.querySelector('.board-count')?.textContent, '120', 'the count is of the whole column');
+    assert.strictEqual(column.getAttribute('data-hidden-count'), '20');
+    page.click('.board-column[data-column-id="status:doing"] [data-action="show-column-rest"]');
+    assert.deepStrictEqual(page.lastPosted('showColumnRest'), { type: 'showColumnRest', columnId: 'status:doing' });
+  });
+
   test('the menu closes on Escape and gives focus back to its button', () => {
     const { page } = open();
     page.click('.board-card [data-action="board-menu"]');

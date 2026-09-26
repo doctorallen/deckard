@@ -87,6 +87,29 @@ suite('Task board', () => {
     ]);
   });
 
+  test('a long column draws its first hundred cards, and the rest on request', () => {
+    const tasks = Array.from({ length: 250 }, (_, number) =>
+      createTask(`t${number}`, `- [ ] Task ${number} #status/doing`, {}),
+    );
+    const done = Array.from({ length: 30 }, (_, number) =>
+      createTask(`d${number}`, `- [x] Done ${number}`, { completed: true, checkboxValue: 'x', doneAt: at(9, 1) + number }),
+    );
+    const index: WorkspaceIndex = {
+      files: new Map(), sections: new Map(), tags: new Map(), entities: new Map(), updatedAt: Date.now(),
+      tasks: new Map([...tasks, ...done].map((task) => [task.id, task])),
+    };
+    const doing = (shownColumns?: ReadonlySet<string>) =>
+      board(index, 'status', '', { ...options, shownColumns }).columns.find((column) => column.id === 'status:doing');
+    assert.strictEqual(doing()?.cards.length, 100);
+    assert.strictEqual(doing()?.hiddenCount, 150);
+    assert.strictEqual(doing(new Set(['status:doing']))?.cards.length, 250, 'Show 150 more draws them all');
+    assert.strictEqual(doing(new Set(['status:doing']))?.hiddenCount, 0);
+    const doneColumn = (shownColumns?: ReadonlySet<string>) =>
+      board(index, 'status', '', { ...options, shownColumns }).columns.find((column) => column.id === 'done');
+    assert.strictEqual(doneColumn()?.cards.length, 20, 'Done keeps its twenty');
+    assert.strictEqual(doneColumn(new Set(['done']))?.cards.length, 30);
+  });
+
   test('each card carries what the task is now, for its menu to check', () => {
     const cards = new Map(
       board(createIndex(), 'status', '', options).columns.flatMap((column) => column.cards).map((card) => [card.taskId, card.current]),
