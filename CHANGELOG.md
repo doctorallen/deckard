@@ -34,6 +34,12 @@
   outlined count marks the tasks scheduled (⏳) for it, and the day's
   tooltip and label say "2 due, 1 scheduled".
 
+- **A day under the calendar.** With `deckard.calendar.dayPanel` on, or
+  **Open Day Panel** in the Calendar's … menu, a click chooses a day and
+  the panel below the month names it and offers its daily note, Open or
+  Create. Double-click or Enter opens the day's note. Off by default, so a
+  click still opens the note.
+
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds
   the rest of the note away; **Unfold All Sections** brings it back.

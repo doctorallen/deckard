@@ -646,6 +646,16 @@
         "command": "deckard.agenda.showMore",
         "title": "List Every Overdue Task",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.openDayPanel",
+        "title": "Open Day Panel",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.closeDayPanel",
+        "title": "Close Day Panel",
+        "category": "Deckard"
       }
     ],
     "submenus": [
@@ -859,6 +869,14 @@
         {
           "command": "deckard.unparkTag",
           "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "deckard.calendar.openDayPanel",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.closeDayPanel",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -1074,6 +1092,16 @@
           "command": "deckard.showHelp",
           "when": "view == deckard.relatedNotes",
           "group": "1_open@2"
+        },
+        {
+          "command": "deckard.calendar.openDayPanel",
+          "when": "view == deckard.calendar && !config.deckard.calendar.dayPanel",
+          "group": "1_calendar@1"
+        },
+        {
+          "command": "deckard.calendar.closeDayPanel",
+          "when": "view == deckard.calendar && config.deckard.calendar.dayPanel",
+          "group": "1_calendar@1"
         }
       ],
       "view/item/context": [
@@ -1526,10 +1554,17 @@
             "order": 6,
             "markdownDescription": "The day a week starts on: in the Calendar, in weekly notes and their reviews, in a search's `this-week`, `last-week`, and `next-week`, and in *next week* and *end of week* typed as a date. A weekly note written before a change still opens for the week it mostly covers."
           },
+          "deckard.calendar.dayPanel": {
+            "type": "boolean",
+            "default": false,
+            "scope": "window",
+            "markdownDescription": "Show the chosen day under the Calendar: its daily note, the tasks due or scheduled that day, and the notes created that day. A click then chooses a day; a double-click or Enter opens its note. When off, a click opens the day's note straight away.",
+            "order": 7
+          },
           "deckard.periodicNote.review": {
             "type": "boolean",
             "default": true,
-            "order": 7,
+            "order": 8,
             "markdownDescription": "Write a review into a newly created weekly or monthly note: what was completed, what is still open, what is coming up next, the notes written and changed, and the tags first seen in that period. [Write a Review](command:deckard.writeReview) writes or updates one whenever you ask."
           },
           "deckard.periodicNote.reviewSections": {
@@ -1550,7 +1585,7 @@
               ]
             },
             "default": [],
-            "order": 7,
+            "order": 8,
             "markdownDescription": "Sections of your own at the end of a review, each a title and a Deckard search, such as `{ \"title\": \"Waiting on others\", \"query\": \"is:waiting\" }`. Written as a plain list when the review is written, so it says what was true then."
           },
           "deckard.dailyNote.rollover": {
@@ -1568,7 +1603,7 @@
               "Older name for migrate."
             ],
             "default": "off",
-            "order": 8,
+            "order": 9,
             "markdownDescription": "What a newly created daily note does with the unfinished tasks of the last one. [Roll Unfinished Tasks Forward](command:deckard.rollTasksForward) does the same thing whenever you ask for it."
           },
           "deckard.dailyNote.rolloverDays": {
@@ -1576,13 +1611,13 @@
             "minimum": 0,
             "default": 7,
             "description": "How many days back a rollover looks for unfinished tasks. 7 by default; 0 reaches as far back as your daily notes go. An older dated task shows under the Tasks view's Needs a new date anyway.",
-            "order": 9
+            "order": 10
           },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
             "default": "templates",
-            "order": 10,
+            "order": 11,
             "markdownDescription": "Folder of note templates, relative to the workspace folder. [New Note from Template](command:deckard.newNoteFromTemplate) lists its Markdown files, and Deckard does not index them. Leave it empty to turn templates off."
           },
           "deckard.exclude": {
@@ -1593,7 +1628,7 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of files and folders Deckard leaves out of its index, written like `#files.exclude#`. Each pattern is relative to the workspace folder and applies when set to `true`, and a pattern that matches a folder leaves out everything in it. Deckard also leaves out what `#files.exclude#` and `#search.exclude#` hide, such as `node_modules`; set one of those patterns to `false` here to index it anyway.",
-            "order": 11
+            "order": 12
           },
           "deckard.parked.folders": {
             "type": "object",
@@ -1603,7 +1638,7 @@
               "type": "boolean"
             },
             "markdownDescription": "Glob patterns of folders and notes Deckard parks, written like `#deckard.exclude#`. A parked note stays indexed and searchable — `is:parked` finds it, and Find and search pages list it last — but is left out of the Tasks view, the status bar, the Task board, rollover, the calendar, Related Notes, the Notes Graph, and tag completion. Each pattern is relative to the workspace folder and applies when set to `true`; a pattern that matches a folder parks everything in it. `#deckard.exclude#` wins: an excluded note is not indexed at all.",
-            "order": 12
+            "order": 13
           },
           "deckard.parked.tags": {
             "type": "array",
@@ -1615,13 +1650,13 @@
               "parked"
             ],
             "markdownDescription": "Tags that park whatever carries them: a note whose front matter has one, a heading and everything under it, or a task. A tag parks its sub-tags too, so `project/old` parks `#project/old/phase-1`. **Park Note** writes the first of these into the note's front matter. Parked items stay searchable with `is:parked`.",
-            "order": 13
+            "order": 14
           },
           "deckard.developerMode": {
             "type": "boolean",
             "default": false,
             "description": "Offer Deckard's own diagnostics, such as the related-notes ranking breakdown on a tagged entry's hover. Useful when tuning Related Notes; off for everyday note taking.",
-            "order": 14
+            "order": 15
           }
         },
         "order": 0

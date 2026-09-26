@@ -808,13 +808,25 @@ export function parseCalendarMessage(
       return { type: 'openMonth' };
     case 'showMonth':
       return typeof value.month === 'string' &&
-        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month)
-        ? { type: 'showMonth', month: value.month }
+        /^\d{4}-(?:0[1-9]|1[0-2])$/.test(value.month) &&
+        (value.date === undefined || isDate)
+        ? { type: 'showMonth', month: value.month, ...(isDate ? { date } : {}) }
         : undefined;
     case 'openDay':
       return isDate ? { type: 'openDay', date } : undefined;
     case 'openWeek':
       return isDate ? { type: 'openWeek', date } : undefined;
+    case 'selectDay':
+      return isDate && Object.keys(value).length === 2 ? { type: 'selectDay', date } : undefined;
+    case 'createDay':
+      return isDate && Object.keys(value).length === 2 ? { type: 'createDay', date } : undefined;
+    case 'openNote':
+      return typeof value.filePath === 'string' &&
+        value.filePath.length > 0 &&
+        value.filePath.length <= 4096 &&
+        Object.keys(value).length === 2
+        ? { type: 'openNote', filePath: value.filePath }
+        : undefined;
     default:
       return undefined;
   }

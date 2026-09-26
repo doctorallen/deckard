@@ -955,9 +955,13 @@ export type StatsMessage =
 export type CalendarMessage =
   | { type: 'ready' }
   | { type: 'openMonth' }
-  | { type: 'showMonth'; month: string }
+  /** With a date, the day chosen in that month. */
+  | { type: 'showMonth'; month: string; date?: string }
   | { type: 'openDay'; date: string }
-  | { type: 'openWeek'; date: string };
+  | { type: 'openWeek'; date: string }
+  | { type: 'selectDay'; date: string }
+  | { type: 'createDay'; date: string }
+  | { type: 'openNote'; filePath: string };
 
 /** A line in another note that links to, or names, the note being read. */
 export interface NoteLinkEntry {

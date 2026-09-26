@@ -57,6 +57,18 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .scheduled-count { padding: 0 1px; border: 1px solid currentColor; border-radius: 3px; color: var(--muted); font-size: var(--text-xs); line-height: 11px; }
 .scheduled-count:empty { display: none; }
 .scheduled-ring { width: 5px; height: 5px; border: 1px solid var(--muted); border-radius: 50%; }
+/* The chosen day, with the panel on: filled, and underlined in the accent,
+   so it reads apart from today's border. */
+.day.selected { background: var(--hover-bg); color: var(--hover-fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.day-panel { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.day-panel h2 { margin: 0 0 var(--space-2); color: var(--text); font: var(--text-sm) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-note { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
+.day-note svg { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.2; }
+.day-note-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-note-action { flex: none; color: var(--muted); font-size: var(--text-xs); }
+.day-note-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.day-note-row .day-note-label { color: var(--muted); }
+.day-panel .empty { margin-top: var(--space-2); }
 ${getPageTailCss()}
 </style>
 </head>
@@ -73,6 +85,9 @@ ${loadingHtml('Loading calendar…')}
   // The day a keyboard step into another month lands on, focused once that
   // month is drawn.
   let pendingFocusDate;
+  // The day chosen with the panel on, marked at once and sent to the host
+  // after a pause, so a held arrow key does not flood it.
+  let selectTimer;
 ${getComponentScript()}
   const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -99,6 +114,8 @@ ${getComponentScript()}
     const classes = ['day'];
     if (!day.inMonth) classes.push('outside');
     if (day.isToday) classes.push('today');
+    const selected = Boolean(state.dayPanel) && day.date === state.selectedDate;
+    if (selected) classes.push('selected');
     const label = escapeHtml(describeDay(day, overdue, stale));
     // The tooltip says which tasks and which headings, not only how many,
     // so the right day is found without opening each.
@@ -106,6 +123,7 @@ ${getComponentScript()}
       .concat((day.dueTitles || []).map(function (title) { return '☐ ' + title; }))
       .concat((day.scheduledTitles || []).map(function (title) { return '⏳ ' + title; }))
       .concat((day.headings || []).map(function (heading) { return '# ' + heading; }))
+      .concat(state.dayPanel ? ['Double-click or Enter opens the daily note.'] : [])
       .join('\\n'));
     // Both rows are always drawn, empty when there is nothing to mark, so
     // the number above them sits in the same place in every cell.
@@ -120,7 +138,7 @@ ${getComponentScript()}
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = day.date === tabStopDate();
-    return '<span class="calendar-cell" role="gridcell"><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" data-tip="' + tooltip + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
+    return '<span class="calendar-cell" role="gridcell"' + (state.dayPanel ? ' aria-selected="' + selected + '"' : '') + '><button type="button" class="' + classes.join(' ') + '" data-action="open-day" data-date="' + escapeHtml(day.date) + '" data-tip="' + tooltip + '" aria-label="' + label + '"' + (day.isToday ? ' aria-current="date"' : '') + ' tabindex="' + (focusable ? '0' : '-1') + '"><span class="day-number">' + day.day + '</span>' + dot + due + '</button></span>';
   }
 
   /**
@@ -141,6 +159,7 @@ ${getComponentScript()}
     const days = [];
     state.weeks.forEach(function (week) { week.days.forEach(function (day) { days.push(day); }); });
     const has = function (date) { return date && days.some(function (day) { return day.date === date; }); };
+    if (state.dayPanel && has(state.selectedDate) && !has(focusDate)) return state.selectedDate;
     if (has(focusDate)) return focusDate;
     const today = days.filter(function (day) { return day.isToday; })[0];
     if (today) return today.date;
@@ -169,12 +188,40 @@ ${getComponentScript()}
       '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.previousMonth) + '" aria-label="Previous month" data-tip="Previous month">&lsaquo;</button>' +
       '<button type="button" class="calendar-title" data-action="open-month" data-tip="' + escapeHtml(monthLabel) + '" aria-label="' + escapeHtml(monthLabel) + '">' + escapeHtml(state.title) + '</button>' +
       '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.nextMonth) + '" aria-label="Next month" data-tip="Next month">&rsaquo;</button>' +
-      (state.month === state.currentMonth ? '' : '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.currentMonth) + '">Today</button>') +
+      (state.month === state.currentMonth && (!state.dayPanel || state.selectedDate === state.today) ? '' : '<button type="button" data-action="show-month" data-month="' + escapeHtml(state.currentMonth) + '"' + (state.dayPanel ? ' data-date="' + escapeHtml(state.today) + '"' : '') + '>Today</button>') +
       '</div>';
     // Rows and cells as a grid is read: a header row of weekday names, then a
     // row per week. The wrappers draw nothing; the grid lays out the buttons.
     const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
-    document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '">' + weekdays + state.weeks.map(renderWeek).join('') + '</div>';
+    document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '"' + (state.dayPanel ? ' aria-multiselectable="false"' : '') + '>' + weekdays + state.weeks.map(renderWeek).join('') + '</div>' + renderPanel(state.selected);
+  }
+
+  /** The chosen day under the month: its title and its daily note. */
+  function renderPanel(day) {
+    if (!state.dayPanel || !day) return '';
+    const title = day.title + (day.relative ? ' · ' + day.relative : '');
+    const note = day.notePath
+      ? '<button type="button" class="day-note" data-action="open-note" data-file-path="' + escapeHtml(day.notePath) + '" aria-label="Open the daily note for ' + escapeHtml(day.date) + '">' + '${calendarIcon}' + '<span class="day-note-label">Daily note</span><span class="day-note-action">Open</span></button>'
+      : '<div class="day-note-row"><span class="day-note-label">No daily note yet</span><button type="button" data-action="create-day" data-date="' + escapeHtml(day.date) + '" aria-label="Create the daily note for ' + escapeHtml(day.date) + '">Create</button></div>';
+    return '<section class="day-panel" aria-labelledby="day-title"><h2 id="day-title">' + escapeHtml(title) + '</h2>' + note + renderDayLists(day) + '</section>';
+  }
+
+  /** What the day holds besides its note; Nothing due or scheduled when it holds nothing. */
+  function renderDayLists() {
+    return '<p class="empty">Nothing due or scheduled.</p>';
+  }
+
+  /** Marks a day as chosen at once, and tells the host after a pause. */
+  function selectDay(date) {
+    if (!state || !state.dayPanel || !date) return;
+    state.selectedDate = date;
+    document.querySelectorAll('.calendar-grid .day').forEach(function (cell) {
+      const chosen = cell.dataset.date === date;
+      cell.classList.toggle('selected', chosen);
+      if (cell.parentElement) cell.parentElement.setAttribute('aria-selected', String(chosen));
+    });
+    clearTimeout(selectTimer);
+    selectTimer = setTimeout(function () { post({ type: 'selectDay', date: date }); }, 120);
   }
 
   /** Move the focus by days, weeks, or to the ends of a week. */
@@ -196,7 +243,12 @@ ${getComponentScript()}
       const month = event.key === 'PageUp' ? state.previousMonth : state.nextMonth;
       pendingFocusDate = sameDayIn(day.dataset.date, month);
       focusDate = pendingFocusDate;
-      vscode.postMessage({ type: 'showMonth', month: month });
+      vscode.postMessage(state.dayPanel ? { type: 'showMonth', month: month, date: pendingFocusDate } : { type: 'showMonth', month: month });
+      return;
+    } else if (event.key === 'Enter' && state.dayPanel) {
+      // With the panel on a click chooses the day; Enter opens its note.
+      event.preventDefault();
+      post({ type: 'openDay', date: day.dataset.date });
       return;
     } else {
       return;
@@ -208,22 +260,44 @@ ${getComponentScript()}
         pendingFocusDate = shiftDate(day.dataset.date, steps[event.key]);
         focusDate = pendingFocusDate;
       }
-      vscode.postMessage({ type: 'showMonth', month: steps[event.key] < 0 ? state.previousMonth : state.nextMonth });
+      const month = steps[event.key] < 0 ? state.previousMonth : state.nextMonth;
+      vscode.postMessage(state.dayPanel && pendingFocusDate ? { type: 'showMonth', month: month, date: pendingFocusDate } : { type: 'showMonth', month: month });
       return;
     }
     focusDate = next.dataset.date;
     days.forEach(function (candidate) { candidate.setAttribute('tabindex', candidate === next ? '0' : '-1'); });
     next.focus();
+    // Selection follows focus, as in any grid that selects.
+    selectDay(next.dataset.date);
   });
 
   document.addEventListener('click', function (event) {
     const target = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
     if (!target) return;
     const action = target.getAttribute('data-action');
-    if (action === 'open-day') post({ type: 'openDay', date: target.getAttribute('data-date') });
+    if (action === 'open-day') {
+      if (state && state.dayPanel) {
+        focusDate = target.getAttribute('data-date');
+        selectDay(focusDate);
+      } else {
+        post({ type: 'openDay', date: target.getAttribute('data-date') });
+      }
+    }
     else if (action === 'open-week') post({ type: 'openWeek', date: target.getAttribute('data-date') });
     else if (action === 'open-month') post({ type: 'openMonth' });
-    else if (action === 'show-month') post({ type: 'showMonth', month: target.getAttribute('data-month') });
+    else if (action === 'show-month') {
+      const date = target.getAttribute('data-date');
+      post(date ? { type: 'showMonth', month: target.getAttribute('data-month'), date: date } : { type: 'showMonth', month: target.getAttribute('data-month') });
+    }
+    else if (action === 'open-note') post({ type: 'openNote', filePath: target.getAttribute('data-file-path') });
+    else if (action === 'create-day') post({ type: 'createDay', date: target.getAttribute('data-date') });
+  });
+
+  // With the panel on, a click chooses a day and a double-click opens it.
+  document.addEventListener('dblclick', function (event) {
+    const day = event.target && event.target.closest ? event.target.closest('.calendar-grid .day') : null;
+    if (!day || !state || !state.dayPanel) return;
+    post({ type: 'openDay', date: day.dataset.date });
   });
 
   window.addEventListener('message', function (event) {

@@ -5,7 +5,8 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
-import { createCalendar } from '../ui/state/calendarState';
+import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
+import { parseCalendarMessage } from '../ui/webview/messages';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
@@ -90,6 +91,137 @@ suite('The calendar counts what is scheduled', () => {
       );
     } finally {
       page.dispose();
+    }
+  });
+});
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+suite('The calendar day panel', () => {
+  const index = indexOf({
+    'notes/2026-09-25.md': '# 2026-09-25\n',
+    'notes/tasks.md': '- [ ] Call Ren 📅 2026-09-25\n',
+  });
+
+  test('names the chosen day, with Today, Yesterday, or Tomorrow, and the year only when it is another', () => {
+    assert.deepStrictEqual(createCalendarDay(index, '2026-09-25', NOW), {
+      date: '2026-09-25',
+      title: 'Friday, September 25',
+      relative: 'Today',
+      notePath: 'notes/2026-09-25.md',
+    });
+    assert.strictEqual(createCalendarDay(index, '2026-09-24', NOW).relative, 'Yesterday');
+    assert.strictEqual(createCalendarDay(index, '2026-09-26', NOW).relative, 'Tomorrow');
+    assert.strictEqual(createCalendarDay(index, '2027-10-01', NOW).title, 'Friday, October 1, 2027');
+    assert.strictEqual(createCalendarDay(index, '2026-10-02', NOW).notePath, undefined);
+  });
+
+  test('a new month keeps the day, or its last day', () => {
+    assert.strictEqual(clampToMonth('2026-01-31', '2026-02'), '2026-02-28');
+    assert.strictEqual(clampToMonth('2026-09-25', '2026-10'), '2026-10-25');
+  });
+
+  test('accepts the messages of the panel and nothing more', () => {
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-09-25' }), { type: 'selectDay', date: '2026-09-25' });
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'createDay', date: '2026-09-25' }), { type: 'createDay', date: '2026-09-25' });
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'openNote', filePath: 'notes/a.md' }), { type: 'openNote', filePath: 'notes/a.md' });
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10', date: '2026-10-25' }), {
+      type: 'showMonth',
+      month: '2026-10',
+      date: '2026-10-25',
+    });
+    assert.strictEqual(parseCalendarMessage({ type: 'showMonth', month: '2026-10', date: 'soon' }), undefined);
+    assert.strictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-9-5' }), undefined);
+    assert.strictEqual(parseCalendarMessage({ type: 'selectDay', date: '2026-09-25', extra: 1 }), undefined);
+    assert.strictEqual(parseCalendarMessage({ type: 'openNote', filePath: '' }), undefined);
+  });
+
+  const open = (dayPanel: boolean, selectedDate?: string): WebviewPage =>
+    openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      createCalendar(index, '2026-09', NOW, 0, { dayPanel, selectedDate }),
+    );
+  const day = (page: WebviewPage, date: string) =>
+    page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
+
+  test('off, a click opens the day and nothing is drawn below the month', () => {
+    const page = open(false);
+    try {
+      assert.strictEqual(page.findAll('.day-panel').length, 0);
+      day(page, '2026-09-22').click();
+      assert.deepStrictEqual(page.lastPosted('openDay'), { type: 'openDay', date: '2026-09-22' });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('on, a click chooses the day and opens nothing; a double-click or Enter opens it', async () => {
+    const page = open(true);
+    try {
+      assert.strictEqual(page.text('#day-title'), 'Friday, September 25 · Today');
+      assert.strictEqual(day(page, '2026-09-25').parentElement?.getAttribute('aria-selected'), 'true');
+      day(page, '2026-09-22').click();
+      assert.strictEqual(day(page, '2026-09-22').parentElement?.getAttribute('aria-selected'), 'true');
+      assert.ok(day(page, '2026-09-22').classList.contains('selected'));
+      assert.strictEqual(page.lastPosted('openDay'), undefined);
+      await wait(160);
+      assert.deepStrictEqual(page.lastPosted('selectDay'), { type: 'selectDay', date: '2026-09-22' });
+      day(page, '2026-09-22').dispatchEvent(new page.window.MouseEvent('dblclick', { bubbles: true }));
+      assert.deepStrictEqual(page.lastPosted('openDay'), { type: 'openDay', date: '2026-09-22' });
+      day(page, '2026-09-23').dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      assert.deepStrictEqual(page.lastPosted('openDay'), { type: 'openDay', date: '2026-09-23' });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('on, the arrows move the choice with the focus', () => {
+    const page = open(true);
+    try {
+      day(page, '2026-09-25').focus();
+      day(page, '2026-09-25').dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      assert.strictEqual(page.document.activeElement, day(page, '2026-09-26'));
+      assert.strictEqual(day(page, '2026-09-26').parentElement?.getAttribute('aria-selected'), 'true');
+      assert.strictEqual(day(page, '2026-09-25').parentElement?.getAttribute('aria-selected'), 'false');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('Today comes back when another day is chosen, and chooses today', () => {
+    const today = open(true);
+    try {
+      assert.ok(!today.findAll('[data-action="show-month"]').some((button) => button.textContent === 'Today'));
+    } finally {
+      today.dispose();
+    }
+    const page = open(true, '2026-09-22');
+    try {
+      assert.strictEqual(page.text('#day-title'), 'Tuesday, September 22');
+      const button = page.findAll('[data-action="show-month"]').find((candidate) => candidate.textContent === 'Today') as HTMLElement;
+      button.click();
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-09', date: '2026-09-25' });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('the note row opens the daily note, or creates it without asking', () => {
+    const page = open(true);
+    try {
+      page.click('.day-note');
+      assert.deepStrictEqual(page.lastPosted('openNote'), { type: 'openNote', filePath: 'notes/2026-09-25.md' });
+      assert.strictEqual(page.find('.day-note').getAttribute('aria-label'), 'Open the daily note for 2026-09-25');
+    } finally {
+      page.dispose();
+    }
+    const missing = open(true, '2026-09-22');
+    try {
+      assert.match(missing.text('.day-panel') ?? '', /No daily note yet/);
+      missing.click('[data-action="create-day"]');
+      assert.deepStrictEqual(missing.lastPosted('createDay'), { type: 'createDay', date: '2026-09-22' });
+    } finally {
+      missing.dispose();
     }
   });
 });

@@ -801,6 +801,14 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.outline.clearTagFilter', () =>
       outline.setTagFilter(undefined),
     ),
+    // The day panel is a setting, turned on and off from the Calendar's own
+    // menu, and written where it is already set.
+    vscode.commands.registerCommand('deckard.calendar.openDayPanel', () =>
+      writeSetting('calendar.dayPanel', true, settingTarget('calendar.dayPanel')),
+    ),
+    vscode.commands.registerCommand('deckard.calendar.closeDayPanel', () =>
+      writeSetting('calendar.dayPanel', false, settingTarget('calendar.dayPanel')),
+    ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(indexer.getSnapshot()),
     ),

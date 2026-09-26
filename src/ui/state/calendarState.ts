@@ -70,6 +70,84 @@ export interface CalendarSnapshot {
    */
   needsNewDateBefore?: string;
   weeks: CalendarWeek[];
+  /** Whether the chosen day is shown below the month, from `deckard.calendar.dayPanel`. */
+  dayPanel?: boolean;
+  /** The day chosen, YYYY-MM-DD: today until another is. */
+  selectedDate?: string;
+  /** The chosen day, when the panel is on. */
+  selected?: CalendarDayDetail;
+}
+
+/** The chosen day, as the panel under the month shows it. */
+export interface CalendarDayDetail {
+  date: string;
+  /** Such as "Friday, September 25", with the year when it is not this one. */
+  title: string;
+  /** Today, Yesterday, or Tomorrow, when the day is one of them. */
+  relative?: string;
+  /** The day's daily note, when it has one. */
+  notePath?: string;
+}
+
+const dayTitle = new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' });
+const dayTitleWithYear = new Intl.DateTimeFormat('en', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+/** A day moved by some days, as YYYY-MM-DD. */
+function addDaysTo(date: string, days: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return formatLocalDate(new Date(year, month - 1, day + days));
+}
+
+/**
+ * One day as the panel under the calendar shows it: its title, and its
+ * daily note.
+ */
+export function createCalendarDay(
+  index: WorkspaceIndex,
+  date: string,
+  now: Date,
+): CalendarDayDetail {
+  const [year, month, day] = date.split('-').map(Number);
+  const at = new Date(year, month - 1, day);
+  const today = formatLocalDate(now);
+  const relative =
+    date === today
+      ? 'Today'
+      : date === addDaysTo(today, -1)
+        ? 'Yesterday'
+        : date === addDaysTo(today, 1)
+          ? 'Tomorrow'
+          : undefined;
+  const notePath = listDailyNotes(index).find((note) => note.date === date)?.filePath;
+  return {
+    date,
+    title: (year === now.getFullYear() ? dayTitle : dayTitleWithYear).format(at),
+    ...(relative ? { relative } : {}),
+    ...(notePath ? { notePath } : {}),
+  };
+}
+
+/**
+ * The same day of the month in another month, or that month's last day:
+ * January 31 in February is February 28.
+ */
+export function clampToMonth(date: string, month: string): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const last = new Date(year, monthNumber, 0).getDate();
+  return `${month}-${String(Math.min(Number(date.slice(8, 10)), last)).padStart(2, '0')}`;
+}
+
+/** What the calendar draws besides the month. */
+export interface CalendarOptions {
+  /** Show the chosen day below the month. */
+  dayPanel?: boolean;
+  /** The day chosen; today when none was. */
+  selectedDate?: string;
 }
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -92,6 +170,7 @@ export function createCalendar(
   month: string,
   now: Date,
   weekStart: Weekday = 0,
+  options: CalendarOptions = {},
 ): CalendarSnapshot {
   const [year, monthNumber] = month.split('-').map(Number);
   const first = new Date(year, monthNumber - 1, 1);
@@ -207,6 +286,16 @@ export function createCalendar(
       : {}),
     weekdays: Array.from({ length: 7 }, (_, offset) => WEEKDAY_SHORT[(weekStart + offset) % 7]),
     weeks,
+    ...(options.dayPanel
+      ? (() => {
+          const selectedDate = options.selectedDate ?? today;
+          return {
+            dayPanel: true,
+            selectedDate,
+            selected: createCalendarDay(index, selectedDate, now),
+          };
+        })()
+      : {}),
   };
 }
 
