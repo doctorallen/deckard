@@ -8,6 +8,7 @@ import {
   loadingHtml,
   zenBodyAttribute,
 } from './components';
+import { ENABLED } from './selectors';
 
 /**
  * Builds the Stats page from host-projected index and access data. Each
@@ -45,7 +46,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 @media (max-width: 600px) { .tag-use { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tag-use-band { display: grid; grid-template-rows: 80px auto; gap: 6px; min-width: 0; padding: 8px; border: 2px solid var(--line); background: var(--panel); color: var(--text); font: inherit; text-align: left; }
 button.tag-use-band { cursor: pointer; }
-button.tag-use-band:hover, button.tag-use-band:focus-visible, button.tag-use-band[aria-expanded="true"] { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+button.tag-use-band:hover${ENABLED}, button.tag-use-band:focus-visible, button.tag-use-band[aria-expanded="true"] { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .tag-use-track { display: flex; align-items: flex-end; height: 80px; }
 .tag-use-bar { display: block; width: 100%; min-height: 2px; background: var(--cyan); }
 .tag-use-words { font-size: var(--text-xs); overflow-wrap: anywhere; }
@@ -63,7 +64,7 @@ button.tag-use-band:hover, button.tag-use-band:focus-visible, button.tag-use-ban
 .pair-grid thead th span.pair-col { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 116px; overflow: hidden; text-overflow: ellipsis; }
 .pair-grid td { padding: 1px; }
 .pair-cell { display: inline-flex; align-items: center; gap: 4px; width: 100%; min-width: 44px; min-height: 26px; padding: 2px 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
-.pair-cell:hover, .pair-cell:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
+.pair-cell:hover${ENABLED}, .pair-cell:focus-visible { border-color: var(--amber); background: var(--panel-raised); color: var(--text); }
 .pair-swatch { flex: none; width: 12px; height: 12px; background: var(--cyan); }
 .pair-swatch.step-1 { opacity: .1; } .pair-swatch.step-2 { opacity: .25; } .pair-swatch.step-3 { opacity: .45; } .pair-swatch.step-4 { opacity: .7; } .pair-swatch.step-5 { opacity: 1; }
 .pair-empty { display: inline-block; min-width: 44px; }
