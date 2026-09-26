@@ -688,7 +688,9 @@ export function getTaskBoardCss(): string {
 /* A completed card stays a moment, struck through, before the board drops
    it, so the reader sees which one they ticked. */
 .board-card.is-completing { opacity: .5; transition: opacity 800ms ease; }
-.board-card.is-completing .task-title { text-decoration: line-through; }`;
+.board-card.is-completing .task-title { text-decoration: line-through; }
+/* Moved on the page, not yet written: drawn back until the next state. */
+.board-card.is-pending { opacity: .7; }`;
 }
 
 /**
@@ -2268,6 +2270,17 @@ ${getUndoScript()}
   }
 
   /**
+   * A column's count as its header shows it, "40 / 3 · 38 overdue", and its
+   * name as a screen reader hears it.
+   */
+  function describeBoardColumn(label, count, limit, overdueCount) {
+    return {
+      count: String(count) + (limit !== undefined ? ' / ' + limit : '') + (overdueCount ? ' · ' + overdueCount + ' overdue' : ''),
+      name: label + ', ' + count + (count === 1 ? ' task' : ' tasks') + (limit !== undefined ? ', limit ' + limit : '') + (overdueCount ? ', ' + overdueCount + ' overdue' : ''),
+    };
+  }
+
+  /**
    * Draw a task board from the host's columns. isVisible, when given, hides
    * cards a page filters locally, such as by a search.
    */
@@ -2295,13 +2308,15 @@ ${getUndoScript()}
         : cards.filter(function (card) { return card.overdue && !card.completed; }).length;
       const limit = column.limit;
       const overLimit = limit !== undefined && count > limit;
-      const countText = String(count) + (limit !== undefined ? ' / ' + limit : '') + (overdueCount ? ' · ' + overdueCount + ' overdue' : '');
-      const columnName = column.label + ', ' + count + (count === 1 ? ' task' : ' tasks') + (limit !== undefined ? ', limit ' + limit : '') + (overdueCount ? ', ' + overdueCount + ' overdue' : '');
+      const described = describeBoardColumn(column.label, count, limit, overdueCount);
+      const countText = described.count;
+      const columnName = described.name;
       const body = cards.length
         ? cards.map(function (card) { return renderTaskBoardCard(card, column.id, board.columns, board.settings); }).join('')
         : '<p class="board-empty">' + (column.droppable ? 'Drop a task here' : 'No tasks') + '</p>';
       return '<section class="board-column' + (column.id === 'due:overdue' ? ' is-overdue' : '') + (overLimit ? ' over-limit' : '') + '"'
         + ' data-column-id="' + escapeHtml(column.id) + '" data-droppable="' + column.droppable + '"'
+        + ' data-hidden-count="' + (column.hiddenCount || 0) + '"' + (limit !== undefined ? ' data-limit="' + limit + '"' : '')
         + ' aria-label="' + escapeHtml(columnName) + '">'
         + '<h2 class="board-column-title"><span>' + escapeHtml(column.label) + '</span><span class="board-count">' + escapeHtml(countText) + '</span></h2>'
         + '<div class="board-cards">' + body + '</div>'
@@ -2364,8 +2379,45 @@ ${getUndoScript()}
       }
     }
     function moveCard(card, column, said) {
+      applyMove(card, column);
       post({ type: 'moveTask', taskId: card.dataset.taskId, column: column });
       announce(said);
+    }
+    /** A column's header counted again from the cards it holds now. */
+    function recountColumn(column) {
+      if (!column) return;
+      const title = column.querySelector('.board-column-title span');
+      const cards = Array.prototype.filter.call(column.querySelectorAll('.board-card'), function (card) { return !card.hidden; });
+      const count = cards.length + Number(column.dataset.hiddenCount || 0);
+      const id = column.dataset.columnId;
+      const overdue = id === 'done' || id === 'due:overdue' ? 0 : cards.filter(function (card) { return card.querySelector('.board-details .overdue') && !card.classList.contains('completed'); }).length;
+      const limit = column.dataset.limit === undefined ? undefined : Number(column.dataset.limit);
+      const described = describeBoardColumn(title ? title.textContent : '', count, limit, overdue);
+      const counter = column.querySelector('.board-count');
+      if (counter) counter.textContent = described.count;
+      column.setAttribute('aria-label', described.name);
+      column.classList.toggle('over-limit', limit !== undefined && count > limit);
+    }
+    /**
+     * A move shows at once: the card goes to the top of its new column, both
+     * counts change, and it is marked pending until the host's next state
+     * replaces the board. A move to a column this grouping does not draw,
+     * such as a priority on a status board, marks the card where it is.
+     */
+    function applyMove(card, columnId) {
+      const from = card.closest('.board-column');
+      const to = Array.prototype.find.call(document.querySelectorAll('.task-board .board-column'), function (column) { return column.dataset.columnId === columnId; });
+      if (to && to !== from) {
+        const cards = to.querySelector('.board-cards');
+        const empty = cards && cards.querySelector('.board-empty');
+        if (empty) empty.remove();
+        if (cards) cards.prepend(card);
+        recountColumn(from);
+        recountColumn(to);
+      }
+      card.classList.add('is-pending');
+      card.setAttribute('aria-busy', 'true');
+      focusCard(card);
     }
     function visibleCards(column) {
       return Array.prototype.filter.call(column.querySelectorAll('.board-card'), function (card) { return !card.hidden; });
@@ -2453,6 +2505,7 @@ ${getUndoScript()}
           announce(taskTitleOf(card) + ': ' + (group.label || 'It') + ' is already ' + chosen.label + '.');
           return;
         }
+        applyMove(card, value);
         post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
         announce(taskTitleOf(card) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
       });
@@ -2553,10 +2606,7 @@ ${getUndoScript()}
       event.preventDefault();
       const card = document.querySelector('.task-board .board-card[data-task-id="' + CSS.escape(taskBoardDragId) + '"]');
       if (card && card.closest('.board-column') !== column) {
-        const cards = column.querySelector('.board-cards');
-        const empty = cards.querySelector('.board-empty');
-        if (empty) empty.remove();
-        cards.prepend(card);
+        applyMove(card, column.dataset.columnId);
         post({ type: 'moveTask', taskId: taskBoardDragId, column: column.dataset.columnId });
         const title = column.querySelector('.board-column-title span');
         announce('Moved ' + taskTitleOf(card) + ' to ' + (title ? title.textContent : 'the column') + '.');

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { noteOwnWrite } from '../../core/workspace/ownWrites';
 
 /**
  * The few Deckard commands that rewrite many notes at once, and the way back
@@ -209,6 +210,7 @@ export async function applyWorkspaceWrite(
   for (const { uri, text } of before.values()) {
     const document = await vscode.workspace.openTextDocument(uri);
     if (document.isDirty) {
+      noteOwnWrite(document.uri.toString());
       await document.save();
     }
     const after = document.getText();

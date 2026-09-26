@@ -126,6 +126,10 @@ class Element {
     return child;
   }
 
+  prepend(child) {
+    return this.insertBefore(child, this.children[0]);
+  }
+
   remove() {
     if (this.parentElement) {
       this.parentElement.children = this.parentElement.children.filter((child) => child !== this);

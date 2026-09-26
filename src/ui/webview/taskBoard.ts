@@ -539,6 +539,8 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         this.writeIndexAt = index.updatedAt;
         if (!task || !(await moveTaskToColumn(task, message.column))) {
           this.writeIndexAt = undefined;
+          // The card moved at once on the page; say it did not, then put it back.
+          void this.panel?.webview.postMessage({ type: 'moveRefused', taskId: message.taskId });
           this.refresh();
         }
         return;

@@ -154,6 +154,26 @@ suite('Task Board page', () => {
     assert.strictEqual(toggle().getAttribute('data-tip-disabled'), 'The Tasks view lists every open task, as this search does.');
   });
 
+  test('a card moved from the keyboard moves at once, and says so if it could not be written', () => {
+    const { page, taskId } = open();
+    const card = () => page.find(`.board-card[data-task-id="${taskId}"]`);
+    const column = (id: string) => page.find(`.board-column[data-column-id="${id}"]`);
+    assert.strictEqual(column('status:').querySelector('.board-count')?.textContent, '1');
+    (card() as HTMLElement).focus();
+    card().dispatchEvent(new page.window.KeyboardEvent('keydown', { key: ']', bubbles: true }));
+    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'status:todo' });
+    assert.strictEqual(card().closest('.board-column')?.getAttribute('data-column-id'), 'status:todo', 'in its new column before the host answers');
+    assert.ok(card().classList.contains('is-pending'));
+    assert.strictEqual(card().getAttribute('aria-busy'), 'true');
+    assert.strictEqual(column('status:').querySelector('.board-count')?.textContent, '0');
+    assert.strictEqual(column('status:todo').querySelector('.board-count')?.textContent, '1');
+    assert.match(column('status:todo').getAttribute('aria-label') ?? '', /^Todo, 1 task/);
+    assert.strictEqual(page.document.activeElement, card(), 'focus stays on the card');
+
+    page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId } }));
+    assert.match(page.text('#live-status') ?? '', /Send the proposal was not moved\./);
+  });
+
   test('the menu closes on Escape and gives focus back to its button', () => {
     const { page } = open();
     page.click('.board-card [data-action="board-menu"]');

@@ -16,6 +16,7 @@ import {
   openNoteAction,
   reportFailure,
 } from './notify';
+import { noteOwnWrite } from '../../core/workspace/ownWrites';
 
 /**
  * Carries a task's place in the rank order from the line it was to the line
@@ -137,6 +138,7 @@ export async function updateTaskLine(
       vscode.workspace.textDocuments.find(
         (openDocument) => openDocument.uri.toString() === uri.toString(),
       ) ?? (await vscode.workspace.openTextDocument(uri));
+    noteOwnWrite(updatedDocument.uri.toString());
     if (!(await updatedDocument.save())) {
       void reportFailure(describeUnsavedTaskEdit(uri));
       return false;

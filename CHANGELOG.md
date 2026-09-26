@@ -86,6 +86,12 @@
 
 ### Changed
 
+- **A moved card moves at once.** A card moved from the keyboard or its ⋯
+  menu, as well as by dragging, goes to its new column straight away, both
+  columns recount, and it shows as pending until the note is written; a
+  note Deckard wrote itself is read back without the 200 ms wait for typing
+  to settle. A move that could not be written says so.
+
 - **List in Tasks view is a switch in the Task board's gear.** It leaves
   the search bar, shows whether the Tasks view lists the board's search, and
   selected again gives the Tasks view back every open task.

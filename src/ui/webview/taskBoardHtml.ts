@@ -463,6 +463,13 @@ ${getQueryEditorScript()}
   }
   rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
   window.addEventListener('message', function (event) {
+    // A card moved at once that the host could not write: its next state
+    // puts the card back, and this says so.
+    if (event.data && event.data.type === 'moveRefused') {
+      const card = Array.prototype.find.call(document.querySelectorAll('.board-card'), function (candidate) { return candidate.dataset.taskId === String(event.data.taskId); });
+      announce((card ? taskTitleOf(card) : 'The task') + ' was not moved.');
+      return;
+    }
     if (event.data && event.data.type === 'state') {
       const wait = taskBoardLingerRemaining();
       if (!wait) {

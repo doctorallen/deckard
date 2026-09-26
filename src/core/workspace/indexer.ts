@@ -19,6 +19,7 @@ import {
 } from '../storage/searchStore';
 import { measure, measureAsync, reportError } from '../timing';
 import { ScanProgress, WorkspaceScanner, describeError } from './scanner';
+import { takeOwnWrite } from './ownWrites';
 
 /**
  * Owns the live note cache and turns scanner output into lookup maps for the UI.
@@ -328,7 +329,8 @@ export class WorkspaceIndexer implements vscode.Disposable {
     this.disposables.push(
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (this.scanner.isNotesFile(document.uri)) {
-          this.queueUpsert(document.uri);
+          // A note Deckard just wrote is read back at once.
+          this.queueUpsert(document.uri, undefined, takeOwnWrite(document.uri.toString()));
         }
       }),
     );
@@ -363,9 +365,9 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Replaces pending work for a URI because only its newest content matters.
    */
-  private queueUpsert(uri: vscode.Uri, content?: string): void {
+  private queueUpsert(uri: vscode.Uri, content?: string, now = false): void {
     this.pending.set(uri.toString(), { uri, content, deleted: false });
-    this.scheduleFlush();
+    this.scheduleFlush(now);
   }
 
   /**
@@ -379,15 +381,19 @@ export class WorkspaceIndexer implements vscode.Disposable {
   /**
    * Debounces bursts from typing and filesystem watchers into one refresh event.
    */
-  private scheduleFlush(): void {
+  private scheduleFlush(now = false): void {
     if (this.flushHandle) {
-      return;
+      if (!now) {
+        return;
+      }
+      // A write of Deckard's own does not wait out another's debounce.
+      clearTimeout(this.flushHandle);
     }
 
     this.flushHandle = setTimeout(() => {
       this.flushHandle = undefined;
       void this.flushPending();
-    }, 200);
+    }, now ? 0 : 200);
   }
 
   /**
