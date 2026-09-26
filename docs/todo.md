@@ -8,7 +8,6 @@
   Done so far: `src/test/webviewPage.ts` runs a rendered page in jsdom with a stand-in for the webview API, so a page is tested by what it draws and what it posts, and no test matches script source any more — the checks that did are gone. `test/ui/checkLayout.js` lays the pages out in a real browser, so a bundler rewriting the text has that to answer to as well.
 
   Next: move the shared layer into a typed module emitted as its own bundle, with `getComponentScript` reading it, which leaves the string-building pages working while they are migrated one at a time.
-- An evaluation fixture for Related Notes ranking: one oversized daily note with generic headings, nested tagged headings, tagged prose, nested tasks, front matter, and fenced code, beside direct-match, ancestor-only, association, link, keyword-only, and unrelated candidates, with common tags such as `#daily` that should not dominate. Measure Precision@5, since a sidebar is chosen from its first screen. The ranking is documented in `related-notes-associations.md`; nothing measures it.
 
 # Features
 - Calendar: when a week or month is clicked and Deckard asks whether to create its note, offer **Create Review** as a second action beside creating the note, so the review for that week or month is written from the same prompt rather than by opening the note first and running the review afterwards.
