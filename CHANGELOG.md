@@ -229,6 +229,11 @@
 
 ### Changed
 
+- **Extract Heading takes any heading.** `Deckard: Extract Tagged
+  Heading` is now `Deckard: Extract Heading`, and moves an untagged heading
+  as readily as a tagged one; its picker lists every heading, naming the
+  tags of those that have some.
+
 - **A capture under a heading goes above its sub-headings.** It went to the
   end of the heading's last sub-heading; it now goes under the heading's
   own lines.

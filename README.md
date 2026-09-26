@@ -135,7 +135,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder, asking for its title and anything the template asks. |
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](#claude-code-and-other-mcp-clients) to Claude Code, offering to turn the server on first. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, so every copied setup stops working. |
-| **Deckard: Extract Tagged Heading** | Moves a tagged heading section into a newly named note and leaves a `[[link]]` to it. |
+| **Deckard: Extract Heading** | Moves a heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
 | **Deckard: Open Search Page** | Opens a search page listing every note, ready for a search. |
 | **Deckard: Insert Query Block…** | Writes a live [query block](#query-blocks) of a saved or recent search, or one you type, at the cursor. |
@@ -895,7 +895,7 @@ claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Aut
 
 ## Extracting headings
 
-Run `Deckard: Extract Tagged Heading` with the cursor inside a tagged heading section. Deckard moves the complete section, including nested headings and the original heading tags, into a new Markdown note in the configured notes folder or workspace root. In the source note, the extracted heading and its content are replaced by a `[[link]]` to the new note, keeping the blank lines around it. If the cursor is not inside a tagged section, Deckard offers a picker of tagged headings from the workspace.
+Run `Deckard: Extract Heading` with the cursor inside a heading section, tagged or not. Deckard moves the complete section, including nested headings and any heading tags, into a new Markdown note in the configured notes folder or workspace root. In the source note, the extracted heading and its content are replaced by a `[[link]]` to the new note, keeping the blank lines around it. If the cursor is not inside a heading, Deckard offers a picker of every heading in the workspace, naming the tags of those that have some.
 
 The note name is used as a single Markdown filename. Existing notes are never overwritten; choose a different name when a conflict is reported.
 

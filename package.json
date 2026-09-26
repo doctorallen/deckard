@@ -300,7 +300,7 @@
       },
       {
         "command": "deckard.extractHeading",
-        "title": "Extract Tagged Heading",
+        "title": "Extract Heading",
         "category": "Deckard"
       },
       {

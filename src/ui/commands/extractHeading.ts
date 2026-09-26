@@ -18,7 +18,7 @@ export async function extractHeadingCommand(
   indexer: WorkspaceIndexer,
 ): Promise<vscode.Uri | undefined> {
   await indexer.ready;
-  const choice = await chooseTaggedHeading(indexer);
+  const choice = await chooseHeading(indexer);
   if (!choice) {
     return undefined;
   }
@@ -40,7 +40,8 @@ export async function extractHeadingCommand(
   );
 }
 
-export function findTaggedHeadingAtLine(
+/** The innermost heading a one-based line is in, tagged or not. */
+export function findHeadingAtLine(
   sections: readonly Section[],
   line: number,
 ): Section | undefined {
@@ -48,7 +49,6 @@ export function findTaggedHeadingAtLine(
     .filter(
       (section) =>
         !section.isInline &&
-        section.tags.length > 0 &&
         section.startLine <= line &&
         section.endLine >= line,
     )
@@ -75,7 +75,7 @@ export async function extractHeadingNote(
   /** Swaps the section for its link; stood in for by tests of the failures. */
   replace: typeof replaceSectionWithLink = replaceSectionWithLink,
 ): Promise<vscode.Uri | undefined> {
-  if (section.isInline || section.tags.length === 0) {
+  if (section.isInline) {
     return undefined;
   }
 
@@ -131,7 +131,7 @@ interface HeadingChoice extends vscode.QuickPickItem {
   workspaceFolder: vscode.WorkspaceFolder;
 }
 
-async function chooseTaggedHeading(
+async function chooseHeading(
   indexer: WorkspaceIndexer,
 ): Promise<HeadingChoice | undefined> {
   const editor = vscode.window.activeTextEditor;
@@ -147,7 +147,7 @@ async function chooseTaggedHeading(
         editor.document.getText(),
         previous?.fileTimes,
       );
-      const section = findTaggedHeadingAtLine(
+      const section = findHeadingAtLine(
         parsed.sections,
         editor.selection.active.line + 1,
       );
@@ -163,32 +163,34 @@ async function chooseTaggedHeading(
 
   const choices: HeadingChoice[] = [];
   const sections = [...indexer.getSnapshot().sections.values()]
-    .filter((section) => !section.isInline && section.tags.length > 0)
+    .filter((section) => !section.isInline)
     .sort(
       (left, right) =>
         left.filePath.localeCompare(right.filePath) ||
         left.startLine - right.startLine,
     );
 
+  // Each note is found once, however many headings it has.
+  const places = new Map<string, { uri: vscode.Uri; folder: vscode.WorkspaceFolder } | undefined>();
   for (const section of sections) {
-    const sourceUri = await resolveSourceUri(section.filePath);
-    const workspaceFolder = sourceUri
-      ? vscode.workspace.getWorkspaceFolder(sourceUri)
-      : undefined;
-    if (workspaceFolder) {
-      choices.push(createHeadingChoice(section, sourceUri!, workspaceFolder));
+    if (!places.has(section.filePath)) {
+      const uri = await resolveSourceUri(section.filePath);
+      const folder = uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined;
+      places.set(section.filePath, uri && folder ? { uri, folder } : undefined);
+    }
+    const place = places.get(section.filePath);
+    if (place) {
+      choices.push(createHeadingChoice(section, place.uri, place.folder));
     }
   }
 
   if (choices.length === 0) {
-    void vscode.window.showInformationMessage(
-      'No heading in your notes has a tag, so there is nothing to extract.',
-    );
+    void vscode.window.showInformationMessage('There are no headings in your notes yet.');
     return undefined;
   }
 
   return vscode.window.showQuickPick(choices, {
-    placeHolder: 'Choose a tagged heading to extract',
+    placeHolder: 'Choose a heading to extract',
   });
 }
 
@@ -203,7 +205,7 @@ function createHeadingChoice(
   return {
     label: stripTags(section.heading) || section.heading,
     description: `${section.filePath}:${section.startLine}`,
-    detail: `Tags: ${tags.join(' ')}`,
+    ...(tags.length > 0 ? { detail: `Tags: ${tags.join(' ')}` } : {}),
     section,
     sourceUri,
     workspaceFolder,

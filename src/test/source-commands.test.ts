@@ -10,7 +10,7 @@ import { createDailyNote } from '../ui/commands/dailyNote';
 import {
   describeExtractFailure,
   extractHeadingNote,
-  findTaggedHeadingAtLine,
+  findHeadingAtLine,
   getExtractedNoteFileName,
 } from '../ui/commands/extractHeading';
 import { openSourceAt, resolveSourceUri } from '../ui/commands/navigation';
@@ -414,8 +414,10 @@ suite('Source commands', () => {
     );
 
     const parsed = parseMarkdown('notes/source.md', sourceContent);
-    const section = findTaggedHeadingAtLine(parsed.sections, 7);
+    const section = findHeadingAtLine(parsed.sections, 7);
     assert.strictEqual(section?.heading, 'Detail #detail');
+    // Any heading, tagged or not, is found under the cursor.
+    assert.strictEqual(findHeadingAtLine(parsed.sections, 11)?.heading, 'Next');
 
     const extractedUri = await extractHeadingNote(
       parsed.sections[1],
