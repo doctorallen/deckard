@@ -296,6 +296,16 @@ widget colors.
 | `.menu-check` | The 16px column a checked item's check sits in (see the card menu). |
 | `.menu-key` | The key that does the same, at the row's right, in muted mono. |
 
+**A single choice is checked, not left out.** `openActionMenu(opener,
+groups, onChoose)` takes items `{ value, label, checked?, key? }`. A group
+whose items say `checked` (true or false) is a single choice: its rows are
+`menuitemradio` with `aria-checked`, and every row in the menu keeps a
+`.menu-check` column so labels align. `key` draws a `.menu-key` and sets
+`aria-keyshortcuts`, and the key chooses the row while the menu is open.
+Focus opens on the first checked row. A board card's menu checks the task's
+own status, priority, and due choice from `TaskBoardCard.current`, and
+choosing a checked row posts nothing and says "…is already…".
+
 **The stacking order** is a token scale, and a rule never writes a number:
 
 | Token | Value | For |

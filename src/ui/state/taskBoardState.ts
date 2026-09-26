@@ -278,7 +278,7 @@ export function layoutTaskBoard(
       .map((task) => task.dependencyId as string),
   );
   const toCard = (task: Task): TaskBoardCard =>
-    createCard(task, groupBy, options.now, openDependencyIds, index.sections);
+    createCard(task, groupBy, options.now, openDependencyIds, index.sections, options.statusNamespace);
 
   // A status named done is the board's own Done: an open task carrying it
   // sits at the head of that column rather than in a second column of the
@@ -725,6 +725,7 @@ function createCard(
   now: number,
   openDependencyIds: ReadonlySet<string>,
   sections: ReadonlyMap<string, Section>,
+  statusNamespace: string,
 ): TaskBoardCard {
   const section = task.sectionId ? sections.get(task.sectionId) : undefined;
   const title = stripTrailingTags(task.title) || task.title;
@@ -769,7 +770,28 @@ function createCard(
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
+    current: currentMoves(task, today, statusNamespace),
   };
+}
+
+/** The move values a task already has, for its card's menu to check. */
+function currentMoves(task: Task, today: number, statusNamespace: string): string[] {
+  const due =
+    task.dueAt === undefined
+      ? task.dueText
+        ? []
+        : ['due:']
+      : task.dueAt >= today && task.dueAt < addDays(today, 1)
+        ? ['due:today']
+        : task.dueAt >= addDays(today, 1) && task.dueAt < addDays(today, 2)
+          ? ['due:tomorrow']
+          : [];
+  return [
+    `status:${readTaskStatus(task, statusNamespace) ?? ''}`,
+    `priority:${task.priority ?? ''}`,
+    ...due,
+    ...(task.completed ? ['done'] : []),
+  ];
 }
 
 /** Soonest due first, then highest priority, then source order. */

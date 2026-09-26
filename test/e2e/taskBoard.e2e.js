@@ -183,6 +183,19 @@ test('the board is one Tab stop, and a focused card answers single keys', async 
   assert.strictEqual(view.find('.key-sheet'), null, 'Escape closes it');
 });
 
+test('a card\'s menu checks where the task is, and its keys work inside it', async () => {
+  const { view } = await openBoard();
+  const card = view.find('.board-card[data-task-id="audit"]');
+  view.click(card.querySelector('[data-action="board-menu"]'));
+  const columnId = card.closest('.board-column').dataset.columnId;
+  const own = view.find(`#action-menu [data-menu-value="${columnId}"]`);
+  assert.strictEqual(own.getAttribute('aria-checked'), 'true', 'the column the card is in is checked');
+  assert.strictEqual(view.document.activeElement, own, 'and focus starts there');
+  view.keydown(view.document.activeElement, 't');
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today' });
+  assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
+});
+
 test('a column that takes a card takes a new task, and a menu offers any date', async () => {
   const { view } = await openBoard();
   const add = view.find('[data-action="board-add-task"]');

@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **A card's menu says what is chosen, and its keys.** The Task board
+  card's ⋯ menu checks the task's status, priority, and due date instead of
+  leaving the current one out, shows the key that makes each change, such
+  as **2** for High, and the keys work while the menu is open.
+
 - **A button that cannot act yet says why.** Save, Clear, Back, and
   Forward stay in the Tab order while they cannot act, say why when focused
   (*Type a search to save it*), and no longer light up under the pointer.

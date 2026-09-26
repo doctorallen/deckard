@@ -549,7 +549,7 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
+Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which checks the task's current status, priority, and due date, shows each choice's key, and also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 

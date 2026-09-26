@@ -1758,6 +1758,7 @@ ${getTipScript()}
    * choice, Escape, or a click elsewhere, the arrow keys walk it, and focus
    * goes back to the control that opened it.
    */
+  const CHECK_ICON = '${strokeIcon(ICON_PATHS.check)}';
   let actionMenu;
   let actionMenuChoose;
   let actionMenuOpener;
@@ -1802,6 +1803,16 @@ ${getTipScript()}
           closeActionMenu();
           return;
         }
+        // The key a row shows works in the open menu too, so the hint is
+        // true in both places: 2 in the menu chooses High.
+        if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          const keyed = Array.prototype.find.call(actionMenu.querySelectorAll('[data-menu-key]'), function (item) { return item.dataset.menuKey === event.key; });
+          if (keyed) {
+            event.preventDefault();
+            keyed.click();
+            return;
+          }
+        }
         if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) return;
         const items = Array.prototype.slice.call(actionMenu.querySelectorAll('[data-menu-value]'));
         const index = items.indexOf(document.activeElement);
@@ -1814,16 +1825,29 @@ ${getTipScript()}
       });
     }
     // A named group is a group to a screen reader too, so "Due today" is
-    // heard as one of the Due choices rather than as a bare item.
-    actionMenu.innerHTML = groups.filter(function (group) { return group.items.length; }).map(function (group, groupIndex) {
+    // heard as one of the Due choices rather than as a bare item. A group
+    // whose items say whether they are checked is a single choice: its items
+    // are radios, and every row keeps a check's width so the labels align.
+    const shown = groups.filter(function (group) { return group.items.length; });
+    const checks = shown.some(function (group) { return group.items.some(function (item) { return item.checked !== undefined; }); });
+    actionMenu.innerHTML = shown.map(function (group, groupIndex) {
       const items = group.items.map(function (item) {
-        return '<button type="button" class="menu-item" role="menuitem" data-menu-value="' + escapeHtml(item.value) + '"><span class="menu-label">' + escapeHtml(item.label) + '</span></button>';
+        const radio = item.checked !== undefined;
+        return '<button type="button" class="menu-item" role="' + (radio ? 'menuitemradio' : 'menuitem') + '"'
+          + (radio ? ' aria-checked="' + Boolean(item.checked) + '"' : '')
+          + (item.key ? ' aria-keyshortcuts="' + escapeHtml(item.key) + '" data-menu-key="' + escapeHtml(item.key) + '"' : '')
+          + ' data-menu-value="' + escapeHtml(item.value) + '">'
+          + (checks ? '<span class="menu-check" aria-hidden="true">' + (item.checked ? CHECK_ICON : '') + '</span>' : '')
+          + '<span class="menu-label">' + escapeHtml(item.label) + '</span>'
+          + (item.key ? '<kbd class="menu-key" aria-hidden="true">' + escapeHtml(item.key) + '</kbd>' : '')
+          + '</button>';
       }).join('');
       if (!group.label) return items;
       const headingId = 'action-menu-group-' + groupIndex;
       return '<div class="menu-group" role="group" aria-labelledby="' + headingId + '"><div class="menu-heading" id="' + headingId + '" role="presentation">' + escapeHtml(group.label) + '</div>' + items + '</div>';
     }).join('');
-    const first = actionMenu.querySelector('[data-menu-value]');
+    // Focus opens on what the task is now, so the arrows start from it.
+    const first = actionMenu.querySelector('[aria-checked="true"]') || actionMenu.querySelector('[data-menu-value]');
     if (!first) return;
     actionMenuChoose = onChoose;
     actionMenuOpener = opener;
@@ -1935,7 +1959,15 @@ ${getTipScript()}
    * common edits ended in the Markdown file instead.
    */
   function taskCardMoves(card, columnId, columns, settings) {
-    const option = function (value, label) {
+    const current = card.current || [];
+    // Status, priority, and due are single choices: each keeps the task's
+    // own value, checked, rather than leaving it out, and shows its key.
+    const option = function (value, label, key) {
+      const item = { value: value, label: label, checked: current.indexOf(value) >= 0 || value === columnId };
+      if (key) item.key = key;
+      return item;
+    };
+    const move = function (value, label) {
       return value === columnId ? undefined : { value: value, label: label };
     };
     const group = function (label, options) {
@@ -1945,13 +1977,13 @@ ${getTipScript()}
     const statusOptions = [option('status:', 'No status')].concat(statuses.map(function (status) {
       return option('status:' + status, status.charAt(0).toUpperCase() + status.slice(1).replace(/[-_]+/g, ' '));
     }));
-    const priorityOptions = [['highest', 'Highest'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low'], ['lowest', 'Lowest'], ['', 'No priority']].map(function (entry) {
-      return option('priority:' + entry[0], entry[1]);
+    const priorityOptions = [['highest', 'Highest', '1'], ['high', 'High', '2'], ['medium', 'Medium', '3'], ['low', 'Low', '4'], ['lowest', 'Lowest', '5'], ['', 'No priority', '0']].map(function (entry) {
+      return option('priority:' + entry[0], entry[1], entry[2]);
     });
-    const dueOptions = [['today', 'Due today'], ['tomorrow', 'Due tomorrow'], ['', 'No due date']].map(function (entry) {
-      return option('due:' + entry[0], entry[1]);
-    }).concat([{ value: 'pick-date', label: 'Due on a date…' }]);
-    const done = card.completed ? '' : option('done', 'Complete it');
+    const dueOptions = [['today', 'Due today', 't'], ['tomorrow', 'Due tomorrow', 'm'], ['', 'No due date']].map(function (entry) {
+      return option('due:' + entry[0], entry[1], entry[2]);
+    }).concat([{ value: 'pick-date', label: 'Due on a date…', key: 'd' }]);
+    const done = card.completed ? '' : { value: 'done', label: 'Complete it', key: 'x' };
     // Any column of the current grouping that is not one of the above, such
     // as a due band the board made, still moves the card.
     const others = columns.filter(function (column) {
@@ -1960,7 +1992,7 @@ ${getTipScript()}
         && column.id.indexOf('priority:') !== 0
         && column.id.indexOf('due:') !== 0
         && column.id !== 'done';
-    }).map(function (column) { return option(column.id, column.label); });
+    }).map(function (column) { return move(column.id, column.label); });
     return [
       group('Status', statusOptions),
       group('Priority', priorityOptions),
@@ -2208,6 +2240,10 @@ ${getTipScript()}
         // Said as the menu said it: "Draft spec: Priority, High."
         const group = groups.find(function (candidate) { return candidate.items.some(function (item) { return item.value === value; }); });
         const chosen = group ? group.items.find(function (item) { return item.value === value; }) : undefined;
+        if (chosen && chosen.checked) {
+          announce(taskTitleOf(card) + ': ' + (group.label || 'It') + ' is already ' + chosen.label + '.');
+          return;
+        }
         post({ type: 'moveTask', taskId: card.dataset.taskId, column: value });
         announce(taskTitleOf(card) + ': ' + (group && group.label ? group.label + ', ' : '') + (chosen ? chosen.label : value) + '.');
       });

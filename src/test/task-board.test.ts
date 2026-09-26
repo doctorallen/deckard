@@ -87,6 +87,17 @@ suite('Task board', () => {
     ]);
   });
 
+  test('each card carries what the task is now, for its menu to check', () => {
+    const cards = new Map(
+      board(createIndex(), 'status', '', options).columns.flatMap((column) => column.cards).map((card) => [card.taskId, card.current]),
+    );
+    assert.deepStrictEqual(cards.get('audit'), ['status:doing', 'priority:high'], 'a date past is not a choice the menu offers');
+    assert.deepStrictEqual(cards.get('call'), ['status:', 'priority:', 'due:today']);
+    assert.deepStrictEqual(cards.get('brief'), ['status:review', 'priority:'], 'a far date checks nothing');
+    assert.deepStrictEqual(cards.get('draft'), ['status:todo', 'priority:low', 'due:']);
+    assert.ok(cards.get('ship')?.includes('done'));
+  });
+
   test('a status named done is the Done column, not a second one', () => {
     const index = createIndex();
     const marked = createTask('marked', '- [ ] Marked done by hand #status/done', {});

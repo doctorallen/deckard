@@ -67,12 +67,11 @@ suite('Task Board page', () => {
     assert.strictEqual(button.getAttribute('aria-expanded'), 'true');
     const headings = page.findAll('#action-menu .menu-heading').map((heading) => heading.textContent);
     assert.deepStrictEqual(headings, ['Status', 'Priority', 'Due', 'Done']);
-    const labels = page.findAll('#action-menu [role="menuitem"]').map((item) => item.textContent);
-    for (const label of ['Todo', 'Doing', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
+    const labels = page.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent);
+    for (const label of ['No status', 'Todo', 'Doing', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
       assert.ok(labels.includes(label), `offers ${label}`);
     }
-    assert.ok(!labels.includes('No status'), 'not the column the card is in');
-    assert.strictEqual(page.document.activeElement, page.find('#action-menu [role="menuitem"]'), 'focus is in the menu');
+    assert.strictEqual(page.document.activeElement, page.find('#action-menu [aria-checked="true"]'), 'focus is on what the task is now');
 
     page.click('#action-menu [data-menu-value="status:doing"]');
     assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'status:doing' });
@@ -107,6 +106,33 @@ suite('Task Board page', () => {
         assert.match(details, /Repeats every month on the 15th/);
       }
     }
+  });
+
+  test('a card\'s menu checks what the task is now, and shows the key for each choice', () => {
+    const { page, taskId } = open();
+    page.click('.board-card [data-action="board-menu"]');
+    const item = (value: string) => page.find(`#action-menu [data-menu-value="${value}"]`);
+    for (const value of ['status:', 'priority:', 'due:today']) {
+      assert.strictEqual(item(value).getAttribute('role'), 'menuitemradio', `${value} is one of a single choice`);
+      assert.strictEqual(item(value).getAttribute('aria-checked'), 'true', `${value} is the task's own`);
+      assert.ok(item(value).querySelector('.menu-check svg'), `${value} draws its check`);
+    }
+    assert.strictEqual(item('status:doing').getAttribute('aria-checked'), 'false');
+    assert.strictEqual(item('priority:high').querySelector('.menu-key')?.textContent, '2');
+    assert.strictEqual(item('priority:high').getAttribute('aria-keyshortcuts'), '2');
+    assert.strictEqual(item('done').querySelector('.menu-key')?.textContent, 'x');
+    assert.strictEqual(item('done').getAttribute('role'), 'menuitem');
+    assert.ok(page.findAll('#action-menu [data-menu-value]').every((row) => row.querySelector('.menu-check')), 'every row keeps a check column');
+
+    // Choosing what the task already is changes nothing, and says so.
+    page.click('#action-menu [data-menu-value="due:today"]');
+    assert.strictEqual(page.lastPosted('moveTask'), undefined);
+    assert.match(page.text('#live-status') ?? '', /Due is already Due today\./);
+
+    // The key a row shows works while the menu is open.
+    page.click('.board-card [data-action="board-menu"]');
+    page.document.activeElement?.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: '2', bubbles: true }));
+    assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'priority:high' });
   });
 
   test('the menu closes on Escape and gives focus back to its button', () => {

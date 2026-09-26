@@ -70,6 +70,45 @@ class Element {
     this.ownerDocument.activeElement = this;
   }
 
+  /** A script's own click, such as a menu key choosing its row. */
+  click() {
+    const event = {
+      target: this,
+      currentTarget: this,
+      preventDefault: () => undefined,
+      propagationStopped: false,
+      stopPropagation() { this.propagationStopped = true; },
+      stopImmediatePropagation() { this.propagationStopped = true; },
+    };
+    for (const handler of [...(this.ownerDocument.listeners.click ?? [])]) {
+      handler(event);
+      if (event.propagationStopped) break;
+    }
+  }
+
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) return true;
+    }
+    return false;
+  }
+
+  get id() {
+    return this.attributes.id ?? '';
+  }
+
+  set id(value) {
+    this.attributes.id = String(value);
+  }
+
+  get className() {
+    return this.attributes.class ?? '';
+  }
+
+  set className(value) {
+    this.attributes.class = String(value);
+  }
+
   appendChild(child) {
     if (child.parentElement) child.remove();
     child.parentElement = this;
@@ -323,6 +362,7 @@ function mountWebview(html, panel) {
   document.getElementById = (id) =>
     id === 'app' ? app : root.querySelector(`#${id}`);
   document.querySelector = (selector) => root.querySelector(selector);
+  document.contains = (node) => root.contains(node);
   // A test says which element is under the pointer.
   document.elementFromPoint = () => document.pointerTarget ?? null;
   document.querySelectorAll = (selector) => root.querySelectorAll(selector);

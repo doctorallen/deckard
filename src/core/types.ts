@@ -1452,6 +1452,12 @@ export interface TaskBoardCard {
   overdueTone?: 'full' | 'quiet';
   /** The headings above the task, top down, tags stripped. */
   headingPath: string[];
+  /**
+   * The move values the task already has, such as `status:doing`,
+   * `priority:high`, `due:today`, or `done`, so its menu can check them.
+   * `due:` is no due date; a date other than today or tomorrow adds none.
+   */
+  current: string[];
 }
 
 export interface TaskBoardColumn {
