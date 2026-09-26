@@ -681,7 +681,7 @@ Migration of billing onto the new ledger.
 
 - The overview for `#project/atlas` then shows the note at the top, with its other front-matter fields as properties. Values that are tags, such as `@dana`, open their own overviews. The hub's own entries are not listed again below it.
 - Write the tag without its `#`, or quote it, because YAML reads an unquoted `#` as the start of a comment. Quote people, as in `describes: "@dana"`. A list such as `describes: [project/atlas, proj/atlas]` describes several tags.
-- An overview with no hub offers **Create hub note**, which writes one to the notes folder and opens it. An existing note is never overwritten. When the templates folder has a template named after the tag's namespace, such as `project.md`, the new hub starts from it; see [Templates](#templates).
+- An overview with no hub offers **Create hub note** in a line under its title, which writes one to the notes folder and opens it. An existing note is never overwritten. When the templates folder has a template named after the tag's namespace, such as `project.md`, the new hub starts from it; see [Templates](#templates).
 - When several notes describe one tag, the first by path leads the overview and the others are listed beneath it.
 - Hovering the tag in the editor names its hub note, and renaming the tag updates `describes:` too.
 - Filtered and query views leave the hub out, so they show only their results.

@@ -85,14 +85,18 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
-.hub-header, .hub-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hub-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* A tag with no hub note offers one in a line under its title: text, not a
+   panel, since it is an offer and not a part of the page. */
+.hub-offer { margin: var(--space-1) 0 0; }
+.hub-offer-button.hub-offer-button { min-height: 0; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: 0; font: var(--text-sm) var(--font-display); letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; cursor: pointer; }
+.hub-offer-button.hub-offer-button:hover, .hub-offer-button.hub-offer-button:focus-visible { border-bottom-color: var(--accent); background: transparent; color: var(--text); }
 .hub > summary { cursor: pointer; list-style: none; }
 .hub > summary::-webkit-details-marker { display: none; }
 .hub > summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
 .hub-title { display: inline-flex; align-items: center; gap: 8px; }
 .hub-toggle { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--amber); transition: transform 120ms ease; }
 .hub[open] .hub-toggle { transform: rotate(90deg); }
-.hub-empty { color: var(--muted); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
 .hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
@@ -247,9 +251,7 @@ ${getQueryEditorScript()}
   function renderHub() {
     if (!state.tag) return '';
     const hub = state.hub;
-    if (!hub) {
-      return '<section class="hub hub-empty" aria-label="Hub note"><span>No note describes ' + escapeHtml(state.tag.label) + ' yet.</span><button data-action="create-hub" data-tip="Create a note whose describes: front matter names this tag">Create hub note</button></section>';
-    }
+    if (!hub) return '';
     const properties = hub.properties.length
       ? '<dl class="hub-properties">' + hub.properties.map(function (property) {
         return '<div><dt>' + escapeHtml(property.name) + '</dt><dd>' + property.values.map(function (value) {
@@ -412,6 +414,10 @@ ${getQueryEditorScript()}
       ? formatEntityTitle(state.entity.kind, state.entity.name)
       : (state.tag ? state.tag.label : 'Search');
     const titleHtml = focus ? renderOverviewTagLink(focus, title) : escapeHtml(title);
+    // No note describes the tag yet: one line offers to write it.
+    const hubOffer = state.tag && !state.hub
+      ? '<p class="hub-offer"><button type="button" class="hub-offer-button" data-action="create-hub" data-tip="' + escapeHtml('Create a note whose describes: front matter names ' + state.tag.label) + '">Create hub note</button></p>'
+      : '';
     const entityMeta = state.entity
       ? '<div class="entity-meta">' + renderOverviewTagLink(focus, state.entity.label) + '</div>'
       : '';
@@ -483,7 +489,7 @@ ${getQueryEditorScript()}
     const suggestion = !invalid && state.suggestion
       ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + hubOffer + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
     // A clamped body that fits its three lines has nothing more to show.
     document.querySelectorAll('.card-body.is-clamped').forEach(function (body) {

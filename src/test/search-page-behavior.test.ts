@@ -543,7 +543,8 @@ suite('Search page behavior', () => {
       { 'notes/one.md': '# One #risk/vendor\nProse.' },
       '#risk/vendor',
     ).page;
-    assert.match(without.text('.hub-empty') ?? '', /No note describes/);
+    assert.strictEqual(without.findAll('.hub').length, 0, 'no panel for a hub that is not there');
+    assert.strictEqual(without.text('header .hub-offer [data-action="create-hub"]'), 'Create hub note', 'a line under the title offers one');
 
     without.click('[data-action="create-hub"]');
     assert.deepStrictEqual(without.lastPosted('createHubNote'), {

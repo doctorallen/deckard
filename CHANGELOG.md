@@ -77,6 +77,10 @@
 
 ### Changed
 
+- **A tag with no hub note offers one in a line.** **Create hub note** sits
+  under the tag's title as quiet text, in place of the amber panel that
+  stood above the results.
+
 - **Refine shows five of each.** A facet lists its first five values and
   **+N more** for the rest, on the search page and in the sidebar, so
   thirty related tags no longer push the results down the page.
