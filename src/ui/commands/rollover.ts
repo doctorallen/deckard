@@ -15,7 +15,7 @@ import {
   parseLocalDate,
 } from './dailyNote';
 import { resolveSourceUri } from './navigation';
-import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
+import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
 
 /**
  * Carries yesterday's unfinished tasks into today's note.
@@ -362,10 +362,9 @@ async function offerRollover(
   } catch {
     // The watcher picks the notes up; the notes themselves are back.
   }
-  void vscode.window.showInformationMessage(
-    undone && undone.restored > 0
-      ? `Put ${undone.restored} ${undone.restored === 1 ? 'note' : 'notes'} back.`
-      : 'Deckard could not undo that: the notes have changed since.',
+  reportUndo(
+    undone,
+    `Put ${undone?.restored ?? 0} ${undone?.restored === 1 ? 'note' : 'notes'} back.`,
   );
 }
 

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { noteOwnWrite } from '../../core/workspace/ownWrites';
+import { reportStale } from './notify';
 
 /**
  * The few Deckard commands that rewrite many notes at once, and the way back
@@ -34,6 +35,8 @@ export interface UndoResult {
   restored: number;
   /** Notes changed since the write, which Undo leaves as they are. */
   skipped: number;
+  /** Which notes those are, so a message can name them. */
+  skippedUris: vscode.Uri[];
 }
 
 /**
@@ -78,14 +81,14 @@ export class WorkspaceWriteHistory {
     const edit = new vscode.WorkspaceEdit();
     const documents: vscode.TextDocument[] = [];
     const quiet: { uri: vscode.Uri; text: string }[] = [];
-    let skipped = 0;
+    const skippedUris: vscode.Uri[] = [];
 
     for (const note of write.notes) {
       let document: vscode.TextDocument;
       try {
         document = await vscode.workspace.openTextDocument(note.uri);
       } catch {
-        skipped += 1;
+        skippedUris.push(note.uri);
         continue;
       }
       // The note has to be what the write left, both on disk and in any
@@ -95,7 +98,7 @@ export class WorkspaceWriteHistory {
         document.getText() !== note.after ||
         (await readFile(note.uri)) !== note.after
       ) {
-        skipped += 1;
+        skippedUris.push(note.uri);
         continue;
       }
       // A note nobody has open is written straight to disk. Going through
@@ -110,7 +113,12 @@ export class WorkspaceWriteHistory {
     }
 
     if (documents.length > 0 && !(await vscode.workspace.applyEdit(edit))) {
-      return { label: write.label, restored: 0, skipped: write.notes.length };
+      return {
+        label: write.label,
+        restored: 0,
+        skipped: write.notes.length,
+        skippedUris: write.notes.map((note) => note.uri),
+      };
     }
     for (const document of documents) {
       if (document.isDirty) {
@@ -128,7 +136,7 @@ export class WorkspaceWriteHistory {
       await write.restore?.();
     }
     this.setLast(undefined);
-    return { label: write.label, restored, skipped };
+    return { label: write.label, restored, skipped: skippedUris.length, skippedUris };
   }
 }
 
@@ -284,14 +292,34 @@ export async function undoLastWorkspaceWrite(
   } catch {
     // The watcher picks the notes up; the notes themselves are already back.
   }
-  void vscode.window.showInformationMessage(
-    result.skipped === 0
-      ? `Undid ${result.label} in ${countNotes(result.restored)}.`
-      : `Undid ${result.label} in ${countNotes(result.restored)}. ${countNotes(
-          result.skipped,
-        )} changed since and ${result.skipped === 1 ? 'was' : 'were'} left alone.`,
-  );
+  reportUndo(result, `Undid ${result.label} in ${countNotes(result.restored)}.`);
   return result;
+}
+
+/**
+ * Says what an Undo did: done, done but for notes changed since, or nothing,
+ * because every note changed since.
+ */
+export function reportUndo(result: UndoResult | undefined, done: string): void {
+  if (!result) {
+    void vscode.window.showInformationMessage(
+      'There is nothing to undo: Deckard has written something else since.',
+    );
+    return;
+  }
+  if (result.restored === 0) {
+    void reportStale(result.skippedUris);
+    return;
+  }
+  if (result.skipped === 0) {
+    void vscode.window.showInformationMessage(done);
+    return;
+  }
+  void vscode.window.showWarningMessage(
+    `${done} ${countNotes(result.skipped)} changed after Deckard last read ${
+      result.skipped === 1 ? 'it and was' : 'them and were'
+    } left as ${result.skipped === 1 ? 'it is' : 'they are'}.`,
+  );
 }
 
 /** Whether a note is on screen, and so has to be written through its editor. */

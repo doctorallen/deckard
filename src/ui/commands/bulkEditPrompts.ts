@@ -11,7 +11,7 @@ import {
   applyBulkEdit,
   BulkEdit,
   BulkEntry,
-  describeBulkEditResult,
+  reportBulkEditResult,
 } from './bulkEdit';
 import { askForDate } from './datePrompt';
 
@@ -134,9 +134,7 @@ export async function editResults(
     edit,
   );
   if (result) {
-    void vscode.window.showInformationMessage(
-      describeBulkEditResult(edit, result),
-    );
+    reportBulkEditResult(edit, result);
   }
 }
 

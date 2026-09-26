@@ -25,6 +25,7 @@ import {
 } from '../state/relatedNotesRanking';
 import { createWikiLink, insertWikiLink } from '../commands/insertLink';
 import { openSourceAt, resolveSourceUri } from '../commands/navigation';
+import { reportStale } from '../commands/notify';
 import { renameIndexedTag } from '../commands/renameTag';
 import { ActiveSearch } from './activeSearch';
 import { getSidebarNotesHtml } from './sidebarNotesHtml';
@@ -731,9 +732,7 @@ export class SidebarNotesView
       mention.endColumn,
     );
     if (mention.line > document.lineCount || document.getText(range) !== mention.name) {
-      void vscode.window.showInformationMessage(
-        'That line has changed since it was read, so Deckard left it as it is.',
-      );
+      void reportStale([uri]);
       return;
     }
     const edit = new vscode.WorkspaceEdit();

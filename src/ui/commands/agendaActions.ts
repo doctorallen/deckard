@@ -8,7 +8,7 @@ import {
   TASK_PRIORITY_RANKS,
 } from '../../core/markdown/taskMetadata';
 import { Task } from '../../core/types';
-import { applyBulkEdit, describeBulkEditResult } from './bulkEdit';
+import { applyBulkEdit, reportBulkEditResult } from './bulkEdit';
 import { askForDate } from './datePrompt';
 import {
   quoteTaskTitle,
@@ -222,7 +222,7 @@ export async function setTasksDue(
   if (!result) {
     return;
   }
-  let message = describeBulkEditResult(edit, result);
+  let message = '';
   if (context && result.changed > 0 && date) {
     // Read after the write, so the day's load is what it now is.
     await context.refresh();
@@ -232,7 +232,7 @@ export async function setTasksDue(
       due: context.load(date).due,
     })}`;
   }
-  void vscode.window.showInformationMessage(message);
+  reportBulkEditResult(edit, result, message);
 }
 
 /**
@@ -257,7 +257,7 @@ export async function setTasksDueEach(
     return;
   }
   if (result.changed === 0) {
-    void vscode.window.showInformationMessage(describeBulkEditResult(edit, result));
+    reportBulkEditResult(edit, result);
     return;
   }
   if (context) {

@@ -11,6 +11,7 @@ import {
   applyBulkEdit,
   BulkEntry,
   describeBulkEdit,
+  bulkEditSeverity,
   describeBulkEditResult,
 } from '../ui/commands/bulkEdit';
 import {
@@ -142,8 +143,8 @@ suite('Bulk edits', () => {
       completed: false,
     });
     assert.deepStrictEqual(
-      { changed: again?.changed, skipped: again?.skipped },
-      { changed: 0, skipped: 3 },
+      { changed: again?.changed, skipped: again?.skipped, stale: again?.stale },
+      { changed: 0, skipped: 3, stale: 3 },
       'the lines have changed since indexing, so nothing is overwritten',
     );
     await clean();
@@ -195,19 +196,38 @@ suite('Bulk edits', () => {
       describeBulkEdit({ kind: 'tag', tag: '#a' }, 2),
       'adding #a to 2 results',
     );
+    const tag = { kind: 'tag', tag: '#a' } as const;
+    const unchanged = { changed: 2, skipped: 1, unchanged: 1, stale: 0, notes: 2 };
     assert.strictEqual(
-      describeBulkEditResult(
-        { kind: 'tag', tag: '#a' },
-        { changed: 2, skipped: 1, notes: 2 },
-      ),
-      'Added #a to 2 results in 2 notes. 1 was left as they are.',
+      describeBulkEditResult(tag, unchanged),
+      'Added #a to 2 results in 2 notes. 1 was already as you asked.',
     );
-    assert.ok(
-      describeBulkEditResult(
-        { kind: 'complete', completed: true },
-        { changed: 0, skipped: 2, notes: 0 },
-      ).startsWith('Nothing to change'),
+    assert.strictEqual(bulkEditSeverity(unchanged), 'info');
+    const partly = { changed: 2, skipped: 1, unchanged: 0, stale: 1, notes: 2 };
+    assert.strictEqual(
+      describeBulkEditResult(tag, partly),
+      'Added #a to 2 results in 2 notes. 1 result changed after Deckard last read it and was left as it is.',
     );
+    assert.strictEqual(bulkEditSeverity(partly), 'warning');
+    const nothing = { changed: 0, skipped: 2, unchanged: 2, stale: 0, notes: 0 };
+    assert.strictEqual(
+      describeBulkEditResult({ kind: 'complete', completed: true }, nothing),
+      'Nothing to change: every result is already as you asked.',
+    );
+    assert.strictEqual(bulkEditSeverity(nothing), 'info');
+    const stale = {
+      changed: 0,
+      skipped: 1,
+      unchanged: 0,
+      stale: 1,
+      staleUris: [vscode.Uri.file('/notes/atlas.md')],
+      notes: 0,
+    };
+    assert.strictEqual(
+      describeBulkEditResult(tag, stale),
+      'atlas.md changed after Deckard last read it, so nothing was written.',
+    );
+    assert.strictEqual(bulkEditSeverity(stale), 'error');
     assert.strictEqual(
       describeBulkEditResult(
         { kind: 'complete', completed: true },

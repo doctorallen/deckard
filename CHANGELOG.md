@@ -256,6 +256,14 @@
 
 ### Fixed
 
+- **A note that changed underneath is said one way, with the note to open.**
+  Nine messages said a note had changed since Deckard read it in seven
+  different ways, some as warnings; each now says *atlas.md changed after
+  Deckard last read it, so nothing was written.* as an error, with **Open
+  Note**. Undoing a review, a rollover, or a write whose notes have all
+  changed says the same. A bulk edit tells results already as asked from
+  results whose notes changed, and says the second as a warning.
+
 - **A screen reader hears a task's whole title.** What the Task board and
   the search pages announced about a task — *Completed …*, *Moved … to
   Todo* — dropped every letter s from its title, since a pattern in the

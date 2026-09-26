@@ -10,6 +10,7 @@ import {
   noteName,
   openNoteAction,
   reportFailure,
+  reportStale,
 } from './notify';
 
 export async function extractHeadingCommand(
@@ -297,9 +298,7 @@ async function replaceSectionWithLink(
       section.endLine < section.startLine ||
       section.endLine > document.lineCount
     ) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not extract this heading because the source section changed.',
-      );
+      void reportStale([sourceUri]);
       return 'unchanged';
     }
 
@@ -313,9 +312,7 @@ async function replaceSectionWithLink(
       normalizeLineEndings(document.getText(contentRange)) !==
       section.rawContent
     ) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not extract this heading because the source section changed.',
-      );
+      void reportStale([sourceUri]);
       return 'unchanged';
     }
 

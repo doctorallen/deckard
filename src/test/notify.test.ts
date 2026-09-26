@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import {
   describeFailure,
   describeRejectedEdit,
+  describeStale,
   settingLabel,
 } from '../ui/commands/notify';
 
@@ -26,6 +27,17 @@ suite('Messages', () => {
     const { outcome, fix } = describeRejectedEdit('a.md');
     assert.strictEqual(outcome, 'VS Code did not accept the change to a.md, so nothing was written.');
     assert.match(fix ?? '', /read-only/);
+  });
+
+  test('a note that changed underneath is said one way', () => {
+    assert.strictEqual(
+      describeStale(['a.md']),
+      'a.md changed after Deckard last read it, so nothing was written.',
+    );
+    assert.strictEqual(
+      describeStale(['a.md', 'b.md', 'c.md']),
+      '3 notes changed after Deckard last read them, so nothing was written.',
+    );
   });
 
   test('a setting is named as the Settings editor labels it', () => {

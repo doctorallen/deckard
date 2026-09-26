@@ -24,7 +24,7 @@ import {
 import { Weekday } from '../../core/markdown/dates';
 import { readWeekStart } from './datePrompt';
 import { revealLine } from './navigation';
-import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
+import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
 
 /**
  * Writes a week's or a month's review into its periodic note.
@@ -189,11 +189,7 @@ async function offerReview(
   } catch {
     // The watcher picks the note up; the note itself is back.
   }
-  void vscode.window.showInformationMessage(
-    undone && undone.restored > 0
-      ? 'Took the review back out of the note.'
-      : 'Deckard could not undo that: the note has changed since.',
-  );
+  reportUndo(undone, 'Took the review back out of the note.');
 }
 
 /**

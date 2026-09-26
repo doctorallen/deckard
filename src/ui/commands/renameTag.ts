@@ -18,7 +18,7 @@ import {
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
-import { reindexAction, reportFailure } from './notify';
+import { reindexAction, reportFailure, reportStale } from './notify';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
 interface RenameTagOptions {
@@ -40,7 +40,7 @@ interface FileRenamePlan {
 interface RenamePlan {
   files: FileRenamePlan[];
   occurrenceCount: number;
-  staleFilePath?: string;
+  staleUri?: vscode.Uri;
 }
 
 /**
@@ -345,10 +345,8 @@ async function rewriteTag(
   const joiner = merge ? 'into' : 'to';
 
   const plan = await createRenamePlan(index, sourceTag.key, replacement);
-  if (plan.staleFilePath) {
-    void vscode.window.showWarningMessage(
-      `Deckard could not ${verb} ${sourceTag.label} because ${plan.staleFilePath} changed after indexing.`,
-    );
+  if (plan.staleUri) {
+    void reportStale([plan.staleUri]);
     return undefined;
   }
   if (plan.occurrenceCount === 0) {
@@ -580,7 +578,7 @@ async function createRenamePlan(
 
     const document = await vscode.workspace.openTextDocument(uri);
     if (document.getText() !== file.content) {
-      return { files: [], occurrenceCount: 0, staleFilePath: filePath };
+      return { files: [], occurrenceCount: 0, staleUri: uri };
     }
 
     occurrenceCount += planned.occurrenceCount;

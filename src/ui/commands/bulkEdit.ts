@@ -17,6 +17,7 @@ import { Section, Task } from '../../core/types';
 import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
 import { applyWorkspaceWrite } from './workspaceWrites';
+import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
 
 /**
  * One edit made to many results at once.
@@ -44,8 +45,14 @@ export type BulkEntry =
 export interface BulkEditResult {
   /** Lines the edit changed. */
   changed: number;
-  /** Results left alone: already as asked, or changed since indexing. */
+  /** Results left alone: `unchanged` and `stale` together. */
   skipped: number;
+  /** Results already as asked. */
+  unchanged?: number;
+  /** Results whose line changed since indexing, or whose note is unreadable. */
+  stale?: number;
+  /** The notes those stale results are in, so a message can name them. */
+  staleUris?: vscode.Uri[];
   /** Notes the edit reached. */
   notes: number;
   /** Repeating tasks completed whose 🔁 rule Deckard could not read. */
@@ -130,7 +137,15 @@ export async function applyBulkEdit(
   const workspaceEdit = new vscode.WorkspaceEdit();
   const paths = new Set<string>();
   let changed = 0;
-  let skipped = 0;
+  let unchanged = 0;
+  let stale = 0;
+  const staleNotes = new Map<string, vscode.Uri>();
+  const markStale = (count: number, uri?: vscode.Uri) => {
+    stale += count;
+    if (uri) {
+      staleNotes.set(uri.toString(), uri);
+    }
+  };
   let unreadRules = 0;
 
   const byPath = new Map<string, BulkEntry[]>();
@@ -143,14 +158,14 @@ export async function applyBulkEdit(
   for (const [filePath, fileEntries] of byPath) {
     const uri = await resolveSourceUri(filePath);
     if (!uri) {
-      skipped += fileEntries.length;
+      markStale(fileEntries.length);
       continue;
     }
     let document: vscode.TextDocument;
     try {
       document = await vscode.workspace.openTextDocument(uri);
     } catch {
-      skipped += fileEntries.length;
+      markStale(fileEntries.length, uri);
       continue;
     }
     const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
@@ -159,7 +174,7 @@ export async function applyBulkEdit(
     fileEntries.forEach((entry) => {
       const line = entry.kind === 'task' ? entry.task.lineNumber : entry.section.startLine;
       if (line < 1 || line > document.lineCount) {
-        skipped += 1;
+        markStale(1, uri);
         return;
       }
       const source = document.lineAt(line - 1);
@@ -168,7 +183,7 @@ export async function applyBulkEdit(
           ? entry.task.sourceLineText
           : firstLine(entry.section.rawContent);
       if (source.text !== expected) {
-        skipped += 1;
+        markStale(1, uri);
         return;
       }
       const rewritten = rewrite(entry, edit, source.text, {
@@ -184,7 +199,7 @@ export async function applyBulkEdit(
       });
       const replacement = rewritten?.text;
       if (replacement === undefined || replacement === source.text) {
-        skipped += 1;
+        unchanged += 1;
         return;
       }
       workspaceEdit.replace(uri, source.range, replacement);
@@ -196,15 +211,21 @@ export async function applyBulkEdit(
     });
   }
 
+  const left = {
+    skipped: unchanged + stale,
+    unchanged,
+    stale,
+    staleUris: [...staleNotes.values()],
+  };
   if (changed === 0) {
-    return { changed: 0, skipped, notes: 0, unreadRules: 0 };
+    return { changed: 0, ...left, notes: 0, unreadRules: 0 };
   }
   const written = await applyWorkspaceWrite(workspaceEdit, {
     label: describeBulkEdit(edit, changed),
     description: describeBulkEdit(edit, changed),
   });
   return written.applied
-    ? { changed, skipped, notes: written.notes.length, unreadRules }
+    ? { changed, ...left, notes: written.notes.length, unreadRules }
     : undefined;
 }
 
@@ -270,8 +291,14 @@ export function describeBulkEditResult(
   edit: BulkEdit,
   result: BulkEditResult,
 ): string {
+  const stale = result.stale ?? 0;
+  const unchanged = result.unchanged ?? result.skipped - stale;
   if (result.changed === 0) {
-    return `Nothing to change: every result is already as you asked, or has changed since it was indexed.`;
+    return stale === 0
+      ? 'Nothing to change: every result is already as you asked.'
+      : describeStale(
+          result.staleUris?.length ? result.staleUris.map(noteName) : ['The note'],
+        );
   }
   const verb =
     edit.kind === 'complete'
@@ -286,9 +313,14 @@ export function describeBulkEditResult(
           ? 'Set a due date on'
           : `Added ${edit.tag} to`;
   const left =
-    result.skipped === 0
+    (unchanged === 0
       ? ''
-      : ` ${result.skipped} ${result.skipped === 1 ? 'was' : 'were'} left as they are.`;
+      : ` ${unchanged} ${unchanged === 1 ? 'was' : 'were'} already as you asked.`) +
+    (stale === 0
+      ? ''
+      : ` ${stale} ${stale === 1 ? 'result' : 'results'} changed after Deckard last read ${
+          stale === 1 ? 'it and was left as it is' : 'them and were left as they are'
+        }.`);
   const unread = result.unreadRules ?? 0;
   const rules =
     unread === 0
@@ -299,4 +331,37 @@ export function describeBulkEditResult(
   return `${verb} ${result.changed} ${
     result.changed === 1 ? 'result' : 'results'
   } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}${rules}`;
+}
+
+/**
+ * How heavy a bulk edit's message is: nothing written because the notes
+ * changed is an error; written, but with results left out, a warning.
+ */
+export function bulkEditSeverity(result: BulkEditResult): 'info' | 'warning' | 'error' {
+  const stale = result.stale ?? 0;
+  if (result.changed === 0) {
+    return stale > 0 ? 'error' : 'info';
+  }
+  return stale > 0 || (result.unreadRules ?? 0) > 0 ? 'warning' : 'info';
+}
+
+/** Says what a bulk edit did, at the weight of what happened. */
+export function reportBulkEditResult(
+  edit: BulkEdit,
+  result: BulkEditResult,
+  more = '',
+): void {
+  const text = describeBulkEditResult(edit, result) + more;
+  const severity = bulkEditSeverity(result);
+  if (severity === 'error') {
+    const uris = result.staleUris ?? [];
+    void reportFailure({
+      outcome: text,
+      ...(uris.length === 1 ? { action: openNoteAction(uris[0]) } : {}),
+    });
+  } else if (severity === 'warning') {
+    void vscode.window.showWarningMessage(text);
+  } else {
+    void vscode.window.showInformationMessage(text);
+  }
 }

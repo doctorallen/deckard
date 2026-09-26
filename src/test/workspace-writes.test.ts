@@ -66,6 +66,7 @@ suite('Workspace writes', () => {
       label: 'the rename of #project/atlas',
       restored: 2,
       skipped: 0,
+      skippedUris: [],
     });
     assert.strictEqual(await read(first), '# Atlas #project/atlas\n');
     assert.strictEqual(await read(second), 'Also #project/atlas here.\n');
@@ -96,11 +97,15 @@ suite('Workspace writes', () => {
     await write(other, 'Rewritten by hand.\n');
 
     const undone = await history.undo();
-    assert.deepStrictEqual(undone, {
-      label: 'the rename of #a',
-      restored: 1,
-      skipped: 1,
-    });
+    assert.deepStrictEqual(
+      { ...undone, skippedUris: undone?.skippedUris.map(String) },
+      {
+        label: 'the rename of #a',
+        restored: 1,
+        skipped: 1,
+        skippedUris: [other.toString()],
+      },
+    );
     assert.strictEqual(await read(note), 'One #a tag.\n');
     assert.strictEqual(await read(other), 'Rewritten by hand.\n');
     await deleteTemporaryRoot(root);

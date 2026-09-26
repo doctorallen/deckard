@@ -15,6 +15,7 @@ import {
   noteName,
   openNoteAction,
   reportFailure,
+  reportStale,
 } from './notify';
 import { noteOwnWrite } from '../../core/workspace/ownWrites';
 
@@ -99,9 +100,7 @@ export async function updateTaskLine(
       task.lineNumber > document.lineCount ||
       document.lineAt(task.lineNumber - 1).text !== task.sourceLineText
     ) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not update this task because the source line changed.',
-      );
+      void reportStale([uri]);
       return false;
     }
 
@@ -112,9 +111,7 @@ export async function updateTaskLine(
       line[task.checkboxColumn - 1] !== '[' ||
       line[task.checkboxColumn + 1] !== ']'
     ) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not update this task because the source line changed.',
-      );
+      void reportStale([uri]);
       return false;
     }
 
@@ -230,9 +227,7 @@ async function revertTaskLine(
     const writtenLines = replacement.split(/\r?\n/).length;
     const lastLine = lineNumber - 2 + writtenLines;
     if (lineNumber < 1 || lastLine >= document.lineCount) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not undo this task edit because the note changed.',
-      );
+      void reportStale([uri]);
       return;
     }
     const range = new vscode.Range(
@@ -240,9 +235,7 @@ async function revertTaskLine(
       document.lineAt(lastLine).range.end,
     );
     if (document.getText(range) !== replacement) {
-      void vscode.window.showWarningMessage(
-        'Deckard could not undo this task edit because the note changed.',
-      );
+      void reportStale([uri]);
       return;
     }
     const edit = new vscode.WorkspaceEdit();
