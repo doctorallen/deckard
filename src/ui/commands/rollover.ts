@@ -55,6 +55,13 @@ export function planRollover(
   index: WorkspaceIndex,
   today: string,
   lookbackDays = 0,
+  /**
+   * In copy mode the note a task came from keeps it, so Monday's task and
+   * Tuesday's copy of it are both still open on Wednesday. Only the newest
+   * is carried. Moving never leaves a copy behind, so two alike lines there
+   * are two tasks, and both are carried.
+   */
+  mode: RolloverMode = 'move',
 ): RolloverPlan | undefined {
   const earliest =
     lookbackDays > 0
@@ -72,7 +79,7 @@ export function planRollover(
     return undefined;
   }
   const byPath = new Map(notes.map((note) => [note.filePath, note.date]));
-  const tasks = [...index.tasks.values()]
+  const open = [...index.tasks.values()]
     .filter((task) => !task.completed && byPath.has(task.filePath))
     .sort(
       (left, right) =>
@@ -80,6 +87,7 @@ export function planRollover(
           byPath.get(right.filePath) ?? '',
         ) || left.lineNumber - right.lineNumber,
     );
+  const tasks = mode === 'copy' ? keepNewestCopies(open) : open;
   if (tasks.length === 0) {
     return undefined;
   }
@@ -90,6 +98,23 @@ export function planRollover(
       .map((note) => note.date),
     tasks,
   };
+}
+
+/**
+ * One task per line of text, from the newest note that holds it, in the
+ * plan's order: oldest note first.
+ */
+function keepNewestCopies(tasks: Task[]): Task[] {
+  const seen = new Set<string>();
+  const kept: Task[] = [];
+  for (let at = tasks.length - 1; at >= 0; at -= 1) {
+    const key = tasks[at].sourceLineText.trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      kept.push(tasks[at]);
+    }
+  }
+  return kept.reverse();
 }
 
 /** What a rollover did, so the command can say it in one sentence. */
@@ -232,6 +257,7 @@ export async function rollTasksForward(
     indexer.getSnapshot(),
     formatLocalDate(new Date()),
     getRolloverLookbackDays(folder.uri),
+    mode,
   );
   if (!plan) {
     if (!options.silent) {

@@ -16,6 +16,11 @@
   spans, but the counts were rolling ones, so a note from last Saturday
   could sit under This week on a Wednesday.
 
+- **Copied rollover carries a task once.** In `copy` mode each day's note
+  keeps the task it copied forward, so a task that had waited three days
+  arrived three times, and the daily note's Carry in lens counted it three
+  times. Only the newest copy is carried now.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

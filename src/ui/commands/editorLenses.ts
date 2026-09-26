@@ -209,6 +209,7 @@ function provideDailyNoteLenses({
     index,
     formatLocalDate(now),
     getRolloverLookbackDays(document.uri),
+    getRolloverMode(document.uri) === 'copy' ? 'copy' : 'move',
   );
   if (!actions) {
     return [];

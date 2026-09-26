@@ -116,6 +116,8 @@ export function findDailyNoteActions(
   index: WorkspaceIndex,
   today: string,
   lookbackDays = 0,
+  /** The rollover mode, which decides whether older copies of a task count. */
+  mode: 'move' | 'copy' = 'move',
 ): DailyNoteActions | undefined {
   const date = findDailyNoteDate(
     file.filePath,
@@ -136,7 +138,7 @@ export function findDailyNoteActions(
   );
   const carryIn =
     date === today
-      ? (planRollover(index, today, lookbackDays)?.tasks ?? []).filter(
+      ? (planRollover(index, today, lookbackDays, mode)?.tasks ?? []).filter(
           (task) =>
             task.filePath !== file.filePath &&
             !written.has(task.sourceLineText.trim()),

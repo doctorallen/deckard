@@ -107,6 +107,58 @@ suite('Task rollover', () => {
     );
   });
 
+  test('copies a task once however many days it has waited', async () => {
+    const root = await createTemporaryRoot();
+    const monday = vscode.Uri.joinPath(root, '2026-09-22.md');
+    const tuesday = vscode.Uri.joinPath(root, '2026-09-23.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-09-24.md');
+    const mondayText = '# 2026-09-22\n\n- [ ] Chase the vendor\n';
+    // Tuesday's copy, and one task of its own.
+    const tuesdayText = '# 2026-09-23\n\n- [ ] Chase the vendor\n- [ ] Book travel\n';
+    await write(monday, mondayText);
+    await write(tuesday, tuesdayText);
+    await write(todayUri, '# 2026-09-24\n\n');
+    const index = indexOf({ [monday.fsPath]: mondayText, [tuesday.fsPath]: tuesdayText });
+
+    const plan = planRollover(index, '2026-09-24', 0, 'copy');
+    assert.deepStrictEqual(
+      plan?.tasks.map((task) => [task.filePath, task.sourceLineText]),
+      [
+        [tuesday.fsPath, '- [ ] Chase the vendor'],
+        [tuesday.fsPath, '- [ ] Book travel'],
+      ],
+      'the newest copy is the one carried',
+    );
+    assert.deepStrictEqual(plan?.fromDates, ['2026-09-23']);
+
+    const result = await applyRollover(plan!, todayUri, 'copy');
+    assert.deepStrictEqual(result, {
+      carried: 2,
+      skipped: 0,
+      fromDates: ['2026-09-23'],
+      notes: 1,
+    });
+    assert.strictEqual(
+      (await read(todayUri)).split('Chase the vendor').length - 1,
+      1,
+      'the task arrives once',
+    );
+    await deleteTemporaryRoot(root);
+  });
+
+  test('moving carries two alike lines, since they may be two tasks', () => {
+    const plan = planRollover(
+      indexOf({
+        'notes/2026-09-22.md': '# 2026-09-22\n\n- [ ] Call Ren\n',
+        'notes/2026-09-23.md': '# 2026-09-23\n\n- [ ] Call Ren\n',
+      }),
+      '2026-09-24',
+      0,
+      'move',
+    );
+    assert.strictEqual(plan?.tasks.length, 2);
+  });
+
   test('moves the tasks into today, out of the note they came from', async () => {
     const root = await createTemporaryRoot();
     const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
