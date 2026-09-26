@@ -1164,10 +1164,28 @@ export interface NotesGraphNode {
   line?: number;
   /** Canonical tag keys carried by this node; empty for tag nodes. */
   tagKeys: string[];
-  /** Precomputed edge count; drives node radius in the webview. */
+  /**
+   * Every indexed edge the node has, whatever the page draws, so its size
+   * and tooltip do not change with how many links are shown.
+   */
   degree: number;
+  /** Its edges by kind, workspace-wide; kinds with none are left out. */
+  links?: NotesGraphLinkCounts;
   /** Parked, or a tag only parked notes carry: hidden unless Show parked is on. */
   parked?: true;
+}
+
+/**
+ * A node's edges by kind: wiki links, heading-and-sub-heading edges, the
+ * tags a note or task carries (or, on a tag, the notes and tasks carrying
+ * it), and on a tag the tags written with it. An edge of two kinds counts
+ * once in each.
+ */
+export interface NotesGraphLinkCounts {
+  wiki?: number;
+  heading?: number;
+  tag?: number;
+  related?: number;
 }
 
 export interface NotesGraphEdge {

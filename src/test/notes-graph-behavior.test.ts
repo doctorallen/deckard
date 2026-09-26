@@ -34,6 +34,16 @@ export function lastFrame(page: WebviewPage): CanvasCall[] {
   return calls.slice(start);
 }
 
+/**
+ * Lets the simulation come to rest, then frames the graph, so every node is
+ * on screen where the last frame drew it.
+ */
+export function settle(page: WebviewPage): void {
+  page.flushFrames(100);
+  page.click('#zoom-fit');
+  page.flushFrames(1);
+}
+
 /** A stroke's dash pattern in the screen pixels it was written in. */
 function pattern(call: CanvasCall): number[] {
   if (call.lineDash.length === 0) {
@@ -326,6 +336,78 @@ suite('Notes Graph behavior', () => {
       post(page, { type: 'applyFilters', onlyWrittenLinks: true });
       assert.strictEqual((page.find('#only-written-links') as HTMLInputElement).checked, true);
       assert.match(page.text('#status-counts') ?? '', /^1 wiki link · /);
+    });
+  });
+
+  suite('node size and tooltip', () => {
+    const openCanvas = (): WebviewPage => {
+      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      return page;
+    };
+    const tag = (key: string, links: Record<string, number>, degree: number): GraphNode => ({ id: `tag:${key}`, kind: 'tag', title: key, tagKeys: [], degree, links });
+    const graph = () => graphState(
+      [
+        note('atlas', { degree: 13, line: 12, links: { wiki: 4, heading: 2, tag: 7 } }),
+        { ...note('call', { degree: 4, line: 30, links: { wiki: 1, tag: 3 } }), id: 'task:call', kind: 'task', filePath: 'notes/atlas.md' },
+        note('alone', { degree: 0, line: 12, links: undefined }),
+        tag('#project/atlas', { tag: 42, related: 5 }, 47),
+      ],
+      [
+        { source: 'section:atlas', target: 'task:call', weight: 2, types: ['wiki-link'] },
+        { source: 'section:atlas', target: 'tag:#project/atlas', weight: 1, types: ['tag-membership'] },
+      ],
+    );
+    /** The tooltip shown while the pointer is over the node with a title. */
+    const hover = (page: WebviewPage, title: string): string => {
+      settle(page);
+      // Nodes are filled as arcs; each arc's center is where the node is drawn.
+      const arcs = lastFrame(page).filter((call) => call.op === 'arc');
+      for (const arc of arcs) {
+        const [x, y] = arc.args as number[];
+        // Hover at the node's screen position: the page maps it back.
+        const screen = toScreen(page, { x, y });
+        page.find('#graph').dispatchEvent(new page.window.MouseEvent('pointermove', { clientX: screen.x, clientY: screen.y, bubbles: true }));
+        if (page.text('#tooltip .tooltip-title') === title) {
+          return page.text('#tooltip .tooltip-meta') ?? '';
+        }
+      }
+      throw new Error(`No node titled ${title} could be hovered.`);
+    };
+    /** World to screen, from the transform the page last set for the graph. */
+    const toScreen = (page: WebviewPage, world: { x: number; y: number }) => {
+      const transform = [...lastFrame(page)].reverse().find((call) => call.op === 'setTransform' && (call.args as number[])[0] !== 1);
+      const [k, , , , x, y] = (transform?.args as number[]) ?? [1, 0, 0, 1, 0, 0];
+      return { x: world.x * k + x, y: world.y * k + y };
+    };
+
+    test('says what a note, a task, a tag, and a node with nothing are joined by', () => {
+      const page = openCanvas();
+      ['#show-tags', '#show-all-links'].forEach((selector) => {
+        const box = page.find(selector) as HTMLInputElement;
+        box.checked = true;
+        box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      });
+      page.send(graph());
+      assert.strictEqual(hover(page, 'atlas'), 'atlas.md:12 · 4 wiki links · 2 headings · 7 tags');
+      assert.strictEqual(hover(page, 'call'), 'Task · atlas.md:30 · 1 wiki link · 3 tags');
+      assert.strictEqual(hover(page, '#project/atlas'), 'Tag · on 42 notes and tasks · 5 related tags');
+      assert.strictEqual(hover(page, 'alone'), 'alone.md:12 · No links');
+    });
+
+    test('a node keeps its size and its words as Links per note moves', () => {
+      const page = openCanvas();
+      page.send(graph());
+      settle(page);
+      const radii = () => lastFrame(page).filter((call) => call.op === 'arc').map((call) => (call.args as number[])[2]).sort();
+      const before = radii();
+      const words = hover(page, 'atlas');
+      const density = page.find('#link-density') as HTMLInputElement;
+      density.value = density.min;
+      density.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+      settle(page);
+      assert.deepStrictEqual(radii(), before);
+      assert.strictEqual(hover(page, 'atlas'), words);
+      assert.ok(before.includes((2 + Math.sqrt(13)) * 1), 'sized by the indexed degree');
     });
   });
 });

@@ -12,6 +12,12 @@
 
 ### Added
 
+- **A graph node says what it is joined by.** Its tooltip counts wiki
+  links, headings, and tags (`atlas.md:12 · 4 wiki links · 2 headings · 7
+  tags`), and a tag says how many notes and tasks carry it. A node is sized
+  by everything it is joined to in the index, so neither changes as Links
+  per note moves.
+
 - **The Notes Graph tells its lines apart.** A wiki link you wrote is a
   solid line, a heading a dashed one, a shared tag a dotted one, and a path
   through a daily note a dash-dot one, with a sample of each in the legend.

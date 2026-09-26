@@ -299,6 +299,27 @@ suite('Notes graph state', () => {
     assert.strictEqual(tagNode.degree, 1);
   });
 
+  test('counts the links of each node by kind, an edge of two kinds in both', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n\n## Design #project/atlas\n\nBack to [[atlas]] and [[relay]].'),
+      parseMarkdown('notes/relay.md', '# Relay #project/atlas #topic/x'),
+    ]);
+    const byTitle = (title: string) => snapshot.nodes.find((node) => node.title === title);
+    // Design links up to Atlas, which is also its heading: one edge, both kinds.
+    assert.deepStrictEqual(byTitle('Design')?.links, { wiki: 2, heading: 1, tag: 1 });
+    assert.strictEqual(byTitle('Design')?.degree, 3, 'the edge itself counts once');
+    assert.deepStrictEqual(byTitle('Relay')?.links, { wiki: 2, tag: 2 });
+    assert.deepStrictEqual(byTitle('#project/atlas')?.links, { tag: 3, related: 1 });
+
+    const alone = buildSnapshot([parseMarkdown('notes/alone.md', '# Alone')]);
+    assert.strictEqual(alone.nodes[0].links, undefined, 'a node with no links carries no counts');
+
+    const focus = findNoteNodeIds(snapshot, 'notes/relay.md');
+    const local = createLocalGraphSnapshot(snapshot, focus, 1);
+    const relay = local.nodes.find((node) => node.title === 'Relay');
+    assert.deepStrictEqual(relay?.links, { wiki: 2, tag: 2 }, 'a focused graph keeps the workspace counts');
+  });
+
   test('produces deterministic output', () => {
     const files = [
       parseMarkdown('notes/a.md', '# Alpha #project/atlas\n\n- [ ] Task #x'),

@@ -1439,8 +1439,17 @@ ${getUndoScript()}
     scheduleFrame();
   }
 
+  /**
+   * Sized by everything the node is joined to in the index, not by the
+   * links drawn, so a note keeps its size as Links per note moves. The cap
+   * keeps a tag carried by hundreds of entries from covering its group.
+   */
   function nodeRadius(index) {
-    return (2 + Math.sqrt(degrees[index])) * settings.nodeSize;
+    return (2 + Math.sqrt(Math.min(nodeDegree(index), 100))) * settings.nodeSize;
+  }
+  function nodeDegree(index) {
+    var degree = nodes[index].degree;
+    return typeof degree === 'number' && degree >= 0 ? degree : degrees[index];
   }
 
   function draw() {
@@ -1570,10 +1579,10 @@ ${getUndoScript()}
       var hubs = [];
       for (var h = 0; h < nodes.length; h += 1) {
         if (!isRendered(h) || !inView(h) || isDimmed(h) || nodes[h].kind === 'tag') { continue; }
-        if (degrees[h] < 2) { continue; }
+        if (nodeDegree(h) < 2) { continue; }
         hubs.push(h);
       }
-      hubs.sort(function (a, b) { return degrees[b] - degrees[a]; });
+      hubs.sort(function (a, b) { return nodeDegree(b) - nodeDegree(a); });
       ctx.globalAlpha = 0.85;
       for (var u = 0; u < Math.min(hubs.length, HUB_LABELS_AT_REST); u += 1) {
         var hub = hubs[u];
@@ -1595,7 +1604,7 @@ ${getUndoScript()}
         if (nodeRadius(l) * k <= 8) { continue; }
         labeled.push(l);
       }
-      labeled.sort(function (a, b) { return degrees[b] - degrees[a]; });
+      labeled.sort(function (a, b) { return nodeDegree(b) - nodeDegree(a); });
       var maxLabels = Math.min(labeled.length, 300);
       var fade = Math.min(1, (k - settings.labelThreshold) / 0.5 + 0.35);
       ctx.globalAlpha = fade;
@@ -1953,13 +1962,7 @@ ${getUndoScript()}
     tooltip.appendChild(title);
     var meta = document.createElement('div');
     meta.className = 'tooltip-meta';
-    if (node.kind === 'tag') {
-      meta.textContent = 'Tag · ' + degrees[index] + ' connections';
-    } else {
-      var fileName = node.filePath ? node.filePath.split('/').pop() : '';
-      meta.textContent = (node.kind === 'task' ? 'Task · ' : '') + fileName +
-        ':' + node.line + ' · ' + degrees[index] + ' links';
-    }
+    meta.textContent = describeNode(node);
     tooltip.appendChild(meta);
     tooltip.style.display = 'block';
     var offset = 14;
@@ -1967,6 +1970,35 @@ ${getUndoScript()}
     var maxY = window.innerHeight - tooltip.offsetHeight - 8;
     tooltip.style.left = Math.min(clientX + offset, maxX) + 'px';
     tooltip.style.top = Math.min(clientY + offset, maxY) + 'px';
+  }
+
+  /** "1 wiki link", "4 wiki links"; nothing for none. */
+  function countWords(count, one, many) {
+    return count ? count + ' ' + (count === 1 ? one : many) : '';
+  }
+  /**
+   * What a node is joined to, by kind, from the index's counts:
+   * "atlas.md:12 · 4 wiki links · 2 headings · 7 tags".
+   */
+  function describeNode(node) {
+    var links = node.links || {};
+    var parts = [];
+    if (node.kind === 'tag') {
+      parts.push('Tag');
+      if (links.tag) { parts.push('on ' + countWords(links.tag, 'note or task', 'notes and tasks')); }
+      if (links.related) { parts.push(countWords(links.related, 'related tag', 'related tags')); }
+    } else {
+      if (node.kind === 'task') { parts.push('Task'); }
+      var fileName = node.filePath ? node.filePath.split('/').pop() : '';
+      parts.push(fileName + ':' + node.line);
+      [
+        countWords(links.wiki, 'wiki link', 'wiki links'),
+        countWords(links.heading, 'heading', 'headings'),
+        countWords(links.tag, 'tag', 'tags')
+      ].forEach(function (words) { if (words) { parts.push(words); } });
+    }
+    if (!links.wiki && !links.heading && !links.tag && !links.related) { parts.push('No links'); }
+    return parts.join(' · ');
   }
 
   function hideTooltip() {
