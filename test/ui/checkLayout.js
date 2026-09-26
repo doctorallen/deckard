@@ -32,6 +32,7 @@ const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./page
 const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
 const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
 const { createSearchPageSnapshot } = require('../../out/ui/state/dashboardState.js');
+const { createCalendar } = require('../../out/ui/state/calendarState.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
 const { PreferencesStore } = require('../../out/core/storage/preferences.js');
@@ -65,6 +66,32 @@ function createIndex() {
       `# Related note ${i} #project/atlas #topic/replicants\nMentions @dana and the Atlas project, entry ${i}.`)]),
   ]);
   return { index: buildWorkspaceIndex(files), files };
+}
+
+/**
+ * The calendar's own small month, so no other surface's pixels move with it:
+ * a crowded day, a day far past due, and a chosen day with more tasks and
+ * new notes than the panel lists at once, their titles long.
+ */
+function createCalendarIndex() {
+  const long = 'Chase the replicant through the neon market and file the report';
+  const created = new Date(2026, 8, 21, 9).getTime();
+  const tasks = [
+    ...Array.from({ length: 7 }, (_, i) => `- [ ] ${long} ${i + 1} 📅 2026-09-21`),
+    '- [ ] Draft the brief for the whole of the Atlas programme ⏳ 2026-09-21',
+    ...Array.from({ length: 12 }, (_, i) => `- [ ] Busy ${i} 📅 2026-09-24`),
+    ...Array.from({ length: 11 }, (_, i) => `- [ ] Planned ${i} ⏳ 2026-09-24`),
+    '- [ ] Renew the lease 📅 2026-08-03',
+    '- [x] Filed the report ✅ 2026-09-21',
+  ];
+  const files = new Map([
+    ['notes/2026-09-21.md', parseMarkdown('notes/2026-09-21.md', `# 2026-09-21\n${tasks.join('\n')}\n`, { createdAt: created, updatedAt: created })],
+    ...Array.from({ length: 6 }, (_, i) => {
+      const filePath = `projects/a-folder-with-a-long-name/note-${i}.md`;
+      return [filePath, parseMarkdown(filePath, `# A new note with a title too long for the sidebar ${i}\n`, { createdAt: created + i, updatedAt: created })];
+    }),
+  ]);
+  return buildWorkspaceIndex(files);
 }
 
 function createGlobalState() {
@@ -117,6 +144,18 @@ function createSurfaces(zen) {
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+    },
+    {
+      // The calendar in a narrow sidebar with its day panel on: counts that
+      // run to two digits, and rows whose words are longer than the panel.
+      page: 'calendar',
+      viewport: [240, 700],
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', new Date(NOW), 0, {
+        dayPanel: true,
+      }),
+      scrollers: ['html'],
+      clippers: ['.day', '.day-panel .task-row'],
+      hovered: ['.day-panel .task-row'],
     },
     {
       // As narrow as a reader is likely to drag the sidebar: the page's own
