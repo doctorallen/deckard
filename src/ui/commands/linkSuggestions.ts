@@ -1,3 +1,4 @@
+import { isParkedFile } from '../../core/workspace/parked';
 import * as vscode from 'vscode';
 
 import { BLOCK_ID_PATTERN, stripTags } from '../../core/markdown/parser';
@@ -166,10 +167,13 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
         ...note,
         score: words.length ? scoreTitle(words, note.title) : 0,
         opened: opened.get(note.filePath) ?? 0,
+        parked: isParkedFile(index, note.filePath),
       }))
       .filter((note) => !query || note.score > 0 || note.title.toLowerCase().includes(query))
       .sort(
         (left, right) =>
+          // A parked note is still offered, after every other.
+          Number(left.parked) - Number(right.parked) ||
           right.score - left.score ||
           right.opened - left.opened ||
           left.title.localeCompare(right.title) ||
@@ -182,7 +186,9 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
             ? vscode.CompletionItemKind.Reference
             : vscode.CompletionItemKind.File,
         );
-        item.detail = note.isAlias ? `Alias of ${note.filePath}` : note.filePath;
+        item.detail =
+          (note.isAlias ? `Alias of ${note.filePath}` : note.filePath) +
+          (note.parked ? ' · Parked' : '');
         item.insertText = `${note.title}]]`;
         // VS Code sorts completions itself; the rank above is kept by giving
         // each its place, and every title passes its filter.

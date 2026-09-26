@@ -1,4 +1,10 @@
 import {
+  isParkedFile,
+  isParkedSection,
+  isParkedTask,
+  parkedLast,
+} from '../../core/workspace/parked';
+import {
   DashboardSavedFilter,
   DashboardSnapshot,
   DashboardNote,
@@ -317,8 +323,15 @@ export function createSearchPageSnapshot(
           .filter((file) => file.filePath !== hubFile?.filePath)
           .map(createFileKey),
       ];
-  const ranked = keys.sort((left, right) =>
-    compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
+  // Parked results are kept, after the rest, so the page before them is the
+  // unparked ones whatever the sort.
+  const keyParked = (key: NoteKey): boolean =>
+    key.section ? isParkedSection(index, key.section.id) : isParkedFile(index, key.filePath);
+  const ranked = parkedLast(
+    keys.sort((left, right) =>
+      compareTagOverviewCards(left, right, preferences.tagOverviewSortMode),
+    ),
+    keyParked,
   );
   const pageSize =
     options.pageSize ??
@@ -331,19 +344,23 @@ export function createSearchPageSnapshot(
     .filter((word) => word.length >= 2);
   const markVia = <T extends object>(item: T, id: string): T =>
     viaHub.has(id) ? { ...item, via: 'hubLink' as const } : item;
+  const markParked = <T extends object>(item: T, parked: boolean): T =>
+    parked ? { ...item, parked: true } : item;
   const sections = takePage(ranked, notePaging).map((key) =>
     withPreview(
-      key.section
-        ? markVia(cardFor(key.section), key.section.id)
-        : markVia(createFileOverviewCard(key.file as ParsedFile), (key.file as ParsedFile).filePath),
+      markParked(
+        key.section
+          ? markVia(cardFor(key.section), key.section.id)
+          : markVia(createFileOverviewCard(key.file as ParsedFile), (key.file as ParsedFile).filePath),
+        keyParked(key),
+      ),
       preferences.searchPreview,
       snippetWords,
     ),
   );
-  const tasks = sortTasks(
-    [...results.tasks],
-    preferences.taskOrder,
-    preferences.taskSortMode,
+  const tasks = parkedLast(
+    sortTasks([...results.tasks], preferences.taskOrder, preferences.taskSortMode),
+    (task) => isParkedTask(index, task.id),
   );
   const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
   const related =
@@ -422,7 +439,10 @@ export function createSearchPageSnapshot(
     sections,
     notePaging,
     tasks: takePage(tasks, taskPaging).map((task) =>
-      markVia(createDashboardTask(task, index.sections), task.id),
+      markParked(
+        markVia(createDashboardTask(task, index.sections), task.id),
+        isParkedTask(index, task.id),
+      ),
     ),
     taskPaging,
     taskCounts: {

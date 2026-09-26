@@ -453,6 +453,8 @@ export interface DashboardTask {
   task: Task;
   /** Listed on a tag's page because it links to the tag's hub note. */
   via?: 'hubLink';
+  /** In a parked folder or under a parked tag: listed last, and said so. */
+  parked?: true;
   renderedTitle: string;
   titleTags: TagReference[];
   sectionHeading?: string;
@@ -742,6 +744,8 @@ export interface TagOverviewCard {
   heading: string;
   /** Listed on a tag's page because it links to the tag's hub note. */
   via?: 'hubLink';
+  /** In a parked folder or under a parked tag: listed last, and said so. */
+  parked?: true;
   /** Whether this entry is pinned to Home, so a menu says which it offers. */
   pinned?: boolean;
   titleTags: TagReference[];

@@ -23,6 +23,12 @@
   parked tasks out, unless the list's own search says `is:parked`. The
   board's Refine offers **Parked** with how many it left out.
 
+- **Searches keep parked notes, last.** Search pages, Home's saved-search
+  widget, Find, and `[[` completion still list a parked note or task, after
+  every other, marked **Parked**. Refine offers **Parked** and **Not
+  parked** when the results mix them, and its Tags leave out a tag only
+  parked notes carry.
+
 - **The Outline focuses and filters.** **Focus Section**, on a heading in
   the Outline, in the editor's Deckard submenu, or in Note Actions, folds
   the rest of the note away; **Unfold All Sections** brings it back.

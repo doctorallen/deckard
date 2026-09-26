@@ -1,3 +1,9 @@
+import {
+  isParkedFile,
+  isParkedOnlyTag,
+  isParkedSection,
+  isParkedTask,
+} from '../../core/workspace/parked';
 import { stripTags } from '../../core/markdown/parser';
 import { getPlainTextTerms } from '../../core/query/queryEdit';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
@@ -209,6 +215,13 @@ interface RankedEntry {
   score: number;
   updatedAt: number;
   item: QuickFindItem;
+  /** Parked entries rank after every unparked one, whatever their score. */
+  parked?: boolean;
+}
+
+/** An entry that is parked, said at the end of its description. */
+function parkedItem(item: QuickFindItem, parked: boolean): QuickFindItem {
+  return parked ? { ...item, description: `${item.description ?? ''} · Parked` } : item;
 }
 
 /**
@@ -296,7 +309,11 @@ function rankEntries(
           titleScore,
         ),
         updatedAt: section.updatedAt ?? 0,
-        item: createSectionItem(index, section, title, found?.excerpt),
+        parked: isParkedSection(index, section.id),
+        item: parkedItem(
+          createSectionItem(index, section, title, found?.excerpt),
+          isParkedSection(index, section.id),
+        ),
       };
     }),
     ...files.map((file) => {
@@ -310,14 +327,18 @@ function rankEntries(
           titleScore,
         ),
         updatedAt: file.updatedAt ?? 0,
-        item: {
-          kind: 'note' as const,
-          label: title,
-          description: file.filePath,
-          detail: cleanExcerpt(found?.excerpt) ?? firstLine(file.content),
-          filePath: file.filePath,
-          line: 1,
-        },
+        parked: isParkedFile(index, file.filePath),
+        item: parkedItem(
+          {
+            kind: 'note' as const,
+            label: title,
+            description: file.filePath,
+            detail: cleanExcerpt(found?.excerpt) ?? firstLine(file.content),
+            filePath: file.filePath,
+            line: 1,
+          },
+          isParkedFile(index, file.filePath),
+        ),
       };
     }),
   ].sort(compareRanked);
@@ -335,7 +356,8 @@ function rankEntries(
           titleScore,
         ),
         updatedAt: task.updatedAt ?? 0,
-        item: createTaskItem(index, task, title),
+        parked: isParkedTask(index, task.id),
+        item: parkedItem(createTaskItem(index, task, title), isParkedTask(index, task.id)),
       };
     })
     .sort(compareRanked);
@@ -491,6 +513,7 @@ function correctInput(input: string, searched: string, corrected: string): strin
 
 function compareRanked(left: RankedEntry, right: RankedEntry): number {
   return (
+    Number(left.parked === true) - Number(right.parked === true) ||
     right.score - left.score ||
     right.updatedAt - left.updatedAt ||
     left.item.label.localeCompare(right.item.label)
@@ -625,11 +648,13 @@ function matchTags(
         tagFrecency(preferences, tag.key, now) * 10 +
         Math.log2(1 + tag.count) +
         Math.min(150, 50 * (learned.get(`tag:${tag.key}`) ?? 0));
-      return [{ tag, score }];
+      return [{ tag, score, parked: isParkedOnlyTag(index, tag.key) }];
     })
     .sort(
       (left, right) =>
-        right.score - left.score || left.tag.label.localeCompare(right.tag.label),
+        Number(left.parked) - Number(right.parked) ||
+        right.score - left.score ||
+        left.tag.label.localeCompare(right.tag.label),
     )
     .slice(0, TAG_LIMIT)
     .map(({ tag }) => createTagItem(index, tag, `${prefix}${tag.key} `));

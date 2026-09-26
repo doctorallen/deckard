@@ -14,6 +14,13 @@ import {
   WorkspaceIndex,
 } from '../../core/types';
 import { noteTitle } from '../../core/workspace/backlinks';
+import {
+  isParkedFile,
+  isParkedOnlyTag,
+  isParkedSection,
+  isParkedTask,
+  mentionsParked,
+} from '../../core/workspace/parked';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 
 /**
@@ -188,7 +195,21 @@ export function buildSearchFacets(
 
   facets.push(facet('folder', 'Folder', countFolders(source), FOLDER_VALUE_LIMIT));
 
-  facets.push(...parkedFacet(options.parkedLeftOut));
+  if ((options.parkedLeftOut ?? 0) > 0) {
+    facets.push(...parkedFacet(options.parkedLeftOut));
+  } else if (index.parked && index.parked.files.size + index.parked.sections.size + index.parked.tasks.size > 0) {
+    // When the results mix parked and unparked, either can be kept.
+    const parked =
+      source.sections.filter((section) => isParkedSection(index, section.id)).length +
+      source.files.filter((file) => isParkedFile(index, file.filePath)).length +
+      tasks.filter((task) => isParkedTask(index, task.id)).length;
+    facets.push(
+      facet('parked', 'Parked', [
+        { label: 'Parked', clause: 'is:parked', count: parked },
+        { label: 'Not parked', clause: '-is:parked', count: total - parked },
+      ]),
+    );
+  }
 
   return facets.filter((candidate) => candidate.values.length > 0);
 }
@@ -271,9 +292,12 @@ export function countTags(
       .filter((tagKey): tagKey is string => tagKey !== undefined),
   );
   const counts = new Map<string, number>();
+  // A tag only parked notes carry is clutter here, unless the search is
+  // about parked notes.
+  const skipParked = !mentionsParked(parseQuery(queryText).node);
   const add = (tagKeys: Iterable<string>): void => {
     new Set(tagKeys).forEach((tagKey) => {
-      if (!named.has(tagKey)) {
+      if (!named.has(tagKey) && !(skipParked && isParkedOnlyTag(index, tagKey))) {
         counts.set(tagKey, (counts.get(tagKey) ?? 0) + 1);
       }
     });
