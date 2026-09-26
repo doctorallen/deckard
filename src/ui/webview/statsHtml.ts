@@ -157,7 +157,7 @@ ${getComponentScript()}
     const metrics = [
       metric('Files', state.fileCount),
       metric('Notes', state.sectionCount, '', ''),
-      metric('Tasks', state.taskCount, 'has:task', 'Open a search for every task'),
+      metric('Tasks', state.taskCount, 'is:task', 'Open a search for every task'),
       metric('Open tasks', state.activeTaskCount, 'is:open', 'Open a search for every open task'),
       metric('Tags', state.tagCount),
       metric('Namespaced tags', state.entityCount),

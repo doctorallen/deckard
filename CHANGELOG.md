@@ -93,6 +93,10 @@
   stopped being a block id, breaking links to it. The tag now goes before
   them.
 
+- **Stats' Tasks tile opens every task.** It opened a search for
+  `has:task`, which Deckard does not read, so the page opened on an error.
+  It now searches `is:task`.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

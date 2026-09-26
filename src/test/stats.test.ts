@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
+import { parseQuery } from '../core/query/queryParser';
 import { PreferencesStore } from '../core/storage/preferences';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
@@ -95,6 +96,20 @@ suite('Stats: notes that could not be read', () => {
     try {
       assert.match(page.text('.updated') ?? '', /^Index last refreshed: 5 minutes ago/);
       assert.ok(page.find('.updated span[title]').getAttribute('title')?.includes('2'), 'the exact time is on hover');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('every tile opens a search Deckard can read', () => {
+    const page = openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index(), preferences()));
+    try {
+      const queries = page.findAll('[data-query]').map((tile) => tile.getAttribute('data-query') ?? '');
+      assert.ok(queries.includes('is:task'), JSON.stringify(queries));
+      queries.forEach((query) => {
+        const errors = parseQuery(query).diagnostics.filter((d) => d.severity === 'error');
+        assert.deepStrictEqual(errors, [], query);
+      });
     } finally {
       page.dispose();
     }
