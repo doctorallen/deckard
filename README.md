@@ -698,6 +698,7 @@ Migration of billing onto the new ledger.
 - Hovering the tag in the editor names its hub note, and renaming the tag updates `describes:` too.
 - Filtered and query views leave the hub out, so they show only their results.
 - Select the hub's title row to collapse or expand it; the overview remembers your choice until it closes. `deckard.tagOverview.hubNoteExpanded` sets whether hubs start open, which they do by default.
+- A tag's page with a name of three letters or more also says how many entries write that name as a plain word without the tag: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, leaving out the hub, so **Bulk edit → Add a tag** can tag them all. `@dana` counts "dana" the same way.
 - The page also lists every entry and task that links to the hub note without carrying the tag, each marked *Links the hub note* beside its location, and says so under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* **Leave them out** turns `deckard.tagOverview.includeHubLinks` off. Counts, tabs, pages, Bulk edit, and Export include them while it is on.
 
 ### Merging tags

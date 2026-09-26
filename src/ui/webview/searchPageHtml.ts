@@ -297,6 +297,9 @@ ${getQueryEditorScript()}
     if (page.hubLinkCount > 0 && page.hubTitle) {
       notes.push('<p class="tag-note">Also listing ' + page.hubLinkCount + ' ' + (page.hubLinkCount === 1 ? 'entry that links' : 'entries that link') + ' to ' + escapeHtml(page.hubTitle) + ' without the tag. <button type="button" class="tag-note-action" data-action="exclude-hub-links" data-tip="List only the entries that carry the tag">Leave them out</button></p>');
     }
+    if (page.mention && page.mention.count > 0) {
+      notes.push('<p class="tag-note">' + page.mention.count + ' ' + (page.mention.count === 1 ? 'entry mentions' : 'entries mention') + ' "' + escapeHtml(page.mention.word) + '" without the tag. <button type="button" class="tag-note-action" data-action="show-mentions" data-tip="Search for them; Bulk edit → Add a tag tags them all">Show them</button></p>');
+    }
     return notes.length ? '<div class="tag-notes">' + notes.join('') + '</div>' : '';
   }
 
@@ -629,6 +632,7 @@ ${getQueryEditorScript()}
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
       if (action === 'exclude-hub-links') vscode.postMessage({ type: 'excludeHubLinks' });
+      if (action === 'show-mentions' && state.tagPage && state.tagPage.mention) vscode.postMessage({ type: 'setOverviewQuery', query: state.tagPage.mention.query });
       if (action === 'include-lookalike' && state.tag) vscode.postMessage({ type: 'setOverviewQuery', query: state.tag.key + ' OR ' + target.dataset.tagKey });
       if (action === 'merge-lookalike') vscode.postMessage({ type: 'mergeTags', sourceKey: target.dataset.sourceKey, targetKey: target.dataset.targetKey });
       if (action === 'open-source') vscode.postMessage(openSourceMessage(target, event));

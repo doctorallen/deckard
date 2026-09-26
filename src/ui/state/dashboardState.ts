@@ -387,6 +387,7 @@ export function createSearchPageSnapshot(
             lookalikes: findTagLookalikes(index, focusTag.key),
             hubLinkCount: viaHub.size,
             ...(page.hubTitle ? { hubTitle: page.hubTitle } : {}),
+            ...describeTagMentions(index, focusTag),
           },
         }
       : {}),
@@ -433,6 +434,42 @@ export function createSearchPageSnapshot(
     taskColumns: preferences.dashboardTaskColumns,
     tagTitleDisplayMode,
   };
+}
+
+/**
+ * The word a tag names, as it would be written in prose: the part after its
+ * namespace, with `-` and `_` read as spaces. `#project/atlas` is "atlas",
+ * `@dana` is "dana". Undefined for a name too short or only a number.
+ */
+export function tagMentionWord(tagKey: string): string | undefined {
+  const name = tagKey.replace(/^[#@]/, '');
+  const word = name
+    .slice(name.lastIndexOf('/') + 1)
+    .replace(/[-_]+/g, ' ')
+    .trim();
+  return word.length >= 3 && !/^[\d\s]+$/.test(word) ? word : undefined;
+}
+
+/**
+ * How many entries write a tag's name as a plain word without carrying the
+ * tag, leaving out its hub notes, and the search that lists them.
+ */
+function describeTagMentions(
+  index: WorkspaceIndex,
+  tag: TagInfo,
+): { mention?: { word: string; count: number; query: string } } {
+  const word = tagMentionWord(tag.key);
+  if (!word) {
+    return {};
+  }
+  const query = [
+    `text = ${quoteValue(word)}`,
+    `-${tag.key}`,
+    ...(tag.hubFilePaths ?? []).map((filePath) => `NOT path = ${quoteValue(filePath)}`),
+  ].join(' ');
+  const found = evaluateQuery(index, parseQuery(query).node);
+  const count = found.sections.length + found.tasks.length + found.files.length;
+  return count > 0 ? { mention: { word, count, query } } : {};
 }
 
 /** What one search page lists, before it is sorted, paged, and drawn. */

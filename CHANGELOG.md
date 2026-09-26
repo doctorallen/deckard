@@ -12,6 +12,11 @@
 
 ### Added
 
+- **A tag's page counts plain mentions.** A tag's page says *12 entries
+  mention "atlas" without the tag.* when its name, three letters or more,
+  is written as a plain word elsewhere; **Show them** searches for those
+  entries, ready for **Bulk edit → Add a tag**.
+
 - **A tag's page says how else it is written.** Under the hub, a tag's page
   names up to three spellings that look like it, from the same pass as
   Stats' Tags that look alike: *Also written as #proj/atlas (6 entries).*

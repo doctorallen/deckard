@@ -201,7 +201,7 @@ test('a tag\'s page lists what links its hub note, each saying so, and can leave
   const planning = view.findAll('.card').find((card) => card.textContent.includes('Atlas planning'));
   assert.ok(!planning.querySelector('.card-via'));
   assert.ok(view.find('.task-row .card-via'), 'and so does the linking task');
-  const line = view.find('.tag-note');
+  const line = view.findAll('.tag-note').find((note) => note.textContent.startsWith('Also listing'));
   assert.strictEqual(line.textContent, 'Also listing 2 entries that link to atlas without the tag. Leave them out');
 
   vscode._test.configurationUpdates.length = 0;
@@ -212,7 +212,7 @@ test('a tag\'s page lists what links its hub note, each saying so, and can leave
   ]);
   await settle();
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
-  assert.ok(!view.find('.tag-note'));
+  assert.ok(!view.findAll('.tag-note').some((note) => note.textContent.startsWith('Also listing')));
   vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
 });
 
@@ -243,6 +243,24 @@ test('a tag\'s page says how else the tag is written, with Include in search and
   view.click(view.find('[data-action="include-lookalike"]'));
   await settle();
   assert.strictEqual(box(view), '#project/atlas OR #proj/atlas');
+});
+
+test('a tag\'s page counts the entries that name it without the tag, and shows them', async () => {
+  const note = (filePath, content) => parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
+  const files = [
+    note('notes/a.md', '## One #project/atlas\nAtlas work.'),
+    note('notes/b.md', '## Two\nWe talked about Atlas today.\n- [ ] Ask about atlas'),
+    note('notes/c.md', '## Three\nNothing here.'),
+    note('notes/atlas.md', '---\ndescribes: project/atlas\n---\n# Atlas\nAtlas is the ledger.'),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view } = await openOverview('#project/atlas', { index });
+  const line = view.findAll('.tag-note').find((candidate) => candidate.textContent.includes('mention'));
+  assert.ok(line, 'the line is there');
+  assert.strictEqual(line.textContent, '2 entries mention "atlas" without the tag. Show them');
+  view.click(view.find('[data-action="show-mentions"]'));
+  await settle();
+  assert.strictEqual(box(view), 'text = atlas -#project/atlas NOT path = notes/atlas.md');
 });
 
 test('anything more than the one tag is a search, shown by its box alone', async () => {

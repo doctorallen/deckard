@@ -20,6 +20,7 @@ import { resolveIndexedTagKey } from '../core/workspace/tagNavigation';
 import {
   createQuerySuggestions,
   createSearchPageSnapshot,
+  tagMentionWord,
 } from '../ui/state/dashboardState';
 import { buildSearchFacets } from '../ui/state/searchFacets';
 
@@ -293,6 +294,14 @@ suite('Refining a search', () => {
       { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 2 notes' },
       { value: 'Budget', label: '[[Budget]]', detail: 'Linked from 1 note' },
     ]);
+  });
+
+  test('reads a tag\'s name as the word prose would write', () => {
+    assert.strictEqual(tagMentionWord('#project/atlas'), 'atlas');
+    assert.strictEqual(tagMentionWord('#risk/vendor-risk'), 'vendor risk');
+    assert.strictEqual(tagMentionWord('@dana'), 'dana');
+    assert.strictEqual(tagMentionWord('#project/q4'), undefined);
+    assert.strictEqual(tagMentionWord('#year/2026'), undefined);
   });
 
   test('does not offer a facet value the query already has', () => {

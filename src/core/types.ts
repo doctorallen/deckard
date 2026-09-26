@@ -687,6 +687,13 @@ export interface SearchPageTagNotes {
   hubLinkCount: number;
   /** The hub note they link to, by title. */
   hubTitle?: string;
+  /** Entries that write the tag's name as a plain word, without the tag. */
+  mention?: {
+    word: string;
+    count: number;
+    /** The search that lists them. */
+    query: string;
+  };
 }
 
 export interface TagOverviewHub {
