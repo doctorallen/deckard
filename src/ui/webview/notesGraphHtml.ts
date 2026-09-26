@@ -59,6 +59,8 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-row .slider-line { display: flex; align-items: center; gap: 8px; }
 .slider-end { flex: none; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .control-group.advanced { border: 0; background: transparent; }
+.control-row .control-label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.graph-segmented button { flex: 1; min-height: 24px; padding: 2px 6px; font: var(--text-xs) var(--font-mono); }
 .control-group.advanced > summary { padding: 4px 0; color: var(--muted); }
 input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
 input[type='checkbox'] { accent-color: var(--amber-bright); }
@@ -148,6 +150,7 @@ ${getPageTailCss()}
       <div class="control-row"><label for="link-thickness">Link thickness</label><div class="slider-line"><input type="range" id="link-thickness" data-tip="Scale the width of visible edges." min="0.5" max="3" step="0.1" value="1"><output id="link-thickness-out">1.0</output></div></div>
       <div class="control-row"><label for="link-density">Links per note</label><div class="slider-line"><span class="slider-end" aria-hidden="true">Fewer</span><input type="range" id="link-density" data-tip="How many of each note's strongest links are drawn. Fewer is easier to read. The sidebar's connections do not change." data-words="fewest,fewer,about half,more,most" min="0.15" max="1" step="0.05" value="0.3"><span class="slider-end" aria-hidden="true">More</span></div></div>
       <div class="control-row"><label for="label-threshold">Label fade zoom</label><div class="slider-line"><input type="range" id="label-threshold" data-tip="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer." min="0.5" max="4" step="0.1" value="1.4"><output id="label-threshold-out">1.4</output></div></div>
+      <div class="control-row"><span class="control-label" id="headings-label">Headings</span><div class="segmented graph-segmented" role="group" aria-labelledby="headings-label"><button type="button" data-headings="zoom" aria-pressed="true" data-tip="Zoomed out, draw each file as one node; zoomed in past Label fade zoom, draw its headings.">By zoom</button><button type="button" data-headings="always" aria-pressed="false" data-tip="Draw every heading as a node of its own, at every zoom.">Always</button><button type="button" data-headings="never" aria-pressed="false" data-tip="Draw each file as one node, at every zoom.">Never</button></div></div>
       <details class="control-group advanced">
         <summary>Advanced</summary>
         <div class="control-body">
@@ -280,6 +283,7 @@ ${getUndoScript()}
     tagSpecificity: 0.9,
     bridgeStrength: 0.15,
     showAllLinks: false,
+    headings: 'zoom',
     labelThreshold: 1.4,
     centerStrength: 0.4,
     clusterCohesion: 1.5,
@@ -323,6 +327,12 @@ ${getUndoScript()}
   var groupCenters = [];        // community index -> {x, y, r} from the last frame
   var labelRects = [];          // group labels drawn in the last frame, for clicks
   var tagLabelByKey = {};
+  /** Whether each file's headings are folded into one node now; null before the first draw. */
+  var headingsFolded = null;
+  var foldedInto = {};          // section node id -> the file node it is folded into
+  var foldMembers = {};         // file node id -> the section ids folded into it
+  /** Zoom past Label fade zoom by this much before headings fold or unfold. */
+  var FOLD_HYSTERESIS = 0.15;
   var primaryTag;               // note/task index -> strongest cluster anchor
   var primaryClusterSize;       // tag index -> assigned note/task count
   var communityId;              // node index -> visual community index
@@ -408,10 +418,28 @@ ${getUndoScript()}
       if (node.parked && !settings.showParked && !(focusPath && node.filePath === focusPath)) { return false; }
       return true;
     });
+    // Zoomed out, a file's headings are one node: the workspace draws as its
+    // files, and zooming in opens each into its headings.
+    var previousFoldMembers = foldMembers;
+    var previousFoldedInto = foldedInto;
+    headingsFolded = shouldFoldHeadings();
+    var graphEdges = snapshot.edges;
+    foldedInto = {};
+    foldMembers = {};
+    if (headingsFolded) {
+      var folded = foldHeadings(candidate, snapshot.edges);
+      candidate = folded.nodes;
+      graphEdges = folded.edges;
+    }
+    // Where a node was before a fold or an unfold: a file starts at the
+    // middle of its headings, and a heading around its file.
+    if (!repositionCommunities) {
+      carryFoldPositions(candidate, previous, previousFoldMembers, previousFoldedInto);
+    }
     var candidateIndex = {};
     candidate.forEach(function (node, index) { candidateIndex[node.id] = index; });
 
-    var allCandidateEdges = snapshot.edges.filter(function (edge) {
+    var allCandidateEdges = graphEdges.filter(function (edge) {
       return candidateIndex[edge.source] !== undefined &&
         candidateIndex[edge.target] !== undefined;
     });
@@ -683,10 +711,11 @@ ${getUndoScript()}
     renderGroupList();
     setHoverIndex(findNodeIndex(externalHoverNodeId));
     hideTooltip();
-    var restoredSelection = selectedId !== null &&
-      nodeIndexById[selectedId] !== undefined
-      ? nodeIndexById[selectedId]
-      : -1;
+    var restoredSelection = findNodeIndex(selectedId);
+    if (restoredSelection < 0 && selectedId && previousFoldMembers[selectedId]) {
+      // Unfolded: the file's selection moves to its first heading.
+      restoredSelection = findNodeIndex(previousFoldMembers[selectedId][0]);
+    }
     setSelectedIndex(restoredSelection);
     alpha = reusedAny && hasFramed ? 0.3 : 1;
     updateStatus();
@@ -697,6 +726,129 @@ ${getUndoScript()}
       hasFramed = true;
     }
     scheduleFrame();
+  }
+
+  /** Whether headings are folded into files, by the Headings choice and the zoom. */
+  function shouldFoldHeadings() {
+    if (settings.headings === 'always') { return false; }
+    if (settings.headings === 'never') { return true; }
+    var threshold = settings.labelThreshold;
+    if (headingsFolded === null) { return camera.k < threshold; }
+    return headingsFolded
+      ? camera.k <= threshold + FOLD_HYSTERESIS
+      : camera.k < threshold - FOLD_HYSTERESIS;
+  }
+
+  /**
+   * Folds each file drawn as two or more headings into one node: its id is
+   * the file's, its size the sum of its headings', its tags theirs. Edges
+   * inside a file go; edges out of it join, their kinds unioned. A file with
+   * one heading keeps it, so its node and a selection of it stay put.
+   */
+  function foldHeadings(candidateNodes, graphEdges) {
+    var byFile = {};
+    candidateNodes.forEach(function (node) {
+      if (node.kind !== 'note' || node.id.indexOf('section:') !== 0 || !node.filePath) { return; }
+      (byFile[node.filePath] || (byFile[node.filePath] = [])).push(node);
+    });
+    var fileNodes = {};
+    Object.keys(byFile).forEach(function (filePath) {
+      var members = byFile[filePath];
+      if (members.length < 2) { return; }
+      members.sort(function (left, right) { return (left.line || 0) - (right.line || 0); });
+      var id = 'file:' + filePath;
+      var tagKeys = {};
+      var links = {};
+      var degree = 0;
+      members.forEach(function (member) {
+        foldedInto[member.id] = id;
+        degree += member.degree || 0;
+        (member.tagKeys || []).forEach(function (key) { tagKeys[key] = true; });
+        Object.keys(member.links || {}).forEach(function (kind) {
+          links[kind] = (links[kind] || 0) + member.links[kind];
+        });
+      });
+      foldMembers[id] = members.map(function (member) { return member.id; });
+      fileNodes[id] = {
+        id: id,
+        kind: 'note',
+        title: filePath.split('/').pop().replace(/\.md$/i, ''),
+        filePath: filePath,
+        line: members[0].line,
+        tagKeys: Object.keys(tagKeys),
+        degree: degree,
+        links: links,
+        headingCount: members.length,
+        selectId: members[0].id
+      };
+    });
+    var nodesOut = [];
+    var emitted = {};
+    candidateNodes.forEach(function (node) {
+      var into = foldedInto[node.id];
+      if (!into) { nodesOut.push(node); return; }
+      if (!emitted[into]) {
+        emitted[into] = true;
+        nodesOut.push(fileNodes[into]);
+      }
+    });
+    // Edges keyed by their ends once folded. One that no fold touched is
+    // passed on as it is; one made of several, or re-ended, is a new object,
+    // so the snapshot's own edges are never changed.
+    var merged = {};
+    var order = [];
+    graphEdges.forEach(function (edge) {
+      var source = foldedInto[edge.source] || edge.source;
+      var target = foldedInto[edge.target] || edge.target;
+      if (source === target) { return; }
+      var ends = source < target ? [source, target] : [target, source];
+      var id = ends[0] + '::' + ends[1];
+      var entry = merged[id];
+      if (!entry) {
+        merged[id] = {
+          original: source === edge.source && target === edge.target ? edge : null,
+          edge: { id: id, source: ends[0], target: ends[1], weight: edge.weight, types: edge.types.slice() },
+          parts: 1
+        };
+        order.push(id);
+        return;
+      }
+      entry.parts += 1;
+      entry.edge.weight = Math.max(entry.edge.weight, edge.weight);
+      edge.types.forEach(function (type) {
+        if (entry.edge.types.indexOf(type) === -1) { entry.edge.types.push(type); }
+      });
+    });
+    var edgesOut = order.map(function (id) {
+      var entry = merged[id];
+      return entry.parts === 1 && entry.original ? entry.original : entry.edge;
+    });
+    return { nodes: nodesOut, edges: edgesOut };
+  }
+
+  /** Seeds the position of a node a fold or an unfold made from where its parts were. */
+  function carryFoldPositions(candidateNodes, previous, previousFoldMembers, previousFoldedInto) {
+    candidateNodes.forEach(function (node) {
+      if (previous[node.id]) { return; }
+      var members = foldMembers[node.id];
+      if (members) {
+        var x = 0, y = 0, found = 0;
+        members.forEach(function (memberId) {
+          var at = previous[memberId];
+          if (at) { x += at.x; y += at.y; found += 1; }
+        });
+        if (found) { previous[node.id] = { x: x / found, y: y / found, vx: 0, vy: 0 }; }
+        return;
+      }
+      var into = previousFoldedInto[node.id];
+      var file = into && previous[into];
+      if (file) {
+        var ordinal = previousFoldMembers[into].indexOf(node.id);
+        var angle = ordinal * 2.39996322972865332;
+        var radius = 6 + 4 * Math.sqrt(ordinal + 1);
+        previous[node.id] = { x: file.x + radius * Math.cos(angle), y: file.y + radius * Math.sin(angle), vx: 0, vy: 0 };
+      }
+    });
   }
 
   function recomputeSearchMatches() {
@@ -1265,10 +1417,12 @@ ${getUndoScript()}
     }
   }
 
+  /** A node by id; a heading folded into its file is found as the file. */
   function findNodeIndex(nodeId) {
-    return nodeId && nodeIndexById[nodeId] !== undefined
-      ? nodeIndexById[nodeId]
-      : -1;
+    if (!nodeId) { return -1; }
+    if (nodeIndexById[nodeId] !== undefined) { return nodeIndexById[nodeId]; }
+    var into = foldedInto[nodeId];
+    return into && nodeIndexById[into] !== undefined ? nodeIndexById[into] : -1;
   }
 
   function isRendered(index) {
@@ -1902,6 +2056,12 @@ ${getUndoScript()}
 
   function frame() {
     frameQueued = false;
+    // Crossing Label fade zoom, past a little give either way, folds the
+    // headings into their files or opens them again.
+    if (snapshot && settings.headings === 'zoom' && headingsFolded !== null &&
+        shouldFoldHeadings() !== headingsFolded) {
+      rebuildView();
+    }
     var start = performance.now();
     var ticked = false;
     while (alpha > 0 && performance.now() - start < 8) {
@@ -2184,7 +2344,8 @@ ${getUndoScript()}
     scheduleFrame();
     var node = nodes[index];
     if (node) {
-      vscode.postMessage({ type: 'selectNode', nodeId: node.id });
+      // A folded file is known to the host by its first heading.
+      vscode.postMessage({ type: 'selectNode', nodeId: node.selectId || node.id });
     }
   }
 
@@ -2359,6 +2520,7 @@ ${getUndoScript()}
     });
     searchInput.value = settings.search;
     groupSelect.value = settings.group || '';
+    showHeadingsChoice();
   }
 
   function resetGraphSettings() {
@@ -2481,6 +2643,23 @@ ${getUndoScript()}
   bindSlider('tag-specificity', 'tagSpecificity', null, rebuildView);
   bindSlider('bridge-strength', 'bridgeStrength', null, rebuildView);
   bindSlider('label-threshold', 'labelThreshold', 1, scheduleFrame);
+
+  var headingButtons = document.querySelectorAll('[data-headings]');
+  function showHeadingsChoice() {
+    headingButtons.forEach(function (button) {
+      button.setAttribute('aria-pressed', String(button.getAttribute('data-headings') === settings.headings));
+    });
+  }
+  showHeadingsChoice();
+  headingButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (resetSnapshot) { clearResetUndo(); }
+      settings.headings = button.getAttribute('data-headings');
+      showHeadingsChoice();
+      persist();
+      rebuildView();
+    });
+  });
   bindSlider('center-strength', 'centerStrength', 2, function () { reheat(0.5); });
   bindSlider('cluster-cohesion', 'clusterCohesion', 1, function () { reheat(0.5); });
   bindSlider('community-spacing', 'communitySpacing', 1, function () {

@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Zoomed out, the Notes Graph draws each file as one node, and opens it
+  into its headings as you zoom in.** A workspace of fifty files draws as
+  fifty dots at rest rather than hundreds, each sized by its headings
+  together; **Headings** under Display chooses **By zoom**, **Always**, or
+  **Never**.
+
 - **Stats shows which tags are written together.** Your twelve most-used
   tags form a triangle whose cells count the notes and tasks carrying both,
   each opening the search for the pair; **Show as a table** lists the pairs

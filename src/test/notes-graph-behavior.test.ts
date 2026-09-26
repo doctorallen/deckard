@@ -492,4 +492,85 @@ suite('Notes Graph behavior', () => {
       assert.strictEqual((page.find('#group-row') as HTMLElement).hidden, true, 'one group is no choice');
     });
   });
+
+  suite('files as nodes', () => {
+    const openCanvas = (): WebviewPage => {
+      page = openWebviewPage(getNotesGraphHtml({ cspSource: 'vscode-webview://deckard' }), undefined, { canvas: true });
+      return page;
+    };
+    /** A note with two headings, joined, and another note the second links to. */
+    const twoHeadings = () => graphState(
+      [
+        note('a1', { filePath: 'notes/atlas.md', line: 1, degree: 1, links: { heading: 1 } }),
+        note('a2', { filePath: 'notes/atlas.md', line: 5, degree: 2, links: { heading: 1, wiki: 1 } }),
+        note('relay', { degree: 1, links: { wiki: 1 } }),
+      ],
+      [
+        { source: 'section:a1', target: 'section:a2', weight: 1, types: ['heading'] },
+        { source: 'section:a2', target: 'section:relay', weight: 2, types: ['wiki-link'] },
+      ],
+    );
+    const zoom = (page: WebviewPage) => (page.savedState() as { camera: { k: number } }).camera.k;
+    const drawn = (page: WebviewPage) => {
+      page.flushFrames(1);
+      return lastFrame(page).filter((call) => call.op === 'arc').length;
+    };
+    const setThreshold = (page: WebviewPage, value: number) => {
+      const slider = page.find('#label-threshold') as HTMLInputElement;
+      slider.value = String(value);
+      slider.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+    };
+
+    test('zoomed out, a file of two headings is one node; zoomed in, two', () => {
+      const page = openCanvas();
+      page.send(twoHeadings());
+      settle(page);
+      assert.ok(zoom(page) > 1.55, 'framed close in');
+      assert.strictEqual(drawn(page), 3, 'zoomed in, each heading');
+
+      for (let step = 0; step < 20 && zoom(page) >= 1.25; step += 1) {
+        page.click('#zoom-out');
+        page.flushFrames(1);
+      }
+      assert.strictEqual(drawn(page), 2, 'zoomed out, the file and the note it links to');
+
+      // Within the give around the threshold, nothing is rebuilt.
+      const k = zoom(page);
+      setThreshold(page, Math.floor((k - 0.05) * 10) / 10);
+      assert.strictEqual(drawn(page), 2, 'just past the threshold, still one node');
+
+      setThreshold(page, 0.5);
+      assert.ok(k > 0.65);
+      assert.strictEqual(drawn(page), 3, 'well past it, the headings');
+    });
+
+    test('Headings: Always draws every heading, Never every file, and Reset goes back to By zoom', () => {
+      const page = openCanvas();
+      page.send(twoHeadings());
+      settle(page);
+      page.click('[data-headings="always"]');
+      assert.strictEqual(page.find('[data-headings="always"]').getAttribute('aria-pressed'), 'true');
+      assert.strictEqual(drawn(page), 3);
+      page.click('[data-headings="never"]');
+      assert.strictEqual(drawn(page), 2);
+      assert.strictEqual((page.savedState() as { headings: string }).headings, 'never');
+      page.click('#reset-graph-settings');
+      assert.strictEqual(page.find('[data-headings="zoom"]').getAttribute('aria-pressed'), 'true');
+    });
+
+    test('a folded file is selected as its first heading, and a selection of a heading finds its file', () => {
+      const page = openCanvas();
+      page.click('[data-headings="never"]');
+      page.send(twoHeadings());
+      settle(page);
+      post(page, { type: 'selectNode', nodeId: 'section:a2' });
+      const canvas = page.find('#graph');
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/atlas.md', line: 1 }, 'the heading selected its file');
+
+      post(page, { type: 'selectNode', nodeId: 'section:relay' });
+      canvas.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      assert.deepStrictEqual(page.lastPosted('selectNode'), { type: 'selectNode', nodeId: 'section:a1' }, 'the host is told its first heading');
+    });
+  });
 });
