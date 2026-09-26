@@ -1,3 +1,4 @@
+import { formatMonthName } from '../../core/markdown/dates';
 import { collectQueryTagKeys, quoteValue } from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { QueryFacet, QueryFacetValue } from '../../core/query/queryTypes';
@@ -167,9 +168,48 @@ export function buildSearchFacets(
     ]),
   );
 
+  facets.push(facet('created', 'Created', countCreated(source, now)));
+
   facets.push(facet('folder', 'Folder', countFolders(source), FOLDER_VALUE_LIMIT));
 
   return facets.filter((candidate) => candidate.values.length > 0);
+}
+
+/**
+ * Notes by the month they were written: this month, last month, the two
+ * before by name, and everything earlier.
+ */
+function countCreated(source: FacetSource, now: number): SearchFacetValue[] {
+  const times = [
+    ...source.sections.map((section) => section.createdAt),
+    ...source.files.map((file) => file.createdAt),
+  ].filter((time): time is number => time !== undefined);
+  const today = new Date(startOfDay(now));
+  const monthStart = (back: number): number =>
+    new Date(today.getFullYear(), today.getMonth() - back, 1).getTime();
+  const within = (from: number, to: number): number =>
+    times.filter((time) => time >= from && time < to).length;
+  const monthValue = (back: number): string => {
+    const at = new Date(monthStart(back));
+    return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const values: SearchFacetValue[] = [
+    { label: 'This month', clause: 'created = this-month', count: within(monthStart(0), monthStart(-1)) },
+    { label: 'Last month', clause: 'created = last-month', count: within(monthStart(1), monthStart(0)) },
+  ];
+  for (const back of [2, 3]) {
+    values.push({
+      label: formatMonthName(monthStart(back), now),
+      clause: `created = ${monthValue(back)}`,
+      count: within(monthStart(back), monthStart(back - 1)),
+    });
+  }
+  values.push({
+    label: 'Earlier',
+    clause: `created < ${monthValue(3)}`,
+    count: times.filter((time) => time < monthStart(3)).length,
+  });
+  return values;
 }
 
 /**

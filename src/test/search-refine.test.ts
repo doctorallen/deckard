@@ -215,6 +215,41 @@ suite('Refining a search', () => {
     ]);
   });
 
+  test('counts notes by the month they were written', () => {
+    // Friday 2026-09-25, noon.
+    const now = new Date(2026, 8, 25, 12).getTime();
+    const at = (year: number, month: number, day: number) => new Date(year, month - 1, day, 9).getTime();
+    const note = (name: string, createdAt: number) =>
+      parseMarkdown(`notes/${name}.md`, `# ${name} #project/atlas`, { createdAt, updatedAt: now });
+    const files = [
+      note('this-month', at(2026, 9, 2)),
+      note('last-month', at(2026, 8, 30)),
+      note('july', at(2026, 7, 1)),
+      note('earlier', at(2025, 12, 1)),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const query = '#project/atlas';
+    const results = evaluateQuery(index, parseQuery(query).node);
+    const created = buildSearchFacets(index, results, query, { now })
+      .find((facet) => facet.id === 'created')
+      ?.values.map((value) => [value.label, value.clause, value.count]);
+    // June has no notes, so it is left out.
+    assert.deepStrictEqual(created, [
+      ['This month', 'created = this-month', 1],
+      ['Last month', 'created = last-month', 1],
+      ['July', 'created = 2026-07', 1],
+      ['Earlier', 'created < 2026-06', 1],
+    ]);
+    const january = buildSearchFacets(index, results, query, { now: new Date(2026, 0, 20, 12).getTime() })
+      .find((facet) => facet.id === 'created')
+      ?.values.map((value) => value.label);
+    assert.ok(january?.includes('Last month'), String(january));
+    const inDecember = buildSearchFacets(index, results, query, { now: new Date(2026, 1, 20, 12).getTime() })
+      .find((facet) => facet.id === 'created')
+      ?.values.map((value) => value.label);
+    assert.ok(inDecember?.includes('December 2025'), String(inDecember));
+  });
+
   test('does not offer a facet value the query already has', () => {
     const files = [
       parseMarkdown('a.md', '# A\n- [ ] One\n- [x] Two'),
@@ -540,5 +575,18 @@ suite('Refining a search', () => {
     assert.strictEqual(results.sections.length + results.files.length, 2);
     assert.strictEqual(results.tasks.length, 3);
     assert.strictEqual(atlas?.detail, '2 notes · 3 tasks');
+  });
+
+  test('a week, a month, or a weekday completes with the days it means', () => {
+    const index = buildWorkspaceIndex(new Map());
+    // Friday 2026-09-25, noon.
+    const values = createQuerySuggestions(index, [], new Date(2026, 8, 25, 12).getTime()).values;
+    const detail = (field: 'due' | 'created', value: string) =>
+      values[field]?.find((suggestion) => suggestion.value === value)?.detail;
+    assert.strictEqual(detail('due', 'next-week'), 'Sep 27 to Oct 3');
+    assert.strictEqual(detail('due', 'this-week'), 'Sep 20 to Sep 26');
+    assert.strictEqual(detail('created', 'last-month'), 'August');
+    assert.strictEqual(detail('due', 'friday'), 'Fri, Oct 2');
+    assert.strictEqual(detail('created', 'friday'), 'Fri, Sep 18');
   });
 });

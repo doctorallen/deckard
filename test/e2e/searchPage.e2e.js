@@ -59,10 +59,9 @@ function createGlobalState() {
  * Opens a page through the real registry and mounts its webview, with the
  * real Related Notes view listening to the same active search.
  */
-async function openPanel(open, { sidebarVisible = false } = {}) {
+async function openPanel(open, { sidebarVisible = false, index = createIndex() } = {}) {
   vscode._test.createdPanels.length = 0;
   vscode.window.activeTextEditor = undefined;
-  const index = createIndex();
   const indexer = createIndexer(index);
   const preferences = new PreferencesStore(createGlobalState());
   const activeSearch = new ActiveSearch();
@@ -322,6 +321,27 @@ test('Refine offers the tag\'s related tags, and a value narrows the page', asyn
 
   assert.strictEqual(box(view), '#project/atlas AND is:open');
   assert.deepStrictEqual(visibleTitles(view), [], 'is:open keeps only tasks');
+});
+
+test('Refine counts notes by the month they were written, and a month narrows the page', async () => {
+  const now = new Date();
+  const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, 15, 9).getTime();
+  const note = (filePath, content, createdAt) =>
+    parseMarkdown(filePath, content, { createdAt, updatedAt: createdAt }, {});
+  const files = [
+    note('notes/new.md', '# New plan #project/atlas', now.getTime()),
+    note('notes/last.md', '# Last month #project/atlas', monthAgo),
+  ];
+  const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+  const { view } = await openSearch('#project/atlas', { index });
+  const lastMonth = view
+    .findAll('[data-action="facet"][data-facet-id="created"]')
+    .find((button) => button.getAttribute('data-clause') === 'created = last-month');
+  assert.ok(lastMonth, 'the month before this one is offered');
+  view.click(lastMonth);
+  await settle();
+  assert.strictEqual(box(view), '#project/atlas AND created = last-month');
+  assert.deepStrictEqual(visibleTitles(view), ['Last month']);
 });
 
 test('a new builder row starts from its value', async () => {

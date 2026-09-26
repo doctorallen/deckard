@@ -52,6 +52,12 @@
   **Due Next Monday**, which is what it did; `+1m` from January 31st is
   February 28th, not March 3rd.
 
+- **Searches name weeks and months.** `created = last-month`,
+  `due <= friday`, `due = this-week`, `created = 2026-08`, and any day in
+  plain words, such as `due <= "oct 3"` or `due <= end-of-month`. Their
+  completions say the days each covers, and Refine gains a **Created**
+  facet by month.
+
 - **The release notes come from this changelog.** Each release now cuts
   `## Unreleased` into its own dated section, which the GitHub release and
   the Extensions view's Changelog tab both show. A feature release is not

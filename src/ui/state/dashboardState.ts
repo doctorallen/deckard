@@ -41,6 +41,7 @@ import {
 import {
   countTagMatches,
   evaluateQuery,
+  getQueryWeekStart,
 } from '../../core/query/queryEvaluator';
 import {
   collectQueryTagKeys,
@@ -59,7 +60,14 @@ import {
   QUERY_FIELDS,
   QUERY_PRIORITY_VALUES,
 } from '../../core/query/queryTypes';
-import { describeDueDate } from '../../core/markdown/taskMetadata';
+import { addDays, describeDueDate } from '../../core/markdown/taskMetadata';
+import {
+  formatMonthDay,
+  formatMonthName,
+  formatShortDay,
+  parseDatePhrase,
+  resolveDatePeriod,
+} from '../../core/markdown/dates';
 import { buildBacklinkIndex, noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { renderMarkdown, renderMarkdownInline } from '../webview/rendering';
@@ -1416,6 +1424,7 @@ export function describeTagMatches(
 export function createQuerySuggestions(
   index: WorkspaceIndex,
   recentQueries: readonly string[] = [],
+  now: number = Date.now(),
 ): QuerySuggestions {
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
@@ -1450,12 +1459,35 @@ export function createQuerySuggestions(
     .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
     .map((fileName) => ({ value: fileName, label: fileName }));
 
+  // A week or a month says the days it covers, and a weekday the day it
+  // is, so a value is chosen by what it means today.
+  const weekStart = getQueryWeekStart();
+  const span = (value: string): string => {
+    const range = resolveDatePeriod(value, now, weekStart);
+    if (!range) {
+      return '';
+    }
+    return value.endsWith('-month')
+      ? formatMonthName(range.start, now)
+      : `${formatMonthDay(range.start)} to ${formatMonthDay(addDays(range.end, -1))}`;
+  };
+  const period = (value: string): QuerySuggestion => ({ value, label: value, detail: span(value) });
+  const weekday = (value: string, direction: 'past' | 'future'): QuerySuggestion => {
+    const date = parseDatePhrase(value, now, { direction })?.date;
+    return { value, label: value, detail: date ? formatShortDay(date, now) : undefined };
+  };
+  const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dates: QuerySuggestion[] = [
     { value: 'today', label: 'today' },
     { value: 'yesterday', label: 'yesterday' },
     { value: '7d', label: '7d', detail: 'the last seven days' },
     { value: '30d', label: '30d', detail: 'the last thirty days' },
     { value: '90d', label: '90d', detail: 'the last ninety days' },
+    period('this-week'),
+    period('last-week'),
+    period('this-month'),
+    period('last-month'),
+    ...WEEKDAYS.map((day) => weekday(day, 'past')),
   ];
   const noDate: QuerySuggestion = {
     value: 'none',
@@ -1467,6 +1499,11 @@ export function createQuerySuggestions(
     { value: 'tomorrow', label: 'tomorrow' },
     { value: '7d', label: '7d', detail: 'today and the next six days' },
     { value: '30d', label: '30d', detail: 'the next thirty days' },
+    period('this-week'),
+    period('next-week'),
+    period('this-month'),
+    period('next-month'),
+    ...WEEKDAYS.map((day) => weekday(day, 'future')),
     noDate,
   ];
   const priorities: QuerySuggestion[] = QUERY_PRIORITY_VALUES.map((value) => ({

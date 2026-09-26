@@ -735,7 +735,7 @@ Search pages, Home's search widget, and the Task board have the same search box.
 
 ### Refine
 
-Under the search box, **Refine** counts what the results could still be narrowed by: open and done tasks, due dates (overdue, the next seven days, later, or none), the tags the results carry, when notes were last updated, and the folders they are in. Each value shows how many of the current results it keeps, and a value that would keep all of them, or none, is not offered.
+Under the search box, **Refine** counts what the results could still be narrowed by: open and done tasks, due dates (overdue, the next seven days, later, or none), the tags the results carry, when notes were last updated, the month they were created (this month, last month, the two before by name, and earlier), and the folders they are in. Each value shows how many of the current results it keeps, and a value that would keep all of them, or none, is not offered.
 
 - Select a value to add it to the search with **AND**, keeping only the results that match it.
 - <kbd>Alt</kbd>-select it to add it with **AND NOT**, leaving those results out.
@@ -779,14 +779,16 @@ The fields:
 | `tag` | A tag, including tags a section inherits from a parent heading and tags a note carries in its front matter. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
 | `text` | Words in a note body, a task line, or a front-matter-only file. `:` and `~` match a substring; `=` and `!=` match a whole word. | `text ~ elevator`, `text = plan` |
 | `task` | `open`, `done`, or `any`. Only tasks can satisfy it, so a query using it returns no notes. | `task = open` |
-| `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `scheduled <= today`, `due = none` |
-| `done` | A task's ✅ date, with windows counted back from today. | `done = 7d` |
+| `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a weekday such as `friday` (the next one), any other [day in plain words](#dates-in-plain-words) quoted or with `-` for its spaces, a whole week or month (`this-week`, `next-week`, `this-month`, `next-month`, `2026-10`), a window such as `7d` counted forward from today, or `none` for a task without that date. Only tasks can satisfy them. | `due < today`, `due <= friday`, `due <= "oct 3"`, `due = this-week`, `due = none` |
+| `done` | A task's ✅ date, with windows counted back from today and a weekday meaning the last one. | `done = 7d`, `done >= "last friday"` |
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. A task without a priority counts as `none`, which ranks between `medium` and `low`. | `priority >= high` |
 | `assignee` | The person a task is for: whoever its `👤` field names, or `none` for a task that carries none. `@ren-kade`, `#person/ren-kade`, and `ren-kade` all name the same person. Only tasks can satisfy it. | `assignee = @ren-kade` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
-| `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, or `today`. A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13` |
+| `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, `today`, a weekday such as `friday` (the last one), a whole week or month (`this-week`, `last-week`, `this-month`, `last-month`, or `2026-08`). A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13`, `created = last-month` |
+
+A week or a month is the whole span: `due = this-week` is any day of this week, `due < next-week` is before next week starts, and `created >= last-month` is from the 1st of last month on. A week starts on Sunday. `friday` is one day, the next one for `due`, `scheduled`, and `start`, and the last one for `created`, `updated`, and `done`. Values are read when the search runs, so a saved search or query block of `this-week` moves on with the week. A numeric date such as `10/3` is not read in a search, since it would mean a different day on another machine.
 
 A note's created date is its `created:` or `date:` front matter. Without either, a daily note counts as created on its day, or earlier if its file is older, and any other note on its file's creation time. Its updated date is its `updated:` front matter, or its file's modified time. A git clone resets every file's times, so the dates a note states come first.
 

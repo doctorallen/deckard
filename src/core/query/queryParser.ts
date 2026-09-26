@@ -1,3 +1,4 @@
+import { resolveDateRange } from './queryEvaluator';
 import {
   ParsedQuery,
   QueryConditionNode,
@@ -716,7 +717,7 @@ class Parser {
       }
       if (normalized !== 'none' && !isDateValue(normalized)) {
         this.diagnostics.push({
-          message: `${field} accepts a date such as 2026-09-13, today, tomorrow, a window such as 7d, or none.`,
+          message: `${field} accepts a date such as 2026-09-13, friday, "oct 3", this-week, next-month, a window such as 7d, or none.`,
           severity: 'error',
           start,
           end,
@@ -743,7 +744,7 @@ class Parser {
     if (field === 'created' || field === 'updated') {
       if (!isDateValue(value)) {
         this.diagnostics.push({
-          message: `${field} accepts a date such as 2026-09-13, a range such as 7d, or today.`,
+          message: `${field} accepts a date such as 2026-09-13, friday, this-week, last-month, 2026-08, or a window such as 30d.`,
           severity: 'error',
           start,
           end,
@@ -836,12 +837,11 @@ export function describeOperator(operator: QueryOperator): string {
  * Accepts absolute dates, relative windows such as `30d`, and named days.
  */
 export function isDateValue(value: string): boolean {
-  const normalized = value.trim().toLowerCase();
+  // Whether a value reads does not depend on the day, so any fixed day will do.
   return (
-    /^\d{4}-\d{2}-\d{2}$/.test(normalized) ||
-    /^\d+[dwmy]$/.test(normalized) ||
-    normalized === 'today' ||
-    normalized === 'yesterday' ||
-    normalized === 'tomorrow'
+    resolveDateRange(value, DATE_CHECK_DAY, 'past') !== undefined &&
+    resolveDateRange(value, DATE_CHECK_DAY, 'future') !== undefined
   );
 }
+
+const DATE_CHECK_DAY = new Date(2026, 0, 15, 12).getTime();

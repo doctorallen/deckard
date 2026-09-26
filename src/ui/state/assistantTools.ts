@@ -29,10 +29,10 @@ export const QUERY_SYNTAX_GUIDE = [
   'tag = #project/atlas matches a tag, and tag = #risk/* a whole namespace; a bare #tag or @person also works.',
   'text ~ "vendor" matches words in note and task text.',
   'task = open, done, or any matches tasks only.',
-  'due, scheduled, and start take a date such as 2026-09-20, today, tomorrow, a window such as 7d counted forward, or none.',
+  'due, scheduled, and start take a date such as 2026-09-20, today, tomorrow, a weekday such as friday (the next one), a phrase such as "oct 3" or end-of-month, a whole week or month such as this-week or next-month, a window such as 7d counted forward, or none.',
   'done = 7d matches tasks completed in the last seven days.',
   'priority takes highest, high, medium, none, low, or lowest, as in priority >= high.',
-  'kind = project matches an entity namespace; file and path accept * and ? wildcards; created and updated take dates or windows such as 30d.',
+  'kind = project matches an entity namespace; file and path accept * and ? wildcards; created and updated take dates, a weekday such as friday (the last one), this-week, last-month, a month such as 2026-08, or windows such as 30d.',
   'Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:task, is:note, is:blocked (open and waiting for an open task), is:blocking (open and an open task waits for it); has:due and no:due (also scheduled, start, done, priority, id, dependsOn); in:folder matches a folder and everything in it. Put - before one to negate it.',
   'Operators are = != ~ !~ > >= < <=.',
 ].join(' ');

@@ -425,15 +425,16 @@ updated: 2026-09-20
         <tr><td><code>tag</code></td><td>A tag, including inherited and front-matter tags. <code>*</code> and <code>?</code> are wildcards.</td><td><code>tag = #risk/*</code></td></tr>
         <tr><td><code>text</code></td><td>Words in a body or a task line. <code>:</code> and <code>~</code> match a substring; <code>=</code> a whole word.</td><td><code>text ~ elevator</code></td></tr>
         <tr><td><code>task</code></td><td><code>open</code>, <code>done</code>, or <code>any</code>. Only tasks satisfy it.</td><td><code>task = open</code></td></tr>
-        <tr><td><code>due</code>, <code>scheduled</code>, <code>start</code></td><td>A task date: a day, <code>today</code>, <code>tomorrow</code>, a window such as <code>7d</code>, or <code>none</code>.</td><td><code>due &lt; today</code></td></tr>
+        <tr><td><code>due</code>, <code>scheduled</code>, <code>start</code></td><td>A task date: a day, <code>today</code>, <code>tomorrow</code>, <code>friday</code>, <code>"oct 3"</code> or <code>end-of-month</code>, <code>this-week</code>, <code>next-month</code>, a window such as <code>7d</code>, or <code>none</code>.</td><td><code>due &lt;= friday</code></td></tr>
         <tr><td><code>done</code></td><td>A task’s ✅ date, with windows counted back from today.</td><td><code>done = 7d</code></td></tr>
         <tr><td><code>priority</code></td><td><code>highest</code> to <code>lowest</code>, and <code>none</code>.</td><td><code>priority &gt;= high</code></td></tr>
         <tr><td><code>assignee</code></td><td>Who a task is for, or <code>none</code>. <code>@dana</code> and <code>#person/dana</code> name the same person.</td><td><code>assignee = @dana</code></td></tr>
         <tr><td><code>kind</code></td><td>An entity namespace, <code>person</code> included.</td><td><code>kind = project</code></td></tr>
         <tr><td><code>file</code>, <code>path</code></td><td>A file name or a workspace-relative path, with wildcards.</td><td><code>file = 2026-09-*.md</code></td></tr>
-        <tr><td><code>created</code>, <code>updated</code></td><td>A date, a window such as <code>30d</code>, or <code>today</code>.</td><td><code>updated &gt; 7d</code></td></tr>
+        <tr><td><code>created</code>, <code>updated</code></td><td>A date, a window such as <code>30d</code>, <code>today</code>, <code>friday</code>, <code>this-week</code>, <code>last-month</code>, or a month such as <code>2026-08</code>.</td><td><code>created = last-month</code></td></tr>
       </tbody></table></div>
       <p>Operators are <code>=</code>, <code>!=</code>, <code>~</code> (contains), <code>!~</code>, and <code>&gt;</code> <code>&gt;=</code> <code>&lt;</code> <code>&lt;=</code> for dates and priorities. A window such as <code>7d</code> is compared by its far end, so <code>updated &gt; 7d</code> means within the last seven days and <code>due &lt; 7d</code> means due within the next seven, overdue included. Every operator has an opposite, so any one condition can be negated without <code>NOT</code>.</p>
+      <p><code>this-week</code>, <code>last-month</code>, and <code>2026-08</code> name a whole week or month; <code>friday</code> names one day, the next one for task dates and the last one for <code>created</code> and <code>updated</code>.</p>
     </section>
 
     <section id="query-blocks">

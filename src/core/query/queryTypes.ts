@@ -285,7 +285,7 @@ export interface QueryFacetValue {
 
 /** One way the current results could be narrowed, with its counts. */
 export interface QueryFacet {
-  id: 'related' | 'status' | 'due' | 'tags' | 'updated' | 'folder';
+  id: 'related' | 'status' | 'due' | 'tags' | 'updated' | 'created' | 'folder';
   label: string;
   values: QueryFacetValue[];
   /** This facet's clauses the query already has, as written. */

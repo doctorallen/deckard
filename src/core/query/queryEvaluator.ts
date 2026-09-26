@@ -1,4 +1,5 @@
-import { TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
+import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
+import { addDays, startOfDay, TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import {
   ParsedFile,
   Section,
@@ -221,6 +222,21 @@ interface QueryUnit {
  * default, with nothing yet mine by name.
  */
 let queryIdentity: string | undefined;
+/** The day a week starts on for `this-week` and its like; Sunday until set. */
+let queryWeekStart: Weekday = 0;
+
+/**
+ * Sets the day a search's weeks start on, from `deckard.calendar.weekStart`,
+ * as `setQueryIdentity` sets who "me" is: the evaluator runs in many places
+ * and none of them reads settings.
+ */
+export function setQueryWeekStart(day: Weekday): void {
+  queryWeekStart = day;
+}
+
+export function getQueryWeekStart(): Weekday {
+  return queryWeekStart;
+}
 
 export function setQueryIdentity(person: string | undefined): void {
   queryIdentity = person?.trim() ? person.trim() : undefined;
@@ -875,16 +891,30 @@ export function resolveDateRange(
     return { start, end: start + DAY, isWindow: false };
   }
 
+  // A whole week or month: `this-week`, `last-month`, `2026-08`.
+  const period = resolveDatePeriod(normalized, now, queryWeekStart);
+  if (period) {
+    return { ...period, isWindow: false };
+  }
+
+  // Any other day in plain words, with `-` for a space: `friday`,
+  // `end-of-month`, `"oct 3"`. A bare weekday points back for the dates a
+  // note or task already has, and ahead for the ones a task is due.
+  const phrase = parseDatePhrase(normalized.replace(/-/g, ' '), now, {
+    direction,
+    weekStart: queryWeekStart,
+  });
+  if (phrase?.date) {
+    const [year, month, day] = phrase.date.split('-').map(Number);
+    const start = new Date(year, month - 1, day).getTime();
+    return { start, end: addDays(start, 1), isWindow: false };
+  }
+
   return undefined;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
 
-function startOfDay(timestamp: number): number {
-  const date = new Date(timestamp);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
 
 /**
  * Compiles a `*`/`?` glob into an anchored, case-insensitive pattern.
