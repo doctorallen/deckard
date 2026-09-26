@@ -510,7 +510,7 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 
 ![Deckard's Tasks view grouping open tasks into Overdue, Today, and Upcoming beside a note with dated tasks.](docs/images/agenda.png)
 
-- **Overdue** lists tasks whose due date has passed, oldest first.
+- **Overdue** lists tasks whose due date has passed, the most recently slipped first, five at a time: **Show 12 more** under them lists the rest until the window closes. Its count, Reschedule All, and the badge still cover all of them.
 - **Today** lists tasks due today, and tasks scheduled for today or earlier that have started, most important first.
 - **Upcoming** lists tasks due, scheduled, or starting in the next seven days, soonest first. `deckard.agenda.upcomingDays` sets how far that reaches.
 - **Later** holds the dated tasks past that, by the date each waits for, and **No date** the open tasks carrying no due, scheduled, or start date at all, most important first. Both start folded, out of the way of what cannot wait.

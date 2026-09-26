@@ -95,6 +95,7 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.dueOnDate',
         'deckard.agenda.reschedule',
         'deckard.rescheduleOverdue',
+        'deckard.agenda.showMore',
       ],
     );
     assert.strictEqual(

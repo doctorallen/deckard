@@ -16,7 +16,7 @@ import { stripTrailingTags } from './queryBlockState';
  * — grouped by when they need attention, using the dates of the Obsidian
  * Tasks format and Deckard's own due dates:
  *
- * - **Overdue**: the due date has passed.
+ * - **Overdue**: the due date has passed, the most recent slip first.
  * - **Today**: due today, or scheduled for today or earlier and already
  *   started.
  * - **Upcoming**: due, scheduled, or starting within the next few days.
@@ -217,10 +217,15 @@ export function createAgenda(
     id,
     label: GROUP_LABELS[id] ?? id,
     // Today and No date are to-do lists, so importance leads; the other
-    // groups read as a timeline.
+    // groups read as a timeline. Overdue runs newest slip first: what slipped
+    // yesterday can still be saved, and a month-old task is not news.
     entries: (groups.get(id) ?? []).sort(
       byRank(
-        id === 'today' || id === 'nodate' ? compareByPriority : compareByDate,
+        id === 'today' || id === 'nodate'
+          ? compareByPriority
+          : id === 'overdue'
+            ? compareByDateDescending
+            : compareByDate,
       ),
     ),
   })).filter((group) => group.entries.length > 0);
@@ -421,6 +426,14 @@ function createEntry(
 function compareByDate(left: AgendaEntry, right: AgendaEntry): number {
   return (
     left.at - right.at ||
+    comparePriority(left, right) ||
+    compareSource(left, right)
+  );
+}
+
+function compareByDateDescending(left: AgendaEntry, right: AgendaEntry): number {
+  return (
+    right.at - left.at ||
     comparePriority(left, right) ||
     compareSource(left, right)
   );

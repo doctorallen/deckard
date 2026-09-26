@@ -507,6 +507,11 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
     vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
     vscode.commands.registerCommand('deckard.agenda.reschedule', dueFromView(pickReschedule)),
+    vscode.commands.registerCommand('deckard.agenda.showMore', (groupId?: unknown) => {
+      if (typeof groupId === 'string') {
+        agenda.showMore(groupId);
+      }
+    }),
     vscode.commands.registerCommand('deckard.rescheduleOverdue', async () => {
       await indexer.ready;
       const overdue = listOverdueTasks(indexer.getSnapshot());

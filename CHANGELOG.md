@@ -46,6 +46,12 @@
 
 ### Changed
 
+- **Overdue lists the most recently slipped task first, five at a time.**
+  A task that slipped yesterday can still be saved, and a month-old one is
+  not news; oldest first put the stalest at the top. **Show 12 more** under
+  the five lists the rest, and the group's count, Reschedule All, and the
+  badge still cover every one.
+
 - **Weeks can start on Monday.** `deckard.calendar.weekStart` is `sunday`,
   `monday`, or `locale`, and sets the Calendar's rows, weekly notes and their
   reviews, a search's `this-week`, and *next week* typed as a date. A weekly

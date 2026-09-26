@@ -39,7 +39,15 @@ interface AgendaPreferences {
 
 export type AgendaNode =
   | { kind: 'group'; group: AgendaGroup; groupBy: AgendaGroupBy }
-  | { kind: 'task'; entry: AgendaEntry; uri: vscode.Uri | undefined };
+  | { kind: 'task'; entry: AgendaEntry; uri: vscode.Uri | undefined }
+  /** The row under a long group that shows the rest of it. */
+  | { kind: 'more'; groupId: string; hidden: number };
+
+/**
+ * How many overdue tasks are drawn before "Show N more". Seventeen overdue
+ * rows push Today off the screen; five say there is a pile without being it.
+ */
+export const OVERDUE_ROWS = 5;
 
 const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   overdue: new vscode.ThemeIcon(
@@ -101,6 +109,8 @@ export class AgendaTreeProvider
   private readonly disposables: vscode.Disposable[] = [];
   private view: vscode.TreeView<AgendaNode> | undefined;
   private index: WorkspaceIndex | undefined;
+  /** Groups shown in full after "Show N more", for the rest of the session. */
+  private readonly expanded = new Set<string>();
 
   public constructor(
     private readonly indexer: AgendaIndexSource,
@@ -145,23 +155,42 @@ export class AgendaTreeProvider
   }
 
   public getTreeItem(node: AgendaNode): vscode.TreeItem {
+    if (node.kind === 'more') {
+      return createMoreItem(node);
+    }
     return node.kind === 'group'
       ? createGroupItem(node.group, node.groupBy)
       : createTaskItem(node.entry, node.uri);
   }
 
+  /** Shows every task in a group that was cut short, until the window closes. */
+  public showMore(groupId: string): void {
+    this.expanded.add(groupId);
+    this.refresh();
+  }
+
   public async getChildren(node?: AgendaNode): Promise<AgendaNode[]> {
-    if (node?.kind === 'task') {
+    if (node?.kind === 'task' || node?.kind === 'more') {
       return [];
     }
     if (node?.kind === 'group') {
-      return Promise.all(
-        node.group.entries.map(async (entry) => ({
+      const { group } = node;
+      const cut =
+        node.groupBy === 'due' &&
+        group.id === 'overdue' &&
+        !this.expanded.has(group.id) &&
+        group.entries.length > OVERDUE_ROWS;
+      const shown = cut ? group.entries.slice(0, OVERDUE_ROWS) : group.entries;
+      const tasks: AgendaNode[] = await Promise.all(
+        shown.map(async (entry) => ({
           kind: 'task' as const,
           entry,
           uri: await resolveSourceUri(entry.task.filePath),
         })),
       );
+      return cut
+        ? [...tasks, { kind: 'more', groupId: group.id, hidden: group.entries.length - OVERDUE_ROWS }]
+        : tasks;
     }
 
     if (!this.index) {
@@ -225,6 +254,9 @@ export class AgendaTreeProvider
     const seen = new Set<string>();
     const tasks: Task[] = [];
     for (const each of nodes) {
+      if (each.kind === 'more') {
+        continue;
+      }
       const entries = each.kind === 'task' ? [each.entry] : each.group.entries;
       for (const entry of entries) {
         if (seen.has(entry.task.id)) {
@@ -271,6 +303,9 @@ export class AgendaTreeProvider
       .map((taskId) => this.indexer.getTask(taskId))
       .filter((task): task is Task => task !== undefined);
     if (tasks.length === 0) {
+      return;
+    }
+    if (target.kind === 'more') {
       return;
     }
     if (target.kind === 'task') {
@@ -427,6 +462,21 @@ function createGroupItem(
   // Overdue is told apart, since it is the group offered a date for all.
   item.contextValue =
     group.id === 'overdue' ? 'deckardAgendaGroup.overdue' : 'deckardAgendaGroup';
+  return item;
+}
+
+function createMoreItem(node: { groupId: string; hidden: number }): vscode.TreeItem {
+  const item = new vscode.TreeItem(
+    `Show ${node.hidden} more`,
+    vscode.TreeItemCollapsibleState.None,
+  );
+  item.id = `agenda:more:${node.groupId}`;
+  item.iconPath = new vscode.ThemeIcon('ellipsis');
+  item.command = {
+    command: 'deckard.agenda.showMore',
+    title: 'Show More',
+    arguments: [node.groupId],
+  };
   return item;
 }
 

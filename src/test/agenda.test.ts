@@ -6,7 +6,9 @@ import {
   normalizeAgendaQuery,
   selectAgendaTasks,
 } from '../ui/state/agendaState';
-import { groupColumnId } from '../ui/views/agendaTree';
+import * as vscode from 'vscode';
+
+import { AgendaNode, AgendaTreeProvider, groupColumnId, OVERDUE_ROWS } from '../ui/views/agendaTree';
 
 const at = (month: number, day: number): number =>
   new Date(2026, month - 1, day).getTime();
@@ -15,6 +17,56 @@ const at = (month: number, day: number): number =>
 const now = at(9, 13) + 10 * 60 * 60 * 1000;
 
 suite('Agenda', () => {
+  test('lists the most recently slipped overdue task first, with ranks still leading', () => {
+    const groups = createAgenda(
+      createIndex([
+        createTask({ id: 'week-ago', dueAt: at(9, 6) }),
+        createTask({ id: 'yesterday', dueAt: at(9, 12) }),
+        createTask({ id: 'ranked', dueAt: at(9, 1) }),
+        createTask({ id: 'three-days', dueAt: at(9, 10) }),
+      ]),
+      now,
+      { upcomingDays: 7, taskOrder: ['ranked'] },
+    );
+    assert.deepStrictEqual(
+      groups[0].entries.map((entry) => entry.task.id),
+      ['ranked', 'yesterday', 'three-days', 'week-ago'],
+    );
+  });
+
+  test('the Tasks view draws five overdue tasks, then Show N more, and acts on all', async () => {
+    const tasks = Array.from({ length: 17 }, (_, day) =>
+      createTask({ id: `late-${day}`, dueAt: at(9, 12) - day * 24 * 60 * 60 * 1000 }),
+    );
+    const index = createIndex(tasks);
+    const updates = new vscode.EventEmitter<WorkspaceIndex>();
+    const provider = new AgendaTreeProvider({
+      onDidUpdate: updates.event,
+      getTask: (taskId) => index.tasks.get(taskId),
+    });
+    try {
+      updates.fire(index);
+      const [overdue] = await provider.getChildren();
+      assert.strictEqual(overdue.kind, 'group');
+      const rows = await provider.getChildren(overdue);
+      assert.strictEqual(rows.length, OVERDUE_ROWS + 1);
+      const more = rows[rows.length - 1] as Extract<AgendaNode, { kind: 'more' }>;
+      assert.strictEqual(more.kind, 'more');
+      assert.strictEqual(provider.getTreeItem(more).label, 'Show 12 more');
+      assert.strictEqual(provider.getTreeItem(more).command?.command, 'deckard.agenda.showMore');
+      assert.strictEqual(provider.getTreeItem(overdue).description, '17', 'the group still counts all');
+      assert.strictEqual(provider.tasksFor(overdue).length, 17, 'Reschedule All covers every one');
+      assert.deepStrictEqual(provider.tasksFor(more), []);
+
+      provider.showMore('overdue');
+      const [again] = await provider.getChildren();
+      assert.strictEqual((await provider.getChildren(again)).length, 17);
+    } finally {
+      provider.dispose();
+      updates.dispose();
+    }
+  });
+
   test('groups open tasks into overdue, today, and upcoming', () => {
     const groups = createAgenda(
       createIndex([

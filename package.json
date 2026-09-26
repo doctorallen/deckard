@@ -426,6 +426,11 @@
         "command": "deckard.rescheduleOverdue",
         "title": "Reschedule Overdue Tasks…",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.showMore",
+        "title": "List Every Overdue Task",
+        "category": "Deckard"
       }
     ],
     "menus": {
@@ -532,6 +537,10 @@
         },
         {
           "command": "deckard.agenda.reschedule",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.showMore",
           "when": "false"
         }
       ],
