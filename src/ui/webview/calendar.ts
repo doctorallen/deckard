@@ -14,6 +14,7 @@ import {
   parseLocalDate,
 } from '../commands/dailyNote';
 import { openSourceAt } from '../commands/navigation';
+import { readWeekStart } from '../commands/datePrompt';
 import { createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
 import { parseCalendarMessage } from './messages';
@@ -52,6 +53,8 @@ export class CalendarView
         if (affectsPageChrome(event)) {
           // The page reloads and asks for its state again when it is ready.
           this.renderHtml();
+        } else if (event.affectsConfiguration('deckard.calendar.weekStart')) {
+          this.refresh();
         }
       }),
     );
@@ -108,7 +111,7 @@ export class CalendarView
     void this.view.webview.postMessage({
       type: 'state',
       data: measure('Calendar', () =>
-        createCalendar(this.indexer.getSnapshot(), this.month, new Date()),
+        createCalendar(this.indexer.getSnapshot(), this.month, new Date(), readWeekStart()),
       ),
     });
   }
@@ -155,10 +158,11 @@ export class CalendarView
     if (!day) {
       return;
     }
-    const { name } = getPeriodicNote(period, day);
+    const weekStart = readWeekStart();
+    const { name } = getPeriodicNote(period, day, weekStart);
     // A week or month may be kept under the name Deckard writes now or the
     // one it wrote before, and either is that period's note.
-    const names = new Set(findPeriodicNoteNames(period, day));
+    const names = new Set(findPeriodicNoteNames(period, day, weekStart));
     const existing =
       period === 'day'
         ? undefined

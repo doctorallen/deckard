@@ -59,6 +59,39 @@ suite('Calendar', () => {
     );
   });
 
+  test('starts each row on the week start, and finds a week note written under another', () => {
+    const monday = createCalendar(
+      buildWorkspaceIndex(
+        new Map(
+          [note('notes/week-2026-09-20-2026-09-26.md', '# Week'), note('notes/2026-W37.md', '# 2026-W37')].map(
+            (file) => [file.filePath, file],
+          ),
+        ),
+      ),
+      '2026-09',
+      new Date(2026, 8, 13, 10),
+      1,
+    );
+    assert.deepStrictEqual(monday.weekdays, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    assert.ok(
+      monday.weeks.every((week) => parseLocalDate(week.days[0].date)?.getDay() === 1),
+      'every row opens on a Monday',
+    );
+    const row = monday.weeks.find((week) => week.date === '2026-09-21');
+    assert.strictEqual(row?.week, 'week-2026-09-21-2026-09-27');
+    assert.strictEqual(row?.notePath, 'notes/week-2026-09-20-2026-09-26.md', 'the Sunday note it mostly shares');
+    assert.strictEqual(
+      monday.weeks.find((week) => week.date === '2026-09-07')?.notePath,
+      'notes/2026-W37.md',
+      'an ISO week note under either start',
+    );
+    assert.deepStrictEqual(calendar.weekdays, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    assert.strictEqual(
+      calendar.weeks.find((week) => week.date === '2026-09-06')?.notePath,
+      'notes/2026-W37.md',
+    );
+  });
+
   test("marks each day's daily note and open tasks, and today", () => {
     assert.strictEqual(days.get('2026-09-10')?.notePath, 'notes/2026-09-10.md');
     assert.strictEqual(days.get('2026-09-12')?.dueCount, 1, 'a done task is not counted');

@@ -20,6 +20,8 @@ import {
   NotePeriod,
   parseLocalDate,
 } from './dailyNote';
+import { Weekday } from '../../core/markdown/dates';
+import { readWeekStart } from './datePrompt';
 import { revealLine } from './navigation';
 import { applyWorkspaceWrite, workspaceWrites } from './workspaceWrites';
 
@@ -42,9 +44,10 @@ export function isReviewOnCreateEnabled(uri?: vscode.Uri): boolean {
 export function getReviewRange(
   period: Exclude<NotePeriod, 'day'>,
   day: Date,
+  weekStart: Weekday = 0,
 ): ReviewRange {
-  const { name } = getPeriodicNote(period, day);
-  const start = getPeriodStart(period, day);
+  const { name } = getPeriodicNote(period, day, weekStart);
+  const start = getPeriodStart(period, day, weekStart);
   const last = getPeriodEnd(period, start);
   // The day after the last, so a date inside the period is `>= start` and
   // `< end` whatever hour it carries.
@@ -70,20 +73,26 @@ export async function writeReview(
   preferences: Pick<PreferencesStore, 'value'> | undefined,
   period: Exclude<NotePeriod, 'day'>,
   day: Date = new Date(),
-  options: { silent?: boolean } = {},
+  options: {
+    silent?: boolean;
+    /** The days to review, when a note already says which it covers. */
+    range?: ReviewRange;
+    /** The note to write into, rather than the one for the period. */
+    noteUri?: vscode.Uri;
+  } = {},
 ): Promise<string | undefined> {
-  const folder = await chooseTargetFolder();
-  if (!folder) {
+  const folder = options.noteUri ? undefined : await chooseTargetFolder();
+  if (!folder && !options.noteUri) {
     return undefined;
   }
   await indexer.ready;
-  const range = getReviewRange(period, day);
+  const range = options.range ?? getReviewRange(period, day, readWeekStart());
   const summary = summarizeReview(indexer.getSnapshot(), range, {
     tagFirstSeen: preferences?.value.tagFirstSeen,
   });
   const review = formatReview(summary);
 
-  const noteUri = await ensurePeriodicNote(folder, period, day);
+  const noteUri = options.noteUri ?? (await ensurePeriodicNote(folder!, period, day));
   const document = await vscode.workspace.openTextDocument(noteUri);
   const updated = writeReviewInto(document.getText(), review);
   if (updated === document.getText()) {
@@ -190,6 +199,21 @@ export async function writeReviewCommand(
   if (!period) {
     return undefined;
   }
+  // A note already open is reviewed for the days its own name holds, and
+  // written into, whatever week start was set when it was made.
+  const noteUri = vscode.window.activeTextEditor?.document.uri;
+  if (open?.start && open.end && noteUri) {
+    const last = new Date(open.end.getFullYear(), open.end.getMonth(), open.end.getDate() - 1);
+    return writeReview(indexer, preferences, period, open.day, {
+      range: {
+        name: open.name ?? fileNameOf(noteUri),
+        title: `${formatIsoDate(open.start.getTime())} to ${formatIsoDate(last.getTime())}`,
+        start: open.start.getTime(),
+        end: open.end.getTime(),
+      },
+      noteUri,
+    });
+  }
   return writeReview(indexer, preferences, period, open?.day ?? new Date());
 }
 
@@ -226,14 +250,30 @@ export function findOpenPeriod(
     .split('/')
     .pop()
     ?.replace(/\.md$/i, ''),
-): { period: Exclude<NotePeriod, 'day'>; day: Date } | undefined {
+):
+  | {
+      period: Exclude<NotePeriod, 'day'>;
+      day: Date;
+      /** A week note's own first day, and the midnight after its last. */
+      start?: Date;
+      end?: Date;
+      name?: string;
+    }
+  | undefined {
   if (!fileName) {
     return undefined;
   }
-  const span = /^week-(\d{4}-\d{2}-\d{2})-\d{4}-\d{2}-\d{2}$/i.exec(fileName);
+  const span = /^week-(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$/i.exec(fileName);
   const start = span ? parseLocalDate(span[1]) : undefined;
-  if (start) {
-    return { period: 'week', day: start };
+  const last = span ? parseLocalDate(span[2]) : undefined;
+  if (start && last) {
+    return {
+      period: 'week',
+      day: start,
+      start,
+      end: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1),
+      name: fileName,
+    };
   }
   const named = /^month-([a-z]+)-(\d{4})$/i.exec(fileName);
   if (named) {
@@ -244,7 +284,14 @@ export function findOpenPeriod(
   }
   const week = /^(\d{4})-W(\d{2})$/.exec(fileName);
   if (week) {
-    return { period: 'week', day: getIsoWeekStart(Number(week[1]), Number(week[2])) };
+    const monday = getIsoWeekStart(Number(week[1]), Number(week[2]));
+    return {
+      period: 'week',
+      day: monday,
+      start: monday,
+      end: new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7),
+      name: fileName,
+    };
   }
   const month = /^(\d{4})-(\d{2})$/.exec(fileName);
   return month
@@ -277,3 +324,6 @@ export function getIsoWeekStart(year: number, week: number): Date {
   return new Date(year, 0, 4 - weekday + (week - 1) * 7);
 }
 
+function fileNameOf(uri: vscode.Uri): string {
+  return (uri.path.split('/').pop() ?? '').replace(/\.md$/i, '');
+}

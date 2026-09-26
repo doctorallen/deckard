@@ -4,6 +4,7 @@ import {
   DatePhraseOptions,
   describeDay,
   parseDatePhrase,
+  Weekday,
 } from '../../core/markdown/dates';
 
 /**
@@ -37,10 +38,40 @@ export function numericOrderFor(language: string): 'mdy' | 'dmy' {
   }
 }
 
+/**
+ * The day a week starts on where a display language starts it, Sunday when
+ * the runtime cannot say.
+ */
+export function localeWeekStart(language: string): Weekday {
+  try {
+    const locale = new Intl.Locale(language) as Intl.Locale & {
+      getWeekInfo?: () => { firstDay: number };
+      weekInfo?: { firstDay: number };
+    };
+    const first = locale.getWeekInfo?.().firstDay ?? locale.weekInfo?.firstDay;
+    return typeof first === 'number' && first >= 1 && first <= 7
+      ? ((first % 7) as Weekday)
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** The day a week starts on, from `deckard.calendar.weekStart`. */
+export function readWeekStart(): Weekday {
+  const value = vscode.workspace
+    .getConfiguration('deckard')
+    .get<string>('calendar.weekStart', 'sunday');
+  if (value === 'monday') {
+    return 1;
+  }
+  return value === 'locale' ? localeWeekStart(vscode.env.language) : 0;
+}
+
 /** How a date box reads what is typed into it. */
 export function readDateOptions(): DatePhraseOptions {
   return {
-    weekStart: 0,
+    weekStart: readWeekStart(),
     numericOrder: numericOrderFor(vscode.env.language),
   };
 }

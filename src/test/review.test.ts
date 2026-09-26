@@ -185,6 +185,18 @@ suite('Periodic review', () => {
     assert.strictEqual(new Date(month.end).getMonth(), 9, 'October starts it');
 
     assert.strictEqual(getIsoWeekStart(2026, 38).getDate(), 14);
+
+    // With weeks starting on Monday, the week is Monday to Sunday.
+    assert.strictEqual(getReviewRange('week', new Date(2026, 8, 17), 1).title, '2026-09-14 to 2026-09-20');
+  });
+
+  test('a week note is reviewed for the days its own name holds', () => {
+    const span = (name: string) => {
+      const found = findOpenPeriod(name);
+      return found && [formatLocalDate(found.start!), formatLocalDate(found.end!)];
+    };
+    assert.deepStrictEqual(span('week-2026-09-20-2026-09-26'), ['2026-09-20', '2026-09-27']);
+    assert.deepStrictEqual(span('2026-W39'), ['2026-09-21', '2026-09-28']);
   });
 
   test('reads which period a note is for from its name', () => {

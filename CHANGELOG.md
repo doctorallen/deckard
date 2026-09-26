@@ -46,6 +46,12 @@
 
 ### Changed
 
+- **Weeks can start on Monday.** `deckard.calendar.weekStart` is `sunday`,
+  `monday`, or `locale`, and sets the Calendar's rows, weekly notes and their
+  reviews, a search's `this-week`, and *next week* typed as a date. A weekly
+  note written under the old start still opens for the week it mostly
+  covers, and a review written in it covers its own days.
+
 - **One way to write a date.** Every date box — the task editor, Due on a
   Date, Reschedule, bulk edit, `[[` day links, and Capture — reads month
   names (`oct 3`), `next week`, `end of month`, `last friday`, `3 days ago`,

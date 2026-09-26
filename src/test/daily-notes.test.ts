@@ -113,10 +113,13 @@ suite('Weekly and monthly notes', () => {
 
   test('still answers to the names it wrote before', () => {
     const sunday = new Date(2026, 8, 13);
-    assert.deepStrictEqual(findPeriodicNoteNames('week', sunday), [
+    const weekNames = findPeriodicNoteNames('week', sunday);
+    assert.deepStrictEqual(weekNames.slice(0, 2), [
       'week-2026-09-13-2026-09-19',
       '2026-W38',
     ], 'the ISO week of the Monday this row holds');
+    assert.strictEqual(weekNames.length, 8, 'and the week under each other start that holds its middle day');
+    assert.ok(weekNames.includes('week-2026-09-14-2026-09-20'));
     assert.deepStrictEqual(findPeriodicNoteNames('month', sunday), [
       'month-september-2026',
       '2026-09',
@@ -167,5 +170,18 @@ suite('Weekly and monthly notes', () => {
     assert.deepStrictEqual(nonsense, [
       { label: '$(info) Enter a date such as friday, in 3 days, or 2026-10-02.' },
     ]);
+  });
+
+  test('a week starting on Monday is named for its days, and finds the notes written before', () => {
+    const monday = new Date(2026, 8, 21, 12);
+    assert.strictEqual(getPeriodicNote('week', monday, 1).name, 'week-2026-09-21-2026-09-27');
+    const names = findPeriodicNoteNames('week', monday, 1);
+    assert.strictEqual(names[0], 'week-2026-09-21-2026-09-27');
+    assert.ok(names.includes('week-2026-09-20-2026-09-26'), names.join(', '));
+    assert.ok(names.includes('2026-W39'), names.join(', '));
+    // And back: a Sunday week finds the Monday note it mostly shares.
+    const back = findPeriodicNoteNames('week', new Date(2026, 8, 20, 12), 0);
+    assert.ok(back.includes('week-2026-09-21-2026-09-27'), back.join(', '));
+    assert.ok(back.includes('2026-W39'), back.join(', '));
   });
 });

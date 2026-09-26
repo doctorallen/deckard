@@ -945,7 +945,7 @@
           "deckard.weeklyNoteTemplate": {
             "type": "string",
             "default": "# {week}\n\n",
-            "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its Sunday, and {month} that Sunday's month, such as September 2026.",
+            "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.",
             "order": 5
           },
           "deckard.monthlyNoteTemplate": {
@@ -953,6 +953,23 @@
             "default": "# {month}\n\n",
             "description": "Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
             "order": 6
+          },
+          "deckard.calendar.weekStart": {
+            "type": "string",
+            "enum": [
+              "sunday",
+              "monday",
+              "locale"
+            ],
+            "enumDescriptions": [
+              "Weeks run Sunday to Saturday.",
+              "Weeks run Monday to Sunday.",
+              "Weeks start on the day VS Code's display language starts them."
+            ],
+            "default": "sunday",
+            "scope": "window",
+            "order": 6,
+            "markdownDescription": "The day a week starts on: in the Calendar, in weekly notes and their reviews, in a search's `this-week`, `last-week`, and `next-week`, and in *next week* and *end of week* typed as a date. A weekly note written before a change still opens for the week it mostly covers."
           },
           "deckard.periodicNote.review": {
             "type": "boolean",

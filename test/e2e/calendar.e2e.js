@@ -157,6 +157,28 @@ test('a hidden calendar skips updates and catches up when shown', async () => {
   assert.strictEqual(host.posted.length, before + 1, 'showing it draws once');
 });
 
+test('with weeks starting on Monday, the header and every row start on Monday', async () => {
+  await vscode.workspace.getConfiguration('deckard').update('calendar.weekStart', 'monday');
+  try {
+    const { view } = await openCalendar();
+    const header = view.findAll('.weekday').map((cell) => cell.textContent).filter(Boolean);
+    assert.deepStrictEqual(header, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    const weeks = view.findAll('[data-action="open-week"]');
+    assert.ok(weeks.length > 0);
+    weeks.forEach((button) => {
+      const [year, month, date] = button.getAttribute('data-date').split('-').map(Number);
+      assert.strictEqual(new Date(year, month - 1, date).getDay(), 1, 'the week opens from its Monday');
+    });
+    view.click(weeks[0]);
+    await settle();
+    const posted = view.posted[view.posted.length - 1];
+    assert.strictEqual(posted.type, 'openWeek');
+    assert.strictEqual(posted.date, weeks[0].getAttribute('data-date'));
+  } finally {
+    await vscode.workspace.getConfiguration('deckard').update('calendar.weekStart', undefined);
+  }
+});
+
 // ---------------------------------------------------------------------------
 
 (async () => {

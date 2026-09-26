@@ -1,7 +1,9 @@
+import { readWeekStart } from './ui/commands/datePrompt';
 import { openDailyNoteForDate } from './ui/commands/dailyNoteForDate';
 import * as vscode from 'vscode';
 
-import { setQueryIdentity } from './core/query/queryEvaluator';
+import { setQueryIdentity,
+  setQueryWeekStart } from './core/query/queryEvaluator';
 import { PreferencesStore } from './core/storage/preferences';
 import { SearchStore } from './core/storage/searchStore';
 import { setTimingLog } from './core/timing';
@@ -154,13 +156,19 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     );
   };
   readIdentity();
+  // The day a search's this-week starts on, set the same way.
+  setQueryWeekStart(readWeekStart());
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('deckard.me')) {
         readIdentity();
       }
+      if (event.affectsConfiguration('deckard.calendar.weekStart')) {
+        setQueryWeekStart(readWeekStart());
+      }
     }),
     { dispose: () => setQueryIdentity(undefined) },
+    { dispose: () => setQueryWeekStart(0) },
   );
   const indexer = new WorkspaceIndexer(
     undefined,

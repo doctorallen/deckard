@@ -33,7 +33,7 @@ Deckard is a local-first second brain for Markdown notes in your VS Code workspa
 | [Embeds](#embeds) | `![[Note#Heading]]` on a line of its own reads that note, section, or marked line in place, in the Markdown preview. |
 | [Daily notes](#daily-notes) | One command creates or opens today's note from your template, and can carry yesterday's unfinished tasks in. |
 | [Reviews](#writing-a-review) | A weekly or monthly note opens with a review written into it: what was finished, what slipped, what was written, and which tags are new. |
-| [Calendar](#calendar) | A month in the sidebar, Sunday to Saturday, marking days with a daily note or tasks due. |
+| [Calendar](#calendar) | A month in the sidebar, in whole weeks from the day you start a week on, marking days with a daily note or tasks due. |
 | [Quick capture](#quick-capture) | Add a task to today's note from anywhere, with tag completion. |
 | [Templates](#templates) | New notes from your own templates, with the date, title, and your answers filled in. |
 | [Heading extraction](#extracting-headings) | Moves a tagged section, including its nested headings, into a note of its own. |
@@ -352,8 +352,8 @@ Every box that asks for a date — the task editor, a date from the Tasks view o
 | `friday`, `fri`, `next friday`, `this friday` | the next Friday to come, never today: 2026-10-02 |
 | `last friday` | the Friday before today: 2026-09-18 |
 | `oct 3`, `3 Oct`, `October 3rd`, `Oct 3, 2027` | that day; with no year, the next one on or after today |
-| `next week` | next week's Monday: 2026-09-28 |
-| `end of week`, `eow` | the last day of this week: Saturday 2026-09-26 |
+| `next week` | next week's Monday: 2026-09-28. Next week is the one after this week as `deckard.calendar.weekStart` draws it |
+| `end of week`, `eow` | the last day of this week: Saturday 2026-09-26, or Sunday with a Monday week start |
 | `end of month`, `eom` | the last day of this month: 2026-09-30 |
 | `next month` | the 1st of next month |
 | `weekend`, `this weekend` | the coming Saturday, or today on a weekend |
@@ -790,7 +790,7 @@ The fields:
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
 | `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, `today`, a weekday such as `friday` (the last one), a whole week or month (`this-week`, `last-week`, `this-month`, `last-month`, or `2026-08`). A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13`, `created = last-month` |
 
-A week or a month is the whole span: `due = this-week` is any day of this week, `due < next-week` is before next week starts, and `created >= last-month` is from the 1st of last month on. A week starts on Sunday. `friday` is one day, the next one for `due`, `scheduled`, and `start`, and the last one for `created`, `updated`, and `done`. Values are read when the search runs, so a saved search or query block of `this-week` moves on with the week. A numeric date such as `10/3` is not read in a search, since it would mean a different day on another machine.
+A week or a month is the whole span: `due = this-week` is any day of this week, `due < next-week` is before next week starts, and `created >= last-month` is from the 1st of last month on. A week starts on the day `deckard.calendar.weekStart` names, Sunday unless you change it. `friday` is one day, the next one for `due`, `scheduled`, and `start`, and the last one for `created`, `updated`, and `done`. Values are read when the search runs, so a saved search or query block of `this-week` moves on with the week. A numeric date such as `10/3` is not read in a search, since it would mean a different day on another machine.
 
 A note's created date is its `created:` or `date:` front matter. Without either, a daily note counts as created on its day, or earlier if its file is older, and any other note on its file's creation time. Its updated date is its `updated:` front matter, or its file's modified time. A git clone resets every file's times, so the dates a note states come first.
 
@@ -870,9 +870,9 @@ Run `Deckard: Create Daily Note` from the Command Palette, press <kbd>Cmd</kbd>+
 
 `Deckard: Open Daily Note for Date…` opens the note for any day. It lists yesterday, today, tomorrow, and your seven newest daily notes; type a day [in plain words](#dates-in-plain-words), such as `last friday`, `oct 3`, or `2026-10-02`, and it offers that day's note, saying when it will create one from the daily note template. Today's note is created as `Deckard: Create Daily Note` creates it, rollover included. [Find](#find) does the same when all you type is a day.
 
-`Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week or this month, **named for the days it holds**: `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, as the [Calendar](#calendar) draws it.
+`Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open the note for this week or this month, **named for the days it holds**: `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, or from the day `deckard.calendar.weekStart` names, as the [Calendar](#calendar) draws it. A weekly note written before you change the week start still opens: each week opens the note that holds its middle day, which shares at least four days with it, so after a switch to Monday the week of Monday 2026-09-21 opens `week-2026-09-20-2026-09-26.md`, and **Write a Review** in that note still covers its own days.
 
-Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. `{week}` becomes the days the period covers — *2026-09-13 to 2026-09-19* — `{month}` the month as *September 2026*, and `{date}` the first day: a week's Sunday, or a month's first.
+Each has its own template, `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. `{week}` becomes the days the period covers — *2026-09-13 to 2026-09-19* — `{month}` the month as *September 2026*, and `{date}` the first day: a week's first day, or a month's first.
 
 Notes Deckard named before, `2026-W38.md` and `2026-09.md`, are still read and still opened for their period, so a workspace that has them goes on using them rather than gaining a second note for the same week. Rename one to the new form whenever you like; nothing needs migrating.
 
@@ -919,7 +919,7 @@ A daily note that starts from its template every morning leaves last night's ope
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` starts them on Monday or where your display language does. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
 
 ## Quick capture
 
@@ -1016,7 +1016,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. A Dashboard restored from the last session is left as it is. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](#hub-notes) open at the top of its overview. Set it to `false` to start hubs collapsed to their title row. |
 | `deckard.dailyNoteTemplate` | `# {date}\n\n` | Used when a new daily note is created. `{date}` becomes the local date in `YYYY-MM-DD` format. |
-| `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its Sunday. |
+| `deckard.weeklyNoteTemplate` | `# {week}\n\n` | Used when a new weekly note is created. `{week}` becomes the days it covers, such as `2026-09-13 to 2026-09-19`, and `{date}` its first day. |
+| `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` for the day VS Code's display language starts it. It sets the Calendar's rows, weekly notes and their reviews, a search's `this-week`, `last-week`, and `next-week`, and *next week* and *end of week* typed as a date. A weekly note written before a change still opens. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `September 2026`, and `{date}` its first day. |
 | `deckard.periodicNote.review` | `true` | Writes a review into a newly created weekly or monthly note. See [Writing a review](#writing-a-review). |
 | `deckard.dailyNote.rollover` | `off` | What a newly created daily note does with the last one's unfinished tasks: `off`, `move`, or `copy`. See [Carrying unfinished tasks forward](#carrying-unfinished-tasks-forward). |

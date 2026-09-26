@@ -1,4 +1,5 @@
 import { stripTags } from '../../core/markdown/parser';
+import { Weekday } from '../../core/markdown/dates';
 import { WorkspaceIndex } from '../../core/types';
 import {
   findPeriodicNoteNames,
@@ -29,11 +30,11 @@ export interface CalendarDay {
   headings?: string[];
 }
 
-/** One row of the calendar: seven days, Sunday to Saturday. */
+/** One row of the calendar: seven days, from the week's first day. */
 export interface CalendarWeek {
   /** The week's note name, such as week-2026-09-13-2026-09-19. */
   week: string;
-  /** Its Sunday, as YYYY-MM-DD, which the week's note is found from. */
+  /** Its first day, as YYYY-MM-DD, which the week's note is found from. */
   date: string;
   /** The week's note, when it has one. */
   notePath?: string;
@@ -52,8 +53,12 @@ export interface CalendarSnapshot {
   currentMonth: string;
   /** The month's note, when it has one. */
   notePath?: string;
+  /** The weekday names across the top, from the week's first day. */
+  weekdays: string[];
   weeks: CalendarWeek[];
 }
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const monthTitle = new Intl.DateTimeFormat('en', {
   month: 'long',
@@ -61,7 +66,7 @@ const monthTitle = new Intl.DateTimeFormat('en', {
 });
 
 /**
- * One month as the calendar shows it: whole weeks from Sunday to Saturday,
+ * One month as the calendar shows it: whole weeks from the week start,
  * with each day's daily note and the open tasks due that day, and the notes
  * kept for each week and for the month.
  *
@@ -72,6 +77,7 @@ export function createCalendar(
   index: WorkspaceIndex,
   month: string,
   now: Date,
+  weekStart: Weekday = 0,
 ): CalendarSnapshot {
   const [year, monthNumber] = month.split('-').map(Number);
   const first = new Date(year, monthNumber - 1, 1);
@@ -94,7 +100,7 @@ export function createCalendar(
   }
   /** The note a period keeps, whichever of its names it goes by. */
   const periodicNote = (period: 'week' | 'month', day: Date): string | undefined =>
-    findPeriodicNoteNames(period, day)
+    findPeriodicNoteNames(period, day, weekStart)
       .map((name) => periodicNotes.get(name))
       .find(Boolean);
   const dueCounts = new Map<string, number>();
@@ -120,18 +126,18 @@ export function createCalendar(
 
   const weeks: CalendarWeek[] = [];
   for (
-    let sunday = new Date(year, monthNumber - 1, 1 - first.getDay());
-    sunday <= last;
-    sunday = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + 7)
+    let rowStart = new Date(year, monthNumber - 1, 1 - ((first.getDay() - weekStart + 7) % 7));
+    rowStart <= last;
+    rowStart = new Date(rowStart.getFullYear(), rowStart.getMonth(), rowStart.getDate() + 7)
   ) {
-    // A row is a week: Sunday to Saturday, which is what its note is named
+    // A row is a week from the week start, which is what its note is named
     // for and what its review covers.
-    const week = getPeriodicNote('week', sunday).name;
+    const week = getPeriodicNote('week', rowStart, weekStart).name;
     const days = Array.from({ length: 7 }, (_, offset): CalendarDay => {
       const day = new Date(
-        sunday.getFullYear(),
-        sunday.getMonth(),
-        sunday.getDate() + offset,
+        rowStart.getFullYear(),
+        rowStart.getMonth(),
+        rowStart.getDate() + offset,
       );
       const date = formatLocalDate(day);
       const notePath = dailyNotes.get(date);
@@ -145,10 +151,10 @@ export function createCalendar(
         ...(dueTitles.has(date) ? { dueTitles: dueTitles.get(date) } : {}),
       };
     });
-    const notePath = periodicNote('week', sunday);
+    const notePath = periodicNote('week', rowStart);
     weeks.push({
       week,
-      date: formatLocalDate(sunday),
+      date: formatLocalDate(rowStart),
       ...(notePath ? { notePath } : {}),
       days,
     });
@@ -163,6 +169,7 @@ export function createCalendar(
     nextMonth: shiftMonth(month, 1),
     currentMonth: today.slice(0, 7),
     ...(notePath ? { notePath } : {}),
+    weekdays: Array.from({ length: 7 }, (_, offset) => WEEKDAY_SHORT[(weekStart + offset) % 7]),
     weeks,
   };
 }

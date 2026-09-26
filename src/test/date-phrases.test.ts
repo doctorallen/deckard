@@ -9,7 +9,7 @@ import {
   startOfWeek,
 } from '../core/markdown/dates';
 import { formatIsoDate } from '../core/markdown/taskMetadata';
-import { numericOrderFor } from '../ui/commands/datePrompt';
+import { localeWeekStart, numericOrderFor } from '../ui/commands/datePrompt';
 
 suite('Dates in plain words', () => {
   // Friday 2026-09-25, noon.
@@ -76,6 +76,8 @@ suite('Dates in plain words', () => {
     assert.strictEqual(read('weekend', sunday), '2026-09-27', 'on a weekend, today');
     assert.strictEqual(formatIsoDate(startOfWeek(friday, 1)), '2026-09-21');
     assert.strictEqual(formatIsoDate(startOfWeek(friday, 0)), '2026-09-20');
+    assert.strictEqual(localeWeekStart('en-US'), 0);
+    assert.strictEqual(localeWeekStart('not a language'), 0, 'Sunday when it cannot say');
   });
 
   test('reads a numeric date only in the order it is given', () => {

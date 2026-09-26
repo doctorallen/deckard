@@ -6,6 +6,8 @@ import {
 } from '../../core/markdown/parser';
 import { WorkspaceIndex } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
+import { Weekday } from '../../core/markdown/dates';
+import { readWeekStart } from './datePrompt';
 import { resolveSourceUri } from './navigation';
 
 /** A daily note in the index, by the day it is for. */
@@ -129,7 +131,8 @@ const PERIOD_TEMPLATES: Readonly<
  * The note for the period containing a day: its name, and the values its
  * template can use.
  *
- * A week runs Sunday to Saturday, as the Calendar draws it, and both names
+ * A week starts on the day `deckard.calendar.weekStart` names, Sunday unless
+ * it is changed, as the Calendar draws it, and both names
  * say which days they hold — `week-2026-09-13-2026-09-19`,
  * `month-september-2026` — because a file name is read far from the note it
  * belongs to, where `2026-W38` says little. The names Deckard wrote before,
@@ -138,8 +141,9 @@ const PERIOD_TEMPLATES: Readonly<
 export function getPeriodicNote(
   period: NotePeriod,
   day: Date,
+  weekStart: Weekday = 0,
 ): { name: string; variables: PeriodicNoteVariables } {
-  const start = getPeriodStart(period, day);
+  const start = getPeriodStart(period, day, weekStart);
   const date = formatLocalDate(start);
   const end = getPeriodEnd(period, start);
   const variables = {
@@ -158,10 +162,18 @@ export function getPeriodicNote(
   };
 }
 
-/** The first day of the period holding a day: a week's Sunday, a month's 1st. */
-export function getPeriodStart(period: NotePeriod, day: Date): Date {
+/** The first day of the period holding a day: a week's first day, a month's 1st. */
+export function getPeriodStart(
+  period: NotePeriod,
+  day: Date,
+  weekStart: Weekday = 0,
+): Date {
   if (period === 'week') {
-    return new Date(day.getFullYear(), day.getMonth(), day.getDate() - day.getDay());
+    return new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate() - ((day.getDay() - weekStart + 7) % 7),
+    );
   }
   return period === 'month'
     ? new Date(day.getFullYear(), day.getMonth(), 1)
@@ -183,28 +195,36 @@ export function getPeriodEnd(period: NotePeriod, start: Date): Date {
  * ISO-week or year-month name it wrote before, so a workspace that already
  * keeps `2026-W38.md` goes on using it rather than gaining a second note for
  * the same week.
+ *
+ * A week note written under another week start is found too. Week notes tile
+ * seven days apart, so exactly one of them holds this week's middle day, and
+ * it shares at least four days with this week: after a switch from Sunday to
+ * Monday, the week of Mon Sep 21 opens `week-2026-09-20-2026-09-26`.
  */
 export function findPeriodicNoteNames(
   period: NotePeriod,
   day: Date,
+  weekStart: Weekday = 0,
 ): string[] {
-  const { name } = getPeriodicNote(period, day);
+  const { name } = getPeriodicNote(period, day, weekStart);
   if (period === 'day') {
     return [name];
   }
-  const start = getPeriodStart(period, day);
+  const start = getPeriodStart(period, day, weekStart);
   if (period === 'month') {
     return [name, formatLocalDate(start).slice(0, 7)];
   }
-  // An ISO week is named for the Monday inside this row, which is the week
-  // an earlier note would have been written for.
-  const monday = new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate() + 1,
-  );
-  const { year, week } = getIsoWeek(monday);
-  return [name, `${year}-W${String(week).padStart(2, '0')}`];
+  const middle = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 3);
+  // An ISO week is named for the week its Monday to Sunday holds, which is
+  // the week an earlier note would have been written for.
+  const { year, week } = getIsoWeek(middle);
+  const names = [name, `${year}-W${String(week).padStart(2, '0')}`];
+  for (let other = 0; other < 7; other += 1) {
+    if (other !== weekStart) {
+      names.push(getPeriodicNote('week', middle, other as Weekday).name);
+    }
+  }
+  return [...new Set(names)];
 }
 
 const MONTH_NAMES = [
@@ -279,7 +299,7 @@ export function getPeriodicNoteUri(
   period: NotePeriod,
   day: Date,
   /** A name to use instead of the one this period would be given. */
-  name = getPeriodicNote(period, day).name,
+  name = getPeriodicNote(period, day, readWeekStart()).name,
 ): vscode.Uri {
   const notesFolder = vscode.workspace
     .getConfiguration('deckard', targetFolder.uri)
@@ -305,6 +325,7 @@ export async function ensurePeriodicNote(
   targetFolder: vscode.WorkspaceFolder,
   period: NotePeriod,
   day: Date = new Date(),
+  weekStart: Weekday = readWeekStart(),
 ): Promise<vscode.Uri> {
   const { setting, fallback } = PERIOD_TEMPLATES[period];
   const template = vscode.workspace
@@ -313,8 +334,13 @@ export async function ensurePeriodicNote(
   // A note the workspace already keeps for this period is the note, whichever
   // name it goes by; only a period with none gets a new one.
   const noteUri =
-    (await findExistingPeriodicNote(targetFolder, period, day)) ??
-    getPeriodicNoteUri(targetFolder, period, day);
+    (await findExistingPeriodicNote(targetFolder, period, day, weekStart)) ??
+    getPeriodicNoteUri(
+      targetFolder,
+      period,
+      day,
+      getPeriodicNote(period, day, weekStart).name,
+    );
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(noteUri, '..'));
   try {
@@ -322,7 +348,7 @@ export async function ensurePeriodicNote(
   } catch {
     const content = fillPeriodicTemplate(
       template,
-      getPeriodicNote(period, day).variables,
+      getPeriodicNote(period, day, weekStart).variables,
     );
     await vscode.workspace.fs.writeFile(noteUri, Buffer.from(content, 'utf8'));
   }
@@ -334,8 +360,9 @@ export async function findExistingPeriodicNote(
   targetFolder: vscode.WorkspaceFolder,
   period: NotePeriod,
   day: Date,
+  weekStart: Weekday = readWeekStart(),
 ): Promise<vscode.Uri | undefined> {
-  for (const name of findPeriodicNoteNames(period, day)) {
+  for (const name of findPeriodicNoteNames(period, day, weekStart)) {
     const candidate = getPeriodicNoteUri(targetFolder, period, day, name);
     try {
       await vscode.workspace.fs.stat(candidate);

@@ -150,7 +150,7 @@ ${getComponentScript()}
       '</div>';
     // Rows and cells as a grid is read: a header row of weekday names, then a
     // row per week. The wrappers draw nothing; the grid lays out the buttons.
-    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + WEEKDAYS.map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
+    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
     document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '">' + weekdays + state.weeks.map(renderWeek).join('') + '</div>';
   }
 
