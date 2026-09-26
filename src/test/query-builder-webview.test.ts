@@ -659,6 +659,7 @@ function createStubElement(tagName: string): any {
     classList: { contains: () => false, add: () => undefined, remove: () => undefined },
     appendChild: (child: unknown) => child,
     setAttribute: () => undefined,
+    removeAttribute: () => undefined,
     getAttribute: () => null,
     focus: () => undefined,
     setSelectionRange: () => undefined,

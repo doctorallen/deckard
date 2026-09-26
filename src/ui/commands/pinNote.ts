@@ -141,3 +141,63 @@ export function createPinHoverUri(
     )}`,
   );
 }
+
+/** Whether the entry the cursor is in is pinned, which names the command. */
+const ACTIVE_NOTE_PINNED = 'deckard.activeNotePinned';
+
+interface PinContextIndex extends PinIndexSource {
+  onDidUpdate(listener: () => void): vscode.Disposable;
+}
+
+interface PinContextStore {
+  isPinned(key: string): boolean;
+  onDidChange(listener: () => void): vscode.Disposable;
+}
+
+/**
+ * Keeps `deckard.activeNotePinned` in step with the cursor, so the palette
+ * offers **Pin Note to Home** on an entry that is not pinned and **Unpin**
+ * on one that is, rather than both with one of them always wrong.
+ */
+export class ActivePinContext implements vscode.Disposable {
+  private readonly disposables: vscode.Disposable[] = [];
+  private pinned: boolean | undefined;
+
+  public constructor(
+    private readonly indexer: PinContextIndex,
+    private readonly preferences: PinContextStore,
+  ) {
+    const sync = (): void => this.sync(vscode.window.activeTextEditor);
+    this.disposables.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => this.sync(editor)),
+      vscode.window.onDidChangeTextEditorSelection((event) =>
+        this.sync(event.textEditor),
+      ),
+      indexer.onDidUpdate(sync),
+      preferences.onDidChange(sync),
+    );
+    sync();
+  }
+
+  public dispose(): void {
+    this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+  }
+
+  /** Reads the entry under the cursor, and tells VS Code only when it moves. */
+  public sync(editor: vscode.TextEditor | undefined): void {
+    let next = false;
+    if (editor && this.indexer.isNotesFile(editor.document.uri)) {
+      const pin = createPinForLine(
+        this.indexer.getSnapshot(),
+        this.indexer.getFilePath(editor.document.uri),
+        editor.selection.active.line + 1,
+      );
+      next = pin !== undefined && this.preferences.isPinned(pinKey(pin));
+    }
+    if (next === this.pinned) {
+      return;
+    }
+    this.pinned = next;
+    void vscode.commands.executeCommand('setContext', ACTIVE_NOTE_PINNED, next);
+  }
+}

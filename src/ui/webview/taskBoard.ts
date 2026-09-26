@@ -7,14 +7,16 @@ import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { SearchRefineState, TaskBoardSnapshot } from '../../core/types';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt } from '../commands/navigation';
 import { exportResults, formatTasks, taskRows } from '../commands/exportResults';
-import { toggleTask } from '../commands/taskActions';
 import {
+  captureIntoColumn,
   moveTaskToColumn,
   readTaskBoardOptions,
   updateTaskBoardSetting,
 } from '../commands/taskBoardActions';
+import { askForDueDate, setTasksDue } from '../commands/agendaActions';
+import { openTask, quoteTaskTitle, toggleTask } from '../commands/taskActions';
 import { writeSetting } from '../commands/settings';
 import {
   mergeOrder,
@@ -473,7 +475,7 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
             task.lineNumber === message.line,
         );
         if (known) {
-          await openSourceAt(message.filePath, message.line);
+          await openResultAt(message.filePath, message.line, message);
         }
         return;
       }
@@ -500,6 +502,27 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
         }
         return;
       }
+      case 'pickTaskDate': {
+        const task = index.tasks.get(message.taskId);
+        if (!task) {
+          return;
+        }
+        const date = await askForDueDate(quoteTaskTitle(task));
+        if (date !== null) {
+          await setTasksDue([task], date);
+        }
+        return;
+      }
+      case 'editTask': {
+        const task = index.tasks.get(message.taskId);
+        if (task && (await openTask(task))) {
+          await vscode.commands.executeCommand('deckard.editTask');
+        }
+        return;
+      }
+      case 'addTaskToColumn':
+        await captureIntoColumn(message.column);
+        return;
     }
   }
 }

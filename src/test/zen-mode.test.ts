@@ -13,7 +13,7 @@ import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { getProvenanceCss, getZenCss } from '../ui/webview/components';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
-import { isZenModeEnabled } from '../ui/webview/zenMode';
+import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 /** A memento that keeps what it is given, as the dashboard tests use. */
@@ -43,6 +43,15 @@ class MemoryMemento implements vscode.Memento {
  * reach is the same with zen on as with it off.
  */
 suite('Zen mode', () => {
+  test('is written where the setting in force comes from', () => {
+    assert.strictEqual(zenModeTarget({}), vscode.ConfigurationTarget.Global);
+    assert.strictEqual(
+      zenModeTarget({ workspaceValue: true }),
+      vscode.ConfigurationTarget.Workspace,
+      'a workspace that sets it outranks the user settings the switch wrote to',
+    );
+  });
+
   const pages: WebviewPage[] = [];
   let store: PreferencesStore | undefined;
 

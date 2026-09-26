@@ -537,6 +537,8 @@ export interface ResultPaging {
 }
 
 export interface SearchPageSnapshot {
+  /** Whether the page has a search to go back to, and one to go forward to. */
+  history?: { back: boolean; forward: boolean };
   /** The tag the page is about, when the search is that one tag. */
   tag?: TagInfo;
   entity?: Entity;
@@ -776,7 +778,53 @@ export type CalendarMessage =
   | { type: 'openDay'; date: string }
   | { type: 'openWeek'; date: string };
 
+/** A line in another note that links to, or names, the note being read. */
+export interface NoteLinkEntry {
+  filePath: string;
+  /** The note the line is in. */
+  title: string;
+  /** One-based. */
+  line: number;
+  /** The line as written, for context. */
+  text: string;
+  /** The headings the line sits under, outermost first. */
+  headingPath: string[];
+}
+
+/** A mention of the note's name without a link, which can be made one. */
+export interface NoteMention extends NoteLinkEntry {
+  startColumn: number;
+  endColumn: number;
+  /** The name as written, which the link keeps. */
+  name: string;
+}
+
+/** Related Notes' Link on one mention: make that mention a link. */
+export interface LinkMentionMessage {
+  type: 'linkMention';
+  filePath: string;
+  line: number;
+  startColumn: number;
+}
+
+/** Related Notes' Link all: every mention of the note, as one write. */
+export interface LinkAllMentionsMessage {
+  type: 'linkAllMentions';
+}
+
+/** What points at the note being read. */
+export interface NoteLinks {
+  linkedFrom: NoteLinkEntry[];
+  linkedFromCount: number;
+  mentions: NoteMention[];
+  mentionCount: number;
+}
+
 export interface SidebarNotesSnapshot {
+  /** How far the first scan has got, while the state is loading. */
+  progress?: { completed: number; total: number };
+  /** What links to the note being read, and what names it without a link. */
+  links?: NoteLinks;
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
@@ -871,6 +919,8 @@ export interface NotesGraphFocus {
   local: boolean;
   /** How many hops out from the note the local graph reaches. */
   depth: number;
+  /** Whether daily and periodic notes are passed through rather than drawn. */
+  skipPeriodic?: boolean;
   /** The note it is drawn around, when one is open. */
   filePath?: string;
   title?: string;
@@ -893,6 +943,9 @@ export interface NotesGraphOpenSourceMessage {
   type: 'openSource';
   filePath: string;
   line: number;
+  /** Alt-click: open beside the graph. */
+  beside?: boolean;
+  pin?: boolean;
 }
 
 export interface NotesGraphOpenTagMessage {
@@ -914,6 +967,8 @@ export interface NotesGraphSetScopeMessage {
   type: 'setGraphScope';
   local: boolean;
   depth: number;
+  /** Pass through daily and periodic notes rather than drawing them. */
+  skipPeriodic?: boolean;
 }
 
 export type NotesGraphMessage =
@@ -929,6 +984,8 @@ export interface OpenSourceMessage {
   line: number;
   /** Open beside the current editor rather than replacing it. */
   beside?: boolean;
+  /** Keep the tab, from a double-click, rather than previewing in it. */
+  pin?: boolean;
 }
 
 /**
@@ -1075,7 +1132,7 @@ export interface OpenNoteMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'stats';
+  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup';
 }
 
 export interface ReorderTagsMessage {
@@ -1324,6 +1381,8 @@ export type SearchPageMessage =
   | CreateHubNoteMessage;
 
 export type SidebarMessage =
+  | LinkMentionMessage
+  | LinkAllMentionsMessage
   | SidebarReadyMessage
   | OpenSourceMessage
   | OpenTagMessage
@@ -1536,7 +1595,28 @@ export interface ShowColumnRestMessage {
   columnId: string;
 }
 
+/** The board's d key and its menu's Due on a date…: ask the host for one. */
+export interface PickTaskDateMessage {
+  type: 'pickTaskDate';
+  taskId: string;
+}
+
+/** The board's e key: the whole task in the task editor. */
+export interface EditTaskMessage {
+  type: 'editTask';
+  taskId: string;
+}
+
+/** A column's + Add task: capture a task already in that column. */
+export interface AddTaskToColumnMessage {
+  type: 'addTaskToColumn';
+  column: string;
+}
+
 export type TaskBoardMessage =
+  | PickTaskDateMessage
+  | EditTaskMessage
+  | AddTaskToColumnMessage
   | ExportResultsMessage
   | SetZenModeMessage
   | OpenHelpMessage

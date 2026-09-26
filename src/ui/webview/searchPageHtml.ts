@@ -111,6 +111,16 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
    positioned against. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
+/* On a search page a result's file, line, and headings are part of telling
+   it from the others, where people re-find by where a thing was (Bergman et
+   al., 2008), so they sit in the card's header rather than folding under
+   it. Zen keeps the fold. Specific enough to outweigh the fold, which the tail lays down after it. */
+body:not(.zen) main .card .source, body:not(.zen) main .card:hover .source, body:not(.zen) main .card:focus-within .source {
+  position: static; width: auto; height: auto; overflow: hidden; clip-path: none;
+  color: var(--muted); font: var(--text-xs)/16px var(--font-mono); white-space: nowrap; text-overflow: ellipsis;
+}
+body:not(.zen) main .card:hover::after, body:not(.zen) main .card:focus-within::after { display: none; }
+body:not(.zen) main .card:hover, body:not(.zen) main .card:focus-within { border-bottom-left-radius: var(--corner-bl, 0); border-bottom-right-radius: var(--corner-br, 0); }
 ${getPageTailCss()}
 </style>
 </head>
@@ -328,6 +338,19 @@ ${getQueryEditorScript()}
     return '<button type="button" class="edit-results" data-action="edit-results" data-kind="' + kind + '" title="' + label + ': complete them, date them, or tag them" aria-label="' + label + '">Bulk edit</button>';
   }
 
+  /**
+   * Back and forward through the searches this page has shown, as a
+   * browser's are. The mouse's own buttons already did this; nothing on the
+   * page said so, and the keyboard could not.
+   */
+  function renderHistoryButtons() {
+    const history = state.history || {};
+    return '<span class="history-buttons" role="group" aria-label="Search history">'
+      + '<button type="button" class="icon-button" data-action="history-back" aria-label="Back to the search before" title="Back (Alt+←)"' + (history.back ? '' : ' disabled') + '>‹</button>'
+      + '<button type="button" class="icon-button" data-action="history-forward" aria-label="Forward to the search after" title="Forward (Alt+→)"' + (history.forward ? '' : ' disabled') + '>›</button>'
+      + '</span>';
+  }
+
   function render() {
     if (!state) return;
     // The redraw is about to take the search box out of the document.
@@ -415,7 +438,7 @@ ${getQueryEditorScript()}
     const suggestion = !invalid && state.suggestion
       ? '<p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">' + escapeHtml(state.suggestion) + '</button> instead?</p>'
       : '';
-    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
+    document.getElementById('app').innerHTML = '<header><div><div class="overview-eyebrow"><p class="eyebrow">' + eyebrow + '</p></div>' + savedViewName + '<h1 aria-label="' + escapeHtml(title) + '">' + titleHtml + '</h1>' + entityMeta + '</div><div class="toolbar" role="group" aria-label="View options">' + renderHistoryButtons() + renderHelpButton('search') + viewOptions + '</div></header>' + editor.renderBar('') + editor.renderFacets() + renderHub() + staleNotice + suggestion + layoutContent;
     applyColumns();
     editor.afterRender();
     window.scrollTo(scrollX, scrollY);
@@ -425,7 +448,10 @@ ${getQueryEditorScript()}
   /** Keep the page's own view state across a window reload. */
   function saveState() {
     if (!state) return;
+    const previous = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const saved = { query: state.query.text, origin: state.originQuery };
+    // The scroll position belongs to the search it was scrolled in.
+    if (previous.query === saved.query && typeof previous.scrollY === 'number') saved.scrollY = previous.scrollY;
     // The host reads this same record to restore a page, so the tab is added
     // only once it is the reader's own choice.
     if (tabChosen) saved.tab = activeTab;
@@ -433,6 +459,9 @@ ${getQueryEditorScript()}
   }
 
   installViewOptions();
+  if (typeof vscode.getState === 'function') {
+    rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
+  }
 
   document.addEventListener('mousedown', function (event) {
     editor.handleMousedown(event);
@@ -494,15 +523,16 @@ ${getQueryEditorScript()}
       }
       if (action === 'run-suggestion' && state.suggestion) vscode.postMessage({ type: 'setOverviewQuery', query: state.suggestion });
       if (action === 'open-help') vscode.postMessage({ type: 'openHelp' });
+      if (action === 'history-back' || action === 'history-forward') vscode.postMessage({ type: 'navigateSearchHistory', direction: action === 'history-back' ? 'back' : 'forward' });
       if (action === 'save-filter') vscode.postMessage({ type: 'saveTagOverviewFilter' });
       if (action === 'create-hub') vscode.postMessage({ type: 'createHubNote' });
-      if (action === 'open-source') vscode.postMessage({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
+      if (action === 'open-source') vscode.postMessage(openSourceMessage(target, event));
       if (action === 'open-tag') vscode.postMessage({ type: 'openTag', tagKey: target.dataset.tagKey });
       return;
     }
     const entry = event.target.closest('.card, .task-row');
     if (entry && !event.target.closest('button, input, a')) {
-      vscode.postMessage({ type: 'openSource', filePath: entry.dataset.filePath, line: Number(entry.dataset.line) });
+      vscode.postMessage(openSourceMessage(entry, event));
     }
   });
   document.addEventListener('contextmenu', function (event) {
@@ -517,6 +547,11 @@ ${getQueryEditorScript()}
     if (card) openCardContextMenu(event, card);
   });
   document.addEventListener('keydown', function (event) {
+    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !(event.target.closest && event.target.closest('input, textarea'))) {
+      event.preventDefault();
+      vscode.postMessage({ type: 'navigateSearchHistory', direction: event.key === 'ArrowLeft' ? 'back' : 'forward' });
+      return;
+    }
     if (editor.handleKeydown(event)) return;
     if (event.key === 'Escape' && tagContextMenu && !tagContextMenu.hidden) {
       closeTagContextMenu();
@@ -527,7 +562,7 @@ ${getQueryEditorScript()}
     const entry = event.target.closest('.card, .task-row');
     if (entry) {
       event.preventDefault();
-      vscode.postMessage({ type: 'openSource', filePath: entry.dataset.filePath, line: Number(entry.dataset.line) });
+      vscode.postMessage(openSourceMessage(entry, event));
     }
   });
   document.addEventListener('change', function (event) {
@@ -535,16 +570,22 @@ ${getQueryEditorScript()}
     const target = event.target;
     if (target.dataset.action === 'set-sort') vscode.postMessage({ type: 'setTagOverviewSort', mode: target.value });
     if (target.dataset.action === 'set-results-per-page') vscode.postMessage({ type: 'setResultsPerPage', size: Number(target.value) });
-    if (target.dataset.action === 'toggle-task') vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      vscode.postMessage({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
   });
   document.addEventListener('input', function (event) {
     editor.handleInput(event);
   });
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
+      const first = !state;
       state = event.data.data;
       editor.receive();
-      render();
+      renderKeepingPlace(render);
+      if (first) restoreScroll(typeof vscode.getState === 'function' ? vscode.getState() : undefined);
+      markWords(document.getElementById('app'), editor.previewWords(state.query && state.query.text || ''));
       saveState();
     }
   });

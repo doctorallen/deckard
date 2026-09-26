@@ -13,6 +13,7 @@ import {
   fuzzyScore,
   QuickFindResults,
 } from '../ui/state/quickFindState';
+import { isNoteName } from '../ui/commands/quickFind';
 
 class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -194,5 +195,13 @@ suite('Quick Find', () => {
     const scattered = fuzzyScore('vc', 'every cocoa') ?? 0;
     assert.ok(initials > scattered);
     assert.strictEqual(fuzzyScore('xyz', 'vendor contract'), undefined);
+  });
+
+  test('offers to create a note only for words that read as a name', () => {
+    assert.strictEqual(isNoteName('Vendor contract'), true);
+    assert.strictEqual(isNoteName('#project/atlas'), false);
+    assert.strictEqual(isNoteName('is:open'), false);
+    assert.strictEqual(isNoteName('atlas OR harbor'), false);
+    assert.strictEqual(isNoteName('"exact words"'), false);
   });
 });

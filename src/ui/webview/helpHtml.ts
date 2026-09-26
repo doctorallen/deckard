@@ -16,7 +16,7 @@ import { getFavoriteHeartAssetUris } from './icons';
  * the guide still describing the workspace before it.
  */
 export interface HelpManifest {
-  commands?: { command: string; title: string }[];
+  commands?: { command: string; title: string; category?: string }[];
   configuration?: {
     title?: string;
     properties?: Record<
@@ -76,10 +76,21 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',
 };
 
+/**
+ * A setting's description as words: a `[link](command:…)` as its text, a
+ * `#setting#` link as the setting, and code marks dropped.
+ */
+function plainDescription(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/#(deckard\.[\w.]+)#/g, '$1')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
 /** The commands the manifest contributes, as a table of what each is for. */
 function renderCommandTable(manifest: HelpManifest): string {
-  const commands = (manifest.commands ?? []).filter((command) =>
-    command.title.startsWith('Deckard:'),
+  const commands = (manifest.commands ?? []).filter(
+    (command) => command.category === 'Deckard',
   );
   if (commands.length === 0) {
     return '';
@@ -98,7 +109,7 @@ function renderCommandTable(manifest: HelpManifest): string {
           )}</span>`
         : '';
       return `<tr><td><strong>${escapeHtml(
-        command.title.replace(/^Deckard: /, ''),
+        command.title,
       )}</strong>${shortcut}</td><td>${escapeHtml(
         COMMAND_NOTES[command.command] ?? '',
       )}</td></tr>`;
@@ -122,8 +133,9 @@ function renderSettingsTables(manifest: HelpManifest): string {
             property.default === '' || property.default === undefined
               ? 'Empty'
               : JSON.stringify(property.default);
-          const description =
-            property.description ?? property.markdownDescription ?? '';
+          const description = plainDescription(
+            property.description ?? property.markdownDescription ?? '',
+          );
           return `<tr><td><code>${escapeHtml(key)}</code></td><td><code>${escapeHtml(
             value,
           )}</code></td><td>${escapeHtml(description)}</td></tr>`;
@@ -178,7 +190,7 @@ nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--li
 .nav-title, .step-number { font-family: var(--font-mono); }
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
-nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: none; }
+nav a:hover, nav a:focus-visible { border-left-color: var(--amber); color: var(--text); background: var(--panel-raised); outline: 2px solid transparent; }
 /* The section being read, marked in the rail so twenty links say where the reader is. */
 nav a[aria-current] { border-left-color: var(--amber); color: var(--text); }
 /* Prose here is full of inline code chips, each a border and a pixel of padding
@@ -378,6 +390,7 @@ updated: 2026-09-20
       <div class="cards">
         <div class="card"><h3>Tasks view</h3><p>The sidebar’s <strong>Tasks</strong> lists the open tasks that need attention soon. <strong>Group by</strong> in its title chooses the axis: due status, priority, status, or person. Drag a task onto another to rank it, or onto a group to join it — which writes the priority, the status, the due date, or the name into the task itself.</p></div>
         <div class="card"><h3>Task board</h3><p><code>Deckard: Open Task Board</code> shows tasks as columns by status, priority, due date, or person, as a list, or as a table whose columns you choose and whose headers sort. Dropping a card rewrites the task in its note; the board opens on <code>is:open</code>, and its search box narrows both the board and the list. While few tasks carry a status, the board says so above the columns and offers the due-date grouping, which needs none.</p></div>
+        <div class="card"><h3>The board from the keyboard</h3><p>The board is one Tab stop. Arrow keys move between cards; on a focused card, <kbd>x</kbd> completes it, <kbd>t</kbd> and <kbd>m</kbd> make it due today or tomorrow, <kbd>d</kbd> asks for a date, <kbd>1</kbd> to <kbd>5</kbd> set its priority, <kbd>[</kbd> and <kbd>]</kbd> move it a column, and <kbd>e</kbd> opens the task editor. <kbd>?</kbd> on any page lists its keys.</p></div>
         <div class="card"><h3>Editing many at once</h3><p><strong>Bulk edit</strong>, beside a results pane’s heading on a search page, completes, reopens, dates, or tags everything the search found. Deckard lists the results with every one chosen, so unpicking any leaves it alone, and the whole edit is one write.</p></div>
         <div class="card"><h3>What is due</h3><p>A task's due date is written by its distance from today with the date beside it, <strong>Overdue 15 days · 2026-09-08</strong>, wherever a task is listed. The status bar reads <strong>3 due today</strong> while anything is, <strong>2 overdue, 3 due today</strong> when something has slipped, and opens the Tasks view when selected. <code>deckard.taskReminderTime</code> says the same thing once a day at an hour you pick.</p></div>
       </div>

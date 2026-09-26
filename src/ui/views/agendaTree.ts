@@ -25,6 +25,9 @@ import {
 interface AgendaIndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getTask(taskId: string): Task | undefined;
+  /** How far the first scan has got, which the waiting message says. */
+  readonly scanProgress?: { completed: number; total: number };
+  readonly onDidProgress?: vscode.Event<void>;
 }
 
 /** What the Agenda reads from preferences: the order tasks were dragged into. */
@@ -34,7 +37,7 @@ interface AgendaPreferences {
   setTaskOrder(taskOrder: string[]): Promise<void>;
 }
 
-type AgendaNode =
+export type AgendaNode =
   | { kind: 'group'; group: AgendaGroup; groupBy: AgendaGroupBy }
   | { kind: 'task'; entry: AgendaEntry; uri: vscode.Uri | undefined };
 
@@ -106,6 +109,13 @@ export class AgendaTreeProvider
     this.disposables.push(
       this.changeEmitter,
       ...(preferences ? [preferences.onDidChange(() => this.refresh())] : []),
+      ...(indexer.onDidProgress
+        ? [indexer.onDidProgress(() => {
+            if (!this.index) {
+              this.refresh();
+            }
+          })]
+        : []),
       indexer.onDidUpdate((index) => {
         this.index = index;
         this.refresh();
@@ -155,7 +165,7 @@ export class AgendaTreeProvider
     }
 
     if (!this.index) {
-      this.setStatus('Deckard is indexing the workspace…', 0);
+      this.setStatus(describeIndexing(this.indexer.scanProgress), 0);
       return [];
     }
     const days = getUpcomingDays();
@@ -201,6 +211,30 @@ export class AgendaTreeProvider
 
   public dispose(): void {
     this.disposables.forEach((disposable) => disposable.dispose());
+  }
+
+  /**
+   * The tasks a menu command was run on: every selected item when the one
+   * right-clicked is among them, else that item; a group stands for its
+   * tasks. Each is read again from the index, so a date is written on the
+   * line as it is now.
+   */
+  public tasksFor(node?: AgendaNode, selected?: readonly AgendaNode[]): Task[] {
+    const nodes =
+      node && selected?.includes(node) ? selected : node ? [node] : [];
+    const seen = new Set<string>();
+    const tasks: Task[] = [];
+    for (const each of nodes) {
+      const entries = each.kind === 'task' ? [each.entry] : each.group.entries;
+      for (const entry of entries) {
+        if (seen.has(entry.task.id)) {
+          continue;
+        }
+        seen.add(entry.task.id);
+        tasks.push(this.indexer.getTask(entry.task.id) ?? entry.task);
+      }
+    }
+    return tasks;
   }
 
   /** Carries the tasks being dragged, and only tasks. */
@@ -346,6 +380,37 @@ export class AgendaTreeProvider
   }
 }
 
+/** What a view says while the first scan runs, with how far it has got. */
+export function describeIndexing(
+  progress: { completed: number; total: number } | undefined,
+): string {
+  return progress && progress.total > 0
+    ? `Deckard is indexing the workspace: ${progress.completed.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')} notes read…`
+    : 'Deckard is indexing the workspace…';
+}
+
+/**
+ * What a task item says when hovered: its words, what it is due and how
+ * urgent it is, and where it is written, under the headings above it, so
+ * the right one of two similar tasks can be told apart without opening it.
+ */
+export function createTaskTooltip(entry: AgendaEntry): vscode.MarkdownString {
+  const tooltip = new vscode.MarkdownString(undefined, true);
+  tooltip.appendMarkdown(`**${escapeMarkdown(entry.title)}**`);
+  if (entry.details.length > 0) {
+    tooltip.appendMarkdown(`\n\n${entry.details.map(escapeMarkdown).join(' · ')}`);
+  }
+  tooltip.appendMarkdown(
+    `\n\n$(file) ${escapeMarkdown([entry.fileName, ...entry.context].join(' › '))}, line ${entry.task.lineNumber}`,
+  );
+  tooltip.appendMarkdown('\n\nRight-click to date or edit it.');
+  return tooltip;
+}
+
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*_{}[\]()#+\-.!|<>]/g, '\\$&');
+}
+
 function createGroupItem(
   group: AgendaGroup,
   groupBy: AgendaGroupBy,
@@ -359,7 +424,9 @@ function createGroupItem(
   item.id = `agenda:${group.id}`;
   item.description = String(group.entries.length);
   item.iconPath = GROUP_ICONS[group.id] ?? GROUPING_ICONS[groupBy];
-  item.contextValue = 'deckardAgendaGroup';
+  // Overdue is told apart, since it is the group offered a date for all.
+  item.contextValue =
+    group.id === 'overdue' ? 'deckardAgendaGroup.overdue' : 'deckardAgendaGroup';
   return item;
 }
 
@@ -373,10 +440,7 @@ function createTaskItem(
   );
   item.id = `agenda:task:${entry.task.id}`;
   item.description = entry.details.join(' · ');
-  item.tooltip = [
-    entry.title,
-    [...entry.context, entry.fileName].join(' › '),
-  ].join('\n');
+  item.tooltip = createTaskTooltip(entry);
   item.checkboxState = {
     state: vscode.TreeItemCheckboxState.Unchecked,
     tooltip: 'Complete this task',
@@ -481,6 +545,19 @@ function readBoardOptions(): TaskBoardOptions {
       'status',
     format: readTaskMetadataFormat(configuration),
   };
+}
+
+/** The open tasks the Tasks view lists as overdue, as its query selects them. */
+export function listOverdueTasks(index: WorkspaceIndex, now = Date.now()): Task[] {
+  const selected = selectAgendaTasks(index, getAgendaQuery());
+  return (
+    createAgenda(index, now, {
+      tasks: selected.tasks,
+      upcomingDays: getUpcomingDays(),
+    })
+      .find((group) => group.id === 'overdue')
+      ?.entries.map((entry) => entry.task) ?? []
+  );
 }
 
 /** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */

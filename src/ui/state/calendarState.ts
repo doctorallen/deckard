@@ -1,3 +1,4 @@
+import { stripTags } from '../../core/markdown/parser';
 import { WorkspaceIndex } from '../../core/types';
 import {
   findPeriodicNoteNames,
@@ -6,6 +7,9 @@ import {
   isPeriodicNoteName,
   listDailyNotes,
 } from '../commands/dailyNote';
+
+/** How many tasks and headings a day's tooltip names. */
+const TOOLTIP_ITEMS = 5;
 
 /** One day in the calendar. */
 export interface CalendarDay {
@@ -20,6 +24,9 @@ export interface CalendarDay {
   notePath?: string;
   /** Open tasks due that day. */
   dueCount: number;
+  /** The first few of them by name, and the daily note's headings, for its tooltip. */
+  dueTitles?: string[];
+  headings?: string[];
 }
 
 /** One row of the calendar: seven days, Sunday to Saturday. */
@@ -91,12 +98,25 @@ export function createCalendar(
       .map((name) => periodicNotes.get(name))
       .find(Boolean);
   const dueCounts = new Map<string, number>();
+  const dueTitles = new Map<string, string[]>();
   for (const task of index.tasks.values()) {
     if (!task.completed && task.dueAt !== undefined) {
       const date = formatLocalDate(new Date(task.dueAt));
       dueCounts.set(date, (dueCounts.get(date) ?? 0) + 1);
+      const titles = dueTitles.get(date) ?? [];
+      if (titles.length < TOOLTIP_ITEMS) {
+        titles.push(task.title.trim());
+        dueTitles.set(date, titles);
+      }
     }
   }
+  /** A daily note's own headings, below its title, for a day's tooltip. */
+  const headingsOf = (filePath: string): string[] =>
+    (index.files.get(filePath)?.sections ?? [])
+      .filter((section) => !section.isInline && section.headingLevel > 1)
+      .map((section) => stripTags(section.heading).trim())
+      .filter(Boolean)
+      .slice(0, TOOLTIP_ITEMS);
 
   const weeks: CalendarWeek[] = [];
   for (
@@ -120,8 +140,9 @@ export function createCalendar(
         day: day.getDate(),
         inMonth: day.getMonth() === monthNumber - 1,
         isToday: date === today,
-        ...(notePath ? { notePath } : {}),
+        ...(notePath ? { notePath, headings: headingsOf(notePath) } : {}),
         dueCount: dueCounts.get(date) ?? 0,
+        ...(dueTitles.has(date) ? { dueTitles: dueTitles.get(date) } : {}),
       };
     });
     const notePath = periodicNote('week', sunday);

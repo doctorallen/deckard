@@ -5,7 +5,7 @@ import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt } from '../commands/navigation';
 import { createDeckardStatsSnapshot } from '../state/dashboardState';
 import { parseStatsMessage } from './messages';
 import { getStatsHtml } from './statsHtml';
@@ -158,14 +158,14 @@ export class StatsPanel implements vscode.Disposable {
         candidate.startLine === message.line,
     );
     if (section) {
-      await openSourceAt(section.filePath, section.startLine);
+      await openResultAt(section.filePath, section.startLine, message);
       await this.preferences.recordSectionAccess(section.id);
       return;
     }
     // A note listed whole, such as one nothing links to, opens without
     // counting as a view of one of its entries.
     if (index.files.has(message.filePath)) {
-      await openSourceAt(message.filePath, message.line);
+      await openResultAt(message.filePath, message.line, message);
     }
   }
 

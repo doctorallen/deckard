@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { listOverdueTasks } from './agendaTree';
+
 import { WorkspaceIndex } from '../../core/types';
 import { createAgenda, selectAgendaTasks } from '../state/agendaState';
 
@@ -95,6 +97,7 @@ function readAgendaQuery(): string {
 
 /** The command that opens the Tasks view, contributed by VS Code per view. */
 const SHOW_AGENDA = 'deckard.agenda.focus';
+const RESCHEDULE_OVERDUE = 'deckard.rescheduleOverdue';
 
 export class TaskStatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
@@ -166,15 +169,34 @@ export class TaskStatusBar implements vscode.Disposable {
       return;
     }
     this.item.text = `$(checklist) ${text}`;
-    this.item.tooltip = `Deckard: ${describeDueTasksAtLength(
-      counts,
-    )} Select to open Tasks.`;
+    this.item.tooltip = this.createTooltip(describeDueTasksAtLength(counts));
     // Overdue work is the one state worth coloring, and only then.
     this.item.backgroundColor =
       counts.overdue > 0
         ? new vscode.ThemeColor('statusBarItem.warningBackground')
         : undefined;
     this.item.show();
+  }
+
+  /**
+   * The sentence, then the first few overdue tasks by name, so a glance
+   * says which ones rather than how many.
+   */
+  private createTooltip(sentence: string): vscode.MarkdownString {
+    const tooltip = new vscode.MarkdownString(`Deckard: ${sentence}`, true);
+    const overdue = listOverdueTasks(this.indexer.getSnapshot(), this.now().getTime());
+    if (overdue.length > 0) {
+      tooltip.appendMarkdown(
+        '\n\n' +
+          overdue
+            .slice(0, 5)
+            .map((task) => `- $(warning) ${task.title.replace(/[\\`*_[\]<>]/g, '\\$&')}`)
+            .join('\n') +
+          (overdue.length > 5 ? `\n- and ${overdue.length - 5} more` : ''),
+      );
+    }
+    tooltip.appendMarkdown('\n\nSelect to open Tasks.');
+    return tooltip;
   }
 
   /**
@@ -211,12 +233,30 @@ export class TaskStatusBar implements vscode.Disposable {
     if (counts.overdue + counts.today === 0) {
       return;
     }
+    // What is overdue can be moved on from here, and a reminder that is no
+    // longer wanted can be turned off where it is heard, not in Settings.
+    const choices = counts.overdue > 0
+      ? ['Open Tasks', 'Reschedule Overdue…', 'Turn Off Reminders']
+      : ['Open Tasks', 'Turn Off Reminders'];
     const choice = await vscode.window.showInformationMessage(
       `Deckard: ${describeDueTasksAtLength(counts)}`,
-      'Open Tasks',
+      ...choices,
     );
     if (choice === 'Open Tasks') {
       await vscode.commands.executeCommand(SHOW_AGENDA);
+    } else if (choice === 'Reschedule Overdue…') {
+      await vscode.commands.executeCommand(RESCHEDULE_OVERDUE);
+    } else if (choice === 'Turn Off Reminders') {
+      // Cleared where it was set, so a workspace's own hour is the one undone.
+      const configuration = vscode.workspace.getConfiguration('deckard');
+      const setting = configuration.inspect<string>('taskReminderTime');
+      await configuration.update(
+        'taskReminderTime',
+        undefined,
+        setting?.workspaceValue !== undefined
+          ? vscode.ConfigurationTarget.Workspace
+          : vscode.ConfigurationTarget.Global,
+      );
     }
   }
 }

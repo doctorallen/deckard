@@ -19,7 +19,11 @@ import {
   openPeriodicNoteWithReview,
   writeReviewCommand,
 } from './ui/commands/review';
-import { setTaskRankKeeper } from './ui/commands/taskActions';
+import {
+  openTask,
+  quoteTaskTitle,
+  setTaskRankKeeper,
+} from './ui/commands/taskActions';
 import {
   editTaskCommand,
   TaskEditorActions,
@@ -39,7 +43,14 @@ import { CalendarView } from './ui/webview/calendar';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
-import { setNotePinnedCommand } from './ui/commands/pinNote';
+import { ActivePinContext, setNotePinnedCommand } from './ui/commands/pinNote';
+import {
+  askForDueDate,
+  dueDateFor,
+  DueChoice,
+  pickReschedule,
+  setTasksDue,
+} from './ui/commands/agendaActions';
 import { createPinForLine } from './ui/state/pinnedNotes';
 import { pinKey } from './core/storage/preferences';
 import {
@@ -47,7 +58,10 @@ import {
   renameHeadingCommand,
 } from './ui/commands/linkMaintenance';
 import { WikiLinkCompletionProvider } from './ui/commands/linkSuggestions';
-import { undoLastWorkspaceWrite } from './ui/commands/workspaceWrites';
+import {
+  undoLastWorkspaceWrite,
+  workspaceWrites,
+} from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
 import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
@@ -91,7 +105,7 @@ import {
 } from './ui/views/outlineTree';
 import { OutlineNode } from './ui/state/outlineState';
 import { QueryBlocks } from './ui/preview/queryBlocks';
-import {
+import { listOverdueTasks, AgendaNode,
   AgendaTreeProvider,
   getAgendaQuery,
   pickAgendaGrouping,
@@ -114,6 +128,10 @@ export interface DeckardExports {
  * Keeping services alive from one activation boundary lets panels, the sidebar,
  * decorations, and completion all observe the same index and preference store.
  */
+/** A first index this large is offered deckard.exclude, once. */
+const LARGE_WORKSPACE_NOTES = 3000;
+const EXCLUDE_HINT_SHOWN = 'deckard.excludeHintShown';
+
 export function activate(context: vscode.ExtensionContext): DeckardExports {
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
@@ -194,6 +212,48 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer);
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
+  // A very large first index is worth one word about leaving folders out,
+  // said once, and only when nothing is left out yet.
+  void indexer.ready.then(async () => {
+    const notes = indexer.getSnapshot().files.size;
+    const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
+    if (
+      notes < LARGE_WORKSPACE_NOTES ||
+      Object.keys(exclude ?? {}).length > 0 ||
+      context.globalState.get<boolean>(EXCLUDE_HINT_SHOWN)
+    ) {
+      return;
+    }
+    await context.globalState.update(EXCLUDE_HINT_SHOWN, true);
+    const choice = await vscode.window.showInformationMessage(
+      `Deckard read ${notes.toLocaleString('en-US')} notes. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, deckard.exclude leaves them out and makes every scan faster.`,
+      'Open Setting',
+    );
+    if (choice === 'Open Setting') {
+      await vscode.commands.executeCommand('workbench.action.openSettings', 'deckard.exclude');
+    }
+  });
+  // The walkthrough checks its first steps off when there is a note, and a
+  // tag, in the index, rather than when a button in it is pressed.
+  const syncWalkthroughContext = (index: { files: Map<string, unknown>; tags: Map<string, unknown> }): void => {
+    void vscode.commands.executeCommand('setContext', 'deckard.hasNotes', index.files.size > 0);
+    void vscode.commands.executeCommand('setContext', 'deckard.hasTags', index.tags.size > 0);
+  };
+  context.subscriptions.push(indexer.onDidUpdate(syncWalkthroughContext));
+  // The palette offers Pin or Unpin by what the cursor is in, and Undo Last
+  // Change only while there is a change to take back.
+  const activePinContext = new ActivePinContext(indexer, preferences);
+  void vscode.commands.executeCommand(
+    'setContext',
+    'deckard.canUndo',
+    workspaceWrites.lastWrite !== undefined,
+  );
+  context.subscriptions.push(
+    activePinContext,
+    workspaceWrites.onDidChange((canUndo) =>
+      vscode.commands.executeCommand('setContext', 'deckard.canUndo', canUndo),
+    ),
+  );
   const editorReferences = new EditorReferences(indexer);
   const editorLenses = new EditorLenses(indexer);
   const assistantTools = new AssistantTools(indexer);
@@ -206,7 +266,8 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     context.extension.packageJSON.version,
   );
   void mcpServer.restart();
-  const linkSuggestions = new WikiLinkCompletionProvider(indexer);
+  // Notes are offered in the order Find ranks them, opened ones first.
+  const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences);
   const entitySuggestions = new EntityHeadingSuggestions();
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
@@ -401,12 +462,62 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,
+    // Several tasks can be chosen and dated at once from the item menu.
+    canSelectMany: true,
     // Dragging a task onto another ranks it there; onto a group, it joins
     // that group through the same checked edit the board writes.
     dragAndDropController: agenda,
   });
   agenda.attach(agendaView);
   context.subscriptions.push(agendaView);
+  // The Tasks view's own menus: a date by name or in plain words, on one
+  // task, on the tasks selected, or on every task in a group.
+  const dueFromView = (
+    date: (subject: string) => Promise<string | undefined | null>,
+  ) =>
+    async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+      const tasks = agenda.tasksFor(node, selected);
+      if (tasks.length === 0) {
+        return;
+      }
+      const subject =
+        tasks.length === 1 ? quoteTaskTitle(tasks[0]) : `${tasks.length} tasks`;
+      const chosen = await date(subject);
+      if (chosen !== null) {
+        await setTasksDue(tasks, chosen);
+      }
+    };
+  const named = (choice: DueChoice) => () => Promise.resolve(dueDateFor(choice));
+  context.subscriptions.push(
+    vscode.commands.registerCommand('deckard.agenda.dueToday', dueFromView(named('today'))),
+    vscode.commands.registerCommand('deckard.agenda.dueTomorrow', dueFromView(named('tomorrow'))),
+    vscode.commands.registerCommand('deckard.agenda.dueNextWeek', dueFromView(named('nextWeek'))),
+    vscode.commands.registerCommand('deckard.agenda.dueOnDate', dueFromView(askForDueDate)),
+    vscode.commands.registerCommand('deckard.agenda.reschedule', dueFromView(pickReschedule)),
+    vscode.commands.registerCommand('deckard.rescheduleOverdue', async () => {
+      await indexer.ready;
+      const overdue = listOverdueTasks(indexer.getSnapshot());
+      if (overdue.length === 0) {
+        void vscode.window.showInformationMessage('Nothing is overdue.');
+        return;
+      }
+      const date = await pickReschedule(
+        overdue.length === 1 ? quoteTaskTitle(overdue[0]) : `${overdue.length} overdue tasks`,
+      );
+      if (date !== null) {
+        await setTasksDue(overdue, date);
+      }
+    }),
+    vscode.commands.registerCommand(
+      'deckard.agenda.editTask',
+      async (node?: AgendaNode) => {
+        const [task] = agenda.tasksFor(node);
+        if (task && (await openTask(task))) {
+          await vscode.commands.executeCommand('deckard.editTask');
+        }
+      },
+    ),
+  );
   void syncOutlineFollowCursorContext();
   void syncZenModeContext();
   context.subscriptions.push(

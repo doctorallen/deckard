@@ -23,7 +23,7 @@ import {
 } from '../state/dashboardState';
 import { createDashboardWidgets } from '../state/dashboardWidgets';
 import { toggleTask } from '../commands/taskActions';
-import { openSourceAt } from '../commands/navigation';
+import { openResultAt, openSourceAt } from '../commands/navigation';
 import { renameIndexedTag } from '../commands/renameTag';
 import { parseDashboardMessage } from './messages';
 import { getDashboardHtml } from './dashboardHtml';
@@ -413,7 +413,7 @@ export class DashboardPanel implements vscode.Disposable {
             message.line === 1,
         );
         if (task || section || metadataOnlyFile) {
-          await openSourceAt(message.filePath, message.line);
+          await openResultAt(message.filePath, message.line, message);
           if (section) {
             await this.preferences.recordSectionAccess(section.id);
           }
@@ -559,7 +559,12 @@ export class DashboardPanel implements vscode.Disposable {
         return;
       case 'openView':
         await vscode.commands.executeCommand(
-          message.view === 'agenda' ? 'deckard.agenda.focus' : 'deckard.showStats',
+          {
+            agenda: 'deckard.agenda.focus',
+            stats: 'deckard.showStats',
+            sampleWorkspace: 'deckard.createSampleWorkspace',
+            checkSetup: 'deckard.checkSetup',
+          }[message.view],
         );
         return;
       case 'openDailyNote':

@@ -132,7 +132,10 @@ export function parseDashboardMessage(
           }
         : undefined;
     case 'openView':
-      return value.view === 'agenda' || value.view === 'stats'
+      return value.view === 'agenda' ||
+        value.view === 'stats' ||
+        value.view === 'sampleWorkspace' ||
+        value.view === 'checkSetup'
         ? { type: 'openView', view: value.view }
         : undefined;
     case 'openDailyNote':
@@ -352,9 +355,17 @@ export function parseNotesGraphMessage(
     typeof value.depth === 'number' &&
     Number.isInteger(value.depth) &&
     value.depth >= 1 &&
-    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH
+    value.depth <= MAXIMUM_LOCAL_GRAPH_DEPTH &&
+    (value.skipPeriodic === undefined || typeof value.skipPeriodic === 'boolean')
   ) {
-    return { type: 'setGraphScope', local: value.local, depth: value.depth };
+    return {
+      type: 'setGraphScope',
+      local: value.local,
+      depth: value.depth,
+      ...(typeof value.skipPeriodic === 'boolean'
+        ? { skipPeriodic: value.skipPeriodic }
+        : {}),
+    };
   }
   if (
     value.type === 'openTag' &&
@@ -404,6 +415,23 @@ export function parseSidebarMessage(
   }
   if (value.type === 'openTag' && isOpenTagMessage(value)) {
     return { type: 'openTag', tagKey: value.tagKey as string };
+  }
+  if (
+    value.type === 'linkMention' &&
+    isSourceMessage(value) &&
+    typeof value.startColumn === 'number' &&
+    Number.isInteger(value.startColumn) &&
+    value.startColumn >= 0
+  ) {
+    return {
+      type: 'linkMention',
+      filePath: value.filePath as string,
+      line: value.line as number,
+      startColumn: value.startColumn,
+    };
+  }
+  if (value.type === 'linkAllMentions') {
+    return { type: 'linkAllMentions' };
   }
   if (value.type === 'insertLink' && isSourceMessage(value)) {
     return {
@@ -496,6 +524,17 @@ export function parseTaskBoardMessage(
         typeof value.column === 'string' &&
         value.column.length > 0
         ? { type: 'moveTask', taskId: value.taskId, column: value.column }
+        : undefined;
+    case 'pickTaskDate':
+    case 'editTask':
+      return typeof value.taskId === 'string' && Object.keys(value).length === 2
+        ? { type: value.type, taskId: value.taskId }
+        : undefined;
+    case 'addTaskToColumn':
+      return typeof value.column === 'string' &&
+        value.column.length > 0 &&
+        Object.keys(value).length === 2
+        ? { type: 'addTaskToColumn', column: value.column }
         : undefined;
     case 'setBoardGroup':
       return isTaskBoardGroupBy(value.groupBy)
@@ -594,6 +633,8 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
             type: 'openSource',
             filePath: value.filePath as string,
             line: value.line as number,
+            ...(value.beside === true ? { beside: true } : {}),
+            ...(value.pin === true ? { pin: true } : {}),
           }
         : undefined;
     case 'openSearch':
@@ -660,7 +701,8 @@ function isSourceMessage(value: Record<string, unknown>): boolean {
     typeof value.line === 'number' &&
     Number.isInteger(value.line) &&
     value.line > 0 &&
-    (value.beside === undefined || typeof value.beside === 'boolean')
+    (value.beside === undefined || typeof value.beside === 'boolean') &&
+    (value.pin === undefined || typeof value.pin === 'boolean')
   );
 }
 

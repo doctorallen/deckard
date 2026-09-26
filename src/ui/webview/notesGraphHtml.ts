@@ -104,6 +104,7 @@ ${getPageTailCss()}
     <div class="control-body">
       <label class="toggle-row" title="Draw only the note open in the editor and what it is connected to."><input type="checkbox" id="local-graph" title="Draw only the note open in the editor and what it is connected to."> Around this note</label>
       <div class="control-row"><label for="local-depth" title="How many connections out from the note the graph reaches.">Hops out</label><div class="slider-line"><input type="range" id="local-depth" min="1" max="3" step="1" value="1" title="How many connections out from the note the graph reaches."><output id="local-depth-out">1</output></div></div>
+      <label class="toggle-row" title="Daily, weekly, and monthly notes link to everything written that day. Passed through, they still count as a hop but are not drawn, and what they lead to is joined to where the path began."><input type="checkbox" id="skip-periodic" checked title="Pass through daily, weekly, and monthly notes"> Pass through daily notes</label>
       <p class="focus-note" id="focus-note">Open a note to draw the graph around it.</p>
     </div>
   </details>
@@ -197,7 +198,29 @@ ${getPageTailCss()}
     var value = rootStyles.getPropertyValue(name).trim();
     return value || fallback;
   }
-  var colors = {
+  // A system color as the browser resolves it, for a canvas to paint with.
+  function systemColor(name) {
+    var probe = document.createElement('span');
+    probe.style.color = name;
+    document.body.appendChild(probe);
+    var value = getComputedStyle(probe).color;
+    probe.remove();
+    return value;
+  }
+  // Under forced colors the page's own sheet is repainted in the system's
+  // colors, but a canvas is not: it keeps drawing the theme's cyan on black.
+  // It paints in the same system colors instead, the selection in Highlight.
+  var forcedColors = window.matchMedia && window.matchMedia('(forced-colors: active)').matches;
+  var colors = forcedColors ? {
+    background: systemColor('Canvas'),
+    note: systemColor('CanvasText'),
+    task: systemColor('CanvasText'),
+    tag: systemColor('CanvasText'),
+    edge: systemColor('GrayText'),
+    edgeHighlight: systemColor('Highlight'),
+    label: systemColor('CanvasText'),
+    halo: systemColor('Highlight')
+  } : {
     background: themeColor('--bg-dark', '#050608'),
     note: themeColor('--cyan-bright', '#5FE1F0'),
     task: themeColor('--amber-bright', '#FFB000'),
@@ -1690,10 +1713,11 @@ ${getPageTailCss()}
     persist();
     if (!clicked) { return; }
     if (wasDrag >= 0) {
-      // Cmd/Ctrl+click opens the source; a plain click selects the node and
-      // surfaces direct graph connections in the sidebar.
-      if (event.metaKey || event.ctrlKey) {
-        openNode(wasDrag);
+      // Cmd/Ctrl+click opens the source, and Alt+click opens it beside the
+      // graph; a plain click selects the node and surfaces direct graph
+      // connections in the sidebar.
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        openNode(wasDrag, event.altKey);
       } else {
         selectNode(wasDrag);
       }
@@ -1723,7 +1747,7 @@ ${getPageTailCss()}
     if (event.key === 'Enter' || event.key === ' ') {
       if (selectedIndex >= 0) {
         event.preventDefault();
-        openNode(selectedIndex);
+        openNode(selectedIndex, event.metaKey || event.ctrlKey);
       }
       return;
     }
@@ -1774,7 +1798,7 @@ ${getPageTailCss()}
     }
   }
 
-  function openNode(index) {
+  function openNode(index, beside) {
     var node = nodes[index];
     if (!node) { return; }
     if (node.kind === 'tag') {
@@ -1782,7 +1806,9 @@ ${getPageTailCss()}
       return;
     }
     if (node.filePath && node.line) {
-      vscode.postMessage({ type: 'openSource', filePath: node.filePath, line: node.line });
+      vscode.postMessage(beside
+        ? { type: 'openSource', filePath: node.filePath, line: node.line, beside: true }
+        : { type: 'openSource', filePath: node.filePath, line: node.line });
     }
   }
 
@@ -1834,15 +1860,18 @@ ${getPageTailCss()}
   var localDepth = document.getElementById('local-depth');
   var localDepthOut = document.getElementById('local-depth-out');
   var focusNote = document.getElementById('focus-note');
+  var skipPeriodic = document.getElementById('skip-periodic');
   function requestScope() {
     localDepthOut.textContent = localDepth.value;
     vscode.postMessage({
       type: 'setGraphScope',
       local: localGraph.checked,
       depth: Number(localDepth.value),
+      skipPeriodic: skipPeriodic.checked,
     });
   }
   localGraph.addEventListener('change', requestScope);
+  skipPeriodic.addEventListener('change', requestScope);
   localDepth.addEventListener('input', function () {
     localDepthOut.textContent = localDepth.value;
   });
@@ -1852,6 +1881,8 @@ ${getPageTailCss()}
     var focus = snapshot && snapshot.focus;
     if (!focus) { return; }
     localGraph.checked = Boolean(focus.local);
+    skipPeriodic.checked = focus.skipPeriodic !== false;
+    skipPeriodic.disabled = !focus.local;
     localDepth.value = String(focus.depth || 1);
     localDepthOut.textContent = localDepth.value;
     if (!focus.title) {

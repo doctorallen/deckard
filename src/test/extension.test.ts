@@ -84,6 +84,13 @@ suite('Extension Test Suite', () => {
         'deckard.restorePreferences',
         'deckard.checkSetup',
         'deckard.createSampleWorkspace',
+        'deckard.agenda.editTask',
+        'deckard.agenda.dueToday',
+        'deckard.agenda.dueTomorrow',
+        'deckard.agenda.dueNextWeek',
+        'deckard.agenda.dueOnDate',
+        'deckard.agenda.reschedule',
+        'deckard.rescheduleOverdue',
       ],
     );
     assert.strictEqual(

@@ -44,7 +44,12 @@ export function getDashboardHtml(
 <style nonce="${nonce}">${getBaseCss()}
 ${getQueryEditorCss()}
 .tag-name, .telemetry-line, .section-readout { font-family: var(--font-mono); }
-.metric::before { content: attr(data-code); display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
+/* The first step, on a Home with no notes to show yet. */
+.home-start { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); padding: var(--space-4); border: var(--edge) solid var(--amber); background: var(--panel); }
+.home-start h2 { margin: 0; }
+.home-start p { margin: 0; color: var(--muted); }
+.home-start-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.metric::before { content: attr(data-code); content: attr(data-code) / ""; display: block; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--slate-border); color: var(--amber-dim); font: var(--text-xs) var(--font-mono); text-transform: uppercase; }
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
 .dashboard-header-actions .view-options { order: 2; }
 .saved-filters { padding-top: 16px; }
@@ -372,20 +377,7 @@ ${getQueryEditorScript()}
    * next keystroke can land on the page instead of the field.
    */
   function renderKeepingFocus() {
-    const active = document.activeElement;
-    const isTextField = Boolean(active && active.matches && active.matches('input[type="search"], input[type="text"]'));
-    const action = isTextField ? active.dataset.action : undefined;
-    const widgetId = isTextField ? active.dataset.widgetId : undefined;
-    const selectionStart = isTextField ? active.selectionStart : null;
-    const selectionEnd = isTextField ? active.selectionEnd : null;
-    render();
-    if (!action) return;
-    const field = Array.from(document.querySelectorAll('input[data-action="' + action + '"]')).find(function (input) {
-      return input.dataset.widgetId === widgetId;
-    });
-    if (!field) return;
-    field.focus();
-    if (selectionStart !== null && selectionEnd !== null) field.setSelectionRange(selectionStart, selectionEnd);
+    renderKeepingPlace(render);
   }
 
   /**
@@ -707,13 +699,13 @@ ${getQueryEditorScript()}
       case 'savedSearches':
         return widget.savedFilters && widget.savedFilters.length
           ? '<div class="saved-filter-list">' + widget.savedFilters.map(function (filter) { return renderSavedFilterRow(filter, true); }).join('') + '</div>'
-          : '<p class="home-widget-empty">Save a search from a search page to keep it here.</p>';
+          : '<p class="home-widget-empty">Save a search from a search page to keep it here. <button type="button" data-action="open-search-page">Open a search page</button></p>';
       case 'recentSearches':
         return widget.queries && widget.queries.length
           ? '<div class="home-list">' + widget.queries.map(function (query) {
             return renderHomeRow('open-search', 'data-query="' + escapeHtml(query) + '"', '<code>' + escapeHtml(query) + '</code>', '');
           }).join('') + '</div>'
-          : '<p class="home-widget-empty">The searches you run show up here.</p>';
+          : '<p class="home-widget-empty">The searches you run show up here. <button type="button" data-action="open-search-page">Open a search page</button></p>';
       case 'recentNotes':
         return renderHomeNotes(widget.notes, 'The notes you open from Deckard show up here.');
       case 'stats':
@@ -915,7 +907,12 @@ ${getQueryEditorScript()}
     const grid = widgets.length
       ? '<div class="home-grid">' + widgets.map(renderWidget).join('') + '</div>'
       : '<div class="empty">Home has no widgets. <button type="button" data-action="customize-home">Customize</button></div>';
-    return bar + grid;
+    // A workspace with no notes yet gets the next step, not a grid of empty
+    // widgets each saying there is nothing to show.
+    const start = state.totalNoteCount === 0 && !editingHome
+      ? '<section class="home-start" aria-label="Get started"><h2>No notes here yet</h2><p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or look around seven notes already written the way Deckard reads them.</p><div class="home-start-actions"><button type="button" class="active" data-action="open-daily-note">Create today’s note</button><button type="button" data-action="open-view" data-view="sampleWorkspace">Create a sample workspace</button><button type="button" data-action="open-view" data-view="checkSetup">Check my setup</button></div></section>'
+      : '';
+    return bar + start + grid;
   }
 
   /** Re-render from a snapshot while preserving scroll and filter affordances. */
@@ -1109,16 +1106,17 @@ ${getQueryEditorScript()}
       if (action === 'open-search') send({ type: 'openSearch', query: target.dataset.query || '' });
       if (action === 'open-task-board') send({ type: 'openTaskBoard', query: target.dataset.query || '' });
       if (action === 'open-view') send({ type: 'openView', view: target.dataset.view });
+      if (action === 'open-search-page') send({ type: 'openSearch', query: '' });
       if (action === 'open-tag') send({ type: 'openTag', tagKey: target.dataset.tagKey });
       if (action === 'remove-saved-filter') send({ type: 'removeSavedFilter', filterId: target.dataset.savedFilterId });
       if (action === 'favorite-tag') send({ type: 'toggleFavorite', tagKey: target.dataset.tagKey });
       if (action === 'favorite-entity') send({ type: 'toggleFavoriteEntity', entityKey: target.dataset.entityKey });
-      if (action === 'open-source') send({ type: 'openSource', filePath: target.dataset.filePath, line: Number(target.dataset.line) });
+      if (action === 'open-source') send(openSourceMessage(target, event));
       return;
     }
     if (event.target.closest('button, input, select, a, summary')) return;
     const taskRow = event.target.closest('.task-row');
-    if (taskRow) send({ type: 'openSource', filePath: taskRow.dataset.filePath, line: Number(taskRow.dataset.line) });
+    if (taskRow) send(openSourceMessage(taskRow, event));
     const entityRow = event.target.closest('.entity-row');
     if (entityRow) send({ type: 'openTag', tagKey: entityRow.dataset.entityKey });
     const tagRow = event.target.closest('.tag-row');
@@ -1174,7 +1172,7 @@ ${getQueryEditorScript()}
     const row = event.target.closest('.task-row, .entity-row, .tag-row, .saved-filter-row[data-saved-filter-id]');
     if (!row) return;
     event.preventDefault();
-    if (row.classList.contains('task-row')) send({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+    if (row.classList.contains('task-row')) send(openSourceMessage(row, event));
     else if (row.classList.contains('entity-row')) send({ type: 'openTag', tagKey: row.dataset.entityKey });
     else if (row.classList.contains('tag-row')) send({ type: 'openTag', tagKey: row.dataset.tagKey });
     else send({ type: 'openSavedFilter', filterId: row.dataset.savedFilterId });
@@ -1196,7 +1194,10 @@ ${getQueryEditorScript()}
     // A different page size is a different set of pages, so the list is read
     // again from its top.
     if (target.dataset.action === 'set-widget-page-size') updateWidget(target.dataset.widgetId, { count: Number(target.value), page: 1 });
-    if (target.dataset.action === 'toggle-task') send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      send({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
   });
 
   document.addEventListener('input', function (event) {

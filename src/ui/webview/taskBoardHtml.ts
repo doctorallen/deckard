@@ -127,21 +127,11 @@ ${getQueryEditorScript()}
   }
 
   /**
-   * Redraw without taking the caret away from a field being typed in, which
-   * is found again by its action, as the Dashboard does.
+   * Redraw without taking the reader's place: the caret in a field being
+   * typed in, or the card or row that had focus, or the one after it.
    */
   function renderKeepingFocus() {
-    const active = document.activeElement;
-    const isField = Boolean(active && active.matches && active.matches('input[type="text"]'));
-    const action = isField ? active.dataset.action : undefined;
-    const selectionStart = isField ? active.selectionStart : null;
-    const selectionEnd = isField ? active.selectionEnd : null;
-    render();
-    if (!action) return;
-    const field = document.querySelector('input[type="text"][data-action="' + action + '"]');
-    if (!field) return;
-    field.focus();
-    if (selectionStart !== null && selectionEnd !== null) field.setSelectionRange(selectionStart, selectionEnd);
+    renderKeepingPlace(render);
   }
 
   function canRank() {
@@ -377,7 +367,7 @@ ${getQueryEditorScript()}
     }
     const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
-      post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+      post(openSourceMessage(row, event));
     }
   });
 
@@ -395,7 +385,7 @@ ${getQueryEditorScript()}
     const row = event.target.closest('.task-list .task-row, .result-table .result-row');
     if (row && !event.target.closest('button, input, a')) {
       event.preventDefault();
-      post({ type: 'openSource', filePath: row.dataset.filePath, line: Number(row.dataset.line) });
+      post(openSourceMessage(row, event));
     }
   });
 
@@ -403,7 +393,10 @@ ${getQueryEditorScript()}
     if (editor.handleChange(event)) return;
     const target = event.target;
     if (target.dataset.action === 'set-task-sort') post({ type: 'setTaskSort', mode: target.value });
-    if (target.dataset.action === 'toggle-task') post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+    if (target.dataset.action === 'toggle-task') {
+      post({ type: 'toggleTask', taskId: target.dataset.taskId, completed: target.checked });
+      announce((target.checked ? 'Completed ' : 'Reopened ') + taskTitleOf(target) + '.');
+    }
     if (target.dataset.action === 'toggle-table-column') toggleColumn(target.dataset.value, target.checked);
   });
 
@@ -414,13 +407,56 @@ ${getQueryEditorScript()}
     if (target.dataset.action === 'namespace-draft') namespaceDraft = target.value;
   });
 
+  /** The latest state waiting on a completed card to finish leaving. */
+  let pendingState;
+  function receiveState(next) {
+    const first = !state;
+    state = next;
+    editor.receive();
+    const previous = vscode.getState() || {};
+    vscode.setState(Object.assign({ query: state.query.text }, previous.query === state.query.text && typeof previous.scrollY === 'number' ? { scrollY: previous.scrollY } : {}));
+    renderKeepingFocus();
+    if (first) restoreScroll(previous);
+  }
+  rememberScroll(function () { return vscode.getState(); }, function (value) { vscode.setState(value); });
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') {
-      state = event.data.data;
-      editor.receive();
-      vscode.setState({ query: state.query.text });
-      renderKeepingFocus();
+      const wait = taskBoardLingerRemaining();
+      if (!wait) {
+        receiveState(event.data.data);
+        return;
+      }
+      const waiting = pendingState === undefined;
+      pendingState = event.data.data;
+      if (waiting) {
+        setTimeout(function () {
+          const next = pendingState;
+          pendingState = undefined;
+          receiveState(next);
+        }, wait);
+      }
     }
+  });
+
+  installKeySheet(function () {
+    const board = [
+      ['↑ ↓', 'The card above or below'],
+      ['← →', 'The next column over'],
+      ['Home, End', 'The first or last card in the column'],
+      ['Enter', 'Open the task in its note'],
+      ['x', 'Complete it, or reopen it'],
+      ['t, m', 'Due today, due tomorrow'],
+      ['d', 'Due on a date you type'],
+      ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
+      ['[ ]', 'Move it to the column on the left or right'],
+      ['e', 'Edit the whole task'],
+    ];
+    const list = [
+      ['Alt+↑, Alt+↓', 'Move a ranked task up or down'],
+    ];
+    return state && state.layout === 'list'
+      ? [{ title: 'Ranked list', keys: list }]
+      : [{ title: 'A focused card', keys: board }];
   });
 
   post({ type: 'ready' });

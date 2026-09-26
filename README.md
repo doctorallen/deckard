@@ -74,6 +74,8 @@ Zen mode is not a theme, and it does not replace one. A theme picks the colors; 
 
 **What it changes.** Decorative labels such as `DECKARD / WORKSPACE INDEX` and the invented telemetry codes on the Dashboard's totals are hidden, along with the dotted grid backdrop and the permanent line of query syntax under the search box. Page headings shrink and stop shouting, borders go from 2px to 1px, and the padding in cards, tasks, and board columns tightens. Each row's file name, heading, and line number fold away, and come back when you hover the row or tab to it.
 
+**In the editor**, zen also drops the reference counts above headings, the lens that offers to link a note's unlinked mentions, and the band behind the section being edited. Link problems, task dependencies, daily-note arrows, and hover previews stay.
+
 **What it does not change.** Every button, filter, tab, count, checkbox, and tag stays exactly where it was — zen hides ornament and folds provenance, and removes no functionality. The folded text is moved off-screen rather than out of the page, so a screen reader still announces it and find-in-page still finds it. A task's due date, priority, and overdue marker never fold: they are the point of a task row. Nor does a search that Deckard could not parse stop saying so.
 
 **What you give up.** The hint under the search box that lists `AND, OR, NOT` and the `/` shortcut, which outside zen shows while the box is in use, is hidden with the rest of the chrome. The full [query language](#query-language) reference is in this README and on the Help page.
@@ -340,6 +342,7 @@ Keep typing to narrow the list, as in `/prio` or `/every`. Suggestions use the f
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its page, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
 - Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).
+- Inside `[[`, notes are offered in the order [Find](#find) ranks them: the words typed against each title, then how often and how lately you opened the note, with the notes you opened last first before anything is typed. After `[[Note#`, that note's headings are offered, written as a link names them, with their tags taken out; `[[#` offers this note's own, and `[[##words` searches the headings of every note. A day named in words, such as `[[tomorrow` or `[[next fri`, offers the link to that day's note, `[[2026-09-26]]`.
 - **Reference counts** sit above a note's lines. The first line says **Linked from N notes** when other notes link to it, and each heading shows **N references** for links that name it, such as `[[Launch plan#Decision]]` or `[[#Decision]]`, and **N open tasks** for the open tasks beneath it. Select a count to list those links or tasks in VS Code's references peek. A tagged heading also shows **N entries share a tag**: the note sections, tasks, and front-matter-only notes elsewhere that carry one of the tags written on that heading. Tags inherited from a parent heading or the note's front matter do not count, and neither do entries in the same note. Select it to open [Related Notes](#related-notes) focused on the heading, which lists those entries along with weaker matches such as associated tags and shared keywords. Set `deckard.editor.referenceCounts` to `false` to hide them.
 - **Hovering a `[[Wiki link]]`** previews the note, or the section its `#Heading` names, and says how many other notes link to it. A link to a note that does not exist yet, or to a name several notes share, says so instead.
 - **Link problems** are marked in open notes. A `[[link]]` to a note that does not exist yet gets a **Create note** quick fix, which creates the note in your notes folder, and a name several notes share is a warning. `deckard.editor.linkDiagnostics` turns this off.
@@ -451,7 +454,7 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 
 - Scroll to zoom toward the cursor, drag empty space to pan, and drag a dot to rearrange its cluster; **Fit** reframes the whole graph.
 - Hover a dot to highlight its direct graph neighbors and see its source location. Select any note, task, or tag dot to list those connected nodes in the sidebar using the same note-card and tag styling as the rest of Deckard. Select the current node at the top of the sidebar to open its note/task source or tag page. Select a connected sidebar item to move the graph selection; Cmd/Ctrl-click it to open that item instead. Cmd/Ctrl-clicking a graph dot opens the same destination, and selecting empty space clears the selection.
-- **Focus** draws the graph around the note in the editor rather than the whole workspace. The graph opens this way, one hop out, whenever a note is open in the editor, since a whole workspace at once is hundreds of unlabeled dots; clear **Around this note** for the whole graph, and the choice is kept while the graph is open. At rest, the whole graph names its best-connected notes, and zooming in names the rest. **Around this note** turns focus on, and **Hops out** chooses how far it reaches: one hop is the note, the tags it carries, and the notes it links to; two adds what those touch. The line beneath says which note it is drawn around and how many of the workspace's nodes are on screen.
+- **Focus** draws the graph around the note in the editor rather than the whole workspace. The graph opens this way, one hop out, whenever a note is open in the editor, since a whole workspace at once is hundreds of unlabeled dots; clear **Around this note** for the whole graph, and the choice is kept while the graph is open. At rest, the whole graph names its best-connected notes, and zooming in names the rest. **Around this note** turns focus on, and **Hops out** chooses how far it reaches: one hop is the note, the tags it carries, and the notes it links to; two adds what those touch. The line beneath says which note it is drawn around and how many of the workspace's nodes are on screen. **Pass through daily notes**, on by default, keeps daily, weekly, and monthly notes out of a focused graph while still counting them as a hop: a daily note links to everything written that day, so drawn, it ties the whole neighborhood into one knot, and left out, it cuts off what it leads to. What lies beyond one is joined to where the path began.
   - It follows the editor: open another note and the graph is redrawn around that one. The graph is itself a tab, so the note it is about is the last one you had open.
   - A tag association is a hop like any other, so two hops out reaches the tags your tags are usually written with, and the notes carrying them.
   - Only the neighborhood is sent to the page, so a local graph costs a screenful whatever the workspace holds. The tag checklist narrows to the tags that neighborhood actually holds.
@@ -496,6 +499,9 @@ Open **Tasks** from the Deckard Activity Bar to see your open tasks, grouped by 
 - **Drag a task onto another** to rank it there, which writes nothing to your notes — it is the same rank the [Task board's](#task-board) list uses.
 - **Drag a task onto a group** to make it belong to that group, written into the task through the same checked edit the board's drops make: a **priority**, a **status**, **Today** for a due date, or a **person**, which rewrites who the task is for and leaves anyone else named on the line as a mention. **Nobody named** takes the name off. **Overdue** and **Upcoming** cover a range of days rather than one, so they name no edit and say so.
 - Check a task's box to complete it with the same source-safe edit the Dashboard uses, including its ✅ date and next occurrence.
+- **Right-click a task** to make it due today, tomorrow, or next week (its Monday), or on a date typed in plain words, or to open it in the task editor, which the pencil beside it does too. Select several tasks to date them together. One task is one line with **Undo** beside it; several are one write, [previewed and undone](#previewing-and-undoing-a-write) like Deckard's other multi-note writes.
+- **Reschedule All…** on a group dates every task in it at once, and the calendar button beside **Overdue** does the same for what is overdue. `Deckard: Reschedule Overdue Tasks…` does it from the palette.
+- Hovering a task shows its words, its dates and priority, and where it is written, under the headings above it.
 - The view's badge counts the tasks that are overdue or due today, whatever it is grouped by.
 
 ## Status bar and reminders
@@ -505,11 +511,12 @@ Deckard puts one count in VS Code's status bar: **3 due today**, counting the sa
 - The item is hidden while nothing is due, so a clear day is a quiet bar. When something is overdue it says so — **1 overdue, 3 due today** — and takes the editor's warning color. Each number counts its own group; neither is the sum of the two.
 - It follows the index, and catches up when the window regains focus, since what counts as today moves at midnight.
 - `deckard.statusBar` turns it off.
-- `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
+- `deckard.taskReminderTime`, set to a time of day such as `09:00`, has Deckard say what is due once a day, with **Open Tasks** beside it, **Reschedule Overdue…** when something is, and **Turn Off Reminders**, which clears the setting where it was set. It is empty by default, which is no reminder, and a day with nothing due says nothing at all.
+- Hovering the count lists the first few overdue tasks by name.
 
 ## Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar's toolbar or in the Tasks view's title, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
+Run `Deckard: Open Task Board`, or select the board icon in the title bar of Related Notes or of the Tasks view, to see tasks as a Kanban board. Drag a card to another column to change the task in its note, or choose a column from the card's **⋯** menu, which also works from the keyboard. The **View options** gear in the page's corner switches between the board and a list, and edits the status columns.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](docs/images/task-board.png)
 
@@ -524,6 +531,9 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 - **List** shows the same tasks as rows, with **Sort: Rank/Created/Updated**. In Rank, drag a row or right-click it to move it to the top or bottom; date sorting uses the source file's timestamps. The grouping switch sits under the search box while the board is shown, and the sort while the list is. Both show exactly what the search found: the page has no separate All/Open/Done filter, because the search box says the same thing for both.
 - **Status columns** in the gear lists the status columns in order. Drag a column's row to reorder it, or right-click it to move it first or last; add one, remove one with its **×**, and set the tag namespace a status is written with. Deckard saves these to `deckard.board.statuses` and `deckard.board.statusNamespace`, in the workspace's settings when it already sets them and in your user settings otherwise.
 - Select a card to open its line, or one of its tags to open that tag's overview. Only a status written on the task line counts, not one inherited from a heading, because moving the card could not change it.
+- **From the keyboard**, the board is one Tab stop. The arrow keys move between cards and columns, and a focused card answers single keys: **x** completes it, **t** and **m** make it due today or tomorrow, **d** asks for a date in plain words, **1** to **5** set its priority and **0** clears it, **[** and **]** move it to the column on either side, **e** opens it in the task editor, and **Enter** opens its line. **?** lists them. What a key did is said to a screen reader, and a completed card stays a moment, struck through, before it leaves.
+- **+ Add task** at the foot of a column that takes a drop captures a task straight into it, in today's note, already written with that column's status, priority, date, or person. A column that will not take a drop says so while a card is dragged, and each card's **⋯** menu offers **Due on a date…** for any day.
+- In **List** under Rank, and anywhere else rows are ranked, **Move up** and **Move down** are in a row's right-click menu, and **Alt+↑** and **Alt+↓** move a focused row one place.
 - Every move is checked against the indexed line first, like a checkbox, so an edit made since the board last refreshed is never overwritten.
 
 ## Related Notes
@@ -531,6 +541,10 @@ Run `Deckard: Open Task Board`, or select the board icon in the Deckard sidebar'
 Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests other note entries that may concern the same work.
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](docs/images/related-notes.png)
+
+Under the related notes, **Linked from** lists every line in another note that links to this one, each under the headings it was written beneath, and **Mentioned without a link** lists the lines that write the note's name as plain text. Select a line to open it, or Cmd/Ctrl-click to open it beside the note. Each mention has its own **Link**, which makes it a `[[link]]` as written, and **Link all** links every one as a single change that **Undo Last Change** takes back.
+
+The view's title bar holds its shortcuts, as every other view's does: Home, the Task board, and today's note, with the Notes Graph and Help in its **…** menu.
 
 ### What makes a note related?
 
@@ -584,10 +598,12 @@ Every search opens a **search page** in its own editor tab, and a tag's overview
 - **Refine** narrows the results. On a page of one tag, or of several tags joined by AND, it offers related **Tags** first, strongest first, with a three-step rail for each one's strength; select one to add it to the search.
 - Notes and Tasks are two tabs, or side by side. The Tasks list shows every task the search found — the search is the filter, so `is:open` or `is:done` in the box narrows it — with checkboxes that update the original Markdown task.
 - Sort notes alphabetically, by creation date, by update date, or by most accessed, on the line under the search box.
+- The words searched for are marked where they appear in each result, and a note's file, line, and the headings above it sit in its header, since where something was written is how it is told from the others. In zen mode they fold under the result, as they do elsewhere, and Escape puts a folded line away until the pointer moves.
 - A broad search is shown a page at a time, with **Previous**, **Next**, and the page numbers under each list, and the range it is showing, such as *271–300 of 3,760*. Notes and tasks are paged separately. **Per page** chooses 10, 30, 50, 100, or 200 results to a page; it starts at 30 and is remembered, so every search page opens the way you left the last one. The counts beside Notes and Tasks, the Refine counts, and the filtering you do by typing in the search box are all of the whole search, never of the page. Changing the search, the page size, or the Open/Done filter returns to the first page, and a search that shortens while its last page is open moves you back to the last page it still has.
 - The **View options** gear chooses **Tabs** or **Side by side**, the original Markdown source or a rendered view, and one through four columns for notes and for tasks.
 - **Save** keeps the search as a saved search. A search of two or more tags is saved as that set of tags, and follows them when they are renamed; the saved search's name appears above the title whenever the page's search matches it.
-- Select a note entry to jump to its heading in the source note.
+- Select a note entry to jump to its heading in the source note. A click opens it in a preview tab, which the next result reuses, as VS Code's Explorer does; a double-click keeps the tab, and Cmd/Ctrl-click opens it beside the page, so the list stays in view. The same holds on the Task board, Home, Stats, and in the Notes Graph, where Alt-click opens a note beside it.
+- **‹** and **›** beside the gear, or <kbd>Alt</kbd>+<kbd>←</kbd> and <kbd>Alt</kbd>+<kbd>→</kbd>, go back and forward through the searches the page has shown, as the mouse's own back and forward buttons do.
 
 Opening a tag's page records tag access. Opening a section records section access, which powers the access sort. A page that a search was saved from before search pages existed, or a tag overview left open, reopens as a search page with the same tag, tags, and words.
 
@@ -669,6 +685,8 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - <kbd>Enter</kbd> opens the note or task at its line, a tag's page, or a saved search. **Show all results**, or the list button in the title bar, opens the search on a search page.
 - When no note has every word, Find says so and shows the notes with some of them. A misspelled word gets a **Search for … instead** row with the closest word your notes contain.
 - With nothing typed, Find offers your recent searches, favorite and recently opened tags, saved searches, and the notes you opened last. A recent search has a button to save it as a view.
+- A note or task found has a button to **open it to the side**, which leaves Find open for the next, and a note has one to **insert a link** to it, at its heading, where the cursor was when Find opened.
+- Words that no note is called, and that read as a name rather than a search, offer **Create note “…”**, which creates it in your notes folder.
 
 Ties are broken by how often and how recently you opened something, so a note you opened yesterday comes before one you opened often last year. This is kept in VS Code's preferences, beside the access counts, and never in your notes.
 
@@ -870,11 +888,13 @@ A daily note that starts from its template every morning leaves last night's ope
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
 
 ## Quick capture
 
-Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
+Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating the note from your template if needed, and leaves you in the editor you were using.
+
+The words at the end of a capture are read as a task manager's quick add reads them, in any order: a day (`today`, `tomorrow`, `friday`, `next monday`, `in 3 days`, or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, or a date), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), and a repeat rule (`every week`, `daily`). `Call Ren friday p2` is written as `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the line it will write is shown under what you type before it is saved. The **Keep the words as written** button in the capture box reads nothing from them. **Add as a note line**, under the task, writes a plain `- …` list item instead, for an idea that is not a to-do. Typing `#` or `@` suggests tags, most used first: choose one to complete the word, and press Enter on the task itself to add it. The list button in the capture box, or `Deckard: Capture Under a Heading`, adds the task under a heading you pick from any note instead.
 
 A capture goes after the last list item already there, or after a blank line below the last text. A note open in an editor keeps its unsaved changes, and the note is saved.
 

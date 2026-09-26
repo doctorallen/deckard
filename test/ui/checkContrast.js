@@ -27,15 +27,12 @@ const LARGE_TEXT_RATIO = 3;
  */
 const ICON_KEYS = new Set(['.favorite-toggle', '.favorite-heart']);
 
-/** Text that is 16px or larger, or bold at 14px, only needs 3:1. */
-const LARGE_TEXT_KEYS = new Set([
-  'h1',
-  'h2',
-  '.metric-value',
-  '.count',
-  '.board-count',
-  '.tag-count',
-]);
+/**
+ * Text large enough that 3:1 is enough: WCAG's 18pt, or 14pt bold, which is
+ * 24px, or 18.66px at bold. Points, not pixels: this list once held h2 at
+ * 14px and the Dashboard's 22px totals, which are neither.
+ */
+const LARGE_TEXT_KEYS = new Set(['h1']);
 
 /** Surfaces whose color is decoration rather than text to read. */
 const DECORATIVE = [
