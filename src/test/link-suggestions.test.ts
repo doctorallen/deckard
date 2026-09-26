@@ -30,6 +30,20 @@ suite('Wiki link suggestions', () => {
     provider.dispose();
   });
 
+  test('offers no links in a Markdown file that is not a note', async () => {
+    const provider = new WikiLinkCompletionProvider({
+      ready: Promise.resolve(),
+      getSnapshot: () => createIndex(['notes/Atlas Planning.md']),
+      isNotesFile: () => false,
+    });
+    const document = createDocument('/tmp/deckard/node_modules/pkg/README.md', 'See [[atl');
+    assert.deepStrictEqual(
+      await provider.provideCompletionItems(document, new vscode.Position(0, 9)),
+      [],
+    );
+    provider.dispose();
+  });
+
   test('resolves and completes a note by its aliases', async () => {
     const index = indexOf({
       'notes/Atlas.md': '---\naliases: [Atlas Program, atlas]\n---\n# Atlas',

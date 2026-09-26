@@ -237,7 +237,7 @@ suite('Extension Test Suite', () => {
     );
   });
 
-  test('counts the open tasks under a heading above it in the editor', async () => {
+  test('draws no lenses in a Markdown file outside every workspace folder', async () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
     );
@@ -259,15 +259,10 @@ suite('Extension Test Suite', () => {
         fileUri,
         10,
       );
+      // It is not a note, so Deckard's counts stay out of it; the counts
+      // themselves are held in editor-references.test.ts.
       const titles = lenses.map((lens) => lens.command?.title);
-      assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
-      // A tagged heading also counts the entries elsewhere that share one of
-      // its tags. No other note here carries #project/atlas, and a heading
-      // with nothing to show gets no lens at all.
-      assert.ok(
-        !titles.some((title) => title?.includes('share a tag')),
-        JSON.stringify(titles),
-      );
+      assert.deepStrictEqual(titles, []);
     } finally {
       await vscode.workspace.fs.delete(fileUri);
     }

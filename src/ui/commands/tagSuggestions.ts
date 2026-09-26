@@ -12,6 +12,8 @@ import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 interface TagIndexSource {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
+  /** Whether a file is one of the notes, not a README in a code folder. */
+  isNotesFile?(uri: vscode.Uri): boolean;
 }
 
 type TagAutocompleteEnabled = (document: vscode.TextDocument) => boolean;
@@ -86,7 +88,11 @@ export class TagCompletionProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
-    if (!this.isAutocompleteEnabled(document) || !isMarkdownFile(document.uri)) {
+    if (
+      !this.isAutocompleteEnabled(document) ||
+      !isMarkdownFile(document.uri) ||
+      !(this.indexer.isNotesFile?.(document.uri) ?? true)
+    ) {
       return [];
     }
 

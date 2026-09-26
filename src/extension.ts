@@ -193,7 +193,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     context.extensionUri,
     activeSearch,
   );
-  const tagDecorations = new EditorTagDecorations();
+  const tagDecorations = new EditorTagDecorations((uri) => indexer.isNotesFile(uri));
   // The hover on an entry offers to pin it, so it has to know which entries
   // are pinned; preferences answer, and a change redraws the hovers.
   const readPinned = (): void => {
@@ -268,7 +268,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   void mcpServer.restart();
   // Notes are offered in the order Find ranks them, opened ones first.
   const linkSuggestions = new WikiLinkCompletionProvider(indexer, preferences);
-  const entitySuggestions = new EntityHeadingSuggestions();
+  const entitySuggestions = new EntityHeadingSuggestions((uri) =>
+    indexer.isNotesFile(uri),
+  );
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer);

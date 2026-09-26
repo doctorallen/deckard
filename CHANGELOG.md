@@ -45,6 +45,12 @@
   `false` in `deckard.exclude` to index it again. The hint about large
   workspaces is now said once per workspace, not once per machine.
 
+- **Tag boxes, lenses, hovers, and completions stay in notes.** In a code
+  repository they appeared in every README, including those under
+  `node_modules` and outside `deckard.notesFolder`, and their tag links led
+  into an index those files are not part of. Edit Task and query blocks
+  still work in any Markdown file, since both are asked for on purpose.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

@@ -91,6 +91,7 @@ The fastest way to see what Deckard does is to let it show you: `Deckard: Create
 4. Select the Deckard icon in the Activity Bar to open **Related Notes** while editing a Markdown note.
 
 Deckard scans the workspace Markdown scope automatically and refreshes when saved notes are added, edited, or deleted.
+In a code repository, Deckard's editor features apply only to notes: a README outside `deckard.notesFolder`, or under `node_modules`, is left alone.
 Run `Deckard: Reindex Workspace` from the Command Palette to trigger a full scan manually.
 
 Run `Deckard: Open Help`, or select the question-mark button in the Related Notes toolbar, to open the Help page. It includes a quick start, advanced configuration guidance, and in-page navigation by feature category.

@@ -1,4 +1,8 @@
 import * as assert from 'assert';
+import * as os from 'os';
+import * as path from 'path';
+
+import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
@@ -7,6 +11,7 @@ import {
   findWikiLinkAt,
 } from '../core/workspace/backlinks';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
+import { EditorReferences } from '../ui/commands/editorReferences';
 import {
   countSharedTagEntries,
   createLinkPreview,
@@ -18,6 +23,61 @@ suite('Editor references', () => {
   const index = createIndex();
   const backlinks = buildBacklinkIndex(index);
   const atlas = 'notes/Atlas.md';
+
+  test('draws no lenses in a Markdown file that is not a note', () => {
+    const emitter = new vscode.EventEmitter<WorkspaceIndex>();
+    const references = new EditorReferences({
+      onDidUpdate: emitter.event,
+      getSnapshot: () => index,
+      getFilePath: (uri) => uri.fsPath,
+      parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+      isNotesFile: () => false,
+    });
+    try {
+      const document = {
+        uri: vscode.Uri.file('/tmp/deckard/node_modules/pkg/README.md'),
+        getText: () => '# Atlas #project/atlas',
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      assert.deepStrictEqual(references.provideCodeLenses(document), []);
+    } finally {
+      references.dispose();
+      emitter.dispose();
+    }
+  });
+
+  test('counts the open tasks under a heading above it in a note', async () => {
+    const emitter = new vscode.EventEmitter<WorkspaceIndex>();
+    const references = new EditorReferences({
+      onDidUpdate: emitter.event,
+      getSnapshot: () => index,
+      getFilePath: (uri) => uri.fsPath,
+      parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+      isNotesFile: () => true,
+    });
+    try {
+      const fileUri = vscode.Uri.file(
+        path.join(os.tmpdir(), `deckard-references-${Date.now()}.md`),
+      );
+      await vscode.workspace.fs.writeFile(
+        fileUri,
+        Buffer.from('# Plan #project/zeppelin\n- [ ] Ship it\n- [x] Draft it\n', 'utf8'),
+      );
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      await vscode.workspace.fs.delete(fileUri);
+      const lenses = await Promise.all(
+        references.provideCodeLenses(document).map((lens) => references.resolveCodeLens(lens)),
+      );
+      const titles = lenses.map((lens) => lens.command?.title);
+      assert.ok(titles.includes('1 open task'), JSON.stringify(titles));
+      // No other note shares #project/zeppelin, and a heading with nothing to
+      // show gets no lens at all.
+      assert.ok(!titles.some((title) => title?.includes('share a tag')), JSON.stringify(titles));
+    } finally {
+      references.dispose();
+      emitter.dispose();
+    }
+  });
 
   test('finds links into a note, outside code fences and not from itself', () => {
     assert.deepStrictEqual(

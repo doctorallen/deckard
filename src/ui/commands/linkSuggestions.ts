@@ -32,6 +32,8 @@ interface IndexSource {
   getSnapshot(): WorkspaceIndex;
   /** The document's index key, which `[[#Heading]]` links point into. */
   getFilePath?(uri: vscode.Uri): string;
+  /** Whether a file is one of the notes, not a README in a code folder. */
+  isNotesFile?(uri: vscode.Uri): boolean;
 }
 
 /**
@@ -77,11 +79,19 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
     this.registrations.forEach((registration) => registration.dispose());
   }
 
+  /** Link completion and links belong to notes, not to every Markdown file. */
+  private isNote(document: vscode.TextDocument): boolean {
+    return (
+      isMarkdownFile(document.uri) &&
+      (this.indexer.isNotesFile?.(document.uri) ?? true)
+    );
+  }
+
   public async provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
-    if (!isMarkdownFile(document.uri)) {
+    if (!this.isNote(document)) {
       return [];
     }
 
@@ -341,7 +351,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
   public async provideDocumentLinks(
     document: vscode.TextDocument,
   ): Promise<vscode.DocumentLink[]> {
-    if (!isMarkdownFile(document.uri)) {
+    if (!this.isNote(document)) {
       return [];
     }
 

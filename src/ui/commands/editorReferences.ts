@@ -31,6 +31,8 @@ interface ReferenceIndexSource {
   getSnapshot(): WorkspaceIndex;
   getFilePath(uri: vscode.Uri): string;
   parse(uri: vscode.Uri, content: string): ParsedFile;
+  /** Whether a file is one of the notes, not a README in a code folder. */
+  isNotesFile?(uri: vscode.Uri): boolean;
 }
 
 /**
@@ -92,9 +94,17 @@ export class EditorReferences
     this.disposables.forEach((disposable) => disposable.dispose());
   }
 
+  /** Lenses and hovers belong to notes, not to every Markdown file. */
+  private isNote(document: vscode.TextDocument): boolean {
+    return (
+      isMarkdownFile(document.uri) &&
+      (this.indexer.isNotesFile?.(document.uri) ?? true)
+    );
+  }
+
   public provideCodeLenses(document: vscode.TextDocument): DeckardLens[] {
     if (
-      !isMarkdownFile(document.uri) ||
+      !this.isNote(document) ||
       !readSetting(document, 'referenceCounts')
     ) {
       return [];
@@ -188,7 +198,7 @@ export class EditorReferences
     position: vscode.Position,
   ): Promise<vscode.Hover | undefined> {
     if (
-      !isMarkdownFile(document.uri) ||
+      !this.isNote(document) ||
       !readSetting(document, 'hoverPreviews')
     ) {
       return undefined;

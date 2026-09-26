@@ -17,6 +17,8 @@ import { readTaskMetadataFormat } from './taskActions';
 interface TaskIndexSource {
   readonly ready: Promise<void>;
   getSnapshot(): WorkspaceIndex;
+  /** Whether a file is one of the notes, not a README in a code folder. */
+  isNotesFile?(uri: vscode.Uri): boolean;
 }
 
 export interface TaskMetadataSuggestionSettings {
@@ -89,7 +91,11 @@ export class TaskMetadataCompletionProvider implements vscode.Disposable {
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
     const settings = this.readSettings(document);
-    if (!settings.enabled || !isMarkdownFile(document.uri)) {
+    if (
+      !settings.enabled ||
+      !isMarkdownFile(document.uri) ||
+      !(this.indexer.isNotesFile?.(document.uri) ?? true)
+    ) {
       return [];
     }
 

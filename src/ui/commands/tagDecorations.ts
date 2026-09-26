@@ -70,7 +70,14 @@ export class EditorTagDecorations implements vscode.Disposable {
   /** The editor the band is drawn in, and the entry it is behind. */
   private band: { editor: vscode.TextEditor; key: string } | undefined;
 
-  public constructor() {
+  public constructor(
+    /**
+     * Whether a file is one of the notes. Tag boxes, links, the band, and the
+     * entry hovers are drawn only there: a README in a code folder, or under
+     * node_modules, is left alone.
+     */
+    private readonly isNotesFile: (uri: vscode.Uri) => boolean = () => true,
+  ) {
     this.disposables.push(this.decorationType);
     this.disposables.push(this.entryHoverType);
     this.disposables.push(this.sectionBandType);
@@ -109,7 +116,11 @@ export class EditorTagDecorations implements vscode.Disposable {
           event.affectsConfiguration('deckard.highlightNoteSections') ||
           event.affectsConfiguration('deckard.zenMode') ||
           event.affectsConfiguration('deckard.entityNamespaceAliases') ||
-          event.affectsConfiguration('deckard.personMarker')
+          event.affectsConfiguration('deckard.personMarker') ||
+          event.affectsConfiguration('deckard.notesFolder') ||
+          event.affectsConfiguration('deckard.exclude') ||
+          event.affectsConfiguration('files.exclude') ||
+          event.affectsConfiguration('search.exclude')
         ) {
           vscode.window.visibleTextEditors.forEach((editor) =>
             this.updateEditor(editor),
@@ -164,7 +175,7 @@ export class EditorTagDecorations implements vscode.Disposable {
   private provideDocumentLinks(
     document: vscode.TextDocument,
   ): vscode.DocumentLink[] {
-    if (!isMarkdownDocument(document)) {
+    if (!this.isNote(document)) {
       return [];
     }
 
@@ -215,8 +226,12 @@ export class EditorTagDecorations implements vscode.Disposable {
   /**
    * Refreshes only the requested editor so edits do not disturb other views.
    */
+  private isNote(document: vscode.TextDocument): boolean {
+    return isMarkdownDocument(document) && this.isNotesFile(document.uri);
+  }
+
   private updateEditor(editor: vscode.TextEditor): void {
-    if (!isMarkdownDocument(editor.document)) {
+    if (!this.isNote(editor.document)) {
       editor.setDecorations(this.decorationType, []);
       editor.setDecorations(this.entryHoverType, []);
       this.clearBand(editor);
@@ -316,7 +331,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       this.clearBand(this.band.editor);
     }
     if (
-      !isMarkdownDocument(editor.document) ||
+      !this.isNote(editor.document) ||
       !this.shouldHighlightNoteSections(editor.document)
     ) {
       this.clearBand(editor);
