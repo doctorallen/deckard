@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../core/markdown/parser';
 import { formatIsoDate } from '../core/markdown/taskMetadata';
 import { toggleTask } from '../ui/commands/taskActions';
+import { toggleTaskLines } from '../ui/commands/toggleTaskDone';
 import {
   addTaskSteps,
   describeSuggestFailure,
@@ -242,6 +243,49 @@ suite('Completing steps', () => {
     } finally {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
+  });
+
+  test('a repeating task’s steps come back, unchecked, with its next occurrence', async () => {
+    const content = '- [ ] Weekly review 📅 2026-09-10 🔁 every week\n  - [x] Inbox to zero ✅ 2026-09-09\n  - [ ] Plan the week\n';
+    const { uri, root } = await createNote('weekly.md', content);
+    try {
+      const [task] = parseMarkdown(uri.fsPath, content).tasks;
+      await withMessages(async () => {
+        await toggleTask(task, true);
+      }, 'Undo');
+      await settle();
+      await settle();
+      assert.strictEqual(await readNote(uri), content, 'Undo takes back the next occurrence and its steps too');
+      await withMessages(() => toggleTask(task, true));
+      assert.strictEqual(
+        await readNote(uri),
+        [
+          '- [ ] Weekly review 📅 2026-09-17 🔁 every week',
+          '  - [ ] Inbox to zero',
+          '  - [ ] Plan the week',
+          `- [x] Weekly review 📅 2026-09-10 🔁 every week ✅ ${today}`,
+          '  - [x] Inbox to zero ✅ 2026-09-09',
+          '  - [ ] Plan the week',
+          '',
+        ].join('\n'),
+      );
+    } finally {
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
+
+  test('Toggle Task Done brings the steps back with the next occurrence too', () => {
+    const lines = ['- [ ] Weekly review 📅 2026-09-10 🔁 every week', '  - [x] Inbox ✅ 2026-09-09'];
+    const result = toggleTaskLines([{ line: 0, text: lines[0] }], Date.now(), {
+      addDoneDate: false,
+      format: 'emoji',
+      eol: '\n',
+      documentLines: lines,
+    });
+    assert.deepStrictEqual(result.lines[0].after.split('\n').slice(0, 2), [
+      '- [ ] Weekly review 📅 2026-09-17 🔁 every week',
+      '  - [ ] Inbox',
+    ]);
   });
 
   test('a task without steps says what it always did', async () => {

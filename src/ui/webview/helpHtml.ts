@@ -563,7 +563,7 @@ updated: 2026-09-20
       <p>Deckard reads the <a href="https://publish.obsidian.md/tasks">Obsidian Tasks</a> formats, both the emoji one and Dataview fields, and writes back whichever a task already uses.</p>
       <div class="table-scroll"><table><caption>Markers, in the order Deckard writes them</caption><thead><tr><th>Marker</th><th>Dataview</th><th>Means</th></tr></thead><tbody>
         <tr><td>🔺 ⏫ 🔼 🔽 ⏬</td><td><code>[priority:: high]</code></td><td>Priority, highest to lowest</td></tr>
-        <tr><td>🔁 every week</td><td><code>[repeat:: every week]</code></td><td>Repeat rule; completing writes the next occurrence</td></tr>
+        <tr><td>🔁 every week</td><td><code>[repeat:: every week]</code></td><td>Repeat rule; completing writes the next occurrence, with the task’s steps unchecked under it</td></tr>
         <tr><td>🛫 2026-09-20</td><td><code>[start:: 2026-09-20]</code></td><td>Not actionable before this day</td></tr>
         <tr><td>⏳ 2026-09-21</td><td><code>[scheduled:: 2026-09-21]</code></td><td>The day you plan to work on it</td></tr>
         <tr><td>📅 2026-09-22</td><td><code>[due:: 2026-09-22]</code></td><td>Due date</td></tr>

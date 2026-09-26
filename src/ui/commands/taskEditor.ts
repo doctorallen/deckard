@@ -23,6 +23,7 @@ import {
   writeCompletion,
 } from '../../core/markdown/taskMetadata';
 import { TaskPriority, WorkspaceIndex } from '../../core/types';
+import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { askForDate } from './datePrompt';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
@@ -237,12 +238,14 @@ export function writeEditedTask(
   edited: TaskDraft,
   now: number,
   eol: string,
+  /** The steps the next occurrence of a repeating task takes, unchecked. */
+  steps: readonly string[] = [],
 ): CompletionWrite {
   const line = formatTaskDraft(edited);
   if (before.completed || !edited.completed) {
     return { text: line };
   }
-  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol);
+  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, now, eol, steps);
 }
 
 /** A date field's new value, or nothing when the words are not a day. */
@@ -506,7 +509,15 @@ export async function editTaskCommand(
   }
 
   const eol = editor.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
-  const completion = writeEditedTask(draft, edited, now, eol);
+  const completion = writeEditedTask(
+    draft,
+    edited,
+    now,
+    eol,
+    existing
+      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
+      : [],
+  );
   const written = completion.text;
   if (written === line.text) {
     return written;

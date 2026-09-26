@@ -240,6 +240,14 @@ export function parseSuggestedSteps(reply: string): string[] {
 }
 
 /**
+ * The steps a repeating task's next occurrence takes: its direct steps,
+ * each unchecked with its done date taken off.
+ */
+export function readStepsForNextOccurrence(lines: readonly string[], lineIndex: number): string[] {
+  return findStepFamily(lines, lineIndex).steps.map((line) => resetStepLine(lines[line]));
+}
+
+/**
  * A step copied for a task's next occurrence: unchecked, with its done date
  * taken off, the rest as written.
  */

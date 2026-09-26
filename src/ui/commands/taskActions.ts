@@ -5,6 +5,7 @@ import {
   findCheckboxColumn,
   findStepFamily,
   isCheckedTaskLine,
+  readStepsForNextOccurrence,
 } from '../../core/markdown/taskSteps';
 import {
   formatIsoDate,
@@ -362,6 +363,7 @@ export async function toggleTask(
         task.checkboxColumn,
         now,
         eol,
+        readStepsForNextOccurrence(lines, lineIndex),
       );
       startedNext = completion.next;
       unreadRule = completion.unreadRule;

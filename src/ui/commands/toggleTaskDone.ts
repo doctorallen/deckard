@@ -8,6 +8,7 @@ import {
   TaskMetadataFormat,
   writeCompletion,
 } from '../../core/markdown/taskMetadata';
+import { readStepsForNextOccurrence } from '../../core/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 import {
@@ -68,7 +69,13 @@ export function selectedLines(
 export function toggleTaskLines(
   lines: readonly { line: number; text: string }[],
   now: number,
-  options: { addDoneDate: boolean; format: TaskMetadataFormat; eol: string },
+  options: {
+    addDoneDate: boolean;
+    format: TaskMetadataFormat;
+    eol: string;
+    /** The whole note, so a repeating task's next occurrence takes its steps. */
+    documentLines?: readonly string[];
+  },
 ): ToggleResult {
   const tasks = lines
     .map((entry) => ({ ...entry, match: TASK_LINE.exec(entry.text) }))
@@ -93,7 +100,13 @@ export function toggleTaskLines(
       toggled.push({ line, before: text, after: marked, title });
       continue;
     }
-    const completion = writeCompletion(marked, checkboxColumn, now, options.eol);
+    const completion = writeCompletion(
+      marked,
+      checkboxColumn,
+      now,
+      options.eol,
+      options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],
+    );
     toggled.push({
       line,
       before: text,
@@ -168,6 +181,7 @@ export async function toggleTaskDoneCommand(
       addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
       format: readTaskMetadataFormat(configuration),
       eol,
+      documentLines: document.getText().split(/\r?\n/),
     },
   );
   if (result.lines.length === 0) {

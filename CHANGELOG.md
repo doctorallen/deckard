@@ -348,6 +348,11 @@
 
 ### Changed
 
+- **A repeating task's steps come back with it.** Completing a task with a
+  🔁 rule now writes its steps, unchecked, under the next occurrence, so a
+  weekly checklist starts fresh; the completed occurrence keeps its own.
+  Obsidian Tasks writes the next occurrence alone.
+
 - **Nested checklists fold into their task.** On the Task board and in the
   Tasks view — and so Home's agenda and the status bar count — a plain
   checkbox written under a task now rides on that task's card or row

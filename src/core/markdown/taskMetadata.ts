@@ -532,10 +532,16 @@ export function writeCompletion(
   checkboxColumn: number,
   now: number,
   eol: string,
+  /**
+   * The task's steps as its next occurrence takes them: unchecked, written
+   * under it, so a routine checklist comes back fresh. The completed
+   * occurrence keeps its own.
+   */
+  steps: readonly string[] = [],
 ): CompletionWrite {
   const next = createNextOccurrence(completedLine, checkboxColumn, now);
   if (next !== undefined) {
-    return { text: `${next}${eol}${completedLine}`, next };
+    return { text: [next, ...steps, completedLine].join(eol), next };
   }
   const [, text] = splitTaskLine(completedLine, checkboxColumn, ' ');
   const rule = parseTaskMetadata(text).metadata.recurrence;
