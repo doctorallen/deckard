@@ -9,6 +9,7 @@ import {
   toBuilderTree,
 } from '../core/query/queryFormat';
 import { parseQuery } from '../core/query/queryParser';
+import { hasAvailableTerm, toggleAvailable } from '../core/query/queryEdit';
 import {
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
@@ -562,6 +563,18 @@ suite('Deckard search page state', () => {
     assert.deepStrictEqual(taskIds('due = this-week'), ['first', 'last']);
     assert.deepStrictEqual(taskIds('due < next-week'), ['first', 'last', 'before']);
     assert.deepStrictEqual(taskIds('due >= next-week'), ['next']);
+  });
+
+  test('Can start now switches a search to is:available and back', () => {
+    assert.strictEqual(toggleAvailable('is:open'), 'is:available');
+    assert.strictEqual(toggleAvailable('is:available'), 'is:open');
+    assert.strictEqual(toggleAvailable('is:open #project/atlas'), 'is:available #project/atlas');
+    assert.strictEqual(toggleAvailable('is:available #project/atlas'), 'is:open #project/atlas');
+    assert.strictEqual(toggleAvailable('#project/atlas'), 'is:available #project/atlas');
+    assert.strictEqual(toggleAvailable('#a OR #b'), 'is:available (#a OR #b)');
+    assert.strictEqual(toggleAvailable(''), 'is:available');
+    assert.strictEqual(hasAvailableTerm('#a is:available'), true);
+    assert.strictEqual(hasAvailableTerm('is:open'), false);
   });
 
   test('matches in: against whole folders', () => {

@@ -125,6 +125,21 @@ test('searches tasks with the search box every search page uses', async () => {
   assert.deepStrictEqual(cards(), ['audit', 'call', 'room', 'ship'], 'clearing it shows finished tasks too');
 });
 
+test('Can start now narrows the board to is:available, and back to is:open', async () => {
+  const { view } = await openBoard();
+  const toggle = () => view.find('[data-action="toggle-available"]');
+  assert.ok(toggle(), 'the switch is beside the grouping');
+  assert.strictEqual(toggle().getAttribute('aria-pressed'), 'false');
+  view.click(toggle());
+  await delay(10);
+  assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'is:available');
+  assert.strictEqual(toggle().getAttribute('aria-pressed'), 'true', 'pressed while the search asks for it');
+  view.click(toggle());
+  await delay(10);
+  assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'is:open');
+  assert.strictEqual(toggle().getAttribute('aria-pressed'), 'false');
+});
+
 test('the board is one Tab stop, and a focused card answers single keys', async () => {
   const { view } = await openBoard();
   const stops = () => view.findAll('.board-card').filter((card) => card.getAttribute('tabindex') === '0');

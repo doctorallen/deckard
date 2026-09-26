@@ -1,3 +1,4 @@
+import { hasAvailableTerm, toggleAvailable } from '../../core/query/queryEdit';
 import { needsNewDate } from '../../core/taskPolicy';
 import {
   addDays,
@@ -179,6 +180,8 @@ export function createTaskBoard(
     },
     taskSortMode: preferences.taskSortMode,
     tagTitleDisplayMode,
+    availableOnly: hasAvailableTerm(search.query),
+    availableToggleQuery: toggleAvailable(search.query),
     settings: {
       statuses: [...options.statuses],
       statusNamespace: options.statusNamespace,

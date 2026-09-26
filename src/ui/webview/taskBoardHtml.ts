@@ -234,7 +234,7 @@ ${getQueryEditorScript()}
     document.getElementById('app').innerHTML =
       '<header><div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>'
       + '<div class="board-header-actions"><span class="board-total">' + total + '</span>' + renderHelpButton('board') + viewOptions + '</div></header>'
-      + editor.renderBar(isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy))
+      + editor.renderBar((isList ? sortControl : isTable ? renderTableSortNote() : renderTaskBoardGroupSwitch(state.groupBy)) + renderAvailableToggle())
       + editor.renderFacets()
       + '<section class="board-area" aria-label="Tasks">' + content + '</section>';
     filterTaskEntries();
@@ -344,6 +344,15 @@ ${getQueryEditorScript()}
   installTaskBoard(post);
   installViewOptions();
 
+  /**
+   * Can start now: one press narrows the search to is:available, what is not
+   * blocked, has started, and is not waiting or someday; a second goes back.
+   */
+  function renderAvailableToggle() {
+    const pressed = !!state.availableOnly;
+    return '<button type="button" class="board-available' + (pressed ? ' active' : '') + '" data-action="toggle-available" aria-pressed="' + pressed + '" title="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">Can start now</button>';
+  }
+
   document.addEventListener('mousedown', function (event) { editor.handleMousedown(event); });
   document.addEventListener('focusin', function (event) { editor.handleFocusIn(event); });
 
@@ -356,6 +365,7 @@ ${getQueryEditorScript()}
       if (action === 'save-board-search') post({ type: 'saveBoardSearch' });
       if (action === 'set-table-sort') post(target.dataset.value ? { type: 'setTableSort', column: target.dataset.value } : { type: 'setTableSort' });
       if (action === 'use-for-agenda') post({ type: 'useSearchForAgenda' });
+      if (action === 'toggle-available') post({ type: 'setBoardQuery', query: state.availableToggleQuery || 'is:available' });
       if (action === 'export-tasks') post({ type: 'exportResults', kind: 'tasks' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {

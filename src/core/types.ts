@@ -1473,6 +1473,10 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   refineInSidebar?: boolean;
   /** Whether the Tasks view lists this search, so the board can say so. */
   agendaListsThisSearch?: boolean;
+  /** Whether the search asks for is:available, which lights Can start now. */
+  availableOnly?: boolean;
+  /** The search Can start now switches to. */
+  availableToggleQuery?: string;
 }
 
 /** The Task Board's table: the columns shown, every column there is, and the rows. */

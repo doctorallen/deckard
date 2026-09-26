@@ -1,4 +1,4 @@
-import { needsNewDate } from '../taskPolicy';
+import { getTaskPolicy, needsNewDate, readLineStatus } from '../taskPolicy';
 import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
 import { addDays, startOfDay, TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import {
@@ -212,6 +212,8 @@ interface QueryUnit {
   blocking?: boolean;
   /** The person the task is for: whoever its 👤 field names. */
   assignee?: string;
+  /** The status written on the task's line, such as `waiting`, or ''. */
+  status?: string;
 }
 
 /**
@@ -409,6 +411,7 @@ function createTaskUnit(
     dependencyId: task.dependencyId,
     dependsOn: task.dependsOn,
     assignee: task.assignee,
+    status: readLineStatus(task),
     blocked:
       !task.completed &&
       (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
@@ -595,6 +598,23 @@ function matchesIs(
       );
     case 'needs-date':
       return open && needsNewDate(unit.dueAt, now);
+    case 'waiting':
+      // Waiting on someone: marked so, or handed to someone other than me.
+      return (
+        open &&
+        (unit.status === 'waiting' ||
+          (unit.assignee !== undefined &&
+            !(queryIdentity !== undefined && matchesPerson(queryIdentity, unit.assignee))))
+      );
+    case 'available':
+      // What can be started now: nothing it waits for is open, it has
+      // started, and its status does not put it on hold.
+      return (
+        open &&
+        unit.blocked !== true &&
+        (unit.startAt === undefined || unit.startAt < startOfDay(now) + DAY) &&
+        !getTaskPolicy().onHoldStatuses.includes(unit.status ?? '')
+      );
     case 'blocked':
       return unit.blocked === true;
     case 'blocking':

@@ -1592,6 +1592,8 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
   { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
+  { value: 'is:waiting', label: 'is:waiting', detail: 'Open tasks marked #status/waiting, or for someone else' },
+  { value: 'is:available', label: 'is:available', detail: 'Open tasks you can start now: not blocked, started, not waiting or someday' },
   { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
   { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person deckard.me names' },
   { value: 'is:assigned', label: 'is:assigned', detail: 'Tasks that name a person' },
@@ -1630,7 +1632,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:mine, is:assigned, or is:unassigned';
+      return 'is:open, is:done, is:overdue, is:due, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, or is:unassigned';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':

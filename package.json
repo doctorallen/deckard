@@ -739,7 +739,7 @@
           "tasks"
         ],
         "userDescription": "Search the workspace's Markdown notes and tasks with a Deckard query.",
-        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a weekday such as friday, a phrase such as \"oct 3\" or end-of-month, this-week, next-month, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates, a weekday such as friday meaning the last one, this-week, last-month, a month such as 2026-08, or windows such as 30d). Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:needs-date (open and more than 30 days past due), is:task, is:note, has:due and no:due (also scheduled, start, done, priority), and in:folder for a folder and everything in it. Operators are = != ~ !~ > >= < <=. If you do not know a tag's exact name, call deckard_list_tags first.",
+        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a weekday such as friday, a phrase such as \"oct 3\" or end-of-month, this-week, next-month, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates, a weekday such as friday meaning the last one, this-week, last-month, a month such as 2026-08, or windows such as 30d). Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:needs-date (open and more than 30 days past due), is:task, is:note, is:waiting (marked #status/waiting or assigned to someone else), is:available (open, not blocked, started, not on hold), has:due and no:due (also scheduled, start, done, priority), and in:folder for a folder and everything in it. Operators are = != ~ !~ > >= < <=. If you do not know a tag's exact name, call deckard_list_tags first.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1344,7 +1344,7 @@
           "deckard.agenda.query": {
             "type": "string",
             "default": "",
-            "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
+            "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, is:available for what can be started now, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
             "order": 9
           },
           "deckard.board.statuses": {
@@ -1367,6 +1367,19 @@
             "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
             "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing.",
             "order": 11
+          },
+          "deckard.tasks.onHoldStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            },
+            "default": [
+              "waiting",
+              "someday"
+            ],
+            "description": "Statuses that put a task on hold: is:available leaves out a task whose #status/… tag is one of these. Write them without the namespace, as in deckard.board.statuses.",
+            "order": 12
           }
         },
         "order": 4

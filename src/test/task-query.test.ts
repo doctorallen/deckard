@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
-import { evaluateQuery } from '../core/query/queryEvaluator';
+import { evaluateQuery, setQueryIdentity } from '../core/query/queryEvaluator';
+import { setTaskPolicy } from '../core/taskPolicy';
 import { parseQuery } from '../core/query/queryParser';
 import { Section, Task, WorkspaceIndex } from '../core/types';
 
@@ -53,6 +54,55 @@ suite('Task metadata queries', () => {
       assert.deepStrictEqual(matches('is:overdue'), ['late', 'stale']);
     } finally {
       index.tasks.delete('stale');
+    }
+  });
+
+  test('is:waiting means waiting on someone, and is:available what can start now', () => {
+    const extra = [
+      createTask({
+        id: 'marked-waiting',
+        associationTagGroups: [[{ key: '#status/waiting' } as never]],
+      }),
+      createTask({ id: 'for-dana', assignee: '#person/dana' }),
+      createTask({
+        id: 'someday',
+        associationTagGroups: [[{ key: '#status/someday' } as never]],
+      }),
+      createTask({ id: 'not-started', startAt: inDays(4) }),
+      createTask({ id: 'started', startAt: inDays(0) }),
+      createTask({ id: 'blocked', dependsOn: ['x1'] }),
+      createTask({ id: 'blocker', dependencyId: 'x1' }),
+      createTask({ id: 'finished', completed: true, assignee: '#person/dana' }),
+    ];
+    // A new index, since what blocks what is worked out once per index.
+    const local: WorkspaceIndex = {
+      ...index,
+      tasks: new Map([...index.tasks, ...extra.map((task): [string, Task] => [task.id, task])]),
+    };
+    const matches = (query: string): string[] => {
+      const parsed = parseQuery(query);
+      assert.deepStrictEqual(parsed.diagnostics, [], query);
+      const results = evaluateQuery(local, parsed.node);
+      return [
+        ...results.tasks.map((task) => task.id),
+        ...results.sections.map((section) => section.id),
+      ].sort();
+    };
+    try {
+      assert.deepStrictEqual(matches('is:waiting'), ['for-dana', 'marked-waiting']);
+      assert.notDeepStrictEqual(matches('is:waiting'), matches('is:blocked'), 'no longer a second is:blocked');
+      assert.deepStrictEqual(matches('is:blocked'), ['blocked']);
+      assert.deepStrictEqual(matches('is:available'), [
+        'blocker', 'for-dana', 'late', 'later', 'soon', 'started', 'today', 'undated',
+      ]);
+      assert.deepStrictEqual(matches('is:actionable'), matches('is:available'));
+      setQueryIdentity('@dana');
+      assert.deepStrictEqual(matches('is:waiting'), ['marked-waiting'], 'what is for me is not waiting on anyone');
+      setTaskPolicy({ onHoldStatuses: ['waiting'] });
+      assert.ok(matches('is:available').includes('someday'), 'the statuses on hold come from the setting');
+    } finally {
+      setQueryIdentity(undefined);
+      setTaskPolicy();
     }
   });
 

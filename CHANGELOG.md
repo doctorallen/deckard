@@ -49,6 +49,16 @@
 
 ### Changed
 
+- **`is:waiting` now means waiting on someone.** It was an undocumented
+  second spelling of `is:blocked`, so it disagreed with the board's own
+  Waiting column. It now finds open tasks marked `#status/waiting` or
+  assigned to someone other than you; `is:blocked` keeps meaning held up by
+  another task. **A saved search or query block that used `is:waiting` now
+  lists different tasks.** New `is:available` finds what can be started now
+  — not blocked, started, and not on hold by `deckard.tasks.onHoldStatuses`
+  (`waiting`, `someday`) — and the Task board's **Can start now** switch
+  narrows the board to it.
+
 - **Upcoming lists each day on its own.** The Tasks view's Upcoming is a
   group per day that has tasks — Tomorrow, Mon Sep 28 — so a crowded
   Thursday shows before Thursday, and a task dropped on a day is due that

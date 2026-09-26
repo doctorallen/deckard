@@ -483,3 +483,29 @@ function tidy(text: string): string {
   } while (result !== previous);
   return result;
 }
+
+const AVAILABLE_TERM = /(^|[\s(])is:(?:available|actionable)(?=$|[\s)])/i;
+
+/** Whether a search asks for what can be started now, as a term of its own. */
+export function hasAvailableTerm(query: string): boolean {
+  return AVAILABLE_TERM.test(query);
+}
+
+/**
+ * The board's Can start now switch: a leading `is:open` becomes
+ * `is:available`, or it is put in front; pressed again, `is:available` goes
+ * back to `is:open`, the search the board opens on.
+ */
+export function toggleAvailable(query: string): string {
+  const text = query.trim();
+  if (hasAvailableTerm(text)) {
+    return text.replace(AVAILABLE_TERM, '$1is:open');
+  }
+  if (/^is:open(?=$|\s)/i.test(text)) {
+    return text.replace(/^is:open/i, 'is:available');
+  }
+  if (!text) {
+    return 'is:available';
+  }
+  return /\sOR\s/.test(text) ? `is:available (${text})` : `is:available ${text}`;
+}

@@ -77,6 +77,8 @@ export const QUERY_IS_VALUES = [
   'overdue',
   'due',
   'needs-date',
+  'waiting',
+  'available',
   'blocked',
   'blocking',
   'mine',

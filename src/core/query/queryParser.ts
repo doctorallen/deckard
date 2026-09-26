@@ -118,7 +118,11 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   'needs-date': 'needs-date',
   needsdate: 'needs-date',
   blocked: 'blocked',
-  waiting: 'blocked',
+  // Waiting on someone, as the board's Waiting column means. It was once a
+  // second spelling of blocked, which is held up by another task.
+  waiting: 'waiting',
+  available: 'available',
+  actionable: 'available',
   blocking: 'blocking',
   blocker: 'blocking',
   mine: 'mine',
@@ -654,7 +658,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, due, needs-date, blocked, blocking, mine, assigned, or unassigned — not "${value}".`,
+          message: `is: accepts open, done, task, note, overdue, due, needs-date, waiting, available, blocked, blocking, mine, assigned, or unassigned — not "${value}".`,
           severity: 'error',
           start,
           end,
