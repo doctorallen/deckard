@@ -8,6 +8,7 @@
 - Find opens a result beside the editor, links to a note, and creates one it did not find; `[[` completes a note's headings and links a day by name.
 - The Task board works from the keyboard, and Capture reads a date, a priority, and a repeat rule from the words at its end.
 - Nothing is silently lost: a repeating task comes back however it is finished, a copied rollover arrives once, and no section or task vanishes from the index.
+- Every failure says what did not happen and what to do, with **Open Log**; Home says what is new after an update, and Choose Theme… previews each theme.
 
 ### Added
 
