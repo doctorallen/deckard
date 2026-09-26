@@ -12,6 +12,15 @@
 
 ### Added
 
+- **Stats leads with what needs attention, and every total opens what it
+  counts.** Notes Deckard could not read, links that open no note, tags that
+  look alike, and notes nothing links to come first, each with its count,
+  and only when they have rows; with none, one line says so. **Notes**
+  opens `is:note`, **Tags** and **Namespaced tags** offer their tags to
+  open, **Wiki links** opens the Notes Graph showing only the links you
+  wrote, and **Unlinked notes** moves to its list, which shows ten with
+  **Show 40 more**. Empty most-viewed lists fold into one line.
+
 - **The Notes Graph names its groups where they sit.** Zoomed out, each
   group is labeled over a faint disc after the tags its notes carry more
   than the rest of the workspace does, so a tag on every note names nothing.

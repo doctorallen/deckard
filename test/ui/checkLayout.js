@@ -31,7 +31,7 @@ if (!existsSync(compiled)) {
 const { pages, renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
 const { createTaskBoard } = require('../../out/ui/state/taskBoardState.js');
 const { createSidebarSnapshot } = require('../../out/ui/state/relatedNotesRanking.js');
-const { createSearchPageSnapshot } = require('../../out/ui/state/dashboardState.js');
+const { createSearchPageSnapshot, createDeckardStatsSnapshot } = require('../../out/ui/state/dashboardState.js');
 const { createCalendar } = require('../../out/ui/state/calendarState.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
@@ -210,6 +210,23 @@ function createSurfaces(zen) {
     // reveal sits inside a .card-header rather than at the end of the row.
     // Without zen it is drawn too, so its cards' tags, their three lines, and
     // the hub line are measured in every theme.
+    {
+      // Stats: what needs attention first, then the totals, then what is
+      // viewed most, with every panel's rows at full width.
+      page: 'stats',
+      viewport: [1100, 900],
+      snapshot: () => ({
+        ...createDeckardStatsSnapshot(index, {
+          ...preferences.value,
+          tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
+        }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
+        // "5 minutes ago" would change with the clock, and so the pixels.
+        updatedAt: 0,
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.metric-open'],
+    },
     {
       page: 'searchPage',
       viewport: [900, 900],

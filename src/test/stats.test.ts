@@ -9,6 +9,7 @@ import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { createDeckardStatsSnapshot } from '../ui/state/dashboardState';
 import { parseStatsMessage } from '../ui/webview/messages';
 import { getStatsHtml } from '../ui/webview/statsHtml';
+import { listStatsTags } from '../ui/webview/stats';
 import { openWebviewPage } from './webviewPage';
 
 suite('Stats messages', () => {
@@ -125,5 +126,136 @@ suite('Stats: notes that could not be read', () => {
     } finally {
       page.dispose();
     }
+  });
+});
+
+suite('Stats: what needs attention, first', () => {
+  const build = (notes: Record<string, string>) =>
+    buildWorkspaceIndex(new Map(Object.entries(notes).map(([filePath, text]) => [filePath, parseMarkdown(filePath, text)])));
+  const preferences = (value: Record<string, unknown> = {}) => ({
+    ...new PreferencesStore({ get: (_k: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never).value,
+    ...value,
+  });
+  const webview = { cspSource: 'vscode-webview://deckard', asWebviewUri: (r: vscode.Uri) => r } as unknown as vscode.Webview;
+  const open = (index: ReturnType<typeof build>, prefs = preferences()) =>
+    openWebviewPage(getStatsHtml(webview), createDeckardStatsSnapshot(index, prefs));
+
+  test('leads with Needs attention, each panel counting its rows', () => {
+    const page = open(build({
+      'notes/a.md': '# A #project/atlas\n\nSee [[Nowhere]].',
+      'notes/b.md': '# B #projects/atlas',
+    }));
+    try {
+      const sections = page.findAll('main > section, #app > section').map((section) => section.getAttribute('aria-labelledby') ?? section.getAttribute('aria-label'));
+      assert.deepStrictEqual(sections.slice(0, 2), ['attention-heading', 'Index statistics']);
+      const headings = page.findAll('.attention h3').map((heading) => heading.textContent?.trim());
+      assert.deepStrictEqual(headings.map((heading) => heading?.replace(/Create all$/, '')), [
+        'Links that open no note (1)',
+        'Tags that look alike (1)',
+        'Notes nothing links to (2)',
+      ]);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('says in one line when nothing needs attention', () => {
+    const page = open(build({ 'notes/a.md': '# A\n\n[[b]]', 'notes/b.md': '# B\n\n[[a]]' }));
+    try {
+      assert.strictEqual(
+        page.text('.attention-clear'),
+        'Nothing needs attention: every note was read, every link opens a note, no two tags look alike, and every note is linked from another.',
+      );
+      assert.strictEqual(page.findAll('.attention .view-panel').length, 0);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('shows ten notes nothing links to, then the rest on request', () => {
+    const notes: Record<string, string> = {};
+    for (let i = 0; i < 60; i += 1) {
+      notes[`notes/n${String(i).padStart(2, '0')}.md`] = `# Note ${i}`;
+    }
+    const page = open(build(notes));
+    try {
+      const shown = () => page.findAll('.orphan-list > li').filter((item) => !item.classList.contains('is-more') || page.find('.orphan-list').classList.contains('show-all')).length;
+      assert.strictEqual(shown(), 10);
+      assert.strictEqual(page.text('[data-action="show-more-orphans"]'), 'Show 40 more');
+      assert.ok(!(page.document.body.textContent ?? '').includes('And 10 more.'), 'the rest is said after the list is open');
+      page.click('[data-action="show-more-orphans"]');
+      assert.strictEqual(shown(), 50);
+      assert.strictEqual(page.findAll('[data-action="show-more-orphans"]').length, 0);
+      assert.ok(page.findAll('.attention .empty').some((line) => line.textContent === 'And 10 more.'));
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('every total opens what it counts', () => {
+    const page = open(build({ 'notes/a.md': '# A #project/atlas\n\n- [ ] Call\n\nSee [[b]].', 'notes/b.md': '# B #topic' }));
+    try {
+      const tile = (label: string) => page.findAll('.metric').find((element) => element.querySelector('.metric-label')?.textContent === label) as HTMLElement;
+      assert.strictEqual(tile('Files').tagName, 'ARTICLE', 'Files is a plain number');
+      tile('Notes').click();
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openSearch', query: 'is:note' });
+      tile('Tasks').click();
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openSearch', query: 'is:task' });
+      tile('Open tasks').click();
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openSearch', query: 'is:open' });
+      tile('Tags').click();
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: false });
+      tile('Namespaced tags').click();
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: true });
+      tile('Wiki links').click();
+      assert.deepStrictEqual(page.posted.at(-1), { type: 'openNotesGraph', onlyWrittenLinks: true });
+      assert.strictEqual(tile('Wiki links').getAttribute('aria-label'), 'Wiki links, 1. Open the Notes Graph showing only the links you wrote');
+      const before = page.posted.length;
+      tile('Unlinked notes').click();
+      assert.strictEqual(page.posted.length, before, 'moving to the list posts nothing');
+      assert.strictEqual(page.document.activeElement?.id, 'orphans-heading');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('folds the most viewed lists with nothing in them into one line', () => {
+    const index = build({ 'notes/a.md': '# A #project/atlas' });
+    const none = open(index);
+    try {
+      assert.strictEqual(none.findAll('#views-heading ~ .views .view-panel').length, 0);
+      assert.strictEqual(none.text('.views-empty'), "Nothing viewed yet. Views are counted when you open a tag's page or a note entry from a search page.");
+    } finally {
+      none.dispose();
+    }
+    const some = open(index, preferences({ tagAccessCounts: { '#project/atlas': 3 } }));
+    try {
+      assert.deepStrictEqual(some.findAll('#views-heading ~ .views h3').map((heading) => heading.textContent), ['Most viewed tags']);
+      assert.strictEqual(some.text('.views-empty'), "Nothing viewed yet among canonical tags and note entries. Views are counted when you open a tag's page or a note entry from a search page.");
+    } finally {
+      some.dispose();
+    }
+  });
+
+  test('accepts the messages the totals post, and nothing like them', () => {
+    assert.deepStrictEqual(parseStatsMessage({ type: 'openTagList', namespaced: true }), { type: 'openTagList', namespaced: true });
+    assert.deepStrictEqual(parseStatsMessage({ type: 'openNotesGraph', onlyWrittenLinks: true, extra: 1 }), { type: 'openNotesGraph', onlyWrittenLinks: true });
+    for (const message of [
+      { type: 'openTagList' },
+      { type: 'openTagList', namespaced: 'yes' },
+      { type: 'openNotesGraph' },
+      { type: 'openNotesGraph', onlyWrittenLinks: false },
+    ]) {
+      assert.strictEqual(parseStatsMessage(message), undefined, JSON.stringify(message));
+    }
+  });
+
+  test('a Tags total offers its tags, most used first', () => {
+    const index = build({ 'notes/a.md': '# A #project/atlas #topic\n\n## B #project/atlas' });
+    assert.deepStrictEqual(listStatsTags(index, false).map((row) => [row.label, row.description]), [
+      ['#project/atlas', '2 entries'],
+      ['#topic', '1 entry'],
+    ]);
+    assert.deepStrictEqual(listStatsTags(index, true).map((row) => row.tagKey), ['#project/atlas']);
   });
 });

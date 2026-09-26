@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { onDidChangePageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
+import { WorkspaceIndex } from '../../core/types';
 import { measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
@@ -156,6 +157,23 @@ export class StatsPanel implements vscode.Disposable {
       return;
     }
 
+    // The Tags totals open a tag, chosen from the tags they count.
+    if (message.type === 'openTagList') {
+      const tagKey = await pickStatsTag(index, message.namespaced);
+      if (tagKey) {
+        await this.onOpenTag(tagKey);
+      }
+      return;
+    }
+
+    // The Wiki links total opens the graph drawing only those links.
+    if (message.type === 'openNotesGraph') {
+      await vscode.commands.executeCommand('deckard.showNotesGraph', {
+        onlyWrittenLinks: true,
+      });
+      return;
+    }
+
     // The page is where staleness shows, so it is also where it is fixed.
     if (message.type === 'reindexWorkspace') {
       await vscode.commands.executeCommand('deckard.reindexWorkspace');
@@ -270,4 +288,40 @@ export class StatsPanel implements vscode.Disposable {
       ),
     });
   }
+}
+
+/**
+ * The tags a Tags total counts, as a quick pick: every tag, or only the
+ * namespaced ones, most used first, each with how many entries carry it.
+ * Returns the key chosen.
+ */
+export async function pickStatsTag(
+  index: WorkspaceIndex,
+  namespaced: boolean,
+  window: Pick<typeof vscode.window, 'showQuickPick'> = vscode.window,
+): Promise<string | undefined> {
+  const items = listStatsTags(index, namespaced);
+  const choice = await window.showQuickPick(items, {
+    title: namespaced ? 'Namespaced tags' : 'Tags',
+    placeHolder: namespaced ? 'Choose a namespaced tag to open' : 'Choose a tag to open',
+    matchOnDescription: true,
+  });
+  return choice?.tagKey;
+}
+
+/** The rows of that quick pick. */
+export function listStatsTags(
+  index: WorkspaceIndex,
+  namespaced: boolean,
+): (vscode.QuickPickItem & { tagKey: string })[] {
+  const rows = namespaced
+    ? [...index.entities.values()].map((entity) => ({ key: entity.key, label: entity.label, count: entity.count }))
+    : [...index.tags.values()].map((tag) => ({ key: tag.key, label: tag.label, count: tag.count }));
+  return rows
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+    .map((row) => ({
+      label: row.label,
+      description: `${row.count} ${row.count === 1 ? 'entry' : 'entries'}`,
+      tagKey: row.key,
+    }));
 }

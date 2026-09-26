@@ -153,8 +153,8 @@ test('a note nothing links to is listed, and opens without counting a view', asy
   updates.fire(index);
   panel._deliver(panel._toWebview[panel._toWebview.length - 1]);
 
-  const row = rows()[3];
-  assert.ok(row, 'the note is listed after the most-viewed rows');
+  const row = rows()[0];
+  assert.ok(row, 'the note is listed first, under Needs attention');
   assert.strictEqual(row.querySelector('.label').textContent, 'lonely');
   assert.ok(!row.querySelector('.count'), 'with no view count');
 

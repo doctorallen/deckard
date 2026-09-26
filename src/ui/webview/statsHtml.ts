@@ -33,7 +33,14 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
-.view-panel h2 { padding: 12px; border-bottom: 2px solid var(--line); color: var(--cyan); }
+.view-panel h3 { margin: 0; padding: 12px; border-bottom: 2px solid var(--line); color: var(--cyan); font-size: var(--text-md); font-weight: 650; }
+.stats-section { margin-top: 24px; }
+.stats-section > h2 { margin: 0; }
+.stats-section > .views { margin-top: 12px; align-items: start; }
+.view-panel > p.detail { margin: 0; padding: 10px 12px 0; }
+.attention-clear, .views-empty { margin: 8px 0 0; color: var(--muted); font-size: var(--text-sm); }
+.orphan-list:not(.show-all) .is-more { display: none; }
+.show-more { margin: 0 12px 12px; min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .list { display: grid; gap: 6px; margin: 0; padding: 8px; list-style: none; }
 .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
 .label { overflow-wrap: anywhere; }
@@ -43,7 +50,7 @@ export function getStatsHtml(webview: vscode.Webview): string {
 .pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .pair-tag { padding: 2px 6px; font-size: var(--text-sm); }
 .pair-arrow { color: var(--muted); }
-.view-panel h2.with-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.view-panel h3.with-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); white-space: nowrap; }
 @media (max-width: 600px) { main { padding: 16px; } }
 
@@ -64,6 +71,9 @@ ${loadingHtml('Loading statistics…')}
 (function () {
   const vscode = acquireVsCodeApi();
   let state;
+  /** Notes nothing links to shows ten, then the rest of what was sent on request. */
+  const ORPHANS_SHOWN = 10;
+  let showAllOrphans = false;
 ${getComponentScript()}
   /**
    * One number. Given a search, it becomes a button that opens the notes and
@@ -78,17 +88,25 @@ ${getComponentScript()}
     return '<p class="parked-line"><button type="button" class="text-button" data-action="open-search" data-query="is:parked" data-tip="Search everything that is parked">' + escapeHtml(words) + '</button></p>';
   }
 
+  /**
+   * One tile. A tile that opens what it counts is a button: a search, a tag
+   * to choose, the graph, or the list further down the page.
+   */
   function metric(label, value, query, hint) {
     return renderMetric(label, value, query, hint);
   }
+  function actionMetric(label, value, action, hint, attributes) {
+    if (!value) return renderMetric(label, value);
+    return '<button type="button" class="metric metric-open" data-action="' + action + '"' + (attributes || '') + ' data-tip="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(label + ', ' + value + '. ' + hint) + '"><span class="metric-label">' + escapeHtml(label) + '</span><strong class="metric-value">' + value + '</strong></button>';
+  }
   // isTag draws the label as a tag, with its namespace dimmed as everywhere
   // else a tag is shown.
-  function accessList(listName, empty, hint, isTag) {
+  function accessList(listName, empty, hint, isTag, shown) {
     const items = state[listName];
     if (!items.length) return '<p class="empty">' + escapeHtml(empty) + '</p>';
-    return '<ol class="list">' + items.map(function (item, index) {
+    return '<ol class="list' + (shown ? ' orphan-list' + (showAllOrphans ? ' show-all' : '') : '') + '">' + items.map(function (item, index) {
       const label = isTag ? renderTagLabel(item.label) : escapeHtml(item.label);
-      return '<li><div class="row stat-row" role="button" tabindex="0" data-tip="' + escapeHtml(hint) + '" data-list="' + listName + '" data-index="' + index + '"><div><div class="label">' + label + '</div><div class="detail">' + escapeHtml(item.detail) + '</div></div>' + (item.count === undefined ? '' : '<strong class="count">' + item.count + '</strong>') + '</div></li>';
+      return '<li' + (shown && index >= shown ? ' class="is-more"' : '') + '><div class="row stat-row" role="button" tabindex="0" data-tip="' + escapeHtml(hint) + '" data-list="' + listName + '" data-index="' + index + '"><div><div class="label">' + label + '</div><div class="detail">' + escapeHtml(item.detail) + '</div></div>' + (item.count === undefined ? '' : '<strong class="count">' + item.count + '</strong>') + '</div></li>';
     }).join('') + '</ol>';
   }
   /**
@@ -155,6 +173,29 @@ ${getComponentScript()}
       vscode.postMessage({ type: 'openSearch', query: action.dataset.query });
       return;
     }
+    if (action && action.dataset.action === 'open-tag-list') {
+      vscode.postMessage({ type: 'openTagList', namespaced: action.dataset.namespaced === 'true' });
+      return;
+    }
+    if (action && action.dataset.action === 'open-graph') {
+      vscode.postMessage({ type: 'openNotesGraph', onlyWrittenLinks: true });
+      return;
+    }
+    if (action && action.dataset.action === 'jump') {
+      const target = document.getElementById(action.dataset.target);
+      if (target) {
+        target.focus();
+        if (target.scrollIntoView) target.scrollIntoView({ block: 'start' });
+      }
+      return;
+    }
+    if (action && action.dataset.action === 'show-more-orphans') {
+      showAllOrphans = true;
+      renderKeepingPlace(render);
+      const list = document.querySelector('.orphan-list .is-more .stat-row');
+      if (list) list.focus();
+      return;
+    }
     if (action && action.dataset.action === 'reindex') {
       vscode.postMessage({ type: 'reindexWorkspace' });
       return;
@@ -208,28 +249,93 @@ ${getComponentScript()}
       : 'Not indexed yet';
     const metrics = [
       metric('Files', state.fileCount),
-      metric('Notes', state.sectionCount, '', ''),
+      metric('Notes', state.sectionCount, 'is:note', 'Open a search for every note'),
       metric('Tasks', state.taskCount, 'is:task', 'Open a search for every task'),
       metric('Open tasks', state.activeTaskCount, 'is:open', 'Open a search for every open task'),
-      metric('Tags', state.tagCount),
-      metric('Namespaced tags', state.entityCount),
-      metric('Wiki links', state.wikiLinkCount),
-      metric('Unlinked notes', state.orphanNoteCount)
+      actionMetric('Tags', state.tagCount, 'open-tag-list', 'Choose a tag to open', ' data-namespaced="false"'),
+      actionMetric('Namespaced tags', state.entityCount, 'open-tag-list', 'Choose a namespaced tag to open', ' data-namespaced="true"'),
+      actionMetric('Wiki links', state.wikiLinkCount, 'open-graph', 'Open the Notes Graph showing only the links you wrote'),
+      actionMetric('Unlinked notes', state.orphanNoteCount, 'jump', 'Go to the list of notes nothing links to', ' data-target="orphans-heading"')
     ].join('');
-    const unlisted = state.orphanNoteCount - state.orphanNotes.length;
-    const unlistedPairs = state.lookalikeTagCount - state.lookalikeTags.length;
-    const unlistedMissing = (state.missingLinkTargetCount || 0) - (state.missingLinkTargets || []).length;
-    // A note the index does not have looks, from a search, like a note that
-    // was never written. Say so here, with why, where a reader will look.
+    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button></p></header>'
+      + attentionSection()
+      + '<section class="metrics stats-section" aria-label="Index statistics">' + metrics + '</section>' + parkedLine()
+      + viewsSection();
+  }
+  /** A panel's heading, with how many it holds. */
+  function panelHeading(title, count, id, action) {
+    const text = escapeHtml(title) + ' (' + count + ')';
+    const attributes = id ? ' id="' + id + '" tabindex="-1"' : '';
+    return action
+      ? '<h3 class="with-action"' + attributes + '><span>' + text + '</span>' + action + '</h3>'
+      : '<h3' + attributes + '>' + text + '</h3>';
+  }
+  /**
+   * What needs doing, first, and only what has rows: notes that could not be
+   * read, links that open no note, tags that look alike, notes nothing links
+   * to. With none, one line says the workspace is in order.
+   */
+  function attentionSection() {
+    const panels = [];
     const unreadable = state.unreadable || [];
-    const unread = unreadable.length
-      ? '<section class="views" aria-label="Notes that could not be read"><article class="view-panel unreadable"><h2>Notes Deckard could not read</h2><p class="detail">' + unreadable.length + (unreadable.length === 1 ? ' note is' : ' notes are') + ' in the workspace but not in the index, so no search finds ' + (unreadable.length === 1 ? 'it' : 'them') + '. Fix the cause, then reindex.</p><ol class="list">' + unreadable.map(function (note, index) {
-          return '<li><div class="row stat-row" role="button" tabindex="0" data-tip="Open this note" data-list="unreadable" data-index="' + index + '"><div><div class="label">' + escapeHtml(note.filePath) + '</div><div class="detail">' + escapeHtml(note.reason) + '</div></div></div></li>';
-        }).join('') + '</ol></article></section>'
-      : '';
-    const orphans = unread + '<section class="views" aria-label="Link and tag hygiene"><article class="view-panel"><h2>Notes nothing links to</h2>' + accessList('orphanNotes', 'Every note is linked from another note.', 'Open note') + (unlisted > 0 ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article><article class="view-panel"><h2>Tags that look alike</h2>' + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article>'
-      + '<article class="view-panel"><h2 class="with-action"><span>Links that open no note</span>' + ((state.missingLinkTargets || []).some(function (target) { return target.creatable; }) ? '<button type="button" class="merge" data-action="create-all-missing-notes" data-tip="Create a note for every name links write that no note carries">Create all</button>' : '') + '</h2>' + missingLinkList() + (unlistedMissing > 0 ? '<p class="empty">And ' + unlistedMissing + ' more.</p>' : '') + '</article></section>';
-    document.getElementById('app').innerHTML = '<header><p class="eyebrow">DECKARD / LOCAL TELEMETRY</p><h1>Workspace Stats</h1><p class="updated">Index last refreshed: ' + updated + ' <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button></p></header><section class="metrics" aria-label="Index statistics">' + metrics + '</section>' + parkedLine() + '<section class="views" aria-label="View count statistics"><article class="view-panel"><h2>Most viewed tags</h2>' + accessList('tagViews', 'Open a tag overview to record a view.', 'Open tag overview', true) + '</article><article class="view-panel"><h2>Most viewed canonical tags</h2>' + accessList('entityViews', 'Open a canonical tag overview to record a view.', 'Open tag overview') + '</article><article class="view-panel"><h2>Most viewed note entries</h2>' + accessList('sectionViews', 'Open a note entry from an overview to record a view.', 'Open note entry') + '</article></section>' + orphans;
+    if (unreadable.length) {
+      // A note the index does not have looks, from a search, like a note that
+      // was never written. Say so here, with why, where a reader will look.
+      panels.push('<article class="view-panel unreadable">' + panelHeading('Notes Deckard could not read', unreadable.length) + '<p class="detail">' + unreadable.length + (unreadable.length === 1 ? ' note is' : ' notes are') + ' in the workspace but not in the index, so no search finds ' + (unreadable.length === 1 ? 'it' : 'them') + '. Fix the cause, then reindex.</p><ol class="list">' + unreadable.map(function (note, index) {
+        return '<li><div class="row stat-row" role="button" tabindex="0" data-tip="Open this note" data-list="unreadable" data-index="' + index + '"><div><div class="label">' + escapeHtml(note.filePath) + '</div><div class="detail">' + escapeHtml(note.reason) + '</div></div></div></li>';
+      }).join('') + '</ol></article>');
+    }
+    const missing = state.missingLinkTargets || [];
+    if (missing.length) {
+      const unlistedMissing = (state.missingLinkTargetCount || 0) - missing.length;
+      const createAll = missing.some(function (target) { return target.creatable; })
+        ? '<button type="button" class="merge" data-action="create-all-missing-notes" data-tip="Create a note for every name links write that no note carries">Create all</button>'
+        : '';
+      panels.push('<article class="view-panel">' + panelHeading('Links that open no note', state.missingLinkTargetCount || missing.length, '', createAll) + missingLinkList() + (unlistedMissing > 0 ? '<p class="empty">And ' + unlistedMissing + ' more.</p>' : '') + '</article>');
+    }
+    if (state.lookalikeTags.length) {
+      const unlistedPairs = state.lookalikeTagCount - state.lookalikeTags.length;
+      panels.push('<article class="view-panel">' + panelHeading('Tags that look alike', state.lookalikeTagCount) + lookalikeList() + (unlistedPairs > 0 ? '<p class="empty">And ' + unlistedPairs + ' more.</p>' : '') + '</article>');
+    }
+    if (state.orphanNotes.length) {
+      const unlisted = state.orphanNoteCount - state.orphanNotes.length;
+      const hidden = state.orphanNotes.length - ORPHANS_SHOWN;
+      const more = hidden > 0 && !showAllOrphans
+        ? '<button type="button" class="show-more" data-action="show-more-orphans">Show ' + hidden + ' more</button>'
+        : '';
+      panels.push('<article class="view-panel">' + panelHeading('Notes nothing links to', state.orphanNoteCount, 'orphans-heading') + accessList('orphanNotes', '', 'Open note', false, ORPHANS_SHOWN) + more + (unlisted > 0 && (showAllOrphans || hidden <= 0) ? '<p class="empty">And ' + unlisted + ' more.</p>' : '') + '</article>');
+    }
+    const body = panels.length
+      ? '<div class="views">' + panels.join('') + '</div>'
+      : '<p class="attention-clear">Nothing needs attention: every note was read, every link opens a note, no two tags look alike, and every note is linked from another.</p>';
+    return '<section class="stats-section attention" aria-labelledby="attention-heading"><h2 id="attention-heading">Needs attention</h2>' + body + '</section>';
+  }
+  /**
+   * The most viewed tags, canonical tags, and note entries. A list with
+   * nothing in it folds into one line naming what has no views yet.
+   */
+  function viewsSection() {
+    const lists = [
+      ['tagViews', 'Most viewed tags', 'tags', 'Open tag overview', true],
+      ['entityViews', 'Most viewed canonical tags', 'canonical tags', 'Open tag overview', false],
+      ['sectionViews', 'Most viewed note entries', 'note entries', 'Open note entry', false]
+    ];
+    const panels = [];
+    const empty = [];
+    lists.forEach(function (list) {
+      if (!state[list[0]].length) { empty.push(list[2]); return; }
+      panels.push('<article class="view-panel"><h3>' + escapeHtml(list[1]) + '</h3>' + accessList(list[0], '', list[3], list[4]) + '</article>');
+    });
+    const reason = 'Views are counted when you open a tag\\'s page or a note entry from a search page.';
+    const emptyLine = empty.length === lists.length
+      ? 'Nothing viewed yet. ' + reason
+      : empty.length
+        ? 'Nothing viewed yet among ' + (empty.length === 2 ? empty[0] + ' and ' + empty[1] : empty[0]) + '. ' + reason
+        : '';
+    return '<section class="stats-section" aria-labelledby="views-heading"><h2 id="views-heading">Most viewed</h2>'
+      + (panels.length ? '<div class="views">' + panels.join('') + '</div>' : '')
+      + (emptyLine ? '<p class="views-empty">' + escapeHtml(emptyLine) + '</p>' : '')
+      + '</section>';
   }
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'state') { state = event.data.data; renderKeepingPlace(render); }

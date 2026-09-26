@@ -767,6 +767,14 @@ export function parseStatsMessage(value: unknown): StatsMessage | undefined {
       return Object.keys(value).length === 1
         ? { type: 'reindexWorkspace' }
         : undefined;
+    case 'openTagList':
+      return typeof value.namespaced === 'boolean'
+        ? { type: 'openTagList', namespaced: value.namespaced }
+        : undefined;
+    case 'openNotesGraph':
+      return value.onlyWrittenLinks === true
+        ? { type: 'openNotesGraph', onlyWrittenLinks: true }
+        : undefined;
     case 'createMissingNotes':
       return Array.isArray(value.names) &&
         value.names.length <= MAX_MISSING_NOTE_NAMES &&

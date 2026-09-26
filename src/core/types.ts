@@ -969,7 +969,21 @@ export interface MergeTagsMessage {
   targetKey: string;
 }
 
+/** Stats' Tags and Namespaced tags totals: choose one to open. */
+export interface OpenTagListMessage {
+  type: 'openTagList';
+  namespaced: boolean;
+}
+
+/** Stats' Wiki links total: the graph, drawing only the links written. */
+export interface OpenStatsNotesGraphMessage {
+  type: 'openNotesGraph';
+  onlyWrittenLinks: true;
+}
+
 export type StatsMessage =
+  | OpenTagListMessage
+  | OpenStatsNotesGraphMessage
   | OpenTagMessage
   | OpenSourceMessage
   | OpenSearchMessage
