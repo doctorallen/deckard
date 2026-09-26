@@ -199,6 +199,14 @@ function probeScript(surface) {
   disabled.forEach((el) => { el.style.transition = 'none'; });
   const disabledAtRest = disabled.map(look);
   runs[0].disabledCount = disabled.length;
+  // A tag on a card is written text: no edge and no ground at rest.
+  runs[0].cardTagsBoxed = [...document.querySelectorAll(':is(.card, .task-row, .board-card, .note) :is(button.tag-open, button.inline-tag)')]
+    .filter((el) => {
+      const style = getComputedStyle(el);
+      return style.borderTopStyle !== 'none' || (style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent');
+    })
+    .slice(0, 4)
+    .map((el) => name(el) + ' ' + getComputedStyle(el).borderTopStyle + ' ' + getComputedStyle(el).backgroundColor);
   // A result cut to three lines is no taller than three of its lines.
   runs[0].clampOver = [...document.querySelectorAll('.card-body.is-clamped > .rendered, .card-body.is-clamped > .markdown')]
     .filter((el) => {
@@ -391,6 +399,9 @@ try {
           if (box.scrollW > box.clientW) {
             problems.push(`${run.label}: ${box.sel} overflows sideways (${box.scrollW} > ${box.clientW})${run.transform && run.transform !== 'none' ? `, the hovered row moved (${run.transform})` : ''}${box.wide.length ? ' — ' + box.wide.join('; ') : ''}`);
           }
+        }
+        for (const boxed of run.cardTagsBoxed || []) {
+          problems.push(`a tag on a card is drawn as a control: ${boxed}`);
         }
         for (const over of run.clampOver || []) {
           problems.push(`a result cut to three lines is taller than three: ${over}`);

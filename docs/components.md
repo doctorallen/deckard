@@ -41,10 +41,12 @@ ${getComponentScript()}
 ```
 
 Cascade order matters and is always the same: **base sheet → page rules →
-theme sheet → zen sheet.** A page overrides a component by restating the rule
-after `getBaseCss()`; a theme overrides tokens for everyone; zen comes last
-because what it takes away is largely what a theme adds. `getPageTailCss()`
-emits the last two together, so no page has to remember the order.
+theme sheet → control edges → provenance → high contrast → card tags → zen
+sheet.** A page overrides a component by restating the rule after
+`getBaseCss()`; a theme overrides tokens for everyone; card tags come after
+every theme so no theme's button rule reaches them; zen comes last because
+what it takes away is largely what a theme adds. `getPageTailCss()` emits
+everything after the page's rules, so no page has to remember the order.
 
 The page's `<body>` carries `${zenBodyAttribute()}`, which is `class="zen"`
 when zen is on and nothing when it is off. See **Zen mode** below.
@@ -273,6 +275,19 @@ the tag-association view switch.
 | `.tag-list` | Wrapping row of tags. |
 | `.tag-namespace` | The dimmed `#namespace/` prefix. Emitted by `renderTagLabel`. |
 | `.tag-context-menu` | The right-click menu, positioned by `openTagContextMenu`. A `.popover`. |
+
+**Tags on cards are text.** `getCardTagCss()`, laid down after the themes
+and high contrast and before zen: on search results (`.card`), task rows
+(`.task-row`), board cards (`.board-card`), and Related Notes (`.note`), a
+`button.tag-open` or `button.inline-tag` is monospace text at 0.9em with no
+box or fill, its namespace muted; under the pointer or focus it takes a faint
+accent ground and an accent underline, its text color unchanged, so its
+contrast never depends on the hover. It stays a button: one Tab stop, Enter
+and Space, and its context menu. Under high contrast it is underlined at
+rest. The editor's decorations keep their box, as do Refine values, the
+sidebar's own tag rows, the Dashboard's Tags tab, the hub's properties, and
+the query chips. The layout suite fails a card tag drawn with an edge or a
+ground at rest, in every theme.
 
 **One line, always.** A tag or chip that is too long for its place keeps to
 one line and shortens, the namespace first, down to about `#p…/`, then the

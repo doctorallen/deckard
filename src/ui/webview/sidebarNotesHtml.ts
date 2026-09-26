@@ -131,7 +131,6 @@ button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); out
 .relevance-weights { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); font-size: var(--text-xs); }
 .relevance-weights strong { color: var(--green); font-weight: 600; }
 .note .tag-list { margin-top: 7px; }
-.note .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .active-file .tag-list button:not(:hover):not(:focus-visible) { color: var(--text); }
 .graph-kind { flex: 0 0 auto; border: 1px solid var(--line); padding: 2px 5px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); }
 .graph-kind.task { color: var(--amber); }

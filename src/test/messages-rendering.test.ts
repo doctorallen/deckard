@@ -598,8 +598,8 @@ suite('Webview contracts', () => {
     assert.strictEqual(html.includes('<path d="M2 3h12L9 8v4l-2 1V8L2 3Z"/></svg>\';'), true);
     // A tag reads as written, whatever the heading or theme around it does.
     assert.strictEqual(html.includes('.tag-open, .inline-tag { text-transform: none; }'), true);
-    // A tag in a title is a hairline link, not a control chip.
-    assert.strictEqual(html.includes('.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }'), true);
+    // A tag on a card is written text, not a control chip.
+    assert.strictEqual(html.includes('body .card button.tag-open:not(:hover):not(:focus-visible),'), true);
                                                                                 // The gear is the one every page draws, after the totals.
     assert.strictEqual(
       html.indexOf("const metrics = '<div class=\"metrics\"") <

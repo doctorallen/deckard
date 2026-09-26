@@ -77,6 +77,11 @@
 
 ### Changed
 
+- **Tags on cards are text.** Search results, task rows, board cards, and
+  Related Notes draw a tag as quiet monospace text that opens it, its
+  namespace muted, with a faint underline under the pointer, rather than a
+  row of boxes that outweighed the title. The editor keeps its tag boxes.
+
 - **A tag with no hub note offers one in a line.** **Create hub note** sits
   under the tag's title as quiet text, in place of the amber panel that
   stood above the results.

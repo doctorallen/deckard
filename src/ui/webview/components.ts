@@ -351,10 +351,6 @@ export function getTagCss(): string {
    heading or a control a theme shouts would otherwise shout the tag too. */
 .tag-open, .inline-tag { text-transform: none; }
 .tag-open { min-height: 26px; padding: 3px 7px; color: var(--cyan); font-size: var(--text-xs); text-align: left; }
-/* A tag in a title opens that tag rather than controlling the view, so it is
-   drawn as a hairline with no fill and no control height: the boxes a reader
-   sees elsewhere mean "this changes what is listed". */
-.card-title .tag-open, .note .tag-list button { min-height: 0; padding: 3px 7px; border: 1px solid var(--line); background: transparent; line-height: 1.35; }
 .inline-tag {
   min-height: 24px;
   margin-left: 3px;
@@ -975,7 +971,83 @@ body.zen { --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --sp
  * convention nine files have to remember.
  */
 export function getPageTailCss(): string {
-  return `${getDeckardThemeCss(getDeckardTheme())}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getZenCss()}`;
+  return `${getDeckardThemeCss(getDeckardTheme())}\n${getControlEdgeCss()}\n${getProvenanceCss()}\n${getHighContrastCss()}\n${getCardTagCss()}\n${getZenCss()}`;
+}
+
+/** Where a tag is written text rather than a control: the card views. */
+const CARD_VIEWS = ['.card', '.task-row', '.board-card', '.note'];
+const CARD_TAGS = ['button.tag-open', 'button.inline-tag'];
+
+/** Every card view's tags, as one selector list, each ending in `suffix`. */
+function cardTagSelectors(suffix = '', prefix = 'body '): string {
+  return CARD_VIEWS.flatMap((view) => CARD_TAGS.map((tag) => `${prefix}${view} ${tag}${suffix}`)).join(', ');
+}
+
+/**
+ * Tags on cards: written text that opens the tag's page, not a control.
+ *
+ * A card can carry five tags, and five boxes outweigh the title they sit in.
+ * On search results, task rows, board cards, and Related Notes a tag is
+ * monospace text with no box or fill, its namespace muted, and a faint
+ * accent ground and underline under the pointer or focus; it is still a
+ * button, one Tab stop, with its context menu. The editor keeps its box, as
+ * do Refine, the query chips, and the Dashboard's Tags tab.
+ *
+ * After every theme and the high contrast sheet, so no theme's button rule
+ * reaches these tags; the body prefix and the :not() pair outweigh the page
+ * and theme rules that color a card's tags. Geometry that keeps a tag on one
+ * line is the shared tag sheet's, which this does not restate.
+ */
+export function getCardTagCss(): string {
+  const rest = ':not(:hover):not(:focus-visible)';
+  return `
+${cardTagSelectors(rest)},
+${cardTagSelectors()} {
+  display: inline;
+  min-height: 0;
+  margin: 0 0 0 .2em;
+  padding: 0 .15em;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .9em;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: none;
+  text-decoration: none;
+  vertical-align: baseline;
+  transform: none;
+  transition: none;
+  cursor: pointer;
+}
+${cardTagSelectors(`:hover${ENABLED}`)}, ${cardTagSelectors(':focus-visible')} {
+  border: 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: none;
+  color: var(--text);
+  text-decoration: underline 1px var(--accent);
+  text-underline-offset: 2px;
+  transform: none;
+}
+${cardTagSelectors(':focus-visible')} { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
+/* The namespace is muted at rest by the tag sheet; on the tinted ground it
+   takes the tag's own ink, which is what keeps it readable there. */
+${cardTagSelectors(`:hover${ENABLED} .tag-namespace`)}, ${cardTagSelectors(':focus-visible .tag-namespace')} { color: inherit; }
+/* A tag is never a chosen control, whatever a theme draws button.active as. */
+${cardTagSelectors('.active')} { background: transparent; color: var(--text); }
+/* Separate tags under a title are a line of words, not a row of chips. */
+body .card .tag-list, body .note .tag-list { gap: 0 var(--space-2); }
+/* High contrast: a tag reads as a link at rest, since there is no tint. */
+${cardTagSelectors('', 'body.vscode-high-contrast ')}, ${cardTagSelectors('', 'body.vscode-high-contrast-light ')} { text-decoration: underline 1px; }
+@media (forced-colors: active) {
+  ${cardTagSelectors('', '')} { color: LinkText; forced-color-adjust: none; }
+}`;
 }
 
 /**
