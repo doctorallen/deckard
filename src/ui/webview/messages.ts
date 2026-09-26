@@ -411,6 +411,17 @@ export function parseNotesGraphMessage(
   ) {
     return { type: 'openTag', tagKey: value.tagKey };
   }
+  if (
+    value.type === 'setGraphFilter' &&
+    typeof value.showNotes === 'boolean' &&
+    typeof value.showTasks === 'boolean'
+  ) {
+    return {
+      type: 'setGraphFilter',
+      showNotes: value.showNotes,
+      showTasks: value.showTasks,
+    };
+  }
   return undefined;
 }
 

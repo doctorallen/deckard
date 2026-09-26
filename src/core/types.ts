@@ -1095,6 +1095,22 @@ export interface NotesGraphSnapshot {
 }
 
 /**
+ * An edge as the page receives it: without its id, which is its two ends and
+ * which the page puts back, since at 5,000 notes the ids alone were about a
+ * fifth of the message.
+ */
+export type NotesGraphWireEdge = Omit<NotesGraphEdge, 'id'> & { id?: string };
+
+/** The graph as the page receives it: only the kinds of node it shows. */
+export interface NotesGraphWireSnapshot extends Omit<NotesGraphSnapshot, 'edges'> {
+  edges: NotesGraphWireEdge[];
+  /** Notes and tasks left out because the page hides their kind. */
+  hiddenNodeCount?: number;
+  /** How many edges the graph holds before any were left out. */
+  edgeCount?: number;
+}
+
+/**
  * What a local graph is centered on: the note last open in an editor, how far
  * out it reaches, and whether the graph on screen is that neighborhood or
  * the whole workspace.
@@ -1156,12 +1172,20 @@ export interface NotesGraphSetScopeMessage {
   skipPeriodic?: boolean;
 }
 
+/** Which kinds of node the page shows, so the host sends only those. */
+export interface NotesGraphSetFilterMessage {
+  type: 'setGraphFilter';
+  showNotes: boolean;
+  showTasks: boolean;
+}
+
 export type NotesGraphMessage =
   | NotesGraphOpenSourceMessage
   | NotesGraphOpenTagMessage
   | NotesGraphSelectNodeMessage
   | NotesGraphClearSelectionMessage
-  | NotesGraphSetScopeMessage;
+  | NotesGraphSetScopeMessage
+  | NotesGraphSetFilterMessage;
 
 export interface OpenSourceMessage {
   type: 'openSource';

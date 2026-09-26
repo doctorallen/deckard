@@ -591,7 +591,8 @@ ${getUndoScript()}
     setSelectedIndex(restoredSelection);
     alpha = reusedAny && hasFramed ? 0.3 : 1;
     updateStatus();
-    emptyState.style.display = snapshot.nodes.length === 0 ? 'grid' : 'none';
+    emptyState.style.display =
+      snapshot.nodes.length + (snapshot.hiddenNodeCount || 0) === 0 ? 'grid' : 'none';
     if (!hasFramed && count > 0) {
       fitToView();
       hasFramed = true;
@@ -1537,7 +1538,9 @@ ${getUndoScript()}
       : '';
     statusCounts.textContent = searchNote + snapshot.totalNoteCount + ' notes · ' +
       snapshot.totalTaskCount + ' tasks · ' + visibleEdgeCount +
-      ' strong links / ' + snapshot.edges.length + ' indexed · ' +
+      ' strong links / ' +
+      (snapshot.edgeCount !== undefined ? snapshot.edgeCount : snapshot.edges.length) +
+      ' indexed · ' +
       communityCount + ' communities';
   }
 
@@ -1906,11 +1909,27 @@ ${getUndoScript()}
       return;
     }
     focusNote.textContent = focus.local
-      ? focus.title + ' · ' + snapshot.nodes.length + ' of ' + focus.workspaceNodeCount + ' nodes'
+      ? focus.title + ' · ' + (snapshot.nodes.length + (snapshot.hiddenNodeCount || 0)) +
+        ' of ' + focus.workspaceNodeCount + ' nodes'
       : 'Around ' + focus.title + ', when this is on.';
+  }
+  /**
+   * The host sends only the kinds of node shown, so it is told which. The
+   * page still filters by kind itself, which covers the moment between a
+   * toggle and the graph the host sends back.
+   */
+  function sendFilter() {
+    vscode.postMessage({
+      type: 'setGraphFilter',
+      showNotes: Boolean(settings.showNotes),
+      showTasks: Boolean(settings.showTasks),
+    });
   }
   bindToggle('show-notes', 'showNotes', true);
   bindToggle('show-tasks', 'showTasks', true);
+  document.getElementById('show-notes').addEventListener('change', sendFilter);
+  document.getElementById('show-tasks').addEventListener('change', sendFilter);
+  sendFilter();
   bindToggle('show-tags', 'showTags', true);
   bindToggle('show-orphans', 'showOrphans', true);
   bindToggle('show-all-links', 'showAllLinks', true);
@@ -1958,6 +1977,7 @@ ${getUndoScript()}
         : defaults[key];
     });
     applySettingsToControls();
+    sendFilter();
     tagSearchInput.value = '';
     window.clearTimeout(searchTimer);
     camera = { x: 0, y: 0, k: 1 };
@@ -2003,6 +2023,7 @@ ${getUndoScript()}
       settings[key] = previous.settings[key];
     });
     applySettingsToControls();
+    sendFilter();
     tagSearchInput.value = previous.tagSearch;
     camera = { x: previous.camera.x, y: previous.camera.y, k: previous.camera.k };
     hasFramed = true;
@@ -2173,6 +2194,10 @@ ${getUndoScript()}
     var message = event.data;
     if (message && message.type === 'state' && message.data) {
       snapshot = message.data;
+      // Edge ids are left out of the message; each is its two ends.
+      snapshot.edges.forEach(function (edge) {
+        if (!edge.id) { edge.id = edge.source + '::' + edge.target; }
+      });
       rebuildView();
       renderTagList();
       updateFocus();

@@ -102,6 +102,58 @@ suite('Notes Graph behavior', () => {
     assert.strictEqual(advanced.querySelector('#link-density'), null);
   });
 
+  test('tells the host which kinds of node it shows, at load and on each toggle', () => {
+    const page = open();
+    const filters = () => page.posted.filter((message) => message.type === 'setGraphFilter');
+    assert.deepStrictEqual(filters(), [
+      { type: 'setGraphFilter', showNotes: true, showTasks: true },
+    ]);
+
+    const tasks = page.find('#show-tasks') as HTMLInputElement;
+    tasks.checked = false;
+    tasks.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    assert.deepStrictEqual(filters().at(-1), { type: 'setGraphFilter', showNotes: true, showTasks: false });
+
+    page.click('#reset-graph-settings');
+    assert.deepStrictEqual(filters().at(-1), { type: 'setGraphFilter', showNotes: true, showTasks: true }, 'a reset shows tasks again');
+  });
+
+  test('draws a graph sent without edge ids or hidden kinds, and still counts the whole of it', () => {
+    const page = open();
+    const node = (id: string, kind: string) => ({ id, kind, title: id, tagKeys: [], degree: 1 });
+    page.send({
+      updatedAt: 1,
+      nodes: [node('section:a', 'note'), node('section:b', 'note'), node('tag:#x', 'tag')],
+      edges: [
+        { source: 'section:a', target: 'section:b', weight: 2, types: ['wiki-link'] },
+        { source: 'section:a', target: 'tag:#x', weight: 1, types: ['tag-membership'] },
+      ],
+      tags: [['#x', '#x', 1]],
+      totalNoteCount: 2,
+      totalTaskCount: 3,
+      hiddenNodeCount: 3,
+      edgeCount: 7,
+    });
+    assert.match(page.text('#status-counts') ?? '', /\/ 7 indexed/, 'the indexed count is the whole graph');
+    assert.notStrictEqual((page.find('#empty-state') as HTMLElement).style.display, 'grid');
+
+    page.send({
+      updatedAt: 2,
+      nodes: [],
+      edges: [],
+      tags: [],
+      totalNoteCount: 0,
+      totalTaskCount: 3,
+      hiddenNodeCount: 3,
+      edgeCount: 0,
+    });
+    assert.notStrictEqual(
+      (page.find('#empty-state') as HTMLElement).style.display,
+      'grid',
+      'hiding every task is not an empty workspace',
+    );
+  });
+
   test('offers the zoom and framing controls', () => {
     const page = open();
 

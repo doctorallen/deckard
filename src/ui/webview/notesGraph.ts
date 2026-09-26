@@ -24,6 +24,8 @@ import {
   findNoteNodeIds,
   graphInputsChanged,
   MAXIMUM_LOCAL_GRAPH_DEPTH,
+  NotesGraphKinds,
+  toWire,
 } from '../state/notesGraphState';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { parseNotesGraphMessage } from './messages';
@@ -42,6 +44,8 @@ export class NotesGraphPanel implements vscode.Disposable {
   private snapshot: NotesGraphSnapshot | undefined;
   /** The index the whole-workspace snapshot was drawn from. */
   private builtFrom: WorkspaceIndex | undefined;
+  /** The kinds of node the page shows, which are all it is sent. */
+  private kinds: NotesGraphKinds = { notes: true, tasks: true };
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
   /**
@@ -292,7 +296,7 @@ export class NotesGraphPanel implements vscode.Disposable {
     }
     void this.panel.webview.postMessage({
       type: 'state',
-      data: snapshot,
+      data: toWire(snapshot, this.kinds),
     });
     if (this.selectedNodeId) {
       void this.panel.webview.postMessage({
@@ -333,6 +337,16 @@ export class NotesGraphPanel implements vscode.Disposable {
     if (message.type === 'clearSelection') {
       this.selectedNodeId = undefined;
       await this.publishGraphContext(false);
+      return;
+    }
+
+    if (message.type === 'setGraphFilter') {
+      // Not a choice of scope: the opening scope rule is untouched.
+      const kinds = { notes: message.showNotes, tasks: message.showTasks };
+      if (kinds.notes !== this.kinds.notes || kinds.tasks !== this.kinds.tasks) {
+        this.kinds = kinds;
+        this.refresh();
+      }
       return;
     }
 

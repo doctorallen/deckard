@@ -315,7 +315,8 @@
   draws.** Editing words inside a line, ticking a task, or changing its due
   date no longer rebuilds and resends the whole graph (about 1.5 seconds
   and 50 MB at 5,000 notes). A save that adds a link, heading, tag, or task,
-  or moves one to another line, still redraws it.
+  or moves one to another line, still redraws it. Hiding notes or tasks
+  leaves them out of what is sent, and each link is sent lighter.
 
 - **Extract Heading takes any heading.** `Deckard: Extract Tagged
   Heading` is now `Deckard: Extract Heading`, and moves an untagged heading

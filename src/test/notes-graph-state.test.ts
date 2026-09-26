@@ -8,6 +8,7 @@ import {
   createNotesGraphSnapshot,
   findNoteNodeIds,
   graphInputsChanged,
+  toWire,
 } from '../ui/state/notesGraphState';
 import {
   parseNotesGraphMessage,
@@ -411,6 +412,50 @@ suite('Notes graph messages', () => {
     assert.strictEqual(graphInputsChanged(before, reordered), true, 'the same notes in another order');
     assert.strictEqual(graphInputsChanged(undefined, before), true, 'nothing drawn yet');
     assert.strictEqual(graphInputsChanged(before, before), false);
+  });
+
+  test('sends only the kinds of node the page shows, and no edge ids', () => {
+    const snapshot = buildSnapshot([
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n\nSee [[relay]].\n- [ ] Call [[relay]] #person/dana'),
+      parseMarkdown('notes/relay.md', '# Relay #project/atlas'),
+    ]);
+    assert.ok(snapshot.nodes.some((node) => node.kind === 'task'));
+
+    const whole = toWire(snapshot, { notes: true, tasks: true });
+    assert.deepStrictEqual(
+      whole,
+      {
+        ...snapshot,
+        edges: snapshot.edges.map(({ id: _id, ...edge }) => edge),
+        hiddenNodeCount: 0,
+        edgeCount: snapshot.edges.length,
+      },
+      'everything but the ids',
+    );
+    assert.ok(whole.edges.every((edge) => !('id' in edge)));
+
+    const noTasks = toWire(snapshot, { notes: true, tasks: false });
+    const taskIds = new Set(snapshot.nodes.filter((node) => node.kind === 'task').map((node) => node.id));
+    assert.ok(noTasks.nodes.every((node) => node.kind !== 'task'), 'no task node');
+    assert.ok(
+      noTasks.edges.every((edge) => !taskIds.has(edge.source) && !taskIds.has(edge.target)),
+      'no edge touching one',
+    );
+    assert.strictEqual(noTasks.hiddenNodeCount, taskIds.size);
+    assert.strictEqual(noTasks.edgeCount, snapshot.edges.length);
+    assert.strictEqual(noTasks.totalTaskCount, snapshot.totalTaskCount, 'the totals still count them');
+
+    const onlyTags = toWire(snapshot, { notes: false, tasks: false });
+    assert.ok(onlyTags.nodes.every((node) => node.kind === 'tag'));
+  });
+
+  test('accepts a filter message only with both kinds said', () => {
+    assert.deepStrictEqual(
+      parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: true, showTasks: false }),
+      { type: 'setGraphFilter', showNotes: true, showTasks: false },
+    );
+    assert.strictEqual(parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: true }), undefined);
+    assert.strictEqual(parseNotesGraphMessage({ type: 'setGraphFilter', showNotes: 'yes', showTasks: true }), undefined);
   });
 
   test('accepts valid openSource and openTag messages', () => {
