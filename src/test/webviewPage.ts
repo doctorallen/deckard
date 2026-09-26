@@ -33,7 +33,38 @@ export interface WebviewPage {
   text(selector: string): string | undefined;
   /** What the page kept for a window reload. */
   savedState(): unknown;
+  /**
+   * With `canvas: true`, every call the page made on a canvas's 2D context,
+   * oldest first, with the drawing state it was made under.
+   */
+  readonly canvasCalls: CanvasCall[];
+  /**
+   * With `canvas: true`, runs the animation frames the page has asked for,
+   * up to `count` rounds; a frame that asks for another is run in the next
+   * round. Returns how many frames ran.
+   */
+  flushFrames(count?: number): number;
   dispose(): void;
+}
+
+/** One call on a recorded 2D context, and the state it was drawn in. */
+export interface CanvasCall {
+  op: string;
+  args: unknown[];
+  lineDash: number[];
+  strokeStyle: unknown;
+  fillStyle: unknown;
+  globalAlpha: number;
+  lineWidth: number;
+}
+
+export interface WebviewPageOptions {
+  /**
+   * Gives every canvas a 2D context that draws nothing and records each
+   * call, holds animation frames until `flushFrames`, and gives canvases an
+   * 800 by 600 size, so a page that paints can be tested by what it paints.
+   */
+  canvas?: boolean;
 }
 
 export interface PostedMessage {
@@ -52,8 +83,14 @@ function clone<T>(value: T): T {
  * `state` is sent as soon as the page is loaded, which is what the host does
  * once the page says it is ready.
  */
-export function openWebviewPage(html: string, state?: unknown): WebviewPage {
+export function openWebviewPage(
+  html: string,
+  state?: unknown,
+  options: WebviewPageOptions = {},
+): WebviewPage {
   const posted: PostedMessage[] = [];
+  const canvasCalls: CanvasCall[] = [];
+  let frames: FrameRequestCallback[] = [];
   let kept: unknown;
   const dom = new JSDOM(html, {
     runScripts: 'dangerously',
@@ -75,6 +112,15 @@ export function openWebviewPage(html: string, state?: unknown): WebviewPage {
           getState: () => kept,
         }),
       });
+      if (options.canvas) {
+        installRecordingCanvas(window as unknown as Window & typeof globalThis, canvasCalls);
+        Object.defineProperty(window, 'requestAnimationFrame', {
+          value: (callback: FrameRequestCallback) => {
+            frames.push(callback);
+            return frames.length;
+          },
+        });
+      }
     },
   });
   const window = dom.window as unknown as Window & typeof globalThis;
@@ -117,6 +163,19 @@ export function openWebviewPage(html: string, state?: unknown): WebviewPage {
     savedState(): unknown {
       return kept;
     },
+    canvasCalls,
+    flushFrames(count = 1): number {
+      let ran = 0;
+      for (let round = 0; round < count && frames.length > 0; round += 1) {
+        const due = frames;
+        frames = [];
+        due.forEach((callback) => {
+          callback(window.performance.now());
+          ran += 1;
+        });
+      }
+      return ran;
+    },
     dispose(): void {
       dom.window.close();
     },
@@ -125,4 +184,98 @@ export function openWebviewPage(html: string, state?: unknown): WebviewPage {
     page.send(state);
   }
   return page;
+}
+
+/** Drawing state a 2D context keeps between calls. */
+const CONTEXT_STATE: Record<string, unknown> = {
+  strokeStyle: '#000',
+  fillStyle: '#000',
+  globalAlpha: 1,
+  lineWidth: 1,
+  lineCap: 'butt',
+  lineJoin: 'miter',
+  lineDashOffset: 0,
+  font: '10px sans-serif',
+  textAlign: 'start',
+  textBaseline: 'alphabetic',
+};
+
+/**
+ * Replaces canvases' `getContext` with a 2D context that records every call.
+ * Property writes (colors, alpha, width) are kept as state and stamped on
+ * each call; `save`/`restore` keep a stack of it, as a real context does.
+ */
+function installRecordingCanvas(window: Window & typeof globalThis, calls: CanvasCall[]): void {
+  const prototype = window.HTMLCanvasElement.prototype;
+  Object.defineProperty(prototype, 'clientWidth', { configurable: true, get: () => 800 });
+  Object.defineProperty(prototype, 'clientHeight', { configurable: true, get: () => 600 });
+  Object.defineProperty(prototype, 'setPointerCapture', { configurable: true, value: () => undefined });
+  Object.defineProperty(prototype, 'releasePointerCapture', { configurable: true, value: () => undefined });
+  Object.defineProperty(prototype, 'hasPointerCapture', { configurable: true, value: () => false });
+  Object.defineProperty(prototype, 'getContext', {
+    configurable: true,
+    value: function getContext(this: HTMLCanvasElement) {
+      const state: Record<string, unknown> = { ...CONTEXT_STATE };
+      let lineDash: number[] = [];
+      const stack: { state: Record<string, unknown>; lineDash: number[] }[] = [];
+      const record = (op: string, args: unknown[]): void => {
+        calls.push({
+          op,
+          args,
+          lineDash: lineDash.slice(),
+          strokeStyle: state.strokeStyle,
+          fillStyle: state.fillStyle,
+          globalAlpha: Number(state.globalAlpha),
+          lineWidth: Number(state.lineWidth),
+        });
+      };
+      const methods: Record<string, (...args: unknown[]) => unknown> = {
+        setLineDash: (segments: unknown) => {
+          lineDash = Array.isArray(segments) ? Array.from(segments as unknown[], Number) : [];
+          record('setLineDash', [lineDash.slice()]);
+        },
+        getLineDash: () => lineDash.slice(),
+        save: () => {
+          stack.push({ state: { ...state }, lineDash: lineDash.slice() });
+          record('save', []);
+        },
+        restore: () => {
+          const top = stack.pop();
+          if (top) {
+            Object.assign(state, top.state);
+            lineDash = top.lineDash;
+          }
+          record('restore', []);
+        },
+        measureText: (text: unknown) => {
+          record('measureText', [text]);
+          return { width: String(text).length * 7 };
+        },
+      };
+      const canvas = this;
+      return new Proxy({}, {
+        get(_target, property) {
+          if (property === 'canvas') {
+            return canvas;
+          }
+          if (typeof property !== 'string') {
+            return undefined;
+          }
+          if (property in methods) {
+            return methods[property];
+          }
+          if (property in state) {
+            return state[property];
+          }
+          return (...args: unknown[]) => record(property, args);
+        },
+        set(_target, property, value) {
+          if (typeof property === 'string') {
+            state[property] = value;
+          }
+          return true;
+        },
+      });
+    },
+  });
 }

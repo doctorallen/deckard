@@ -844,6 +844,19 @@ away and gives them back on hover. The search page is a zen-only surface,
 since that reveal sits inside a `.card-header` rather than at the end of a
 row.
 
+### A page that paints
+
+A page is tested by what it does: `openWebviewPage(html, state)` in
+`src/test/webviewPage.ts` loads it in jsdom with a stand-in for the webview
+API, sends it the host's state, and reads back what it drew and posted.
+jsdom has no canvas, so `openWebviewPage(html, state, { canvas: true })`
+gives every canvas a 2D context that draws nothing and records each call in
+`page.canvasCalls` — `{ op, args, lineDash, strokeStyle, fillStyle,
+globalAlpha, lineWidth }` — with `measureText` answering seven pixels a
+character. Canvases are 800 by 600, and animation frames wait for
+`page.flushFrames(n)`, so a test decides when the Notes Graph draws and then
+asserts on the strokes it made.
+
 ### Pixels
 
 The contracts measure geometry and the contrast check reads color pairs.
