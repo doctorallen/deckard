@@ -157,6 +157,83 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('moving takes a task with everything under it, done steps and notes too', async () => {
+    const root = await createTemporaryRoot();
+    const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-09-19.md');
+    const text = [
+      '# 2026-09-18',
+      '',
+      '- [ ] Plan the offsite',
+      '  - [x] Book the venue',
+      '    a note on the venue',
+      '  - [ ] Draft the email',
+      '- [x] Old task',
+      '  - [ ] Orphan step',
+      '    - [ ] Its own step',
+      '',
+    ].join('\n');
+    await write(fromUri, text);
+    await write(todayUri, '# 2026-09-19\n\n- [ ] Something else\n');
+    const plan = planRollover(indexOf({ [fromUri.fsPath]: text }), '2026-09-19');
+    assert.ok(plan);
+    const result = await applyRollover(plan, todayUri, 'move');
+    assert.strictEqual(result?.carried, 4);
+    assert.strictEqual(
+      await read(todayUri),
+      [
+        '# 2026-09-19',
+        '',
+        '- [ ] Something else',
+        '',
+        '## Carried over',
+        '',
+        '- [ ] Plan the offsite',
+        '  - [x] Book the venue',
+        '    a note on the venue',
+        '  - [ ] Draft the email',
+        '- [ ] Orphan step',
+        '  - [ ] Its own step',
+        '',
+      ].join('\n'),
+      'a step whose task stays is carried at the top level, never under another task',
+    );
+    assert.strictEqual(await read(fromUri), '# 2026-09-18\n\n- [x] Old task\n');
+    await workspaceWrites.undo();
+    await deleteTemporaryRoot(root);
+  });
+
+  test('migrating copies the open steps and marks each line left behind', async () => {
+    const root = await createTemporaryRoot();
+    const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-09-19.md');
+    const text = [
+      '# 2026-09-18',
+      '- [ ] Plan the offsite',
+      '  - [x] Book the venue',
+      '  - [ ] Call Dana',
+      '- [ ] Fix the roof',
+      '  - [ ] Call Dana',
+      '',
+    ].join('\n');
+    await write(fromUri, text);
+    await write(todayUri, '# 2026-09-19\n');
+    const plan = planRollover(indexOf({ [fromUri.fsPath]: text }), '2026-09-19', 0, 'migrate');
+    assert.strictEqual(plan?.tasks.length, 4, 'two tasks\' "Call Dana" steps are two steps');
+    const result = await applyRollover(plan!, todayUri, 'migrate');
+    assert.strictEqual(result?.carried, 4);
+    assert.ok(
+      (await read(todayUri)).includes(
+        ['- [ ] Plan the offsite', '  - [ ] Call Dana', '- [ ] Fix the roof', '  - [ ] Call Dana'].join('\n'),
+      ),
+    );
+    const left = await read(fromUri);
+    assert.strictEqual(left.split('[>]').length - 1, 4, 'each carried line is marked');
+    assert.ok(left.includes('  - [x] Book the venue'), 'a done step stays where it was');
+    await workspaceWrites.undo();
+    await deleteTemporaryRoot(root);
+  });
+
   test('moving carries two alike lines, since they may be two tasks', () => {
     const plan = planRollover(
       indexOf({

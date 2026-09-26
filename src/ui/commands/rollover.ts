@@ -2,6 +2,7 @@ import { isParkedTask } from '../../core/workspace/parked';
 import * as vscode from 'vscode';
 
 import { markMigrated } from '../../core/markdown/taskMetadata';
+import { findLastDescendantLine } from '../../core/markdown/taskSteps';
 import { Task, WorkspaceIndex } from '../../core/types';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { getCaptureInsertion } from './capture';
@@ -106,7 +107,7 @@ export function planRollover(
           byPath.get(right.filePath) ?? '',
         ) || left.lineNumber - right.lineNumber,
     );
-  const tasks = mode === 'migrate' ? keepNewestCopies(open) : open;
+  const tasks = mode === 'migrate' ? keepNewestCopies(open, index) : open;
   if (tasks.length === 0) {
     return undefined;
   }
@@ -120,14 +121,26 @@ export function planRollover(
 }
 
 /**
- * One task per line of text, from the newest note that holds it, in the
- * plan's order: oldest note first.
+ * A block of lines moved to the top level: the first line's indentation
+ * taken off every line that starts with it, so steps stay nested under
+ * their task by the same amount.
  */
-function keepNewestCopies(tasks: Task[]): Task[] {
+function outdent(lines: readonly string[]): string[] {
+  const indent = lines[0]?.match(/^[ \t]*/)?.[0] ?? '';
+  return lines.map((line) => (line.startsWith(indent) ? line.slice(indent.length) : line.trimStart()));
+}
+
+/**
+ * One task per line of text, from the newest note that holds it, in the
+ * plan's order: oldest note first. A step is told apart by its task too,
+ * so two tasks' "Call Dana" steps are two steps.
+ */
+function keepNewestCopies(tasks: Task[], index: WorkspaceIndex): Task[] {
   const seen = new Set<string>();
   const kept: Task[] = [];
   for (let at = tasks.length - 1; at >= 0; at -= 1) {
-    const key = tasks[at].sourceLineText.trim();
+    const parent = tasks[at].parentTaskId ? index.tasks.get(tasks[at].parentTaskId as string) : undefined;
+    const key = `${parent ? `${parent.sourceLineText.trim()}\n` : ''}${tasks[at].sourceLineText.trim()}`;
     if (!seen.has(key)) {
       seen.add(key);
       kept.push(tasks[at]);
@@ -190,32 +203,86 @@ export async function applyRollover(
     }
   }
 
-  const carried: Task[] = [];
-  let skipped = 0;
-  plan.tasks.forEach((task) => {
+  // A task still reading as it was indexed, from a note that could be read.
+  const valid = plan.tasks.filter((task) => {
     const source = sources.get(task.filePath);
     const line = task.lineNumber - 1;
-    // The task has to still read as it did when it was indexed, and must not
-    // already be in today's note, which is what running this twice would do.
-    if (
-      !source ||
-      line >= source.document.lineCount ||
-      source.document.lineAt(line).text !== task.sourceLineText ||
-      todayLines.has(task.sourceLineText.trim())
-    ) {
-      skipped += 1;
-      return;
-    }
-    carried.push(task);
+    return (
+      source !== undefined &&
+      line < source.document.lineCount &&
+      source.document.lineAt(line).text === task.sourceLineText
+    );
   });
+  let skipped = plan.tasks.length - valid.length;
+  const validIds = new Set(valid.map((task) => task.id));
+  const byId = new Map(valid.map((task) => [task.id, task]));
+  // A step goes with the task it is written under when that task goes too;
+  // a step whose task stays behind (done, changed, or parked) goes on its
+  // own, at the top level, never nested under whatever precedes it.
+  const rootOf = (task: Task): Task => {
+    let root = task;
+    while (root.parentTaskId !== undefined && validIds.has(root.parentTaskId)) {
+      root = byId.get(root.parentTaskId) ?? root;
+    }
+    return root;
+  };
+  const groups = new Map<string, { root: Task; steps: Task[] }>();
+  valid.forEach((task) => {
+    const root = rootOf(task);
+    const group = groups.get(root.id) ?? { root, steps: [] };
+    if (root !== task) {
+      group.steps.push(task);
+    }
+    groups.set(root.id, group);
+  });
+  // Already in today's note, which is what running this twice would do: the
+  // task stays, and its steps with it.
+  const kept = [...groups.values()].filter((group) => {
+    if (todayLines.has(group.root.sourceLineText.trim())) {
+      skipped += 1 + group.steps.length;
+      return false;
+    }
+    return true;
+  });
+  const carried = kept.flatMap((group) => [group.root, ...group.steps]);
   const drawnFrom = new Set(carried.map((task) => task.filePath));
   if (carried.length === 0) {
     return { carried: 0, skipped, fromDates: plan.fromDates, notes: 0 };
   }
 
-  const eol = todayText.includes('\r\n') ? '\r\n' : '\n';
   const edit = new vscode.WorkspaceEdit();
-  const placed = placeCarriedOver(todayText, carried.map((task) => task.sourceLineText));
+  // Moving takes everything written under a task along, done steps and
+  // notes included, so nothing is left orphaned under another task; a
+  // migrate copies the open steps and marks each line it leaves behind.
+  const blocks = kept.map((group) => {
+    const document = sources.get(group.root.filePath)?.document as vscode.TextDocument;
+    const first = group.root.lineNumber - 1;
+    const last =
+      mode === 'move'
+        ? findLastDescendantLine(document.getText().split(/\r?\n/), first)
+        : first;
+    const written =
+      mode === 'move'
+        ? Array.from({ length: last - first + 1 }, (_, at) => document.lineAt(first + at).text)
+        : [
+            group.root.sourceLineText,
+            ...[...group.steps]
+              .sort((left, right) => left.lineNumber - right.lineNumber)
+              .map((step) => step.sourceLineText),
+          ];
+    return { group, first, last, lines: outdent(written) };
+  }).filter((block, at, all) =>
+    // A task written under a plain bullet under another carried task is in
+    // that task's block already, and moves with it.
+    !all.some(
+      (other, otherAt) =>
+        otherAt !== at &&
+        other.group.root.filePath === block.group.root.filePath &&
+        other.first < block.first &&
+        other.last >= block.last,
+    ),
+  );
+  const placed = placeCarriedOver(todayText, blocks.flatMap((block) => block.lines));
   edit.replace(
     todayUri,
     new vscode.Range(placed.start.line, placed.start.character, placed.end.line, placed.end.character),
@@ -238,22 +305,21 @@ export async function applyRollover(
     });
   }
   if (mode === 'move') {
-    carried.forEach((task) => {
-      const source = sources.get(task.filePath);
+    blocks.forEach(({ group, first, last }) => {
+      const source = sources.get(group.root.filePath);
       if (!source) {
         return;
       }
-      const line = task.lineNumber - 1;
       const document = source.document;
       edit.delete(
         source.uri,
-        line + 1 < document.lineCount
-          ? new vscode.Range(line, 0, line + 1, 0)
+        last + 1 < document.lineCount
+          ? new vscode.Range(first, 0, last + 1, 0)
           : new vscode.Range(
-              Math.max(line - 1, 0),
-              line > 0 ? document.lineAt(line - 1).text.length : 0,
-              line,
-              document.lineAt(line).text.length,
+              Math.max(first - 1, 0),
+              first > 0 ? document.lineAt(first - 1).text.length : 0,
+              last,
+              document.lineAt(last).text.length,
             ),
       );
     });

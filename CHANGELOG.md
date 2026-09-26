@@ -606,6 +606,13 @@
 
 ### Fixed
 
+- **Rollover carries a task's steps with it, and never under another
+  task.** A carried task's open steps are written nested under it — with
+  `move`, its done steps and notes too, so nothing is left orphaned — and
+  a step whose task is not carried comes forward at the top level. It used
+  to be written with its old indentation under whichever task came before
+  it in today's note, and two tasks' steps with the same words were merged.
+
 - **Opening a Find result to the side keeps Find open.** It moved focus
   into the editor, so Find closed whenever the editor won the race; it now
   leaves focus in Find.
