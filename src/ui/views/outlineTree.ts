@@ -6,11 +6,14 @@ import { writeSetting } from '../commands/settings';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import {
   buildOutline,
+  describeOutlineCounts,
   findOutlineNodeAt,
+  formatOutlineDescription,
   formatOutlineTags,
   mapOutlineParents,
   OutlineNode,
 } from '../state/outlineState';
+import { getBacklinkIndex } from '../../core/workspace/backlinks';
 import { revealLine } from '../commands/navigation';
 import { reportFailure } from '../commands/notify';
 
@@ -74,10 +77,13 @@ export class OutlineTreeProvider
         }
       }),
     );
+    // Links into a heading are counted from the index, which moves on save.
+    this.disposables.push(indexer.onDidUpdate(() => this.scheduleRebuild()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.outline') ||
+          event.affectsConfiguration('deckard.zenMode') ||
           event.affectsConfiguration('deckard.personMarker') ||
           event.affectsConfiguration('deckard.entityNamespaceAliases')
         ) {
@@ -112,7 +118,9 @@ export class OutlineTreeProvider
     );
     const tags = formatOutlineTags(node);
     item.id = node.id;
-    item.description = this.areTagsShown() && tags ? tags : undefined;
+    item.description =
+      formatOutlineDescription(node, { tags: this.areTagsShown(), counts: this.areCountsShown() }) ||
+      undefined;
     item.tooltip = createTooltip(node, tags);
     item.iconPath = new vscode.ThemeIcon('symbol-string');
     item.contextValue =
@@ -228,6 +236,8 @@ export class OutlineTreeProvider
               .getConfiguration('deckard', document.uri)
               .get<string>('personMarker'),
             inheritedTags: this.areInheritedTagsShown(document.uri),
+            backlinks: getBacklinkIndex(this.indexer.getSnapshot()),
+            filePath: this.indexer.getFilePath(document.uri),
           }),
         () => `${document.lineCount} lines`,
       );
@@ -306,6 +316,15 @@ export class OutlineTreeProvider
       .get<boolean>('outline.showTags', true);
   }
 
+  /** Counts are hidden in zen, like the reference counts above headings. */
+  private areCountsShown(): boolean {
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    return (
+      configuration.get<boolean>('outline.showCounts', true) &&
+      !configuration.get<boolean>('zenMode', false)
+    );
+  }
+
   private areInheritedTagsShown(uri: vscode.Uri): boolean {
     return vscode.workspace
       .getConfiguration('deckard', uri)
@@ -380,6 +399,7 @@ function createTooltip(node: OutlineNode, tags: string): string {
   if (tags) {
     lines.push(tags);
   }
+  lines.push(...describeOutlineCounts(node));
   lines.push(`Line ${node.line}`);
   return lines.join('\n');
 }

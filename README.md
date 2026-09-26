@@ -520,6 +520,7 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 - Heading markers and tags are taken out of each title, and the heading's own tags are shown beside it, so structure and labels read as two columns.
 - Untagged headings are kept as structure, so a tagged heading stays where you wrote it. A heading written as nothing but tags shows those tags as its title.
 - Headings inside fenced code blocks are ignored, and a numeric hash such as `Sprint #3` stays in the title because it is not a tag.
+- Beside each heading, **2/5** says two of the five tasks under it are done, sub-headings included, and **↩3** that links in other notes name it three times; the tooltip spells both out. Zen hides them, and `deckard.outline.showCounts` turns them off.
 - The tree is built from editor text, so it follows the file as you type rather than waiting for a save.
 - Select a heading to jump to its line. Right-click a heading that carries tags for **Open the Tag's Search Page** and **Rename Tag**.
 - The eye control in the view title switches whether the Outline follows the cursor, and **Collapse all** is beside it.
@@ -1039,6 +1040,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.showTags": true,
 	"deckard.outline.followCursor": true,
 	"deckard.outline.inheritedTags": false,
+	"deckard.outline.showCounts": true,
 	"deckard.agenda.groupBy": "due",
 	"deckard.agenda.upcomingDays": 7,
 	"deckard.agenda.query": "",
@@ -1105,6 +1107,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. Disable it for titles only. |
 | `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches the same setting. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading in the file inherits, after the tags written on the heading itself. |
+| `deckard.outline.showCounts` | `true` | Shows beside each Outline heading how many of the tasks under it are done, such as `2/5`, and how many links name it, such as `↩3`. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](#tasks-view) groups are: `due`, `priority`, `status`, or `assignee`. The group control in its title sets the same thing. |
 | `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group reaches; a dated task past that is in **Later**. |
 | `deckard.agenda.query` | Empty | A [query](#query-language) that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as `is:mine`. Empty means every open task. |

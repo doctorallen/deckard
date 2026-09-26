@@ -1852,6 +1852,12 @@
             "default": false,
             "description": "Also show front-matter tags that every heading in the file inherits.",
             "order": 2
+          },
+          "deckard.outline.showCounts": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
+            "order": 3
           }
         },
         "order": 5

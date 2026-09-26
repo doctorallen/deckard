@@ -12,6 +12,10 @@
 
 ### Added
 
+- **The Outline counts.** Beside each heading, **2/5** for the tasks under
+  it that are done and **↩3** for the links that name it, spelled out in
+  its tooltip. Zen hides them; `deckard.outline.showCounts` turns them off.
+
 - **A word count.** While a note is in the editor, the status bar reads
   **412 words · 2 min**, or **38 of 412 words** for a selection, leaving
   out front matter, code, link addresses, and task metadata.

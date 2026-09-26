@@ -27,6 +27,10 @@ export interface OutlineNode {
   /** One-based last line the heading owns, including its children. */
   endLine: number;
   children: OutlineNode[];
+  /** The tasks under the heading, sub-headings included, when it has any. */
+  tasks?: { done: number; total: number };
+  /** How many links in other notes name this heading, when any do. */
+  links?: number;
 }
 
 export interface OutlineOptions {
@@ -34,6 +38,9 @@ export interface OutlineOptions {
   personMarker?: string;
   /** Include front-matter tags that every heading in the file inherits. */
   inheritedTags?: boolean;
+  /** Where links to a heading are counted from, with the note's own path. */
+  backlinks?: { toHeading(filePath: string, heading: string): readonly unknown[] };
+  filePath?: string;
 }
 
 const untitledHeadingLabel = 'Untitled heading';
@@ -108,6 +115,41 @@ export function formatOutlineTags(node: OutlineNode): string {
 }
 
 /**
+ * What the Outline writes beside a heading: its tasks done of all, the links
+ * that name it, and its tags, as `2/5 · ↩3 · #project/atlas`, each part left
+ * out when it is empty or turned off.
+ */
+export function formatOutlineDescription(
+  node: OutlineNode,
+  show: { tags: boolean; counts: boolean },
+): string {
+  const parts: string[] = [];
+  if (show.counts && node.tasks) {
+    parts.push(`${node.tasks.done}/${node.tasks.total}`);
+  }
+  if (show.counts && node.links) {
+    parts.push(`↩${node.links}`);
+  }
+  const tags = show.tags ? formatOutlineTags(node) : '';
+  if (tags) {
+    parts.push(tags);
+  }
+  return parts.join(' · ');
+}
+
+/** The counts beside a heading, spelled out for its tooltip. */
+export function describeOutlineCounts(node: OutlineNode): string[] {
+  const lines: string[] = [];
+  if (node.tasks) {
+    lines.push(`${node.tasks.done} of ${node.tasks.total} ${node.tasks.total === 1 ? 'task' : 'tasks'} done`);
+  }
+  if (node.links) {
+    lines.push(node.links === 1 ? 'Linked once' : `Linked ${node.links} times`);
+  }
+  return lines;
+}
+
+/**
  * Maps every node id to its parent so the view can reveal a node directly.
  */
 export function mapOutlineParents(
@@ -134,8 +176,19 @@ function createNode(
   const strippedHeading = stripTags(section.heading, options.personMarker);
   const tagLabel = tags.map((tag) => tag.label).join(' ');
   const labelFromTags = strippedHeading.length === 0 && tagLabel.length > 0;
+  const under = file.tasks.filter(
+    (task) => task.lineNumber > section.startLine && task.lineNumber <= section.endLine,
+  );
+  const links =
+    options.backlinks && options.filePath
+      ? options.backlinks.toHeading(options.filePath, section.heading).length
+      : 0;
 
   return {
+    ...(under.length > 0
+      ? { tasks: { done: under.filter((task) => task.completed).length, total: under.length } }
+      : {}),
+    ...(links > 0 ? { links } : {}),
     id: '',
     label: labelFromTags
       ? tagLabel
