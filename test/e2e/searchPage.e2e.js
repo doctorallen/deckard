@@ -159,6 +159,14 @@ function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
+test('the gear\'s Theme row runs Choose Theme', async () => {
+  const { view } = await openOverview();
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-action="choose-theme"]'));
+  await settle();
+  assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
+});
+
 test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   const { view, panel } = await openOverview();
   assert.strictEqual(title(view), 'Project: Atlas');

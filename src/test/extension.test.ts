@@ -87,6 +87,7 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.setGrouping',
         'deckard.outline.enableFollowCursor',
         'deckard.outline.disableFollowCursor',
+        'deckard.chooseTheme',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.tidyPreferences',

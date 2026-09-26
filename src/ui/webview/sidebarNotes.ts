@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { logTrace, measure } from '../../core/timing';
@@ -101,6 +101,10 @@ export class SidebarNotesView
       }),
     );
     this.disposables.push(
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.enableKeywordLinks') ||
@@ -117,10 +121,6 @@ export class SidebarNotesView
             'deckard.enableHeadingTagRelationships',
           )
         ) {
-          this.refresh();
-        }
-        if (affectsPageChrome(event)) {
-          this.renderHtml();
           this.refresh();
         }
         if (event.affectsConfiguration('deckard.autoSelectNoteSections')) {

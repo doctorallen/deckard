@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { WhatsNew } from '../commands/whatsNew';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
@@ -105,16 +105,15 @@ export class DashboardPanel implements vscode.Disposable {
       }),
     );
     this.disposables.push(
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        const chromeChanged = affectsPageChrome(event);
         const titleDisplayChanged = event.affectsConfiguration(
           'deckard.tagTitleDisplayMode',
         );
-        if (chromeChanged) {
-          this.renderHtml();
-        }
         if (
-          chromeChanged ||
           titleDisplayChanged ||
           event.affectsConfiguration('deckard.agenda') ||
           event.affectsConfiguration('deckard.showWhatsNew')
@@ -405,6 +404,9 @@ export class DashboardPanel implements vscode.Disposable {
     switch (message.type) {
       case 'setZenMode':
         await setZenMode(message.enabled);
+        return;
+      case 'chooseTheme':
+        await vscode.commands.executeCommand('deckard.chooseTheme');
         return;
       case 'openSource':
         // Only open a line that still identifies an indexed note or task.

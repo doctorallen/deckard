@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { describeMissingTag, reportFailure } from '../commands/notify';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { formatEntityTitle } from '../../core/markdown/parser';
@@ -68,11 +68,12 @@ export class SearchPanels implements vscode.Disposable {
       ),
     );
     this.disposables.push(
+      onDidChangePageChrome(() => {
+        this.panels.forEach((panel) => panel.renderHtml());
+        this.refresh();
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          this.panels.forEach((panel) => panel.renderHtml());
-          this.refresh();
-        } else if (
+        if (
           event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
           event.affectsConfiguration('deckard.tagOverview.hubNoteExpanded') ||
           event.affectsConfiguration('deckard.enableHeadingTagRelationships')
@@ -659,6 +660,9 @@ class SearchPanel implements SearchSource, vscode.Disposable {
     switch (message.type) {
       case 'setZenMode':
         await setZenMode(message.enabled);
+        return;
+      case 'chooseTheme':
+        await vscode.commands.executeCommand('deckard.chooseTheme');
         return;
       case 'setOverviewQuery':
         await this.applyQuery(message.query, message.remember !== false);

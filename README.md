@@ -54,7 +54,7 @@ Download the VSIX attached to a GitHub release and run `Extensions: Install from
 
 ## Themes
 
-Set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase eyebrows and titles of the others. In every theme the labels a reader scans while working, column titles, group headings, table headers, and control labels, read as written; only the eyebrow above a page title and the title itself take the film styles' capitals. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo. Their accents are bright but not fully saturated, since pure cyan or green on near-black blooms around small text; the hues are the same. In every theme red means overdue or high priority and nothing else: the favorite heart is gold, and a search term turned around with NOT is a dashed, struck chip rather than a red one.
+Run `Deckard: Choose Theme…`, or pick **Theme** in any page's gear, to preview each theme on the open pages before keeping one: moving through the list shows it, Enter keeps it, and Escape puts back the one you had. Nothing is written until you keep one. Or set `deckard.theme` to choose the visual style used by Deckard webviews. The default is `corpo`, a plain style that takes its colors and fonts from your VS Code theme, light or dark, without the grid, glows, and uppercase eyebrows and titles of the others. In every theme the labels a reader scans while working, column titles, group headings, table headers, and control labels, read as written; only the eyebrow above a page title and the title itself take the film styles' capitals. The rest are Deckard's film-inspired styles; `replicant` was the default before Corpo. Their accents are bright but not fully saturated, since pure cyan or green on near-black blooms around small text; the hues are the same. In every theme red means overdue or high priority and nothing else: the favorite heart is gold, and a search term turned around with NOT is a dashed, struck chip rather than a red one.
 
 | **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |
@@ -107,6 +107,7 @@ Run `Deckard: Open Help`, or select the question-mark button in the Related Note
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, or the person each task is for. |
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
+| **Deckard: Choose Theme…** | Previews each theme on the open pages as you move through the list; Enter keeps one, Escape puts back the one in use. |
 | **Deckard: What's New** | Opens Help at **What's new**, the highlights of recent releases. |
 | **Deckard: Open Log** | Opens Deckard's log, which records how long indexing, ranking, and editor features take. |
 | **Deckard: Reindex Workspace** | Performs a full scan of the workspace Markdown scope. |

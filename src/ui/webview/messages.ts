@@ -41,6 +41,8 @@ export function parseDashboardMessage(
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
         : undefined;
+    case 'chooseTheme':
+      return { type: 'chooseTheme' };
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as DashboardMessage)
@@ -220,6 +222,8 @@ export function parseSearchPageMessage(
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
         : undefined;
+    case 'chooseTheme':
+      return { type: 'chooseTheme' };
     case 'openSource':
       return isSourceMessage(value)
         ? (value as unknown as SearchPageMessage)
@@ -508,6 +512,8 @@ export function parseTaskBoardMessage(
       return typeof value.enabled === 'boolean'
         ? { type: 'setZenMode', enabled: value.enabled }
         : undefined;
+    case 'chooseTheme':
+      return { type: 'chooseTheme' };
     case 'ready':
       return { type: 'ready' };
     case 'saveBoardSearch':

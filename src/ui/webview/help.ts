@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 
 import { getHelpHtml, HelpManifest, isRunnableFromHelp } from './helpHtml';
 import { parseHelpMessage } from './messages';
@@ -91,8 +91,8 @@ export class HelpPanel implements vscode.Disposable {
     );
     panel.webview.html = this.html(panel.webview, anchor);
     this.panelDisposables = [
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event) && this.panel) {
+      onDidChangePageChrome(() => {
+        if (this.panel) {
           this.panel.webview.html = this.html(this.panel.webview);
         }
       }),

@@ -551,7 +551,8 @@ not have, so a `:hover` nested in an `@media` block is never tested.
 | `getZenCss()` | The sheet. Always emitted. |
 | `getPageTailCss()` | The theme sheet then the zen sheet, in that order. What each page interpolates after its own rules. |
 | `zenBodyAttribute()` | `' class="zen"'` or `''`, for the page's `<body>`. |
-| `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn. Each webview host's configuration listener asks this instead of naming `deckard.theme` alone. |
+| `onDidChangePageChrome(listener)` | Calls back when a page must be drawn in another look: `deckard.theme` or `deckard.zenMode` changed, or Choose Theme… is previewing a theme (`previewDeckardTheme()` in `themes.ts`, which `getDeckardTheme()` reads first). Every webview host redraws on this. |
+| `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn; `onDidChangePageChrome` asks it. |
 
 ---
 
@@ -575,6 +576,7 @@ after `acquireVsCodeApi()`, so these are ordinary functions in that scope.
 | `renderViewOptions(groups)` | The gear and its menu, from `{ label, html, stacked }` rows. A menu open before a redraw stays open. |
 | `renderViewOptionChoices(action, choices, selected, label, attributes)` | A `.view-options-choices` row; each button carries `data-action` and `data-value`. |
 | `installViewOptions()` | Closes the gear on a click outside it and on Escape. Call it before the page's own listeners. |
+| `renderThemeOption()` | The gear's Theme row, directly above Zen: one button naming the theme in use (`Corpo…`, written when the page is built), which posts `chooseTheme` from `installViewOptions()`; the Dashboard, search page, and Task board hosts run `deckard.chooseTheme`. |
 | `renderZenOption()` | The gear's Zen row, ready to drop into a `renderViewOptions()` list. Reads the current state from the body class, so no page carries zen through its state builder, and posts `setZenMode` from `installViewOptions()`, so no page needs a handler. |
 | `renderResultTabs(tabs, active, label)` | The Notes and Tasks tabs over a search's results. Each posts nothing; it carries `data-action="set-result-tab"` for the page to switch. The chosen tab is the one tab stop, Left, Right, Home, and End move between them, and each tab names its panel through `aria-controls`; the page marks the panel with `resultPanelAttributes(id)`. |
 | `renderWeightRail(level, title)`, `getWeightLevel(weight)` | How much a tag weighs, as a `.tag-weight-rail` of three steps, and the step a weight fills to: three from 0.75, two from 0.375. Related Notes' active tags, Refine, and the sidebar's Refine view draw it. |

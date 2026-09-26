@@ -121,6 +121,7 @@ import { countDueTasks, TaskStatusBar } from './ui/views/taskStatusBar';
 import { selectAgendaTasks } from './ui/state/agendaState';
 import { insertQueryBlock } from './ui/commands/insertQueryBlock';
 import { isWhatsNewShown, WhatsNew } from './ui/commands/whatsNew';
+import { chooseTheme } from './ui/commands/chooseTheme';
 import { openSettingAction, settingLabel } from './ui/commands/notify';
 import { settingTarget, writeSetting } from './ui/commands/settings';
 
@@ -726,6 +727,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     ),
     vscode.commands.registerCommand('deckard.showStats', () => stats.show()),
     vscode.commands.registerCommand('deckard.showHelp', () => help.show()),
+    vscode.commands.registerCommand('deckard.chooseTheme', () =>
+      chooseTheme(context.extension.packageJSON.contributes),
+    ),
     vscode.commands.registerCommand('deckard.openWhatsNew', async () => {
       await help.show('whats-new');
       await whatsNew.clear();

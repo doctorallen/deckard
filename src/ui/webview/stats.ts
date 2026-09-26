@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 
 import { PreferencesStore } from '../../core/storage/preferences';
 import { measure } from '../../core/timing';
@@ -31,11 +31,9 @@ export class StatsPanel implements vscode.Disposable {
     this.disposables.push(indexer.onDidUpdate(() => this.refresh()));
     this.disposables.push(preferences.onDidChange(() => this.refresh()));
     this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          this.renderHtml();
-          this.refresh();
-        }
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
       }),
     );
   }

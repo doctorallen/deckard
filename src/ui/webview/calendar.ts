@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 
 import { measure } from '../../core/timing';
 import { WorkspaceIndex } from '../../core/types';
@@ -49,11 +49,10 @@ export class CalendarView
           this.refresh();
         }
       }),
+      // The page reloads and asks for its state again when it is ready.
+      onDidChangePageChrome(() => this.renderHtml()),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          // The page reloads and asks for its state again when it is ready.
-          this.renderHtml();
-        } else if (
+        if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {

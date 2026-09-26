@@ -471,6 +471,7 @@ ${getQueryEditorScript()}
       { label: 'Preview', html: previewControls },
       { label: 'Note columns', html: columnChoices('notes', state.noteColumns) },
       { label: 'Task columns', html: columnChoices('tasks', state.taskColumns) },
+      renderThemeOption(),
       renderZenOption(),
     ]);
     const savedViewName = state.savedViewName

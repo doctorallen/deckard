@@ -11,6 +11,12 @@
 
 ### Added
 
+- **Choose Theme… previews each theme.** `Deckard: Choose Theme…`, or
+  **Theme** above **Zen** in the gear on Home, a search page, or the Task
+  board, lists the eight themes with what each looks like; moving through
+  them shows each on the open pages, Enter keeps one, and Escape puts back
+  the one in use. Nothing is written to settings until one is kept.
+
 - **What's new, in the product.** After an update that adds features, Home
   says *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**;
   a patch says nothing, and there is no pop-up. Help has a **What's new**

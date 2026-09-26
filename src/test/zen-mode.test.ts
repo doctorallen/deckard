@@ -191,6 +191,18 @@ suite('Zen mode', () => {
     assert.strictEqual(on?.getAttribute('aria-pressed'), 'true');
   });
 
+  test('every gear offers the theme above zen, and asks the host to choose one', () => {
+    for (const page of [dashboard(), searchPage()]) {
+      const labels = page.findAll('.view-options-group').map((group) => group.children[0].textContent);
+      assert.ok(labels.indexOf('Theme') >= 0 && labels.indexOf('Theme') === labels.indexOf('Zen') - 1, labels.join());
+      const button = page.find('[data-action="choose-theme"]');
+      assert.strictEqual(button.textContent, 'Corpo…');
+      assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Corpo. Choose another');
+      page.click('[data-action="choose-theme"]');
+      assert.deepStrictEqual(page.lastPosted('chooseTheme'), { type: 'chooseTheme' });
+    }
+  });
+
   test('posts the reader\'s choice to the host', async () => {
     const page = dashboard();
     page.click('[data-action="set-zen-mode"][data-value="on"]');

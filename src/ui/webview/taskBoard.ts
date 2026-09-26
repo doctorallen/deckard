@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 import { setZenMode } from './zenMode';
 
 import { parseQuery } from '../../core/query/queryParser';
@@ -106,11 +106,10 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
       }),
     );
     this.disposables.push(
+      // The page reloads and asks for state again when it is ready.
+      onDidChangePageChrome(() => this.renderHtml()),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          // The page reloads and asks for state again when it is ready.
-          this.renderHtml();
-        } else if (
+        if (
           event.affectsConfiguration('deckard.board') ||
           event.affectsConfiguration('deckard.tasks') ||
           event.affectsConfiguration('deckard.tagTitleDisplayMode')
@@ -420,6 +419,9 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
     switch (message.type) {
       case 'setZenMode':
         await setZenMode(message.enabled);
+        return;
+      case 'chooseTheme':
+        await vscode.commands.executeCommand('deckard.chooseTheme');
         return;
       case 'ready':
         this.refresh();

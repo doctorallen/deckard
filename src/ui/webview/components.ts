@@ -13,7 +13,12 @@
 
 import * as vscode from 'vscode';
 import { helpIcon, ICON_PATHS, settingsIcon, strokeIcon } from './icons';
-import { getDeckardTheme, getDeckardThemeCss } from './themes';
+import {
+  deckardThemeNames,
+  getDeckardTheme,
+  getDeckardThemeCss,
+  onDidChangeThemePreview,
+} from './themes';
 import { isZenModeEnabled } from './zenMode';
 import { ENABLED } from './selectors';
 export { ENABLED };
@@ -1152,6 +1157,21 @@ export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boole
     event.affectsConfiguration('deckard.theme') ||
     event.affectsConfiguration('deckard.zenMode')
   );
+}
+
+/**
+ * Calls back when a page has to be drawn again in another look: the theme or
+ * zen setting changed, or Choose Theme… is previewing a theme. A page that
+ * redraws on this needs no configuration listener of its own for it.
+ */
+export function onDidChangePageChrome(listener: () => void): vscode.Disposable {
+  const configuration = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (affectsPageChrome(event)) {
+      listener();
+    }
+  });
+  const preview = onDidChangeThemePreview(listener);
+  return { dispose: () => { configuration.dispose(); preview.dispose(); } };
 }
 
 /**
@@ -2696,6 +2716,20 @@ ${getUndoScript()}
   }
 
   /**
+   * The gear's theme row, directly above zen on every page with a gear: one
+   * button naming the theme in use, which opens Choose Theme… to preview the
+   * others on the open pages. The name is written when the page is built,
+   * and a new theme redraws the page.
+   */
+  function renderThemeOption() {
+    const name = ${JSON.stringify(deckardThemeNames[getDeckardTheme()])};
+    return {
+      label: 'Theme',
+      html: '<button type="button" class="theme-choice" data-action="choose-theme" aria-label="Theme: ' + escapeHtml(name) + '. Choose another">' + escapeHtml(name) + '…</button>',
+    };
+  }
+
+  /**
    * Close the gear's menu on a click outside it, and on Escape, handing focus
    * back to the gear. Call once, before the page's own listeners, so a click
    * that redraws the page is seen while its target is still in the menu.
@@ -2709,6 +2743,10 @@ ${getUndoScript()}
       const zen = event.target && event.target.closest ? event.target.closest('[data-action="set-zen-mode"]') : undefined;
       if (zen) {
         vscode.postMessage({ type: 'setZenMode', enabled: zen.dataset.value === 'on' });
+      }
+      const theme = event.target && event.target.closest ? event.target.closest('[data-action="choose-theme"]') : undefined;
+      if (theme) {
+        vscode.postMessage({ type: 'chooseTheme' });
       }
       const inside = event.target && event.target.closest ? event.target.closest('.view-options') : undefined;
       document.querySelectorAll('.view-options[open]').forEach(function (options) {

@@ -1394,6 +1394,11 @@ export interface ExportResultsMessage {
 }
 
 /** The gear's zen row, on every page that has a gear. */
+/** Opens Choose Theme…, from a page's gear. */
+export interface ChooseThemeMessage {
+  type: 'chooseTheme';
+}
+
 export interface SetZenModeMessage {
   type: 'setZenMode';
   enabled: boolean;
@@ -1426,6 +1431,7 @@ export interface ClearEntryRelatedNotesMessage {
 
 export type DashboardMessage =
   | SetZenModeMessage
+  | ChooseThemeMessage
   | OpenSourceMessage
   | ToggleTaskMessage
   | ToggleFavoriteMessage
@@ -1459,6 +1465,7 @@ export type DashboardMessage =
 export type SearchPageMessage =
   | ExportResultsMessage
   | SetZenModeMessage
+  | ChooseThemeMessage
   | PinNoteMessage
   | OpenHelpMessage
   | OpenSourceMessage
@@ -1743,6 +1750,7 @@ export type TaskBoardMessage =
   | AddTaskToColumnMessage
   | ExportResultsMessage
   | SetZenModeMessage
+  | ChooseThemeMessage
   | OpenHelpMessage
   | ShowColumnRestMessage
   | SaveBoardSearchMessage

@@ -232,6 +232,7 @@ ${getQueryEditorScript()}
       { label: 'Tasks view', html: renderAgendaToggle() },
       ...(isTable ? [{ label: 'Columns', html: renderColumnPicker(), stacked: true }] : []),
       { label: 'Status columns', html: renderStatusSettings(), stacked: true },
+      renderThemeOption(),
       renderZenOption(),
     ]);
     const shown = state.taskCount;

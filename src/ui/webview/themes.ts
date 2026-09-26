@@ -14,6 +14,42 @@ export const deckardThemes = [
 
 export type DeckardTheme = (typeof deckardThemes)[number];
 
+/** Each theme as a picker names it. */
+export const deckardThemeNames: Readonly<Record<DeckardTheme, string>> = {
+  corpo: 'Corpo',
+  replicant: 'Replicant',
+  oblivion: 'Oblivion',
+  lcars: 'LCARS',
+  synthwave: 'Synthwave',
+  tomcat: 'Tomcat',
+  fellowship: 'Fellowship',
+  cooper: 'Cooper',
+};
+
+/**
+ * A theme shown on the open pages while Choose Theme… is moved through, and
+ * before anything is written: settings.json is not touched until one is
+ * kept, so arrowing through eight themes makes no file writes.
+ */
+let previewTheme: DeckardTheme | undefined;
+const previewEmitter = new vscode.EventEmitter<void>();
+/** Fires when the previewed theme changes, so the pages redraw. */
+export const onDidChangeThemePreview = previewEmitter.event;
+
+/** Shows a theme on the open pages without writing it, or stops (undefined). */
+export function previewDeckardTheme(
+  theme: DeckardTheme | undefined,
+  options: { silent?: boolean } = {},
+): void {
+  if (previewTheme === theme) {
+    return;
+  }
+  previewTheme = theme;
+  if (!options.silent) {
+    previewEmitter.fire();
+  }
+}
+
 // Rows lift onto the raised panel on hover. Tags only slide: they are buttons,
 // so each theme's button hover colors them, and a shared dark ground under a
 // theme's inverted button text would hide it.
@@ -122,6 +158,9 @@ input[type="checkbox"], .task input { accent-color: var(--vscode-button-backgrou
 
 /** Returns the configured theme, falling back when workspace settings are stale. */
 export function getDeckardTheme(): DeckardTheme {
+  if (previewTheme) {
+    return previewTheme;
+  }
   const configuredTheme = vscode.workspace
     .getConfiguration('deckard')
     .get<string>('theme', 'corpo');

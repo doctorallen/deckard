@@ -90,6 +90,14 @@ function test(name, fn) { tests.push({ name, fn }); }
 
 // ---------------------------------------------------------------------------
 
+test('the gear\'s Theme row runs Choose Theme', async () => {
+  const { view } = await openBoard();
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-action="choose-theme"]'));
+  await delay(10);
+  assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
+});
+
 test('searches tasks with the search box every search page uses', async () => {
   const { view, preferences, cards } = await openBoard();
   assert.ok(view.find('.query-workspace'), 'the shared search box is drawn');

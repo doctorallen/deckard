@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { findDailyNoteDate, isPeriodicNotePath } from '../../core/markdown/parser';
-import { affectsPageChrome } from './components';
+import { onDidChangePageChrome } from './components';
 
 import {
   NotesGraphMessage,
@@ -71,11 +71,9 @@ export class NotesGraphPanel implements vscode.Disposable {
       }),
     );
     this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (affectsPageChrome(event)) {
-          this.renderHtml();
-          this.refresh();
-        }
+      onDidChangePageChrome(() => {
+        this.renderHtml();
+        this.refresh();
       }),
     );
     this.rememberNote(vscode.window.activeTextEditor);

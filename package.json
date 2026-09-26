@@ -372,6 +372,12 @@
         "icon": "$(eye)"
       },
       {
+        "command": "deckard.chooseTheme",
+        "title": "Choose Theme…",
+        "category": "Deckard",
+        "icon": "$(symbol-color)"
+      },
+      {
         "command": "deckard.enableZenMode",
         "title": "Enter Zen Mode",
         "category": "Deckard",
