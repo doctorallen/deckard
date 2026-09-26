@@ -1774,6 +1774,7 @@ export function createQuerySuggestions(
       })),
     { value: 'none', label: 'none', detail: 'tasks that name nobody' },
   ];
+  const links = createLinkSuggestions(index);
   const folders: QuerySuggestion[] = collectFolders(filePaths)
     .slice(0, QUERY_PATH_SUGGESTION_LIMIT)
     .map((folder) => ({ value: folder, label: folder }));
@@ -1784,6 +1785,7 @@ export function createQuerySuggestions(
     operators: { ...QUERY_FIELD_OPERATORS },
     values: {
       tag: tags,
+      link: links,
       kind: kinds,
       is: IS_SUGGESTIONS.map((item) => ({
         value: item.value.slice('is:'.length),
@@ -1829,6 +1831,50 @@ export function createQuerySuggestions(
       detail: 'Recent search',
     })),
   };
+}
+
+/** Upper bound on note names offered after `[[`. */
+const QUERY_LINK_SUGGESTION_LIMIT = 200;
+const linkSuggestions = new WeakMap<WorkspaceIndex, QuerySuggestion[]>();
+
+/**
+ * The notes a `[[` completes to, most linked first: each note's title, and
+ * each alias its front matter gives it. `value` is the name without brackets,
+ * which a builder row's value takes; the label is the link as typed.
+ */
+function createLinkSuggestions(index: WorkspaceIndex): QuerySuggestion[] {
+  const cached = linkSuggestions.get(index);
+  if (cached) {
+    return cached;
+  }
+  const backlinks = getBacklinkIndex(index);
+  const linkedFrom = (filePath: string): number =>
+    new Set(backlinks.toNote(filePath).map((link) => link.sourcePath)).size;
+  const candidates: Array<QuerySuggestion & { count: number }> = [];
+  index.files.forEach((file, filePath) => {
+    const title = noteTitle(filePath);
+    const count = linkedFrom(filePath);
+    candidates.push({
+      value: title,
+      label: `[[${title}]]`,
+      detail: `Linked from ${count} ${count === 1 ? 'note' : 'notes'}`,
+      count,
+    });
+    file.aliases?.forEach((alias) =>
+      candidates.push({
+        value: alias,
+        label: `[[${alias}]]`,
+        detail: `alias of ${title}`,
+        count,
+      }),
+    );
+  });
+  const suggestions = candidates
+    .sort((left, right) => right.count - left.count || left.value.localeCompare(right.value))
+    .slice(0, QUERY_LINK_SUGGESTION_LIMIT)
+    .map(({ value, label, detail }) => ({ value, label, detail }));
+  linkSuggestions.set(index, suggestions);
+  return suggestions;
 }
 
 /** Whole `is:` conditions, with what each finds. */

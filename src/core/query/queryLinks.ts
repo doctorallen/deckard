@@ -168,3 +168,26 @@ export function matchesLinkQuery(
 ): boolean {
   return links?.some((link) => matchesLink(link, query)) ?? false;
 }
+
+/**
+ * How many of a search's results link to each note, most first: the notes a
+ * Links to facet offers. A note's links to itself do not count.
+ */
+export function countLinkTargets(
+  index: WorkspaceIndex,
+  unitKeys: readonly string[],
+): Array<{ targetPath: string; count: number }> {
+  const state = getQueryLinkState(index);
+  const counts = new Map<string, number>();
+  unitKeys.forEach((key) => {
+    const targets = new Set(
+      (state.byUnit.get(key) ?? [])
+        .filter((link) => link.targetPath && link.targetPath !== link.sourcePath)
+        .map((link) => link.targetPath as string),
+    );
+    targets.forEach((target) => counts.set(target, (counts.get(target) ?? 0) + 1));
+  });
+  return [...counts.entries()]
+    .map(([targetPath, count]) => ({ targetPath, count }))
+    .sort((left, right) => right.count - left.count || left.targetPath.localeCompare(right.targetPath));
+}

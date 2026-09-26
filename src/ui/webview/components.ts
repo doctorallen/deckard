@@ -4064,6 +4064,16 @@ export function getQueryEditorScript(): string {
       }
       const caret = caretPosition(input);
       const prefix = input.value.slice(0, caret);
+      // After [[ the notes are what is being written, whatever came before.
+      const opened = /\\[\\[[^\\]]*$/.exec(prefix);
+      if (opened) {
+        return {
+          token: opened[0],
+          items: ((all.values || {}).link || []).map(function (item) {
+            return { value: item.label, label: item.label, detail: item.detail, insert: '[[' + item.value + ']] ', term: true };
+          }),
+        };
+      }
       const context = valueContext(prefix, all.aliases || {});
       if (context) {
         const values = (all.values || {})[context.field] || [];
@@ -4118,6 +4128,16 @@ export function getQueryEditorScript(): string {
      */
     function pendingRowSuggestions(token) {
       const all = suggestions();
+      const opened = /^(-?)(\\[\\[.*)$/.exec(token || '');
+      if (opened) {
+        // A link, whole: -[[Atlas]] leaves out what links to Atlas.
+        return {
+          token: opened[2],
+          items: ((all.values || {}).link || []).map(function (item) {
+            return { value: item.label, label: opened[1] + item.label, detail: item.detail, condition: opened[1] + item.label };
+          }),
+        };
+      }
       const conditions = (all.conditions || []).map(function (item) {
         return { value: item.value, label: item.label, detail: item.detail, condition: item.value };
       });

@@ -307,6 +307,36 @@ suite('Tag overview query builder', () => {
     assert.match(html, /class="query-chip is-negated" data-action="remove-term" data-without="\[\[Atlas plan\]\]"/);
   });
 
+  test('completes a note after [[ in the bar and in a new row', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: { text: string; builder: unknown; suggestions: { values: Record<string, unknown> } } };
+    state.query.text = '';
+    state.query.builder = { join: 'and', items: [] };
+    state.query.suggestions.values.link = [
+      { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 3 notes' },
+      { value: 'Budget', label: '[[Budget]]', detail: 'Linked from 1 note' },
+    ];
+    view.send(state);
+
+    const bar = view.type({ dataset: { action: 'query-input', suggestKey: 'query' } }, 'is:open [[Atl');
+    const rendered = view.suggestionsFor('query');
+    assert.match(rendered, /\[\[Atlas plan\]\]/);
+    assert.match(rendered, /Linked from 3 notes/);
+    assert.doesNotMatch(rendered, /Budget/);
+    view.key(bar, 'ArrowDown');
+    view.key(bar, 'Enter');
+    let last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'is:open [[Atlas plan]]');
+
+    view.click({ action: 'toggle-builder' });
+    const row = view.type({ dataset: { action: 'builder-set-value', pending: 'true', suggestKey: 'p0', path: '0' } }, '-[[Bud');
+    assert.match(view.suggestionsFor('p0'), /-\[\[Budget\]\]/);
+    view.key(row, 'ArrowDown');
+    view.key(row, 'Enter');
+    last = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(last?.query, 'link != [[Budget]]');
+  });
+
   test('removes an empty row with Backspace', () => {
     const view = mountTagOverview();
     view.send(createState());

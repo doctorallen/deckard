@@ -604,7 +604,9 @@ chip carries `data-without`, the whole search cut as written without that
 term, which `getTopLevelTerms()` in `queryEdit.ts` works out on the host.
 A chip or group turned around with NOT is `.is-negated`, in red.
 `scanQuery()` reads the box's pieces: `tag`, `link` (a whole `[[Atlas plan]]`,
-spaces and all, so it is one chip), `op`, `paren`, and `word`. `data-query-text` on the shell is the whole
+spaces and all, so it is one chip), `op`, `paren`, and `word`. After `[[` the bar
+and a new builder row complete from `suggestions.values.link`, whose `value`
+is the note's name and `label` the link as written. `data-query-text` on the shell is the whole
 search, chips and typed term together. A chosen completion that is a whole
 term becomes a chip at once; Enter adds the typed term by AND; Backspace in an
 empty field removes the last chip; and a term not added is let go when focus

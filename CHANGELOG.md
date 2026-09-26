@@ -12,6 +12,12 @@
 
 ### Added
 
+- **`[[` completes a note, and Refine narrows by links.** Typing `[[` in a
+  search box or a new builder row lists your notes, most linked first, each
+  saying *Linked from 12 notes* or which note it is an alias of. Refine
+  gains **Links to**: the notes the results link to, with how many of them
+  link there.
+
 - **Search: what links to a note.** `[[Atlas]]` in any search box, Find, a
   query block, or an assistant's query finds the entries that link to the
   note Atlas, by its name or an alias; `link = [[Atlas#Decision]]` narrows

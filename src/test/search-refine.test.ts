@@ -250,6 +250,51 @@ suite('Refining a search', () => {
     assert.ok(inDecember?.includes('December 2025'), String(inDecember));
   });
 
+  test('narrows by the notes the results link to, leaving out the ones the search names', () => {
+    const files = new Map(
+      Object.entries({
+        'notes/Atlas.md': '# Atlas\nThe plan.\n',
+        'notes/Budget.md': '# Budget\nMoney.\n',
+        'notes/One.md': '# One #project/x\nSee [[Atlas]] and [[Budget]].\n',
+        'notes/Two.md': '# Two #project/x\nSee [[Atlas]].\n',
+        'notes/Three.md': '# Three #project/x\nNothing.\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    const index = buildWorkspaceIndex(files);
+    const query = 'tag = #project/x OR text ~ zzz';
+    const facets = buildSearchFacets(index, evaluateQuery(index, parseQuery(query).node), query);
+    const links = facets.find((facet) => facet.id === 'links');
+    assert.deepStrictEqual(
+      links?.values.map((value) => [value.label, value.count, value.clause]),
+      [
+        ['Atlas', 2, '[[Atlas]]'],
+        ['Budget', 1, '[[Budget]]'],
+      ],
+    );
+    const named = '#project/x [[Atlas]]';
+    const narrowed = buildSearchFacets(index, evaluateQuery(index, parseQuery(named).node), named)
+      .find((facet) => facet.id === 'links');
+    assert.deepStrictEqual(narrowed?.applied, ['[[Atlas]]']);
+    assert.ok(!narrowed?.values.some((value) => value.label === 'Atlas'));
+  });
+
+  test('completes [[ with note names, most linked first, aliases included', () => {
+    const files = new Map(
+      Object.entries({
+        'notes/Atlas plan.md': '---\naliases: [Atlas]\n---\n# Atlas plan\n',
+        'notes/Budget.md': '# Budget\n',
+        'notes/One.md': '# One\nSee [[Atlas plan]].\n',
+        'notes/Two.md': '# Two\nSee [[Atlas]] and [[Budget]].\n',
+      }).map(([path, content]) => [path, parseMarkdown(path, content)]),
+    );
+    const links = createQuerySuggestions(buildWorkspaceIndex(files)).values.link ?? [];
+    assert.deepStrictEqual(links.slice(0, 3), [
+      { value: 'Atlas', label: '[[Atlas]]', detail: 'alias of Atlas plan' },
+      { value: 'Atlas plan', label: '[[Atlas plan]]', detail: 'Linked from 2 notes' },
+      { value: 'Budget', label: '[[Budget]]', detail: 'Linked from 1 note' },
+    ]);
+  });
+
   test('does not offer a facet value the query already has', () => {
     const files = [
       parseMarkdown('a.md', '# A\n- [ ] One\n- [x] Two'),

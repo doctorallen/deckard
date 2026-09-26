@@ -1,5 +1,10 @@
 import { formatMonthName } from '../../core/markdown/dates';
-import { collectQueryTagKeys, quoteValue } from '../../core/query/queryFormat';
+import { countLinkTargets, resolveLinkQuery } from '../../core/query/queryLinks';
+import {
+  collectQueryTagKeys,
+  quoteValue,
+  visitConditions,
+} from '../../core/query/queryFormat';
 import { parseQuery } from '../../core/query/queryParser';
 import { QueryFacet, QueryFacetValue } from '../../core/query/queryTypes';
 import {
@@ -8,6 +13,7 @@ import {
   Task,
   WorkspaceIndex,
 } from '../../core/types';
+import { noteTitle } from '../../core/workspace/backlinks';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 
 /**
@@ -41,6 +47,7 @@ export interface FacetOptions {
 const TAG_VALUE_LIMIT = 10;
 const RELATED_VALUE_LIMIT = 30;
 const FOLDER_VALUE_LIMIT = 8;
+const LINK_VALUE_LIMIT = 8;
 const DAY = 24 * 60 * 60 * 1000;
 
 export function buildSearchFacets(
@@ -139,6 +146,10 @@ export function buildSearchFacets(
     tags.applied = appliedTags();
     facets.push(tags);
   }
+
+  const links = facet('links', 'Links to', countLinks(index, source, queryText), LINK_VALUE_LIMIT);
+  links.applied = appliedLinks(queryText);
+  facets.push(links);
 
   const noteTimes = [
     ...source.sections.map((section) => section.updatedAt),
@@ -254,6 +265,46 @@ export function countTags(
     .sort(
       (left, right) => right.count - left.count || left.label.localeCompare(right.label),
     );
+}
+
+/**
+ * The notes the results link to, most linked first, leaving out the notes
+ * the query already names by link.
+ */
+export function countLinks(
+  index: WorkspaceIndex,
+  source: FacetSource,
+  queryText: string,
+): SearchFacetValue[] {
+  const named = new Set<string>();
+  visitConditions(parseQuery(queryText).node, (condition) => {
+    if (condition.field === 'link') {
+      resolveLinkQuery(index, condition.value).paths.forEach((path) => named.add(path));
+    }
+  });
+  const keys = [
+    ...source.sections.map((section) => `section:${section.id}`),
+    ...source.tasks.map((task) => `task:${task.id}`),
+    ...source.files.map((file) => `file:${file.filePath}`),
+  ];
+  return countLinkTargets(index, keys)
+    .filter((target) => !named.has(target.targetPath))
+    .map((target) => {
+      const title = noteTitle(target.targetPath);
+      return { label: title, count: target.count, clause: `[[${title}]]` };
+    });
+}
+
+/** The links the query writes as terms of their own, as `[[Title]]`. */
+function appliedLinks(queryText: string): string[] {
+  const applied: string[] = [];
+  visitConditions(parseQuery(queryText).node, (condition) => {
+    const clause = `[[${condition.value}]]`;
+    if (condition.field === 'link' && isWritten(queryText, clause)) {
+      applied.push(clause);
+    }
+  });
+  return applied;
 }
 
 /**
