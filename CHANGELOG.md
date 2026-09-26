@@ -12,6 +12,10 @@
 
 ### Added
 
+- **A Deckard menu in the editor.** Right-click in a note for a **Deckard**
+  submenu: the task on the line, the heading the cursor is in, Move to…,
+  and Pin or Unpin.
+
 - **Zen from a page's title bar.** Every Deckard page — Home, a search
   page, the Task board, Stats, Help, and the Notes Graph — has a zen button
   in its title bar that enters zen, and leaves it again.

@@ -550,6 +550,12 @@
         "category": "Deckard"
       }
     ],
+    "submenus": [
+      {
+        "id": "deckard.editor.context",
+        "label": "Deckard"
+      }
+    ],
     "menus": {
       "commandPalette": [
         {
@@ -726,6 +732,52 @@
           "command": "deckard.disableZenMode",
           "when": "activeWebviewPanelId =~ /^deckard\\./ && deckard.zenMode",
           "group": "navigation@90"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "deckard.editor.context",
+          "when": "resourceLangId == markdown && deckard.isNote",
+          "group": "z_deckard@1"
+        }
+      ],
+      "deckard.editor.context": [
+        {
+          "command": "deckard.toggleTaskDone",
+          "when": "deckard.onTaskLine",
+          "group": "1_task@1"
+        },
+        {
+          "command": "deckard.editTask",
+          "when": "deckard.onTaskLine",
+          "group": "1_task@2"
+        },
+        {
+          "command": "deckard.addTask",
+          "when": "!deckard.onTaskLine",
+          "group": "1_task@3"
+        },
+        {
+          "command": "deckard.renameHeading",
+          "group": "2_heading@1"
+        },
+        {
+          "command": "deckard.extractHeading",
+          "group": "2_heading@2"
+        },
+        {
+          "command": "deckard.moveTo",
+          "group": "3_move@1"
+        },
+        {
+          "command": "deckard.pinNote",
+          "when": "!deckard.activeNotePinned",
+          "group": "4_pin@1"
+        },
+        {
+          "command": "deckard.unpinNote",
+          "when": "deckard.activeNotePinned",
+          "group": "4_pin@2"
         }
       ],
       "view/title": [

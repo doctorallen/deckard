@@ -23,6 +23,23 @@ suite('Extension Test Suite', () => {
     assert.deepStrictEqual(title('deckard.noteActions'), [
       ['resourceLangId == markdown && deckard.isNote', 'navigation@12'],
     ]);
+    // A note's context menu has one Deckard submenu, grouped by what it acts on.
+    assert.deepStrictEqual(menus['editor/context'], [
+      { submenu: 'deckard.editor.context', when: 'resourceLangId == markdown && deckard.isNote', group: 'z_deckard@1' },
+    ]);
+    assert.deepStrictEqual(
+      menus['deckard.editor.context'].map((entry) => `${entry.group} ${entry.command}`),
+      [
+        '1_task@1 deckard.toggleTaskDone',
+        '1_task@2 deckard.editTask',
+        '1_task@3 deckard.addTask',
+        '2_heading@1 deckard.renameHeading',
+        '2_heading@2 deckard.extractHeading',
+        '3_move@1 deckard.moveTo',
+        '4_pin@1 deckard.pinNote',
+        '4_pin@2 deckard.unpinNote',
+      ],
+    );
     // Zen is one button on every Deckard page.
     assert.deepStrictEqual(title('deckard.enableZenMode'), [
       ['activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode', 'navigation@90'],

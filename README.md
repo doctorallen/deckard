@@ -374,6 +374,7 @@ A search reads these too, but a week or a month there is the whole span: `due = 
 ## Editor assistance
 
 - **The title bar** of a note carries Deckard's button, which opens **Deckard: Note Actions…**, and a daily note's also carries **‹** and **›**, which open the daily notes before and after. They stay put when the first line scrolls away, and show whether or not CodeLens is on. Right-click the title bar to hide any of them.
+- **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
 - Tags in Markdown editors receive clickable decorations. Cmd/Ctrl-click opens its page, and hovering a tag provides a separate clickable **Rename** action. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - Typing `#` or `@` offers matching tags already in the index, with each tag's current entry count. `#atl` can complete to `#project/atlas`; `@al` can complete to `@alex-smith`. Partial tag tokens are replaced correctly, fenced code is ignored except inside a `deckard` [query block](#query-blocks), and numeric-only hash tags are excluded from `#` completion.
 - Typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](#typing-metadata).
