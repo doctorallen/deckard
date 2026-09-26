@@ -265,9 +265,10 @@ async function revertTaskLine(
       }
     }
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not undo this task edit: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: `Deckard could not undo the task edit in ${noteName(uri)}, so the note keeps the edit.`,
+      error,
+    });
   }
 }
 

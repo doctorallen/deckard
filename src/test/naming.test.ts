@@ -23,6 +23,46 @@ const RETIRED: Array<[RegExp, string]> = [
   [/>Customize Home</, 'Customize'],
 ];
 
+/**
+ * The host's sources: the places a notification, a quick pick, or a view
+ * message is written. Webview page builders (`*Html.ts`) are read above.
+ */
+function hostSources(): Array<readonly [string, string]> {
+  const src = path.join(root, 'src');
+  const files = [path.join(src, 'extension.ts')];
+  for (const folder of ['ui/commands', 'ui/views', 'ui/preview', 'ui/webview', 'ui/state']) {
+    const dir = path.join(src, folder);
+    if (!fs.existsSync(dir)) {
+      continue;
+    }
+    for (const name of fs.readdirSync(dir)) {
+      if (name.endsWith('.ts') && !/Html\.ts$/.test(name)) {
+        files.push(path.join(dir, name));
+      }
+    }
+  }
+  return files.map((file) => [path.relative(root, file), fs.readFileSync(file, 'utf8')] as const);
+}
+
+/** The argument text of every call to `name(`, parentheses balanced. */
+function callBodies(source: string, name: RegExp): string[] {
+  const bodies: string[] = [];
+  for (const match of source.matchAll(new RegExp(name.source + '\\(', 'g'))) {
+    let depth = 1;
+    let at = (match.index ?? 0) + match[0].length;
+    const start = at;
+    while (at < source.length && depth > 0) {
+      const char = source[at];
+      depth += char === '(' ? 1 : char === ')' ? -1 : 0;
+      at++;
+    }
+    bodies.push(source.slice(start, at - 1));
+  }
+  return bodies;
+}
+
+const NOTIFICATION = /show(?:Information|Warning|Error)Message/;
+
 function staticButtonLabels(source: string): string[] {
   // Labels written as literal text between a button's tags; labels built from
   // data are checked where they are built.
@@ -92,5 +132,21 @@ suite('Naming', () => {
       [],
       'the palette writes "Deckard:" from the category; a title that repeats it reads twice in view toolbars',
     );
+  });
+
+  suite('Messages', () => {
+    const hosts = hostSources();
+
+    test('a notification never carries a raw error', () => {
+      const offenders: string[] = [];
+      for (const [name, source] of hosts) {
+        for (const body of callBodies(source, NOTIFICATION)) {
+          if (/String\(error\)|error\.message|\.message\b\s*:/.test(body)) {
+            offenders.push(`${name}: ${body.trim().slice(0, 80)}`);
+          }
+        }
+      }
+      assert.deepStrictEqual(offenders, [], 'the raw error goes to the log through reportFailure, with Open Log');
+    });
   });
 });

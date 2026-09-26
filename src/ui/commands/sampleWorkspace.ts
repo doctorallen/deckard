@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { reportFailure } from './notify';
+
 /**
  * Somewhere to start.
  *
@@ -10,6 +12,16 @@ import * as vscode from 'vscode';
  */
 
 export const SAMPLE_FOLDER_NAME = 'deckard-sample';
+
+/** The sample's folder is already where the reader asked for it. */
+export class SampleFolderExistsError extends Error {
+  constructor(parent: vscode.Uri) {
+    super(
+      `There is already a "${SAMPLE_FOLDER_NAME}" folder in ${parent.fsPath}. Move it aside, or choose another folder.`,
+    );
+    this.name = 'SampleFolderExistsError';
+  }
+}
 
 interface SampleFileAccess {
   copy(source: vscode.Uri, target: vscode.Uri, options?: { overwrite?: boolean }): Thenable<void>;
@@ -34,9 +46,7 @@ export async function installSample(
 ): Promise<{ target: vscode.Uri; files: string[] }> {
   const target = vscode.Uri.joinPath(parent, SAMPLE_FOLDER_NAME);
   if (await exists(fs, target)) {
-    throw new Error(
-      `There is already a "${SAMPLE_FOLDER_NAME}" folder in ${parent.fsPath}. Move it aside, or choose another folder.`,
-    );
+    throw new SampleFolderExistsError(parent);
   }
   await fs.copy(getSampleSourceUri(extensionUri), target, { overwrite: false });
   const files = (await fs.readDirectory(target))
@@ -62,7 +72,19 @@ export async function createSampleWorkspace(extensionUri: vscode.Uri): Promise<v
   try {
     created = await installSample(extensionUri, parent);
   } catch (error) {
-    void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
+    const again = {
+      title: 'Choose Another Folder',
+      run: () => createSampleWorkspace(extensionUri),
+    };
+    void reportFailure(
+      error instanceof SampleFolderExistsError
+        ? { outcome: error.message, action: again }
+        : {
+            outcome: `Deckard could not create the sample notes in ${parent.fsPath}.`,
+            fix: `If a "${SAMPLE_FOLDER_NAME}" folder was left there, delete it and try again.`,
+            error,
+          },
+    );
     return;
   }
   const choice = await vscode.window.showInformationMessage(

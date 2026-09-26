@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 import * as vscode from 'vscode';
 
 import {
@@ -5,6 +7,7 @@ import {
   PreferenceSnapshots,
 } from '../../core/storage/preferenceSnapshots';
 import { PersistedPreferences } from '../../core/types';
+import { reportFailure } from './notify';
 
 /**
  * Taking what a workspace remembers out, and putting it back.
@@ -14,6 +17,14 @@ import { PersistedPreferences } from '../../core/types';
  * its own. Each of the last two replaces what this workspace remembers, so
  * each says what it is about to do, from when, and asks.
  */
+
+/** A file that reads, but is not one Deckard wrote. */
+export class NotPreferencesError extends Error {
+  constructor(message = 'This is not a Deckard preferences file.') {
+    super(message);
+    this.name = 'NotPreferencesError';
+  }
+}
 
 /** What an exported file holds, so a file that is not one is turned away. */
 export interface PreferenceExport {
@@ -49,11 +60,11 @@ export function readExport(value: unknown): {
   exportedAt?: Date;
 } {
   if (!isRecord(value)) {
-    throw new Error('This is not a Deckard preferences file.');
+    throw new NotPreferencesError();
   }
   if (isRecord(value.deckard)) {
     if (value.deckard.kind !== 'preferences' || !isRecord(value.preferences)) {
-      throw new Error('This Deckard file does not hold preferences.');
+      throw new NotPreferencesError('This Deckard file does not hold preferences.');
     }
     const exportedAt =
       typeof value.deckard.exportedAt === 'string'
@@ -67,7 +78,7 @@ export function readExport(value: unknown): {
   if (value.version === 1 && Array.isArray(value.favoriteTags)) {
     return { preferences: value as unknown as PersistedPreferences };
   }
-  throw new Error('This is not a Deckard preferences file.');
+  throw new NotPreferencesError();
 }
 
 /** One line saying what a blob holds, for a reader to weigh before replacing. */
@@ -112,8 +123,11 @@ export async function importPreferences(store: BackupStore): Promise<void> {
     const bytes = await vscode.workspace.fs.readFile(source);
     parsed = readExport(JSON.parse(Buffer.from(bytes).toString('utf8')));
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      error instanceof Error ? error.message : String(error),
+    const fileName = path.basename(source.path);
+    void reportFailure(
+      error instanceof NotPreferencesError
+        ? { outcome: `${fileName} is not a Deckard preferences file, so nothing was imported.` }
+        : { outcome: `Deckard could not read ${fileName}, so nothing was imported.`, error },
     );
     return;
   }
@@ -149,9 +163,10 @@ export async function restorePreferences(
   try {
     preferences = readExport(await snapshots.read(picked.snapshot)).preferences;
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `That copy could not be read: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    void reportFailure({
+      outcome: 'Deckard could not read that copy, so nothing was restored.',
+      error,
+    });
     return;
   }
   await replaceAfterAsking(store, preferences, {

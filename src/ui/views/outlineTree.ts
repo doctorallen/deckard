@@ -12,6 +12,7 @@ import {
   OutlineNode,
 } from '../state/outlineState';
 import { revealLine } from '../commands/navigation';
+import { reportFailure } from '../commands/notify';
 
 /** Context key backing the follow-cursor toggle in the view title. */
 export const outlineFollowCursorContextKey = 'deckard.outlineFollowCursor';
@@ -155,9 +156,7 @@ export class OutlineTreeProvider
       });
       revealLine(editor, node.line);
     } catch (error) {
-      void vscode.window.showErrorMessage(
-        `Deckard could not open that heading: ${String(error)}`,
-      );
+      void reportFailure({ outcome: 'Deckard could not open that heading.', error });
     }
   }
 

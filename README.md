@@ -1105,6 +1105,7 @@ What Deckard remembers is split in two. Anything that **names what is in a works
 
 ## Limitations and troubleshooting
 
+- **A message offers Open Log:** when something fails, the message says what did not happen and what to do; the details are in Deckard's log.
 - **Something is not there, and you are not sure why:** run `Deckard: Check My Setup`. It says where notes are read from and whether that folder exists, how many files the exclude patterns kept out, which notes could not be read, and whether `deckard.me` matches anyone — each with what to do.
 - **A note is missing from every search:** open `Deckard: Open Stats`. A note the index could not read is listed there with the reason; Deckard also says so when it first happens.
 - **Opened while the workspace is first indexed:** Find, search pages, Home, the Task board, and Stats open at once and say how far the scan has got, such as *Indexing this workspace: 412 of 3,760 notes read…*; what you typed in Find is kept, and the results take the line's place when the index is ready.

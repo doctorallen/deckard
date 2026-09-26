@@ -2,6 +2,8 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import { reportFailure } from './notify';
+
 /**
  * Resolves a stored source key across absolute paths, URI schemes, and roots.
  *
@@ -80,9 +82,7 @@ export async function openSourceAt(
     revealLine(editor, line);
     return editor;
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not open ${filePath}: ${String(error)}`,
-    );
+    void reportFailure({ outcome: `Deckard could not open ${filePath}.`, error });
     return undefined;
   }
 }

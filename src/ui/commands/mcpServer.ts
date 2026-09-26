@@ -17,6 +17,7 @@ import {
 } from '../../core/mcp/mcpProtocol';
 import { measure, measureAsync } from '../../core/timing';
 import { writeSetting } from './settings';
+import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { WorkspaceIndex } from '../../core/types';
 import {
   answerQuery,
@@ -96,9 +97,15 @@ export class DeckardMcpServer implements vscode.Disposable {
     try {
       await this.start(port);
     } catch (error) {
-      void vscode.window.showErrorMessage(
-        `Deckard could not start its MCP server on port ${port}: ${error instanceof Error ? error.message : String(error)}. Set deckard.mcpServer.port to a free port.`,
-      );
+      const inUse = (error as NodeJS.ErrnoException | undefined)?.code === 'EADDRINUSE';
+      void reportFailure({
+        outcome: inUse
+          ? `Deckard could not start its MCP server on port ${port}, because another program is using it.`
+          : `Deckard could not start its MCP server on port ${port}.`,
+        fix: `Choose a free port in the "${settingLabel('mcpServer.port')}" setting.`,
+        action: openSettingAction('mcpServer.port'),
+        error,
+      });
     }
   }
 

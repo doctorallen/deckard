@@ -18,6 +18,7 @@ import {
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
+import { reindexAction, reportFailure } from './notify';
 import { applyWorkspaceWrite } from './workspaceWrites';
 
 interface RenameTagOptions {
@@ -84,9 +85,10 @@ export async function renameIndexedTag(
 
     return await rewriteTag(indexer, index, sourceTag, replacement, preferences);
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not rename a tag: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: 'Deckard could not rename the tag, so nothing was written.',
+      error,
+    });
     return undefined;
   }
 }
@@ -130,9 +132,10 @@ export async function mergeIndexedTag(
       preferences,
     );
   } catch (error) {
-    void vscode.window.showErrorMessage(
-      `Deckard could not merge a tag: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: 'Deckard could not merge the tags, so nothing was written.',
+      error,
+    });
     return undefined;
   }
 }
@@ -402,9 +405,12 @@ async function rewriteTag(
   try {
     await indexer.refresh();
   } catch (error) {
-    void vscode.window.showWarningMessage(
-      `${done} ${sourceTag.label} ${joiner} ${replacement.label}, but Deckard could not refresh its index: ${String(error)}`,
-    );
+    void reportFailure({
+      outcome: `${done} ${sourceTag.label} ${joiner} ${replacement.label}, but Deckard could not read the notes again, so search may show the old tag until the next save.`,
+      severity: 'warning',
+      action: reindexAction(),
+      error,
+    });
   }
   void vscode.window.showInformationMessage(
     `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(

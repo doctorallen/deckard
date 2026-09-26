@@ -313,7 +313,7 @@ ${getPageTailCss()}
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what. Hover or Tab to any button to see what it does.</p></div></div>
       </div>
-      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Open Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there.</p>
+      <p class="note">Deckard only reads saved files. Save a note to see it in the index, and run <code>Deckard: Open Log</code> if anything looks slow: every step over 100&nbsp;ms is listed there. When something fails, its message offers <strong>Open Log</strong>, where the details are.</p>
     </section>
 
     <section id="tags">
