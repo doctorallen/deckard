@@ -130,7 +130,7 @@ re-declare the same names.
 | `--edge` | `2px` | Standard border width |
 | `--control-height` | `30px` | Standard control height |
 | `--accent` | `var(--amber)` | Eyebrows, chosen marks, the primary button's fill |
-| `--danger` | `var(--favorite-red)` | Overdue. Red means this and nothing else; a priority is an outlined `.priority-badge` with an arrow, never a color |
+| `--danger` | `var(--favorite-red)` | Overdue. Red means this and nothing else; a priority is an outlined `.priority-badge` with an arrow, never a color. A task past `deckard.tasks.needsNewDateAfterDays` is not red: it reads `was due …` in `--muted` (`.due-date.stale`, `.board-details .stale`, `.due.stale` on the calendar) |
 | `--favorite` | `var(--amber-bright)` | The favorite heart |
 | `--positive` | `var(--green)` | A checked box, a done state |
 | `--focus` | `var(--cyan)` | Every focus ring |
@@ -464,6 +464,10 @@ In edit mode a widget is `.is-editing` and `.is-draggable`, carries a
 `.view-options-choices` width switch and its own `.home-widget-options` gear,
 and is ranked with `installRankedRows`. The host projects each widget with
 `createDashboardWidgets()` in `dashboardWidgets.ts`.
+
+The Tasks view widget ends with a `.home-widget-footer` line: what was done
+today, and how many tasks need a new date as a `.text-button` that opens
+`is:needs-date`. It is left out when both are zero.
 
 ### Host-side helpers
 

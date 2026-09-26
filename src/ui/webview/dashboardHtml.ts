@@ -179,6 +179,9 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group:first-child { margin-top: 0; }
 .home-widget-empty { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.home-widget-footer { margin: 10px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-widget-footer .text-button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; }
+.home-widget-footer .text-button:hover, .home-widget-footer .text-button:focus-visible { color: var(--text); }
 .home-widget-paging { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 0; border-top: 1px solid var(--line); padding-top: 8px; font-size: var(--text-xs); }
 .home-widget-paging .page-range { color: var(--muted); font-family: var(--font-mono); }
 .home-widget-paging .control-label { gap: 4px; font-size: var(--text-xs); }
@@ -612,6 +615,20 @@ ${getQueryEditorScript()}
     return '<button type="button" class="row saved-filter-row home-row" data-action="' + action + '" ' + attributes + '><span class="home-row-label">' + labelHtml + '</span>' + (detail ? '<span class="home-row-detail">' + escapeHtml(detail) + '</span>' : '') + '</button>';
   }
 
+  /**
+   * The line under the Tasks view widget: what was finished today, and how
+   * many tasks need a new date, which opens them. Nothing when both are 0.
+   */
+  function renderAgendaFooter(widget) {
+    const parts = [];
+    if (widget.doneToday) parts.push('<span>' + widget.doneToday + ' done today</span>');
+    if (widget.needsNewDate) {
+      const label = widget.needsNewDate + (widget.needsNewDate === 1 ? ' needs' : ' need') + ' a new date';
+      parts.push('<button type="button" class="text-button" data-action="open-search" data-query="' + escapeHtml(widget.needsNewDateQuery || 'is:needs-date') + '" title="Search the tasks more than a month past their due date">' + escapeHtml(label) + '</button>');
+    }
+    return parts.length ? '<p class="home-widget-footer">' + parts.join(' · ') + '</p>' : '';
+  }
+
   function renderHomeTasks(tasks, emptyText) {
     return tasks && tasks.length
       ? '<div class="task-list">' + tasks.map(function (item) { return renderTaskListRow(item, { titleDisplay: state.tagTitleDisplayMode }); }).join('') + '</div>'
@@ -686,11 +703,12 @@ ${getQueryEditorScript()}
           : renderHomeTasks(widget.tasks, 'No tasks match ' + (widget.query || 'this search') + '.');
       case 'agenda': {
         const groups = (widget.agenda || []).filter(function (group) { return group.count > 0; });
-        return groups.length
+        const body = groups.length
           ? groups.map(function (group) {
             return '<h3 class="home-widget-group">' + escapeHtml(group.label) + ' <span class="tag-count">' + group.count + '</span></h3>' + renderHomeTasks(group.tasks, '');
           }).join('')
           : '<p class="home-widget-empty">Nothing is overdue or due soon.</p>';
+        return body + renderAgendaFooter(widget);
       }
       case 'favoriteTags':
         return renderHomeTags(widget.tags, 'Favorite a tag on the Tags tab to keep it here.');

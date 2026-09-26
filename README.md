@@ -406,7 +406,7 @@ Run `Deckard: Open Dashboard` to see compact workspace totals and switch between
 |---|---|---|
 | **Search** | The [search box](#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
 | **Tasks** | The first tasks a search finds, `is:open` unless you set another, ranked as on the Task board | The Task board, on that search |
-| **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them | The Tasks view |
+| **Tasks view** | Overdue, today's, and upcoming tasks, as the Tasks view lists them, with a line under them saying how many need a new date, which opens them | The Tasks view |
 | **Favorite tags** | The tags you favorited, with what searching for each finds | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
 | **Saved searches** | Your saved searches, each removable | Where each was saved |
@@ -549,8 +549,8 @@ Run `Deckard: Open Task Board`, or select the board icon in the title bar of Rel
 
 - **Status** gives each status tag written on a task line its own column, such as `#status/doing`. `deckard.board.statuses` sets the first columns and their order, `todo`, `doing`, and `waiting` by default; any other status found on a task gets a column after them, and tasks without one wait in **No status**. Dropping a card replaces its status tag, or removes it in **No status**. While fewer than a quarter of the open tasks carry a status, a line above the columns says how many have none, how to give a task one, and offers **Group by due date**, which works for any task. Set `deckard.board.statusNamespace` to use another namespace, such as `#stage/…`.
 - **Priority** gives each priority a column. Dropping a card writes the new priority in the task's own format, such as ⏫ or `[priority:: high]`.
-- **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
-- A due date is written by its distance from today with the date beside it — **Overdue 15 days · 2026-09-08**, **Due tomorrow · 2026-09-24** — on a board card, in the list and table, on Home and search pages, and in query blocks, so nothing has to be subtracted, and an overdue task says so in words rather than in color alone. Beyond a month either way only the date is written, and a done task keeps its date as written.
+- **Due date** has columns for Overdue, Today, Tomorrow, Within a week, Later, No due date, and a muted **Needs a new date** for tasks more than 30 days overdue. Drop a card on **Today** or **Tomorrow** to set its due date, or on **No due date** to remove it; the other columns cover a range of days, so they do not accept drops. A due date written in the task's sentence, such as `by Sep 16`, is left for you to edit.
+- A due date is written by its distance from today with the date beside it — **Overdue 15 days · 2026-09-08**, **Due tomorrow · 2026-09-24** — on a board card, in the list and table, on Home and search pages, and in query blocks, so nothing has to be subtracted, and an overdue task says so in words rather than in color alone. Beyond a month either way only the date is written, and a done task keeps its date as written. A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue reads **was due 2026-07-01**, in muted text rather than red, wherever it is listed: the calendar keeps its count but drops the warning color and says the tasks need a new date.
 - Every grouping ends with **Done**. Dropping a card there completes it, with its done date and next occurrence, and dragging it back out reopens it. Done shows the 20 most recently completed tasks.
 - Search the tasks with the same [search box](#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks, and a search you run is added to your recent searches. The board opens on `is:open`, since a board is for what is still to do; clear the box for every task, or search `is:done` for the finished ones.
 - **Save**, beside the search box, keeps the search as a saved search that reopens on the Task board. **Tasks view** makes the [Tasks view](#tasks-view) list the search instead; it is lit while the view lists the board's current one.
@@ -763,7 +763,8 @@ Common filters have one-token shorthands, written the way GitHub writes them:
 | Shorthand | Finds |
 | --- | --- |
 | `is:open`, `is:done` | Open or completed tasks. |
-| `is:overdue` | Open tasks past their due date. |
+| `is:overdue` | Open tasks past their due date, however long ago. |
+| `is:needs-date` | Open tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days past their due date: the Tasks view's **Needs a new date**. |
 | `is:due` | Open tasks due within the next seven days, overdue ones included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
 | `is:blocked`, `is:blocking` | Open tasks waiting for a task that is still open, and the open tasks they wait for. |
@@ -921,7 +922,7 @@ A daily note that starts from its template every morning leaves last night's ope
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` starts them on Monday or where your display language does. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` starts them on Monday or where your display language does. Every day is drawn the same way — the date, then a dot for a daily note, then a count of the open tasks due that day, in orange once the day has passed and muted once it is more than 30 days gone, when its tasks need a new date — so a day that has something to mark keeps its date in the same place as one that does not. Select a day to open its daily note, the mark beside a row to open that week's note, or the month's name to open the month's note. When the note does not exist yet, Deckard offers to create it from its template rather than creating it straight away. The arrows step through months, and **Today** returns to this month. Hovering a day lists the tasks due that day and the headings of its daily note.
 
 ## Quick capture
 

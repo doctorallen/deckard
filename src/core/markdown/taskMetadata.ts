@@ -1,3 +1,4 @@
+import { needsNewDate } from '../taskPolicy';
 import { TaskPriority } from '../types';
 
 /**
@@ -598,6 +599,12 @@ export interface DueDescription {
   /** The relative phrase with the date beside it, as a row or card writes it. */
   label: string;
   overdue: boolean;
+  /**
+   * Set once the date is more than `needsNewDateAfterDays` behind today: the
+   * label says `was due 2026-07-01`, drawn muted rather than red, and
+   * `overdue` is false, since it is no longer today's emergency.
+   */
+  stale?: boolean;
   /** Days from today to the due date; negative once it has passed. */
   days: number;
 }
@@ -618,6 +625,9 @@ export function describeDueDate(
 ): DueDescription {
   const days = Math.round((startOfDay(dueAt) - startOfDay(now)) / DAY_MS);
   const date = dueText ?? formatIsoDate(dueAt);
+  if (days < 0 && needsNewDate(dueAt, now)) {
+    return { relative: 'was due', label: `was due ${date}`, overdue: false, stale: true, days };
+  }
   const overdue = days < 0;
   const distance = Math.abs(days);
   let relative: string;

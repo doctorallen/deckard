@@ -89,6 +89,21 @@ suite('Dashboard Home widgets', () => {
     assert.deepStrictEqual(broken.tasks, []);
   });
 
+  test('the agenda leaves what needs a new date to a line under its list', () => {
+    const files = [
+      parseMarkdown(
+        'notes/old.md',
+        '- [ ] Chase the contractor 📅 2026-09-10\n- [ ] Renew the lease 📅 2026-07-01',
+      ),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const [agenda] = widgets([{ id: 'a', kind: 'agenda', width: 'half', count: 5 }], index);
+    assert.deepStrictEqual(agenda.agenda?.map((group) => group.id), ['overdue']);
+    assert.strictEqual(agenda.needsNewDate, 1);
+    assert.strictEqual(agenda.needsNewDateQuery, 'is:needs-date');
+    assert.strictEqual(agenda.total, 1);
+  });
+
   test('groups the agenda, and names favorite and frequent tags', () => {
     const [agenda, favorites, frequent] = widgets([
       { id: 'a', kind: 'agenda', width: 'half', count: 5 },

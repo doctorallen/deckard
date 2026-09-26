@@ -53,7 +53,10 @@ export class CalendarView
         if (affectsPageChrome(event)) {
           // The page reloads and asks for its state again when it is ready.
           this.renderHtml();
-        } else if (event.affectsConfiguration('deckard.calendar.weekStart')) {
+        } else if (
+          event.affectsConfiguration('deckard.calendar.weekStart') ||
+          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
+        ) {
           this.refresh();
         }
       }),

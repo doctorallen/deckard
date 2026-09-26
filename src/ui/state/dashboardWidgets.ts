@@ -171,10 +171,21 @@ function createWidget(
         tasks: selectAgendaTasks(index, options.agendaQuery ?? '').tasks,
         upcomingDays: options.upcomingDays,
       });
+      // What needs a new date is a line under the list, not a group in it.
+      const needsNewDate =
+        groups.find((group) => group.id === 'needsdate')?.entries.length ?? 0;
+      const listed = groups.filter((group) => group.id !== 'needsdate');
+      const scope = options.agendaQuery?.trim();
       return {
         ...widget,
-        total: groups.reduce((sum, group) => sum + group.entries.length, 0),
-        agenda: groups.map((group) => ({
+        total: listed.reduce((sum, group) => sum + group.entries.length, 0),
+        ...(needsNewDate > 0
+          ? {
+              needsNewDate,
+              needsNewDateQuery: scope ? `(${scope}) AND is:needs-date` : 'is:needs-date',
+            }
+          : {}),
+        agenda: listed.map((group) => ({
           id: group.id,
           label: group.label,
           count: group.entries.length,

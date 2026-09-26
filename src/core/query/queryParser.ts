@@ -115,6 +115,8 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   late: 'overdue',
   due: 'due',
   soon: 'due',
+  'needs-date': 'needs-date',
+  needsdate: 'needs-date',
   blocked: 'blocked',
   waiting: 'blocked',
   blocking: 'blocking',
@@ -652,7 +654,7 @@ class Parser {
       const normalized = IS_VALUE_ALIASES[value.toLowerCase()];
       if (!normalized) {
         this.diagnostics.push({
-          message: `is: accepts open, done, task, note, overdue, due, blocked, blocking, mine, assigned, or unassigned — not "${value}".`,
+          message: `is: accepts open, done, task, note, overdue, due, needs-date, blocked, blocking, mine, assigned, or unassigned — not "${value}".`,
           severity: 'error',
           start,
           end,

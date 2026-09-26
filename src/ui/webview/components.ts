@@ -556,6 +556,8 @@ export function getTaskBoardCss(): string {
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
    after this sheet and which took the color off "overdue 20 days". */
 .task .board-details .overdue { color: var(--danger); }
+.task .board-details .stale { color: var(--muted); }
+.board-column[data-column-id="due:needsdate"] .board-column-title { color: var(--muted); }
 /* The move menu sits in the corner so it never adds a row to the card. */
 .board-move {
   position: absolute;
@@ -608,6 +610,9 @@ export function getTaskListCss(): string {
 .task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
+/* A task past needsNewDateAfterDays reads "was due …" in muted text: red is
+   for what can still be saved today. */
+.due-date.stale { color: var(--muted); font-weight: 400; }
 .task-detail { letter-spacing: .03em; }
 /* Priority is a shape, not a color: an outlined badge with an arrow, told
    from the due date beside it by its edge. It used to be the same bold
@@ -1688,6 +1693,7 @@ export function getComponentScript(): string {
       // The host words the due date, "overdue 15 days · 2026-09-08", so the
       // state is in the text; the page only colors it.
       const overdue = card.overdue && detail.indexOf('overdue') === 0;
+      const stale = card.stale && detail.indexOf('was due') === 0;
       // The host words priority as "high priority"; the card draws the badge
       // the task rows draw, so it is told from the due date beside it.
       const priority = /^(highest|high|medium|low|lowest) priority$/.exec(detail);
@@ -1697,7 +1703,7 @@ export function getComponentScript(): string {
       const text = escapeHtml(detail).replace(/\\d{4}-\\d{2}-\\d{2}/g, function (date) {
         return '<span class="board-date">' + date + '</span>';
       });
-      return '<span' + (overdue ? ' class="overdue"' : '') + '>' + text + '</span>';
+      return '<span' + (overdue ? ' class="overdue"' : stale ? ' class="stale"' : '') + '>' + text + '</span>';
     }).join('');
     const plainTitle = String(card.title || '');
     // The file and line, then the headings above, fold under the card as
@@ -1706,7 +1712,7 @@ export function getComponentScript(): string {
     // A short name for the card as a whole, since a focused article is read
     // in full otherwise: its title, its column, and when it is due.
     const columnLabel = (columns.find(function (column) { return column.id === columnId; }) || {}).label;
-    const dueDetail = (card.details || []).find(function (detail) { return /^(due|overdue)/i.test(detail); });
+    const dueDetail = (card.details || []).find(function (detail) { return /^(due|overdue|was due)/i.test(detail); });
     const cardName = [plainTitle, columnLabel, dueDetail].filter(Boolean).join(', ');
     // The board is one Tab stop: the card last focused, or the first. Arrow
     // keys move between cards, and a card's checkbox and menu are keys of
@@ -2107,7 +2113,7 @@ export function getComponentScript(): string {
     // · 2026-09-08", so the state is in the text and not in the color alone.
     // A done task keeps its date as written.
     const dueDate = item.dueLabel
-      ? '<span class="due-date ' + (item.overdue ? 'overdue' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
+      ? '<span class="due-date ' + (item.overdue ? 'overdue' : item.stale ? 'stale' : '') + '">' + escapeHtml(item.dueLabel) + '</span>'
       : (task.dueText
         ? '<span class="due-date">Due ' + escapeHtml(task.dueText) + '</span>'
         : '');

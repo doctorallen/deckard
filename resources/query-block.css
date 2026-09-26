@@ -107,6 +107,11 @@
   color: var(--vscode-errorForeground, #e51400);
 }
 
+/* A task past needsNewDateAfterDays: "was due …", muted, not red. */
+.deckard-query-due.is-stale {
+  color: var(--vscode-descriptionForeground);
+}
+
 /* Priority is a shape, not a color: an outlined badge with an arrow. */
 .deckard-query-priority {
   display: inline-block;

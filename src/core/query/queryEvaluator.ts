@@ -1,3 +1,4 @@
+import { needsNewDate } from '../taskPolicy';
 import { parseDatePhrase, resolveDatePeriod, Weekday } from '../markdown/dates';
 import { addDays, startOfDay, TASK_PRIORITY_RANKS } from '../markdown/taskMetadata';
 import {
@@ -592,6 +593,8 @@ function matchesIs(
         unit.dueAt !== undefined &&
         unit.dueAt < startOfDay(now) + 7 * DAY
       );
+    case 'needs-date':
+      return open && needsNewDate(unit.dueAt, now);
     case 'blocked':
       return unit.blocked === true;
     case 'blocking':

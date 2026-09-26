@@ -155,13 +155,33 @@ suite('Task board', () => {
       ['due:week', ['brief']],
       ['due:later', []],
       ['due:', ['draft']],
+      ['due:needsdate', []],
       ['done', ['ship', 'file']],
     ]);
     assert.deepStrictEqual(
       due.columns.map((column) => column.droppable),
-      [false, true, true, false, false, true, true],
+      [false, true, true, false, false, true, false, true],
     );
     assert.strictEqual(due.columns[0].cards[0].overdue, true);
+  });
+
+  test('a task more than 30 days overdue has a muted band of its own, and says when it was due', () => {
+    const index = createIndex();
+    index.tasks.set(
+      'lease',
+      createTask('lease', '- [ ] Renew the lease 📅 2026-07-01', {
+        dueAt: at(7, 1),
+        dueText: '2026-07-01',
+      }),
+    );
+    const due = board(index, 'due', '', options);
+    const band = due.columns.find((column) => column.id === 'due:needsdate');
+    assert.deepStrictEqual(band?.cards.map((card) => card.taskId), ['lease']);
+    assert.strictEqual(band?.label, 'Needs a new date');
+    assert.strictEqual(band?.cards[0].overdue, false);
+    assert.strictEqual(band?.cards[0].stale, true);
+    assert.ok(band?.cards[0].details.includes('was due 2026-07-01'), band?.cards[0].details.join(', '));
+    assert.strictEqual(resolveTaskMove(index.tasks.get('lease') as Task, 'due:needsdate', options).kind, 'unchanged');
   });
 
   test('limits Done and narrows the board with a query', () => {

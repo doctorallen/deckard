@@ -1035,6 +1035,7 @@ export function createDashboardTask(
       ? {
           dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
           overdue: due.overdue,
+          ...(due.stale ? { stale: true } : {}),
         }
       : {}),
   };
@@ -1587,6 +1588,7 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:done', label: 'is:done', detail: 'Completed tasks' },
   { value: 'is:overdue', label: 'is:overdue', detail: 'Open tasks past their due date' },
   { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
+  { value: 'is:needs-date', label: 'is:needs-date', detail: 'Open tasks more than 30 days past their due date' },
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
   { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
@@ -1628,7 +1630,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:task, is:note, is:blocked, is:blocking, is:mine, is:assigned, or is:unassigned';
+      return 'is:open, is:done, is:overdue, is:due, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:mine, is:assigned, or is:unassigned';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, priority, id, and dependsOn';
     case 'in':

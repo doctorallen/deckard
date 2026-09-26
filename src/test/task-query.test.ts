@@ -42,6 +42,20 @@ suite('Task metadata queries', () => {
     ]);
   });
 
+  test('is:needs-date finds only what is past the line, and is:overdue still finds it', () => {
+    index.tasks.set(
+      'stale',
+      createTask({ id: 'stale', dueAt: inDays(-45) }),
+    );
+    try {
+      assert.deepStrictEqual(matches('is:needs-date'), ['stale']);
+      assert.deepStrictEqual(matches('is:needsdate'), ['stale']);
+      assert.deepStrictEqual(matches('is:overdue'), ['late', 'stale']);
+    } finally {
+      index.tasks.delete('stale');
+    }
+  });
+
   test('finds tasks by scheduled date and priority', () => {
     assert.deepStrictEqual(matches('scheduled <= today'), ['undated']);
     assert.deepStrictEqual(matches('priority > medium'), ['soon', 'undated']);

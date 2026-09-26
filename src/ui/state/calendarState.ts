@@ -1,3 +1,4 @@
+import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
 import { Weekday } from '../../core/markdown/dates';
 import { WorkspaceIndex } from '../../core/types';
@@ -55,6 +56,12 @@ export interface CalendarSnapshot {
   notePath?: string;
   /** The weekday names across the top, from the week's first day. */
   weekdays: string[];
+  /**
+   * Days before this one, YYYY-MM-DD, are past `needsNewDateAfterDays`: their
+   * due counts are drawn muted and say the tasks need a new date. Absent
+   * when the setting is 0.
+   */
+  needsNewDateBefore?: string;
   weeks: CalendarWeek[];
 }
 
@@ -169,6 +176,9 @@ export function createCalendar(
     nextMonth: shiftMonth(month, 1),
     currentMonth: today.slice(0, 7),
     ...(notePath ? { notePath } : {}),
+    ...(needsNewDateBefore(now.getTime()) !== undefined
+      ? { needsNewDateBefore: formatLocalDate(new Date(needsNewDateBefore(now.getTime())!)) }
+      : {}),
     weekdays: Array.from({ length: 7 }, (_, offset) => WEEKDAY_SHORT[(weekStart + offset) % 7]),
     weeks,
   };

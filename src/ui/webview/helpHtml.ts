@@ -416,6 +416,7 @@ updated: 2026-09-20
       <div class="table-scroll"><table><caption>Shorthands, written the way GitHub writes them</caption><thead><tr><th>Shorthand</th><th>Finds</th></tr></thead><tbody>
         <tr><td><code>is:open</code>, <code>is:done</code></td><td>Open or completed tasks.</td></tr>
         <tr><td><code>is:overdue</code>, <code>is:due</code></td><td>Past their due date, or due within seven days.</td></tr>
+        <tr><td><code>is:needs-date</code></td><td>More than 30 days past their due date, and reading <em>was due …</em>.</td></tr>
         <tr><td><code>is:task</code>, <code>is:note</code></td><td>Every task, or note entries without tasks.</td></tr>
         <tr><td><code>is:blocked</code>, <code>is:blocking</code></td><td>Waiting for an open task, and the tasks they wait for.</td></tr>
         <tr><td><code>is:mine</code></td><td>Tasks for the person <code>deckard.me</code> names, and tasks for nobody in particular.</td></tr>

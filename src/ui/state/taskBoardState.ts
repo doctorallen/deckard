@@ -1,3 +1,4 @@
+import { needsNewDate } from '../../core/taskPolicy';
 import {
   addDays,
   appendToTaskText,
@@ -613,6 +614,9 @@ const DUE_BANDS: ReadonlyArray<[string, string, boolean]> = [
   ['week', 'Within a week', false],
   ['later', 'Later', false],
   ['', 'No due date', true],
+  // A band of its own, muted, for what a month has passed by: it is not a
+  // red column of things to do today.
+  ['needsdate', 'Needs a new date', false],
 ];
 
 function createDueColumns(open: Task[], now: number): ColumnDraft[] {
@@ -629,6 +633,9 @@ function getDueBand(dueAt: number | undefined, now: number): string {
     return '';
   }
   const today = startOfDay(now);
+  if (needsNewDate(dueAt, now)) {
+    return 'needsdate';
+  }
   if (dueAt < today) {
     return 'overdue';
   }
@@ -665,7 +672,8 @@ function createCard(
     completed: task.completed,
     filePath: task.filePath,
     line: task.lineNumber,
-    overdue: open && task.dueAt !== undefined && task.dueAt < today,
+    overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now),
+    ...(open && needsNewDate(task.dueAt, now) ? { stale: true } : {}),
     details: [
       !open && task.doneAt !== undefined
         ? `done ${formatIsoDate(task.doneAt)}`

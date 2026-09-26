@@ -404,6 +404,8 @@ export interface DashboardTask {
   dueLabel?: string;
   /** Whether the due date has passed; set with `dueLabel`. */
   overdue?: boolean;
+  /** Whether it passed so long ago the task needs a new date; drawn muted. */
+  stale?: boolean;
 }
 
 export interface DashboardNote extends TagOverviewCard {
@@ -490,6 +492,10 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   queries?: string[];
   savedFilters?: DashboardSavedFilter[];
   agenda?: DashboardWidgetAgendaGroup[];
+  /** Open tasks past `needsNewDateAfterDays`, which the agenda leaves out. */
+  needsNewDate?: number;
+  /** The search that lists them, scoped by `deckard.agenda.query`. */
+  needsNewDateQuery?: string;
   stats?: Array<{ label: string; value: number }>;
   /** A saved-search widget's search. */
   savedQuery?: string;
@@ -1415,6 +1421,8 @@ export interface TaskBoardCard {
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
   overdue: boolean;
+  /** Past `needsNewDateAfterDays`: its date reads `was due …`, muted. */
+  stale?: boolean;
   /** The headings above the task, top down, tags stripped. */
   headingPath: string[];
 }

@@ -52,6 +52,10 @@
   **Needs a new date** group with its own Reschedule All. The status bar's
   hover says how many. `deckard.tasks.needsNewDateAfterDays` sets the days,
   and `0` keeps the old behavior. `is:overdue` still finds every one.
+  Wherever such a task is listed — the board, which gives it a muted column
+  of its own, search pages, query blocks, Home, and the calendar — it reads
+  **was due 2026-07-01** in muted text, not red. `is:needs-date` finds them,
+  and Home's Tasks view widget says how many under its list.
 
 - **Overdue lists the most recently slipped task first, five at a time.**
   A task that slipped yesterday can still be saved, and a month-old one is

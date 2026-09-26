@@ -49,6 +49,7 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .note-dot { width: 5px; height: 5px; margin-top: 1px; border-radius: 50%; background: var(--cyan); }
 .due { color: var(--green); font-size: var(--text-xs); line-height: 13px; }
 .due.overdue { color: var(--warning-orange); }
+.due.stale { color: var(--muted); }
 ${getPageTailCss()}
 </style>
 </head>
@@ -70,30 +71,37 @@ ${getComponentScript()}
 
   function post(message) { vscode.postMessage(message); }
 
-  function describeDay(day, overdue) {
+  function describeDay(day, overdue, stale) {
     const parts = [day.date];
     if (day.isToday) parts.push('today');
     if (day.notePath) parts.push('daily note');
-    if (day.dueCount > 0) parts.push(day.dueCount + (day.dueCount === 1 ? ' task ' : ' tasks ') + (overdue ? 'overdue' : 'due'));
+    if (day.dueCount > 0) {
+      parts.push(stale
+        ? day.dueCount + (day.dueCount === 1 ? ' task needs' : ' tasks need') + ' a new date'
+        : day.dueCount + (day.dueCount === 1 ? ' task ' : ' tasks ') + (overdue ? 'overdue' : 'due'));
+    }
     return parts.join(', ');
   }
 
   function renderDay(day) {
-    const overdue = day.dueCount > 0 && day.date < state.today;
+    // A day past needsNewDateAfterDays keeps its count, but not the warning:
+    // its tasks need a new date, not doing today.
+    const stale = day.dueCount > 0 && !!state.needsNewDateBefore && day.date < state.needsNewDateBefore;
+    const overdue = day.dueCount > 0 && day.date < state.today && !stale;
     const classes = ['day'];
     if (!day.inMonth) classes.push('outside');
     if (day.isToday) classes.push('today');
-    const label = escapeHtml(describeDay(day, overdue));
+    const label = escapeHtml(describeDay(day, overdue, stale));
     // The tooltip says which tasks and which headings, not only how many,
     // so the right day is found without opening each.
-    const tooltip = escapeHtml([describeDay(day, overdue)]
+    const tooltip = escapeHtml([describeDay(day, overdue, stale)]
       .concat((day.dueTitles || []).map(function (title) { return '☐ ' + title; }))
       .concat((day.headings || []).map(function (heading) { return '# ' + heading; }))
       .join('\\n'));
     // Both rows are always drawn, empty when there is nothing to mark, so
     // the number above them sits in the same place in every cell.
     const dot = day.notePath ? '<span class="note-dot" aria-hidden="true"></span>' : '<span aria-hidden="true"></span>';
-    const due = '<span class="due' + (overdue ? ' overdue' : '') + '" aria-hidden="true">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>';
+    const due = '<span class="due' + (overdue ? ' overdue' : stale ? ' stale' : '') + '" aria-hidden="true">' + (day.dueCount > 0 ? day.dueCount : '') + '</span>';
     // One day in the grid is tabbable at a time: the focused one, else today,
     // else the first of the month.
     const focusable = day.date === tabStopDate();

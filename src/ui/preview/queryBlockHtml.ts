@@ -256,8 +256,10 @@ function renderPriority(priority: string): string {
 
 function renderTask(item: QueryBlockItem, now: number): string {
   const done = item.completed === true;
+  const due =
+    item.dueAt !== undefined && !done ? describeDueDate(item.dueAt, now, item.dueText) : undefined;
   const overdue =
-    !done && item.dueAt !== undefined && item.dueAt < startOfDay(now);
+    !done && item.dueAt !== undefined && item.dueAt < startOfDay(now) && !due?.stale;
   // An open task's due date reads beside today, "overdue 12 days ·
   // 2026-09-01", so the state is in the words and not the color alone.
   const dueLabel =
@@ -268,7 +270,7 @@ function renderTask(item: QueryBlockItem, now: number): string {
         : '';
   const details = [
     dueLabel
-      ? `<span class="deckard-query-due${overdue ? ' is-overdue' : ''}">${escapeHtml(dueLabel)}</span>`
+      ? `<span class="deckard-query-due${overdue ? ' is-overdue' : due?.stale ? ' is-stale' : ''}">${escapeHtml(dueLabel)}</span>`
       : '',
     item.scheduledAt !== undefined
       ? `scheduled ${formatIsoDate(item.scheduledAt)}`
