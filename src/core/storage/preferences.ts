@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { legacyIdOf } from '../markdown/parser';
 import {
   isTaskColumnId,
   TableSort,
@@ -835,13 +836,17 @@ export class PreferencesStore implements vscode.Disposable {
     ) {
       return;
     }
+    // Ids were widened in 1.23. What was kept under an old id is carried to
+    // the new id of the same entry before anything is pruned, so task order
+    // and view counts survive the upgrade.
+    const current = carryLegacyIds(this.preferences, validTasks, validSections);
     const sectionAccessCounts = validSectionIds
       ? Object.fromEntries(
-          Object.entries(this.preferences.sectionAccessCounts).filter(
+          Object.entries(current.sectionAccessCounts).filter(
             ([sectionId]) => validSections?.has(sectionId) ?? false,
           ),
         )
-      : this.preferences.sectionAccessCounts;
+      : current.sectionAccessCounts;
     const tagAccessCounts = Object.fromEntries(
       Object.entries(this.preferences.tagAccessCounts).filter(([tagKey]) =>
         validTags.has(tagKey),
@@ -854,11 +859,11 @@ export class PreferencesStore implements vscode.Disposable {
     );
     const sectionAccessTimes = validSections
       ? Object.fromEntries(
-          Object.entries(this.preferences.sectionAccessTimes ?? {}).filter(
+          Object.entries(current.sectionAccessTimes ?? {}).filter(
             ([sectionId]) => validSections.has(sectionId),
           ),
         )
-      : this.preferences.sectionAccessTimes;
+      : current.sectionAccessTimes;
     // Every tag in the first index is known; a tag seen after that is new
     // from the moment it is seen, until it is gone again.
     const previousFirstSeen = this.preferences.tagFirstSeen;
@@ -880,9 +885,7 @@ export class PreferencesStore implements vscode.Disposable {
       ),
       tagAccessCounts,
       tagAccessTimes,
-      taskOrder: this.preferences.taskOrder.filter((taskId) =>
-        validTasks.has(taskId),
-      ),
+      taskOrder: current.taskOrder.filter((taskId) => validTasks.has(taskId)),
       sectionAccessCounts,
       sectionAccessTimes,
       entityAccessOrder: this.preferences.entityAccessOrder.filter(
@@ -1526,4 +1529,67 @@ function normalizeTableSort(value: unknown): TableSort | undefined {
   return isTaskColumnId(column)
     ? { column, direction: direction === 'desc' ? 'desc' : 'asc' }
     : undefined;
+}
+
+/**
+ * The id-keyed preferences with each id from before 1.23 renamed to the
+ * entry's id now, when the index has an entry whose id it is the first half
+ * of. Nothing is looked up unless an old id is actually kept.
+ */
+export function carryLegacyIds(
+  preferences: Pick<
+    PersistedPreferences,
+    'taskOrder' | 'sectionAccessCounts' | 'sectionAccessTimes'
+  >,
+  validTaskIds: ReadonlySet<string>,
+  validSectionIds: ReadonlySet<string> | undefined,
+): Pick<PersistedPreferences, 'taskOrder' | 'sectionAccessCounts' | 'sectionAccessTimes'> {
+  const isLegacy = (id: string): boolean => /^[a-z]+-[0-9a-z]+$/.test(id);
+  const stale = (id: string, valid: ReadonlySet<string> | undefined) =>
+    !valid?.has(id) && isLegacy(id);
+  const sectionKeys = [
+    ...Object.keys(preferences.sectionAccessCounts),
+    ...Object.keys(preferences.sectionAccessTimes ?? {}),
+  ];
+  const tasksNeed = preferences.taskOrder.some((id) => stale(id, validTaskIds));
+  const sectionsNeed =
+    validSectionIds !== undefined && sectionKeys.some((id) => stale(id, validSectionIds));
+  if (!tasksNeed && !sectionsNeed) {
+    return preferences;
+  }
+  const renames = (valid: ReadonlySet<string> | undefined): Map<string, string> => {
+    const map = new Map<string, string>();
+    valid?.forEach((id) => {
+      const legacy = legacyIdOf(id);
+      // Two entries sharing an old id is the collision this fixes; the
+      // first keeps what was stored, as the index kept one of them.
+      if (legacy && !map.has(legacy)) {
+        map.set(legacy, id);
+      }
+    });
+    return map;
+  };
+  const taskRenames = tasksNeed ? renames(validTaskIds) : new Map<string, string>();
+  const sectionRenames = sectionsNeed ? renames(validSectionIds) : new Map<string, string>();
+  const renameKeys = <T>(record: Record<string, T>): Record<string, T> => {
+    const renamed: Record<string, T> = {};
+    Object.entries(record).forEach(([id, value]) => {
+      const next = sectionRenames.get(id) ?? id;
+      // A count already kept under the new id wins over the old one.
+      if (!(next in renamed) || next === id) {
+        renamed[next] = value;
+      }
+    });
+    return renamed;
+  };
+  const seen = new Set<string>();
+  return {
+    taskOrder: preferences.taskOrder
+      .map((id) => taskRenames.get(id) ?? id)
+      .filter((id) => !seen.has(id) && Boolean(seen.add(id))),
+    sectionAccessCounts: renameKeys(preferences.sectionAccessCounts),
+    sectionAccessTimes: preferences.sectionAccessTimes
+      ? renameKeys(preferences.sectionAccessTimes)
+      : preferences.sectionAccessTimes,
+  };
 }

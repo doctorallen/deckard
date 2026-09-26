@@ -1801,12 +1801,35 @@ export function getTaskLineId(
     : undefined;
 }
 
+/**
+ * An id is two independent 32-bit hashes of the same text. One alone let two
+ * of 5,000 notes' sections share an id about one time in five, and the index
+ * keeps one entry per id, so the other vanished. Two make that about one in
+ * a billion billion.
+ *
+ * The first hash is the one ids were made of before 1.23, so an id written
+ * then is this id without its last part: `legacyIdOf` reads it back, and
+ * what was kept under the old id is carried over to the new one.
+ */
 function createId(prefix: string, value: string): string {
   let hash = 0;
+  // FNV-1a, which shares nothing with the hash above.
+  let second = 0x811c9dc5;
 
   for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+    const code = value.charCodeAt(index);
+    hash = ((hash << 5) - hash + code) | 0;
+    second = Math.imul(second ^ code, 0x01000193);
   }
 
-  return `${prefix}-${Math.abs(hash).toString(36)}`;
+  return `${prefix}-${Math.abs(hash).toString(36)}-${(second >>> 0).toString(36)}`;
+}
+
+/**
+ * The id an entry had before ids were widened, or undefined for an id that
+ * is already of the old kind.
+ */
+export function legacyIdOf(id: string): string | undefined {
+  const match = /^([a-z]+-[0-9a-z]+)-[0-9a-z]+$/.exec(id);
+  return match ? match[1] : undefined;
 }

@@ -68,6 +68,13 @@
   camera at once; **Undo** now sits beside it for eight seconds, with the
   focus on it.
 
+- **Two notes' sections or tasks no longer share an id, and one of them no
+  longer vanishes.** Ids were a 32-bit hash of the note, line, and text;
+  at 5,000 notes about one workspace in five had two entries hash alike,
+  and the index kept only one, so a section or task silently went missing
+  from every view. Ids are now twice as wide. Task order and view counts
+  kept under the old ids are carried over to the new ones.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
