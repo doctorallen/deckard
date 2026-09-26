@@ -213,6 +213,7 @@ export class AgendaTreeProvider
       statusNamespace: getStatusNamespace(),
       taskOrder: this.preferences?.value.taskOrder ?? [],
       doneToday: true,
+      upcomingByDay: true,
     });
     // The badge counts what is overdue or due today however the Agenda is
     // grouped, since that is what it is a badge for.
@@ -466,7 +467,9 @@ function createGroupItem(
   );
   item.id = `agenda:${group.id}`;
   item.description = String(group.entries.length);
-  item.iconPath = GROUP_ICONS[group.id] ?? GROUPING_ICONS[groupBy];
+  item.iconPath =
+    GROUP_ICONS[group.id.startsWith('upcoming:') ? 'upcoming' : group.id] ??
+    GROUPING_ICONS[groupBy];
   // Overdue, and what needs a new date, are told apart: they are the groups
   // offered a date for all beside their name.
   item.contextValue =
@@ -602,6 +605,10 @@ export function groupColumnId(
     return `assignee:${groupId === 'none' ? '' : groupId}`;
   }
   if (groupBy === 'due') {
+    // A day of Upcoming is one date, so a task dropped on it is due then.
+    if (groupId.startsWith('upcoming:')) {
+      return `due:${groupId.slice('upcoming:'.length)}`;
+    }
     return groupId === 'today' ? 'due:today' : undefined;
   }
   return undefined;

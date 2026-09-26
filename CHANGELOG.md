@@ -49,6 +49,11 @@
 
 ### Changed
 
+- **Upcoming lists each day on its own.** The Tasks view's Upcoming is a
+  group per day that has tasks — Tomorrow, Mon Sep 28 — so a crowded
+  Thursday shows before Thursday, and a task dropped on a day is due that
+  day.
+
 - **A task a month past its date waits under Needs a new date.** An open
   task more than 30 days overdue leaves Overdue, the Tasks view's badge, the
   status bar's count and warning color, and the reminder, for a folded

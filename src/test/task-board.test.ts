@@ -451,6 +451,11 @@ suite('Task board', () => {
     assert.strictEqual(apply('draft', 'priority:high'), '- [ ] Draft notes #status/todo ⏫');
     assert.strictEqual(apply('call', 'due:tomorrow'), '- [ ] Call Ren 📅 2026-09-14');
     assert.strictEqual(apply('call', 'due:later'), 'refused');
+    // A day of the Tasks view's Upcoming names one date.
+    assert.strictEqual(apply('call', 'due:2026-09-17'), '- [ ] Call Ren 📅 2026-09-17');
+    assert.strictEqual(apply('call', 'due:2026-09-13'), 'unchanged');
+    const label = resolveTaskMove(task('call'), 'due:2026-09-17', options);
+    assert.strictEqual(label.kind === 'edit' ? label.label : label.kind, 'Due Thu 2026-09-17');
     // Moving a finished task out of Done reopens it in the same edit.
     assert.strictEqual(apply('ship', 'status:doing'), '- [ ] Ship it #status/doing');
   });

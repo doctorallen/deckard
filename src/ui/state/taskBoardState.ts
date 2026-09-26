@@ -408,6 +408,19 @@ export function resolveTaskMove(
       };
     }
     case 'due': {
+      // One date, as a day of the Tasks view's Upcoming names it.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        if (!task.completed && task.dueAt !== undefined && formatIsoDate(task.dueAt) === value) {
+          return { kind: 'unchanged' };
+        }
+        const [year, month, day] = value.split('-').map(Number);
+        const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(year, month - 1, day).getDay()];
+        return {
+          kind: 'edit',
+          label: `Due ${weekday} ${value}`,
+          edit: (line) => setTaskDate(reopen(line), column, 'due', value, options.format),
+        };
+      }
       if (!task.completed && getDueBand(task.dueAt, options.now) === value) {
         return { kind: 'unchanged' };
       }

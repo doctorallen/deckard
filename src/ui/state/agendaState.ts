@@ -112,6 +112,11 @@ export interface AgendaOptions {
    * list shows what was finished and not only what is left.
    */
   doneToday?: boolean;
+  /**
+   * Splits Upcoming into a group per day, Tomorrow, Mon Sep 28, and so on,
+   * so a busy Thursday shows before Thursday comes.
+   */
+  upcomingByDay?: boolean;
 }
 
 /**
@@ -246,7 +251,14 @@ export function createAgenda(
     ? createDoneToday(listed, index, today, tomorrow, openDependencyIds)
     : [];
   if (groupBy === 'due') {
-    return [...byDue, ...done];
+    return [
+      ...(options.upcomingByDay
+        ? byDue.flatMap((group) =>
+            group.id === 'upcoming' ? splitByDay(group.entries, tomorrow) : [group],
+          )
+        : byDue),
+      ...done,
+    ];
   }
   // The Agenda holds the same tasks whichever way it is grouped. Only the
   // axis changes.
@@ -260,6 +272,33 @@ export function createAgenda(
         : groupByAssignee(entries, index, order)),
     ...done,
   ];
+}
+
+/**
+ * Upcoming, one group per day that has tasks, each keeping the group's own
+ * order: `upcoming:2026-09-28`, labeled Tomorrow or `Mon Sep 28`.
+ */
+function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGroup[] {
+  const days = new Map<string, AgendaEntry[]>();
+  [...entries]
+    .sort((left, right) => startOfDay(left.at) - startOfDay(right.at))
+    .forEach((entry) => {
+      const date = formatIsoDate(entry.at);
+      days.set(date, [...(days.get(date) ?? []), entry]);
+    });
+  return [...days.entries()].map(([date, held]) => ({
+    id: `upcoming:${date}`,
+    label: startOfDay(held[0].at) === tomorrow ? 'Tomorrow' : formatDayLabel(held[0].at),
+    entries: entries.filter((entry) => held.includes(entry)),
+  }));
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A day as a group names it, `Mon Sep 28`, with no locale comma. */
+function formatDayLabel(at: number): string {
+  const date = new Date(at);
+  return `${WEEKDAYS[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
 /**

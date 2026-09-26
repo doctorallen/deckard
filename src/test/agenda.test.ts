@@ -34,6 +34,29 @@ suite('Agenda', () => {
     );
   });
 
+  test('splits Upcoming into a group per day when asked', () => {
+    const index = createIndex([
+      createTask({ id: 'tomorrow', dueAt: at(9, 14) }),
+      createTask({ id: 'monday', dueAt: at(9, 14) + 0, scheduledAt: undefined, lineNumber: 2 }),
+      createTask({ id: 'thursday', dueAt: at(9, 17) }),
+      createTask({ id: 'starts', startAt: at(9, 17), lineNumber: 3 }),
+    ]);
+    const byDay = createAgenda(index, now, { upcomingDays: 7, upcomingByDay: true });
+    assert.deepStrictEqual(
+      byDay.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.id)]),
+      [
+        ['upcoming:2026-09-14', 'Tomorrow', ['tomorrow', 'monday']],
+        ['upcoming:2026-09-17', 'Thu Sep 17', ['thursday', 'starts']],
+      ],
+    );
+    assert.deepStrictEqual(
+      createAgenda(index, now, { upcomingDays: 7 }).map((group) => group.id),
+      ['upcoming'],
+      'one Upcoming unless asked',
+    );
+    assert.strictEqual(groupColumnId('upcoming:2026-09-17', 'due'), 'due:2026-09-17');
+  });
+
   test('ends with what was done today, when asked, whatever the grouping', () => {
     const index = createIndex([
       createTask({ id: 'open', dueAt: at(9, 13) }),
