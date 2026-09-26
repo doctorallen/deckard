@@ -14,6 +14,8 @@ import {
   parseLocalDate,
 } from '../commands/dailyNote';
 import { openSourceAt } from '../commands/navigation';
+import { setTaskDateField } from '../commands/agendaActions';
+import { openTask, toggleTask } from '../commands/taskActions';
 import { readWeekStart } from '../commands/datePrompt';
 import { clampToMonth, createCalendar } from '../state/calendarState';
 import { getCalendarHtml } from './calendarHtml';
@@ -172,6 +174,27 @@ export class CalendarView
           await openSourceAt(message.filePath, 1);
         }
         return;
+      case 'openTask': {
+        const task = this.indexer.getSnapshot().tasks.get(message.taskId);
+        if (task) {
+          await openTask(task);
+        }
+        return;
+      }
+      case 'toggleTask': {
+        const task = this.indexer.getSnapshot().tasks.get(message.taskId);
+        if (task) {
+          await toggleTask(task, message.completed);
+        }
+        return;
+      }
+      case 'moveTask': {
+        const task = this.indexer.getSnapshot().tasks.get(message.taskId);
+        if (task && !task.completed) {
+          await setTaskDateField(task, message.field, message.date);
+        }
+        return;
+      }
       case 'openDay': {
         const note = listDailyNotes(this.indexer.getSnapshot()).find(
           (entry) => entry.date === message.date,

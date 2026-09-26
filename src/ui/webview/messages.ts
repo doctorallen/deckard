@@ -827,6 +827,25 @@ export function parseCalendarMessage(
         Object.keys(value).length === 2
         ? { type: 'openNote', filePath: value.filePath }
         : undefined;
+    case 'openTask':
+      return typeof value.taskId === 'string' && value.taskId.length > 0 && Object.keys(value).length === 2
+        ? { type: 'openTask', taskId: value.taskId }
+        : undefined;
+    case 'toggleTask':
+      return typeof value.taskId === 'string' &&
+        value.taskId.length > 0 &&
+        typeof value.completed === 'boolean' &&
+        Object.keys(value).length === 3
+        ? { type: 'toggleTask', taskId: value.taskId, completed: value.completed }
+        : undefined;
+    case 'moveTask':
+      return typeof value.taskId === 'string' &&
+        value.taskId.length > 0 &&
+        (value.field === 'due' || value.field === 'scheduled') &&
+        isDate &&
+        Object.keys(value).length === 4
+        ? { type: 'moveTask', taskId: value.taskId, field: value.field, date }
+        : undefined;
     default:
       return undefined;
   }

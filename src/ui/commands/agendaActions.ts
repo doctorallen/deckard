@@ -187,6 +187,45 @@ export function describeLoadAfter(
  * an Undo; several are one write, previewed as any multi-note write is and
  * taken back by Undo Last Change.
  */
+/**
+ * Sets one task's due or scheduled date, saying what it is now, with Undo
+ * through the same checked edit as every other task change. Several tasks
+ * go through `setTasksDue`, whose bulk edit writes due dates alone.
+ */
+export async function setTaskDateField(
+  task: Task,
+  field: 'due' | 'scheduled',
+  date: string | undefined,
+): Promise<boolean> {
+  if (task.completed) {
+    return false;
+  }
+  return updateTaskLine(
+    task,
+    (line, { uri }) =>
+      setTaskDate(
+        line,
+        task.checkboxColumn,
+        field,
+        date,
+        readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
+      ),
+    describeDateChange(quoteTaskTitle(task), field, date),
+  );
+}
+
+/** What a date change says: `"Call Ren" is due 2026-09-26.` */
+export function describeDateChange(
+  title: string,
+  field: 'due' | 'scheduled',
+  date: string | undefined,
+): string {
+  if (field === 'scheduled') {
+    return date ? `${title} is scheduled ${date}.` : `${title} has no scheduled date now.`;
+  }
+  return date ? `${title} is due ${date}.` : `${title} has no due date now.`;
+}
+
 export async function setTasksDue(
   tasks: readonly Task[],
   date: string | undefined,
@@ -208,9 +247,7 @@ export async function setTasksDue(
           date,
           readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
         ),
-      date
-        ? `${quoteTaskTitle(task)} is due ${date}.`
-        : `${quoteTaskTitle(task)} has no due date now.`,
+      describeDateChange(quoteTaskTitle(task), 'due', date),
     );
     return;
   }

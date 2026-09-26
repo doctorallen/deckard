@@ -69,6 +69,15 @@ main { max-width: none; padding: 10px; border-top: var(--edge) solid var(--amber
 .day-note-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .day-note-row .day-note-label { color: var(--muted); }
 .day-panel .empty { margin-top: var(--space-2); }
+.day-group { margin-top: var(--space-3); }
+.day-group > h3, .day-group > summary { margin: 0 0 var(--space-1); color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.day-group .task-list { gap: var(--space-1); }
+/* A row is one line in a narrow sidebar: the checkbox, the words, and its
+   button, the words cut short rather than pushing the button off. */
+.day-panel .task-row { grid-template-columns: 20px minmax(0, 1fr) auto; padding: var(--space-2); clip-path: none; }
+.day-panel .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-move { align-self: center; padding: 0 var(--space-2); font-size: var(--text-xs); white-space: nowrap; }
+.day-more { margin-top: var(--space-1); }
 ${getPageTailCss()}
 </style>
 </head>
@@ -206,9 +215,38 @@ ${getComponentScript()}
     return '<section class="day-panel" aria-labelledby="day-title"><h2 id="day-title">' + escapeHtml(title) + '</h2>' + note + renderDayLists(day) + '</section>';
   }
 
+  /** The groups a reader asked to see whole, until the page reloads. */
+  const shownGroups = new Set();
+  const DAY_ROWS = 5;
+
+  /** One task in the panel, with the button that moves it a day on. */
+  function renderDayTask(item, field, move) {
+    const trailing = field && move
+      ? '<button type="button" class="day-move" data-action="move-task" data-task-id="' + escapeHtml(item.task.id) + '" data-field="' + field + '" data-date="' + escapeHtml(move.date) + '" aria-label="' + escapeHtml('Move "' + item.task.title + '" to ' + (move.label === 'Tomorrow' ? 'tomorrow, ' : 'the next day, ') + move.date) + '">' + escapeHtml(move.label) + '</button>'
+      : '';
+    return renderTaskListRow(item, { titleDisplay: 'inline', trailing: trailing });
+  }
+
+  function renderTaskGroup(id, label, items, field, move) {
+    if (!items || !items.length) return '';
+    const all = shownGroups.has(id);
+    const shown = all ? items : items.slice(0, DAY_ROWS);
+    const more = items.length - shown.length;
+    return '<section class="day-group" aria-label="' + escapeHtml(label) + '"><h3>' + escapeHtml(label) + ' (' + items.length + ')</h3><div class="task-list">'
+      + shown.map(function (item) { return renderDayTask(item, field, move); }).join('') + '</div>'
+      + (more > 0 ? '<button type="button" class="day-more text-button" data-action="show-group" data-group="' + id + '">Show ' + more + ' more</button>' : '')
+      + '</section>';
+  }
+
   /** What the day holds besides its note; Nothing due or scheduled when it holds nothing. */
-  function renderDayLists() {
-    return '<p class="empty">Nothing due or scheduled.</p>';
+  function renderDayLists(day) {
+    const due = renderTaskGroup('due', 'Due', day.due, 'due', day.move);
+    const scheduled = renderTaskGroup('scheduled', 'Scheduled', day.scheduled, 'scheduled', day.move);
+    // What was finished that day, folded: unchecking one reopens it.
+    const done = day.done && day.done.length
+      ? '<details class="day-group"><summary>Done (' + day.done.length + ')</summary><div class="task-list">' + day.done.map(function (item) { return renderDayTask(item); }).join('') + '</div></details>'
+      : '';
+    return (due || scheduled ? '' : '<p class="empty">Nothing due or scheduled.</p>') + due + scheduled + done;
   }
 
   /** Marks a day as chosen at once, and tells the host after a pause. */
@@ -226,6 +264,12 @@ ${getComponentScript()}
 
   /** Move the focus by days, weeks, or to the ends of a week. */
   document.addEventListener('keydown', function (event) {
+    const row = event.target && event.target.matches && event.target.matches('.day-panel .task-row') ? event.target : null;
+    if (row && event.key === 'Enter') {
+      event.preventDefault();
+      post({ type: 'openTask', taskId: row.getAttribute('data-task-id') });
+      return;
+    }
     const day = event.target && event.target.closest ? event.target.closest('.day') : null;
     if (!day) return;
     const steps = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 };
@@ -273,7 +317,12 @@ ${getComponentScript()}
 
   document.addEventListener('click', function (event) {
     const target = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
-    if (!target) return;
+    // A task row opens its task, anywhere but its checkbox and its button.
+    if (!target || target.getAttribute('data-action') === 'toggle-task') {
+      const row = event.target && event.target.closest ? event.target.closest('.day-panel .task-row') : null;
+      if (row && !event.target.closest('input, button')) post({ type: 'openTask', taskId: row.getAttribute('data-task-id') });
+      return;
+    }
     const action = target.getAttribute('data-action');
     if (action === 'open-day') {
       if (state && state.dayPanel) {
@@ -290,7 +339,22 @@ ${getComponentScript()}
       post(date ? { type: 'showMonth', month: target.getAttribute('data-month'), date: date } : { type: 'showMonth', month: target.getAttribute('data-month') });
     }
     else if (action === 'open-note') post({ type: 'openNote', filePath: target.getAttribute('data-file-path') });
+    else if (action === 'move-task') post({ type: 'moveTask', taskId: target.getAttribute('data-task-id'), field: target.getAttribute('data-field'), date: target.getAttribute('data-date') });
+    else if (action === 'show-group') {
+      shownGroups.add(target.getAttribute('data-group'));
+      renderKeepingPlace(render);
+    }
     else if (action === 'create-day') post({ type: 'createDay', date: target.getAttribute('data-date') });
+  });
+
+  // A task's checkbox completes it, or reopens it in Done.
+  document.addEventListener('change', function (event) {
+    const box = event.target;
+    if (!box || !box.matches || !box.matches('.day-panel [data-action="toggle-task"]')) return;
+    const row = box.closest('.task-row');
+    const title = row ? row.querySelector('.task-title') : null;
+    post({ type: 'toggleTask', taskId: box.getAttribute('data-task-id'), completed: box.checked });
+    announce((box.checked ? 'Completed "' : 'Reopened "') + (title ? title.textContent : 'the task') + '".');
   });
 
   // With the panel on, a click chooses a day and a double-click opens it.

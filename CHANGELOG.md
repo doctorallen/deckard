@@ -37,7 +37,8 @@
 - **A day under the calendar.** With `deckard.calendar.dayPanel` on, or
   **Open Day Panel** in the Calendar's … menu, a click chooses a day and
   the panel below the month names it and offers its daily note, Open or
-  Create. Double-click or Enter opens the day's note. Off by default, so a
+  Create, and lists the tasks due, scheduled, and done that day with a
+  checkbox and a **Tomorrow** button. Double-click or Enter opens the day's note. Off by default, so a
   click still opens the note.
 
 - **The Outline focuses and filters.** **Focus Section**, on a heading in

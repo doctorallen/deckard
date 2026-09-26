@@ -7,7 +7,9 @@ import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
 import { clampToMonth, createCalendar, createCalendarDay } from '../ui/state/calendarState';
 import { parseCalendarMessage } from '../ui/webview/messages';
+import { describeDateChange } from '../ui/commands/agendaActions';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
+import { indexWithParking } from './parkedFixture';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 
 export function indexOf(notes: Record<string, string>): WorkspaceIndex {
@@ -104,12 +106,11 @@ suite('The calendar day panel', () => {
   });
 
   test('names the chosen day, with Today, Yesterday, or Tomorrow, and the year only when it is another', () => {
-    assert.deepStrictEqual(createCalendarDay(index, '2026-09-25', NOW), {
-      date: '2026-09-25',
-      title: 'Friday, September 25',
-      relative: 'Today',
-      notePath: 'notes/2026-09-25.md',
-    });
+    const { date, title, relative, notePath } = createCalendarDay(index, '2026-09-25', NOW);
+    assert.deepStrictEqual(
+      { date, title, relative, notePath },
+      { date: '2026-09-25', title: 'Friday, September 25', relative: 'Today', notePath: 'notes/2026-09-25.md' },
+    );
     assert.strictEqual(createCalendarDay(index, '2026-09-24', NOW).relative, 'Yesterday');
     assert.strictEqual(createCalendarDay(index, '2026-09-26', NOW).relative, 'Tomorrow');
     assert.strictEqual(createCalendarDay(index, '2027-10-01', NOW).title, 'Friday, October 1, 2027');
@@ -222,6 +223,109 @@ suite('The calendar day panel', () => {
       assert.deepStrictEqual(missing.lastPosted('createDay'), { type: 'createDay', date: '2026-09-22' });
     } finally {
       missing.dispose();
+    }
+  });
+});
+
+suite('The calendar day panel lists the day tasks', () => {
+  const index = indexOf({
+    'notes/tasks.md': [
+      '# Tasks',
+      '- [ ] Call Ren 📅 2026-09-25',
+      '- [ ] Pay rent ⏫ 📅 2026-09-25',
+      '- [ ] Both ⏳ 2026-09-25 📅 2026-09-25',
+      '- [ ] Draft the brief ⏳ 2026-09-25',
+      '- [x] Filed ✅ 2026-09-25',
+      '- [ ] Later 📅 2026-10-03',
+      ...Array.from({ length: 7 }, (_, at) => `- [ ] Many ${at} 📅 2026-09-30`),
+      '',
+    ].join('\n'),
+  });
+
+  test('due, scheduled, and done that day, most important first, a task due and scheduled only under Due', () => {
+    const day = createCalendarDay(index, '2026-09-25', NOW);
+    const titles = (items: { task: { title: string } }[]) => items.map((item) => item.task.title.replace(/\s+#\S+/, ''));
+    assert.deepStrictEqual(titles(day.due), ['Pay rent', 'Call Ren', 'Both']);
+    assert.deepStrictEqual(titles(day.scheduled), ['Draft the brief']);
+    assert.deepStrictEqual(titles(day.done), ['Filed']);
+    const parked = indexWithParking({ 'a.md': '- [ ] Idea 📅 2026-09-25 #parked\n- [ ] Real 📅 2026-09-25\n' });
+    assert.deepStrictEqual(titles(createCalendarDay(parked, '2026-09-25', NOW).due), ['Real'], 'a parked task is left out');
+  });
+
+  test('moves a task to tomorrow from today or before, and a day on from a later day', () => {
+    assert.deepStrictEqual(createCalendarDay(index, '2026-09-25', NOW).move, { date: '2026-09-26', label: 'Tomorrow' });
+    assert.deepStrictEqual(createCalendarDay(index, '2026-09-20', NOW).move, { date: '2026-09-26', label: 'Tomorrow' });
+    assert.deepStrictEqual(createCalendarDay(index, '2026-10-03', NOW).move, { date: '2026-10-04', label: 'Next day' });
+  });
+
+  test('says where a moved date went', () => {
+    assert.strictEqual(describeDateChange('"Call Ren"', 'due', '2026-09-26'), '"Call Ren" is due 2026-09-26.');
+    assert.strictEqual(describeDateChange('"Draft"', 'scheduled', '2026-09-26'), '"Draft" is scheduled 2026-09-26.');
+    assert.strictEqual(describeDateChange('"Draft"', 'scheduled', undefined), '"Draft" has no scheduled date now.');
+  });
+
+  test('accepts the task messages, and only well formed ones', () => {
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'toggleTask', taskId: 't', completed: true }), { type: 'toggleTask', taskId: 't', completed: true });
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'scheduled', date: '2026-09-26' }), {
+      type: 'moveTask',
+      taskId: 't',
+      field: 'scheduled',
+      date: '2026-09-26',
+    });
+    assert.deepStrictEqual(parseCalendarMessage({ type: 'openTask', taskId: 't' }), { type: 'openTask', taskId: 't' });
+    assert.strictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'start', date: '2026-09-26' }), undefined);
+    assert.strictEqual(parseCalendarMessage({ type: 'moveTask', taskId: 't', field: 'due', date: 'tomorrow' }), undefined);
+    assert.strictEqual(parseCalendarMessage({ type: 'toggleTask', taskId: 't', completed: 'yes' }), undefined);
+  });
+
+  const open = (selectedDate: string): WebviewPage =>
+    openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as vscode.Webview),
+      createCalendar(index, '2026-09', NOW, 0, { dayPanel: true, selectedDate }),
+    );
+
+  test('draws the groups, a checkbox and a Tomorrow button on each row, and Done folded', () => {
+    const page = open('2026-09-25');
+    try {
+      assert.deepStrictEqual(
+        page.findAll('.day-group > h3, .day-group > summary').map((heading) => heading.textContent),
+        ['Due (3)', 'Scheduled (1)', 'Done (1)'],
+      );
+      assert.strictEqual(page.findAll('.day-panel details.day-group[open]').length, 0, 'Done starts folded');
+      const scheduled = page.find('.day-group[aria-label="Scheduled"] [data-action="move-task"]');
+      assert.strictEqual(scheduled.textContent, 'Tomorrow');
+      assert.strictEqual(scheduled.getAttribute('aria-label'), 'Move "Draft the brief" to tomorrow, 2026-09-26');
+      page.click('.day-group[aria-label="Scheduled"] [data-action="move-task"]');
+      const moved = page.lastPosted('moveTask');
+      assert.strictEqual(moved?.field, 'scheduled');
+      assert.strictEqual(moved?.date, '2026-09-26');
+      const box = page.find('.day-group[aria-label="Due"] [data-action="toggle-task"]') as HTMLInputElement;
+      box.checked = true;
+      box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+      assert.strictEqual(page.lastPosted('toggleTask')?.completed, true);
+      page.click('.day-group[aria-label="Due"] .task-title');
+      assert.ok(page.lastPosted('openTask'), 'the row opens its task');
+      assert.strictEqual(page.findAll('.day-panel .empty').length, 0);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('shows five rows, then the rest on request, and Next day on a later day', () => {
+    const page = open('2026-09-30');
+    try {
+      assert.strictEqual(page.findAll('.day-group[aria-label="Due"] .task-row').length, 5);
+      assert.strictEqual(page.find('[data-action="move-task"]').textContent, 'Next day');
+      page.click('[data-action="show-group"]');
+      assert.strictEqual(page.findAll('.day-group[aria-label="Due"] .task-row').length, 7);
+    } finally {
+      page.dispose();
+    }
+    const empty = open('2026-09-22');
+    try {
+      assert.strictEqual(empty.text('.day-panel .empty'), 'Nothing due or scheduled.');
+    } finally {
+      empty.dispose();
     }
   });
 });

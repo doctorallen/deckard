@@ -2,7 +2,9 @@ import { isParkedTask } from '../../core/workspace/parked';
 import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
 import { Weekday } from '../../core/markdown/dates';
-import { WorkspaceIndex } from '../../core/types';
+import { TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
+import { DashboardTask, Task, WorkspaceIndex } from '../../core/types';
+import { createDashboardTask } from './dashboardState';
 import {
   findPeriodicNoteNames,
   formatLocalDate,
@@ -87,6 +89,17 @@ export interface CalendarDayDetail {
   relative?: string;
   /** The day's daily note, when it has one. */
   notePath?: string;
+  /** Open tasks due that day, most important first. */
+  due: DashboardTask[];
+  /** Open tasks scheduled that day and not due on it. */
+  scheduled: DashboardTask[];
+  /** Tasks completed that day. */
+  done: DashboardTask[];
+  /**
+   * Where the row's button moves a task: tomorrow, or the day after a later
+   * day, never earlier.
+   */
+  move: { date: string; label: 'Tomorrow' | 'Next day' };
 }
 
 const dayTitle = new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -124,11 +137,44 @@ export function createCalendarDay(
           ? 'Tomorrow'
           : undefined;
   const notePath = listDailyNotes(index).find((note) => note.date === date)?.filePath;
+  const on = (at: number | undefined): boolean => at !== undefined && formatLocalDate(new Date(at)) === date;
+  const due: Task[] = [];
+  const scheduled: Task[] = [];
+  const done: Task[] = [];
+  index.tasks.forEach((task) => {
+    if (isParkedTask(index, task.id)) {
+      return;
+    }
+    if (task.completed) {
+      if (on(task.doneAt)) {
+        done.push(task);
+      }
+      return;
+    }
+    if (on(task.dueAt)) {
+      due.push(task);
+    } else if (on(task.scheduledAt)) {
+      scheduled.push(task);
+    }
+  });
+  const byImportance = (left: Task, right: Task): number =>
+    TASK_PRIORITY_RANKS[right.priority ?? 'none'] - TASK_PRIORITY_RANKS[left.priority ?? 'none'] ||
+    left.filePath.localeCompare(right.filePath) ||
+    left.lineNumber - right.lineNumber;
+  const rows = (tasks: Task[]): DashboardTask[] =>
+    tasks.sort(byImportance).map((task) => createDashboardTask(task, index.sections, now.getTime()));
+  const tomorrow = addDaysTo(today, 1);
+  const next = addDaysTo(date, 1);
+  const target = next > tomorrow ? next : tomorrow;
   return {
     date,
     title: (year === now.getFullYear() ? dayTitle : dayTitleWithYear).format(at),
     ...(relative ? { relative } : {}),
     ...(notePath ? { notePath } : {}),
+    due: rows(due),
+    scheduled: rows(scheduled),
+    done: rows(done),
+    move: { date: target, label: target === tomorrow ? 'Tomorrow' : 'Next day' },
   };
 }
 
