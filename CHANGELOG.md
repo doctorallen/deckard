@@ -12,6 +12,13 @@
 
 ### Added
 
+- **A note counts as opened however it was opened.** A note that stays in
+  the editor for a moment counts for Recently opened, Find, and `[[`
+  completion, whether it was opened from Deckard, the Explorer, Quick
+  Open, or a link; the same heading counts again only after ten minutes. A
+  heading keeps its count when lines above it change, where it used to
+  lose it.
+
 - **Stats: Links that open no note.** Stats lists every name a `[[link]]`
   writes that no note carries, most linked first, saying how many links
   and from which notes. A row opens the search for those links; **Create**

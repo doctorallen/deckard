@@ -108,6 +108,17 @@ export class DashboardPanel implements vscode.Disposable {
         }
       }),
     );
+    // A visit is kept quietly; only Home's Recently opened shows it.
+    this.disposables.push(
+      preferences.onDidRecordVisit(() => {
+        if (
+          this.panel?.visible &&
+          preferences.value.dashboardWidgets.some((widget) => widget.kind === 'recentNotes')
+        ) {
+          this.refresh();
+        }
+      }),
+    );
     this.disposables.push(
       preferences.onDidChange((nextPreferences) => {
         this.dashboardTagColumns = nextPreferences.dashboardTagColumns;

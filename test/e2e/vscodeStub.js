@@ -187,7 +187,7 @@ module.exports = {
   Uri: {
     joinPath: (...parts) => ({ fsPath: parts.join('/') }),
     parse: (value) => ({ fsPath: value, path: value, toString: () => value }),
-    file: (value) => ({ fsPath: value, path: value, toString: () => `file://${value}` }),
+    file: (value) => ({ scheme: 'file', fsPath: value, path: value, toString: () => `file://${value}` }),
   },
   ViewColumn: { Active: -1, One: 1 },
   window: {

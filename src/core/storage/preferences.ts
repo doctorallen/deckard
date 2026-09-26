@@ -221,6 +221,7 @@ const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
 export class PreferencesStore implements vscode.Disposable {
   private readonly changeEmitter =
     new vscode.EventEmitter<PersistedPreferences>();
+  private readonly visitEmitter = new vscode.EventEmitter<void>();
   private preferences: PersistedPreferences;
   private updateQueue: Promise<void> = Promise.resolve();
 
@@ -288,6 +289,11 @@ export class PreferencesStore implements vscode.Disposable {
   }
 
   public readonly onDidChange = this.changeEmitter.event;
+  /**
+   * Fires when a visit or a carried view count was kept quietly: only Home's
+   * Recently opened needs to hear it.
+   */
+  public readonly onDidRecordVisit = this.visitEmitter.event;
 
   /**
    * Returns a defensive copy because callers use snapshots as freely mutable
@@ -635,6 +641,7 @@ export class PreferencesStore implements vscode.Disposable {
   public async recordSectionAccess(
     sectionId: string,
     now = Date.now(),
+    options: { quiet?: boolean } = {},
   ): Promise<void> {
     const sectionAccessCounts = {
       ...this.preferences.sectionAccessCounts,
@@ -644,7 +651,35 @@ export class PreferencesStore implements vscode.Disposable {
       ...this.preferences.sectionAccessTimes,
       [sectionId]: now,
     };
-    await this.update({ sectionAccessCounts, sectionAccessTimes });
+    await this.update({ sectionAccessCounts, sectionAccessTimes }, options.quiet === true);
+  }
+
+  /**
+   * Moves view counts and times from ids that are gone to the new id of the
+   * same heading, summing counts and keeping the later time, in one quiet
+   * write. A heading's id changes when a line above it does.
+   */
+  public async carrySectionAccess(moved: ReadonlyMap<string, string>): Promise<void> {
+    const counts = { ...this.preferences.sectionAccessCounts };
+    const times = { ...(this.preferences.sectionAccessTimes ?? {}) };
+    let changed = false;
+    moved.forEach((to, from) => {
+      if (from === to || (counts[from] === undefined && times[from] === undefined)) {
+        return;
+      }
+      if (counts[from] !== undefined) {
+        counts[to] = (counts[to] ?? 0) + counts[from];
+        delete counts[from];
+      }
+      if (times[from] !== undefined) {
+        times[to] = Math.max(times[to] ?? 0, times[from]);
+        delete times[from];
+      }
+      changed = true;
+    });
+    if (changed) {
+      await this.update({ sectionAccessCounts: counts, sectionAccessTimes: times }, true);
+    }
   }
 
   /**
@@ -1028,12 +1063,21 @@ export class PreferencesStore implements vscode.Disposable {
    */
   public dispose(): void {
     this.changeEmitter.dispose();
+    this.visitEmitter.dispose();
   }
 
   /**
    * Normalizes, persists, and broadcasts one state transition.
    */
-  private async update(changes: Partial<PersistedPreferences>): Promise<void> {
+  /**
+   * Stores a change. A quiet one is kept without telling every open page,
+   * since a visit recorded on each note switch would redraw them all; only
+   * `onDidRecordVisit` hears of it.
+   */
+  private async update(
+    changes: Partial<PersistedPreferences>,
+    quiet = false,
+  ): Promise<void> {
     this.preferences = normalizePreferences({
       ...this.preferences,
       ...changes,
@@ -1041,7 +1085,11 @@ export class PreferencesStore implements vscode.Disposable {
     const nextPreferences = clonePreferences(this.preferences);
     const persist = async (): Promise<void> => {
       await this.persist(nextPreferences);
-      this.changeEmitter.fire(clonePreferences(nextPreferences));
+      if (quiet) {
+        this.visitEmitter.fire();
+      } else {
+        this.changeEmitter.fire(clonePreferences(nextPreferences));
+      }
     };
     const queuedUpdate = this.updateQueue.then(persist, persist);
     this.updateQueue = queuedUpdate;

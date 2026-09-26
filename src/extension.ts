@@ -70,6 +70,8 @@ import {
   workspaceWrites,
 } from './ui/commands/workspaceWrites';
 import { moveInlineTagsToFrontmatter } from './ui/commands/moveTagsToFrontmatter';
+import { NoteVisits } from './ui/commands/noteVisits';
+import { carrySectionIds } from './ui/state/frecency';
 import { mergeIndexedTag, renameIndexedTag } from './ui/commands/renameTag';
 import {
   EditorTagDecorations,
@@ -532,17 +534,28 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
       unreadableSeen = unreadable.length;
     }),
   );
+  // A heading's id changes when a line above it does; its view count follows
+  // it to the new id before anything is pruned.
+  let previousIndex = indexer.getSnapshot();
   context.subscriptions.push(
     indexer.onDidUpdate(() => {
       const index = indexer.getSnapshot();
-      void preferences.prune(
-        index.tags.keys(),
-        index.tasks.keys(),
-        index.sections.keys(),
-        index.entities.keys(),
-        index.files.keys(),
-      );
+      const moved = carrySectionIds(previousIndex, index);
+      previousIndex = index;
+      void (async () => {
+        if (moved.size > 0) {
+          await preferences.carrySectionAccess(moved);
+        }
+        await preferences.prune(
+          index.tags.keys(),
+          index.tasks.keys(),
+          index.sections.keys(),
+          index.entities.keys(),
+          index.files.keys(),
+        );
+      })();
     }),
+    new NoteVisits(indexer, preferences),
   );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
