@@ -253,7 +253,9 @@ export async function changeTask(indexer: WriteIndexSource, input: ChangeTaskInp
   const repeat =
     completion.next !== undefined
       ? `\nIt repeats, so the next one was added above it: ${completion.next}`
-      : '';
+      : completion.unreadRule !== undefined
+        ? `\nIts repeat rule "${completion.unreadRule}" could not be read, so no next one was added.`
+        : '';
   return {
     text: `Changed ${task.filePath} line ${task.lineNumber}:\n${replacement}${repeat}\nThe user can take it back with Deckard: Undo Last Change.`,
   };

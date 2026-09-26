@@ -20,6 +20,7 @@ import {
   TaskEditorActions,
   writeEditedTask,
 } from '../ui/commands/taskEditor';
+import { describeCompletion } from '../ui/commands/taskActions';
 
 /** A Monday morning, so a weekday answer is easy to read. */
 const now = new Date(2026, 8, 21, 9, 0, 0).getTime();
@@ -101,6 +102,24 @@ suite('Task editor', () => {
       writeEditedTask(done, { ...done, description: 'Water the ferns' }, now, '\n').next,
       undefined,
     );
+  });
+
+  test('a completion says in one message what it started, or what it could not read', () => {
+    assert.deepStrictEqual(
+      describeCompletion('Water the plants', '- [ ] Water the plants 📅 2026-10-02'),
+      {
+        text: 'Completed "Water the plants", and started the next one, due 2026-10-02.',
+        severity: 'info',
+      },
+    );
+    assert.deepStrictEqual(describeCompletion('Howl', undefined, 'every blue moon'), {
+      text: 'Completed "Howl". Deckard could not read its repeat rule "every blue moon", so no next one was added.',
+      severity: 'warning',
+    });
+    assert.deepStrictEqual(describeCompletion('Plain'), {
+      text: 'Completed "Plain".',
+      severity: 'info',
+    });
   });
 
   test('completing writes no done date when the setting is off', () => {

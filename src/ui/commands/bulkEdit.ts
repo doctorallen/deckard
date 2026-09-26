@@ -6,6 +6,7 @@ import {
   getPersonMarker,
 } from '../../core/markdown/parser';
 import {
+  CompletionWrite,
   formatIsoDate,
   setTaskDate,
   setTaskLineCompletion,
@@ -44,6 +45,8 @@ export interface BulkEditResult {
   skipped: number;
   /** Notes the edit reached. */
   notes: number;
+  /** Repeating tasks completed whose 🔁 rule Deckard could not read. */
+  unreadRules?: number;
 }
 
 /** What a bulk edit is called, in the preview and in the Undo prompt. */
@@ -105,6 +108,7 @@ export async function applyBulkEdit(
   const paths = new Set<string>();
   let changed = 0;
   let skipped = 0;
+  let unreadRules = 0;
 
   const byPath = new Map<string, BulkEntry[]>();
   entries.forEach((entry) => {
@@ -144,7 +148,7 @@ export async function applyBulkEdit(
         skipped += 1;
         return;
       }
-      const replacement = rewrite(entry, edit, source.text, {
+      const rewritten = rewrite(entry, edit, source.text, {
         eol,
         format: readTaskMetadataFormat(configuration),
         addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
@@ -155,6 +159,7 @@ export async function applyBulkEdit(
           configuration.get<unknown>('personMarker', '@'),
         ),
       });
+      const replacement = rewritten?.text;
       if (replacement === undefined || replacement === source.text) {
         skipped += 1;
         return;
@@ -162,18 +167,21 @@ export async function applyBulkEdit(
       workspaceEdit.replace(uri, source.range, replacement);
       paths.add(filePath);
       changed += 1;
+      if (rewritten?.unreadRule !== undefined) {
+        unreadRules += 1;
+      }
     });
   }
 
   if (changed === 0) {
-    return { changed: 0, skipped, notes: 0 };
+    return { changed: 0, skipped, notes: 0, unreadRules: 0 };
   }
   const written = await applyWorkspaceWrite(workspaceEdit, {
     label: describeBulkEdit(edit, changed),
     description: describeBulkEdit(edit, changed),
   });
   return written.applied
-    ? { changed, skipped, notes: written.notes.length }
+    ? { changed, skipped, notes: written.notes.length, unreadRules }
     : undefined;
 }
 
@@ -191,9 +199,9 @@ function rewrite(
   edit: BulkEdit,
   line: string,
   options: RewriteOptions,
-): string | undefined {
+): CompletionWrite | undefined {
   if (edit.kind === 'tag') {
-    return appendTagToLine(line, edit.tag, options);
+    return { text: appendTagToLine(line, edit.tag, options) };
   }
   // Only a task has a checkbox or a due date; a note section keeps its own.
   if (entry.kind !== 'task') {
@@ -201,13 +209,9 @@ function rewrite(
   }
   const task = entry.task;
   if (edit.kind === 'due') {
-    return setTaskDate(
-      line,
-      task.checkboxColumn,
-      'due',
-      edit.date,
-      options.format,
-    );
+    return {
+      text: setTaskDate(line, task.checkboxColumn, 'due', edit.date, options.format),
+    };
   }
   if (task.completed === edit.completed) {
     return undefined;
@@ -221,11 +225,11 @@ function rewrite(
     options.format,
   );
   if (!edit.completed) {
-    return completed;
+    return { text: completed };
   }
   // A repeating task is replaced by its next occurrence here too, so a bulk
   // completion leaves the same notes behind as one checkbox would.
-  return writeCompletion(completed, task.checkboxColumn, now, options.eol).text;
+  return writeCompletion(completed, task.checkboxColumn, now, options.eol);
 }
 
 function firstLine(content: string): string {
@@ -254,7 +258,14 @@ export function describeBulkEditResult(
     result.skipped === 0
       ? ''
       : ` ${result.skipped} ${result.skipped === 1 ? 'was' : 'were'} left as they are.`;
+  const unread = result.unreadRules ?? 0;
+  const rules =
+    unread === 0
+      ? ''
+      : ` Deckard could not read the repeat rule on ${
+          unread === 1 ? 'one' : unread
+        } of them, so no next one was added.`;
   return `${verb} ${result.changed} ${
     result.changed === 1 ? 'result' : 'results'
-  } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}`;
+  } in ${result.notes} ${result.notes === 1 ? 'note' : 'notes'}.${left}${rules}`;
 }

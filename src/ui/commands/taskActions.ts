@@ -72,7 +72,7 @@ export async function updateTaskLine(
    * function is read after the edit, for an edit that only then knows what it
    * did, such as a completion that started the next occurrence.
    */
-  description?: string | (() => string),
+  description?: string | (() => string | CompletionMessage),
 ): Promise<boolean> {
   const uri = await resolveSourceUri(task.filePath);
   if (!uri) {
@@ -120,8 +120,13 @@ export async function updateTaskLine(
       ) ?? (await vscode.workspace.openTextDocument(uri));
     await updatedDocument.save();
     carryRank(task.filePath, task.lineNumber, task.id, replacement);
-    const said = typeof description === 'function' ? description() : description;
-    if (said) {
+    const described =
+      typeof description === 'function' ? description() : description;
+    const said =
+      typeof described === 'string'
+        ? { text: described, severity: 'info' as const }
+        : described;
+    if (said?.text) {
       offerUndo(
         said,
         uri,
@@ -148,16 +153,20 @@ export async function updateTaskLine(
  * the edit, so it carries the way out of it.
  */
 function offerUndo(
-  description: string,
+  description: CompletionMessage,
   uri: vscode.Uri,
   lineNumber: number,
   replacement: string,
   original: string,
   filePath: string,
 ): void {
-  void vscode.window
-    .showInformationMessage(description, 'Undo')
-    .then((choice) => {
+  // A warning when part of what was asked could not be done, such as a
+  // repeat rule Deckard could not read; the edit is still offered back.
+  void (
+    description.severity === 'warning'
+      ? vscode.window.showWarningMessage(description.text, 'Undo')
+      : vscode.window.showInformationMessage(description.text, 'Undo')
+  ).then((choice) => {
       if (choice === 'Undo') {
         void revertTaskLine(uri, lineNumber, replacement, original, filePath);
       }
@@ -238,12 +247,12 @@ export async function toggleTask(
 ): Promise<boolean> {
   // A repeating task is completed and immediately replaced by its next
   // occurrence, which looks like nothing happened unless the edit says so.
+  // A rule that could not be read is said in the same message, beside Undo.
   let startedNext: string | undefined;
-  const description = () =>
+  let unreadRule: string | undefined;
+  const description = (): string | CompletionMessage =>
     completed
-      ? `Completed ${quoteTaskTitle(task)}${
-          startedNext ? `, and started the next one${startedNext}.` : '.'
-        }`
+      ? describeCompletion(task.title, startedNext, unreadRule)
       : `Reopened ${quoteTaskTitle(task)}.`;
   return updateTaskLine(
     task,
@@ -268,14 +277,8 @@ export async function toggleTask(
         now,
         eol,
       );
-      if (completion.next !== undefined) {
-        startedNext = describeNextOccurrence(completion.next);
-      }
-      if (completion.unreadRule !== undefined) {
-        void vscode.window.showWarningMessage(
-          `Deckard completed the task but could not read its repeat rule "${completion.unreadRule}", so it did not add the next occurrence.`,
-        );
-      }
+      startedNext = completion.next;
+      unreadRule = completion.unreadRule;
       return completion.text;
     },
     description,

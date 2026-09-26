@@ -177,6 +177,28 @@ suite('Bulk edits', () => {
         { changed: 0, skipped: 2, notes: 0 },
       ).startsWith('Nothing to change'),
     );
+    assert.strictEqual(
+      describeBulkEditResult(
+        { kind: 'complete', completed: true },
+        { changed: 3, skipped: 0, notes: 1, unreadRules: 2 },
+      ),
+      'Completed 3 results in 1 note. Deckard could not read the repeat rule on 2 of them, so no next one was added.',
+    );
+  });
+
+  test('counts the repeat rules it could not read', async () => {
+    const { file, read, clean } = await writeNote(
+      '# Odd\n\n- [ ] Howl 🔁 every blue moon\n- [ ] Plain\n',
+    );
+    const result = await applyBulkEdit(
+      file.tasks.map((task) => ({ kind: 'task', task })),
+      { kind: 'complete', completed: true },
+    );
+    assert.strictEqual(result?.changed, 2);
+    assert.strictEqual(result.unreadRules, 1);
+    assert.ok((await read()).includes('- [x] Howl 🔁 every blue moon'));
+    await workspaceWrites.undo();
+    await clean();
   });
 
   test('reads a result the way the list of them shows it', () => {

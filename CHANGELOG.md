@@ -26,6 +26,12 @@
   and nothing else, so the task never came back. Both now honor
   `deckard.tasks.addDoneDate` too.
 
+- **A repeat rule Deckard cannot read is said where the completion is,
+  beside Undo.** A checkbox said "Completed" and then, in a second message,
+  that the rule could not be read. It is now one warning with Undo. Bulk
+  edit, the task editor, and the assistant say it too; before, they said
+  nothing.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**
