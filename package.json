@@ -50,6 +50,15 @@
         }
       }
     ],
+    "grammars": [
+      {
+        "scopeName": "markdown.deckard.injection",
+        "path": "./syntaxes/deckard.injection.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ],
     "walkthroughs": [
       {
         "id": "deckard.gettingStarted",

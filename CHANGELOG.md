@@ -12,6 +12,11 @@
 
 ### Added
 
+- **`[[links]]` and task dates colored by your theme.** In any Markdown
+  file, a link's name and alias, an embed's `!`, a task's dates, repeat
+  rule, and priority, Dataview keys, and a `^block-id` take your theme's
+  colors. Code, front matter, and tags are left as they were.
+
 - **The Explorer knows Deckard.** Right-click a folder for a **Deckard**
   submenu: **New Note from Template Here…** writes the note into that
   folder, and **Exclude from Deckard** leaves the folder out of the index
