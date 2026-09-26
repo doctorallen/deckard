@@ -51,6 +51,13 @@
   into an index those files are not part of. Edit Task and query blocks
   still work in any Markdown file, since both are asked for on purpose.
 
+- **The daily reminder comes once a day, late rather than never, and the
+  count turns over at midnight.** Each window kept its own timer, so three
+  windows said it three times, and a laptop asleep at the hour never said
+  it. The reminder is now said by the first window to check on or after the
+  hour, and the status bar's count moves to the new day without waiting for
+  the window to regain focus.
+
 ### Changed
 
 - **Layout: columns are regions, a count is said once, and Home widens.**

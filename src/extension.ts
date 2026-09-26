@@ -340,7 +340,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const outline = new OutlineTreeProvider(indexer);
   const queryBlocks = new QueryBlocks(indexer);
   const agenda = new AgendaTreeProvider(indexer, preferences);
-  const taskStatusBar = new TaskStatusBar(indexer);
+  const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
   activeServices = {
     indexer,
     preferences,

@@ -1,5 +1,7 @@
 import * as assert from 'assert';
 
+import * as vscode from 'vscode';
+
 import { parseMarkdown } from '../core/markdown/parser';
 import { WorkspaceIndex } from '../core/types';
 import { buildWorkspaceIndex } from '../core/workspace/indexer';
@@ -7,8 +9,10 @@ import {
   countDueTasks,
   describeDueTasks,
   describeDueTasksAtLength,
-  millisecondsUntil,
+  isReminderDue,
   parseReminderTime,
+  REMINDER_DATE_KEY,
+  TaskStatusBar,
 } from '../ui/views/taskStatusBar';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
@@ -87,13 +91,60 @@ suite('Task status bar', () => {
     }
   });
 
-  test('waits for the next time that hour comes round', () => {
-    const morning = new Date(2026, 8, 19, 8, 30, 0);
-    assert.strictEqual(millisecondsUntil(9 * 60, morning), 30 * 60 * 1000);
-    // Past the hour today, so it is tomorrow's.
+  test('is owed once a day, from the hour on, and never for a day gone by', () => {
+    const at = (hour: number, minute = 0) => new Date(2026, 8, 19, hour, minute);
+    assert.strictEqual(isReminderDue(at(8, 59), 9 * 60, undefined), false, 'before the hour');
+    assert.strictEqual(isReminderDue(at(9, 0), 9 * 60, undefined), true, 'at the hour');
+    assert.strictEqual(isReminderDue(at(15, 30), 9 * 60, '2026-09-18'), true, 'late, after sleep');
+    assert.strictEqual(isReminderDue(at(9, 5), 9 * 60, '2026-09-19'), false, 'said today already');
     assert.strictEqual(
-      millisecondsUntil(8 * 60, morning),
-      (24 * 60 - 30) * 60 * 1000,
+      isReminderDue(at(23, 0), 9 * 60, '2026-09-18'),
+      true,
+      'yesterday said, today owed',
     );
+  });
+
+  test('writes the day down before it says the reminder', async () => {
+    const stored = new Map<string, unknown>();
+    const memory = {
+      get: <T>(key: string) => stored.get(key) as T | undefined,
+      update: async (key: string, value: unknown) => void stored.set(key, value),
+    } as unknown as vscode.Memento;
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    await configuration.update('taskReminderTime', '09:00', vscode.ConfigurationTarget.Global);
+    const window = vscode.window as unknown as { showInformationMessage: unknown };
+    const original = window.showInformationMessage;
+    const said: string[] = [];
+    // The reader has not answered yet.
+    const stub = (text: string) => {
+      said.push(text);
+      return new Promise(() => undefined);
+    };
+    window.showInformationMessage = stub;
+    assert.strictEqual(window.showInformationMessage, stub, 'the message can be stood in for');
+    const bar = new TaskStatusBar(
+      {
+        ready: new Promise(() => undefined),
+        onDidUpdate: new vscode.EventEmitter<WorkspaceIndex>().event,
+        getSnapshot: () => index,
+      },
+      memory,
+      () => new Date(2026, 8, 19, 9, 5),
+    );
+    try {
+      void bar.check();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.strictEqual(stored.get(REMINDER_DATE_KEY), '2026-09-19');
+      assert.strictEqual(said.length, 1);
+      assert.match(said[0], /1 task is overdue and 1 is due today/);
+
+      void bar.check();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.strictEqual(said.length, 1, 'once a day');
+    } finally {
+      bar.dispose();
+      window.showInformationMessage = original;
+      await configuration.update('taskReminderTime', undefined, vscode.ConfigurationTarget.Global);
+    }
   });
 });

@@ -76,20 +76,47 @@ export function parseReminderTime(value: string): number | undefined {
   return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
 }
 
-/** How long until the next time of day, in milliseconds. */
-export function millisecondsUntil(minuteOfDay: number, now: Date): number {
-  const next = new Date(now);
-  next.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0);
-  if (next.getTime() <= now.getTime()) {
-    next.setDate(next.getDate() + 1);
-  }
-  return next.getTime() - now.getTime();
+/** The local day a moment falls on, as `YYYY-MM-DD`. */
+function localDate(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 
+/** Where the day of the last reminder is kept, across every window. */
+export const REMINDER_DATE_KEY = 'deckard.lastReminderDate';
+
+/**
+ * Whether the reminder is owed: the hour has come today, and no window has
+ * reminded today yet. A day that has already passed is never reminded, so a
+ * laptop opened in the evening says today's once, not yesterday's too.
+ */
+export function isReminderDue(
+  now: Date,
+  minuteOfDay: number,
+  lastDate: string | undefined,
+): boolean {
+  return (
+    now.getHours() * 60 + now.getMinutes() >= minuteOfDay &&
+    lastDate !== localDate(now)
+  );
+}
+
+/** How often the day and the reminder hour are checked. */
+const CHECK_INTERVAL_MS = 60 * 1000;
+/** The longest a window waits before its first check, so windows opened together do not check at once. */
+const START_SPREAD_MS = 20 * 1000;
+
 interface StatusBarIndexSource {
+  readonly ready: Promise<void>;
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
 }
+
+/** Where the day of the last reminder is kept: VS Code's global state. */
+type ReminderMemory = Pick<vscode.Memento, 'get' | 'update'>;
 
 function readAgendaQuery(): string {
   return vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
@@ -102,11 +129,17 @@ const RESCHEDULE_OVERDUE = 'deckard.rescheduleOverdue';
 export class TaskStatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
   private readonly disposables: vscode.Disposable[] = [];
-  private reminder: ReturnType<typeof setTimeout> | undefined;
+  private timer: ReturnType<typeof setInterval> | undefined;
+  private startDelay: ReturnType<typeof setTimeout> | undefined;
+  /** The day the count was last drawn for, so it turns over at midnight. */
+  private lastRefreshDate: string | undefined;
+  private disposed = false;
 
   public constructor(
     private readonly indexer: StatusBarIndexSource,
+    private readonly memory: ReminderMemory,
     private readonly now: () => Date = () => new Date(),
+    options: { startDelayMs?: number } = {},
   ) {
     this.item = vscode.window.createStatusBarItem(
       'deckard.dueTasks',
@@ -132,24 +165,64 @@ export class TaskStatusBar implements vscode.Disposable {
         ) {
           this.refresh();
         }
-        if (event.affectsConfiguration('deckard.taskReminderTime')) {
-          this.scheduleReminder();
-        }
       }),
     );
-    this.scheduleReminder();
+    // Once the index is there, check now and then once a minute: the count
+    // turns over at midnight, and the reminder is said at the first check on
+    // or after its hour, late after sleep rather than never.
+    void indexer.ready.then(() => {
+      if (this.disposed) {
+        return;
+      }
+      this.startDelay = setTimeout(
+        () => {
+          this.startDelay = undefined;
+          void this.check();
+          this.timer = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
+        },
+        options.startDelayMs ?? Math.random() * START_SPREAD_MS,
+      );
+    });
   }
 
   public dispose(): void {
-    if (this.reminder) {
-      clearTimeout(this.reminder);
-      this.reminder = undefined;
-    }
+    this.disposed = true;
+    clearTimeout(this.startDelay);
+    clearInterval(this.timer);
+    this.startDelay = undefined;
+    this.timer = undefined;
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
+  }
+
+  /**
+   * Redraws the count when the day has changed, and says the reminder when
+   * it is owed. The day is written down before the reminder is shown, so a
+   * second window checking a moment later finds it said.
+   */
+  public async check(): Promise<void> {
+    const now = this.now();
+    const today = localDate(now);
+    if (this.lastRefreshDate !== today) {
+      this.refresh();
+    }
+    const minuteOfDay = parseReminderTime(
+      vscode.workspace
+        .getConfiguration('deckard')
+        .get<string>('taskReminderTime', ''),
+    );
+    if (
+      minuteOfDay === undefined ||
+      !isReminderDue(now, minuteOfDay, this.memory.get<string>(REMINDER_DATE_KEY))
+    ) {
+      return;
+    }
+    await this.memory.update(REMINDER_DATE_KEY, today);
+    await this.remind();
   }
 
   /** Draws the count, or hides the item when nothing is due. */
   public refresh(): void {
+    this.lastRefreshDate = localDate(this.now());
     if (
       !vscode.workspace
         .getConfiguration('deckard')
@@ -197,29 +270,6 @@ export class TaskStatusBar implements vscode.Disposable {
     }
     tooltip.appendMarkdown('\n\nSelect to open Tasks.');
     return tooltip;
-  }
-
-  /**
-   * Waits for the hour the setting names, then says what is due and asks
-   * again tomorrow. Nothing is scheduled while the setting is empty.
-   */
-  private scheduleReminder(): void {
-    if (this.reminder) {
-      clearTimeout(this.reminder);
-      this.reminder = undefined;
-    }
-    const minuteOfDay = parseReminderTime(
-      vscode.workspace
-        .getConfiguration('deckard')
-        .get<string>('taskReminderTime', ''),
-    );
-    if (minuteOfDay === undefined) {
-      return;
-    }
-    this.reminder = setTimeout(() => {
-      void this.remind();
-      this.scheduleReminder();
-    }, millisecondsUntil(minuteOfDay, this.now()));
   }
 
   /** Says what is due, unless nothing is. */
