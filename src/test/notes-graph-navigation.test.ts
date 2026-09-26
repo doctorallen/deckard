@@ -116,6 +116,55 @@ suite('Notes graph navigation', () => {
     }
   });
 
+  test('is not redrawn by a save that changes nothing it draws, and is by one that does', () => {
+    const text = '# Atlas #project/atlas\n\nSome words about [[relay]].\n';
+    const relay = parseMarkdown('notes/relay.md', '# Relay #project/atlas');
+    const indexOf = (atlasText: string) => {
+      const atlas = parseMarkdown('notes/atlas.md', atlasText);
+      return buildWorkspaceIndex(new Map([[atlas.filePath, atlas], [relay.filePath, relay]]));
+    };
+    let current = indexOf(text);
+    const listeners: Array<() => void> = [];
+    const indexer = {
+      onDidUpdate: (listener: () => void) => {
+        listeners.push(listener);
+        return { dispose: () => undefined };
+      },
+      getSnapshot: () => current,
+      getFilePath: () => 'notes/not-active.md',
+      isNotesFile: () => true,
+    } as unknown as WorkspaceIndexer;
+    const posted: Array<{ type: string }> = [];
+    const graph = new NotesGraphPanel(indexer, vscode.Uri.file(process.cwd()), () => undefined);
+    try {
+      const controller = graph as unknown as { panel: unknown; refresh(): void };
+      controller.panel = {
+        active: false,
+        visible: true,
+        dispose: () => undefined,
+        webview: {
+          postMessage: async (message: { type: string }) => {
+            posted.push(message);
+            return true;
+          },
+        },
+      };
+      controller.refresh();
+      const states = () => posted.filter((message) => message.type === 'state').length;
+      assert.strictEqual(states(), 1);
+
+      current = indexOf(text.replace('Some words', 'Some other words'));
+      listeners.forEach((listener) => listener());
+      assert.strictEqual(states(), 1, 'a prose-only save sends nothing');
+
+      current = indexOf(text.replace('# Atlas #project/atlas', '# Atlas #project/atlas #topic/maps'));
+      listeners.forEach((listener) => listener());
+      assert.strictEqual(states(), 2, 'a new tag redraws');
+    } finally {
+      graph.dispose();
+    }
+  });
+
   test('opens around one note from its menu without choosing a scope for later', () => {
     assert.deepStrictEqual(
       aroundNoteScope({ local: false, depth: 3, skipPeriodic: true }),

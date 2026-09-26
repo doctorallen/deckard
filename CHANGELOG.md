@@ -311,6 +311,12 @@
   is not kept waiting on the ones behind it, and other extensions get a turn
   in between. Hidden views still catch up when they are shown.
 
+- **The Notes Graph costs a save nothing when the save changes nothing it
+  draws.** Editing words inside a line, ticking a task, or changing its due
+  date no longer rebuilds and resends the whole graph (about 1.5 seconds
+  and 50 MB at 5,000 notes). A save that adds a link, heading, tag, or task,
+  or moves one to another line, still redraws it.
+
 - **Extract Heading takes any heading.** `Deckard: Extract Tagged
   Heading` is now `Deckard: Extract Heading`, and moves an untagged heading
   as readily as a tagged one; its picker lists every heading, naming the

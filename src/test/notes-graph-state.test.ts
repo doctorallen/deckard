@@ -7,6 +7,7 @@ import {
   createNotesGraphConnections,
   createNotesGraphSnapshot,
   findNoteNodeIds,
+  graphInputsChanged,
 } from '../ui/state/notesGraphState';
 import {
   parseNotesGraphMessage,
@@ -313,6 +314,105 @@ suite('Notes graph state', () => {
 });
 
 suite('Notes graph messages', () => {
+  test('says a save changed the graph exactly when it changed something the graph draws', () => {
+    const text = [
+      '---',
+      'tags: [area/home]',
+      'aliases: [Hub]',
+      '---',
+      '# Atlas #project/atlas',
+      'Words about [[relay]] and #topic/maps.',
+      '## Detail #topic/detail',
+      'More words.',
+      '- [ ] Call [[relay]] #person/dana 📅 2026-10-01',
+      '- [x] Done #project/atlas',
+    ].join('\n');
+    const base = parseMarkdown('notes/atlas.md', text, { createdAt: 1, updatedAt: 2 });
+    const other = parseMarkdown('notes/relay.md', '# Relay #project/atlas #topic/maps');
+    const indexOf = (file: ParsedFile) =>
+      buildWorkspaceIndex(new Map([[file.filePath, file], [other.filePath, other]]));
+    const before = indexOf(base);
+    const graphOf = (index: ReturnType<typeof indexOf>) => ({
+      ...createNotesGraphSnapshot(index),
+      updatedAt: 0,
+    });
+    const detail = base.sections.findIndex((section) => section.heading.startsWith('Detail'));
+    assert.ok(detail > 0 && base.sections[detail].headingTags?.length, 'a nested tagged heading');
+    const variant = (change: (file: ParsedFile) => void): ParsedFile => {
+      const copy = structuredClone(base);
+      change(copy);
+      return copy;
+    };
+
+    // Every field the graph reads. A field the graph starts reading joins
+    // graphSignature and this list.
+    const drawn: Record<string, (file: ParsedFile) => void> = {
+      'section id': (file) => { file.sections[0].id += 'x'; },
+      'heading': (file) => { file.sections[0].heading = 'Atlas two #project/atlas'; },
+      'heading level': (file) => { file.sections[detail].headingLevel = 3; },
+      'inline entry': (file) => { file.sections[detail].isInline = !file.sections[detail].isInline; },
+      'section line': (file) => { file.sections[0].startLine += 1; },
+      'section parent': (file) => { file.sections[detail].parentSectionId = undefined; },
+      'section tags': (file) => { file.sections[0].tags = [...file.sections[0].tags, '#topic/new']; },
+      'section tag spelling': (file) => { file.sections[0].tagLabels = { ...file.sections[0].tagLabels, '#project/atlas': '#Project/Atlas' }; },
+      'body tags': (file) => { file.sections[0].bodyTags = [...(file.sections[0].bodyTags ?? []), { key: '#topic/x', label: '#topic/x', line: 6 }]; },
+      'heading tags': (file) => { file.sections[detail].headingTags = [...(file.sections[detail].headingTags ?? []), { key: '#topic/x', label: '#topic/x' }]; },
+      'section tag groups': (file) => { file.sections[0].associationTagGroups = [...(file.sections[0].associationTagGroups ?? []), [{ key: '#a', label: '#a' }, { key: '#b', label: '#b' }]]; },
+      'section links': (file) => { file.sections[0].links = []; },
+      'task id': (file) => { file.tasks[0].id += 'x'; },
+      'task title': (file) => { file.tasks[0].title = 'Write to [[relay]]'; },
+      'task line': (file) => { file.tasks[0].lineNumber += 1; },
+      'task heading': (file) => { file.tasks[0].sectionId = undefined; },
+      'task tags': (file) => { file.tasks[0].tags = []; },
+      'task tag spelling': (file) => { file.tasks[0].tagLabels = { '#person/dana': '#Person/Dana' }; },
+      'task tag groups': (file) => { file.tasks[0].associationTagGroups = [...(file.tasks[0].associationTagGroups ?? []), [{ key: '#a', label: '#a' }, { key: '#b', label: '#b' }]]; },
+      'task links': (file) => { file.tasks[0].sourceLineText = '- [ ] Call #person/dana'; },
+      'front-matter tags': (file) => { file.frontmatterTags = []; },
+      'note links': (file) => { file.links = []; },
+      'aliases': (file) => { file.aliases = []; },
+      'entry count': (file) => { file.sections = []; },
+    };
+    for (const [field, change] of Object.entries(drawn)) {
+      assert.strictEqual(graphInputsChanged(before, indexOf(variant(change))), true, field);
+    }
+
+    // What the graph does not read: changing it leaves the graph as it was.
+    const notDrawn: Record<string, (file: ParsedFile) => void> = {
+      'content': (file) => { file.content += '\nMore prose.'; },
+      'raw content': (file) => { file.sections[0].rawContent += ' prose'; },
+      'body content': (file) => { file.sections[0].bodyContent += ' prose'; },
+      'note dates': (file) => { file.createdAt = 5; file.updatedAt = 6; },
+      'file times': (file) => { file.fileTimes = { createdAt: 7, updatedAt: 8 }; },
+      'section dates': (file) => { file.sections[0].updatedAt = 9; },
+      'section end': (file) => { file.sections[0].endLine += 3; file.sections[0].bodyEndLine += 3; },
+      'body tag line': (file) => { file.sections.forEach((section) => (section.bodyTags ?? []).forEach((tag) => { tag.line += 1; })); },
+      'task status': (file) => { file.tasks[0].completed = true; file.tasks[0].checkboxValue = 'x'; file.tasks[0].sourceLineText = file.tasks[0].sourceLineText.replace('[ ]', '[x]'); },
+      'task due and priority': (file) => { file.tasks[0].dueAt = 10; file.tasks[0].dueText = '2026-11-01'; file.tasks[0].priority = 'high'; },
+      'block ids': (file) => { file.blockIds = { q3: 6 }; },
+      'hub': (file) => { file.hub = { describes: [{ key: '#project/atlas', label: '#project/atlas' }], properties: [] }; },
+    };
+    for (const [field, change] of Object.entries(notDrawn)) {
+      const after = indexOf(variant(change));
+      assert.strictEqual(graphInputsChanged(before, after), false, field);
+      assert.deepStrictEqual(graphOf(after), graphOf(before), `${field}: the graph is the same`);
+    }
+
+    // A prose edit, parsed for real, is not a change either.
+    const prose = parseMarkdown('notes/atlas.md', text.replace('More words.', 'More words, and more.'));
+    assert.strictEqual(graphInputsChanged(before, indexOf(prose)), false);
+    assert.deepStrictEqual(graphOf(indexOf(prose)), graphOf(before));
+
+    // Notes coming, going, or changing order are.
+    const third = parseMarkdown('notes/third.md', '# Third');
+    const withThird = buildWorkspaceIndex(new Map([[base.filePath, base], [other.filePath, other], [third.filePath, third]]));
+    assert.strictEqual(graphInputsChanged(before, withThird), true, 'a note added');
+    assert.strictEqual(graphInputsChanged(withThird, before), true, 'a note removed');
+    const reordered = buildWorkspaceIndex(new Map([[other.filePath, other], [base.filePath, base]]));
+    assert.strictEqual(graphInputsChanged(before, reordered), true, 'the same notes in another order');
+    assert.strictEqual(graphInputsChanged(undefined, before), true, 'nothing drawn yet');
+    assert.strictEqual(graphInputsChanged(before, before), false);
+  });
+
   test('accepts valid openSource and openTag messages', () => {
     assert.deepStrictEqual(
       parseNotesGraphMessage({

@@ -14,7 +14,7 @@ import {
   SidebarGraphContext,
   WorkspaceIndex,
 } from '../../core/types';
-import { measure } from '../../core/timing';
+import { logTrace, measure } from '../../core/timing';
 import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { openResultAt, openSourceAt } from '../commands/navigation';
 import {
@@ -22,6 +22,7 @@ import {
   createNotesGraphConnections,
   createNotesGraphSnapshot,
   findNoteNodeIds,
+  graphInputsChanged,
   MAXIMUM_LOCAL_GRAPH_DEPTH,
 } from '../state/notesGraphState';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -39,6 +40,8 @@ export class NotesGraphPanel implements vscode.Disposable {
   private panelDisposables: vscode.Disposable[] = [];
   private selectedNodeId: string | undefined;
   private snapshot: NotesGraphSnapshot | undefined;
+  /** The index the whole-workspace snapshot was drawn from. */
+  private builtFrom: WorkspaceIndex | undefined;
   /** Whether the index changed while the panel was hidden. */
   private isStale = false;
   /**
@@ -75,7 +78,16 @@ export class NotesGraphPanel implements vscode.Disposable {
         indexer,
         { name: 'Notes Graph', priority: () => panelPriority(this.panel) },
         () => {
+          const index = this.indexer.getSnapshot();
+          // A save that changes nothing the graph draws costs it nothing:
+          // no rebuild, no message, and a hidden graph is not out of date.
+          if (this.snapshot && !graphInputsChanged(this.builtFrom, index)) {
+            this.builtFrom = index;
+            logTrace(() => 'Notes Graph unchanged by this update; not redrawn.');
+            return;
+          }
           this.snapshot = undefined;
+          this.builtFrom = undefined;
           this.refresh();
         },
       ),
@@ -420,9 +432,10 @@ export class NotesGraphPanel implements vscode.Disposable {
 
   private getWorkspaceSnapshot(): NotesGraphSnapshot {
     const index = this.indexer.getSnapshot();
-    if (!this.snapshot || this.snapshot.updatedAt !== index.updatedAt) {
+    if (!this.snapshot || graphInputsChanged(this.builtFrom, index)) {
       this.snapshot = createNotesGraphSnapshot(index);
     }
+    this.builtFrom = index;
     return this.snapshot;
   }
 
