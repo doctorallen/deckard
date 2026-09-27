@@ -5,6 +5,7 @@ import {
   getPersonMarker,
   hasAtxHeadingClosingHashes,
 } from '../../core/markdown/parser';
+import { isInCodeOrLink } from '../../core/markdown/inlineRanges';
 import { WorkspaceIndex } from '../../core/types';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
@@ -240,11 +241,16 @@ export function getTagCompletionContext(
   const marker = match[2];
   const query = match[3] ?? '';
   const suffix = line.slice(character).match(/^[A-Za-z0-9_/-]*/)?.[0] ?? '';
+  const startColumn = (match.index ?? 0) + match[0].lastIndexOf(marker);
+  // A `#` or `@` in inline code is text, so it is not completed as a tag.
+  if (isInCodeOrLink(line, startColumn)) {
+    return undefined;
+  }
 
   return {
     marker,
     query,
-    startColumn: (match.index ?? 0) + match[0].lastIndexOf(marker),
+    startColumn,
     endColumn: character + suffix.length,
   };
 }

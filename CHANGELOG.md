@@ -691,6 +691,14 @@
 
 ### Fixed
 
+- **A tag written inside inline code is text, not a tag.** `` `#project/x` ``
+  or `` `@dana` `` in a sentence made a real tag, counted, colored, and
+  completed like one; only fenced code was left alone. Code spans of any
+  number of backticks are now skipped everywhere tags are found: the index,
+  the editor's tag colors, links, and hovers, completion, Rename Tag and
+  Merge, bulk edit, Move Tags to Front Matter, and the Task board's status
+  moves. A backtick that nothing closes is plain text, as in CommonMark.
+
 - **Rollover carries a task's steps with it, and never under another
   task.** A carried task's open steps are written nested under it — with
   `move`, its done steps and notes too, so nothing is left orphaned — and

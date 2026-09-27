@@ -28,6 +28,7 @@ import {
   describeDueDate,
 } from '../../core/markdown/taskMetadata';
 import { extractTags, readPerson } from '../../core/markdown/parser';
+import { findCodeAndLinkRanges, isInRanges } from '../../core/markdown/inlineRanges';
 import { evaluateQuery } from '../../core/query/queryEvaluator';
 import { parseQuery } from '../../core/query/queryParser';
 import {
@@ -770,7 +771,11 @@ export function setTaskNamespaceTags(
   let placed = change.add === undefined;
   change.remove.forEach((label) => {
     const pattern = new RegExp(`[ \\t]+${escapeRegExp(label)}(?![A-Za-z0-9_/-])`, 'gi');
-    text = text.replace(pattern, (match) => {
+    const skipped = findCodeAndLinkRanges(text);
+    text = text.replace(pattern, (match, offset: number) => {
+      if (isInRanges(skipped, offset)) {
+        return match;
+      }
       if (!placed && change.add !== undefined) {
         placed = true;
         return match.replace(/\S+$/, change.add);
@@ -802,7 +807,11 @@ export function setTaskStatusTag(
     'gi',
   );
   let written = false;
-  const next = text.replace(pattern, (match) => {
+  const skipped = findCodeAndLinkRanges(text);
+  const next = text.replace(pattern, (match, offset: number) => {
+    if (isInRanges(skipped, offset)) {
+      return match;
+    }
     if (!status || written) {
       return '';
     }

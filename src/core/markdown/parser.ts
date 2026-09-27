@@ -16,6 +16,7 @@ import {
 } from './taskMetadata';
 import { MONTH_NUMBERS, WEEKDAY_NAMES } from './dates';
 import { findListParents, findParentTaskLine } from './listNesting';
+import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
 
 export { BLOCK_ID_PATTERN } from './taskMetadata';
 
@@ -24,7 +25,7 @@ export { BLOCK_ID_PATTERN } from './taskMetadata';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'steps';
+export const PARSE_FORMAT = 'inline-code';
 
 interface HeadingMatch {
   lineNumber: number;
@@ -990,11 +991,15 @@ function normalizeTagKey(
  * would make related-note titles misleading even though they are not tags.
  */
 export function stripTags(text: string, personMarker?: string): string {
+  const skipped = findCodeAndLinkRanges(text);
   return text
     .replace(
       getTagPattern(getPersonMarker(personMarker)),
-      (fullMatch, prefix: string, marker: string, rawName: string) =>
-        isNumericHashTag(marker, rawName) ? fullMatch : prefix,
+      (fullMatch, prefix: string, marker: string, rawName: string, offset: number) =>
+        isNumericHashTag(marker, rawName) ||
+        isInRanges(skipped, offset + prefix.length)
+          ? fullMatch
+          : prefix,
     )
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
@@ -1017,14 +1022,15 @@ function findTagMatches(
   personMarker?: string,
 ): TagMatch[] {
   const activePersonMarker = getPersonMarker(personMarker);
+  const skipped = findCodeAndLinkRanges(text);
   return [...text.matchAll(getTagPattern(activePersonMarker))].flatMap((match) => {
     const marker = match[2];
     const rawName = match[3];
-    if (isNumericHashTag(marker, rawName)) {
+    const markerIndex = (match.index ?? 0) + match[0].lastIndexOf(marker);
+    if (isNumericHashTag(marker, rawName) || isInRanges(skipped, markerIndex)) {
       return [];
     }
 
-    const markerIndex = (match.index ?? 0) + match[0].lastIndexOf(marker);
     return [
       {
         key:
