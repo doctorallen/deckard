@@ -598,7 +598,7 @@ test('the gear edits the status columns without opening settings', async () => {
   await delay(10);
   assert.deepStrictEqual(lastState().data.settings.statuses, ['todo', 'doing', 'review', 'waiting']);
 
-  view.click(view.find('[data-action="remove-status"][data-index="0"]'));
+  view.click(view.find('[data-action="remove-status"][data-status="todo"]'));
   await delay(10);
   assert.deepStrictEqual(lastState().data.settings.statuses, ['doing', 'review', 'waiting']);
 

@@ -218,6 +218,7 @@ export function createTaskBoard(
     settings: {
       statuses: [...options.statuses],
       statusNamespace: options.statusNamespace,
+      columns: listStatusColumns(index, options),
     },
   };
 }
@@ -875,6 +876,29 @@ function selectTasks(
     (task) => !task.completed && index.parked?.tasks.has(task.id),
   ).length;
   return { tasks, parkedLeftOut };
+}
+
+/**
+ * The status columns in the order the board draws them, each with how many
+ * open tasks in the workspace carry it: what the gear lists and orders.
+ */
+function listStatusColumns(
+  index: WorkspaceIndex,
+  options: TaskBoardOptions,
+): { status: string; openTasks: number }[] {
+  const counts = new Map<string, number>();
+  index.tasks.forEach((task) => {
+    if (task.completed) {
+      return;
+    }
+    const status = readTaskStatus(task, options.statusNamespace);
+    if (status !== undefined && status !== 'done') {
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+  });
+  const configured = [...new Set(options.statuses)].filter((status) => status !== 'done');
+  const found = [...counts.keys()].filter((status) => !configured.includes(status)).sort();
+  return [...configured, ...found].map((status) => ({ status, openTasks: counts.get(status) ?? 0 }));
 }
 
 function createStatusColumns(

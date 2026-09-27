@@ -299,7 +299,16 @@ suite('Task board', () => {
       'the list shows what the search found, with no filter of its own',
     );
     assert.deepStrictEqual(listed.taskCounts, { all: 2, active: 0, completed: 2 });
-    assert.deepStrictEqual(listed.settings, { statuses: ['todo', 'doing'], statusNamespace: 'status' });
+    assert.deepStrictEqual(listed.settings, {
+      statuses: ['todo', 'doing'],
+      statusNamespace: 'status',
+      // Every column the board draws, the unlisted review with them.
+      columns: [
+        { status: 'todo', openTasks: 1 },
+        { status: 'doing', openTasks: 1 },
+        { status: 'review', openTasks: 1 },
+      ],
+    });
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });
 

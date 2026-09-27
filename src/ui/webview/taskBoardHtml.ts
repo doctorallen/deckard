@@ -50,6 +50,7 @@ header { align-items: flex-start; }
 .board-status.drag-ghost { list-style: none; }
 .board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: var(--text-sm) var(--font-mono); }
 .board-status button { min-width: 26px; min-height: 26px; padding: 2px 6px; }
+.board-status-count { min-width: 26px; padding: 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
 .board-settings-row { display: flex; align-items: center; gap: 4px; }
 .board-settings-row input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .board-settings-row button { min-height: 26px; padding: 2px 8px; }
@@ -167,7 +168,7 @@ ${getQueryEditorScript()}
     canRank: function (kind) { return kind === 'status' ? Boolean(state) : canRank(); },
     reorder: function (kind, key, targetKey, before) {
       if (kind === 'status') {
-        const statuses = rankKeys(state.settings.statuses, key, targetKey, before);
+        const statuses = rankKeys(statusColumnNames(), key, targetKey, before);
         if (!statuses) return false;
         setStatuses(statuses);
         return true;
@@ -179,7 +180,7 @@ ${getQueryEditorScript()}
     },
     move: function (kind, key, toTop) {
       if (kind === 'status') {
-        const statuses = moveKeyToEdge(state.settings.statuses, key, toTop);
+        const statuses = moveKeyToEdge(statusColumnNames(), key, toTop);
         if (statuses) setStatuses(statuses);
         return;
       }
@@ -192,18 +193,34 @@ ${getQueryEditorScript()}
    * The status columns, dragged into order and each removable, and a field
    * to add one.
    */
+  /**
+   * Every status column the board draws, listed or not, in its order. Ordering
+   * them saves the whole order, so a status the tasks carry keeps its place.
+   */
+  function statusColumnNames() {
+    const columns = state.settings.columns;
+    return columns ? columns.map(function (column) { return column.status; }) : state.settings.statuses.slice();
+  }
+
   function renderStatusSettings() {
-    const statuses = state.settings.statuses;
-    const rows = statuses.map(function (status, index) {
+    const columns = state.settings.columns || state.settings.statuses.map(function (status) { return { status: status, openTasks: 0 }; });
+    const rows = columns.map(function (column) {
+      const status = column.status;
+      // A status open tasks carry is a column whether it is listed or not,
+      // so there is nothing to remove: it would come straight back.
+      const remove = column.openTasks === 0
+        ? '<button type="button" data-action="remove-status" data-status="' + escapeHtml(status) + '" aria-label="Remove ' + escapeHtml(status) + '" data-tip="Remove column">&#215;</button>'
+        : '<span class="board-status-count" data-tip="Open tasks with this status; a column while any have it">' + column.openTasks + '</span>';
       return '<li class="board-status is-draggable" tabindex="0" data-status="' + escapeHtml(status) + '" data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">'
         + '<span class="board-status-grip" aria-hidden="true">&#10303;</span>'
         + '<span class="board-status-name">' + escapeHtml(status) + '</span>'
-        + '<button type="button" data-action="remove-status" data-index="' + index + '" aria-label="Remove ' + escapeHtml(status) + '" data-tip="Remove column">&#215;</button></li>';
+        + remove + '</li>';
     }).join('');
     const namespace = namespaceDraft === undefined ? state.settings.statusNamespace : namespaceDraft;
     return '<div class="board-settings">'
-      + '<p class="board-settings-note">Columns when grouped by Status. Drag to reorder; Done always comes last. Saved in your settings, so they apply to every workspace unless this one sets its own.</p>'
-      + (rows ? '<ul class="board-status-list" aria-label="Status columns">' + rows + '</ul>' : '<p class="board-settings-note">No status columns. Tasks without a status still get one.</p>')
+      + '<p class="board-settings-note">Columns when grouped by Status. Every status your open tasks carry is a column, listed here or not; drag to set their order. No status comes first and Done last. Saved in your settings, so the order applies to every workspace unless this one sets its own.</p>'
+      + (rows ? '<ul class="board-status-list" aria-label="Status columns">' + rows + '</ul>' : '<p class="board-settings-note">No task has a status yet, so the board has only No status and Done.</p>')
+      + '<p class="board-settings-note">Add a status for an empty column to drop cards into. One no open task has can be removed.</p>'
       + '<form class="board-settings-row" data-form="add-status"><input type="text" data-action="status-draft" value="' + escapeHtml(statusDraft) + '" placeholder="Add a status, such as review" aria-label="New status column" autocomplete="off" spellcheck="false"><button type="submit">Add</button></form>'
       + '<span>Status tag</span>'
       + '<form class="board-settings-row" data-form="status-namespace"><span class="board-settings-prefix">#</span><input type="text" data-action="namespace-draft" value="' + escapeHtml(namespace) + '" aria-label="Status tag namespace" autocomplete="off" spellcheck="false"><span class="board-settings-prefix">/doing</span><button type="submit">Save</button></form>'
@@ -385,13 +402,14 @@ ${getQueryEditorScript()}
       renderKeepingFocus();
       return;
     }
-    if (state.settings.statuses.indexOf(name) >= 0) {
+    const names = statusColumnNames();
+    if (names.indexOf(name) >= 0) {
       settingsError = name + ' is already a column.';
       renderKeepingFocus();
       return;
     }
     statusDraft = '';
-    setStatuses(state.settings.statuses.concat([name]));
+    setStatuses(names.concat([name]));
   }
 
   function saveNamespace() {
@@ -441,17 +459,20 @@ ${getQueryEditorScript()}
       if (action === 'export-tasks') post({ type: 'exportResults', kind: 'tasks' });
       if (action === 'set-task-layout') post({ type: 'setTaskLayout', layout: target.dataset.value });
       if (action === 'remove-status') {
-        const statuses = state.settings.statuses.slice();
-        const index = Number(target.dataset.index);
-        const removed = statuses.splice(index, 1)[0];
-        setStatuses(statuses);
-        if (removed !== undefined) statusUndo.show('Removed the ' + removed + ' column.', 'undo-remove-status', { status: removed, index: index, after: statuses });
+        const statuses = statusColumnNames();
+        const index = statuses.indexOf(target.dataset.status);
+        const removed = index >= 0 ? statuses.splice(index, 1)[0] : undefined;
+        if (removed !== undefined) {
+          setStatuses(statuses);
+          statusUndo.show('Removed the ' + removed + ' column.', 'undo-remove-status', { status: removed, index: index, after: statuses });
+        }
       }
       if (action === 'undo-remove-status') {
         const undone = statusUndo.take();
         if (undone) {
           // The columns as last sent, if the host has not answered yet.
-          const current = state.settings.statuses.indexOf(undone.status) >= 0 ? undone.after : state.settings.statuses;
+          const names = statusColumnNames();
+          const current = names.indexOf(undone.status) >= 0 ? undone.after : names;
           const statuses = current.slice();
           statuses.splice(Math.min(undone.index, statuses.length), 0, undone.status);
           setStatuses(statuses);

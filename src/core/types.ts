@@ -2007,6 +2007,12 @@ export interface TaskTableRow {
 export interface TaskBoardSettings {
   statuses: string[];
   statusNamespace: string;
+  /**
+   * Every status column the board draws, in its order: the listed ones,
+   * then any other status an open task carries. The gear lists these, so a
+   * column that is on the board is in the list that orders it.
+   */
+  columns?: { status: string; openTasks: number }[];
 }
 
 /** Whether the Task Board shows its tasks as a list or as columns. */
