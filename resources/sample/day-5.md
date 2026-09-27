@@ -1,31 +1,25 @@
 # {{date-5}}
 
 ## Rainshadow Mesh survey #project/rainshadow-mesh
-The mesh hides high-output bodies beneath monsoon advertisements, and Kenji mapped three exits where the false heat becomes visible for less than a second. We need a capture plan that protects commuters instead of chasing a signal through crowded platforms.
+The mesh hides high-output bodies beneath monsoon advertisements. We need a capture plan that protects commuters instead of chasing a signal through crowded platforms.
 
-- [x] Approve Kenji’s rain-route map.
-- [ ] Request two nonlethal containment kits from stores.
-Kenji will time the visible intervals again during the commuter rush, and Mara will use those timings to select observation positions that keep the platform stairs open for ordinary travel.
+- [x] Approve Kenji's rain-route map ✅ {{date-5}}
+- [ ] Request two nonlethal containment kits from stores
+- [>] Confirm the rain-route timings with Kenji → [[{{date-1}}]]
 
 ## Wardens check-in #team/wardens
-Dax spotted a reflective figure near South Spindle but did not pursue when children entered the stairwell. That was the right call; Mara secured the camera angle and recovered a discarded transit token without escalating the scene.
-The token was bagged by Dax with a location sketch, while Mara’s camera notes identify the children only by movement direction rather than retaining unnecessary personal detail.
+Dax spotted a reflective figure near South Spindle but did not follow when children came into the stairwell. That was the right call.
 
 ### Dax Morrow #person/dax-morrow
 #### Transit-token recovery #project/rainshadow-mesh
-Dax will maintain the token’s #feature/chain-of-custody and give #person/leena-sato the #location/south-spindle sketch without adding bystander identities.
+Dax will keep the token's #feature/chain-of-custody and give #person/leena-sato the #location/south-spindle sketch without bystander names.
 
 ### Mara Vale #person/mara-vale
 #### Platform observation #project/rainshadow-mesh
-Mara will retain the limited #feature/camera-angle record and mark the #risk/crowded-stairwell decision that ended pursuit.
+Mara will keep the limited #feature/camera-angle record and note the #risk/crowded-stairwell decision that ended the pursuit.
 
 ## Contact: Hush Baird #contact/hush-baird
-Hush, a night-market mechanic, identified the token as a fare chip modified for machine-only gates. He wants immunity from municipal licensing questions; I can offer witness protection, not a promise outside my authority.
-Sable will explain that boundary in writing and arrange a counsel referral, giving Hush a realistic path to cooperate without treating his concern as an informal bargaining chip.
+Hush, a night-market mechanic, identified the token as a fare chip modified for machine-only gates. He wants immunity from licensing questions; I can offer witness protection, not a promise outside my authority.
 
 ## Planning block #operations
-I set a dawn observation team and moved Harbor to background support. Ren’s relay prototype will be present only in passive mode until its range tests prove it cannot identify uninvolved residents.
-The field supervisor must log each activation window and its purpose, and Ren will audit the captured signal counts against the planned route before any data is entered into the case system.
-
-## Decision record #risk/ethics
-I documented that the dawn plan can be cancelled for crowding, a privacy failure, or an unresolved medical need. The operational advantage of an early signal is not sufficient to erase any of those limits.
+I set a dawn observation team and moved Harbor to background support. Ren's relay prototype will run only in passive mode until its range tests show it cannot identify uninvolved residents.
