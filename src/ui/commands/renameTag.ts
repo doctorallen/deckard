@@ -19,7 +19,7 @@ import { WorkspaceIndexer } from '../../core/workspace/indexer';
 import { resolveIndexedTagKey } from '../../core/workspace/tagNavigation';
 import { resolveSourceUri } from './navigation';
 import { describeMissingTag, describeRejectedEdit, noteName, reindexAction, reportFailure, reportStale } from './notify';
-import { applyWorkspaceWrite } from './workspaceWrites';
+import { applyWorkspaceWrite, reportUndo, workspaceWrites } from './workspaceWrites';
 
 export interface RenameTagOptions {
   entityNamespaceAliases?: EntityNamespaceAliases;
@@ -397,6 +397,8 @@ async function rewriteTag(
     return undefined;
   }
 
+  const mine = workspaceWrites.lastWrite;
+
   // Favorites, ranking, and saved views follow the tag. This runs before the
   // refresh so nothing prunes them while they still name the old key.
   await preferences?.replaceTagKey(sourceTag.key, targetKey ?? replacement.key);
@@ -411,13 +413,30 @@ async function rewriteTag(
       error,
     });
   }
-  void vscode.window.showInformationMessage(
-    `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
-      written.notes.length,
-      'note',
-      'notes',
-    )}.`,
-  );
+  // Undo is offered where it was done: a Try next merge, or one from a
+  // tag's menu, is not something a reader thinks to find in the palette.
+  void vscode.window
+    .showInformationMessage(
+      `${done} ${sourceTag.label} ${joiner} ${replacement.label} in ${formatCount(
+        written.notes.length,
+        'note',
+        'notes',
+      )}.`,
+      'Undo',
+    )
+    .then(async (choice) => {
+      if (choice !== 'Undo') {
+        return;
+      }
+      if (workspaceWrites.lastWrite !== mine) {
+        void vscode.window.showInformationMessage(
+          'Deckard has changed your notes again since, so use Deckard: Undo Last Change.',
+        );
+        return;
+      }
+      const result = await workspaceWrites.undo();
+      reportUndo(result, `Put back ${sourceTag.label} in ${formatCount(result?.restored ?? 0, 'note', 'notes')}.`);
+    });
   return replacement;
 }
 
