@@ -2,7 +2,7 @@
   "name": "deckard-notes",
   "displayName": "Deckard",
   "publisher": "esperinnovations",
-  "description": "Find your replicants, chase down loose ends, and keep your memories in order.",
+  "description": "Your notes, tasks, and people, connected and kept local. Find what you wrote, chase down loose ends, and retire what's done.",
   "icon": "resources/logo.png",
   "repository": {
     "type": "git",
