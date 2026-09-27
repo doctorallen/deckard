@@ -166,3 +166,11 @@ Types and lint per commit; the full set at the end.
 - The Show and Hide commands are titled **Turn On Repeats** and **Turn Off Repeats**: Deckard keeps "Show" for commands that open something.
 - `deckard.showHelp` takes a Help section to open, which the page's **?** uses for **Days, weeks, and months**.
 - The review guide's Calendar (page) section is left for David's stashed edits to that file.
+
+## 10. After review (2026-09-27)
+
+- A day on the page lights whole under the pointer, in a faint accent, and a click anywhere in it chooses it. Its date takes no hover of its own, which in Cooper was the ground's color.
+- The sidebar's chosen day is outlined, not filled: the fill was Cooper's cream, and the counts on it were unreadable.
+- The calendar icon opens the calendar, in the Related Notes and Calendar title bars; Create Daily Note wears a new-file icon.
+- `deckard.calendar.showWeekends` leaves Saturday and Sunday out of both calendars, with **Hide Weekends** and **Include Weekends** in the sidebar's menu and a row in the page's gear.
+- While the page is the active editor and Related Notes is open, the chosen day is drawn in Related Notes, through `ActiveCalendar`, the calendar's counterpart to `ActiveSearch`. The day panel's renderer and handlers moved into `calendarDay.ts` for it.
