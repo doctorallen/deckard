@@ -67,9 +67,15 @@ than three.
 ## Release workflow
 
 Open pull requests from `dev` into `main` or the current `master` branch.
-When a same-repository pull request is opened or reopened, GitHub Actions
-chooses the version increment from Conventional Commit messages, then commits
-the resulting `package.json` and `package-lock.json` update back to `dev`.
+When a same-repository pull request is opened, reopened, or pushed to, GitHub
+Actions chooses the version increment from Conventional Commit messages,
+cuts `## Unreleased` in `CHANGELOG.md` into that version's dated section
+(`scripts/changelog.js cut`), and commits the `package.json`,
+`package-lock.json`, and `CHANGELOG.md` update back to `dev`. Entries written
+under `## Unreleased` after that are folded into the same section on the next
+push. With nothing written, the section is made from the `feat:` and `fix:`
+commit subjects; a feature release is refused until its Highlights are
+written.
 Breaking changes (`feat!:`/`fix!:` or `BREAKING CHANGE:`) produce a major
 release, `feat:` produces a minor release, and `fix:` produces a patch
 release. Other commit types do not increment the version. If the pull request
@@ -77,5 +83,8 @@ already changes the version, the workflow preserves that explicit version.
 
 After the pull request merges into either release branch, the Release workflow
 tests the merged source, creates a `v<version>` tag and GitHub Release, and
-uploads the generated VSIX. A version that already has a tag is not released
-again.
+uploads the generated VSIX, with the version's section of the changelog as
+its notes. A version that already has a tag is not released again, but its
+release's notes are brought into line with its section when the two differ.
+Running the Release workflow by hand (**Run workflow** in the Actions tab)
+does the same for every release the changelog has a section for.

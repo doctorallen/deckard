@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - master
+  # Rewrites every release's notes from its section of the changelog, for
+  # when an older section was corrected after it shipped.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,6 +18,7 @@ concurrency:
 
 jobs:
   release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -59,7 +63,6 @@ jobs:
         run: npm run package:vsix
 
       - name: Read the release notes from the changelog
-        if: steps.tag.outputs.exists != 'true'
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: node scripts/changelog.js notes "$VERSION" > "$RUNNER_TEMP/notes.md"
@@ -84,3 +87,57 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Deckard $TAG_NAME" \
             --repo "$GITHUB_REPOSITORY"
+
+      # A version already released keeps its notes in step with its section
+      # of the changelog, which a later merge may have corrected.
+      - name: Update the release notes from the changelog
+        if: steps.tag.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: v${{ steps.version.outputs.value }}
+        run: |
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "The changelog has no section for $TAG_NAME."
+            exit 0
+          fi
+          gh release view "$TAG_NAME" --json body --jq .body > "$RUNNER_TEMP/current.md" || exit 0
+          if diff -q -B <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/current.md") <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/notes.md") > /dev/null; then
+            echo "$TAG_NAME already says what the changelog does."
+            exit 0
+          fi
+          gh release edit "$TAG_NAME" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+
+  sync-notes:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      # Each release the changelog has a section for says what that section
+      # does; one it has none for keeps the notes it was given.
+      - name: Rewrite each release's notes from the changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 200 --json tagName --jq '.[].tagName' | while read -r tag; do
+            node scripts/changelog.js notes "${tag#v}" > "$RUNNER_TEMP/notes.md"
+            if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+              echo "$tag: no section in the changelog, left as it is."
+              continue
+            fi
+            gh release view "$tag" --json body --jq .body > "$RUNNER_TEMP/current.md"
+            if diff -q -B <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/current.md") <(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RUNNER_TEMP/notes.md") > /dev/null; then
+              echo "$tag: already matches."
+              continue
+            fi
+            gh release edit "$tag" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+            echo "$tag: rewritten from the changelog."
+          done
