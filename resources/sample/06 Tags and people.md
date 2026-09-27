@@ -72,7 +72,9 @@ hub, so Home's **Tags without a hub** widget lists it, with **Create hub**.
 7. On an empty line, type a hash sign and then `ghost`. Completion offers the
    relay project's tag, with how many entries use it. Delete the line
    afterward.
-8. On Home, add the **Gone quiet** widget (**Customize → Add widget**). It
-   lists the people you have not written about for a while.
+8. On Home's **Tags** tab, choose **Namespace → Person** to list only the
+   people, busiest first. Home's **Gone quiet** widget, which you can add with
+   **Customize → Add widget**, lists the people you have not written about
+   for 30 days or more: nobody yet in a sample this new.
 
 Next: [[07 Links]]

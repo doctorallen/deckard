@@ -16,10 +16,10 @@ read this.
 ## Read in this order
 
 Open each note in the editor, where Deckard draws its hints, and keep the
-Deckard sidebar open beside it. A link below opens the note here in the
-preview; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> switches a note between
-the preview and the editor (<kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Windows and
-Linux).
+Deckard sidebar open beside it. A link below opens the note in the preview;
+the **Open Source** button in the preview's title bar opens it in the
+editor. Keys are written for macOS: use <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on
+Windows and Linux.
 
 1. [Tasks](<01 Tasks.md>): due, scheduled, and start dates, priorities,
    overdue and Needs a new date, Done today, steps, and the Tasks view.

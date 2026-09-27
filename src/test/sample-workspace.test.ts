@@ -190,6 +190,7 @@ suite('Sample workspace', () => {
         ['is:open', 49],
         ['is:done', 10],
         ['is:overdue', 3],
+        ['is:overdue -is:needs-date', 2],
         ['is:needs-date', 1],
         ['is:today', 4],
         ['is:waiting', 4],

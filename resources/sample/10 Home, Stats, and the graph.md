@@ -46,8 +46,9 @@ and **Show parked** brings back the archive.
 
 ## Try it
 
-1. Open Home. Select **Overdue**: a search page opens on `is:overdue`, with
-   the same count.
+1. Open Home. Select **Overdue**: a search page opens on
+   `is:overdue -is:needs-date`, with the same count, 2. The task that needs a
+   new date is not counted there.
 2. On Home's **Try next**, select **Merge…**, or **Not now** to put it off for
    a week.
 3. Open the Loose ends note, then the Related Notes sidebar. Under **Tags

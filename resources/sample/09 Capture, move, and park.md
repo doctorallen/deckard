@@ -61,8 +61,9 @@ task is on no list of things to do, and `is:parked` still finds it.
    takes its place here.
 5. Run **Deckard: New Note from Template**, choose **Meeting**, and give it a
    title. Deckard asks who ran it, then writes the note with today's date.
-6. Run **Deckard: Pin Note to Home** with the cursor in the Harbor inbox. Home
-   now lists it under **Pinned notes**.
+6. Run **Deckard: Pin Note to Home** with the cursor in the Harbor inbox.
+   Find, opened with nothing typed, now lists it first, and so does Home's
+   **Pinned notes** widget once you add it (**Customize → Add widget**).
 7. In the Outline view, select the target button on a heading (**Focus
    Section**). The rest of the note folds away. **Unfold All Sections** in the
    view's title brings it back.

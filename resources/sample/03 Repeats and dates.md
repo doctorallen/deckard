@@ -69,7 +69,7 @@ span: `due = next-week` is every day of next week.
    anything is saved. Press Escape if you would rather not add it.
 6. Run **Deckard: Open Daily Note for Date…** and type `yesterday`. It opens
    yesterday's note, which is already in this sample.
-7. In the task editor, type `+1m` into **Due**. From January 31 it gives
-   February 28: a month is a calendar month.
+7. In the task editor, type `+1m` into **Due**. A month is a calendar month,
+   so from January 31 it would give February 28.
 
 Next: [[04 Search]]

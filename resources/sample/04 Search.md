@@ -13,8 +13,8 @@ other notes, the numbers move too.
 **Deckard: Find in Notes** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>)
 is for getting to something quickly. Results appear as you type.
 
-- Type `lens`. Notes titled with the word come first, then the entries that
-  mention it.
+- Type `lens`. Every entry and task that mentions it is listed, the best
+  match first.
 - Type `ghostline`. The relay project's tag is offered, because a word also
   finds a tag by its name. <kbd>Tab</kbd> adds it to the search.
 - Type `overd`. The `is:overdue` condition is offered.
