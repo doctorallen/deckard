@@ -65,6 +65,7 @@ export class CalendarView
           event.affectsConfiguration('deckard.calendar.weekStart') ||
           event.affectsConfiguration('deckard.calendar.dayPanel') ||
           event.affectsConfiguration('deckard.calendar.showRepeats') ||
+          event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();
@@ -159,6 +160,7 @@ export class CalendarController {
         dayPanel: this.dayPanel(),
         selectedDate: this.selectedDate,
         showRepeats: readShowRepeats(),
+        showWeekends: readShowWeekends(),
         ...options,
       }),
     );
@@ -296,6 +298,11 @@ export class CalendarController {
     const noteUri = await ensurePeriodicNote(folder, period, day);
     await vscode.window.showTextDocument(noteUri, { preview: false });
   }
+}
+
+/** `deckard.calendar.showWeekends`: whether Saturday and Sunday are drawn. */
+export function readShowWeekends(): boolean {
+  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showWeekends', true) !== false;
 }
 
 /** `deckard.calendar.showRepeats`: whether a repeating task is drawn on its rule's later dates. */

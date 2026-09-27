@@ -92,6 +92,12 @@ export interface CalendarSnapshot {
   weeks: CalendarWeek[];
   /** Whether repeats are drawn, from `deckard.calendar.showRepeats`. */
   showRepeats?: boolean;
+  /**
+   * Saturday and Sunday are left out of the grid, from
+   * `deckard.calendar.showWeekends`. The weeks still hold them, for their
+   * notes and for a step that lands on one.
+   */
+  hideWeekends?: boolean;
   /** Whether the chosen day is shown below the month, from `deckard.calendar.dayPanel`. */
   dayPanel?: boolean;
   /** The day chosen, YYYY-MM-DD: today until another is. */
@@ -269,6 +275,8 @@ function repeatsOn(index: WorkspaceIndex, from: number, to: number, now: Date): 
 export interface CalendarOptions {
   /** Draw a repeating task on its rule's later dates, not only its next. */
   showRepeats?: boolean;
+  /** Draw Saturday and Sunday; true unless turned off. */
+  showWeekends?: boolean;
   /**
    * The sidebar's days carry counts and a few names for their tooltips; the
    * page's list every task by name.
@@ -473,6 +481,7 @@ export function createCalendar(
     weekdays: Array.from({ length: 7 }, (_, offset) => WEEKDAY_SHORT[(weekStart + offset) % 7]),
     weeks,
     ...(options.showRepeats ? { showRepeats: true } : {}),
+    ...(options.showWeekends === false ? { hideWeekends: true } : {}),
     ...(options.dayPanel
       ? (() => {
           const selectedDate = options.selectedDate ?? today;

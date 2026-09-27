@@ -823,7 +823,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.calendar.closeDayPanel', () =>
       writeSetting('calendar.dayPanel', false, settingTarget('calendar.dayPanel')),
     ),
-    // Repeats the same way.
+    // Weekends, and repeats, the same way.
+    vscode.commands.registerCommand('deckard.calendar.hideWeekends', () =>
+      writeSetting('calendar.showWeekends', false, settingTarget('calendar.showWeekends')),
+    ),
+    vscode.commands.registerCommand('deckard.calendar.includeWeekends', () =>
+      writeSetting('calendar.showWeekends', true, settingTarget('calendar.showWeekends')),
+    ),
     vscode.commands.registerCommand('deckard.calendar.showRepeats', () =>
       writeSetting('calendar.showRepeats', true, settingTarget('calendar.showRepeats')),
     ),

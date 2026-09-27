@@ -910,8 +910,9 @@ export function parseCalendarPageMessage(value: unknown): CalendarPageMessage | 
   if (isRecord(value)) {
     switch (value.type) {
       case 'setShowRepeats':
+      case 'setShowWeekends':
         return typeof value.show === 'boolean' && Object.keys(value).length === 2
-          ? { type: 'setShowRepeats', show: value.show }
+          ? { type: value.type, show: value.show }
           : undefined;
       case 'setZenMode':
         return typeof value.enabled === 'boolean' ? { type: 'setZenMode', enabled: value.enabled } : undefined;

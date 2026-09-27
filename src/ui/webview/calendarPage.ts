@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { onIndexUpdateInTurn, viewPriority, whenPublished } from '../../core/workspace/publishing';
 import { WorkspaceIndex } from '../../core/types';
 import { settingTarget, writeSetting } from '../commands/settings';
-import { CalendarController, readShowRepeats } from './calendar';
+import { CalendarController, readShowRepeats, readShowWeekends } from './calendar';
 import { getCalendarHtml } from './calendarHtml';
 import { onDidChangePageChrome } from './components';
 import { parseCalendarPageMessage } from './messages';
@@ -61,6 +61,7 @@ export class CalendarPanel implements vscode.Disposable {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
           event.affectsConfiguration('deckard.calendar.showRepeats') ||
+          event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();
@@ -164,6 +165,11 @@ export class CalendarPanel implements vscode.Disposable {
       case 'setShowRepeats':
         if (message.show !== readShowRepeats()) {
           await writeSetting('calendar.showRepeats', message.show, settingTarget('calendar.showRepeats'));
+        }
+        return;
+      case 'setShowWeekends':
+        if (message.show !== readShowWeekends()) {
+          await writeSetting('calendar.showWeekends', message.show, settingTarget('calendar.showWeekends'));
         }
         return;
       case 'setZenMode':

@@ -682,6 +682,16 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.calendar.hideWeekends",
+        "title": "Hide Weekends",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.includeWeekends",
+        "title": "Include Weekends",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.calendar.showRepeats",
         "title": "Turn On Repeats",
         "category": "Deckard"
@@ -922,6 +932,14 @@
         },
         {
           "command": "deckard.calendar.showRepeats",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.hideWeekends",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.includeWeekends",
           "when": "false"
         },
         {
@@ -1171,6 +1189,16 @@
           "command": "deckard.calendar.closeDayPanel",
           "when": "view == deckard.calendar && config.deckard.calendar.dayPanel",
           "group": "1_calendar@1"
+        },
+        {
+          "command": "deckard.calendar.hideWeekends",
+          "when": "view == deckard.calendar && config.deckard.calendar.showWeekends",
+          "group": "1_calendar@3"
+        },
+        {
+          "command": "deckard.calendar.includeWeekends",
+          "when": "view == deckard.calendar && !config.deckard.calendar.showWeekends",
+          "group": "1_calendar@3"
         },
         {
           "command": "deckard.calendar.showRepeats",
@@ -1643,6 +1671,13 @@
             "default": false,
             "scope": "window",
             "markdownDescription": "Show the chosen day under the Calendar: its daily note, the tasks due or scheduled that day, and the notes created that day. A click then chooses a day; a double-click or Enter opens its note. When off, a click opens the day's note straight away.",
+            "order": 7
+          },
+          "deckard.calendar.showWeekends": {
+            "type": "boolean",
+            "default": true,
+            "scope": "window",
+            "markdownDescription": "Draw Saturday and Sunday in the Calendar and on the calendar page. Turned off, a week is its five working days; a task due on a weekend is still in the Tasks view and on the board.",
             "order": 7
           },
           "deckard.calendar.showRepeats": {

@@ -251,4 +251,32 @@ suite('Calendar', () => {
       page.dispose();
     }
   });
+
+  test('leaves the weekends out when they are hidden, in the sidebar and on the page', () => {
+    const now = new Date(2026, 8, 13, 10);
+    const hidden = createCalendar(index, '2026-09', now, 0, { showWeekends: false });
+    assert.strictEqual(hidden.hideWeekends, true);
+    assert.strictEqual(createCalendar(index, '2026-09', now).hideWeekends, undefined, 'drawn unless turned off');
+    const sidebar = openWebviewPage(getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never), hidden);
+    try {
+      assert.deepStrictEqual(sidebar.findAll('.weekday').map((cell) => cell.textContent).filter(Boolean), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+      assert.ok(sidebar.find('.calendar-grid').classList.contains('no-weekends'));
+      assert.strictEqual(sidebar.findAll('.calendar-grid .day[data-date="2026-09-12"]').length, 0, 'no Saturday');
+      assert.strictEqual(sidebar.findAll('.calendar-grid .day[data-date="2026-09-13"]').length, 0, 'no Sunday');
+      assert.strictEqual(sidebar.findAll('.calendar-grid .day').length, 25, 'five weeks of five days');
+    } finally {
+      sidebar.dispose();
+    }
+    const page = openWebviewPage(
+      getCalendarHtml({ cspSource: 'vscode-webview://deckard' } as never, { page: true }),
+      createCalendar(index, '2026-09', now, 0, { showWeekends: false, dayPanel: true, layout: 'page' }),
+    );
+    try {
+      assert.strictEqual(page.findAll('.day-cell[data-drop-date="2026-09-12"]').length, 0);
+      page.click('.view-options [data-action="set-show-weekends"][data-value="on"]');
+      assert.deepStrictEqual(page.lastPosted('setShowWeekends'), { type: 'setShowWeekends', show: true });
+    } finally {
+      page.dispose();
+    }
+  });
 });

@@ -45,6 +45,8 @@ body { min-width: 220px; }
 .calendar-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .calendar-grid { display: grid; grid-template-columns: auto repeat(7, minmax(0, 1fr)); gap: 2px; }
 .calendar-row, .calendar-cell { display: contents; }
+/* With the weekends hidden, a row is its five working days. */
+.calendar-grid.no-weekends { grid-template-columns: auto repeat(5, minmax(0, 1fr)); }
 /* The week opens its note and marks whether it has one; it is not a date,
    so it is drawn as a rail beside the days rather than as another cell. */
 .week-label { display: grid; align-self: stretch; width: 18px; padding: 0; border: 0; border-right: 1px solid var(--line); background: none; color: var(--muted); place-items: center; }
@@ -201,13 +203,13 @@ ${getComponentScript()}
     const label = (week.notePath ? "Open this week's note, " : "Start this week's note, ") + days;
     return '<div class="calendar-row" role="row"><span class="calendar-cell" role="rowheader"><button type="button" class="week-label' + (week.notePath ? ' has-note' : '') + '" data-action="open-week" data-date="' + escapeHtml(week.date) + '" data-tip="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">'
       + '${calendarIcon}'
-      + '</button></span>' + week.days.map(renderDay).join('') + '</div>';
+      + '</button></span>' + week.days.filter(isDrawn).map(renderDay).join('') + '</div>';
   }
 
   /** The focused day when it is drawn, else today, else the 1st. */
   function tabStopDate() {
     const days = [];
-    state.weeks.forEach(function (week) { week.days.forEach(function (day) { days.push(day); }); });
+    state.weeks.forEach(function (week) { week.days.filter(isDrawn).forEach(function (day) { days.push(day); }); });
     const has = function (date) { return date && days.some(function (day) { return day.date === date; }); };
     if (state.dayPanel && has(state.selectedDate) && !has(focusDate)) return state.selectedDate;
     if (has(focusDate)) return focusDate;
@@ -222,6 +224,35 @@ ${getComponentScript()}
     const parts = date.split('-').map(Number);
     const moved = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
     return moved.toISOString().slice(0, 10);
+  }
+
+  /** Whether a day is drawn: every day, or none on a weekend with them hidden. */
+  function isDrawn(day) {
+    return !state.hideWeekends || !isWeekend(day.date);
+  }
+
+  function isWeekend(date) {
+    const parts = date.split('-').map(Number);
+    const weekday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
+    return weekday === 0 || weekday === 6;
+  }
+
+  /**
+   * A key's step from a day, as a date: a row down is a week whichever
+   * number of days the row draws, and a step onto a hidden weekend goes on
+   * to the next weekday that way.
+   */
+  function stepDate(date, step) {
+    const cols = state.hideWeekends ? 5 : 7;
+    const days = Math.abs(step) === cols ? Math.sign(step) * 7 : step;
+    return skipWeekend(shiftDate(date, days), Math.sign(step) || 1);
+  }
+
+  /** A date, or the next drawn day from it one way, with weekends hidden. */
+  function skipWeekend(date, direction) {
+    let at = date;
+    while (state.hideWeekends && isWeekend(at)) at = shiftDate(at, direction);
+    return at;
   }
 
   /** The same day of the month in another month, or its last day. */
@@ -246,8 +277,8 @@ ${getComponentScript()}
       '</div>';
     // Rows and cells as a grid is read: a header row of weekday names, then a
     // row per week. The wrappers draw nothing; the grid lays out the buttons.
-    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
-    document.getElementById('app').innerHTML = header + '<div class="calendar-grid" role="grid" aria-label="' + escapeHtml(state.title) + '"' + (state.dayPanel ? ' aria-multiselectable="false"' : '') + '>' + weekdays + state.weeks.map(renderWeek).join('') + '</div>' + renderPanel(state.selected);
+    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).filter(function (name) { return !state.hideWeekends || (name !== 'Sat' && name !== 'Sun'); }).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
+    document.getElementById('app').innerHTML = header + '<div class="calendar-grid' + (state.hideWeekends ? ' no-weekends' : '') + '" role="grid" aria-label="' + escapeHtml(state.title) + '"' + (state.dayPanel ? ' aria-multiselectable="false"' : '') + '>' + weekdays + state.weeks.map(renderWeek).join('') + '</div>' + renderPanel(state.selected);
   }
 
   /**
@@ -302,6 +333,7 @@ ${getComponentScript()}
     const viewOptions = renderViewOptions([
       { label: 'Layout', html: renderViewOptionChoices('set-calendar-layout', [['month', 'Month'], ['week', 'Week']], layout, 'Calendar layout') },
       { label: 'Repeats', html: renderViewOptionChoices('set-show-repeats', [['on', 'On'], ['off', 'Off']], state.showRepeats ? 'on' : 'off', 'Repeats') },
+      { label: 'Weekends', html: renderViewOptionChoices('set-show-weekends', [['on', 'Shown'], ['off', 'Hidden']], state.hideWeekends ? 'off' : 'on', 'Weekends') },
       renderThemeOption(),
       renderZenOption(),
     ]);
@@ -313,10 +345,10 @@ ${getComponentScript()}
       + '<button type="button" data-action="step-calendar" data-by="1" aria-label="Next ' + step + '" data-tip="Next ' + step + ' (])">&rsaquo;</button>'
       + renderViewOptionChoices('set-calendar-layout', [['month', 'Month'], ['week', 'Week']], layout, 'Calendar layout')
       + renderHelpButton('periodic') + viewOptions + '</div></header>';
-    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
+    const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).filter(function (name) { return !state.hideWeekends || (name !== 'Sat' && name !== 'Sun'); }).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
     const rows = (week ? [week] : state.weeks).map(renderWeek).join('');
     document.getElementById('app').innerHTML = header
-      + '<div class="calendar-page-body' + (layout === 'week' ? ' is-week' : '') + '"><div class="calendar-grid" role="grid" aria-label="' + escapeHtml(title) + '" aria-multiselectable="false">' + weekdays + rows + '</div>'
+      + '<div class="calendar-page-body' + (layout === 'week' ? ' is-week' : '') + '"><div class="calendar-grid' + (state.hideWeekends ? ' no-weekends' : '') + '" role="grid" aria-label="' + escapeHtml(title) + '" aria-multiselectable="false">' + weekdays + rows + '</div>'
       + renderPanel(state.selected) + '</div>';
   }
 
@@ -330,7 +362,7 @@ ${getComponentScript()}
       return;
     }
     const month = by < 0 ? state.previousMonth : state.nextMonth;
-    const date = sameDayIn(state.selectedDate || state.today, month);
+    const date = skipWeekend(sameDayIn(state.selectedDate || state.today, month), 1);
     focusDate = date;
     pendingFocusDate = date;
     post({ type: 'showMonth', month: month, date: date });
@@ -429,16 +461,18 @@ ${getComponentScript()}
     }
     const day = event.target && event.target.closest ? event.target.closest('.day') : null;
     if (!day) return;
-    const steps = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 };
+    // A row is five days with the weekends hidden, seven with them.
+    const cols = state.hideWeekends ? 5 : 7;
+    const steps = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols };
     const days = [].slice.call(document.querySelectorAll('.calendar-grid .day'));
     const index = days.indexOf(day);
     let next;
     if (steps[event.key] !== undefined) {
       next = days[index + steps[event.key]];
     } else if (event.key === 'Home') {
-      next = days[index - (index % 7)];
+      next = days[index - (index % cols)];
     } else if (event.key === 'End') {
-      next = days[index - (index % 7) + 6];
+      next = days[index - (index % cols) + cols - 1];
     } else if (event.key === 'PageUp' || event.key === 'PageDown') {
       event.preventDefault();
       const month = event.key === 'PageUp' ? state.previousMonth : state.nextMonth;
@@ -458,14 +492,14 @@ ${getComponentScript()}
     // A step past the edge of the drawn weeks moves to the next month, or
     // on the page's week, to the day it stepped to.
     if (!next && PAGE && layout === 'week' && steps[event.key] !== undefined) {
-      pendingFocusDate = shiftDate(day.dataset.date, steps[event.key]);
+      pendingFocusDate = stepDate(day.dataset.date, steps[event.key]);
       focusDate = pendingFocusDate;
       post({ type: 'selectDay', date: pendingFocusDate });
       return;
     }
     if (!next) {
       if (steps[event.key] !== undefined) {
-        pendingFocusDate = shiftDate(day.dataset.date, steps[event.key]);
+        pendingFocusDate = stepDate(day.dataset.date, steps[event.key]);
         focusDate = pendingFocusDate;
       }
       const month = steps[event.key] < 0 ? state.previousMonth : state.nextMonth;
@@ -525,6 +559,7 @@ ${getComponentScript()}
     else if (action === 'search-created') post({ type: 'searchCreated', date: target.getAttribute('data-date') });
     else if (action === 'set-calendar-layout') setLayout(target.getAttribute('data-value'));
     else if (action === 'set-show-repeats') post({ type: 'setShowRepeats', show: target.getAttribute('data-value') === 'on' });
+    else if (action === 'set-show-weekends') post({ type: 'setShowWeekends', show: target.getAttribute('data-value') === 'on' });
     else if (action === 'step-calendar') stepCalendar(Number(target.getAttribute('data-by')));
     else if (action === 'go-today') {
       focusDate = state.today;

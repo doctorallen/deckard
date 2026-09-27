@@ -1072,6 +1072,7 @@ export type CalendarMessage =
 export type CalendarPageMessage =
   | CalendarMessage
   | { type: 'setShowRepeats'; show: boolean }
+  | { type: 'setShowWeekends'; show: boolean }
   | { type: 'setZenMode'; enabled: boolean }
   | { type: 'chooseTheme' }
   | { type: 'openHelp' };
