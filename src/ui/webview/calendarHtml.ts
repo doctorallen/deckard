@@ -75,9 +75,11 @@ body { min-width: 220px; }
 .repeat-count { color: var(--muted); font-size: var(--text-xs); line-height: 11px; white-space: nowrap; }
 .repeat-count:empty { display: none; }
 .repeat-mark { color: var(--muted); font-size: var(--text-sm); line-height: 20px; text-align: center; }
-/* The chosen day, with the panel on: filled, and underlined in the accent,
-   so it reads apart from today's border. */
-.day.selected { background: var(--hover-bg); color: var(--hover-fg); box-shadow: inset 0 -2px 0 var(--accent); }
+/* The chosen day, with the panel on: outlined and underlined in the accent,
+   so it reads apart from today's border. Not filled: the hover ground is a
+   pale cream in some themes, and the due and scheduled counts on it went
+   unreadable. */
+.day.selected { box-shadow: inset 0 0 0 1px var(--accent), inset 0 -2px 0 var(--accent); }
 .day-panel { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
 .day-panel h2 { margin: 0 0 var(--space-2); color: var(--text); font: var(--text-sm) var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .day-note { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-width: 0; padding: var(--space-1) var(--space-2); text-align: left; }
@@ -689,7 +691,8 @@ main { max-width: none; padding: var(--space-5) var(--space-5) var(--space-6); }
 .calendar-page-body .day-cell.drop-target { outline: var(--edge) solid var(--amber); outline-offset: -2px; }
 .calendar-page-body .day { display: block; align-self: flex-start; min-height: 0; padding: 0 var(--space-1); border: 1px solid transparent; background: none; font: var(--text-sm) var(--font-mono); text-align: left; box-shadow: none; }
 .calendar-page-body .day.today { border-color: var(--amber); }
-/* The chosen date keeps the sidebar's fill, which its ink is chosen for. */
+/* The chosen date is filled on the page, where it is only a number: the
+   hover ground, with the ink chosen for it. */
 .calendar-page-body .day.selected { background: var(--hover-bg); color: var(--hover-fg); }
 /* The daily note and +N more are words on the day, drawn as the search
    cards' Show all is, so every theme reads them the same. */
