@@ -2,7 +2,9 @@
 # docs/guide. This folder is copied beside the guide's pages before the
 # build; the pages themselves stay plain Markdown that reads on GitHub.
 title: Deckard guide
-description: A local-first second brain for the Markdown notes in your VS Code workspace.
+# The tagline under the header. The docs workflow writes package.json's
+# description here before the build, so the two always match.
+description: "Your notes, tasks, and people, connected and kept local. Find what you wrote, chase down loose ends, and retire what's done."
 url: https://deckard.esperinnovations.com
 repository: doctorallen/deckard
 

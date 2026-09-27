@@ -51,6 +51,14 @@ jobs:
           # README's lockup in the header and the logo as the tab's icon.
           cp -R docs/site/. site/
           cp resources/lockup.png resources/logo.png site/images/
+          # The header's tagline is the extension's own description.
+          node -e '
+            const fs = require("fs");
+            const description = require("./package.json").description;
+            const config = fs.readFileSync("site/_config.yml", "utf8")
+              .replace(/^description: .*$/m, "description: " + JSON.stringify(description));
+            fs.writeFileSync("site/_config.yml", config);
+          '
           repo="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}"
           # Screenshots sit beside the pages here; files outside the guide are read on GitHub.
           sed -i \
