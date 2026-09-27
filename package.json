@@ -667,6 +667,16 @@
         "command": "deckard.calendar.closeDayPanel",
         "title": "Close Day Panel",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.showRepeats",
+        "title": "Turn On Repeats",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.calendar.hideRepeats",
+        "title": "Turn Off Repeats",
+        "category": "Deckard"
       }
     ],
     "submenus": [
@@ -895,6 +905,14 @@
         },
         {
           "command": "deckard.calendar.closeDayPanel",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.showRepeats",
+          "when": "false"
+        },
+        {
+          "command": "deckard.calendar.hideRepeats",
           "when": "false"
         }
       ],
@@ -1126,6 +1144,16 @@
           "command": "deckard.calendar.closeDayPanel",
           "when": "view == deckard.calendar && config.deckard.calendar.dayPanel",
           "group": "1_calendar@1"
+        },
+        {
+          "command": "deckard.calendar.showRepeats",
+          "when": "view == deckard.calendar && !config.deckard.calendar.showRepeats",
+          "group": "1_calendar@2"
+        },
+        {
+          "command": "deckard.calendar.hideRepeats",
+          "when": "view == deckard.calendar && config.deckard.calendar.showRepeats",
+          "group": "1_calendar@2"
         }
       ],
       "view/item/context": [

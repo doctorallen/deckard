@@ -207,6 +207,8 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.showMore',
         'deckard.calendar.openDayPanel',
         'deckard.calendar.closeDayPanel',
+        'deckard.calendar.showRepeats',
+        'deckard.calendar.hideRepeats',
       ],
     );
     assert.strictEqual(

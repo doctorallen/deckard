@@ -820,6 +820,13 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     vscode.commands.registerCommand('deckard.calendar.closeDayPanel', () =>
       writeSetting('calendar.dayPanel', false, settingTarget('calendar.dayPanel')),
     ),
+    // Repeats the same way.
+    vscode.commands.registerCommand('deckard.calendar.showRepeats', () =>
+      writeSetting('calendar.showRepeats', true, settingTarget('calendar.showRepeats')),
+    ),
+    vscode.commands.registerCommand('deckard.calendar.hideRepeats', () =>
+      writeSetting('calendar.showRepeats', false, settingTarget('calendar.showRepeats')),
+    ),
     vscode.commands.registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(indexer.getSnapshot()),
     ),
