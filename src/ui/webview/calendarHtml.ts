@@ -326,7 +326,7 @@ ${getCalendarDayScript()}
     const weekdays = '<div class="calendar-row" role="row"><span class="weekday" role="columnheader" aria-label="Week"></span>' + (state.weekdays || WEEKDAYS).filter(function (name) { return !state.hideWeekends || (name !== 'Sat' && name !== 'Sun'); }).map(function (name) { return '<span class="weekday" role="columnheader">' + name + '</span>'; }).join('') + '</div>';
     const rows = (week ? [week] : state.weeks).map(renderWeek).join('');
     document.getElementById('app').innerHTML = header
-      + '<div class="calendar-page-body' + (layout === 'week' ? ' is-week' : '') + '"><div class="calendar-grid' + (state.hideWeekends ? ' no-weekends' : '') + '" role="grid" aria-label="' + escapeHtml(title) + '" aria-multiselectable="false">' + weekdays + rows + '</div>'
+      + '<div class="calendar-page-body' + (layout === 'week' ? ' is-week' : '') + (state.dayInSidebar ? ' day-in-sidebar' : '') + '"><div class="calendar-grid' + (state.hideWeekends ? ' no-weekends' : '') + '" role="grid" aria-label="' + escapeHtml(title) + '" aria-multiselectable="false">' + weekdays + rows + '</div>'
       + renderPanel(state.selected) + '</div>';
   }
 
@@ -356,7 +356,7 @@ ${getCalendarDayScript()}
 
   /** The chosen day under the month, or beside it on the page. */
   function renderPanel(day) {
-    if (!state.dayPanel || !day) return '';
+    if (!state.dayPanel || !day || state.dayInSidebar) return '';
     return renderCalendarDayPanel(day);
   }
 
@@ -604,6 +604,8 @@ main { max-width: none; padding: var(--space-5) var(--space-5) var(--space-6); }
 .calendar-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 /* The month beside the day it has chosen; under a narrow editor, above it. */
 .calendar-page-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-4); align-items: start; }
+/* The day is in Related Notes: the month has the whole width. */
+.calendar-page-body.day-in-sidebar { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 900px) { .calendar-page-body { grid-template-columns: minmax(0, 1fr); } }
 .calendar-page-body .day-panel { position: sticky; top: var(--space-4); margin-top: 0; padding: var(--space-3); border: var(--edge) solid var(--line); background: var(--panel); }
 .calendar-page-body .calendar-grid { gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }

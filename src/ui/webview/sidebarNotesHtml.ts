@@ -20,6 +20,7 @@ import {
   strokeIcon,
   taskBoardIcon,
 } from './icons';
+import { getCalendarDayCss, getCalendarDayScript } from './calendarDay';
 import { ENABLED } from './selectors';
 
 /**
@@ -191,6 +192,7 @@ button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
 .source { margin-top: 4px; font-size: var(--text-xs); }
 .empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
+${getCalendarDayCss()}
 ${getPageTailCss()}
 </style>
 </head>
@@ -201,6 +203,7 @@ ${loadingHtml('Loading related notes…', 'data-sidebar')}
 (function () {
   const vscode = acquireVsCodeApi();
 ${getComponentScript()}
+${getCalendarDayScript()}
   console.log('[Deckard Related Notes] Webview script started.');
   let state;
 
@@ -542,7 +545,9 @@ ${getComponentScript()}
     if (!state) return;
     closeTagContextMenu();
     let content;
-    if (state.state === 'refine') {
+    if (state.state === 'calendarDay') {
+      content = renderCalendarDayPanel(state.calendarDay);
+    } else if (state.state === 'refine') {
       content = renderRefine(state.refine);
     } else if (state.state === 'graph') {
       content = renderGraphConnections(state.graph);
@@ -585,6 +590,8 @@ ${getComponentScript()}
       : '';
     const context = state.state === 'refine'
       ? ''
+      : state.state === 'calendarDay'
+      ? '<div class="active-file"><div class="active-label">Calendar</div><div class="active-name">The chosen day</div></div>'
       : state.state === 'graph'
       ? (state.graph.selectedNode
         ? renderSelectedGraphNode(state.graph.selectedNode)
@@ -597,7 +604,7 @@ ${getComponentScript()}
           + (state.activeEntryTitle ? '<button class="clear-entry-context" data-action="clear-entry-related-notes">Show whole document</button>' : '')
           + activeTags + '</details>'
         : '');
-    const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.relatedNotesSortMode
+    const relatedNotesSort = state.state !== 'graph' && state.state !== 'refine' && state.state !== 'calendarDay' && state.relatedNotesSortMode
       ? '<div class="related-notes-controls"><span class="related-notes-sort-control"><select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes"><option value="tags" ' + (state.relatedNotesSortMode === 'tags' ? 'selected' : '') + '>Relevance</option><option value="newest" ' + (state.relatedNotesSortMode === 'newest' ? 'selected' : '') + '>Newest</option><option value="oldest" ' + (state.relatedNotesSortMode === 'oldest' ? 'selected' : '') + '>Oldest</option><option value="access" ' + (state.relatedNotesSortMode === 'access' ? 'selected' : '') + '>Most accessed</option></select>${strokeIcon(ICON_PATHS.sort, 'related-notes-sort-icon')}</span>'
         + renderViewOptions([
           { label: 'Preview', html: renderViewOptionChoices('set-preview-lines', [[0, 'None', 'No preview'], [1, '1 line', 'One line'], [2, '2 lines', 'Two lines']], previewLines(), 'Preview lines') },
@@ -606,12 +613,12 @@ ${getComponentScript()}
       : '';
     const sectionLabel = state.state === 'graph'
       ? '<span class="section-label">Connected nodes</span>'
-      : state.state === 'refine'
+      : state.state === 'refine' || state.state === 'calendarDay'
       ? ''
       : relatedNotesSort + (state.state === 'ready' ? '<span class="section-label">Related notes</span>' : '');
     // The page's shortcuts are the view's own title-bar actions, as every
     // other sidebar view's are; the page starts with what it is about.
-    const links = state.state === 'graph' || state.state === 'refine' ? '' : renderLinks(state.links);
+    const links = state.state === 'graph' || state.state === 'refine' || state.state === 'calendarDay' ? '' : renderLinks(state.links);
     const app = document.getElementById('app');
     app.dataset.previewLines = String(previewLines());
     app.innerHTML = context + sectionLabel + content + links;
@@ -623,6 +630,11 @@ ${getComponentScript()}
   }
 
   installViewOptions();
+  // The calendar page's chosen day, drawn here while the page is in front:
+  // what is done in it goes to the page's host, through this one.
+  installCalendarDayPanel(function (message) {
+    vscode.postMessage({ type: 'calendarDay', message: message });
+  }, function () { renderKeepingPlace(render); });
   document.addEventListener('toggle', function (event) {
     if (event.target.classList && event.target.classList.contains('active-file')) {
       contextOpen = event.target.open;

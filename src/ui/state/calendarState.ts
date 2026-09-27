@@ -3,7 +3,7 @@ import { needsNewDateBefore } from '../../core/taskPolicy';
 import { stripTags } from '../../core/markdown/parser';
 import { Weekday } from '../../core/markdown/dates';
 import { projectRepeats, TASK_PRIORITY_RANKS } from '../../core/markdown/taskMetadata';
-import { DashboardTask, Task, WorkspaceIndex } from '../../core/types';
+import { CalendarDayDetail, DashboardTask, Task, WorkspaceIndex } from '../../core/types';
 import { createDashboardTask } from './dashboardState';
 import {
   findPeriodicNoteNames,
@@ -98,6 +98,8 @@ export interface CalendarSnapshot {
    * notes and for a step that lands on one.
    */
   hideWeekends?: boolean;
+  /** The page's chosen day is in the Related Notes sidebar, so the page draws no panel of its own. */
+  dayInSidebar?: boolean;
   /** Whether the chosen day is shown below the month, from `deckard.calendar.dayPanel`. */
   dayPanel?: boolean;
   /** The day chosen, YYYY-MM-DD: today until another is. */
@@ -106,33 +108,7 @@ export interface CalendarSnapshot {
   selected?: CalendarDayDetail;
 }
 
-/** The chosen day, as the panel under the month shows it. */
-export interface CalendarDayDetail {
-  date: string;
-  /** Such as "Friday, September 25", with the year when it is not this one. */
-  title: string;
-  /** Today, Yesterday, or Tomorrow, when the day is one of them. */
-  relative?: string;
-  /** The day's daily note, when it has one. */
-  notePath?: string;
-  /** Open tasks due that day, most important first. */
-  due: DashboardTask[];
-  /** Open tasks scheduled that day and not due on it. */
-  scheduled: DashboardTask[];
-  /** Tasks completed that day. */
-  done: DashboardTask[];
-  /** Repeating tasks whose rule lands on the day, projected: opened, never completed, from here. */
-  repeats?: DashboardTask[];
-  /**
-   * Where the row's button moves a task: tomorrow, or the day after a later
-   * day, never earlier.
-   */
-  move: { date: string; label: 'Tomorrow' | 'Next day' };
-  /** Notes created that day, oldest first, daily, weekly, and monthly aside. */
-  notes: { filePath: string; title: string; folder: string }[];
-  /** How many there are, listed or not. */
-  notesTotal: number;
-}
+export type { CalendarDayDetail } from '../../core/types';
 
 /** How many of a day's tasks, and of its new notes, the panel lists at once. */
 const PANEL_NOTES = 5;

@@ -74,6 +74,7 @@ import {
 } from './ui/commands/linkHealth';
 import { CalendarView } from './ui/webview/calendar';
 import { CalendarPanel } from './ui/webview/calendarPage';
+import { ActiveCalendar } from './ui/webview/activeCalendar';
 import { readManifestTools } from './core/mcp/mcpProtocol';
 import { DeckardMcpServer } from './ui/commands/mcpServer';
 import { linkCurrentHeading } from './ui/commands/linkEntity';
@@ -415,7 +416,9 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
   const linkHealth = new LinkHealth(indexer);
   const linkMaintenance = new LinkMaintenance(indexer);
   const calendar = new CalendarView(indexer);
-  const calendarPage = new CalendarPanel(indexer, context.extensionUri);
+  const activeCalendar = new ActiveCalendar();
+  context.subscriptions.push(activeCalendar);
+  const calendarPage = new CalendarPanel(indexer, context.extensionUri, activeCalendar);
   context.subscriptions.push(calendarPage);
   const taskBoard = new TaskBoardPanel(
     indexer,
@@ -456,6 +459,7 @@ export function activate(context: vscode.ExtensionContext): DeckardExports {
     activeSearch,
     (tagKey) => searchPanels.show(tagKey),
     context.extension.packageJSON.version,
+    activeCalendar,
   );
   const stats = new StatsPanel(
     indexer,

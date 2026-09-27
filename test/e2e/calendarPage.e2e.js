@@ -11,6 +11,10 @@ const { CalendarPanel } = require('../../out/ui/webview/calendarPage.js');
 const { parseMarkdown } = require('../../out/core/markdown/parser.js');
 const { buildWorkspaceIndex } = require('../../out/core/workspace/indexer.js');
 const { formatLocalDate } = require('../../out/ui/commands/dailyNote.js');
+const { ActiveCalendar } = require('../../out/ui/webview/activeCalendar.js');
+const { ActiveSearch } = require('../../out/ui/webview/activeSearch.js');
+const { SidebarNotesView } = require('../../out/ui/webview/sidebarNotes.js');
+const { PreferencesStore } = require('../../out/core/storage/preferences.js');
 
 vscode.workspace.openTextDocument = () => Promise.reject(new Error('The e2e stub has no editor.'));
 vscode.window.showErrorMessage = () => Promise.resolve(undefined);
@@ -133,6 +137,63 @@ test('the gear turns repeats off where the setting is written', async () => {
   view.click(view.find('.view-options [data-action="set-show-repeats"][data-value="off"]'));
   await settle();
   assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value]), [['deckard.calendar.showRepeats', false]]);
+});
+
+test('with Related Notes open, the chosen day is there and the month takes the width', async () => {
+  vscode._test.createdPanels.length = 0;
+  const index = createIndex();
+  const indexer = {
+    ready: Promise.resolve(),
+    getSnapshot: () => index,
+    getFilePath: (uri) => uri.fsPath,
+    onDidUpdate: new vscode.EventEmitter().event,
+  };
+  const store = new Map();
+  const globalState = { get: (key, fallback) => (store.has(key) ? store.get(key) : fallback), keys: () => [...store.keys()], update: (key, value) => { store.set(key, value); return Promise.resolve(); } };
+  const activeCalendar = new ActiveCalendar();
+  const sidebar = new SidebarNotesView(indexer, new PreferencesStore(globalState), new ActiveSearch(), () => undefined, '0.0.0-test', activeCalendar);
+  const sidebarHost = vscode._test.createWebviewView();
+  sidebarHost._onWebviewMessage = sidebarHost._fromWebview;
+  sidebar.resolveWebviewView(sidebarHost);
+  const sidebarView = mountWebview(sidebarHost.webview.html, sidebarHost);
+  sidebarHost.posted.forEach((message) => sidebarHost._deliver(message));
+
+  const page = new CalendarPanel(indexer, { fsPath: '/ext' }, activeCalendar);
+  await page.show();
+  const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
+  const view = mountWebview(panel.webview.html, panel);
+  panel._toWebview.forEach((message) => panel._deliver(message));
+  await settle();
+  try {
+    assert.strictEqual(view.findAll('.day-panel').length, 0, 'the page leaves the day to the sidebar');
+    assert.ok(view.find('.calendar-page-body.day-in-sidebar'));
+    assert.match(sidebarView.find('.day-panel h2').textContent, /Today/, 'which shows the chosen day');
+    assert.ok(sidebarView.find('.day-panel [aria-label="Due"]'));
+
+    // What is done there is the page's to do.
+    const opened = [];
+    const handle = page.handleDayMessage.bind(page);
+    page.handleDayMessage = async (message) => { opened.push(message); };
+    sidebarView.click(sidebarView.find('.day-panel .task-row .task-title'));
+    await settle();
+    assert.deepStrictEqual(opened.map((message) => message.type), ['openTask']);
+    page.handleDayMessage = handle;
+
+    // A new day chosen on the page follows into the sidebar.
+    view.click(view.find(`.day-cell[data-drop-date="${tomorrow}"] [data-action="open-day"]`));
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    await settle();
+    assert.match(sidebarView.find('.day-panel h2').textContent, /Tomorrow/);
+
+    // With the sidebar closed, the page takes its panel back.
+    sidebarHost._setVisible(false);
+    await settle();
+    assert.ok(view.find('.day-panel'), 'the page draws the day again');
+    assert.strictEqual(view.findAll('.calendar-page-body.day-in-sidebar').length, 0);
+  } finally {
+    page.dispose();
+    sidebar.dispose();
+  }
 });
 
 // ---------------------------------------------------------------------------
